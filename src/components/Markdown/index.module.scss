@@ -1,0 +1,122 @@
+.waitingAnimation::after {
+  display: inline-block;
+  content: '';
+  width: 4px;
+  height: 14px;
+  transform: translate(4px, 2px) scaleY(1.3);
+  background-color: rgba(0, 0, 0, 0.7);
+  animation: blink 0.6s infinite;
+}
+.animation {
+  :last-child::after {
+    display: inline-block;
+    content: '';
+    width: 4px;
+    height: 14px;
+    transform: translate(4px, 2px) scaleY(1.3);
+    background-color: rgba(0, 0, 0, 0.7);
+    animation: blink 0.6s infinite;
+  }
+}
+@keyframes blink {
+  from,
+  to {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.markdown {
+  /* 标题样式 */
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  h2 {
+    font-size: 1.6rem;
+  }
+
+  h3 {
+    font-size: 1.4rem;
+  }
+
+  h4 {
+    font-size: 1.2rem;
+  }
+
+  h5 {
+    font-size: 1rem;
+  }
+
+  h6 {
+    font-size: 0.83rem;
+  }
+
+  /* 列表样式 */
+  ol,
+  ul {
+    padding-left: 1.5rem;
+    margin-left: 1rem;
+  }
+  ul {
+    list-style: inside;
+  }
+  ol {
+    list-style: decimal;
+  }
+
+  /* 链接样式 */
+  a {
+    color: #0077cc;
+    text-decoration: none;
+    border-bottom: 1px solid #0077cc;
+  }
+
+  a:hover {
+    color: #005580;
+    border-bottom-color: #005580;
+  }
+
+  /* 图片样式 */
+  img {
+    max-width: 100%;
+    max-height: 200px;
+    margin: auto;
+  }
+
+  /* 强调样式 */
+  em,
+  i {
+    font-style: italic;
+  }
+
+  strong,
+  b {
+    font-weight: bold;
+  }
+
+  /* 代码样式 */
+  code {
+    border-radius: 3px;
+    width: 100%;
+  }
+
+  pre {
+    padding: 10px 15px;
+    width: 100%;
+    background-color: #222 !important;
+    overflow-x: auto;
+  }
+
+  pre code {
+    display: block;
+    border: none;
+    background-color: #222;
+    color: #fff;
+  }
+
+  p {
+    line-height: 1.7;
+  }
+}
