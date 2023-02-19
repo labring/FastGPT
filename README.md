@@ -1,38 +1,73 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Doc GPT 
 
-## Getting Started
+## 初始化
+复制 .env.template 成 .env.local ，填写核心参数  
 
-First, run the development server:
+```
+AXIOS_PROXY_HOST=axios代理地址，目前 openai 接口都需要走代理，本机的话就填 127.0.0.1
+AXIOS_PROXY_PORT=代理端口
+MONGODB_UR=mongo数据库地址
+MY_MAIL=发送验证码邮箱
+MAILE_CODE=邮箱秘钥
+TOKEN_KEY=随便填一个，用于生成和校验token
+```
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
+```
+
+## 部署
+```bash
+# 本地 docker 打包
+docker build -t imageName .
+docker push imageName
+
+# 服务器拉取部署
+docker pull imageName
+docker stop doc-gpt || true
+docker rm doc-gpt || true
+# 运行时才把参数写入
+docker run -d --network=host --name doc-gpt -e AXIOS_PROXY_HOST= -e AXIOS_PROXY_PORT= -e MAILE_CODE= -e TOKEN_KEY= -e MONGODB_UR= imageName
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+# 介绍页
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## 欢迎使用 Doc GPT
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+时间比较赶，介绍没来得及完善，先直接上怎么使用：  
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+1. 使用邮箱注册账号。  
+2. 进入账号页面，添加关联账号，目前只有 openai 的账号可以添加，直接去 openai 官网，把 API Key 粘贴过来。  
+3. 进入模型页，创建一个模型，建议直接用 ChatGPT。    
+4. 在模型列表点击【对话】，即可使用 API 进行聊天。  
 
-## Learn More
+### 模型配置
 
-To learn more about Next.js, take a look at the following resources:
+1. **提示语**：会在每个对话框的第一句自动加入，用于限定该模型的对话内容。  
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+2. **单句最大长度**：每个聊天，单次输入内容的最大长度。  
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. **上下文最大长度**：每个聊天，最多的轮数除以2，建议设置为偶数。可以持续聊天，但是旧的聊天内容会被截断，AI 就不会知道被截取的内容。 
+例如：上下文最大长度为6。在第 4 轮对话时，第一轮对话的内容不会被计入。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+4. **过期时间**：生成对话框后，这个对话框多久过期。  
+
+5. **聊天最大加载次数**：单个对话框最多被加载几次，设置为-1代表不限制，正数代表只能加载 n 次，防止被盗刷。  
+
+### 对话框介绍
+
+1. 每个对话框以 windowId 作为标识。  
+2. 每次点击【对话】，都会生成新的对话框，无法回到旧的对话框。对话框内刷新，会恢复对话内容。  
+3. 直接分享对话框（网页）的链接给朋友，会共享同一个对话内容。但是！！！千万不要两个人同时用一个链接，会串味，还没解决这个问题。  
+4. 如果想分享一个纯的对话框，可以把链接里 windowId 参数去掉。例如：  
+
+* 当前网页链接：http://docgpt.ahapocket.cn/chat?chatId=6402c9f64cb5d6283f764&windowId=6402c94cb5d6283f76fb49  
+* 分享链接应为：http://docgpt.ahapocket.cn/chat?chatId=6402c9f64cb5d6283f764  
+
+### 其他问题
+还有其他问题，可以加我 wx，拉个交流群大家一起聊聊。
+![](/imgs/erweima.jpg)

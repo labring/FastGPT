@@ -1,0 +1,112 @@
+body,
+h1,
+h2,
+h3,
+h4,
+hr,
+p,
+blockquote,
+dl,
+dt,
+dd,
+ul,
+ol,
+li,
+pre,
+form,
+fieldset,
+legend,
+button,
+input,
+textarea,
+th,
+td,
+svg {
+  margin: 0;
+}
+body,
+button,
+input,
+select,
+textarea {
+  font: 12px/1.5tahoma, arial, \5b8b\4f53;
+}
+// h1, h2, h3, h4, h5, h6{ font-size:100%; }
+address,
+cite,
+dfn,
+em,
+var {
+  font-style: normal;
+}
+code,
+kbd,
+pre,
+samp {
+  font-family: couriernew, courier, monospace;
+}
+small {
+  font-size: 12px;
+}
+ul,
+ol {
+  list-style: none;
+  padding: 0;
+}
+a {
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+sup {
+  vertical-align: text-top;
+}
+sub {
+  vertical-align: text-bottom;
+}
+legend {
+  color: #000;
+}
+fieldset,
+img {
+  border: 0;
+}
+button,
+input,
+select,
+textarea {
+  font-size: 100%;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+::-webkit-scrollbar,
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+@media (max-width: 900px) {
+  ::-webkit-scrollbar,
+  ::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+}
