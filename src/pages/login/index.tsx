@@ -40,7 +40,7 @@ const Login = () => {
   };
 
   return (
-    <Box className={styles.loginPage} p={isPc ? '10vh 10vw' : 0}>
+    <Box className={styles.loginPage} h={'100%'} p={isPc ? '10vh 10vw' : 0}>
       <Flex
         maxW={'1240px'}
         m={'auto'}

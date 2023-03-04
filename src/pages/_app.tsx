@@ -1,10 +1,19 @@
 import type { AppProps, NextWebVitalsMetric } from 'next/app';
+import Script from 'next/script';
 import Head from 'next/head';
 import { ChakraProvider } from '@chakra-ui/react';
 import Layout from '@/components/Layout';
 import { theme } from '@/constants/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import NProgress from 'nprogress'; //nprogress module
+import Router from 'next/router';
+import 'nprogress/nprogress.css';
 import '../styles/reset.scss';
+
+//Binding events.
+Router.events.on('routeChangeStart', () => NProgress.start());
+Router.events.on('routeChangeComplete', () => NProgress.done());
+Router.events.on('routeChangeError', () => NProgress.done());
 
 export default function App({ Component, pageProps }: AppProps) {
   // Create a client
@@ -28,7 +37,6 @@ export default function App({ Component, pageProps }: AppProps) {
           content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0;"
         />
         <link rel="icon" href="/favicon.ico" />
-        <script src="/iconfont.js" async></script>
       </Head>
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
@@ -37,6 +45,7 @@ export default function App({ Component, pageProps }: AppProps) {
           </Layout>
         </ChakraProvider>
       </QueryClientProvider>
+      <Script src="/iconfont.js"></Script>
     </>
   );
 }

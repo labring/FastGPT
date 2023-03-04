@@ -27,96 +27,343 @@
     opacity: 1;
   }
 }
+
+.markdown > *:first-child {
+  margin-top: 0 !important;
+}
+.markdown > *:last-child {
+  margin-bottom: 0 !important;
+}
+.markdown a.absent {
+  color: #cc0000;
+}
+.markdown a.anchor {
+  bottom: 0;
+  cursor: pointer;
+  display: block;
+  left: 0;
+  margin-left: -30px;
+  padding-left: 30px;
+  position: absolute;
+  top: 0;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  cursor: text;
+  font-weight: bold;
+  margin: 20px 0 10px;
+  padding: 0;
+  position: relative;
+}
+.markdown h1 .mini-icon-link,
+.markdown h2 .mini-icon-link,
+.markdown h3 .mini-icon-link,
+.markdown h4 .mini-icon-link,
+.markdown h5 .mini-icon-link,
+.markdown h6 .mini-icon-link {
+  color: #000000;
+  display: none;
+}
+.markdown h1:hover a.anchor,
+.markdown h2:hover a.anchor,
+.markdown h3:hover a.anchor,
+.markdown h4:hover a.anchor,
+.markdown h5:hover a.anchor,
+.markdown h6:hover a.anchor {
+  line-height: 1;
+  margin-left: -22px;
+  padding-left: 0;
+  text-decoration: none;
+  top: 15%;
+}
+.markdown h1:hover a.anchor .mini-icon-link,
+.markdown h2:hover a.anchor .mini-icon-link,
+.markdown h3:hover a.anchor .mini-icon-link,
+.markdown h4:hover a.anchor .mini-icon-link,
+.markdown h5:hover a.anchor .mini-icon-link,
+.markdown h6:hover a.anchor .mini-icon-link {
+  display: inline-block;
+}
+.markdown h1 tt,
+.markdown h1 code,
+.markdown h2 tt,
+.markdown h2 code,
+.markdown h3 tt,
+.markdown h3 code,
+.markdown h4 tt,
+.markdown h4 code,
+.markdown h5 tt,
+.markdown h5 code,
+.markdown h6 tt,
+.markdown h6 code {
+  font-size: inherit;
+}
+.markdown h1 {
+  color: #000000;
+  font-size: 28px;
+}
+.markdown h2 {
+  border-bottom: 1px solid #cccccc;
+  color: #000000;
+  font-size: 24px;
+}
+.markdown h3 {
+  font-size: 18px;
+}
+.markdown h4 {
+  font-size: 16px;
+}
+.markdown h5 {
+  font-size: 14px;
+}
+.markdown h6 {
+  color: #777777;
+  font-size: 14px;
+}
+.markdown p,
+.markdown blockquote,
+.markdown ul,
+.markdown ol,
+.markdown dl,
+.markdown table {
+  margin: 15px 0;
+}
+.markdown hr {
+  background: url('https://a248.e.akamai.net/assets.github.com/assets/primer/markdown/dirty-shade-350cca8f57223ebd53603021b2e670f4f319f1b7.png')
+    repeat-x scroll 0 0 transparent;
+  border: 0 none;
+  color: #cccccc;
+  height: 4px;
+  padding: 0;
+}
+.markdown > h2:first-child,
+.markdown > h1:first-child,
+.markdown > h1:first-child + h2,
+.markdown > h3:first-child,
+.markdown > h4:first-child,
+.markdown > h5:first-child,
+.markdown > h6:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+.markdown a:first-child h1,
+.markdown a:first-child h2,
+.markdown a:first-child h3,
+.markdown a:first-child h4,
+.markdown a:first-child h5,
+.markdown a:first-child h6 {
+  margin-top: 0;
+  padding-top: 0;
+}
+.markdown h1 + p,
+.markdown h2 + p,
+.markdown h3 + p,
+.markdown h4 + p,
+.markdown h5 + p,
+.markdown h6 + p {
+  margin-top: 0;
+}
+.markdown li p.first {
+  display: inline-block;
+}
+.markdown ul,
+.markdown ol {
+  padding-left: 30px;
+}
+.markdown ul.no-list,
+.markdown ol.no-list {
+  list-style-type: none;
+  padding: 0;
+}
+.markdown ul li > *:first-child,
+.markdown ol li > *:first-child {
+  margin-top: 0;
+}
+.markdown ul ul,
+.markdown ul ol,
+.markdown ol ol,
+.markdown ol ul {
+  margin-bottom: 0;
+}
+.markdown dl {
+  padding: 0;
+}
+.markdown dl dt {
+  font-size: 14px;
+  font-style: italic;
+  font-weight: bold;
+  margin: 15px 0 5px;
+  padding: 0;
+}
+.markdown dl dt:first-child {
+  padding: 0;
+}
+.markdown dl dt > *:first-child {
+  margin-top: 0;
+}
+.markdown dl dt > *:last-child {
+  margin-bottom: 0;
+}
+.markdown dl dd {
+  margin: 0 0 15px;
+  padding: 0 15px;
+}
+.markdown dl dd > *:first-child {
+  margin-top: 0;
+}
+.markdown dl dd > *:last-child {
+  margin-bottom: 0;
+}
+.markdown blockquote {
+  border-left: 4px solid #dddddd;
+  color: #777777;
+  padding: 0 15px;
+}
+.markdown blockquote > *:first-child {
+  margin-top: 0;
+}
+.markdown blockquote > *:last-child {
+  margin-bottom: 0;
+}
+.markdown table th {
+  font-weight: bold;
+}
+.markdown table th,
+.markdown table td {
+  border: 1px solid #cccccc;
+  padding: 6px 13px;
+}
+.markdown table tr {
+  background-color: #ffffff;
+  border-top: 1px solid #cccccc;
+}
+.markdown table tr:nth-child(2n) {
+  background-color: #f8f8f8;
+}
+.markdown img {
+  max-width: 100%;
+}
+.markdown span.frame {
+  display: block;
+  overflow: hidden;
+}
+.markdown span.frame > span {
+  border: 1px solid #dddddd;
+  display: block;
+  float: left;
+  margin: 13px 0 0;
+  overflow: hidden;
+  padding: 7px;
+  width: auto;
+}
+.markdown span.frame span img {
+  display: block;
+  float: left;
+}
+.markdown span.frame span span {
+  clear: both;
+  color: #333333;
+  display: block;
+  padding: 5px 0 0;
+}
+.markdown span.align-center {
+  clear: both;
+  display: block;
+  overflow: hidden;
+}
+.markdown span.align-center > span {
+  display: block;
+  margin: 13px auto 0;
+  overflow: hidden;
+  text-align: center;
+}
+.markdown span.align-center span img {
+  margin: 0 auto;
+  text-align: center;
+}
+.markdown span.align-right {
+  clear: both;
+  display: block;
+  overflow: hidden;
+}
+.markdown span.align-right > span {
+  display: block;
+  margin: 13px 0 0;
+  overflow: hidden;
+  text-align: right;
+}
+.markdown span.align-right span img {
+  margin: 0;
+  text-align: right;
+}
+.markdown span.float-left {
+  display: block;
+  float: left;
+  margin-right: 13px;
+  overflow: hidden;
+}
+.markdown span.float-left span {
+  margin: 13px 0 0;
+}
+.markdown span.float-right {
+  display: block;
+  float: right;
+  margin-left: 13px;
+  overflow: hidden;
+}
+.markdown span.float-right > span {
+  display: block;
+  margin: 13px auto 0;
+  overflow: hidden;
+  text-align: right;
+}
+.markdown code,
+.markdown tt {
+  background-color: #f8f8f8;
+  border-radius: 3px 3px 3px 3px;
+  margin: 0 2px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+.markdown pre > code {
+  background: none repeat scroll 0 0 transparent;
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+}
+.markdown .highlight pre,
+.markdown pre {
+  background-color: #f8f8f8;
+  font-size: 13px;
+  line-height: 19px;
+  overflow: auto;
+  padding: 6px 10px;
+}
+.markdown pre code,
+.markdown pre tt {
+  background-color: transparent;
+  border: medium none;
+}
 .markdown {
-  /* 标题样式 */
-  h1 {
-    font-size: 1.8rem;
-  }
-
-  h2 {
-    font-size: 1.6rem;
-  }
-
-  h3 {
-    font-size: 1.4rem;
-  }
-
-  h4 {
-    font-size: 1.2rem;
-  }
-
-  h5 {
-    font-size: 1rem;
-  }
-
-  h6 {
-    font-size: 0.83rem;
-  }
-
-  /* 列表样式 */
-  ol,
-  ul {
-    padding-left: 1.5rem;
-    margin-left: 1rem;
-  }
-  ul {
-    list-style: inside;
-  }
-  ol {
-    list-style: decimal;
-  }
-
-  /* 链接样式 */
-  a {
-    color: #0077cc;
-    text-decoration: none;
-    border-bottom: 1px solid #0077cc;
-  }
-
-  a:hover {
-    color: #005580;
-    border-bottom-color: #005580;
-  }
-
-  /* 图片样式 */
-  img {
-    max-width: 100%;
-    max-height: 200px;
-    margin: auto;
-  }
-
-  /* 强调样式 */
-  em,
-  i {
-    font-style: italic;
-  }
-
-  strong,
-  b {
-    font-weight: bold;
-  }
-
-  /* 代码样式 */
-  code {
-    border-radius: 3px;
-    width: 100%;
-  }
-
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.5px;
+  text-align: justify;
   pre {
-    padding: 10px 15px;
+    display: block;
     width: 100%;
+    padding: 15px;
     background-color: #222 !important;
     overflow-x: auto;
   }
 
   pre code {
-    display: block;
-    border: none;
     background-color: #222;
     color: #fff;
-  }
-
-  p {
-    line-height: 1.7;
+    width: 100%;
   }
 }

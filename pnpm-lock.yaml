@@ -13,6 +13,7 @@ specifiers:
   '@types/jsonwebtoken': ^9.0.1
   '@types/node': 18.14.0
   '@types/nodemailer': ^6.4.7
+  '@types/nprogress': ^0.2.0
   '@types/react': 18.0.28
   '@types/react-dom': 18.0.11
   '@types/react-syntax-highlighter': ^15.5.6
@@ -33,6 +34,7 @@ specifiers:
   mongoose: ^6.10.0
   next: 13.1.6
   nodemailer: ^6.9.1
+  nprogress: ^0.2.0
   openai: ^3.2.1
   prettier: ^2.8.4
   react: 18.2.0
@@ -57,6 +59,7 @@ dependencies:
   '@next/font': registry.npmmirror.com/@next/font/13.1.6
   '@reduxjs/toolkit': registry.npmmirror.com/@reduxjs/toolkit/1.9.3_react@18.2.0
   '@tanstack/react-query': registry.npmmirror.com/@tanstack/react-query/4.24.10_biqbaboplfbrettd7655fr4n2y
+  '@types/nprogress': registry.npmmirror.com/@types/nprogress/0.2.0
   axios: registry.npmmirror.com/axios/1.3.3
   crypto: registry.npmmirror.com/crypto/1.0.1
   dayjs: registry.npmmirror.com/dayjs/1.11.7
@@ -70,6 +73,7 @@ dependencies:
   mongoose: registry.npmmirror.com/mongoose/6.10.0
   next: registry.npmmirror.com/next/13.1.6_wiv434v7erz4aedd5whhdwmpv4
   nodemailer: registry.npmmirror.com/nodemailer/6.9.1
+  nprogress: registry.npmmirror.com/nprogress/0.2.0
   openai: registry.npmmirror.com/openai/3.2.1
   react: registry.npmmirror.com/react/18.2.0
   react-dom: registry.npmmirror.com/react-dom/18.2.0_react@18.2.0
@@ -1092,6 +1096,15 @@ packages:
     resolution: {integrity: sha512-gt3PKXs0DBoL9xCvOIIZ2NEqAGZqHjAnmVbfQtB620V0uReIQutpel14KcneZuer7UioY8ALKZ7iocavvzTNFA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@babel/runtime/-/runtime-7.20.13.tgz}
     name: '@babel/runtime'
     version: 7.20.13
+    engines: {node: '>=6.9.0'}
+    dependencies:
+      regenerator-runtime: registry.npmmirror.com/regenerator-runtime/0.13.11
+    dev: false
+
+  registry.npmmirror.com/@babel/runtime/7.21.0:
+    resolution: {integrity: sha512-xwII0//EObnq89Ji5AKYQaRYiW/nZ3llSv29d49IuxPhKbtJoLP+9QUUZ4nVragQVtaVGeZrpB+ZtG/Pdy/POw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@babel/runtime/-/runtime-7.21.0.tgz}
+    name: '@babel/runtime'
+    version: 7.21.0
     engines: {node: '>=6.9.0'}
     dependencies:
       regenerator-runtime: registry.npmmirror.com/regenerator-runtime/0.13.11
@@ -2433,7 +2446,7 @@ packages:
     version: 11.10.6
     dependencies:
       '@babel/helper-module-imports': registry.npmmirror.com/@babel/helper-module-imports/7.18.6
-      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.20.13
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.21.0
       '@emotion/hash': registry.npmmirror.com/@emotion/hash/0.9.0
       '@emotion/memoize': registry.npmmirror.com/@emotion/memoize/0.8.0
       '@emotion/serialize': registry.npmmirror.com/@emotion/serialize/1.1.1
@@ -3048,6 +3061,12 @@ packages:
       '@types/node': registry.npmmirror.com/@types/node/18.14.0
     dev: true
 
+  registry.npmmirror.com/@types/nprogress/0.2.0:
+    resolution: {integrity: sha512-1cYJrqq9GezNFPsWTZpFut/d4CjpZqA0vhqDUPFWYKF1oIyBz5qnoYMzR+0C/T96t3ebLAC1SSnwrVOm5/j74A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/nprogress/-/nprogress-0.2.0.tgz}
+    name: '@types/nprogress'
+    version: 0.2.0
+    dev: false
+
   registry.npmmirror.com/@types/parse-json/4.0.0:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/parse-json/-/parse-json-4.0.0.tgz}
     name: '@types/parse-json'
@@ -3469,7 +3488,7 @@ packages:
     version: 3.1.0
     engines: {node: '>=10', npm: '>=6'}
     dependencies:
-      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.20.13
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.21.0
       cosmiconfig: registry.npmmirror.com/cosmiconfig/7.1.0
       resolve: registry.npmmirror.com/resolve/1.22.1
     dev: false
@@ -4329,7 +4348,7 @@ packages:
     peerDependencies:
       eslint: ^3 || ^4 || ^5 || ^6 || ^7 || ^8
     dependencies:
-      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.20.13
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.21.0
       aria-query: registry.npmmirror.com/aria-query/5.1.3
       array-includes: registry.npmmirror.com/array-includes/3.1.6
       array.prototype.flatmap: registry.npmmirror.com/array.prototype.flatmap/1.3.1
@@ -6481,6 +6500,12 @@ packages:
       path-key: registry.npmmirror.com/path-key/4.0.0
     dev: true
 
+  registry.npmmirror.com/nprogress/0.2.0:
+    resolution: {integrity: sha512-I19aIingLgR1fmhftnbWWO3dXc0hSxqHQHQb3H8m+K3TnEn/iSeTZZOyvKXWqQESMwuUVnatlCnZdLBZZt2VSA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/nprogress/-/nprogress-0.2.0.tgz}
+    name: nprogress
+    version: 0.2.0
+    dev: false
+
   registry.npmmirror.com/object-assign/4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/object-assign/-/object-assign-4.1.1.tgz}
     name: object-assign
@@ -6889,7 +6914,7 @@ packages:
     peerDependencies:
       react: ^15.3.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
     dependencies:
-      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.20.13
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.21.0
       react: registry.npmmirror.com/react/18.2.0
     dev: false
 
@@ -6924,7 +6949,7 @@ packages:
       '@types/react':
         optional: true
     dependencies:
-      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.20.13
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.21.0
       '@types/react': registry.npmmirror.com/@types/react/18.0.28
       focus-lock: registry.npmmirror.com/focus-lock/0.11.6
       prop-types: registry.npmmirror.com/prop-types/15.8.1
@@ -7110,7 +7135,7 @@ packages:
     name: redux
     version: 4.2.1
     dependencies:
-      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.20.13
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.21.0
     dev: false
 
   registry.npmmirror.com/refractor/3.6.0:

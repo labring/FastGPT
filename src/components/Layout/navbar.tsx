@@ -3,7 +3,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import Icon from '../Icon';
-import styles from './style.module.scss';
 
 export enum NavbarTypeEnum {
   normal = 'normal',

@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import React, { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import styles from './index.module.scss';
@@ -24,10 +24,16 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
           const code = String(children).replace(/\n$/, '');
-
-          return (
+          return !inline ? (
             <Box my={3} borderRadius={'md'} overflow={'hidden'}>
-              <Flex py={2} px={5} backgroundColor={'#323641'} color={'#fff'} fontSize={'sm'}>
+              <Flex
+                py={2}
+                px={5}
+                backgroundColor={'#323641'}
+                color={'#fff'}
+                fontSize={'sm'}
+                userSelect={'none'}
+              >
                 <Box flex={1}>{match?.[1]}</Box>
                 <Flex cursor={'pointer'} onClick={() => copyData(code)} alignItems={'center'}>
                   <Icon name={'icon-fuzhi'} width={15} height={15} color={'#fff'}></Icon>
@@ -36,13 +42,17 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
               </Flex>
               <SyntaxHighlighter
                 style={codeLight as any}
-                showLineNumbers
-                language={match?.[1]}
+                language={match?.[1] || 'bash'}
+                PreTag="pre"
                 {...props}
               >
                 {code}
               </SyntaxHighlighter>
             </Box>
+          ) : (
+            <code className={className} {...props}>
+              {children}
+            </code>
           );
         }
       }}
