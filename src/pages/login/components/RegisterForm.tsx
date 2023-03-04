@@ -1,19 +1,12 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import {
-  FormControl,
-  Box,
-  Input,
-  Button,
-  FormErrorMessage,
-  useToast,
-  Flex
-} from '@chakra-ui/react';
+import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '@/constants/user';
 import { postRegister } from '@/api/user';
 import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
 import { useScreen } from '@/hooks/useScreen';
+import { useToast } from '@/hooks/useToast';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -28,7 +21,7 @@ interface RegisterType {
 }
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
-  const toast = useToast();
+  const { toast } = useToast();
   const { mediaLgMd } = useScreen();
   const {
     register,
@@ -57,6 +50,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     async ({ email, password, code }: RegisterType) => {
       setRequesting(true);
       try {
+        toast({
+          title: `注册成功`,
+          status: 'success'
+        });
         loginSuccess(
           await postRegister({
             email,
@@ -64,17 +61,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             password
           })
         );
-        toast({
-          title: `注册成功`,
-          status: 'success',
-          position: 'top'
-        });
       } catch (error) {
         typeof error === 'string' &&
           toast({
             title: error,
             status: 'error',
-            position: 'top'
+            duration: 4000,
+            isClosable: true
           });
       }
       setRequesting(false);

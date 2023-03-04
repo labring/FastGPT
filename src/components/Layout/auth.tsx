@@ -7,6 +7,7 @@ import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
 
 const unAuthPage: { [key: string]: boolean } = {
+  '/': true,
   '/login': true,
   '/chat': true
 };
@@ -48,7 +49,7 @@ const Auth = ({ children }: { children: JSX.Element }) => {
     }
   );
 
-  return userInfo || unAuthPage[router.pathname] === true ? <>{children}</> : null;
+  return userInfo || unAuthPage[router.pathname] === true ? children : null;
 };
 
 export default Auth;

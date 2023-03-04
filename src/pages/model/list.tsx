@@ -8,29 +8,23 @@ import { useRouter } from 'next/router';
 import ModelTable from './components/ModelTable';
 import ModelPhoneList from './components/ModelPhoneList';
 import { useScreen } from '@/hooks/useScreen';
-import { useGlobalStore } from '@/store/global';
+import { useQuery } from '@tanstack/react-query';
+import { useLoading } from '@/hooks/useLoading';
 
 const ModelList = () => {
   const { isPc } = useScreen();
   const router = useRouter();
   const [models, setModels] = useState<ModelType[]>([]);
   const [openCreateModel, setOpenCreateModel] = useState(false);
-  const { setLoading } = useGlobalStore();
+  const { Loading, setIsLoading } = useLoading();
 
   /* 加载模型 */
-  const loadModels = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await getMyModels();
+  const { isLoading } = useQuery(['loadModels'], () => getMyModels(), {
+    onSuccess(res) {
+      if (!res) return;
       setModels(res);
-    } catch (err) {
-      console.log(err);
     }
-    setLoading(false);
-  }, [setLoading]);
-  useEffect(() => {
-    loadModels();
-  }, [loadModels]);
+  });
 
   /* 创建成功回调 */
   const createModelSuccess = useCallback((data: ModelType) => {
@@ -40,7 +34,7 @@ const ModelList = () => {
   /* 点前往聊天预览页 */
   const handlePreviewChat = useCallback(
     async (modelId: string) => {
-      setLoading(true);
+      setIsLoading(true);
       try {
         const chatId = await getChatSiteId(modelId);
 
@@ -50,9 +44,9 @@ const ModelList = () => {
       } catch (err) {
         console.log(err);
       }
-      setLoading(false);
+      setIsLoading(false);
     },
-    [router, setLoading]
+    [router, setIsLoading]
   );
 
   return (
@@ -83,6 +77,7 @@ const ModelList = () => {
         setCreateModelOpen={setOpenCreateModel}
         onSuccess={createModelSuccess}
       />
+      <Loading loading={isLoading} />
     </Box>
   );
 };

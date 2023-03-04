@@ -51,10 +51,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   return (
     <>
       {!unShowLayoutRoute[router.pathname] ? (
-        <Box minHeight={'100vh'} backgroundColor={'gray.100'}>
+        <Box data-test="ss" h={'100%'} backgroundColor={'gray.100'} overflow={'auto'}>
           {isPc ? (
             <>
-              <Box h={'100vh'} position={'fixed'} left={0} top={0} w={'80px'}>
+              <Box h={'100%'} position={'fixed'} left={0} top={0} w={'80px'}>
                 <Navbar navbarList={navbarList} />
               </Box>
               <Box ml={'80px'} p={7}>

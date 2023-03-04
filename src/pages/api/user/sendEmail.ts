@@ -2,19 +2,29 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { AuthCode } from '@/service/models/authCode';
-import { connectToDatabase } from '@/service/mongo';
+import { connectToDatabase, User } from '@/service/mongo';
 import { sendCode } from '@/service/utils/sendEmail';
 import { EmailTypeEnum } from '@/constants/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { email, type } = req.query;
+    const { email, type } = req.query as { email: string; type: `${EmailTypeEnum}` };
 
     if (!email || !type) {
       throw new Error('缺少参数');
     }
 
     await connectToDatabase();
+
+    // 注册人数限流
+    if (type === EmailTypeEnum.register) {
+      const maxCount = process.env.MAX_USER ? +process.env.MAX_USER : Infinity;
+      const userCount = await User.count();
+
+      if (userCount >= maxCount) {
+        throw new Error('当前注册用户已满，请等待名额~');
+      }
+    }
 
     let code = '';
     for (let i = 0; i < 6; i++) {

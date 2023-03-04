@@ -6,7 +6,7 @@
 ```
 AXIOS_PROXY_HOST=axios代理地址，目前 openai 接口都需要走代理，本机的话就填 127.0.0.1
 AXIOS_PROXY_PORT=代理端口
-MONGODB_UR=mongo数据库地址
+MONGODB_URI=mongo数据库地址
 MY_MAIL=发送验证码邮箱
 MAILE_CODE=邮箱秘钥
 TOKEN_KEY=随便填一个，用于生成和校验token
@@ -27,7 +27,7 @@ docker pull imageName
 docker stop doc-gpt || true
 docker rm doc-gpt || true
 # 运行时才把参数写入
-docker run -d --network=host --name doc-gpt -e AXIOS_PROXY_HOST= -e AXIOS_PROXY_PORT= -e MAILE_CODE= -e TOKEN_KEY= -e MONGODB_UR= imageName
+docker run -d --network=host --name doc-gpt -e AXIOS_PROXY_HOST= -e AXIOS_PROXY_PORT= -e MAILE_CODE= -e TOKEN_KEY= -e MONGODB_URI= imageName
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
