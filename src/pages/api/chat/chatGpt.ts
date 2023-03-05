@@ -104,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.end();
   } catch (err: any) {
-    console.log(err?.response?.data || err);
+    console.error(err?.response?.data || err);
     // 删除最一条数据库记录, 也就是预发送的那一条
     await ChatWindow.findByIdAndUpdate(windowId, {
       $pop: { content: 1 },

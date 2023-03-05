@@ -34,7 +34,7 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
  */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
-    console.log(data, 'data is empty');
+    console.error(data, 'data is empty');
     return Promise.reject('服务器异常');
   } else if (data.code < 200 || data.code >= 400) {
     return Promise.reject(data.message);

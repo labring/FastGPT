@@ -21,7 +21,7 @@ export const useCopyData = () => {
           duration: 1000
         });
       } catch (error) {
-        console.log(error);
+        console.error(error);
         toast({
           title: '复制失败',
           status: 'error'

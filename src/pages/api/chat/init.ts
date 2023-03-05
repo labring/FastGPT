@@ -82,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
   } catch (err) {
-    console.log(err);
+    console.error(err);
     jsonRes(res, {
       code: 500,
       error: err
