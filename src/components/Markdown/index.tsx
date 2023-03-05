@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import styles from './index.module.scss';
@@ -9,9 +9,9 @@ import { useCopyData } from '@/utils/tools';
 import Icon from '@/components/Icon';
 
 const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean }) => {
-  // const formatSource = useMemo(() => source.replace(/\n/g, '\n'), [source]);
+  const formatSource = useMemo(() => source.replace(/\n/g, '  \n'), [source]);
   const { copyData } = useCopyData();
-  // console.log(source);
+
   return (
     <ReactMarkdown
       className={`${styles.markdown} ${
@@ -56,7 +56,7 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
         }
       }}
     >
-      {source}
+      {formatSource}
     </ReactMarkdown>
   );
 };

@@ -24,8 +24,8 @@ export const jsonRes = (
       typeof error === 'string'
         ? error
         : openaiError[error?.response?.data?.message] || error?.message || '请求错误';
-
-    console.log(msg);
+    console.error(error);
+    console.error(msg);
   }
 
   res.json({

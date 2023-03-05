@@ -44,7 +44,7 @@ const ModelList = () => {
           shallow: true
         });
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
       setIsLoading(false);
     },
