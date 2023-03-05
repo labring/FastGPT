@@ -11,15 +11,14 @@ import Icon from '@/components/Icon';
 const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean }) => {
   // const formatSource = useMemo(() => source.replace(/\n/g, '\n'), [source]);
   const { copyData } = useCopyData();
+  // console.log(source);
   return (
     <ReactMarkdown
       className={`${styles.markdown} ${
         isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''
       }`}
       rehypePlugins={[remarkGfm]}
-      skipHtml={true}
       components={{
-        p: 'div',
         pre: 'div',
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');

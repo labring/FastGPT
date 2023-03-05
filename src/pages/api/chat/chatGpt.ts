@@ -50,6 +50,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         content: item.value
       })
     );
+    // 第一句话，强调代码类型
+    formatPrompts.unshift({
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content:
+        'If the content is code or code blocks, please label the code type as accurately as possible.'
+    });
+
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
     const chatResponse = await chatAPI.createChatCompletion(
