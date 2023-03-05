@@ -34,7 +34,7 @@ const Navbar = ({
     >
       {/* logo */}
       <Box pb={4}>
-        <Image src={'/logo.svg'} width={50} height={100} alt=""></Image>
+        <Image src={'/logo.png'} width={'35'} height={'35'} alt=""></Image>
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>

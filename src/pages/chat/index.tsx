@@ -49,36 +49,32 @@ const Chat = () => {
   }, []);
 
   // 初始化聊天框
-  const { isInitialLoading } = useQuery(
-    [chatId, windowId],
-    () => (chatId ? getInitChatSiteInfo(chatId, windowId) : null),
-    {
-      cacheTime: 5 * 60 * 1000,
-      onSuccess(res) {
-        if (!res) return;
-        router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
+  useQuery([chatId, windowId], () => (chatId ? getInitChatSiteInfo(chatId, windowId) : null), {
+    cacheTime: 5 * 60 * 1000,
+    onSuccess(res) {
+      if (!res) return;
+      router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
 
-        setChatSiteData(res.chatSite);
-        setChatList(
-          res.history.map((item) => ({
-            ...item,
-            status: 'finish'
-          }))
-        );
-        scrollToBottom();
-        setIsLoading(false);
-      },
-      onError() {
-        toast({
-          title: '初始化异常,请刷新',
-          status: 'error',
-          isClosable: true,
-          duration: 5000
-        });
-        setIsLoading(false);
-      }
+      setChatSiteData(res.chatSite);
+      setChatList(
+        res.history.map((item) => ({
+          ...item,
+          status: 'finish'
+        }))
+      );
+      scrollToBottom();
+      setIsLoading(false);
+    },
+    onError() {
+      toast({
+        title: '初始化异常,请刷新',
+        status: 'error',
+        isClosable: true,
+        duration: 5000
+      });
+      setIsLoading(false);
     }
-  );
+  });
 
   // gpt3 方法
   const gpt3ChatPrompt = useCallback(
@@ -291,7 +287,7 @@ const Chat = () => {
             borderBottom={'1px solid rgba(0,0,0,0.1)'}
           >
             <Flex maxW={'800px'} m={'auto'} alignItems={'flex-start'}>
-              <Box mr={4}>
+              <Box mr={media(4, 1)}>
                 <Image
                   src={item.obj === 'Human' ? '/imgs/human.png' : '/imgs/modelAvatar.png'}
                   alt="/imgs/modelAvatar.png"
