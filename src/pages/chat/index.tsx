@@ -13,10 +13,13 @@ import { Textarea, Box, Flex, Button } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import Icon from '@/components/Icon';
 import { useScreen } from '@/hooks/useScreen';
-import Markdown from '@/components/Markdown';
 import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@/hooks/useLoading';
 import { OpenAiModelEnum } from '@/constants/model';
+import dynamic from 'next/dynamic';
+import { useGlobalStore } from '@/store/global';
+
+const Markdown = dynamic(() => import('@/components/Markdown'));
 
 const textareaMinH = '22px';
 
@@ -34,7 +37,7 @@ const Chat = () => {
 
   const isChatting = useMemo(() => chatList[chatList.length - 1]?.status === 'loading', [chatList]);
   const lastWordHuman = useMemo(() => chatList[chatList.length - 1]?.obj === 'Human', [chatList]);
-  const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
+  const { setLoading } = useGlobalStore();
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
@@ -49,32 +52,40 @@ const Chat = () => {
   }, []);
 
   // 初始化聊天框
-  useQuery([chatId, windowId], () => (chatId ? getInitChatSiteInfo(chatId, windowId) : null), {
-    cacheTime: 5 * 60 * 1000,
-    onSuccess(res) {
-      if (!res) return;
-      router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
-
-      setChatSiteData(res.chatSite);
-      setChatList(
-        res.history.map((item) => ({
-          ...item,
-          status: 'finish'
-        }))
-      );
-      scrollToBottom();
-      setIsLoading(false);
+  useQuery(
+    [chatId, windowId],
+    () => {
+      if (!chatId) return null;
+      setLoading(true);
+      return getInitChatSiteInfo(chatId, windowId);
     },
-    onError() {
-      toast({
-        title: '初始化异常,请刷新',
-        status: 'error',
-        isClosable: true,
-        duration: 5000
-      });
-      setIsLoading(false);
+    {
+      cacheTime: 5 * 60 * 1000,
+      onSuccess(res) {
+        if (!res) return;
+        router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
+
+        setChatSiteData(res.chatSite);
+        setChatList(
+          res.history.map((item) => ({
+            ...item,
+            status: 'finish'
+          }))
+        );
+        scrollToBottom();
+        setLoading(false);
+      },
+      onError() {
+        toast({
+          title: '初始化异常,请刷新',
+          status: 'error',
+          isClosable: true,
+          duration: 5000
+        });
+        setLoading(false);
+      }
     }
-  });
+  );
 
   // gpt3 方法
   const gpt3ChatPrompt = useCallback(
@@ -293,7 +304,7 @@ const Chat = () => {
                   alt="/imgs/modelAvatar.png"
                   width={30}
                   height={30}
-                ></Image>
+                />
               </Box>
               <Box flex={'1 0 0'} w={0} overflowX={'auto'}>
                 {item.obj === 'AI' ? (
@@ -393,7 +404,6 @@ const Chat = () => {
           </Box>
         )}
       </Box>
-      <Loading />
     </Flex>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { Box, Card, TableContainer, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react';
+import { Box, TableContainer, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react';
 import { ModelType } from '@/types/model';
 import { getModelTrainings } from '@/api/model';
 import type { TrainingItemType } from '@/types/training';
@@ -38,7 +38,7 @@ const Training = ({ model }: { model: ModelType }) => {
   }, [loadTrainingRecords, model]);
 
   return (
-    <Card p={4} h={'100%'}>
+    <>
       <Box fontWeight={'bold'} fontSize={'lg'}>
         训练记录: {model.trainingTimes}次
       </Box>
@@ -63,7 +63,7 @@ const Training = ({ model }: { model: ModelType }) => {
           </Tbody>
         </Table>
       </TableContainer>
-    </Card>
+    </>
   );
 };
 

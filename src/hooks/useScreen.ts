@@ -11,6 +11,6 @@ export function useScreen() {
     isPc,
     mediaLgMd: useMemo(() => (isPc ? 'lg' : 'md'), [isPc]),
     mediaMdSm: useMemo(() => (isPc ? 'md' : 'sm'), [isPc]),
-    media: (pc: number | string, phone: number | string) => (isPc ? pc : phone)
+    media: (pc: any, phone: any) => (isPc ? pc : phone)
   };
 }

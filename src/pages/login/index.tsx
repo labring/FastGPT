@@ -1,14 +1,16 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import styles from './index.module.scss';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
-import LoginForm from './components/LoginForm';
-import RegisterForm from './components/RegisterForm';
-import ForgetPasswordForm from './components/ForgetPasswordForm';
 import { useScreen } from '@/hooks/useScreen';
 import type { ResLogin } from '@/api/response/user';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
+
+import dynamic from 'next/dynamic';
+const LoginForm = dynamic(() => import('./components/LoginForm'));
+const RegisterForm = dynamic(() => import('./components/RegisterForm'));
+const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
 const Login = () => {
   const router = useRouter();
@@ -24,20 +26,17 @@ const Login = () => {
     [router, setUserInfo]
   );
 
-  const map = {
-    [PageTypeEnum.login]: {
-      Component: <LoginForm setPageType={setPageType} loginSuccess={loginSuccess} />,
-      img: '/icon/loginLeft.svg'
-    },
-    [PageTypeEnum.register]: {
-      Component: <RegisterForm setPageType={setPageType} loginSuccess={loginSuccess} />,
-      img: '/icon/loginLeft.svg'
-    },
-    [PageTypeEnum.forgetPassword]: {
-      Component: <ForgetPasswordForm setPageType={setPageType} loginSuccess={loginSuccess} />,
-      img: '/icon/loginLeft.svg'
-    }
-  };
+  function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {
+    const TypeMap = {
+      [PageTypeEnum.login]: LoginForm,
+      [PageTypeEnum.register]: RegisterForm,
+      [PageTypeEnum.forgetPassword]: ForgetPasswordForm
+    };
+
+    const Component = TypeMap[type];
+
+    return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
+  }
 
   return (
     <Box className={styles.loginPage} h={'100%'} p={isPc ? '10vh 10vw' : 0}>
@@ -54,7 +53,7 @@ const Login = () => {
       >
         {isPc && (
           <Image
-            src={map[pageType].img}
+            src={'/icon/loginLeft.svg'}
             order={pageType === PageTypeEnum.login ? 0 : 2}
             flex={'1 0 0'}
             w="0"
@@ -76,7 +75,7 @@ const Login = () => {
           px={10}
           borderRadius={isPc ? 'md' : 'none'}
         >
-          {map[pageType].Component}
+          <DynamicComponent type={pageType} />
         </Box>
       </Flex>
     </Box>

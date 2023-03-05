@@ -38,6 +38,7 @@ export default function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <Script src="/iconfont.js" strategy="afterInteractive"></Script>
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
           <Layout>
@@ -45,7 +46,6 @@ export default function App({ Component, pageProps }: AppProps) {
           </Layout>
         </ChakraProvider>
       </QueryClientProvider>
-      <Script src="/iconfont.js"></Script>
     </>
   );
 }
