@@ -306,7 +306,7 @@ const Chat = () => {
                     isChatting={isChatting && index === chatList.length - 1}
                   />
                 ) : (
-                  <Box whiteSpace={'pre'}>{item.value}</Box>
+                  <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
                 )}
               </Box>
             </Flex>
