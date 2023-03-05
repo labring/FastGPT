@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Box, Button, Flex, Card } from '@chakra-ui/react';
 import { getMyModels } from '@/api/model';
 import { getChatSiteId } from '@/api/chat';
 import { ModelType } from '@/types/model';
-import CreateModel from './components/CreateModel';
 import { useRouter } from 'next/router';
 import ModelTable from './components/ModelTable';
 import ModelPhoneList from './components/ModelPhoneList';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@/hooks/useLoading';
+import dynamic from 'next/dynamic';
+
+const CreateModel = dynamic(() => import('./components/CreateModel'));
 
 const ModelList = () => {
   const { isPc } = useScreen();
@@ -72,11 +74,10 @@ const ModelList = () => {
         )}
       </Box>
       {/* 创建弹窗 */}
-      <CreateModel
-        isOpen={openCreateModel}
-        setCreateModelOpen={setOpenCreateModel}
-        onSuccess={createModelSuccess}
-      />
+      {openCreateModel && (
+        <CreateModel setCreateModelOpen={setOpenCreateModel} onSuccess={createModelSuccess} />
+      )}
+
       <Loading loading={isLoading} />
     </Box>
   );

@@ -43,15 +43,13 @@ const navbarList = [
 const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useScreen();
   const router = useRouter();
-  const { Loading } = useLoading({
-    defaultLoading: true
-  });
+  const { Loading } = useLoading({ defaultLoading: true });
   const { loading } = useGlobalStore();
 
   return (
     <>
       {!unShowLayoutRoute[router.pathname] ? (
-        <Box data-test="ss" h={'100%'} backgroundColor={'gray.100'} overflow={'auto'}>
+        <Box h={'100%'} backgroundColor={'gray.100'} overflow={'auto'}>
           {isPc ? (
             <>
               <Box h={'100%'} position={'fixed'} left={0} top={0} w={'80px'}>

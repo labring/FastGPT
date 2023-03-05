@@ -25,10 +25,10 @@ const Auth = ({ children }: { children: JSX.Element }) => {
   useQuery(
     [router.pathname, userInfo],
     () => {
-      setLoading(true);
       if (unAuthPage[router.pathname] === true || userInfo) {
         return setLoading(false);
       } else {
+        setLoading(true);
         return getTokenLogin();
       }
     },

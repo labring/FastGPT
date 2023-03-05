@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Spinner, Flex } from '@chakra-ui/react';
 
 export const useLoading = (props?: { defaultLoading: boolean }) => {
@@ -31,6 +31,6 @@ export const useLoading = (props?: { defaultLoading: boolean }) => {
   return {
     isLoading,
     setIsLoading,
-    Loading
+    Loading: memo(Loading)
   };
 };

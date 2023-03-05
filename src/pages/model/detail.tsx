@@ -11,12 +11,14 @@ import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import ModelEditForm from './components/ModelEditForm';
 import Icon from '@/components/Icon';
-import Training from './components/Training';
+import dynamic from 'next/dynamic';
+
+const Training = dynamic(() => import('./components/Training'));
 
 const ModelDetail = () => {
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc } = useScreen();
+  const { isPc, media } = useScreen();
   const { setLoading } = useGlobalStore();
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认删除该模型?'
@@ -128,114 +130,114 @@ const ModelDetail = () => {
 
   return (
     <>
-      {!!model && (
-        <>
-          {/* 头部 */}
-          <Card px={6} py={3}>
-            {isPc ? (
-              <Flex alignItems={'center'}>
-                <Box fontSize={'xl'} fontWeight={'bold'}>
-                  {model.name} 配置
-                </Box>
-                <Tag
-                  ml={2}
-                  variant="solid"
-                  colorScheme={formatModelStatus[model.status].colorTheme}
-                  cursor={model.status === ModelStatusEnum.training ? 'pointer' : 'default'}
-                  onClick={handleClickUpdateStatus}
-                >
+      {/* 头部 */}
+      <Card px={6} py={3}>
+        {isPc ? (
+          <Flex alignItems={'center'}>
+            <Box fontSize={'xl'} fontWeight={'bold'}>
+              {model?.name || '模型'} 配置
+            </Box>
+            {!!model && (
+              <Tag
+                ml={2}
+                variant="solid"
+                colorScheme={formatModelStatus[model.status].colorTheme}
+                cursor={model.status === ModelStatusEnum.training ? 'pointer' : 'default'}
+                onClick={handleClickUpdateStatus}
+              >
+                {formatModelStatus[model.status].text}
+              </Tag>
+            )}
+            <Box flex={1} />
+            <Button variant={'outline'} onClick={handlePreviewChat}>
+              对话体验
+            </Button>
+          </Flex>
+        ) : (
+          <>
+            <Flex alignItems={'center'}>
+              <Box as={'h3'} fontSize={'xl'} fontWeight={'bold'} flex={1}>
+                {model?.name || '模型'} 配置
+              </Box>
+              {!!model && (
+                <Tag ml={2} colorScheme={formatModelStatus[model.status].colorTheme}>
                   {formatModelStatus[model.status].text}
                 </Tag>
-                <Box flex={1} />
-                <Button variant={'outline'} onClick={handlePreviewChat}>
-                  对话体验
-                </Button>
-              </Flex>
-            ) : (
-              <>
-                <Flex alignItems={'center'}>
-                  <Box as={'h3'} fontSize={'xl'} fontWeight={'bold'} flex={1}>
-                    {model.name} 配置
-                  </Box>
-                  <Tag ml={2} colorScheme={formatModelStatus[model.status].colorTheme}>
-                    {formatModelStatus[model.status].text}
-                  </Tag>
-                </Flex>
-                <Box mt={4} textAlign={'right'}>
-                  <Button variant={'outline'} onClick={handlePreviewChat}>
-                    对话体验
-                  </Button>
-                </Box>
-              </>
-            )}
-          </Card>
-          {/* 基本信息编辑 */}
-          <Box mt={5}>
-            <ModelEditForm model={model} />
+              )}
+            </Flex>
+            <Box mt={4} textAlign={'right'}>
+              <Button variant={'outline'} onClick={handlePreviewChat}>
+                对话体验
+              </Button>
+            </Box>
+          </>
+        )}
+      </Card>
+      {/* 基本信息编辑 */}
+      <Box mt={5}>
+        <ModelEditForm model={model} />
+      </Box>
+      {/* 其他配置 */}
+      <Grid mt={5} gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
+        <Card p={4}>{!!model && <Training model={model} />}</Card>
+        <Card p={4}>
+          <Box fontWeight={'bold'} fontSize={'lg'}>
+            神奇操作
           </Box>
-          {/* 其他配置 */}
-          <Grid mt={5} gridTemplateColumns={isPc ? '1fr 1fr' : '1fr'} gridGap={5}>
-            <Training model={model} />
-            <Card h={'100%'} p={4}>
-              <Box fontWeight={'bold'} fontSize={'lg'}>
-                神奇操作
-              </Box>
-              <Flex mt={5} alignItems={'center'}>
-                <Box flex={'0 0 80px'}>模型微调:</Box>
-                <Button
-                  size={'sm'}
-                  onClick={() => {
-                    SelectFileDom.current?.click();
-                  }}
-                  title={!canTrain ? '' : '模型不支持微调'}
-                  isDisabled={!canTrain}
-                >
-                  上传微调数据集
-                </Button>
-                <Flex
-                  as={'a'}
-                  href="/TrainingTemplate.jsonl"
-                  download
-                  ml={5}
-                  cursor={'pointer'}
-                  alignItems={'center'}
-                  color={'blue.500'}
-                >
-                  <Icon name={'icon-yunxiazai'} color={'#3182ce'} />
-                  下载模板
-                </Flex>
-              </Flex>
-              {/* 提示 */}
-              <Box mt={3} py={3} color={'blackAlpha.500'}>
-                <Box as={'li'} lineHeight={1.9}>
-                  每行包括一个 prompt 和一个 completion
-                </Box>
-                <Box as={'li'} lineHeight={1.9}>
-                  prompt 必须以 \n\n###\n\n 结尾，且尽量保障每个 prompt
-                  内容不都是同一个标点结尾，可以加一个空格打断相同性，
-                </Box>
-                <Box as={'li'} lineHeight={1.9}>
-                  completion 开头必须有一个空格，末尾必须以 ### 结尾，同样的不要都是同一个标点结尾。
-                </Box>
-              </Box>
-              <Flex mt={5} alignItems={'center'}>
-                <Box flex={'0 0 80px'}>删除模型:</Box>
-                <Button
-                  colorScheme={'red'}
-                  size={'sm'}
-                  onClick={() => {
-                    openConfirm(() => {
-                      handleDelModel();
-                    });
-                  }}
-                >
-                  删除模型
-                </Button>
-              </Flex>
-            </Card>
-          </Grid>
-        </>
-      )}
+          <Flex mt={5} alignItems={'center'}>
+            <Box flex={'0 0 80px'}>模型微调:</Box>
+            <Button
+              size={'sm'}
+              onClick={() => {
+                SelectFileDom.current?.click();
+              }}
+              title={!canTrain ? '' : '模型不支持微调'}
+              isDisabled={!canTrain}
+            >
+              上传微调数据集
+            </Button>
+            <Flex
+              as={'a'}
+              href="/TrainingTemplate.jsonl"
+              download
+              ml={5}
+              cursor={'pointer'}
+              alignItems={'center'}
+              color={'blue.500'}
+            >
+              <Icon name={'icon-yunxiazai'} color={'#3182ce'} />
+              下载模板
+            </Flex>
+          </Flex>
+          {/* 提示 */}
+          <Box mt={3} py={3} color={'blackAlpha.500'}>
+            <Box as={'li'} lineHeight={1.9}>
+              每行包括一个 prompt 和一个 completion
+            </Box>
+            <Box as={'li'} lineHeight={1.9}>
+              prompt 必须以 \n\n###\n\n 结尾，且尽量保障每个 prompt
+              内容不都是同一个标点结尾，可以加一个空格打断相同性，
+            </Box>
+            <Box as={'li'} lineHeight={1.9}>
+              completion 开头必须有一个空格，末尾必须以 ### 结尾，同样的不要都是同一个标点结尾。
+            </Box>
+          </Box>
+          <Flex mt={5} alignItems={'center'}>
+            <Box flex={'0 0 80px'}>删除模型:</Box>
+            <Button
+              colorScheme={'red'}
+              size={'sm'}
+              onClick={() => {
+                openConfirm(() => {
+                  handleDelModel();
+                });
+              }}
+            >
+              删除模型
+            </Button>
+          </Flex>
+        </Card>
+      </Grid>
       <Box position={'absolute'} w={0} h={0} overflow={'hidden'}>
         <input ref={SelectFileDom} type="file" accept=".jsonl" onChange={startTraining} />
       </Box>
