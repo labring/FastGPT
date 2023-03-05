@@ -50,7 +50,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         content: item.value
       })
     );
-
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
     const chatResponse = await chatAPI.createChatCompletion(
