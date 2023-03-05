@@ -300,10 +300,14 @@ const Chat = () => {
                 ></Image>
               </Box>
               <Box flex={'1 0 0'} w={0} overflowX={'auto'}>
-                <Markdown
-                  source={item.value}
-                  isChatting={isChatting && index === chatList.length - 1}
-                />
+                {item.obj === 'AI' ? (
+                  <Markdown
+                    source={item.value}
+                    isChatting={isChatting && index === chatList.length - 1}
+                  />
+                ) : (
+                  <Box whiteSpace={'pre'}>{item.value}</Box>
+                )}
               </Box>
             </Flex>
           </Box>

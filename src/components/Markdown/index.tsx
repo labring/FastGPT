@@ -42,7 +42,7 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
               </Flex>
               <SyntaxHighlighter
                 style={codeLight as any}
-                language={match?.[1] || 'bash'}
+                language={match?.[1]}
                 PreTag="pre"
                 {...props}
               >
