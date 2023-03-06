@@ -39,5 +39,5 @@ export const introPage = `
 
 ### 其他问题
 还有其他问题，可以加我 wx，拉个交流群大家一起聊聊。
-![](/imgs/erweima.jpg)
+![](https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/erweima.jpg)
 `;

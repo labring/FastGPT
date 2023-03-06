@@ -48,7 +48,13 @@ const NavbarPhone = ({
         <DrawerContent maxWidth={'50vw'}>
           <DrawerBody p={4}>
             <Box py={4}>
-              <Image src={'/logo.png'} margin={'auto'} w={'35'} h={'35'} alt=""></Image>
+              <Image
+                src={'https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/logo.png'}
+                margin={'auto'}
+                w={'35'}
+                h={'35'}
+                alt=""
+              ></Image>
             </Box>
             {navbarList.map((item) => (
               <Flex
