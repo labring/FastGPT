@@ -300,8 +300,12 @@ const Chat = () => {
             <Flex maxW={'800px'} m={'auto'} alignItems={'flex-start'}>
               <Box mr={media(4, 1)}>
                 <Image
-                  src={item.obj === 'Human' ? '/imgs/human.png' : '/imgs/modelAvatar.png'}
-                  alt="/imgs/modelAvatar.png"
+                  src={
+                    item.obj === 'Human'
+                      ? 'https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/human.png'
+                      : 'https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/logo.png'
+                  }
+                  alt="https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/logo.png"
                   width={30}
                   height={30}
                 />
@@ -390,7 +394,7 @@ const Chat = () => {
               {isChatting ? (
                 <Image
                   style={{ transform: 'translateY(4px)' }}
-                  src={'/icon/chatting.svg'}
+                  src={'https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/chatting.svg'}
                   width={30}
                   height={30}
                   alt={''}

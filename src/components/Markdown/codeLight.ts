@@ -1,5 +1,47 @@
 import React from 'react';
 export const codeLight: { [key: string]: React.CSSProperties } = {
+  'code[class*=language-]': {
+    color: '#d4d4d4',
+    fontSize: '13px',
+    textShadow: 'none',
+    fontFamily: 'Menlo,Monaco,Consolas,"Andale Mono","Ubuntu Mono","Courier New",monospace',
+    direction: 'ltr',
+    textAlign: 'left',
+    whiteSpace: 'pre',
+    wordSpacing: 'normal',
+    wordBreak: 'normal',
+    lineHeight: '1.5',
+    MozTabSize: '4',
+    OTabSize: '4',
+    tabSize: '4',
+    WebkitHyphens: 'none',
+    MozHyphens: 'none',
+    msHyphens: 'none',
+    hyphens: 'none'
+  },
+  'pre[class*=language-]': {
+    color: '#d4d4d4',
+    fontSize: '13px',
+    textShadow: 'none',
+    fontFamily: 'Menlo,Monaco,Consolas,"Andale Mono","Ubuntu Mono","Courier New",monospace',
+    direction: 'ltr',
+    textAlign: 'left',
+    whiteSpace: 'pre',
+    wordSpacing: 'normal',
+    wordBreak: 'normal',
+    lineHeight: '1.5',
+    MozTabSize: '4',
+    OTabSize: '4',
+    tabSize: '4',
+    WebkitHyphens: 'none',
+    MozHyphens: 'none',
+    msHyphens: 'none',
+    hyphens: 'none',
+    padding: '1em',
+    margin: '.5em 0',
+    overflow: 'auto',
+    background: '#1e1e1e'
+  },
   'code[class*=language-] ::selection': {
     textShadow: 'none',
     background: '#264f78'
