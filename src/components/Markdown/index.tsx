@@ -1,12 +1,14 @@
 import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import styles from './index.module.scss';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { codeLight } from './codeLight';
 import { Box, Flex } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
 import Icon from '@/components/Icon';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean }) => {
   const formatSource = useMemo(() => source.replace(/\n/g, '  \n'), [source]);
@@ -17,7 +19,8 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
       className={`${styles.markdown} ${
         isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''
       }`}
-      rehypePlugins={[remarkGfm]}
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[remarkGfm, rehypeKatex]}
       components={{
         pre: 'div',
         code({ node, inline, className, children, ...props }) {
@@ -55,6 +58,7 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
           );
         }
       }}
+      linkTarget="_blank"
     >
       {formatSource}
     </ReactMarkdown>

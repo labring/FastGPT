@@ -32,16 +32,16 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     async ({ email, password }: LoginFormType) => {
       setRequesting(true);
       try {
-        toast({
-          title: '登录成功',
-          status: 'success'
-        });
         loginSuccess(
           await postLogin({
             email,
             password
           })
         );
+        toast({
+          title: '登录成功',
+          status: 'success'
+        });
       } catch (error) {
         typeof error === 'string' &&
           toast({
