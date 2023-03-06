@@ -53,7 +53,7 @@ const Login = () => {
       >
         {isPc && (
           <Image
-            src={'https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/loginLeft.svg'}
+            src={'/icon/loginLeft.svg'}
             order={pageType === PageTypeEnum.login ? 0 : 2}
             flex={'1 0 0'}
             w="0"

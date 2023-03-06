@@ -34,12 +34,7 @@ const Navbar = ({
     >
       {/* logo */}
       <Box pb={4}>
-        <Image
-          src={'https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/logo.png'}
-          width={'35'}
-          height={'35'}
-          alt=""
-        ></Image>
+        <Image src={'/icon/logo.png'} width={'35'} height={'35'} alt=""></Image>
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
