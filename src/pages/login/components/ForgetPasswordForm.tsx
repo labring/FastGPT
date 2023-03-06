@@ -50,10 +50,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     async ({ email, code, password }: RegisterType) => {
       setRequesting(true);
       try {
-        toast({
-          title: `密码已找回`,
-          status: 'success'
-        });
         loginSuccess(
           await postFindPassword({
             email,
@@ -61,6 +57,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             password
           })
         );
+        toast({
+          title: `密码已找回`,
+          status: 'success'
+        });
       } catch (error) {
         typeof error === 'string' &&
           toast({
