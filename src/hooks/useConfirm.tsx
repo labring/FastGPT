@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import {
   AlertDialog,
   AlertDialogBody,
@@ -17,45 +17,51 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
   const cancelCb = useRef<any>();
 
   return {
-    openConfirm: (confirm?: any, cancel?: any) => {
-      onOpen();
-      confirmCb.current = confirm;
-      cancelCb.current = cancel;
-    },
-    ConfirmChild: () => (
-      <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              {title}
-            </AlertDialogHeader>
+    openConfirm: useCallback(
+      (confirm?: any, cancel?: any) => {
+        onOpen();
+        confirmCb.current = confirm;
+        cancelCb.current = cancel;
+      },
+      [onOpen]
+    ),
+    ConfirmChild: useCallback(
+      () => (
+        <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
+          <AlertDialogOverlay>
+            <AlertDialogContent>
+              <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                {title}
+              </AlertDialogHeader>
 
-            <AlertDialogBody>{content}</AlertDialogBody>
+              <AlertDialogBody>{content}</AlertDialogBody>
 
-            <AlertDialogFooter>
-              <Button
-                colorScheme={'gray'}
-                onClick={() => {
-                  onClose();
-                  typeof cancelCb.current === 'function' && cancelCb.current();
-                }}
-              >
-                取消
-              </Button>
-              <Button
-                colorScheme="blue"
-                ml={3}
-                onClick={() => {
-                  onClose();
-                  typeof confirmCb.current === 'function' && confirmCb.current();
-                }}
-              >
-                确认
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+              <AlertDialogFooter>
+                <Button
+                  colorScheme={'gray'}
+                  onClick={() => {
+                    onClose();
+                    typeof cancelCb.current === 'function' && cancelCb.current();
+                  }}
+                >
+                  取消
+                </Button>
+                <Button
+                  colorScheme="blue"
+                  ml={4}
+                  onClick={() => {
+                    onClose();
+                    typeof confirmCb.current === 'function' && confirmCb.current();
+                  }}
+                >
+                  确认
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialogOverlay>
+        </AlertDialog>
+      ),
+      [content, isOpen, onClose, title]
     )
   };
 };

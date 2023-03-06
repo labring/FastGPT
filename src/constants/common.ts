@@ -38,6 +38,5 @@ export const introPage = `
 * 分享链接应为：http://docgpt.ahapocket.cn/chat?chatId=6402c9f64cb5d6283f764  
 
 ### 其他问题
-还有其他问题，可以加我 wx，拉个交流群大家一起聊聊。
-![](https://docgpt-1301319986.cos.ap-shanghai.myqcloud.com/icon/erweima.jpg)
+还有其他问题，可以加我 wx: YNyiqi，拉个交流群大家一起聊聊。
 `;
