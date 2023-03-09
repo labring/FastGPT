@@ -6,6 +6,8 @@ export enum EmailTypeEnum {
 export const introPage = `
 ## 欢迎使用 Doc GPT
 
+[Git 仓库](https://github.com/c121914yu/DocGPT)
+
 时间比较赶，介绍没来得及完善，先直接上怎么使用:
 1. 使用邮箱注册账号。  
 2. 进入账号页面，添加关联账号，目前只有 openai 的账号可以添加，直接去 openai 官网，把 API Key 粘贴过来。  
