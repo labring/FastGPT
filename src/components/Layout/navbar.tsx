@@ -46,6 +46,7 @@ const Navbar = ({
             alignItems={'center'}
             justifyContent={'center'}
             onClick={() =>
+              !item.activeLink.includes(router.pathname) &&
               router.push(item.link, undefined, {
                 shallow: true
               })
