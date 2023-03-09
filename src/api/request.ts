@@ -34,7 +34,7 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
  */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
-    console.log(data, 'data is empty');
+    console.error(data, 'data is empty');
     return Promise.reject('服务器异常');
   } else if (data.code < 200 || data.code >= 400) {
     return Promise.reject(data.message);
@@ -49,21 +49,20 @@ function responseError(err: any) {
   console.error('请求错误', err);
 
   if (!err) {
-    return Promise.reject('未知错误');
+    return Promise.reject({ message: '未知错误' });
   }
   if (typeof err === 'string') {
-    return Promise.reject(err);
+    return Promise.reject({ message: err });
   }
   if (err.response) {
     // 有报错响应
     const res = err.response;
-    /* token过期,判断请求token与本地是否相同，若不同需要重发 */
     if (res.data.code in TOKEN_ERROR_CODE) {
       clearToken();
-      return Promise.reject('token过期，重新登录');
+      return Promise.reject({ message: 'token过期，重新登录' });
     }
   }
-  return Promise.reject('未知错误');
+  return Promise.reject(err);
 }
 
 /* 创建请求实例 */

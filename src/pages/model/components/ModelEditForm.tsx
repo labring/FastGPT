@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Grid, Box, Card, Flex, Button, FormControl, Input, Textarea } from '@chakra-ui/react';
 import type { ModelType } from '@/types/model';
 import { useForm } from 'react-hook-form';
@@ -7,17 +7,17 @@ import { putModelById } from '@/api/model';
 import { useScreen } from '@/hooks/useScreen';
 import { useGlobalStore } from '@/store/global';
 
-const ModelEditForm = ({ model }: { model: ModelType }) => {
+const ModelEditForm = ({ model }: { model?: ModelType }) => {
+  const isInit = useRef(false);
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
-  } = useForm<ModelType>({
-    defaultValues: model
-  });
+  } = useForm<ModelType>();
   const { setLoading } = useGlobalStore();
   const { toast } = useToast();
-  const { isPc } = useScreen();
+  const { media } = useScreen();
 
   const onclickSave = useCallback(
     async (data: ModelType) => {
@@ -34,7 +34,7 @@ const ModelEditForm = ({ model }: { model: ModelType }) => {
           status: 'success'
         });
       } catch (err) {
-        console.log(err);
+        console.error(err);
         toast({
           title: err as string,
           status: 'success'
@@ -61,8 +61,16 @@ const ModelEditForm = ({ model }: { model: ModelType }) => {
     });
   }, [errors, toast]);
 
+  /* model 只会改变一次 */
+  useEffect(() => {
+    if (model && !isInit.current) {
+      reset(model);
+      isInit.current = true;
+    }
+  }, [model, reset]);
+
   return (
-    <Grid gridTemplateColumns={isPc ? '1fr 1fr' : '1fr'} gridGap={5}>
+    <Grid gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
       <Card p={4}>
         <Flex justifyContent={'space-between'} alignItems={'center'}>
           <Box fontWeight={'bold'} fontSize={'lg'}>
@@ -83,7 +91,7 @@ const ModelEditForm = ({ model }: { model: ModelType }) => {
         <FormControl mt={5}>
           <Flex alignItems={'center'}>
             <Box flex={'0 0 80px'}>对话模型:</Box>
-            <Box>{model.service.modelName}</Box>
+            <Box>{model?.service.modelName}</Box>
           </Flex>
         </FormControl>
         <FormControl mt={5}>

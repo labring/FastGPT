@@ -1,19 +1,12 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import {
-  FormControl,
-  Box,
-  Input,
-  Button,
-  FormErrorMessage,
-  useToast,
-  Flex
-} from '@chakra-ui/react';
+import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '../../../constants/user';
 import { postFindPassword } from '@/api/user';
 import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
 import { useScreen } from '@/hooks/useScreen';
+import { useToast } from '@/hooks/useToast';
 
 interface Props {
   setPageType: Dispatch<`${PageTypeEnum}`>;
@@ -28,7 +21,7 @@ interface RegisterType {
 }
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
-  const toast = useToast();
+  const { toast } = useToast();
   const { mediaLgMd } = useScreen();
   const {
     register,
@@ -66,8 +59,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         );
         toast({
           title: `密码已找回`,
-          status: 'success',
-          position: 'top'
+          status: 'success'
         });
       } catch (error) {
         typeof error === 'string' &&

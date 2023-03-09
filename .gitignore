@@ -34,6 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-public/trainData/
-.vscode/
+/public/trainData/
+/.vscode/
 platform.json

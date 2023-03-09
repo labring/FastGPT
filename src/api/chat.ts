@@ -1,5 +1,6 @@
 import { GET, POST, DELETE } from './request';
 import { ChatItemType, ChatSiteType, ChatSiteItemType } from '@/types/chat';
+import axios from 'axios';
 
 /**
  * 获取一个聊天框的ID
@@ -56,7 +57,7 @@ export const postChatGptPrompt = ({
   });
 /* 获取 Chat 的 Event 对象，进行持续通信 */
 export const getChatGPTSendEvent = (chatId: string, windowId: string) =>
-  new EventSource(`/api/chat/chatGpt?chatId=${chatId}&windowId=${windowId}`);
+  new EventSource(`/api/chat/chatGpt?chatId=${chatId}&windowId=${windowId}&date=${Date.now()}`);
 
 /**
  * 删除最后一句

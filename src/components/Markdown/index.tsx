@@ -1,33 +1,41 @@
-import React, { useMemo, memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import styles from './index.module.scss';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { codeLight } from './codeLight';
 import { Box, Flex } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
 import Icon from '@/components/Icon';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean }) => {
-  // const formatSource = useMemo(() => source.replace(/\n/g, '\n'), [source]);
+  const formatSource = useMemo(() => source.replace(/\n/g, '  \n'), [source]);
   const { copyData } = useCopyData();
+
   return (
     <ReactMarkdown
       className={`${styles.markdown} ${
         isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''
       }`}
-      rehypePlugins={[remarkGfm]}
-      skipHtml={true}
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[remarkGfm, rehypeKatex]}
       components={{
-        p: 'div',
         pre: 'div',
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
           const code = String(children).replace(/\n$/, '');
-
-          return (
+          return !inline ? (
             <Box my={3} borderRadius={'md'} overflow={'hidden'}>
-              <Flex py={2} px={5} backgroundColor={'#323641'} color={'#fff'} fontSize={'sm'}>
+              <Flex
+                py={2}
+                px={5}
+                backgroundColor={'#323641'}
+                color={'#fff'}
+                fontSize={'sm'}
+                userSelect={'none'}
+              >
                 <Box flex={1}>{match?.[1]}</Box>
                 <Flex cursor={'pointer'} onClick={() => copyData(code)} alignItems={'center'}>
                   <Icon name={'icon-fuzhi'} width={15} height={15} color={'#fff'}></Icon>
@@ -36,18 +44,23 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
               </Flex>
               <SyntaxHighlighter
                 style={codeLight as any}
-                showLineNumbers
                 language={match?.[1]}
+                PreTag="pre"
                 {...props}
               >
                 {code}
               </SyntaxHighlighter>
             </Box>
+          ) : (
+            <code className={className} {...props}>
+              {children}
+            </code>
           );
         }
       }}
+      linkTarget="_blank"
     >
-      {source}
+      {formatSource}
     </ReactMarkdown>
   );
 };

@@ -1,6 +1,6 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase, Chat, ChatWindow } from '@/service/mongo';
+import { Readable } from 'stream';
+import { connectToDatabase, ChatWindow } from '@/service/mongo';
 import type { ModelType } from '@/types/model';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { openaiProxy } from '@/service/utils/tools';
@@ -9,12 +9,23 @@ import { ChatItemType } from '@/types/chat';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.writeHead(200, {
-    Connection: 'keep-alive',
-    'Content-Encoding': 'none',
-    'Cache-Control': 'no-cache',
-    'Content-Type': 'text/event-stream'
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Content-Type', 'text/event-stream');
+
+  const responseData: string[] = [];
+  const stream = new Readable({
+    read(size) {
+      const data = responseData.shift() || null;
+      this.push(data);
+    }
   });
+
+  res.on('close', () => {
+    res.end();
+    stream.destroy();
+  });
+
   const { chatId, windowId } = req.query as { chatId: string; windowId: string };
 
   try {
@@ -47,9 +58,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const formatPrompts: ChatCompletionRequestMessage[] = filterPrompts.map(
       (item: ChatItemType) => ({
         role: map[item.obj],
-        content: item.value
+        content: item.value.replace(/(\n| )/g, '')
       })
     );
+    // 第一句话，强调代码类型
+    formatPrompts.unshift({
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content:
+        'If the content is code or code blocks, please mark the code type as accurately as possible!'
+    });
 
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
@@ -68,43 +85,75 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const reg = /{"content"(.*)"}/g;
     // @ts-ignore
     const match = chatResponse.data.match(reg);
+    if (!match) return;
+
     let AIResponse = '';
-    if (match) {
-      match.forEach((item: string, i: number) => {
-        try {
-          const json = JSON.parse(item);
-          // 开头的换行忽略
-          if (i === 0 && json.content?.startsWith('\n')) return;
-          AIResponse += json.content;
-          const content = json.content.replace(/\n/g, '<br/>'); // 无法直接传输\n
-          content && res.write(`data: ${content}\n\n`);
-        } catch (err) {
-          err;
-        }
-      });
-    }
-    res.write(`data: [DONE]\n\n`);
 
+    // 循环给 stream push 内容
+    match.forEach((item: string, i: number) => {
+      try {
+        const json = JSON.parse(item);
+        // 开头的换行忽略
+        if (i === 0 && json.content?.startsWith('\n')) return;
+        AIResponse += json.content;
+        const content = json.content.replace(/\n/g, '<br/>'); // 无法直接传输\n
+        if (content) {
+          responseData.push(`event: responseData\ndata: ${content}\n\n`);
+          // res.write(`event: responseData\n`)
+          // res.write(`data: ${content}\n\n`)
+        }
+      } catch (err) {
+        err;
+      }
+    });
+
+    responseData.push(`event: done\ndata: \n\n`);
     // 存入库
-    await ChatWindow.findByIdAndUpdate(windowId, {
-      $push: {
-        content: {
-          obj: 'AI',
-          value: AIResponse
-        }
-      },
-      updateTime: Date.now()
-    });
-
-    res.end();
+    (async () => {
+      await ChatWindow.findByIdAndUpdate(windowId, {
+        $push: {
+          content: {
+            obj: 'AI',
+            value: AIResponse
+          }
+        },
+        updateTime: Date.now()
+      });
+    })();
   } catch (err: any) {
-    console.log(err?.response?.data || err);
-    // 删除最一条数据库记录, 也就是预发送的那一条
-    await ChatWindow.findByIdAndUpdate(windowId, {
-      $pop: { content: 1 },
-      updateTime: Date.now()
-    });
+    let errorText = err;
+    if (err.code === 'ECONNRESET') {
+      errorText = '服务器代理出错';
+    } else {
+      switch (err?.response?.data?.error?.code) {
+        case 'invalid_api_key':
+          errorText = 'API-KEY不合法';
+          break;
+        case 'context_length_exceeded':
+          errorText = '内容超长了，请重置对话';
+          break;
+        case 'rate_limit_reached':
+          errorText = '同时访问用户过多，请稍后再试';
+          break;
+        case null:
+          errorText = 'OpenAI 服务器访问超时';
+          break;
+        default:
+          errorText = '服务器异常';
+      }
+    }
+    console.error(errorText);
+    responseData.push(`event: serviceError\ndata: ${errorText}\n\n`);
 
-    res.end();
+    // 删除最一条数据库记录, 也就是预发送的那一条
+    (async () => {
+      await ChatWindow.findByIdAndUpdate(windowId, {
+        $pop: { content: 1 },
+        updateTime: Date.now()
+      });
+    })();
   }
+
+  // 开启 stream 传输
+  stream.pipe(res);
 }

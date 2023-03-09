@@ -7,6 +7,7 @@ import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
 
 const unAuthPage: { [key: string]: boolean } = {
+  '/': true,
   '/login': true,
   '/chat': true
 };
@@ -24,10 +25,10 @@ const Auth = ({ children }: { children: JSX.Element }) => {
   useQuery(
     [router.pathname, userInfo],
     () => {
-      setLoading(true);
       if (unAuthPage[router.pathname] === true || userInfo) {
         return setLoading(false);
       } else {
+        setLoading(true);
         return getTokenLogin();
       }
     },
@@ -38,7 +39,7 @@ const Auth = ({ children }: { children: JSX.Element }) => {
         }
       },
       onError(error) {
-        console.log(error);
+        console.error(error);
         router.push('/login');
         toast();
       },
@@ -48,7 +49,7 @@ const Auth = ({ children }: { children: JSX.Element }) => {
     }
   );
 
-  return userInfo || unAuthPage[router.pathname] === true ? <>{children}</> : null;
+  return userInfo || unAuthPage[router.pathname] === true ? children : null;
 };
 
 export default Auth;
