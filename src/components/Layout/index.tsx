@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
+import Link from 'next/link';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 import { useRouter } from 'next/router';
@@ -79,6 +80,20 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               </Box>
             </Box>
           )}
+          <Box
+            textAlign={'center'}
+            backgroundColor={'#fff'}
+            p={4}
+            position={'absolute'}
+            bottom={0}
+            left={0}
+            right={0}
+          >
+            <Box>@ Make by Archer</Box>
+            <Link href={'https://beian.miit.gov.cn/'} target={'_blank'}>
+              桂ICP备19010228号-1
+            </Link>
+          </Box>
         </Box>
       ) : (
         <Auth>
