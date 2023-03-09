@@ -26,8 +26,8 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
           const code = String(children).replace(/\n$/, '');
-          return !inline ? (
-            <Box my={3} borderRadius={'md'} overflow={'hidden'}>
+          return !inline || match ? (
+            <Box my={3} borderRadius={'md'} overflow={'hidden'} backgroundColor={'#222'}>
               <Flex
                 py={2}
                 px={5}
