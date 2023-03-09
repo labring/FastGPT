@@ -25,11 +25,9 @@ interface CreateFormType {
 }
 
 const CreateModel = ({
-  isOpen,
   setCreateModelOpen,
   onSuccess
 }: {
-  isOpen: boolean;
   setCreateModelOpen: Dispatch<boolean>;
   onSuccess: Dispatch<ModelType>;
 }) => {
@@ -72,7 +70,7 @@ const CreateModel = ({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={() => setCreateModelOpen(false)}>
+      <Modal isOpen={true} onClose={() => setCreateModelOpen(false)}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>创建模型</ModalHeader>

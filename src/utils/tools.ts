@@ -8,19 +8,25 @@ export const useCopyData = () => {
   const { toast } = useToast();
   return {
     copyData: (data: string, title: string = '复制成功') => {
-      const clipboardObj = navigator.clipboard;
-      clipboardObj
-        .writeText(data)
-        .then(() => {
-          toast({
-            title,
-            status: 'success',
-            duration: 1000
-          });
-        })
-        .catch((err) => {
-          console.log(err);
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = data;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        toast({
+          title,
+          status: 'success',
+          duration: 1000
         });
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: '复制失败',
+          status: 'error'
+        });
+      }
     }
   };
 };

@@ -6,7 +6,7 @@
 ```
 AXIOS_PROXY_HOST=axios代理地址，目前 openai 接口都需要走代理，本机的话就填 127.0.0.1
 AXIOS_PROXY_PORT=代理端口
-MONGODB_UR=mongo数据库地址
+MONGODB_URI=mongo数据库地址
 MY_MAIL=发送验证码邮箱
 MAILE_CODE=邮箱秘钥
 TOKEN_KEY=随便填一个，用于生成和校验token
@@ -15,22 +15,62 @@ TOKEN_KEY=随便填一个，用于生成和校验token
 ```bash
 pnpm dev
 ```
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ## 部署
+
 ```bash
 # 本地 docker 打包
-docker build -t imageName .
-docker push imageName
-
-# 服务器拉取部署
-docker pull imageName
-docker stop doc-gpt || true
-docker rm doc-gpt || true
-# 运行时才把参数写入
-docker run -d --network=host --name doc-gpt -e AXIOS_PROXY_HOST= -e AXIOS_PROXY_PORT= -e MAILE_CODE= -e TOKEN_KEY= -e MONGODB_UR= imageName
+docker build -t imageName:tag .
+docker push imageName:tag
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+服务器请准备好 docker， mongo，nginx和代理。 镜像走本机的代理，所以用 host，port改成代理的端口，clash一般都是7890。
+
+```bash
+# 服务器拉取部署, imageName 替换成镜像名
+docker pull imageName:tag
+# 获取本地旧镜像ID
+OLD_IMAGE_ID=$(docker images imageName -f "dangling=true" -q)
+docker stop doc-gpt || true
+docker rm doc-gpt || true
+docker run -d --network=host --name doc-gpt \
+    -e MAX_USER=50 \
+    -e AXIOS_PROXY_HOST=127.0.0.1 \
+    -e AXIOS_PROXY_PORT=7890 \
+    -e MY_MAIL=your email\
+    -e MAILE_CODE=your email code \
+    -e TOKEN_KEY=任意一个内容 \
+    -e MONGODB_URI="mongodb://aha:ROOT_root123@127.0.0.0:27017/?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false" \
+    imageName:tag
+docker logs doc-gpt
+
+
+# 删除本地旧镜像
+if [ ! -z "$OLD_IMAGE_ID" ]; then
+  docker rmi $OLD_IMAGE_ID
+fi
+```
+
+### docker 安装
+```bash
+# 安装docker
+curl -sSL https://get.daocloud.io/docker | sh
+sudo systemctl start docker
+```
+
+### mongo 安装
+```bash
+docker pull mongo:6.0.4
+docker stop mongo
+docker rm mongo
+docker run -d --name mongo \
+    -e MONGO_INITDB_ROOT_USERNAME= \
+    -e MONGO_INITDB_ROOT_PASSWORD= \
+    -v /root/service/mongo:/data/db \
+    mongo:6.0.4
+```
+
 
 # 介绍页
 
@@ -70,4 +110,4 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### 其他问题
 还有其他问题，可以加我 wx，拉个交流群大家一起聊聊。
-![](/imgs/erweima.jpg)
+![](/icon/erweima.jpg)

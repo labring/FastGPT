@@ -8,7 +8,7 @@ export async function connectToDatabase() {
     return cachedClient;
   }
 
-  cachedClient = await mongoose.connect(process.env.MONGODB_UR as string, {
+  cachedClient = await mongoose.connect(process.env.MONGODB_URI as string, {
     dbName: 'doc_gpt'
   });
 

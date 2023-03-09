@@ -13,15 +13,19 @@ import { Textarea, Box, Flex, Button } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import Icon from '@/components/Icon';
 import { useScreen } from '@/hooks/useScreen';
-import Markdown from '@/components/Markdown';
 import { useQuery } from '@tanstack/react-query';
-import { useLoading } from '@/hooks/useLoading';
 import { OpenAiModelEnum } from '@/constants/model';
+import dynamic from 'next/dynamic';
+import { useGlobalStore } from '@/store/global';
+
+const Markdown = dynamic(() => import('@/components/Markdown'));
+
+const textareaMinH = '22px';
 
 const Chat = () => {
   const { toast } = useToast();
   const router = useRouter();
-  const { media } = useScreen();
+  const { isPc, media } = useScreen();
   const { chatId, windowId } = router.query as { chatId: string; windowId?: string };
   const ChatBox = useRef<HTMLDivElement>(null);
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
@@ -32,7 +36,7 @@ const Chat = () => {
 
   const isChatting = useMemo(() => chatList[chatList.length - 1]?.status === 'loading', [chatList]);
   const lastWordHuman = useMemo(() => chatList[chatList.length - 1]?.obj === 'Human', [chatList]);
-  const { Loading } = useLoading();
+  const { setLoading } = useGlobalStore();
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
@@ -47,28 +51,40 @@ const Chat = () => {
   }, []);
 
   // 初始化聊天框
-  useQuery([chatId, windowId], () => (chatId ? getInitChatSiteInfo(chatId, windowId) : null), {
-    cacheTime: 5 * 60 * 1000,
-    onSuccess(res) {
-      if (!res) return;
-      router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
-
-      setChatSiteData(res.chatSite);
-      setChatList(
-        res.history.map((item) => ({
-          ...item,
-          status: 'finish'
-        }))
-      );
-      scrollToBottom();
+  useQuery(
+    [chatId, windowId],
+    () => {
+      if (!chatId) return null;
+      setLoading(true);
+      return getInitChatSiteInfo(chatId, windowId);
     },
-    onError() {
-      toast({
-        title: '初始化异常',
-        status: 'error'
-      });
+    {
+      cacheTime: 5 * 60 * 1000,
+      onSuccess(res) {
+        if (!res) return;
+        router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
+
+        setChatSiteData(res.chatSite);
+        setChatList(
+          res.history.map((item) => ({
+            ...item,
+            status: 'finish'
+          }))
+        );
+        scrollToBottom();
+        setLoading(false);
+      },
+      onError(e: any) {
+        toast({
+          title: e?.message || '初始化异常,请检查地址',
+          status: 'error',
+          isClosable: true,
+          duration: 5000
+        });
+        setLoading(false);
+      }
     }
-  });
+  );
 
   // gpt3 方法
   const gpt3ChatPrompt = useCallback(
@@ -107,36 +123,55 @@ const Chat = () => {
 
       return new Promise((resolve, reject) => {
         const event = getChatGPTSendEvent(chatId, windowId);
-        event.onmessage = ({ data }) => {
-          if (data === '[DONE]') {
-            event.close();
-            setChatList((state) =>
-              state.map((item, index) => {
-                if (index !== state.length - 1) return item;
-                return {
-                  ...item,
-                  status: 'finish'
-                };
-              })
-            );
-            resolve('');
-          } else if (data) {
-            const msg = data.replace(/<br\/>/g, '\n');
-            setChatList((state) =>
-              state.map((item, index) => {
-                if (index !== state.length - 1) return item;
-                return {
-                  ...item,
-                  value: item.value + msg
-                };
-              })
-            );
-          }
-        };
-        event.onerror = (err) => {
-          console.error(err, '===');
+        // 30s 收不到消息就报错
+        let timer = setTimeout(() => {
           event.close();
-          reject('对话出现错误');
+          reject('服务器超时');
+        }, 300000);
+        event.addEventListener('responseData', ({ data }) => {
+          /* 重置定时器 */
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            event.close();
+            reject('服务器超时');
+          }, 300000);
+
+          const msg = data.replace(/<br\/>/g, '\n');
+          setChatList((state) =>
+            state.map((item, index) => {
+              if (index !== state.length - 1) return item;
+              return {
+                ...item,
+                value: item.value + msg
+              };
+            })
+          );
+        });
+        event.addEventListener('done', () => {
+          clearTimeout(timer);
+          event.close();
+          setChatList((state) =>
+            state.map((item, index) => {
+              if (index !== state.length - 1) return item;
+              return {
+                ...item,
+                status: 'finish'
+              };
+            })
+          );
+          resolve('');
+        });
+        event.addEventListener('serviceError', ({ data: err }) => {
+          clearTimeout(timer);
+          event.close();
+          console.error(err, '===');
+          reject(typeof err === 'string' ? err : '对话出现不知名错误~');
+        });
+        event.onerror = (err) => {
+          clearTimeout(timer);
+          event.close();
+          console.error(err);
+          reject(typeof err === 'string' ? err : '对话出现不知名错误~');
         };
       });
     },
@@ -179,8 +214,9 @@ const Chat = () => {
     setTimeout(() => {
       scrollToBottom();
 
+      /* 回到最小高度 */
       if (TextareaDom.current) {
-        TextareaDom.current.style.height = 22 + 'px';
+        TextareaDom.current.style.height = textareaMinH;
       }
     }, 100);
 
@@ -242,7 +278,7 @@ const Chat = () => {
   }, [chatList, windowId]);
 
   return (
-    <Flex h={'100vh'} flexDirection={'column'} overflowY={'hidden'}>
+    <Flex height={'100%'} flexDirection={'column'}>
       {/* 头部 */}
       <Flex
         px={4}
@@ -258,7 +294,6 @@ const Chat = () => {
           <Icon name={'icon-zhongzhi'} width={20} height={20} color={'#718096'}></Icon>
         </Box>
         {/* 滚动到底部按键 */}
-        {/* 滚动到底部 */}
         {ChatBox.current && ChatBox.current.scrollHeight > 2 * ChatBox.current.clientHeight && (
           <Box ml={10} cursor={'pointer'} onClick={scrollToBottom}>
             <Icon
@@ -281,29 +316,44 @@ const Chat = () => {
             borderBottom={'1px solid rgba(0,0,0,0.1)'}
           >
             <Flex maxW={'800px'} m={'auto'} alignItems={'flex-start'}>
-              <Box mr={4}>
+              <Box mr={media(4, 1)}>
                 <Image
-                  src={item.obj === 'Human' ? '/imgs/human.png' : '/imgs/modelAvatar.png'}
-                  alt="/imgs/modelAvatar.png"
+                  src={item.obj === 'Human' ? '/icon/human.png' : '/icon/logo.png'}
+                  alt="/icon/logo.png"
                   width={30}
                   height={30}
-                ></Image>
+                />
               </Box>
               <Box flex={'1 0 0'} w={0} overflowX={'auto'}>
-                <Markdown
-                  source={item.value}
-                  isChatting={isChatting && index === chatList.length - 1}
-                />
+                {item.obj === 'AI' ? (
+                  <Markdown
+                    source={item.value}
+                    isChatting={isChatting && index === chatList.length - 1}
+                  />
+                ) : (
+                  <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                )}
               </Box>
             </Flex>
           </Box>
         ))}
       </Box>
+      {/* 空内容提示 */}
+      {/* {
+        chatList.length === 0 && (
+          <>
+          <Card>
+内容太长
+</Card>
+          </>
+        )
+      } */}
       <Box
         m={media('20px auto', '0 auto')}
         w={media('100vw', '100%')}
-        maxW={'800px'}
+        maxW={media('800px', 'auto')}
         boxShadow={'0 -14px 30px rgba(255,255,255,0.6)'}
+        borderTop={media('none', '1px solid rgba(0,0,0,0.1)')}
       >
         {lastWordHuman ? (
           <Box textAlign={'center'}>
@@ -349,12 +399,12 @@ const Chat = () => {
               onChange={(e) => {
                 const textarea = e.target;
                 setInputVal(textarea.value);
-
-                textarea.style.height = textarea.value.split('\n').length * 22 + 'px';
+                textarea.style.height = textareaMinH;
+                textarea.style.height = `${textarea.scrollHeight}px`;
               }}
               onKeyDown={(e) => {
                 // 触发快捷发送
-                if (e.keyCode === 13 && !e.shiftKey) {
+                if (isPc && e.keyCode === 13 && !e.shiftKey) {
                   sendPrompt();
                   e.preventDefault();
                 }
@@ -382,7 +432,6 @@ const Chat = () => {
           </Box>
         )}
       </Box>
-      <Loading loading={!chatSiteData} />
     </Flex>
   );
 };

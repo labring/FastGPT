@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // 安全校验
-    if (chat.loadAmount === 0 || chat.expiredTime < Date.now()) {
+    if (!chat || chat.loadAmount === 0 || chat.expiredTime < Date.now()) {
       throw new Error('聊天框已过期');
     }
 
@@ -82,7 +82,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
   } catch (err) {
-    console.log(err);
     jsonRes(res, {
       code: 500,
       error: err

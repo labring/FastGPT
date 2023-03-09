@@ -3,7 +3,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import Icon from '../Icon';
-import styles from './style.module.scss';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -35,7 +34,7 @@ const Navbar = ({
     >
       {/* logo */}
       <Box pb={4}>
-        <Image src={'/logo.svg'} width={50} height={100} alt=""></Image>
+        <Image src={'/icon/logo.png'} width={'35'} height={'35'} alt=""></Image>
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
@@ -47,6 +46,7 @@ const Navbar = ({
             alignItems={'center'}
             justifyContent={'center'}
             onClick={() =>
+              !item.activeLink.includes(router.pathname) &&
               router.push(item.link, undefined, {
                 shallow: true
               })

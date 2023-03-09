@@ -45,15 +45,15 @@ const NavbarPhone = ({
       </Flex>
       <Drawer isOpen={isOpen} placement="left" size={'xs'} onClose={onClose}>
         <DrawerOverlay />
-        <DrawerContent maxWidth={'60vw'}>
+        <DrawerContent maxWidth={'50vw'}>
           <DrawerBody p={4}>
-            <Box pb={4}>
-              <Image src={'/logo.svg'} w={'100%'} h={'70px'} pt={2} alt=""></Image>
+            <Box py={4}>
+              <Image src={'/icon/logo.png'} margin={'auto'} w={'35'} h={'35'} alt=""></Image>
             </Box>
             {navbarList.map((item) => (
               <Flex
                 key={item.label}
-                mb={4}
+                mb={5}
                 alignItems={'center'}
                 justifyContent={'center'}
                 onClick={() => {
@@ -61,8 +61,7 @@ const NavbarPhone = ({
                   onClose();
                 }}
                 cursor={'pointer'}
-                fontSize={'sm'}
-                h={'65px'}
+                h={'60px'}
                 borderRadius={'md'}
                 {...(item.activeLink.includes(router.pathname)
                   ? {
