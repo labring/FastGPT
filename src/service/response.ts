@@ -20,10 +20,13 @@ export const jsonRes = (
 
   let msg = message;
   if ((code < 200 || code >= 400) && !message) {
-    msg =
-      typeof error === 'string'
-        ? error
-        : openaiError[error?.response?.data?.message] || error?.message || '请求错误';
+    msg = error?.message || '请求错误';
+    if (typeof error === 'string') {
+      msg = error;
+    } else if (error?.response?.data?.message in openaiError) {
+      msg = openaiError[error?.response?.data?.message];
+    }
+
     console.error(error);
     console.error(msg);
   }

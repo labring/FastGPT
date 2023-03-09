@@ -148,6 +148,7 @@ const Chat = () => {
           );
         });
         event.addEventListener('done', () => {
+          console.log('done');
           clearTimeout(timer);
           event.close();
           setChatList((state) =>
@@ -324,7 +325,7 @@ const Chat = () => {
                   height={30}
                 />
               </Box>
-              <Box flex={'1 0 0'} w={0} overflowX={'auto'}>
+              <Box flex={'1 0 0'} w={0} overflowX={'hidden'}>
                 {item.obj === 'AI' ? (
                   <Markdown
                     source={item.value}
