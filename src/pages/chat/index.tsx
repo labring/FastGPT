@@ -14,7 +14,6 @@ import { useToast } from '@/hooks/useToast';
 import Icon from '@/components/Icon';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
-import { useLoading } from '@/hooks/useLoading';
 import { OpenAiModelEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
@@ -75,9 +74,9 @@ const Chat = () => {
         scrollToBottom();
         setLoading(false);
       },
-      onError() {
+      onError(e: any) {
         toast({
-          title: '初始化异常,请刷新',
+          title: e?.message || '初始化异常,请检查地址',
           status: 'error',
           isClosable: true,
           duration: 5000
@@ -124,36 +123,55 @@ const Chat = () => {
 
       return new Promise((resolve, reject) => {
         const event = getChatGPTSendEvent(chatId, windowId);
-        event.onmessage = ({ data }) => {
-          if (data === '[DONE]') {
-            event.close();
-            setChatList((state) =>
-              state.map((item, index) => {
-                if (index !== state.length - 1) return item;
-                return {
-                  ...item,
-                  status: 'finish'
-                };
-              })
-            );
-            resolve('');
-          } else if (data) {
-            const msg = data.replace(/<br\/>/g, '\n');
-            setChatList((state) =>
-              state.map((item, index) => {
-                if (index !== state.length - 1) return item;
-                return {
-                  ...item,
-                  value: item.value + msg
-                };
-              })
-            );
-          }
-        };
-        event.onerror = (err) => {
-          console.error(err, '===');
+        // 30s 收不到消息就报错
+        let timer = setTimeout(() => {
           event.close();
-          reject('对话出现错误');
+          reject('服务器超时');
+        }, 300000);
+        event.addEventListener('responseData', ({ data }) => {
+          /* 重置定时器 */
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            event.close();
+            reject('服务器超时');
+          }, 300000);
+
+          const msg = data.replace(/<br\/>/g, '\n');
+          setChatList((state) =>
+            state.map((item, index) => {
+              if (index !== state.length - 1) return item;
+              return {
+                ...item,
+                value: item.value + msg
+              };
+            })
+          );
+        });
+        event.addEventListener('done', () => {
+          clearTimeout(timer);
+          event.close();
+          setChatList((state) =>
+            state.map((item, index) => {
+              if (index !== state.length - 1) return item;
+              return {
+                ...item,
+                status: 'finish'
+              };
+            })
+          );
+          resolve('');
+        });
+        event.addEventListener('serviceError', ({ data: err }) => {
+          clearTimeout(timer);
+          event.close();
+          console.error(err, '===');
+          reject(typeof err === 'string' ? err : '对话出现不知名错误~');
+        });
+        event.onerror = (err) => {
+          clearTimeout(timer);
+          event.close();
+          console.error(err);
+          reject(typeof err === 'string' ? err : '对话出现不知名错误~');
         };
       });
     },
@@ -320,6 +338,16 @@ const Chat = () => {
           </Box>
         ))}
       </Box>
+      {/* 空内容提示 */}
+      {/* {
+        chatList.length === 0 && (
+          <>
+          <Card>
+内容太长
+</Card>
+          </>
+        )
+      } */}
       <Box
         m={media('20px auto', '0 auto')}
         w={media('100vw', '100%')}
