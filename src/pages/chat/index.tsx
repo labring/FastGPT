@@ -148,6 +148,7 @@ const Chat = () => {
           );
         });
         event.addEventListener('done', () => {
+          console.log('done');
           clearTimeout(timer);
           event.close();
           setChatList((state) =>
@@ -324,7 +325,7 @@ const Chat = () => {
                   height={30}
                 />
               </Box>
-              <Box flex={'1 0 0'} w={0} overflowX={'auto'}>
+              <Box flex={'1 0 0'} w={0} overflowX={'hidden'}>
                 {item.obj === 'AI' ? (
                   <Markdown
                     source={item.value}
@@ -338,16 +339,6 @@ const Chat = () => {
           </Box>
         ))}
       </Box>
-      {/* 空内容提示 */}
-      {/* {
-        chatList.length === 0 && (
-          <>
-          <Card>
-内容太长
-</Card>
-          </>
-        )
-      } */}
       <Box
         m={media('20px auto', '0 auto')}
         w={media('100vw', '100%')}

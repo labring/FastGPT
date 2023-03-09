@@ -24,6 +24,7 @@ specifiers:
   dayjs: ^1.11.7
   eslint: 8.34.0
   eslint-config-next: 13.1.6
+  eventsource-parser: ^0.1.0
   formidable: ^2.1.1
   framer-motion: ^9.0.6
   husky: ^8.0.3
@@ -65,6 +66,7 @@ dependencies:
   axios: registry.npmmirror.com/axios/1.3.3
   crypto: registry.npmmirror.com/crypto/1.0.1
   dayjs: registry.npmmirror.com/dayjs/1.11.7
+  eventsource-parser: registry.npmmirror.com/eventsource-parser/0.1.0
   formidable: registry.npmmirror.com/formidable/2.1.1
   framer-motion: registry.npmmirror.com/framer-motion/9.0.6_biqbaboplfbrettd7655fr4n2y
   hyperdown: registry.npmmirror.com/hyperdown/2.4.29
@@ -4552,6 +4554,13 @@ packages:
     version: 2.0.3
     engines: {node: '>=0.10.0'}
     dev: true
+
+  registry.npmmirror.com/eventsource-parser/0.1.0:
+    resolution: {integrity: sha512-M9QjFtEIkwytUarnx113HGmgtk52LSn3jNAtnWKi3V+b9rqSfQeVdLsaD5AG/O4IrGQwmAAHBIsqbmURPTd2rA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/eventsource-parser/-/eventsource-parser-0.1.0.tgz}
+    name: eventsource-parser
+    version: 0.1.0
+    engines: {node: '>=14.18'}
+    dev: false
 
   registry.npmmirror.com/execa/6.1.0:
     resolution: {integrity: sha512-QVWlX2e50heYJcCPG0iWtf8r0xjEYfz/OYLGDYH+IyjWezzPNxz63qNFOu0l4YftGWuizFVZHHs8PrLU5p2IDA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/execa/-/execa-6.1.0.tgz}
