@@ -78,7 +78,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
-        注册 DocGPT 账号
+        注册 FastGPT 账号
       </Box>
       <form onSubmit={handleSubmit(onclickRegister)}>
         <FormControl mt={8} isInvalid={!!errors.email}>
