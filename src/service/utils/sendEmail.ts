@@ -15,19 +15,19 @@ let mailTransport = nodemailer.createTransport({
 
 const emailMap: { [key: string]: any } = {
   [EmailTypeEnum.register]: {
-    subject: '注册 DocGPT 账号',
-    html: (code: string) => `<div>您正在注册 DocGPT 账号，验证码为：${code}</div>`
+    subject: '注册 FastGPT 账号',
+    html: (code: string) => `<div>您正在注册 FastGPT 账号，验证码为：${code}</div>`
   },
   [EmailTypeEnum.findPassword]: {
-    subject: '修改 DocGPT 密码',
-    html: (code: string) => `<div>您正在修改 DocGPT 账号密码，验证码为：${code}</div>`
+    subject: '修改 FastGPT 密码',
+    html: (code: string) => `<div>您正在修改 FastGPT 账号密码，验证码为：${code}</div>`
   }
 };
 
 export const sendCode = (email: string, code: string, type: `${EmailTypeEnum}`) => {
   return new Promise((resolve, reject) => {
     const options = {
-      from: `"DocGPT" ${myEmail}`,
+      from: `"FastGPT" ${myEmail}`,
       to: email,
       subject: emailMap[type]?.subject,
       html: emailMap[type]?.html(code)
@@ -46,7 +46,7 @@ export const sendCode = (email: string, code: string, type: `${EmailTypeEnum}`) 
 export const sendTrainSucceed = (email: string, modelName: string) => {
   return new Promise((resolve, reject) => {
     const options = {
-      from: `"DocGPT" ${myEmail}`,
+      from: `"FastGPT" ${myEmail}`,
       to: email,
       subject: '模型训练完成通知',
       html: `你的模型 ${modelName} 已于 ${dayjs().format('YYYY-MM-DD HH:mm')} 训练完成！`
