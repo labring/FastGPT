@@ -1,5 +1,7 @@
 # Doc GPT 
 
+Doc GPT 允许你是用自己的 openai API KEY 来快速的调用 openai 接口，包括 GPT3 及其微调方法，以及最新的 gpt3.5 接口。
+
 ## 初始化
 复制 .env.template 成 .env.local ，填写核心参数  
 
