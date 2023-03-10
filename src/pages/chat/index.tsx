@@ -165,13 +165,13 @@ const Chat = () => {
         event.addEventListener('serviceError', ({ data: err }) => {
           clearTimeout(timer);
           event.close();
-          console.error(err, '===');
+          console.log('error->', err, '===');
           reject(typeof err === 'string' ? err : '对话出现不知名错误~');
         });
         event.onerror = (err) => {
           clearTimeout(timer);
           event.close();
-          console.error(err);
+          console.log('error->', err);
           reject(typeof err === 'string' ? err : '对话出现不知名错误~');
         };
       });

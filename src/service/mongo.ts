@@ -12,12 +12,14 @@ export async function connectToDatabase(): Promise<void> {
   console.log('connect mongo');
   try {
     global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
+      bufferCommands: true,
       dbName: 'doc_gpt',
-      maxPoolSize: 10,
-      minPoolSize: 1
+      maxPoolSize: 5,
+      minPoolSize: 1,
+      maxConnecting: 5
     });
   } catch (error) {
-    console.error('mongo connect error');
+    console.log('error->', 'mongo connect error');
     global.mongodb = null;
   }
 }

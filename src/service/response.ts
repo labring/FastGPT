@@ -27,8 +27,8 @@ export const jsonRes = (
       msg = openaiError[error?.response?.data?.message];
     }
 
-    console.error(error);
-    console.error(msg);
+    console.log('error->', error);
+    console.log('error->', msg);
   }
 
   res.json({
