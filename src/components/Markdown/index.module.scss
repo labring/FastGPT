@@ -8,7 +8,7 @@
   animation: blink 0.6s infinite;
 }
 .animation {
-  :last-child::after {
+  > :last-child::after {
     display: inline-block;
     content: '';
     width: 4px;
