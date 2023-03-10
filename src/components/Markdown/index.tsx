@@ -25,7 +25,8 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
         pre: 'div',
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
-          const code = String(children).replace(/\n$/, '');
+          const code = String(children);
+
           return !inline || match ? (
             <Box my={3} borderRadius={'md'} overflow={'hidden'} backgroundColor={'#222'}>
               <Flex
@@ -53,7 +54,7 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
             </Box>
           ) : (
             <code className={className} {...props}>
-              {children}
+              {code}
             </code>
           );
         }
