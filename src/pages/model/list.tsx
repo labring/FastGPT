@@ -10,10 +10,12 @@ import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@/hooks/useLoading';
 import dynamic from 'next/dynamic';
+import { useToast } from '@/hooks/useToast';
 
 const CreateModel = dynamic(() => import('./components/CreateModel'));
 
 const ModelList = () => {
+  const { toast } = useToast();
   const { isPc } = useScreen();
   const router = useRouter();
   const [models, setModels] = useState<ModelType[]>([]);
@@ -43,12 +45,16 @@ const ModelList = () => {
         router.push(`/chat?chatId=${chatId}`, undefined, {
           shallow: true
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
+        toast({
+          title: err.message || '出现一些异常',
+          status: 'error'
+        });
       }
       setIsLoading(false);
     },
-    [router, setIsLoading]
+    [router, setIsLoading, toast]
   );
 
   return (

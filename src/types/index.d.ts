@@ -1,9 +1,9 @@
 import type { Mongoose } from 'mongoose';
 
 declare global {
-  interface Global {
-    mongodb: Mongoose;
+  namespace NodeJS {
+    interface Global {
+      mongodb: Mongoose | string;
+    }
   }
 }
-
-export type a = string;
