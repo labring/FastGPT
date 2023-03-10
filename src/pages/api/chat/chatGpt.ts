@@ -50,13 +50,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const formatPrompts: ChatCompletionRequestMessage[] = filterPrompts.map(
       (item: ChatItemType) => ({
         role: map[item.obj],
-        content: item.value.replace(/\n/g, ' ')
+        content: item.value
       })
     );
     // 第一句话，强调代码类型
     formatPrompts.unshift({
       role: ChatCompletionRequestMessageRoleEnum.System,
-      content: '如果你想返回代码，请务必声明代码的类型！'
+      content: '如果你想返回代码，请务必声明代码的类型！并且在代码块前加一个换行符。'
     });
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         try {
           const json = JSON.parse(data);
-          const content: string = json.choices[0].delta.content || '';
+          const content: string = json.choices[0].delta.content || '\n';
           // console.log('content:', content)
           res.write(`event: responseData\ndata: ${content.replace(/\n/g, '<br/>')}\n\n`);
           AIResponse += content;

@@ -120,11 +120,15 @@ const ModelDetail = () => {
     try {
       await putModelTrainingStatus(model._id);
       loadModel();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      toast({
+        title: error.message || '更新失败',
+        status: 'error'
+      });
     }
     setLoading(false);
-  }, [setLoading, loadModel, model]);
+  }, [model, setLoading, loadModel, toast]);
 
   return (
     <>

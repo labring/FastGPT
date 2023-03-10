@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import styles from './index.module.scss';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
@@ -21,7 +21,7 @@ const Login = () => {
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       setUserInfo(res.user, res.token);
-      router.push('/');
+      router.push('/model/list');
     },
     [router, setUserInfo]
   );
@@ -37,6 +37,10 @@ const Login = () => {
 
     return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
   }
+
+  useEffect(() => {
+    router.prefetch('/model/list');
+  }, [router]);
 
   return (
     <Box className={styles.loginPage} h={'100%'} p={isPc ? '10vh 10vw' : 0}>
