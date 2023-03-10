@@ -127,14 +127,14 @@ const Chat = () => {
         let timer = setTimeout(() => {
           event.close();
           reject('服务器超时');
-        }, 300000);
+        }, 30000);
         event.addEventListener('responseData', ({ data }) => {
           /* 重置定时器 */
           clearTimeout(timer);
           timer = setTimeout(() => {
             event.close();
             reject('服务器超时');
-          }, 300000);
+          }, 30000);
 
           const msg = data.replace(/<br\/>/g, '\n');
           setChatList((state) =>
@@ -264,7 +264,7 @@ const Chat = () => {
   const reEdit = useCallback(async () => {
     if (chatList[chatList.length - 1]?.obj !== 'Human') return;
     // 删除数据库最后一句
-    delLastMessage(windowId);
+    await delLastMessage(windowId);
     const val = chatList[chatList.length - 1].value;
 
     setInputVal(val);
