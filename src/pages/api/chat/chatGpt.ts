@@ -69,56 +69,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stream: true
       },
       {
+        timeout: 20000,
         responseType: 'stream',
         httpsAgent: openaiProxy?.httpsAgent
       }
     );
+    console.log('response success');
 
     let AIResponse = '';
 
     // 解析数据
     const decoder = new TextDecoder();
-    new ReadableStream({
-      async start(controller) {
-        // callback
-        async function onParse(event: ParsedEvent | ReconnectInterval) {
-          if (event.type === 'event') {
-            const data = event.data;
-            if (data === '[DONE]') {
-              controller.close();
-              res.write('event: done\ndata: \n\n');
-              res.end();
-              // 存入库
-              await ChatWindow.findByIdAndUpdate(windowId, {
-                $push: {
-                  content: {
-                    obj: 'AI',
-                    value: AIResponse
-                  }
-                },
-                updateTime: Date.now()
-              });
-              return;
-            }
-            try {
-              const json = JSON.parse(data);
-              const content: string = json.choices[0].delta.content || '';
-              res.write(`event: responseData\ndata: ${content.replace(/\n/g, '<br/>')}\n\n`);
-              AIResponse += content;
-            } catch (e) {
-              // maybe parse error
-              controller.error(e);
-              res.end();
-            }
-          }
+    const onParse = async (event: ParsedEvent | ReconnectInterval) => {
+      if (event.type === 'event') {
+        const data = event.data;
+        if (data === '[DONE]') {
+          // 存入库
+          await ChatWindow.findByIdAndUpdate(windowId, {
+            $push: {
+              content: {
+                obj: 'AI',
+                value: AIResponse
+              }
+            },
+            updateTime: Date.now()
+          });
+          res.write('event: done\ndata: \n\n');
+          res.end();
+          return;
         }
-
-        const parser = createParser(onParse);
-        for await (const chunk of chatResponse.data as any) {
-          parser.feed(decoder.decode(chunk));
+        try {
+          const json = JSON.parse(data);
+          const content: string = json.choices[0].delta.content || '';
+          // console.log('content:', content)
+          res.write(`event: responseData\ndata: ${content.replace(/\n/g, '<br/>')}\n\n`);
+          AIResponse += content;
+        } catch (e) {
+          res.end();
         }
       }
-    });
+    };
+
+    const parser = createParser(onParse);
+    for await (const chunk of chatResponse.data as any) {
+      parser.feed(decoder.decode(chunk));
+    }
   } catch (err: any) {
     let errorText = err;
     if (err.code === 'ECONNRESET') {

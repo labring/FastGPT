@@ -1,18 +1,28 @@
 import mongoose from 'mongoose';
-import type { Mongoose } from 'mongoose';
 
-let cachedClient: Mongoose;
-
-export async function connectToDatabase() {
-  if (cachedClient && cachedClient.connection.readyState === 1) {
-    return cachedClient;
+/**
+ * 连接 MongoDB 数据库
+ */
+export async function connectToDatabase(): Promise<void> {
+  // @ts-ignore
+  if (global.mongodb) {
+    return;
   }
-
-  cachedClient = await mongoose.connect(process.env.MONGODB_URI as string, {
-    dbName: 'doc_gpt'
-  });
-
-  return cachedClient;
+  // @ts-ignore
+  global.mongodb = 'connecting';
+  console.log('connect mongo');
+  try {
+    // @ts-ignore
+    global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
+      dbName: 'doc_gpt',
+      maxPoolSize: 10,
+      minPoolSize: 1
+    });
+  } catch (error) {
+    console.error('mongo connect error');
+    // @ts-ignore
+    global.mongodb = null;
+  }
 }
 
 export * from './models/authCode';
