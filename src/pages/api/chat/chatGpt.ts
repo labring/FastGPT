@@ -6,6 +6,7 @@ import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { openaiProxy } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
+import { openaiError } from '@/service/errorCode';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -74,7 +75,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         httpsAgent: openaiProxy?.httpsAgent
       }
     );
-    console.log('response success');
+    console.log(
+      formatPrompts.reduce((sum, item) => sum + item.content.length, 0),
+      'response success'
+    );
 
     let AIResponse = '';
 
@@ -95,54 +99,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updateTime: Date.now()
           });
           res.write('event: done\ndata: \n\n');
-          res.end();
           return;
         }
         try {
           const json = JSON.parse(data);
-          const content: string = json.choices[0].delta.content || '\n';
+          const content: string = json?.choices?.[0].delta.content || '\n';
           // console.log('content:', content)
           res.write(`event: responseData\ndata: ${content.replace(/\n/g, '<br/>')}\n\n`);
           AIResponse += content;
-        } catch (e) {
-          res.end();
+        } catch (error) {
+          error;
         }
       }
     };
 
-    const parser = createParser(onParse);
-    for await (const chunk of chatResponse.data as any) {
-      parser.feed(decoder.decode(chunk));
+    try {
+      for await (const chunk of chatResponse.data as any) {
+        const parser = createParser(onParse);
+        parser.feed(decoder.decode(chunk));
+      }
+    } catch (error) {
+      console.log(error, '====');
+      throw new Error('错误了');
     }
   } catch (err: any) {
-    let errorText = err;
+    // console.log('error->', err?.response, '===');
+    let errorText = 'OpenAI 服务器访问超时';
     if (err.code === 'ECONNRESET') {
       errorText = '服务器代理出错';
-    } else {
-      switch (err?.response?.data?.error?.code) {
-        case 'invalid_api_key':
-          errorText = 'API-KEY不合法';
-          break;
-        case 'context_length_exceeded':
-          errorText = '内容超长了，请重置对话';
-          break;
-        case 'rate_limit_reached':
-          errorText = '同时访问用户过多，请稍后再试';
-          break;
-        case null:
-          errorText = 'OpenAI 服务器访问超时';
-          break;
-        default:
-          errorText = '服务器异常';
-      }
+    } else if (err?.response?.statusText && openaiError[err.response.statusText]) {
+      errorText = openaiError[err.response.statusText];
     }
-    console.error(errorText);
+    console.log('error->', errorText);
     res.write(`event: serviceError\ndata: ${errorText}\n\n`);
-    res.end();
     // 删除最一条数据库记录, 也就是预发送的那一条
     await ChatWindow.findByIdAndUpdate(windowId, {
       $pop: { content: 1 },
       updateTime: Date.now()
     });
+    res.end();
   }
 }

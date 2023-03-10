@@ -46,7 +46,7 @@ const ModelList = () => {
           shallow: true
         });
       } catch (err: any) {
-        console.error(err);
+        console.log('error->', err);
         toast({
           title: err.message || '出现一些异常',
           status: 'error'

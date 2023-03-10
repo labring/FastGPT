@@ -42,7 +42,7 @@ const ModelDetail = () => {
       res.security.expiredTime /= 60 * 60 * 1000;
       setModel(res);
     } catch (err) {
-      console.error(err);
+      console.log('error->', err);
     }
     setLoading(false);
   }, [modelId, setLoading]);
@@ -63,7 +63,7 @@ const ModelDetail = () => {
       });
       router.replace('/model/list');
     } catch (err) {
-      console.error(err);
+      console.log('error->', err);
     }
     setLoading(false);
   }, [setLoading, model, router, toast]);
@@ -77,7 +77,7 @@ const ModelDetail = () => {
 
       router.push(`/chat?chatId=${chatId}`);
     } catch (err) {
-      console.error(err);
+      console.log('error->', err);
     }
     setLoading(false);
   }, [setLoading, model, router]);
@@ -105,7 +105,7 @@ const ModelDetail = () => {
           title: typeof err === 'string' ? err : '文件格式错误',
           status: 'error'
         });
-        console.error(err);
+        console.log('error->', err);
       }
       setLoading(false);
     },
@@ -121,7 +121,7 @@ const ModelDetail = () => {
       await putModelTrainingStatus(model._id);
       loadModel();
     } catch (error: any) {
-      console.error(error);
+      console.log('error->', error);
       toast({
         title: error.message || '更新失败',
         status: 'error'
