@@ -3,7 +3,7 @@ import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser
 import { connectToDatabase, ChatWindow } from '@/service/mongo';
 import type { ModelType } from '@/types/model';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
-import { openaiProxy } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { openaiError } from '@/service/errorCode';
@@ -61,6 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
+
     const chatResponse = await chatAPI.createChatCompletion(
       {
         model: model.service.chatModel,
@@ -72,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         timeout: 20000,
         responseType: 'stream',
-        httpsAgent: openaiProxy?.httpsAgent
+        httpsAgent
       }
     );
     console.log(
@@ -123,9 +124,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('错误了');
     }
   } catch (err: any) {
-    // console.log('error->', err?.response, '===');
+    console.log('error->', err?.response, '===');
     let errorText = 'OpenAI 服务器访问超时';
-    if (err.code === 'ECONNRESET') {
+    if (err.code === 'ECONNRESET' || err?.response?.status === 502) {
       errorText = '服务器代理出错';
     } else if (err?.response?.statusText && openaiError[err.response.statusText]) {
       errorText = openaiError[err.response.statusText];

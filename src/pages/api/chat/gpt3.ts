@@ -5,7 +5,7 @@ import { connectToDatabase, Chat } from '@/service/mongo';
 import type { ModelType } from '@/types/model';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
-import { openaiProxy } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -66,7 +66,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         presence_penalty: 0.6,
         stop: ['###']
       },
-      openaiProxy
+      {
+        httpsAgent
+      }
     );
 
     const responseMessage = response.data.choices[0]?.text;
