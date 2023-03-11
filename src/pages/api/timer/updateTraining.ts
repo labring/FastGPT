@@ -8,7 +8,7 @@ import { getOpenAIApi } from '@/service/utils/chat';
 import { getUserOpenaiKey } from '@/service/utils/tools';
 import { OpenAiTuneStatusEnum } from '@/service/constants/training';
 import { sendTrainSucceed } from '@/service/utils/sendEmail';
-import { openaiProxy } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -23,10 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const response = await Promise.all(
       trainingRecords.map(async (item) => {
-        const { data } = await openai.retrieveFineTune(item.tuneId, openaiProxy);
+        const { data } = await openai.retrieveFineTune(item.tuneId, { httpsAgent });
         if (data.status === OpenAiTuneStatusEnum.succeeded) {
           // 删除训练文件
-          openai.deleteFile(data.training_files[0].id, openaiProxy);
+          openai.deleteFile(data.training_files[0].id, { httpsAgent });
 
           const model = await Model.findById(item.modelId).populate({
             path: 'userId',

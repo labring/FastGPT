@@ -7,7 +7,7 @@ import type { ModelType } from '@/types/model';
 import { TrainingItemType } from '@/types/training';
 import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
 import { OpenAiTuneStatusEnum } from '@/service/constants/training';
-import { openaiProxy } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
 
 /* 更新训练状态 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -46,11 +46,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const openai = getOpenAIApi(await getUserOpenaiKey(userId));
 
     // 获取 openai 的训练情况
-    const { data } = await openai.retrieveFineTune(training.tuneId, openaiProxy);
+    const { data } = await openai.retrieveFineTune(training.tuneId, { httpsAgent });
 
     if (data.status === OpenAiTuneStatusEnum.succeeded) {
       // 删除训练文件
-      openai.deleteFile(data.training_files[0].id, openaiProxy);
+      openai.deleteFile(data.training_files[0].id, { httpsAgent });
 
       // 更新模型
       await Model.findByIdAndUpdate(modelId, {
@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (data.status === OpenAiTuneStatusEnum.cancelled) {
       // 删除训练文件
-      openai.deleteFile(data.training_files[0].id, openaiProxy);
+      openai.deleteFile(data.training_files[0].id, { httpsAgent });
 
       // 更新模型
       await Model.findByIdAndUpdate(modelId, {

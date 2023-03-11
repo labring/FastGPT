@@ -9,7 +9,7 @@ import fs from 'fs';
 import type { ModelType } from '@/types/model';
 import type { OpenAIApi } from 'openai';
 import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
-import { openaiProxy } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
 
 // 关闭next默认的bodyParser处理方式
 export const config = {

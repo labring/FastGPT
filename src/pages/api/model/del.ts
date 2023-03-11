@@ -5,7 +5,7 @@ import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
 import { TrainingStatusEnum } from '@/constants/model';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { TrainingItemType } from '@/types/training';
-import { openaiProxy } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -47,12 +47,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (training) {
       const openai = getOpenAIApi(await getUserOpenaiKey(userId));
       // 获取训练记录
-      const tuneRecord = await openai.retrieveFineTune(training.tuneId, openaiProxy);
+      const tuneRecord = await openai.retrieveFineTune(training.tuneId, { httpsAgent });
 
       // 删除训练文件
-      openai.deleteFile(tuneRecord.data.training_files[0].id, openaiProxy);
+      openai.deleteFile(tuneRecord.data.training_files[0].id, { httpsAgent });
       // 取消训练
-      openai.cancelFineTune(training.tuneId, openaiProxy);
+      openai.cancelFineTune(training.tuneId, { httpsAgent });
     }
 
     // 删除对应训练记录
