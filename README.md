@@ -43,7 +43,7 @@ docker run -d --network=host --name doc-gpt \
     -e MY_MAIL=your email\
     -e MAILE_CODE=your email code \
     -e TOKEN_KEY=任意一个内容 \
-    -e MONGODB_URI="mongodb://aha:ROOT_root123@127.0.0.0:27017/?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false" \
+    -e MONGODB_URI="mongodb://user:password@127.0.0.0:27017/?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false" \
     imageName:tag
 docker logs doc-gpt
 
