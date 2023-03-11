@@ -49,15 +49,12 @@ export const getUserOpenaiKey = async (userId: string) => {
 };
 
 /* 代理 */
-export const openaiProxy: any =
-  process.env.AXIOS_PROXY_PORT && process.env.AXIOS_PROXY_HOST
-    ? {
-        httpsAgent: tunnel.httpsOverHttp({
-          proxy: {
-            host: process.env.AXIOS_PROXY_HOST,
-            port: +process.env.AXIOS_PROXY_PORT
-          }
-        }),
-        proxy: false
-      }
+export const httpsAgent =
+  process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT
+    ? tunnel.httpsOverHttp({
+        proxy: {
+          host: process.env.AXIOS_PROXY_HOST,
+          port: +process.env.AXIOS_PROXY_PORT
+        }
+      })
     : undefined;
