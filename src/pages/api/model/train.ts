@@ -10,7 +10,7 @@ import fs from 'fs';
 import type { ModelType } from '@/types/model';
 import type { OpenAIApi } from 'openai';
 import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
-import { openaiProxy } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
 
 // 关闭next默认的bodyParser处理方式
 export const config = {
@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // @ts-ignore
       fs.createReadStream(file.filepath),
       'fine-tune',
-      openaiProxy
+      { httpsAgent }
     );
     uploadFileId = uploadRes.data.id; // 记录上传文件的 ID
 
@@ -84,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: trainingType,
         suffix: model.name
       },
-      openaiProxy
+      { httpsAgent }
     );
 
     trainId = trainRes.data.id; // 记录训练 ID
@@ -114,9 +114,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // @ts-ignore
     if (openai) {
       // @ts-ignore
-      uploadFileId && openai.deleteFile(uploadFileId, openaiProxy);
+      uploadFileId && openai.deleteFile(uploadFileId, { httpsAgent });
       // @ts-ignore
-      trainId && openai.cancelFineTune(trainId, openaiProxy);
+      trainId && openai.cancelFineTune(trainId, { httpsAgent });
     }
 
     jsonRes(res, {

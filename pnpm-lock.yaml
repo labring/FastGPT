@@ -88,7 +88,6 @@ dependencies:
   sass: registry.npmmirror.com/sass/1.58.3
   sharp: registry.npmmirror.com/sharp/0.31.3
   tunnel: registry.npmmirror.com/tunnel/0.0.6
-  typescript: registry.npmmirror.com/typescript/4.9.5
   uuid: registry.npmmirror.com/uuid/9.0.0
   zustand: registry.npmmirror.com/zustand/4.3.5_immer@9.0.19+react@18.2.0
 
@@ -107,6 +106,7 @@ devDependencies:
   husky: registry.npmmirror.com/husky/8.0.3
   lint-staged: registry.npmmirror.com/lint-staged/13.1.2
   prettier: registry.npmmirror.com/prettier/2.8.4
+  typescript: registry.npmmirror.com/typescript/4.9.5
 
 packages:
   registry.npmmirror.com/@aws-crypto/ie11-detection/3.0.0:
@@ -11890,6 +11890,7 @@ packages:
     version: 4.9.5
     engines: { node: '>=4.2.0' }
     hasBin: true
+    dev: true
 
   registry.npmmirror.com/unbox-primitive/1.0.2:
     resolution:
