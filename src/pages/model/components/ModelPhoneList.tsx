@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Button, Flex, Heading, Tag } from '@chakra-ui/react';
+import React, { useEffect } from 'react';
+import { Box, Button, Flex, Tag } from '@chakra-ui/react';
 import type { ModelType } from '@/types/model';
 import { formatModelStatus } from '@/constants/model';
 import dayjs from 'dayjs';
@@ -13,6 +13,10 @@ const ModelPhoneList = ({
   handlePreviewChat: (_: string) => void;
 }) => {
   const router = useRouter();
+
+  useEffect(() => {
+    router.prefetch('/chat');
+  }, [router]);
 
   return (
     <Box borderRadius={'md'} overflow={'hidden'} mb={5}>

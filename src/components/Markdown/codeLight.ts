@@ -2,9 +2,7 @@ import React from 'react';
 export const codeLight: { [key: string]: React.CSSProperties } = {
   'code[class*=language-]': {
     color: '#d4d4d4',
-    fontSize: '13px',
     textShadow: 'none',
-    fontFamily: 'Menlo,Monaco,Consolas,"Andale Mono","Ubuntu Mono","Courier New",monospace',
     direction: 'ltr',
     textAlign: 'left',
     whiteSpace: 'pre',
@@ -21,9 +19,7 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
   },
   'pre[class*=language-]': {
     color: '#d4d4d4',
-    fontSize: '13px',
     textShadow: 'none',
-    fontFamily: 'Menlo,Monaco,Consolas,"Andale Mono","Ubuntu Mono","Courier New",monospace',
     direction: 'ltr',
     textAlign: 'left',
     whiteSpace: 'pre',
