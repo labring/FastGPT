@@ -4,23 +4,23 @@ import mongoose from 'mongoose';
  * 连接 MongoDB 数据库
  */
 export async function connectToDatabase(): Promise<void> {
-  // @ts-ignore
   if (global.mongodb) {
     return;
   }
-  // @ts-ignore
+
   global.mongodb = 'connecting';
   console.log('connect mongo');
   try {
-    // @ts-ignore
+    mongoose.set('strictQuery', true);
     global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
+      bufferCommands: true,
       dbName: 'doc_gpt',
-      maxPoolSize: 10,
-      minPoolSize: 1
+      maxPoolSize: 5,
+      minPoolSize: 1,
+      maxConnecting: 5
     });
   } catch (error) {
-    console.error('mongo connect error');
-    // @ts-ignore
+    console.log('error->', 'mongo connect error');
     global.mongodb = null;
   }
 }

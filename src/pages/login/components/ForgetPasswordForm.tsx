@@ -61,13 +61,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           title: `密码已找回`,
           status: 'success'
         });
-      } catch (error) {
-        typeof error === 'string' &&
-          toast({
-            title: error,
-            status: 'error',
-            position: 'top'
-          });
+      } catch (error: any) {
+        toast({
+          title: error.message || '修改密码异常',
+          status: 'error'
+        });
       }
       setRequesting(false);
     },

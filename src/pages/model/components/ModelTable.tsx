@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect } from 'react';
 import {
   Button,
   Table,
@@ -83,6 +83,10 @@ const ModelTable = ({
       )
     }
   ];
+
+  useEffect(() => {
+    router.prefetch('/chat');
+  }, [router]);
 
   return (
     <Card py={3}>

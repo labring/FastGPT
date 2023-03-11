@@ -1,9 +1,6 @@
 import type { Mongoose } from 'mongoose';
 
 declare global {
-  interface Global {
-    mongodb: Mongoose;
-  }
+  var mongodb: Mongoose | string | null;
 }
-
-export type a = string;
+export {};

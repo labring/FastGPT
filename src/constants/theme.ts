@@ -20,24 +20,27 @@ const Button = defineStyleConfig({
   baseStyle: {},
   sizes: {
     sm: {
-      fontSize: 'sm',
+      fontSize: 'xs',
       px: 3,
       py: 0,
       fontWeight: 'normal',
-      height: '26px'
+      height: '26px',
+      lineHeight: '26px'
     },
     md: {
-      fontSize: 'md',
+      fontSize: 'sm',
       px: 6,
       py: 0,
       height: '34px',
+      lineHeight: '34px',
       fontWeight: 'normal'
     },
     lg: {
-      fontSize: 'lg',
+      fontSize: 'md',
       px: 8,
       py: 0,
       height: '42px',
+      lineHeight: '42px',
       fontWeight: 'normal'
     }
   },
@@ -58,16 +61,11 @@ export const theme = extendTheme({
     global: {
       'html, body': {
         color: 'blackAlpha.800',
-        fontSize: '14px',
-        fontFamily:
-          'Söhne,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif,Helvetica Neue,Arial,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji',
         height: '100%',
-        overflowY: 'auto'
+        maxHeight: '100vh',
+        overflowY: 'hidden'
       }
     }
-  },
-  fonts: {
-    body: 'system-ui, sans-serif'
   },
   fontSizes: {
     xs: '0.8rem',

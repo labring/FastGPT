@@ -341,7 +341,7 @@
   background-color: #f0f0f0;
   border: 1px solid #cccccc;
   border-radius: 3px 3px 3px 3px;
-  font-size: 13px;
+  font-size: max(0.9em, 14px);
   line-height: 19px;
   overflow: auto;
   padding: 6px 10px;
@@ -352,11 +352,12 @@
   border: medium none;
 }
 .markdown {
-  font-size: 14px;
-  line-height: 1.6;
-  letter-spacing: 0.5px;
   text-align: justify;
   word-break: break-all;
+  overflow-y: hidden;
+  tab-size: 4;
+  word-spacing: normal;
+
   pre {
     display: block;
     width: 100%;
@@ -372,7 +373,6 @@
     background-color: #222 !important;
     color: #fff;
     width: 100%;
-    font-family: 'Söhne,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif,Helvetica Neue,Arial,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji';
   }
 
   a {

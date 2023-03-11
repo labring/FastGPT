@@ -34,7 +34,7 @@ const ModelEditForm = ({ model }: { model?: ModelType }) => {
           status: 'success'
         });
       } catch (err) {
-        console.error(err);
+        console.log('error->', err);
         toast({
           title: err as string,
           status: 'success'
