@@ -1,8 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import styles from './index.module.scss';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { codeLight } from './codeLight';
 import { Box, Flex } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
 import Icon from '@/components/Icon';
@@ -10,8 +8,12 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
+import 'katex/dist/katex.min.css';
+import styles from './index.module.scss';
+import { codeLight } from './codeLight';
+
 const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean }) => {
-  const formatSource = useMemo(() => source.replace(/\n/g, '  \n'), [source]);
+  const formatSource = useMemo(() => source, [source]);
   const { copyData } = useCopyData();
 
   return (
@@ -25,7 +27,8 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
         pre: 'div',
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
-          const code = String(children).replace(/\n$/, '');
+          const code = String(children);
+
           return !inline || match ? (
             <Box my={3} borderRadius={'md'} overflow={'hidden'} backgroundColor={'#222'}>
               <Flex
@@ -53,7 +56,7 @@ const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean 
             </Box>
           ) : (
             <code className={className} {...props}>
-              {children}
+              {code}
             </code>
           );
         }

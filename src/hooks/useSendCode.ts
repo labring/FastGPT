@@ -1,14 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import { sendCodeToEmail } from '@/api/user';
 import { EmailTypeEnum } from '@/constants/common';
-import { useToast } from '@chakra-ui/react';
 let timer: any;
+import { useToast } from './useToast';
 
 export const useSendCode = () => {
-  const toast = useToast({
-    position: 'top',
-    duration: 2000
-  });
+  const { toast } = useToast();
   const [codeSending, setCodeSending] = useState(false);
   const [codeCountDown, setCodeCountDown] = useState(0);
   const sendCodeText = useMemo(() => {
@@ -43,13 +40,11 @@ export const useSendCode = () => {
           status: 'success',
           position: 'top'
         });
-      } catch (error) {
-        typeof error === 'string' &&
-          toast({
-            title: error,
-            status: 'error',
-            position: 'top'
-          });
+      } catch (error: any) {
+        toast({
+          title: error.message || '发送验证码异常',
+          status: 'error'
+        });
       }
       setCodeSending(false);
     },

@@ -29,7 +29,7 @@ const Training = ({ model }: { model: ModelType }) => {
       const res = await getModelTrainings(id);
       setRecords(res);
     } catch (error) {
-      console.error(error);
+      console.log('error->', error);
     }
   }, []);
 

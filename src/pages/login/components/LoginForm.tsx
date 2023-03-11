@@ -42,13 +42,11 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           title: '登录成功',
           status: 'success'
         });
-      } catch (error) {
-        typeof error === 'string' &&
-          toast({
-            title: error,
-            status: 'error',
-            position: 'top'
-          });
+      } catch (error: any) {
+        toast({
+          title: error.message || '登录异常',
+          status: 'error'
+        });
       }
       setRequesting(false);
     },

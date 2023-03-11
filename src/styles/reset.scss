@@ -50,6 +50,9 @@ svg {
 }
 
 @media (max-width: 900px) {
+  html {
+    font-size: 14px;
+  }
   ::-webkit-scrollbar,
   ::-webkit-scrollbar {
     width: 2px;

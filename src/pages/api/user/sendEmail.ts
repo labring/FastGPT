@@ -20,7 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (type === EmailTypeEnum.register) {
       const maxCount = process.env.MAX_USER ? +process.env.MAX_USER : Infinity;
       const userCount = await User.count();
-
       if (userCount >= maxCount) {
         throw new Error('当前注册用户已满，请等待名额~');
       }

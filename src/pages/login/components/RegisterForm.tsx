@@ -61,14 +61,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           title: `注册成功`,
           status: 'success'
         });
-      } catch (error) {
-        typeof error === 'string' &&
-          toast({
-            title: error,
-            status: 'error',
-            duration: 4000,
-            isClosable: true
-          });
+      } catch (error: any) {
+        toast({
+          title: error.message || '注册异常',
+          status: 'error'
+        });
       }
       setRequesting(false);
     },
