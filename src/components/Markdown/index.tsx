@@ -1,8 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import styles from './index.module.scss';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { codeLight } from './codeLight';
 import { Box, Flex } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
 import Icon from '@/components/Icon';
@@ -10,8 +8,12 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
+import 'katex/dist/katex.min.css';
+import styles from './index.module.scss';
+import { codeLight } from './codeLight';
+
 const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean }) => {
-  const formatSource = useMemo(() => source.replace(/\n/g, '  \n'), [source]);
+  const formatSource = useMemo(() => source, [source]);
   const { copyData } = useCopyData();
 
   return (

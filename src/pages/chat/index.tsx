@@ -22,11 +22,10 @@ const Markdown = dynamic(() => import('@/components/Markdown'));
 
 const textareaMinH = '22px';
 
-const Chat = () => {
+const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { isPc, media } = useScreen();
-  const { chatId, windowId } = router.query as { chatId: string; windowId?: string };
   const ChatBox = useRef<HTMLDivElement>(null);
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
 
@@ -40,7 +39,6 @@ const Chat = () => {
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
-    // 滚动到底部
     setTimeout(() => {
       ChatBox.current &&
         ChatBox.current.scrollTo({
@@ -52,16 +50,14 @@ const Chat = () => {
 
   // 初始化聊天框
   useQuery(
-    [chatId, windowId],
+    ['initData'],
     () => {
-      if (!chatId) return null;
       setLoading(true);
       return getInitChatSiteInfo(chatId, windowId);
     },
     {
-      cacheTime: 5 * 60 * 1000,
       onSuccess(res) {
-        if (!res) return;
+        // 可能没有 windowId，给它设置一下
         router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
 
         setChatSiteData(res.chatSite);
@@ -72,7 +68,6 @@ const Chat = () => {
           }))
         );
         scrollToBottom();
-        setLoading(false);
       },
       onError(e: any) {
         toast({
@@ -81,10 +76,29 @@ const Chat = () => {
           isClosable: true,
           duration: 5000
         });
+      },
+      onSettled() {
         setLoading(false);
       }
     }
   );
+
+  // 重置输入内容
+  const resetInputVal = useCallback((val: string) => {
+    setInputVal(val);
+    setTimeout(() => {
+      /* 回到最小高度 */
+      if (TextareaDom.current) {
+        TextareaDom.current.style.height =
+          val === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
+      }
+    }, 100);
+  }, []);
+
+  // 重载对话
+  const resetChat = useCallback(() => {
+    window.open(`/chat?chatId=${chatId}`, '_self');
+  }, [chatId]);
 
   // gpt3 方法
   const gpt3ChatPrompt = useCallback(
@@ -210,16 +224,8 @@ const Chat = () => {
 
     // 插入内容
     setChatList(newChatList);
-    setInputVal('');
-    // 滚动到底部
-    setTimeout(() => {
-      scrollToBottom();
-
-      /* 回到最小高度 */
-      if (TextareaDom.current) {
-        TextareaDom.current.style.height = textareaMinH;
-      }
-    }, 100);
+    resetInputVal('');
+    scrollToBottom();
 
     const fnMap: { [key: string]: any } = {
       [OpenAiModelEnum.GPT35]: chatGPTPrompt,
@@ -239,13 +245,13 @@ const Chat = () => {
       }
     } catch (err) {
       toast({
-        title: typeof err === 'string' ? err : '聊天已过期',
+        title: typeof err === 'string' ? err : '聊天出错了~',
         status: 'warning',
         duration: 5000,
         isClosable: true
       });
 
-      setInputVal(storeInput);
+      resetInputVal(storeInput);
 
       setChatList(newChatList.slice(0, newChatList.length - 2));
     }
@@ -256,6 +262,7 @@ const Chat = () => {
     gpt3ChatPrompt,
     inputVal,
     isChatting,
+    resetInputVal,
     scrollToBottom,
     toast
   ]);
@@ -267,16 +274,10 @@ const Chat = () => {
     await delLastMessage(windowId);
     const val = chatList[chatList.length - 1].value;
 
-    setInputVal(val);
+    resetInputVal(val);
 
     setChatList(chatList.slice(0, -1));
-
-    setTimeout(() => {
-      if (TextareaDom.current) {
-        TextareaDom.current.style.height = val.split('\n').length * 22 + 'px';
-      }
-    }, 100);
-  }, [chatList, windowId]);
+  }, [chatList, resetInputVal, windowId]);
 
   return (
     <Flex height={'100%'} flexDirection={'column'}>
@@ -290,13 +291,9 @@ const Chat = () => {
         zIndex={1}
       >
         <Box flex={1}>{chatSiteData?.name}</Box>
-        {/* 重置按键 */}
-        <Box cursor={'pointer'} onClick={() => router.replace(`/chat?chatId=${chatId}`)}>
-          <Icon name={'icon-zhongzhi'} width={20} height={20} color={'#718096'}></Icon>
-        </Box>
         {/* 滚动到底部按键 */}
         {ChatBox.current && ChatBox.current.scrollHeight > 2 * ChatBox.current.clientHeight && (
-          <Box ml={10} cursor={'pointer'} onClick={scrollToBottom}>
+          <Box mr={10} cursor={'pointer'} onClick={scrollToBottom}>
             <Icon
               name={'icon-xiangxiazhankai-xianxingyuankuang'}
               width={25}
@@ -305,6 +302,10 @@ const Chat = () => {
             ></Icon>
           </Box>
         )}
+        {/* 重置按键 */}
+        <Button size={'sm'} colorScheme={'gray'} onClick={resetChat}>
+          新对话
+        </Button>
       </Flex>
       {/* 聊天内容 */}
       <Box ref={ChatBox} flex={'1 0 0'} h={0} w={'100%'} px={0} pb={10} overflowY={'auto'}>
@@ -312,7 +313,7 @@ const Chat = () => {
           <Box
             key={index}
             py={media(9, 6)}
-            px={media(4, 3)}
+            px={media(4, 2)}
             backgroundColor={index % 2 === 0 ? 'rgba(247,247,248,1)' : '#fff'}
             borderBottom={'1px solid rgba(0,0,0,0.1)'}
           >
@@ -321,11 +322,11 @@ const Chat = () => {
                 <Image
                   src={item.obj === 'Human' ? '/icon/human.png' : '/icon/logo.png'}
                   alt="/icon/logo.png"
-                  width={30}
-                  height={30}
+                  width={media(30, 20)}
+                  height={media(30, 20)}
                 />
               </Box>
-              <Box flex={'1 0 0'} w={0} overflowX={'hidden'}>
+              <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
                 {item.obj === 'AI' ? (
                   <Markdown
                     source={item.value}
@@ -350,11 +351,7 @@ const Chat = () => {
           <Box textAlign={'center'}>
             <Box color={'red'}>对话出现了异常</Box>
             <Flex py={5} justifyContent={'center'}>
-              <Button
-                mr={20}
-                onClick={() => router.replace(`/chat?chatId=${chatId}`)}
-                colorScheme={'green'}
-              >
+              <Button mr={20} onClick={resetChat} colorScheme={'green'}>
                 重开对话
               </Button>
               <Button onClick={reEdit}>重新编辑最后一句</Button>
@@ -428,3 +425,12 @@ const Chat = () => {
 };
 
 export default Chat;
+
+export async function getServerSideProps(context: any) {
+  const chatId = context.query?.chatId || '';
+  const windowId = context.query?.windowId || '';
+
+  return {
+    props: { chatId, windowId }
+  };
+}

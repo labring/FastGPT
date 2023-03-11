@@ -49,7 +49,8 @@ const ModelDetail = () => {
 
   useEffect(() => {
     loadModel();
-  }, [loadModel, modelId]);
+    router.prefetch('/chat');
+  }, [loadModel, modelId, router]);
 
   /* 点击删除 */
   const handleDelModel = useCallback(async () => {
