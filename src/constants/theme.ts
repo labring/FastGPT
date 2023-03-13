@@ -82,6 +82,9 @@ export const theme = extendTheme({
     '8xl': '6rem',
     '9xl': '8rem'
   },
+  fonts: {
+    body: '-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
+  },
   components: {
     Modal: ModalTheme,
     Button

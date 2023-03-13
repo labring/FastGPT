@@ -18,6 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.on('close', () => {
     res.end();
   });
+  req.on('error', () => {
+    res.end();
+  });
 
   const { chatId, windowId } = req.query as { chatId: string; windowId: string };
 
@@ -114,14 +117,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     };
 
-    try {
-      for await (const chunk of chatResponse.data as any) {
-        const parser = createParser(onParse);
-        parser.feed(decoder.decode(chunk));
-      }
-    } catch (error) {
-      console.log(error, '====');
-      throw new Error('错误了');
+    for await (const chunk of chatResponse.data as any) {
+      const parser = createParser(onParse);
+      parser.feed(decoder.decode(chunk));
     }
   } catch (err: any) {
     console.log('error->', err?.response, '===');
