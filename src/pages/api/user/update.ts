@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { authorization } = req.headers;
 
     if (!authorization) {
-      throw new Error('缺少参数');
+      throw new Error('无权操作');
     }
 
     const userId = await authToken(authorization);
