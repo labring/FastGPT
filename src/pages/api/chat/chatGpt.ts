@@ -80,6 +80,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     // 创建响应流
+    res.setHeader('Content-Type', 'text/event-stream;charset-utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+
     const pass = new PassThrough();
     pass.pipe(res);
 
