@@ -4,3 +4,7 @@ export const openaiError: Record<string, string> = {
   rate_limit_reached: '同时访问用户过多，请稍后再试',
   'Bad Request': '上下文太多了，请重开对话~'
 };
+export const proxyError: Record<string, boolean> = {
+  ECONNABORTED: true,
+  ECONNRESET: true
+};

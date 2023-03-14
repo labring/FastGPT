@@ -1,13 +1,7 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
-import {
-  getInitChatSiteInfo,
-  postGPT3SendPrompt,
-  getChatGPTSendEvent,
-  postChatGptPrompt,
-  delLastMessage
-} from '@/api/chat';
+import { getInitChatSiteInfo, postGPT3SendPrompt, delLastMessage, postSaveChat } from '@/api/chat';
 import { ChatSiteItemType, ChatSiteType } from '@/types/chat';
 import { Textarea, Box, Flex, Button } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
@@ -17,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { OpenAiModelEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
+import { streamFetch } from '@/api/fetch';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
@@ -128,69 +123,64 @@ const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
   const chatGPTPrompt = useCallback(
     async (newChatList: ChatSiteItemType[]) => {
       if (!windowId) return;
-      /* 预请求，把消息存入库 */
-      await postChatGptPrompt({
-        windowId,
-        prompt: newChatList[newChatList.length - 1],
-        chatId
-      });
-
-      return new Promise((resolve, reject) => {
-        const event = getChatGPTSendEvent(chatId, windowId);
-        // 30s 收不到消息就报错
-        let timer = setTimeout(() => {
-          event.close();
-          reject('服务器超时');
-        }, 30000);
-        event.addEventListener('responseData', ({ data }) => {
-          /* 重置定时器 */
-          clearTimeout(timer);
-          timer = setTimeout(() => {
-            event.close();
-            reject('服务器超时');
-          }, 30000);
-
-          const msg = data.replace(/<br\/>/g, '\n');
+      const prompt = {
+        obj: newChatList[newChatList.length - 1].obj,
+        value: newChatList[newChatList.length - 1].value
+      };
+      // 流请求，获取数据
+      const res = await streamFetch({
+        url: '/api/chat/chatGpt',
+        data: {
+          windowId,
+          prompt,
+          chatId
+        },
+        onMessage: (text: string) => {
           setChatList((state) =>
             state.map((item, index) => {
               if (index !== state.length - 1) return item;
               return {
                 ...item,
-                value: item.value + msg
+                value: item.value + text
               };
             })
           );
-        });
-        event.addEventListener('done', () => {
-          console.log('done');
-          clearTimeout(timer);
-          event.close();
-          setChatList((state) =>
-            state.map((item, index) => {
-              if (index !== state.length - 1) return item;
-              return {
-                ...item,
-                status: 'finish'
-              };
-            })
-          );
-          resolve('');
-        });
-        event.addEventListener('serviceError', ({ data: err }) => {
-          clearTimeout(timer);
-          event.close();
-          console.log('error->', err, '===');
-          reject(typeof err === 'string' ? err : '对话出现不知名错误~');
-        });
-        event.onerror = (err) => {
-          clearTimeout(timer);
-          event.close();
-          console.log('error->', err);
-          reject(typeof err === 'string' ? err : '对话出现不知名错误~');
-        };
+        }
       });
+
+      // 保存对话信息
+      try {
+        await postSaveChat({
+          windowId,
+          prompts: [
+            prompt,
+            {
+              obj: 'AI',
+              value: res as string
+            }
+          ]
+        });
+      } catch (err) {
+        toast({
+          title: '存储对话出现异常, 继续对话会导致上下文丢失，请刷新页面',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true
+        });
+      }
+
+      // 设置完成状态
+      setChatList((state) =>
+        state.map((item, index) => {
+          if (index !== state.length - 1) return item;
+          return {
+            ...item,
+            status: 'finish'
+          };
+        })
+      );
     },
-    [chatId, windowId]
+    [chatId, toast, windowId]
   );
 
   /**

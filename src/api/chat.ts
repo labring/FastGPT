@@ -36,28 +36,10 @@ export const postGPT3SendPrompt = ({
   });
 
 /**
- * 预发 prompt 进行存储
+ * 存储一轮对话
  */
-export const postChatGptPrompt = ({
-  prompt,
-  windowId,
-  chatId
-}: {
-  prompt: ChatSiteItemType;
-  windowId: string;
-  chatId: string;
-}) =>
-  POST<string>(`/chat/preChat`, {
-    windowId,
-    prompt: {
-      obj: prompt.obj,
-      value: prompt.value
-    },
-    chatId
-  });
-/* 获取 Chat 的 Event 对象，进行持续通信 */
-export const getChatGPTSendEvent = (chatId: string, windowId: string) =>
-  new EventSource(`/api/chat/chatGpt?chatId=${chatId}&windowId=${windowId}&date=${Date.now()}`);
+export const postSaveChat = (data: { windowId: string; prompts: ChatItemType[] }) =>
+  POST('/chat/saveChat', data);
 
 /**
  * 删除最后一句
