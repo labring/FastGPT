@@ -34,9 +34,9 @@ docker push imageName:tag
 ```bash
 # 服务器拉取部署, imageName 替换成镜像名
 docker pull imageName:tag
-docker stop doc-gpt || true
-docker rm doc-gpt || true
-docker run -d --network=host --name doc-gpt \
+docker stop fast-gpt || true
+docker rm fast-gpt || true
+docker run -d --network=host --name fast-gpt \
     -e AXIOS_PROXY_HOST=127.0.0.1 \
     -e AXIOS_PROXY_PORT=7890 \
     -e MY_MAIL=your email\

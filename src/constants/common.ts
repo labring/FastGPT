@@ -4,9 +4,9 @@ export enum EmailTypeEnum {
 }
 
 export const introPage = `
-## 欢迎使用 Doc GPT
+## 欢迎使用 Fast GPT
 
-[Git 仓库](https://github.com/c121914yu/DocGPT)
+[Git 仓库](https://github.com/c121914yu/FastGPT)
 
 时间比较赶，介绍没来得及完善，先直接上怎么使用:
 1. 使用邮箱注册账号。  

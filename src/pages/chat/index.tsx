@@ -243,9 +243,9 @@ const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
       if (typeof fnMap[chatSiteData.chatModel] === 'function') {
         await fnMap[chatSiteData.chatModel](requestPrompt);
       }
-    } catch (err) {
+    } catch (err: any) {
       toast({
-        title: typeof err === 'string' ? err : '聊天出错了~',
+        title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
         status: 'warning',
         duration: 5000,
         isClosable: true
