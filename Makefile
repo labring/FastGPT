@@ -1,4 +1,4 @@
-SERVICE_NAME=doc-gpt
+SERVICE_NAME=fast-gpt
 # Image URL to use all building/pushing image targets
 IMG ?= $(SERVICE_NAME):latest
 
@@ -34,13 +34,13 @@ run: ## Run a dev service from host.
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the desktop-frontend.
-	docker build -t c121914yu/doc-gpt:latest .
+	docker build -t c121914yu/fast-gpt:latest .
 
 ##@ Deployment
 
 .PHONY: docker-run
 docker-run:  ## Push docker image.
-	docker run -d -p 8008:3000 --name doc-gpt -v /web_project/yjl/doc-gpt/logs:/app/.next/logs c121914yu/doc-gpt:latest
+	docker run -d -p 8008:3000 --name fast-gpt -v /web_project/yjl/fast-gpt/logs:/app/.next/logs c121914yu/fast-gpt:latest
 
 #TODO: add support of docker push
 

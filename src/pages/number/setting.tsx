@@ -12,8 +12,10 @@ import {
   Td,
   TableContainer,
   Select,
-  Input
+  Input,
+  IconButton
 } from '@chakra-ui/react';
+import { DeleteIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { putUserInfo } from '@/api/user';
@@ -130,7 +132,15 @@ const NumberSetting = () => {
                     ></Input>
                   </Td>
                   <Td>
-                    <Button onClick={() => removeAccount(i)}>删除</Button>
+                    <IconButton
+                      aria-label="删除账号"
+                      icon={<DeleteIcon />}
+                      colorScheme={'red'}
+                      onClick={() => {
+                        removeAccount(i);
+                        handleSubmit(onclickSave)();
+                      }}
+                    />
                   </Td>
                 </Tr>
               ))}

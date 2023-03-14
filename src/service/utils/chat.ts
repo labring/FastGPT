@@ -35,7 +35,7 @@ export const authChat = async (chatId: string) => {
   const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
 
   if (!userApiKey) {
-    return Promise.reject('该用户缺少ApiKey, 无法请求');
+    return Promise.reject('缺少ApiKey, 无法请求');
   }
 
   return {

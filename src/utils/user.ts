@@ -1,4 +1,4 @@
-const tokenKey = 'doc-gpt-token';
+const tokenKey = 'fast-gpt-token';
 
 export const setToken = (val: string) => {
   localStorage.setItem(tokenKey, val);
