@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Button, Flex, Card } from '@chakra-ui/react';
-import { getMyModels } from '@/api/model';
 import { getChatSiteId } from '@/api/chat';
 import { ModelType } from '@/types/model';
 import { useRouter } from 'next/router';
@@ -11,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@/hooks/useLoading';
 import dynamic from 'next/dynamic';
 import { useToast } from '@/hooks/useToast';
+import { useUserStore } from '@/store/user';
 
 const CreateModel = dynamic(() => import('./components/CreateModel'));
 
@@ -18,22 +18,20 @@ const ModelList = () => {
   const { toast } = useToast();
   const { isPc } = useScreen();
   const router = useRouter();
-  const [models, setModels] = useState<ModelType[]>([]);
+  const { myModels, setMyModels, getMyModels } = useUserStore();
   const [openCreateModel, setOpenCreateModel] = useState(false);
   const { Loading, setIsLoading } = useLoading();
 
   /* 加载模型 */
-  const { isLoading } = useQuery(['loadModels'], () => getMyModels(), {
-    onSuccess(res) {
-      if (!res) return;
-      setModels(res);
-    }
-  });
+  const { isLoading } = useQuery(['loadModels'], getMyModels);
 
   /* 创建成功回调 */
-  const createModelSuccess = useCallback((data: ModelType) => {
-    setModels((state) => [data, ...state]);
-  }, []);
+  const createModelSuccess = useCallback(
+    (data: ModelType) => {
+      setMyModels([data, ...myModels]);
+    },
+    [myModels, setMyModels]
+  );
 
   /* 点前往聊天预览页 */
   const handlePreviewChat = useCallback(
@@ -74,9 +72,9 @@ const ModelList = () => {
       {/* 表单 */}
       <Box mt={5} position={'relative'}>
         {isPc ? (
-          <ModelTable models={models} handlePreviewChat={handlePreviewChat} />
+          <ModelTable models={myModels} handlePreviewChat={handlePreviewChat} />
         ) : (
-          <ModelPhoneList models={models} handlePreviewChat={handlePreviewChat} />
+          <ModelPhoneList models={myModels} handlePreviewChat={handlePreviewChat} />
         )}
       </Box>
       {/* 创建弹窗 */}

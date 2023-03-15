@@ -12,12 +12,21 @@ import { OpenAiModelEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { streamFetch } from '@/api/fetch';
+import SlideBar from './components/SlideBar';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
 const textareaMinH = '22px';
 
-const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
+const Chat = ({
+  chatId,
+  windowId,
+  timeStamp
+}: {
+  chatId: string;
+  windowId?: string;
+  timeStamp: string;
+}) => {
   const { toast } = useToast();
   const router = useRouter();
   const { isPc, media } = useScreen();
@@ -45,7 +54,7 @@ const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
 
   // 初始化聊天框
   useQuery(
-    ['initData'],
+    ['initData', timeStamp],
     () => {
       setLoading(true);
       return getInitChatSiteInfo(chatId, windowId);
@@ -53,7 +62,7 @@ const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
     {
       onSuccess(res) {
         // 可能没有 windowId，给它设置一下
-        router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}`);
+        router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}&timeStamp=${timeStamp}`);
 
         setChatSiteData(res.chatSite);
         setChatList(
@@ -92,8 +101,8 @@ const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
 
   // 重载对话
   const resetChat = useCallback(() => {
-    window.open(`/chat?chatId=${chatId}`, '_self');
-  }, [chatId]);
+    router.push(`/chat?chatId=${chatId}&timeStamp=${Date.now()}`);
+  }, [chatId, router]);
 
   // gpt3 方法
   const gpt3ChatPrompt = useCallback(
@@ -270,156 +279,124 @@ const Chat = ({ chatId, windowId }: { chatId: string; windowId?: string }) => {
   }, [chatList, resetInputVal, windowId]);
 
   return (
-    <Flex height={'100%'} flexDirection={'column'}>
-      {/* 头部 */}
-      <Flex
-        px={4}
-        h={'50px'}
-        alignItems={'center'}
-        backgroundColor={'white'}
-        boxShadow={'0 5px 10px rgba(0,0,0,0.1)'}
-        zIndex={1}
-      >
-        <Box flex={1}>{chatSiteData?.name}</Box>
-        {/* 滚动到底部按键 */}
-        {ChatBox.current && ChatBox.current.scrollHeight > 2 * ChatBox.current.clientHeight && (
-          <Box mr={10} cursor={'pointer'} onClick={scrollToBottom}>
-            <Icon
-              name={'icon-xiangxiazhankai-xianxingyuankuang'}
-              width={25}
-              height={25}
-              color={'#718096'}
-            ></Icon>
-          </Box>
-        )}
-        {/* 重置按键 */}
-        <Button size={'sm'} colorScheme={'gray'} onClick={resetChat}>
-          新对话
-        </Button>
-      </Flex>
-      {/* 聊天内容 */}
-      <Box ref={ChatBox} flex={'1 0 0'} h={0} w={'100%'} px={0} pb={10} overflowY={'auto'}>
-        {chatList.map((item, index) => (
-          <Box
-            key={index}
-            py={media(9, 6)}
-            px={media(4, 2)}
-            backgroundColor={index % 2 === 0 ? 'rgba(247,247,248,1)' : '#fff'}
-            borderBottom={'1px solid rgba(0,0,0,0.1)'}
-          >
-            <Flex maxW={'800px'} m={'auto'} alignItems={'flex-start'}>
-              <Box mr={media(4, 1)}>
-                <Image
-                  src={item.obj === 'Human' ? '/icon/human.png' : '/icon/logo.png'}
-                  alt="/icon/logo.png"
-                  width={media(30, 20)}
-                  height={media(30, 20)}
-                />
-              </Box>
-              <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
-                {item.obj === 'AI' ? (
-                  <Markdown
-                    source={item.value}
-                    isChatting={isChatting && index === chatList.length - 1}
+    <Flex h={'100%'}>
+      <SlideBar resetChat={resetChat} />
+      <Flex flex={1} h={'100%'} flexDirection={'column'}>
+        {/* 聊天内容 */}
+        <Box ref={ChatBox} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
+          {chatList.map((item, index) => (
+            <Box
+              key={index}
+              py={media(9, 6)}
+              px={media(4, 2)}
+              backgroundColor={index % 2 === 0 ? 'rgba(247,247,248,1)' : '#fff'}
+              borderBottom={'1px solid rgba(0,0,0,0.1)'}
+            >
+              <Flex maxW={'750px'} m={'auto'} alignItems={'flex-start'}>
+                <Box mr={media(4, 1)}>
+                  <Image
+                    src={item.obj === 'Human' ? '/icon/human.png' : '/icon/logo.png'}
+                    alt="/icon/logo.png"
+                    width={media(30, 20)}
+                    height={media(30, 20)}
+                  />
+                </Box>
+                <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
+                  {item.obj === 'AI' ? (
+                    <Markdown
+                      source={item.value}
+                      isChatting={isChatting && index === chatList.length - 1}
+                    />
+                  ) : (
+                    <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                  )}
+                </Box>
+              </Flex>
+            </Box>
+          ))}
+        </Box>
+        {/* 发送区 */}
+        <Box
+          m={media('20px auto', '0 auto')}
+          w={media('100vw', '100%')}
+          maxW={media('750px', 'auto')}
+          boxShadow={'0 -14px 30px rgba(255,255,255,0.6)'}
+          borderTop={media('none', '1px solid rgba(0,0,0,0.1)')}
+        >
+          {lastWordHuman ? (
+            <Box textAlign={'center'}>
+              <Box color={'red'}>对话出现了异常</Box>
+              <Flex py={5} justifyContent={'center'}>
+                <Button mr={20} onClick={resetChat} colorScheme={'green'}>
+                  重开对话
+                </Button>
+                <Button onClick={reEdit}>重新编辑最后一句</Button>
+              </Flex>
+            </Box>
+          ) : (
+            <Box
+              py={5}
+              position={'relative'}
+              boxShadow={'base'}
+              overflow={'hidden'}
+              borderRadius={media('md', 'none')}
+            >
+              {/* 输入框 */}
+              <Textarea
+                ref={TextareaDom}
+                w={'100%'}
+                pr={'45px'}
+                py={0}
+                border={'none'}
+                _focusVisible={{
+                  border: 'none'
+                }}
+                placeholder="提问"
+                resize={'none'}
+                value={inputVal}
+                rows={1}
+                height={'22px'}
+                lineHeight={'22px'}
+                maxHeight={'150px'}
+                maxLength={chatSiteData?.secret.contentMaxLen || -1}
+                overflowY={'auto'}
+                onChange={(e) => {
+                  const textarea = e.target;
+                  setInputVal(textarea.value);
+                  textarea.style.height = textareaMinH;
+                  textarea.style.height = `${textarea.scrollHeight}px`;
+                }}
+                onKeyDown={(e) => {
+                  // 触发快捷发送
+                  if (isPc && e.keyCode === 13 && !e.shiftKey) {
+                    sendPrompt();
+                    e.preventDefault();
+                  }
+                  // 全选内容
+                  // @ts-ignore
+                  e.key === 'a' && e.ctrlKey && e.target?.select();
+                }}
+              />
+              {/* 发送和等待按键 */}
+              <Box position={'absolute'} bottom={5} right={media('20px', '10px')}>
+                {isChatting ? (
+                  <Image
+                    style={{ transform: 'translateY(4px)' }}
+                    src={'/icon/chatting.svg'}
+                    width={30}
+                    height={30}
+                    alt={''}
                   />
                 ) : (
-                  <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                  <Box cursor={'pointer'} onClick={sendPrompt}>
+                    <Icon name={'icon-fasong'} width={20} height={20} color={'#718096'}></Icon>
+                  </Box>
                 )}
               </Box>
-            </Flex>
-          </Box>
-        ))}
-      </Box>
-      {/* 空内容提示 */}
-      {/* {
-        chatList.length === 0 && (
-          <>
-          <Card>
-内容太长
-</Card>
-          </>
-        )
-      } */}
-      <Box
-        m={media('20px auto', '0 auto')}
-        w={media('100vw', '100%')}
-        maxW={media('800px', 'auto')}
-        boxShadow={'0 -14px 30px rgba(255,255,255,0.6)'}
-        borderTop={media('none', '1px solid rgba(0,0,0,0.1)')}
-      >
-        {lastWordHuman ? (
-          <Box textAlign={'center'}>
-            <Box color={'red'}>对话出现了异常</Box>
-            <Flex py={5} justifyContent={'center'}>
-              <Button mr={20} onClick={resetChat} colorScheme={'green'}>
-                重开对话
-              </Button>
-              <Button onClick={reEdit}>重新编辑最后一句</Button>
-            </Flex>
-          </Box>
-        ) : (
-          <Box
-            py={5}
-            position={'relative'}
-            boxShadow={'base'}
-            overflow={'hidden'}
-            borderRadius={media('md', 'none')}
-          >
-            {/* 输入框 */}
-            <Textarea
-              ref={TextareaDom}
-              w={'100%'}
-              pr={'45px'}
-              py={0}
-              border={'none'}
-              _focusVisible={{
-                border: 'none'
-              }}
-              placeholder="提问"
-              resize={'none'}
-              value={inputVal}
-              rows={1}
-              height={'22px'}
-              lineHeight={'22px'}
-              maxHeight={'150px'}
-              maxLength={chatSiteData?.secret.contentMaxLen || -1}
-              overflowY={'auto'}
-              onChange={(e) => {
-                const textarea = e.target;
-                setInputVal(textarea.value);
-                textarea.style.height = textareaMinH;
-                textarea.style.height = `${textarea.scrollHeight}px`;
-              }}
-              onKeyDown={(e) => {
-                // 触发快捷发送
-                if (isPc && e.keyCode === 13 && !e.shiftKey) {
-                  sendPrompt();
-                  e.preventDefault();
-                }
-                // 全选内容
-                // @ts-ignore
-                e.key === 'a' && e.ctrlKey && e.target?.select();
-              }}
-            />
-            {/* 发送和等待按键 */}
-            <Box position={'absolute'} bottom={5} right={media('20px', '10px')}>
-              {isChatting ? (
-                <Image
-                  style={{ transform: 'translateY(4px)' }}
-                  src={'/icon/chatting.svg'}
-                  width={30}
-                  height={30}
-                  alt={''}
-                />
-              ) : (
-                <Box cursor={'pointer'} onClick={sendPrompt}>
-                  <Icon name={'icon-fasong'} width={20} height={20} color={'#718096'}></Icon>
-                </Box>
-              )}
             </Box>
-          </Box>
-        )}
-      </Box>
+          )}
+        </Box>
+      </Flex>
     </Flex>
   );
 };
@@ -429,8 +406,9 @@ export default Chat;
 export async function getServerSideProps(context: any) {
   const chatId = context.query?.chatId || '';
   const windowId = context.query?.windowId || '';
+  const timeStamp = context.query?.timeStamp || `${Date.now()}`;
 
   return {
-    props: { chatId, windowId }
+    props: { chatId, windowId, timeStamp }
   };
 }
