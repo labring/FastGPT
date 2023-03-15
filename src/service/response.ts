@@ -28,7 +28,7 @@ export const jsonRes = (
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }
-
+    // console.log(error?.response)
     console.log('error->', error.code, error?.response?.statusText, msg);
   }
 

@@ -45,8 +45,13 @@ const Button = defineStyleConfig({
     }
   },
   variants: {
-    outline: {
-      borderWidth: '1.5px'
+    white: {
+      color: '#fff',
+      backgroundColor: 'transparent',
+      border: '1px solid #ffffff',
+      _hover: {
+        backgroundColor: 'rgba(255,255,255,0.1)'
+      }
     }
   },
   defaultProps: {

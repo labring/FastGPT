@@ -103,9 +103,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     };
 
-    for await (const chunk of chatResponse.data as any) {
-      const parser = createParser(onParse);
-      parser.feed(decodeURIComponent(chunk));
+    const decoder = new TextDecoder();
+    try {
+      for await (const chunk of chatResponse.data as any) {
+        const parser = createParser(onParse);
+        parser.feed(decoder.decode(chunk));
+      }
+    } catch (error) {
+      console.log('pipe error', error);
     }
     pass.push(null);
   } catch (err: any) {
