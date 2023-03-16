@@ -3,7 +3,17 @@ import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { getInitChatSiteInfo, postGPT3SendPrompt, delLastMessage, postSaveChat } from '@/api/chat';
 import { ChatSiteItemType, ChatSiteType } from '@/types/chat';
-import { Textarea, Box, Flex, Button } from '@chakra-ui/react';
+import {
+  Textarea,
+  Box,
+  Flex,
+  Button,
+  useDisclosure,
+  Drawer,
+  DrawerFooter,
+  DrawerOverlay,
+  DrawerContent
+} from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import Icon from '@/components/Icon';
 import { useScreen } from '@/hooks/useScreen';
@@ -11,6 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import { OpenAiModelEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
+import { useChatStore } from '@/store/chat';
 import { streamFetch } from '@/api/fetch';
 import SlideBar from './components/SlideBar';
 
@@ -36,10 +47,12 @@ const Chat = ({
   const [chatSiteData, setChatSiteData] = useState<ChatSiteType>(); // 聊天框整体数据
   const [chatList, setChatList] = useState<ChatSiteItemType[]>([]); // 对话内容
   const [inputVal, setInputVal] = useState(''); // 输入的内容
+  const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
   const isChatting = useMemo(() => chatList[chatList.length - 1]?.status === 'loading', [chatList]);
   const lastWordHuman = useMemo(() => chatList[chatList.length - 1]?.obj === 'Human', [chatList]);
   const { setLoading } = useGlobalStore();
+  const { pushChatHistory } = useChatStore();
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
@@ -102,7 +115,8 @@ const Chat = ({
   // 重载对话
   const resetChat = useCallback(() => {
     router.push(`/chat?chatId=${chatId}&timeStamp=${Date.now()}`);
-  }, [chatId, router]);
+    onCloseSlider();
+  }, [chatId, router, onCloseSlider]);
 
   // gpt3 方法
   const gpt3ChatPrompt = useCallback(
@@ -242,6 +256,16 @@ const Chat = ({
       if (typeof fnMap[chatSiteData.chatModel] === 'function') {
         await fnMap[chatSiteData.chatModel](requestPrompt);
       }
+
+      // 如果是 Human 第一次发送，插入历史记录
+      const humanChat = newChatList.filter((item) => item.obj === 'Human');
+      if (windowId && humanChat.length === 1) {
+        pushChatHistory({
+          chatId,
+          windowId,
+          title: humanChat[0].value
+        });
+      }
     } catch (err: any) {
       toast({
         title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
@@ -263,7 +287,10 @@ const Chat = ({
     isChatting,
     resetInputVal,
     scrollToBottom,
-    toast
+    toast,
+    chatId,
+    windowId,
+    pushChatHistory
   ]);
 
   // 重新编辑
@@ -279,9 +306,57 @@ const Chat = ({
   }, [chatList, resetInputVal, windowId]);
 
   return (
-    <Flex h={'100%'}>
-      <SlideBar resetChat={resetChat} />
-      <Flex flex={1} h={'100%'} flexDirection={'column'}>
+    <Flex h={'100%'} flexDirection={media('row', 'column')}>
+      {isPc ? (
+        <Box flex={'0 0 250px'} w={0} h={'100%'}>
+          <SlideBar
+            resetChat={resetChat}
+            name={chatSiteData?.name}
+            windowId={windowId}
+            chatId={chatId}
+            onClose={onCloseSlider}
+          />
+        </Box>
+      ) : (
+        <Box h={'60px'} borderBottom={'1px solid rgba(0,0,0,0.1)'}>
+          <Flex
+            alignItems={'center'}
+            h={'100%'}
+            justifyContent={'space-between'}
+            backgroundColor={'white'}
+            position={'relative'}
+            px={7}
+          >
+            <Box onClick={onOpenSlider}>
+              <Icon name="icon-caidan" width={20} height={20}></Icon>
+            </Box>
+            <Box>{chatSiteData?.name}</Box>
+          </Flex>
+          <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
+            <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+            <DrawerContent maxWidth={'250px'}>
+              <SlideBar
+                resetChat={resetChat}
+                name={chatSiteData?.name}
+                windowId={windowId}
+                chatId={chatId}
+                onClose={onCloseSlider}
+              />
+              <DrawerFooter px={2} backgroundColor={'blackAlpha.800'}>
+                <Button variant="white" onClick={onCloseSlider}>
+                  Cancel
+                </Button>
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
+        </Box>
+      )}
+
+      <Flex
+        {...media({ h: '100%', w: 0 }, { h: 0, w: '100%' })}
+        flex={'1 0 0'}
+        flexDirection={'column'}
+      >
         {/* 聊天内容 */}
         <Box ref={ChatBox} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
           {chatList.map((item, index) => (
