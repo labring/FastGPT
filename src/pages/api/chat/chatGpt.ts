@@ -59,6 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
+    let startTime = Date.now();
     // 发出请求
     const chatResponse = await chatAPI.createChatCompletion(
       {
@@ -69,14 +70,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stream: true
       },
       {
-        timeout: 20000,
+        timeout: 40000,
         responseType: 'stream',
         httpsAgent
       }
     );
     console.log(
-      formatPrompts.reduce((sum, item) => sum + item.content.length, 0),
-      'response success'
+      'response success',
+      `${(Date.now() - startTime) / 1000}s`,
+      formatPrompts.reduce((sum, item) => sum + item.content.length, 0)
     );
 
     // 创建响应流

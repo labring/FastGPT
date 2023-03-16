@@ -14,3 +14,9 @@ export type ChatItemType = {
 export type ChatSiteItemType = {
   status: 'loading' | 'finish';
 } & ChatItemType;
+
+export type HistoryItem = {
+  chatId: string;
+  windowId: string;
+  title: string;
+};
