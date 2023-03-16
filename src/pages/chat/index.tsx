@@ -249,9 +249,9 @@ const Chat = ({
       /* 对长度进行限制 */
       const maxContext = chatSiteData.secret.contextMaxLen;
       const requestPrompt =
-        newChatList.length > maxContext + 2
-          ? [newChatList[0], ...newChatList.slice(newChatList.length - maxContext - 1, -1)]
-          : newChatList.slice(0, newChatList.length - 1);
+        newChatList.length > maxContext + 1
+          ? newChatList.slice(newChatList.length - maxContext - 1, -1)
+          : newChatList.slice(0, -1);
 
       if (typeof fnMap[chatSiteData.chatModel] === 'function') {
         await fnMap[chatSiteData.chatModel](requestPrompt);

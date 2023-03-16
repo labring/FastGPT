@@ -99,7 +99,9 @@ const ModelEditForm = ({ model }: { model?: ModelType }) => {
             rows={4}
             maxLength={500}
             {...register('systemPrompt')}
-            placeholder={'系统的提示词，会在进入聊天时放置在第一句，用于限定模型的聊天范围'}
+            placeholder={
+              '模型默认的 prompt 词，可以通过调整该内容，生成一个限定范围的模型，更方便的去使用。'
+            }
           />
         </FormControl>
       </Card>

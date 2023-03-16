@@ -28,8 +28,11 @@ export const jsonRes = (
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }
-    // console.log(error?.response)
-    console.log('error->', error.code, error?.response?.statusText, msg);
+    // console.log(error?.response);
+    console.log('error->');
+    console.log('code:', error.code);
+    console.log('statusText:', error?.response?.statusText);
+    console.log('msg:', msg);
   }
 
   res.json({

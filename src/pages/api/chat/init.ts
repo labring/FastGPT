@@ -49,21 +49,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error;
     }
 
-    const defaultContent = model.systemPrompt
-      ? [
-          {
-            obj: 'SYSTEM',
-            value: model.systemPrompt
-          }
-        ]
-      : [];
-
     if (!history) {
       // 没有记录，创建一个
       const response = await ChatWindow.create({
         chatId,
         updateTime: Date.now(),
-        content: defaultContent
+        content: []
       });
       responseId = response._id;
     }
@@ -78,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           secret: model.security,
           chatModel: model.service.chatModel
         },
-        history: history ? history.content : defaultContent
+        history: history ? history.content : []
       }
     });
   } catch (err) {
