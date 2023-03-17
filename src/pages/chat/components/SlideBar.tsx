@@ -80,29 +80,7 @@ const SlideBar = ({
           <Box flex={'1 0 0'} w={0} className="textEllipsis">
             {item.title}
           </Box>
-          {/* <Input
-            flex={'1 0 0'}
-            w={0}
-            value={item.title}
-            variant={'unstyled'}
-            disabled={editHistoryId !== item.windowId}
-            opacity={'1 !important'}
-            cursor={`${editHistoryId !== item.windowId ? 'pointer' : 'text'} !important`}
-            onChange={(e) => {
-              updateChatHistory(item.windowId, e.target.value);
-            }}
-          /> */}
           <Box>
-            {/* <IconButton
-              icon={<EditIcon />}
-              variant={'unstyled'}
-              aria-label={'edit'}
-              size={'xs'}
-              onClick={(e) => {
-                console.log(e);
-                setEditHistoryId(item.windowId);
-              }}
-            /> */}
             <IconButton
               icon={<DeleteIcon />}
               variant={'unstyled'}
@@ -120,7 +98,14 @@ const SlideBar = ({
   );
 
   return (
-    <Box w={'100%'} h={'100%'} p={3} backgroundColor={'blackAlpha.800'} color={'white'}>
+    <Flex
+      flexDirection={'column'}
+      w={'100%'}
+      h={'100%'}
+      p={3}
+      backgroundColor={'blackAlpha.800'}
+      color={'white'}
+    >
       {/* 新对话 */}
       <Button
         w={'100%'}
@@ -133,67 +118,69 @@ const SlideBar = ({
         新对话
       </Button>
       {/* 我的模型 & 历史记录 折叠框*/}
-      {isSuccess ? (
-        <Accordion defaultIndex={[0]} allowToggle>
-          <AccordionItem borderTop={0} borderBottom={0}>
-            <AccordionButton borderRadius={'md'} pl={1}>
-              <Box as="span" flex="1" textAlign="left">
-                历史记录
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel pb={0} px={0}>
-              {hasReady && <RenderHistory />}
-            </AccordionPanel>
-          </AccordionItem>
-          <AccordionItem borderTop={0} borderBottom={0}>
-            <AccordionButton borderRadius={'md'} pl={1}>
-              <Box as="span" flex="1" textAlign="left">
-                其他模型
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel pb={4} px={0}>
-              {myModels.map((item) => (
-                <Flex
-                  key={item._id}
-                  alignItems={'center'}
-                  p={3}
-                  borderRadius={'md'}
-                  mb={2}
-                  cursor={'pointer'}
-                  _hover={{
-                    backgroundColor: 'rgba(255,255,255,0.1)'
-                  }}
-                  fontSize={'xs'}
-                  border={'1px solid transparent'}
-                  {...(item.name === name
-                    ? {
-                        borderColor: 'rgba(255,255,255,0.5)',
-                        backgroundColor: 'rgba(255,255,255,0.1)'
-                      }
-                    : {})}
-                  onClick={async () => {
-                    if (item.name === name) return;
-                    router.push(
-                      `/chat?chatId=${await generateChatWindow(item._id)}&timeStamp=${Date.now()}`
-                    );
-                    onClose();
-                  }}
-                >
-                  <ChatIcon mr={2} />
-                  <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
-                    {item.name}
-                  </Box>
-                </Flex>
-              ))}
-            </AccordionPanel>
-          </AccordionItem>
-        </Accordion>
-      ) : (
-        <RenderHistory />
-      )}
-    </Box>
+      <Box flex={'1 0 0'} h={0} overflowY={'auto'}>
+        {isSuccess ? (
+          <Accordion defaultIndex={[0]} allowToggle>
+            <AccordionItem borderTop={0} borderBottom={0}>
+              <AccordionButton borderRadius={'md'} pl={1}>
+                <Box as="span" flex="1" textAlign="left">
+                  历史记录
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+              <AccordionPanel pb={0} px={0}>
+                {hasReady && <RenderHistory />}
+              </AccordionPanel>
+            </AccordionItem>
+            <AccordionItem borderTop={0} borderBottom={0}>
+              <AccordionButton borderRadius={'md'} pl={1}>
+                <Box as="span" flex="1" textAlign="left">
+                  其他模型
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+              <AccordionPanel pb={4} px={0}>
+                {myModels.map((item) => (
+                  <Flex
+                    key={item._id}
+                    alignItems={'center'}
+                    p={3}
+                    borderRadius={'md'}
+                    mb={2}
+                    cursor={'pointer'}
+                    _hover={{
+                      backgroundColor: 'rgba(255,255,255,0.1)'
+                    }}
+                    fontSize={'xs'}
+                    border={'1px solid transparent'}
+                    {...(item.name === name
+                      ? {
+                          borderColor: 'rgba(255,255,255,0.5)',
+                          backgroundColor: 'rgba(255,255,255,0.1)'
+                        }
+                      : {})}
+                    onClick={async () => {
+                      if (item.name === name) return;
+                      router.push(
+                        `/chat?chatId=${await generateChatWindow(item._id)}&timeStamp=${Date.now()}`
+                      );
+                      onClose();
+                    }}
+                  >
+                    <ChatIcon mr={2} />
+                    <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
+                      {item.name}
+                    </Box>
+                  </Flex>
+                ))}
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
+        ) : (
+          <RenderHistory />
+        )}
+      </Box>
+    </Flex>
   );
 };
 
