@@ -10,7 +10,7 @@ import { formatModelStatus, ModelStatusEnum, OpenAiList } from '@/constants/mode
 import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import ModelEditForm from './components/ModelEditForm';
-import Icon from '@/components/Icon';
+import Icon from '@/components/Iconfont';
 import dynamic from 'next/dynamic';
 
 const Training = dynamic(() => import('./components/Training'));

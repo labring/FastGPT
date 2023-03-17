@@ -1,24 +1,23 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { connectToDatabase, ChatWindow } from '@/service/mongo';
-import type { ModelType } from '@/types/model';
+import { connectToDatabase, Chat } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { httpsAgent } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { chatId, windowId, prompt } = req.body as {
+  const { chatId, prompt } = req.body as {
     prompt: ChatItemType;
-    windowId: string;
     chatId: string;
   };
 
   try {
-    if (!windowId || !chatId || !prompt) {
+    if (!chatId || !prompt) {
       throw new Error('缺少参数');
     }
 
@@ -26,11 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { chat, userApiKey } = await authChat(chatId);
 
-    const model: ModelType = chat.modelId;
+    const model: ModelSchema = chat.modelId;
 
     // 读取对话内容
-    const prompts: ChatItemType[] = (await ChatWindow.findById(windowId)).content;
-    prompts.push(prompt);
+    const prompts = [...chat.content, prompt];
 
     // 上下文长度过滤
     const maxContext = model.security.contextMaxLen;
@@ -49,6 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         content: item.value
       })
     );
+
     // 如果有系统提示词，自动插入
     if (model.systemPrompt) {
       formatPrompts.unshift({

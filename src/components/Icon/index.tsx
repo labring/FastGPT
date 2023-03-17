@@ -1,23 +1,20 @@
-type TIconfont = {
-  name: string;
-  color?: string;
-  width?: number | string;
-  height?: number | string;
-  className?: string;
+import React from 'react';
+import type { IconProps } from '@chakra-ui/react';
+import { Icon } from '@chakra-ui/react';
+import dynamic from 'next/dynamic';
+
+const map = {
+  model: dynamic(() => import('./icons/model.svg')),
+  share: dynamic(() => import('./icons/share.svg'))
 };
 
-function Icon({ name, color = 'inherit', width = 16, height = 16, className = '' }: TIconfont) {
-  const style = {
-    fill: color,
-    width,
-    height
-  };
+const MyIcon = ({
+  name,
+  w = 'auto',
+  h = 'auto',
+  ...props
+}: { name: keyof typeof map } & IconProps) => {
+  return map[name] ? <Icon as={map[name]} w={w} h={h} {...props} /> : null;
+};
 
-  return (
-    <svg className={`icon ${className}`} aria-hidden="true" style={style}>
-      <use xlinkHref={`#${name}`}></use>
-    </svg>
-  );
-}
-
-export default Icon;
+export default MyIcon;

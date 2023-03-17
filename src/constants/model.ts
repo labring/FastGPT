@@ -1,18 +1,18 @@
-export enum OpenAiModelEnum {
+export enum ChatModelNameEnum {
   GPT35 = 'gpt-3.5-turbo',
   GPT3 = 'text-davinci-003'
 }
 export const OpenAiList = [
   {
     name: 'chatGPT',
-    model: OpenAiModelEnum.GPT35,
+    model: ChatModelNameEnum.GPT35,
     trainName: 'turbo',
     canTraining: false,
     maxToken: 4060
   },
   {
     name: 'GPT3',
-    model: OpenAiModelEnum.GPT3,
+    model: ChatModelNameEnum.GPT3,
     trainName: 'davinci',
     canTraining: true,
     maxToken: 4060

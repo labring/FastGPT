@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Model, Chat } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // 获取模型配置
-    const model: ModelType | null = await Model.findOne({
+    const model = await Model.findOne<ModelSchema>({
       _id: modelId,
       userId
     });
@@ -38,11 +38,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userId,
       modelId,
       expiredTime: Date.now() + model.security.expiredTime,
-      loadAmount: model.security.maxLoadAmount
+      loadAmount: model.security.maxLoadAmount,
+      updateTime: Date.now(),
+      content: []
     });
 
     jsonRes(res, {
-      data: response._id
+      data: response._id // 即聊天框的 ID
     });
   } catch (err) {
     jsonRes(res, {

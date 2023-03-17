@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
-import Icon from '@/components/Icon';
+import Icon from '@/components/Iconfont';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';

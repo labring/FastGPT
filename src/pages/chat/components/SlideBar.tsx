@@ -8,7 +8,7 @@ import {
   AccordionPanel,
   AccordionIcon,
   Flex,
-  Input,
+  Divider,
   IconButton
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
@@ -16,28 +16,30 @@ import { useChatStore } from '@/store/chat';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useScreen } from '@/hooks/useScreen';
+import { getToken } from '@/utils/user';
+import MyIcon from '@/components/Icon';
+import { useCopyData } from '@/utils/tools';
 
 const SlideBar = ({
   name,
-  windowId,
   chatId,
+  modelId,
   resetChat,
   onClose
 }: {
-  resetChat: () => void;
   name?: string;
-  windowId?: string;
   chatId: string;
+  modelId: string;
+  resetChat: () => void;
   onClose: () => void;
 }) => {
   const router = useRouter();
-  const { isPc } = useScreen();
+  const { copyData } = useCopyData();
   const { myModels, getMyModels } = useUserStore();
   const { chatHistory, removeChatHistoryByWindowId, generateChatWindow, updateChatHistory } =
     useChatStore();
   const { isSuccess } = useQuery(['init'], getMyModels);
   const [hasReady, setHasReady] = useState(false);
-  const [editHistoryId, setEditHistoryId] = useState<string>();
 
   useEffect(() => {
     setHasReady(true);
@@ -47,7 +49,7 @@ const SlideBar = ({
     <>
       {chatHistory.map((item) => (
         <Flex
-          key={item.windowId}
+          key={item.chatId}
           alignItems={'center'}
           p={3}
           borderRadius={'md'}
@@ -58,21 +60,15 @@ const SlideBar = ({
           }}
           fontSize={'xs'}
           border={'1px solid transparent'}
-          {...(item.chatId === chatId && item.windowId === windowId
+          {...(item.chatId === chatId
             ? {
                 borderColor: 'rgba(255,255,255,0.5)',
                 backgroundColor: 'rgba(255,255,255,0.1)'
               }
             : {})}
           onClick={() => {
-            if (
-              (item.chatId === chatId && item.windowId === windowId) ||
-              editHistoryId === item.windowId
-            )
-              return;
-            router.push(
-              `/chat?chatId=${item.chatId}&windowId=${item.windowId}&timeStamp=${Date.now()}`
-            );
+            if (item.chatId === chatId) return;
+            router.push(`/chat?chatId=${item.chatId}`);
             onClose();
           }}
         >
@@ -87,7 +83,7 @@ const SlideBar = ({
               aria-label={'edit'}
               size={'xs'}
               onClick={(e) => {
-                removeChatHistoryByWindowId(item.windowId);
+                removeChatHistoryByWindowId(item.chatId);
                 e.stopPropagation();
               }}
             />
@@ -107,16 +103,19 @@ const SlideBar = ({
       color={'white'}
     >
       {/* 新对话 */}
-      <Button
-        w={'100%'}
-        variant={'white'}
-        h={'40px'}
-        mb={4}
-        leftIcon={<AddIcon />}
-        onClick={resetChat}
-      >
-        新对话
-      </Button>
+      {getToken() && (
+        <Button
+          w={'100%'}
+          variant={'white'}
+          h={'40px'}
+          mb={4}
+          leftIcon={<AddIcon />}
+          onClick={resetChat}
+        >
+          新对话
+        </Button>
+      )}
+
       {/* 我的模型 & 历史记录 折叠框*/}
       <Box flex={'1 0 0'} h={0} overflowY={'auto'}>
         {isSuccess ? (
@@ -161,13 +160,11 @@ const SlideBar = ({
                       : {})}
                     onClick={async () => {
                       if (item.name === name) return;
-                      router.push(
-                        `/chat?chatId=${await generateChatWindow(item._id)}&timeStamp=${Date.now()}`
-                      );
+                      router.push(`/chat?chatId=${await generateChatWindow(item._id)}`);
                       onClose();
                     }}
                   >
-                    <ChatIcon mr={2} />
+                    <MyIcon name="model" mr={2} fill={'white'} w={'16px'} h={'16px'} />
                     <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
                       {item.name}
                     </Box>
@@ -177,9 +174,54 @@ const SlideBar = ({
             </AccordionItem>
           </Accordion>
         ) : (
-          <RenderHistory />
+          <>
+            <Box mb={4} textAlign={'center'}>
+              历史记录
+            </Box>
+            <RenderHistory />
+          </>
         )}
       </Box>
+
+      <Divider my={4} />
+
+      {/* 分享 */}
+      {getToken() && (
+        <Flex
+          alignItems={'center'}
+          p={2}
+          cursor={'pointer'}
+          borderRadius={'md'}
+          _hover={{
+            backgroundColor: 'rgba(255,255,255,0.2)'
+          }}
+          onClick={async () => {
+            copyData(
+              `${location.origin}/chat?chatId=${await generateChatWindow(modelId)}`,
+              '已复制分享链接'
+            );
+          }}
+        >
+          <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
+          分享空白对话
+        </Flex>
+      )}
+      <Flex
+        mt={4}
+        alignItems={'center'}
+        p={2}
+        cursor={'pointer'}
+        borderRadius={'md'}
+        _hover={{
+          backgroundColor: 'rgba(255,255,255,0.2)'
+        }}
+        onClick={async () => {
+          copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
+        }}
+      >
+        <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
+        分享当前对话
+      </Flex>
     </Flex>
   );
 };

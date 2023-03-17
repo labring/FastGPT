@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import Icon from '../Icon';
+import Icon from '../Iconfont';
 import {
   Flex,
   Drawer,
