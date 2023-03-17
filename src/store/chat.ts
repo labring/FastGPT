@@ -7,8 +7,8 @@ import { getChatSiteId } from '@/api/chat';
 type Props = {
   chatHistory: HistoryItem[];
   pushChatHistory: (e: HistoryItem) => void;
-  updateChatHistory: (windowId: string, title: string) => void;
-  removeChatHistoryByWindowId: (windowId: string) => void;
+  updateChatHistory: (chatId: string, title: string) => void;
+  removeChatHistoryByWindowId: (chatId: string) => void;
   generateChatWindow: (modelId: string) => Promise<string>;
 };
 export const useChatStore = create<Props>()(
@@ -21,17 +21,17 @@ export const useChatStore = create<Props>()(
             state.chatHistory = [item, ...state.chatHistory];
           });
         },
-        updateChatHistory(windowId: string, title: string) {
+        updateChatHistory(chatId: string, title: string) {
           set((state) => {
             state.chatHistory = state.chatHistory.map((item) => ({
               ...item,
-              title: item.windowId === windowId ? title : item.title
+              title: item.chatId === chatId ? title : item.title
             }));
           });
         },
-        removeChatHistoryByWindowId(windowId: string) {
+        removeChatHistoryByWindowId(chatId: string) {
           set((state) => {
-            state.chatHistory = state.chatHistory.filter((item) => item.windowId !== windowId);
+            state.chatHistory = state.chatHistory.filter((item) => item.chatId !== chatId);
           });
         },
         generateChatWindow(modelId: string) {

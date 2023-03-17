@@ -7,12 +7,12 @@ export interface ResponseType<T = any> {
   data: T;
 }
 
-export const jsonRes = (
+export const jsonRes = <T = any>(
   res: NextApiResponse,
   props?: {
     code?: number;
     message?: string;
-    data?: any;
+    data?: T;
     error?: any;
   }
 ) => {

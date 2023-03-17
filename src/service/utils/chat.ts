@@ -1,5 +1,6 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { Chat } from '../mongo';
+import type { ChatPopulate } from '@/types/mongoSchema';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({
@@ -11,7 +12,7 @@ export const getOpenAIApi = (apiKey: string) => {
 
 export const authChat = async (chatId: string) => {
   // 获取 chat 数据
-  const chat = await Chat.findById(chatId)
+  const chat = await Chat.findById<ChatPopulate>(chatId)
     .populate({
       path: 'modelId',
       options: {
@@ -26,7 +27,12 @@ export const authChat = async (chatId: string) => {
     });
 
   if (!chat || !chat.modelId || !chat.userId) {
-    return Promise.reject('聊天已过期');
+    return Promise.reject('模型不存在');
+  }
+
+  // 安全校验
+  if (chat.loadAmount === 0 || chat.expiredTime <= Date.now()) {
+    return Promise.reject('聊天框已过期');
   }
 
   // 获取 user 的 apiKey

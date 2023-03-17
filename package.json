@@ -47,6 +47,7 @@
     "zustand": "^4.3.5"
   },
   "devDependencies": {
+    "@svgr/webpack": "^6.5.1",
     "@types/formidable": "^2.0.5",
     "@types/jsonwebtoken": "^9.0.1",
     "@types/node": "18.14.0",

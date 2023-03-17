@@ -1,8 +1,15 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
-import { getInitChatSiteInfo, postGPT3SendPrompt, delLastMessage, postSaveChat } from '@/api/chat';
-import { ChatSiteItemType, ChatSiteType } from '@/types/chat';
+import {
+  getInitChatSiteInfo,
+  getChatSiteId,
+  postGPT3SendPrompt,
+  delLastMessage,
+  postSaveChat
+} from '@/api/chat';
+import type { InitChatResponse } from '@/api/response/chat';
+import { ChatSiteItemType } from '@/types/chat';
 import {
   Textarea,
   Box,
@@ -15,43 +22,68 @@ import {
   DrawerContent
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
-import Icon from '@/components/Icon';
+import Icon from '@/components/Iconfont';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
-import { OpenAiModelEnum } from '@/constants/model';
+import { ChatModelNameEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { useChatStore } from '@/store/chat';
 import { streamFetch } from '@/api/fetch';
 import SlideBar from './components/SlideBar';
+import { getToken } from '@/utils/user';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
 const textareaMinH = '22px';
 
-const Chat = ({
-  chatId,
-  windowId,
-  timeStamp
-}: {
-  chatId: string;
-  windowId?: string;
-  timeStamp: string;
-}) => {
+interface ChatType extends InitChatResponse {
+  history: ChatSiteItemType[];
+}
+
+const Chat = ({ chatId }: { chatId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { isPc, media } = useScreen();
+  const { setLoading } = useGlobalStore();
+  const [chatData, setChatData] = useState<ChatType>({
+    chatId: '',
+    modelId: '',
+    name: '',
+    avatar: '',
+    secret: {},
+    chatModel: '',
+    history: [],
+    isExpiredTime: false
+  }); // 聊天框整体数据
+
   const ChatBox = useRef<HTMLDivElement>(null);
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
 
-  const [chatSiteData, setChatSiteData] = useState<ChatSiteType>(); // 聊天框整体数据
-  const [chatList, setChatList] = useState<ChatSiteItemType[]>([]); // 对话内容
   const [inputVal, setInputVal] = useState(''); // 输入的内容
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
-  const isChatting = useMemo(() => chatList[chatList.length - 1]?.status === 'loading', [chatList]);
-  const lastWordHuman = useMemo(() => chatList[chatList.length - 1]?.obj === 'Human', [chatList]);
-  const { setLoading } = useGlobalStore();
+  const isChatting = useMemo(
+    () => chatData.history[chatData.history.length - 1]?.status === 'loading',
+    [chatData.history]
+  );
+  const chatWindowError = useMemo(() => {
+    if (chatData.history[chatData.history.length - 1]?.obj === 'Human') {
+      return {
+        text: '内容出现异常',
+        canDelete: true
+      };
+    }
+    if (chatData.isExpiredTime) {
+      return {
+        text: '聊天框已过期',
+        canDelete: false
+      };
+    }
+
+    return '';
+  }, [chatData]);
+
   const { pushChatHistory } = useChatStore();
 
   // 滚动到底部
@@ -67,23 +99,20 @@ const Chat = ({
 
   // 初始化聊天框
   useQuery(
-    ['initData', timeStamp],
+    ['init', chatId],
     () => {
       setLoading(true);
-      return getInitChatSiteInfo(chatId, windowId);
+      return getInitChatSiteInfo(chatId);
     },
     {
       onSuccess(res) {
-        // 可能没有 windowId，给它设置一下
-        router.replace(`/chat?chatId=${chatId}&windowId=${res.windowId}&timeStamp=${timeStamp}`);
-
-        setChatSiteData(res.chatSite);
-        setChatList(
-          res.history.map((item) => ({
+        setChatData({
+          ...res,
+          history: res.history.map((item) => ({
             ...item,
             status: 'finish'
           }))
-        );
+        });
         scrollToBottom();
       },
       onError(e: any) {
@@ -113,10 +142,18 @@ const Chat = ({
   }, []);
 
   // 重载对话
-  const resetChat = useCallback(() => {
-    router.push(`/chat?chatId=${chatId}&timeStamp=${Date.now()}`);
+  const resetChat = useCallback(async () => {
+    if (!chatData) return;
+    try {
+      router.push(`/chat?chatId=${await getChatSiteId(chatData.modelId)}`);
+    } catch (error: any) {
+      toast({
+        title: error?.message || '生成新对话失败',
+        status: 'warning'
+      });
+    }
     onCloseSlider();
-  }, [chatId, router, onCloseSlider]);
+  }, [chatData, onCloseSlider, router, toast]);
 
   // gpt3 方法
   const gpt3ChatPrompt = useCallback(
@@ -128,16 +165,17 @@ const Chat = ({
       });
 
       // 更新 AI 的内容
-      setChatList((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
+      setChatData((state) => ({
+        ...state,
+        history: state.history.map((item, index) => {
+          if (index !== state.history.length - 1) return item;
           return {
             ...item,
             status: 'finish',
             value: response
           };
         })
-      );
+      }));
     },
     [chatId]
   );
@@ -145,7 +183,6 @@ const Chat = ({
   // chatGPT
   const chatGPTPrompt = useCallback(
     async (newChatList: ChatSiteItemType[]) => {
-      if (!windowId) return;
       const prompt = {
         obj: newChatList[newChatList.length - 1].obj,
         value: newChatList[newChatList.length - 1].value
@@ -154,27 +191,27 @@ const Chat = ({
       const res = await streamFetch({
         url: '/api/chat/chatGpt',
         data: {
-          windowId,
           prompt,
           chatId
         },
         onMessage: (text: string) => {
-          setChatList((state) =>
-            state.map((item, index) => {
-              if (index !== state.length - 1) return item;
+          setChatData((state) => ({
+            ...state,
+            history: state.history.map((item, index) => {
+              if (index !== state.history.length - 1) return item;
               return {
                 ...item,
                 value: item.value + text
               };
             })
-          );
+          }));
         }
       });
 
       // 保存对话信息
       try {
         await postSaveChat({
-          windowId,
+          chatId,
           prompts: [
             prompt,
             {
@@ -193,17 +230,18 @@ const Chat = ({
       }
 
       // 设置完成状态
-      setChatList((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
+      setChatData((state) => ({
+        ...state,
+        history: state.history.map((item, index) => {
+          if (index !== state.history.length - 1) return item;
           return {
             ...item,
             status: 'finish'
           };
         })
-      );
+      }));
     },
-    [chatId, toast, windowId]
+    [chatId, toast]
   );
 
   /**
@@ -217,12 +255,12 @@ const Chat = ({
       .split('\n')
       .filter((val) => val)
       .join('\n\n');
-    if (!chatSiteData?.modelId || !val || !ChatBox.current || isChatting) {
+    if (!chatData?.modelId || !val || !ChatBox.current || isChatting) {
       return;
     }
 
     const newChatList: ChatSiteItemType[] = [
-      ...chatList,
+      ...chatData.history,
       {
         obj: 'Human',
         value: val,
@@ -236,33 +274,37 @@ const Chat = ({
     ];
 
     // 插入内容
-    setChatList(newChatList);
+    setChatData((state) => ({
+      ...state,
+      history: newChatList
+    }));
+
+    // 清空输入内容
     resetInputVal('');
     scrollToBottom();
 
     const fnMap: { [key: string]: any } = {
-      [OpenAiModelEnum.GPT35]: chatGPTPrompt,
-      [OpenAiModelEnum.GPT3]: gpt3ChatPrompt
+      [ChatModelNameEnum.GPT35]: chatGPTPrompt,
+      [ChatModelNameEnum.GPT3]: gpt3ChatPrompt
     };
 
     try {
       /* 对长度进行限制 */
-      const maxContext = chatSiteData.secret.contextMaxLen;
+      const maxContext = chatData.secret.contextMaxLen;
       const requestPrompt =
         newChatList.length > maxContext + 1
           ? newChatList.slice(newChatList.length - maxContext - 1, -1)
           : newChatList.slice(0, -1);
 
-      if (typeof fnMap[chatSiteData.chatModel] === 'function') {
-        await fnMap[chatSiteData.chatModel](requestPrompt);
+      if (typeof fnMap[chatData.chatModel] === 'function') {
+        await fnMap[chatData.chatModel](requestPrompt);
       }
 
       // 如果是 Human 第一次发送，插入历史记录
       const humanChat = newChatList.filter((item) => item.obj === 'Human');
-      if (windowId && humanChat.length === 1) {
+      if (humanChat.length === 1) {
         pushChatHistory({
           chatId,
-          windowId,
           title: humanChat[0].value
         });
       }
@@ -276,34 +318,41 @@ const Chat = ({
 
       resetInputVal(storeInput);
 
-      setChatList(newChatList.slice(0, newChatList.length - 2));
+      setChatData((state) => ({
+        ...state,
+        history: newChatList.slice(0, newChatList.length - 2)
+      }));
     }
   }, [
-    chatGPTPrompt,
-    chatList,
-    chatSiteData,
-    gpt3ChatPrompt,
     inputVal,
+    chatData.modelId,
+    chatData.history,
+    chatData.secret.contextMaxLen,
+    chatData.chatModel,
     isChatting,
     resetInputVal,
     scrollToBottom,
-    toast,
+    chatGPTPrompt,
+    gpt3ChatPrompt,
+    pushChatHistory,
     chatId,
-    windowId,
-    pushChatHistory
+    toast
   ]);
 
   // 重新编辑
   const reEdit = useCallback(async () => {
-    if (chatList[chatList.length - 1]?.obj !== 'Human') return;
+    if (chatData.history[chatData.history.length - 1]?.obj !== 'Human') return;
     // 删除数据库最后一句
-    await delLastMessage(windowId);
-    const val = chatList[chatList.length - 1].value;
+    await delLastMessage(chatId);
+    const val = chatData.history[chatData.history.length - 1].value;
 
     resetInputVal(val);
 
-    setChatList(chatList.slice(0, -1));
-  }, [chatList, resetInputVal, windowId]);
+    setChatData((state) => ({
+      ...state,
+      history: state.history.slice(0, -1)
+    }));
+  }, [chatData.history, chatId, resetInputVal]);
 
   return (
     <Flex h={'100%'} flexDirection={media('row', 'column')}>
@@ -311,9 +360,9 @@ const Chat = ({
         <Box flex={'0 0 250px'} w={0} h={'100%'}>
           <SlideBar
             resetChat={resetChat}
-            name={chatSiteData?.name}
-            windowId={windowId}
+            name={chatData?.name}
             chatId={chatId}
+            modelId={chatData.modelId}
             onClose={onCloseSlider}
           />
         </Box>
@@ -330,23 +379,18 @@ const Chat = ({
             <Box onClick={onOpenSlider}>
               <Icon name="icon-caidan" width={20} height={20}></Icon>
             </Box>
-            <Box>{chatSiteData?.name}</Box>
+            <Box>{chatData?.name}</Box>
           </Flex>
           <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
             <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
             <DrawerContent maxWidth={'250px'}>
               <SlideBar
                 resetChat={resetChat}
-                name={chatSiteData?.name}
-                windowId={windowId}
+                name={chatData?.name}
                 chatId={chatId}
+                modelId={chatData.modelId}
                 onClose={onCloseSlider}
               />
-              <DrawerFooter px={2} backgroundColor={'blackAlpha.800'}>
-                <Button variant="white" onClick={onCloseSlider}>
-                  Cancel
-                </Button>
-              </DrawerFooter>
             </DrawerContent>
           </Drawer>
         </Box>
@@ -359,7 +403,7 @@ const Chat = ({
       >
         {/* 聊天内容 */}
         <Box ref={ChatBox} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
-          {chatList.map((item, index) => (
+          {chatData.history.map((item, index) => (
             <Box
               key={index}
               py={media(9, 6)}
@@ -380,7 +424,7 @@ const Chat = ({
                   {item.obj === 'AI' ? (
                     <Markdown
                       source={item.value}
-                      isChatting={isChatting && index === chatList.length - 1}
+                      isChatting={isChatting && index === chatData.history.length - 1}
                     />
                   ) : (
                     <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
@@ -398,14 +442,17 @@ const Chat = ({
           boxShadow={'0 -14px 30px rgba(255,255,255,0.6)'}
           borderTop={media('none', '1px solid rgba(0,0,0,0.1)')}
         >
-          {lastWordHuman ? (
+          {!!chatWindowError ? (
             <Box textAlign={'center'}>
-              <Box color={'red'}>对话出现了异常</Box>
+              <Box color={'red'}>{chatWindowError.text}</Box>
               <Flex py={5} justifyContent={'center'}>
-                <Button mr={20} onClick={resetChat} colorScheme={'green'}>
-                  重开对话
-                </Button>
-                <Button onClick={reEdit}>重新编辑最后一句</Button>
+                {getToken() && <Button onClick={resetChat}>重开对话</Button>}
+
+                {chatWindowError.canDelete && (
+                  <Button ml={20} colorScheme={'green'} onClick={reEdit}>
+                    重新编辑最后一句
+                  </Button>
+                )}
               </Flex>
             </Box>
           ) : (
@@ -433,7 +480,7 @@ const Chat = ({
                 height={'22px'}
                 lineHeight={'22px'}
                 maxHeight={'150px'}
-                maxLength={chatSiteData?.secret.contentMaxLen || -1}
+                maxLength={chatData?.secret.contentMaxLen || -1}
                 overflowY={'auto'}
                 onChange={(e) => {
                   const textarea = e.target;
@@ -480,10 +527,8 @@ export default Chat;
 
 export async function getServerSideProps(context: any) {
   const chatId = context.query?.chatId || '';
-  const windowId = context.query?.windowId || '';
-  const timeStamp = context.query?.timeStamp || `${Date.now()}`;
 
   return {
-    props: { chatId, windowId, timeStamp }
+    props: { chatId }
   };
 }

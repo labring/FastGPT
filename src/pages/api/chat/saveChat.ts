@@ -1,24 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { ChatItemType } from '@/types/chat';
-import { connectToDatabase, ChatWindow } from '@/service/mongo';
+import { connectToDatabase, Chat } from '@/service/mongo';
 
 /* 聊天内容存存储 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { windowId, prompts } = req.body as {
-      windowId: string;
+    const { chatId, prompts } = req.body as {
+      chatId: string;
       prompts: ChatItemType[];
     };
 
-    if (!windowId || !prompts) {
+    if (!chatId || !prompts) {
       throw new Error('缺少参数');
     }
 
     await connectToDatabase();
 
     // 存入库
-    await ChatWindow.findByIdAndUpdate(windowId, {
+    await Chat.findByIdAndUpdate(chatId, {
       $push: {
         content: {
           $each: prompts.map((item) => ({

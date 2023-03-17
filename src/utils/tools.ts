@@ -6,15 +6,20 @@ import { useToast } from '@/hooks/useToast';
  */
 export const useCopyData = () => {
   const { toast } = useToast();
+
   return {
-    copyData: (data: string, title: string = '复制成功') => {
+    copyData: async (data: string, title: string = '复制成功') => {
       try {
-        const textarea = document.createElement('textarea');
-        textarea.value = data;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(data);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = data;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
         toast({
           title,
           status: 'success',

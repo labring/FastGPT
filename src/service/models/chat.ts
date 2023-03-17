@@ -20,7 +20,24 @@ const ChatSchema = new Schema({
     // 剩余加载次数
     type: Number,
     required: true
-  }
+  },
+  updateTime: {
+    type: Number,
+    required: true
+  },
+  content: [
+    {
+      obj: {
+        type: String,
+        required: true,
+        enum: ['Human', 'AI', 'SYSTEM']
+      },
+      value: {
+        type: String,
+        required: true
+      }
+    }
+  ]
 });
 
 export const Chat = models['chat'] || model('chat', ChatSchema);

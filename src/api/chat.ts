@@ -1,6 +1,6 @@
 import { GET, POST, DELETE } from './request';
-import { ChatItemType, ChatSiteType, ChatSiteItemType } from '@/types/chat';
-import axios from 'axios';
+import type { ChatItemType, ChatSiteItemType } from '@/types/chat';
+import type { InitChatResponse } from './response/chat';
 
 /**
  * 获取一个聊天框的ID
@@ -10,12 +10,8 @@ export const getChatSiteId = (modelId: string) => GET<string>(`/chat/generate?mo
 /**
  * 获取初始化聊天内容
  */
-export const getInitChatSiteInfo = (chatId: string, windowId: string = '') =>
-  GET<{
-    windowId: string;
-    chatSite: ChatSiteType;
-    history: ChatItemType[];
-  }>(`/chat/init?chatId=${chatId}&windowId=${windowId}`);
+export const getInitChatSiteInfo = (chatId: string) =>
+  GET<InitChatResponse>(`/chat/init?chatId=${chatId}`);
 
 /**
  * 发送 GPT3 prompt
@@ -38,11 +34,10 @@ export const postGPT3SendPrompt = ({
 /**
  * 存储一轮对话
  */
-export const postSaveChat = (data: { windowId: string; prompts: ChatItemType[] }) =>
+export const postSaveChat = (data: { chatId: string; prompts: ChatItemType[] }) =>
   POST('/chat/saveChat', data);
 
 /**
  * 删除最后一句
  */
-export const delLastMessage = (windowId?: string) =>
-  windowId ? DELETE(`/chat/delLastMessage?windowId=${windowId}`) : null;
+export const delLastMessage = (chatId: string) => DELETE(`/chat/delLastMessage?chatId=${chatId}`);

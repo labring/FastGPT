@@ -1,9 +1,8 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Chat } from '@/service/mongo';
-import type { ModelType } from '@/types/model';
-import { getOpenAIApi } from '@/service/utils/chat';
+import { connectToDatabase } from '@/service/mongo';
+import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
 import { httpsAgent } from '@/service/utils/tools';
 
@@ -18,35 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    // 获取 chat 数据
-    const chat = await Chat.findById(chatId)
-      .populate({
-        path: 'modelId',
-        options: {
-          strictPopulate: false
-        }
-      })
-      .populate({
-        path: 'userId',
-        options: {
-          strictPopulate: false
-        }
-      });
+    const { chat, userApiKey } = await authChat(chatId);
 
-    if (!chat || !chat.modelId || !chat.userId) {
-      throw new Error('聊天已过期');
-    }
-
-    const model: ModelType = chat.modelId;
-
-    // 获取 user 的 apiKey
-    const user = chat.userId;
-
-    const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
-
-    if (!userApiKey) {
-      throw new Error('缺少ApiKey, 无法请求');
-    }
+    const model = chat.modelId;
 
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
