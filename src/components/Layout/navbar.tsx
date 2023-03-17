@@ -45,12 +45,12 @@ const Navbar = ({
             flexDirection={'column'}
             alignItems={'center'}
             justifyContent={'center'}
-            onClick={() =>
-              !item.activeLink.includes(router.pathname) &&
+            onClick={() => {
+              if (item.link === router.pathname) return;
               router.push(item.link, undefined, {
                 shallow: true
-              })
-            }
+              });
+            }}
             cursor={'pointer'}
             fontSize={'sm'}
             w={'60px'}

@@ -57,6 +57,7 @@ const NavbarPhone = ({
                 alignItems={'center'}
                 justifyContent={'center'}
                 onClick={() => {
+                  if (item.link === router.pathname) return;
                   router.push(item.link);
                   onClose();
                 }}
