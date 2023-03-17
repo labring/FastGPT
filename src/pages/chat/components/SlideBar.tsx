@@ -98,17 +98,18 @@ const SlideBar = ({
       flexDirection={'column'}
       w={'100%'}
       h={'100%'}
-      p={3}
+      py={3}
       backgroundColor={'blackAlpha.800'}
       color={'white'}
     >
       {/* 新对话 */}
       {getToken() && (
         <Button
-          w={'100%'}
+          w={'90%'}
           variant={'white'}
           h={'40px'}
           mb={4}
+          mx={'auto'}
           leftIcon={<AddIcon />}
           onClick={resetChat}
         >
@@ -117,7 +118,7 @@ const SlideBar = ({
       )}
 
       {/* 我的模型 & 历史记录 折叠框*/}
-      <Box flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <Box flex={'1 0 0'} px={3} h={0} overflowY={'auto'}>
         {isSuccess ? (
           <Accordion defaultIndex={[0]} allowToggle>
             <AccordionItem borderTop={0} borderBottom={0}>
@@ -185,9 +186,30 @@ const SlideBar = ({
 
       <Divider my={4} />
 
-      {/* 分享 */}
-      {getToken() && (
+      <Box px={3}>
+        {/* 分享 */}
+        {getToken() && (
+          <Flex
+            alignItems={'center'}
+            p={2}
+            cursor={'pointer'}
+            borderRadius={'md'}
+            _hover={{
+              backgroundColor: 'rgba(255,255,255,0.2)'
+            }}
+            onClick={async () => {
+              copyData(
+                `${location.origin}/chat?chatId=${await generateChatWindow(modelId)}`,
+                '已复制分享链接'
+              );
+            }}
+          >
+            <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
+            分享空白对话
+          </Flex>
+        )}
         <Flex
+          mt={4}
           alignItems={'center'}
           p={2}
           cursor={'pointer'}
@@ -196,32 +218,13 @@ const SlideBar = ({
             backgroundColor: 'rgba(255,255,255,0.2)'
           }}
           onClick={async () => {
-            copyData(
-              `${location.origin}/chat?chatId=${await generateChatWindow(modelId)}`,
-              '已复制分享链接'
-            );
+            copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
           }}
         >
           <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
-          分享空白对话
+          分享当前对话
         </Flex>
-      )}
-      <Flex
-        mt={4}
-        alignItems={'center'}
-        p={2}
-        cursor={'pointer'}
-        borderRadius={'md'}
-        _hover={{
-          backgroundColor: 'rgba(255,255,255,0.2)'
-        }}
-        onClick={async () => {
-          copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
-        }}
-      >
-        <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
-        分享当前对话
-      </Flex>
+      </Box>
     </Flex>
   );
 };
