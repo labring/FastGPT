@@ -17,7 +17,6 @@ import {
   Button,
   useDisclosure,
   Drawer,
-  DrawerFooter,
   DrawerOverlay,
   DrawerContent
 } from '@chakra-ui/react';
@@ -31,6 +30,7 @@ import { useGlobalStore } from '@/store/global';
 import { useChatStore } from '@/store/chat';
 import { streamFetch } from '@/api/fetch';
 import SlideBar from './components/SlideBar';
+import Empty from './components/Empty';
 import { getToken } from '@/utils/user';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
@@ -433,12 +433,13 @@ const Chat = ({ chatId }: { chatId: string }) => {
               </Flex>
             </Box>
           ))}
+          {chatData.history.length === 0 && <Empty />}
         </Box>
         {/* 发送区 */}
         <Box
           m={media('20px auto', '0 auto')}
-          w={media('100vw', '100%')}
-          maxW={media('750px', 'auto')}
+          w={'100%'}
+          maxW={media('min(750px, 100%)', 'auto')}
           boxShadow={'0 -14px 30px rgba(255,255,255,0.6)'}
           borderTop={media('none', '1px solid rgba(0,0,0,0.1)')}
         >
