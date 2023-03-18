@@ -107,6 +107,23 @@ const SlideBar = ({
     </>
   );
 
+  const RenderButton = ({ onClick, children }: { onClick: () => void; children: JSX.Element }) => (
+    <Box px={3} mb={3}>
+      <Flex
+        alignItems={'center'}
+        p={2}
+        cursor={'pointer'}
+        borderRadius={'md'}
+        _hover={{
+          backgroundColor: 'rgba(255,255,255,0.2)'
+        }}
+        onClick={onClick}
+      >
+        {children}
+      </Flex>
+    </Box>
+  );
+
   return (
     <Flex
       flexDirection={'column'}
@@ -193,24 +210,24 @@ const SlideBar = ({
 
       <Divider my={4} />
 
-      <Box px={3}>
-        <Flex
-          alignItems={'center'}
-          p={2}
-          cursor={'pointer'}
-          borderRadius={'md'}
-          _hover={{
-            backgroundColor: 'rgba(255,255,255,0.2)'
-          }}
-          onClick={() => {
-            onOpenShare();
-            onClose();
-          }}
-        >
+      <RenderButton onClick={() => router.push('/')}>
+        <>
+          <MyIcon name="home" fill={'white'} w={'18px'} h={'18px'} mr={4} />
+          首页
+        </>
+      </RenderButton>
+
+      <RenderButton
+        onClick={() => {
+          onOpenShare();
+          onClose();
+        }}
+      >
+        <>
           <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
-          分享对话
-        </Flex>
-      </Box>
+          分享
+        </>
+      </RenderButton>
 
       {/* 分享提示modal */}
       <Modal isOpen={isOpenShare} onClose={onCloseShare}>
