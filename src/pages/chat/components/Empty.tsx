@@ -22,7 +22,7 @@ const Empty = ({ intro }: { intro: string }) => {
       {!!intro && (
         <Card p={4} mb={10}>
           <Header>模型介绍</Header>
-          <Box>{intro}</Box>
+          <Box whiteSpace={'pre-line'}>{intro}</Box>
         </Card>
       )}
       <Card p={4} mb={10}>

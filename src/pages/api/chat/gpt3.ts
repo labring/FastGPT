@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: model.service.modelName,
         prompt: formatPrompt,
         temperature: temperature,
-        max_tokens: modelConstantsData.maxToken,
+        // max_tokens: modelConstantsData.maxToken,
         top_p: 1,
         frequency_penalty: 0,
         presence_penalty: 0.6,

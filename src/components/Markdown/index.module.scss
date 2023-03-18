@@ -55,7 +55,7 @@
 .markdown h6 {
   cursor: text;
   font-weight: bold;
-  margin: 20px 0 10px;
+  margin: 10px 0;
   padding: 0;
   position: relative;
 }
@@ -130,7 +130,7 @@
 .markdown dl,
 .markdown table,
 .markdown pre {
-  margin: 15px 0;
+  margin: 10px 0;
 }
 .markdown hr {
   background: url('https://a248.e.akamai.net/assets.github.com/assets/primer/markdown/dirty-shade-350cca8f57223ebd53603021b2e670f4f319f1b7.png')
@@ -351,10 +351,14 @@
 }
 .markdown {
   text-align: justify;
-  word-break: break-all;
   overflow-y: hidden;
   tab-size: 4;
   word-spacing: normal;
+  word-break: break-all;
+
+  p {
+    white-space: pre-line;
+  }
 
   pre {
     display: block;

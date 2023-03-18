@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         model: model.service.chatModel,
         temperature: temperature,
-        max_tokens: modelConstantsData.maxToken,
+        // max_tokens: modelConstantsData.maxToken,
         messages: formatPrompts,
         stream: true
       },
