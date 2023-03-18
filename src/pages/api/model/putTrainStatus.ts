@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Model, Training } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
-import type { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { TrainingItemType } from '@/types/training';
 import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
 import { OpenAiTuneStatusEnum } from '@/service/constants/training';
@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 获取模型
-    const model: ModelType | null = await Model.findById(modelId);
+    const model = await Model.findById<ModelSchema>(modelId);
 
     if (!model || model.status !== 'training') {
       throw new Error('模型不在训练中');

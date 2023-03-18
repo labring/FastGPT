@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button } from '@chakra-ui/react';
-import { AddIcon, ChatIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
+import { AddIcon, ChatIcon, DeleteIcon } from '@chakra-ui/icons';
 import {
+  Box,
+  Button,
   Accordion,
   AccordionItem,
   AccordionButton,
@@ -9,16 +10,26 @@ import {
   AccordionIcon,
   Flex,
   Divider,
-  IconButton
+  IconButton,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import { useScreen } from '@/hooks/useScreen';
 import { getToken } from '@/utils/user';
 import MyIcon from '@/components/Icon';
 import { useCopyData } from '@/utils/tools';
+import Markdown from '@/components/Markdown';
+import { shareHint } from '@/constants/common';
+import { getChatSiteId } from '@/api/chat';
 
 const SlideBar = ({
   name,
@@ -36,10 +47,13 @@ const SlideBar = ({
   const router = useRouter();
   const { copyData } = useCopyData();
   const { myModels, getMyModels } = useUserStore();
-  const { chatHistory, removeChatHistoryByWindowId, generateChatWindow, updateChatHistory } =
-    useChatStore();
-  const { isSuccess } = useQuery(['init'], getMyModels);
+  const { chatHistory, removeChatHistoryByWindowId } = useChatStore();
   const [hasReady, setHasReady] = useState(false);
+  const { isOpen: isOpenShare, onOpen: onOpenShare, onClose: onCloseShare } = useDisclosure();
+
+  const { isSuccess } = useQuery(['init'], getMyModels, {
+    cacheTime: 5 * 60 * 1000
+  });
 
   useEffect(() => {
     setHasReady(true);
@@ -119,19 +133,8 @@ const SlideBar = ({
 
       {/* 我的模型 & 历史记录 折叠框*/}
       <Box flex={'1 0 0'} px={3} h={0} overflowY={'auto'}>
-        {isSuccess ? (
-          <Accordion defaultIndex={[0]} allowToggle>
-            <AccordionItem borderTop={0} borderBottom={0}>
-              <AccordionButton borderRadius={'md'} pl={1}>
-                <Box as="span" flex="1" textAlign="left">
-                  历史记录
-                </Box>
-                <AccordionIcon />
-              </AccordionButton>
-              <AccordionPanel pb={0} px={0}>
-                {hasReady && <RenderHistory />}
-              </AccordionPanel>
-            </AccordionItem>
+        <Accordion defaultIndex={[0]} allowToggle>
+          {isSuccess && (
             <AccordionItem borderTop={0} borderBottom={0}>
               <AccordionButton borderRadius={'md'} pl={1}>
                 <Box as="span" flex="1" textAlign="left">
@@ -161,7 +164,7 @@ const SlideBar = ({
                       : {})}
                     onClick={async () => {
                       if (item.name === name) return;
-                      router.push(`/chat?chatId=${await generateChatWindow(item._id)}`);
+                      router.push(`/chat?chatId=${await getChatSiteId(item._id)}`);
                       onClose();
                     }}
                   >
@@ -173,43 +176,25 @@ const SlideBar = ({
                 ))}
               </AccordionPanel>
             </AccordionItem>
-          </Accordion>
-        ) : (
-          <>
-            <Box mb={4} textAlign={'center'}>
-              历史记录
-            </Box>
-            <RenderHistory />
-          </>
-        )}
+          )}
+          <AccordionItem borderTop={0} borderBottom={0}>
+            <AccordionButton borderRadius={'md'} pl={1}>
+              <Box as="span" flex="1" textAlign="left">
+                历史记录
+              </Box>
+              <AccordionIcon />
+            </AccordionButton>
+            <AccordionPanel pb={0} px={0}>
+              {hasReady && <RenderHistory />}
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       </Box>
 
       <Divider my={4} />
 
       <Box px={3}>
-        {/* 分享 */}
-        {getToken() && (
-          <Flex
-            alignItems={'center'}
-            p={2}
-            cursor={'pointer'}
-            borderRadius={'md'}
-            _hover={{
-              backgroundColor: 'rgba(255,255,255,0.2)'
-            }}
-            onClick={async () => {
-              copyData(
-                `${location.origin}/chat?chatId=${await generateChatWindow(modelId)}`,
-                '已复制分享链接'
-              );
-            }}
-          >
-            <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
-            分享空白对话
-          </Flex>
-        )}
         <Flex
-          mt={4}
           alignItems={'center'}
           p={2}
           cursor={'pointer'}
@@ -217,14 +202,57 @@ const SlideBar = ({
           _hover={{
             backgroundColor: 'rgba(255,255,255,0.2)'
           }}
-          onClick={async () => {
-            copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
+          onClick={() => {
+            onOpenShare();
+            onClose();
           }}
         >
           <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
-          分享当前对话
+          分享对话
         </Flex>
       </Box>
+
+      {/* 分享提示modal */}
+      <Modal isOpen={isOpenShare} onClose={onCloseShare}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>分享对话</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Markdown source={shareHint} />
+          </ModalBody>
+
+          <ModalFooter>
+            <Button colorScheme="gray" variant={'outline'} mr={3} onClick={onCloseShare}>
+              Close
+            </Button>
+            {getToken() && (
+              <Button
+                variant="outline"
+                mr={3}
+                onClick={async () => {
+                  copyData(
+                    `${location.origin}/chat?chatId=${await getChatSiteId(modelId)}`,
+                    '已复制分享链接'
+                  );
+                  onCloseShare();
+                }}
+              >
+                分享空白对话
+              </Button>
+            )}
+
+            <Button
+              onClick={() => {
+                copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
+                onCloseShare();
+              }}
+            >
+              分享当前对话
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Flex>
   );
 };

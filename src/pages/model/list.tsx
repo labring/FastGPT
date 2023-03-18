@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Button, Flex, Card } from '@chakra-ui/react';
 import { getChatSiteId } from '@/api/chat';
-import { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { useRouter } from 'next/router';
 import ModelTable from './components/ModelTable';
 import ModelPhoneList from './components/ModelPhoneList';
@@ -27,7 +27,7 @@ const ModelList = () => {
 
   /* 创建成功回调 */
   const createModelSuccess = useCallback(
-    (data: ModelType) => {
+    (data: ModelSchema) => {
       setMyModels([data, ...myModels]);
     },
     [myModels, setMyModels]

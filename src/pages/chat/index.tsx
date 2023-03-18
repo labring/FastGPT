@@ -51,6 +51,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
     modelId: '',
     name: '',
     avatar: '',
+    intro: '',
     secret: {},
     chatModel: '',
     history: [],
@@ -113,7 +114,11 @@ const Chat = ({ chatId }: { chatId: string }) => {
             status: 'finish'
           }))
         });
-        scrollToBottom();
+        if (res.history.length > 0) {
+          setTimeout(() => {
+            scrollToBottom();
+          }, 500);
+        }
       },
       onError(e: any) {
         toast({
@@ -433,7 +438,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               </Flex>
             </Box>
           ))}
-          {chatData.history.length === 0 && <Empty />}
+          {chatData.history.length === 0 && <Empty intro={chatData.intro} />}
         </Box>
         {/* 发送区 */}
         <Box

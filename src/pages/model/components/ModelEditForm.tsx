@@ -1,86 +1,37 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { Grid, Box, Card, Flex, Button, FormControl, Input, Textarea } from '@chakra-ui/react';
-import type { ModelType } from '@/types/model';
-import { useForm } from 'react-hook-form';
-import { useToast } from '@/hooks/useToast';
-import { putModelById } from '@/api/model';
-import { useScreen } from '@/hooks/useScreen';
-import { useGlobalStore } from '@/store/global';
+import React, { useState } from 'react';
+import {
+  Box,
+  Card,
+  Flex,
+  FormControl,
+  Input,
+  Textarea,
+  Slider,
+  SliderTrack,
+  SliderFilledTrack,
+  SliderThumb,
+  SliderMark,
+  Tooltip
+} from '@chakra-ui/react';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import type { ModelSchema } from '@/types/mongoSchema';
+import { UseFormReturn } from 'react-hook-form';
 
-const ModelEditForm = ({ model }: { model?: ModelType }) => {
-  const isInit = useRef(false);
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors }
-  } = useForm<ModelType>();
-  const { setLoading } = useGlobalStore();
-  const { toast } = useToast();
-  const { media } = useScreen();
-
-  const onclickSave = useCallback(
-    async (data: ModelType) => {
-      setLoading(true);
-      try {
-        await putModelById(data._id, {
-          name: data.name,
-          systemPrompt: data.systemPrompt,
-          service: data.service,
-          security: data.security
-        });
-        toast({
-          title: '更新成功',
-          status: 'success'
-        });
-      } catch (err) {
-        console.log('error->', err);
-        toast({
-          title: err as string,
-          status: 'success'
-        });
-      }
-      setLoading(false);
-    },
-    [setLoading, toast]
-  );
-  const submitError = useCallback(() => {
-    // deep search message
-    const deepSearch = (obj: any): string => {
-      if (!obj) return '提交表单错误';
-      if (!!obj.message) {
-        return obj.message;
-      }
-      return deepSearch(Object.values(obj)[0]);
-    };
-    toast({
-      title: deepSearch(errors),
-      status: 'error',
-      duration: 4000,
-      isClosable: true
-    });
-  }, [errors, toast]);
-
-  /* model 只会改变一次 */
-  useEffect(() => {
-    if (model && !isInit.current) {
-      reset(model);
-      isInit.current = true;
-    }
-  }, [model, reset]);
+const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> }) => {
+  const { register, setValue, getValues } = formHooks;
+  const [refresh, setRefresh] = useState(false);
 
   return (
-    <Grid gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
+    <>
       <Card p={4}>
         <Flex justifyContent={'space-between'} alignItems={'center'}>
-          <Box fontWeight={'bold'} fontSize={'lg'}>
-            修改模型信息
-          </Box>
-          <Button onClick={handleSubmit(onclickSave, submitError)}>保存</Button>
+          <Box fontWeight={'bold'}>基本信息</Box>
         </Flex>
-        <FormControl mt={5}>
+        <FormControl mt={4}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 80px'}>展示名称:</Box>
+            <Box flex={'0 0 50px'} w={0}>
+              名称:
+            </Box>
             <Input
               {...register('name', {
                 required: '展示名称不能为空'
@@ -88,30 +39,79 @@ const ModelEditForm = ({ model }: { model?: ModelType }) => {
             ></Input>
           </Flex>
         </FormControl>
-        <FormControl mt={5}>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 80px'}>对话模型:</Box>
-            <Box>{model?.service.modelName}</Box>
-          </Flex>
-        </FormControl>
-        <FormControl mt={5}>
+        <FormControl mt={4}>
+          <Box mb={1}>介绍:</Box>
           <Textarea
-            rows={4}
+            rows={5}
             maxLength={500}
-            {...register('systemPrompt')}
-            placeholder={
-              '模型默认的 prompt 词，可以通过调整该内容，生成一个限定范围的模型，更方便的去使用。'
-            }
+            {...register('intro')}
+            placeholder={'模型的介绍，仅做展示，不影响模型的效果'}
           />
         </FormControl>
       </Card>
       <Card p={4}>
-        <Box fontWeight={'bold'} fontSize={'lg'}>
-          安全策略
+        <Box fontWeight={'bold'}>模型效果</Box>
+        <FormControl mt={4}>
+          <Flex alignItems={'center'}>
+            <Box flex={'0 0 80px'} w={0}>
+              <Box as={'span'} mr={2}>
+                温度
+              </Box>
+              <Tooltip label={'温度越高，模型的发散能力越强；温度越低，内容越严谨。'}>
+                <QuestionOutlineIcon />
+              </Tooltip>
+            </Box>
+
+            <Slider
+              aria-label="slider-ex-1"
+              min={1}
+              max={10}
+              step={1}
+              value={getValues('temperature')}
+              onChange={(e) => {
+                setValue('temperature', e);
+                setRefresh(!refresh);
+              }}
+            >
+              <SliderMark
+                value={getValues('temperature')}
+                textAlign="center"
+                bg="blue.500"
+                color="white"
+                w={'18px'}
+                h={'18px'}
+                borderRadius={'100px'}
+                fontSize={'xs'}
+                transform={'translate(-50%, -200%)'}
+              >
+                {getValues('temperature')}
+              </SliderMark>
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb />
+            </Slider>
+          </Flex>
+        </FormControl>
+        <Box mt={4}>
+          <Box mb={1}>系统提示词</Box>
+          <Textarea
+            rows={6}
+            maxLength={500}
+            {...register('systemPrompt')}
+            placeholder={
+              '模型默认的 prompt 词，通过调整该内容，可以生成一个限定范围的模型。\n\n注意，改功能会影响对话的整体朝向！'
+            }
+          />
         </Box>
+      </Card>
+      <Card p={4}>
+        <Box fontWeight={'bold'}>安全策略</Box>
         <FormControl mt={2}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 120px'}>单句最大长度:</Box>
+            <Box flex={'0 0 120px'} w={0}>
+              单句最大长度:
+            </Box>
             <Input
               flex={1}
               type={'number'}
@@ -132,7 +132,9 @@ const ModelEditForm = ({ model }: { model?: ModelType }) => {
         </FormControl>
         <FormControl mt={5}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 120px'}>上下文最大长度:</Box>
+            <Box flex={'0 0 120px'} w={0}>
+              上下文最大长度:
+            </Box>
             <Input
               flex={1}
               type={'number'}
@@ -153,7 +155,9 @@ const ModelEditForm = ({ model }: { model?: ModelType }) => {
         </FormControl>
         <FormControl mt={5}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 120px'}>聊天过期时间:</Box>
+            <Box flex={'0 0 120px'} w={0}>
+              聊天过期时间:
+            </Box>
             <Input
               flex={1}
               type={'number'}
@@ -175,7 +179,9 @@ const ModelEditForm = ({ model }: { model?: ModelType }) => {
         </FormControl>
         <FormControl mt={5} pb={5}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 130px'}>聊天最大加载次数:</Box>
+            <Box flex={'0 0 130px'} w={0}>
+              聊天最大加载次数:
+            </Box>
             <Box flex={1}>
               <Input
                 type={'number'}
@@ -196,7 +202,7 @@ const ModelEditForm = ({ model }: { model?: ModelType }) => {
           </Flex>
         </FormControl>
       </Card>
-    </Grid>
+    </>
   );
 };
 

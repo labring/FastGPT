@@ -8,6 +8,7 @@ import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
+import { ModelList } from '@/constants/model';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -56,6 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // 计算温度
+    const modelConstantsData = ModelList['openai'].find(
+      (item) => item.model === model.service.modelName
+    );
+    if (!modelConstantsData) {
+      throw new Error('模型异常');
+    }
+    const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
+
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey);
     let startTime = Date.now();
@@ -63,8 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const chatResponse = await chatAPI.createChatCompletion(
       {
         model: model.service.chatModel,
-        temperature: 1,
-        // max_tokens: model.security.contentMaxLen,
+        temperature: temperature,
+        max_tokens: modelConstantsData.maxToken,
         messages: formatPrompts,
         stream: true
       },

@@ -7,7 +7,7 @@ import formidable from 'formidable';
 import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
 import { join } from 'path';
 import fs from 'fs';
-import type { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import type { OpenAIApi } from 'openai';
 import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
 import { httpsAgent } from '@/service/utils/tools';
@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 获取模型的状态
-    const model: ModelType | null = await Model.findById(modelId);
+    const model = await Model.findById<ModelSchema>(modelId);
 
     if (!model || model.status !== 'running') {
       throw new Error('模型正忙');

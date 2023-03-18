@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Box, Button, Flex, Tag } from '@chakra-ui/react';
-import type { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { formatModelStatus } from '@/constants/model';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
@@ -9,7 +9,7 @@ const ModelPhoneList = ({
   models,
   handlePreviewChat
 }: {
-  models: ModelType[];
+  models: ModelSchema[];
   handlePreviewChat: (_: string) => void;
 }) => {
   const router = useRouter();

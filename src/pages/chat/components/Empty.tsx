@@ -1,23 +1,44 @@
 import React from 'react';
-import { Card, Flex, Box } from '@chakra-ui/react';
+import { Card, Box, Mark } from '@chakra-ui/react';
+import { versionIntro, chatProblem } from '@/constants/common';
+import Markdown from '@/components/Markdown';
 
-const Empty = () => {
+const Empty = ({ intro }: { intro: string }) => {
+  const Header = ({ children }: { children: string }) => (
+    <Box fontSize={'lg'} fontWeight={'bold'} textAlign={'center'} pb={2}>
+      {children}
+    </Box>
+  );
   return (
-    <Flex h={'100%'} alignItems={'center'} justifyContent={'center'}>
-      <Card p={5} w={'70%'}>
-        <Box fontSize={'xl'} fontWeight={'bold'} textAlign={'center'} pb={2}>
-          Fast Gpt version1.3
-        </Box>
-        <Box>
-          更新了聊天的数据结构，如果出现问题，请手动删除左侧旧的历史记录，并重新从模型页生成对话框进入。
-        </Box>
-        <Box>分享聊天使用的是分享者的 Api Key 进行收费，请确认分享安全</Box>
-        <br />
-        <Box>分享空白聊天，会分享一个该模型的空白聊天页</Box>
-        <br />
-        <Box>分享当前聊天，会把当前聊天的内容分享出去，请注意不会多人同时使用一个对话框</Box>
+    <Box
+      minH={'100%'}
+      w={'85%'}
+      maxW={'600px'}
+      m={'auto'}
+      py={'5vh'}
+      alignItems={'center'}
+      justifyContent={'center'}
+    >
+      {!!intro && (
+        <Card p={4} mb={10}>
+          <Header>模型介绍</Header>
+          <Box>{intro}</Box>
+        </Card>
+      )}
+      <Card p={4} mb={10}>
+        <Header>常见问题</Header>
+        <Markdown source={chatProblem} />
       </Card>
-    </Flex>
+      {/* version intro */}
+      <Card p={4}>
+        <Header>Fast Gpt version1.4</Header>
+        <Box>
+          聊天的数据结构发生了比较大的改动。如果出现问题，请手动删除左侧旧的历史记录，并重新从模型页生成对话框进入。
+        </Box>
+        <br />
+        <Markdown source={versionIntro} />
+      </Card>
+    </Box>
   );
 };
 

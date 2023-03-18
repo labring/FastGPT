@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import type { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { setToken } from '@/utils/user';
 import { getMyModels } from '@/api/model';
 
@@ -10,9 +10,9 @@ type State = {
   userInfo: UserType | null;
   setUserInfo: (user: UserType, token?: string) => void;
   updateUserInfo: (user: UserUpdateParams) => void;
-  myModels: ModelType[];
+  myModels: ModelSchema[];
   getMyModels: () => void;
-  setMyModels: (data: ModelType[]) => void;
+  setMyModels: (data: ModelSchema[]) => void;
 };
 
 export const useUserStore = create<State>()(
@@ -42,7 +42,7 @@ export const useUserStore = create<State>()(
           });
           return res;
         }),
-      setMyModels(data: ModelType[]) {
+      setMyModels(data: ModelSchema[]) {
         set((state) => {
           state.myModels = data;
         });

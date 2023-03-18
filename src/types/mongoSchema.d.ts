@@ -25,15 +25,17 @@ export interface ModelSchema {
   name: string;
   avatar: string;
   systemPrompt: string;
+  intro: string;
   userId: string;
   status: `${ModelStatusEnum}`;
   updateTime: number;
   trainingTimes: number;
+  temperature: number;
   service: {
     company: ServiceName;
-    trainId: string;
-    chatModel: `${ChatModelNameEnum}`;
-    modelName: string;
+    trainId: string; // 训练的模型，训练后就是训练的模型id
+    chatModel: string; // 聊天时用的模型，训练后就是训练的模型
+    modelName: `${ChatModelNameEnum}`; // 底层模型名称，不会变
   };
   security: {
     domain: string[];

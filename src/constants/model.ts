@@ -1,23 +1,37 @@
+import type { ServiceName } from '@/types/mongoSchema';
+import { ModelSchema } from '../types/mongoSchema';
+
 export enum ChatModelNameEnum {
   GPT35 = 'gpt-3.5-turbo',
   GPT3 = 'text-davinci-003'
 }
-export const OpenAiList = [
-  {
-    name: 'chatGPT',
-    model: ChatModelNameEnum.GPT35,
-    trainName: 'turbo',
-    canTraining: false,
-    maxToken: 4060
-  },
-  {
-    name: 'GPT3',
-    model: ChatModelNameEnum.GPT3,
-    trainName: 'davinci',
-    canTraining: true,
-    maxToken: 4060
-  }
-];
+
+export type ModelConstantsData = {
+  name: string;
+  model: `${ChatModelNameEnum}`;
+  trainName: string; // 空字符串代表不能训练
+  maxToken: number;
+  maxTemperature: number;
+};
+
+export const ModelList: Record<ServiceName, ModelConstantsData[]> = {
+  openai: [
+    {
+      name: 'chatGPT',
+      model: ChatModelNameEnum.GPT35,
+      trainName: 'turbo',
+      maxToken: 4000,
+      maxTemperature: 2
+    },
+    {
+      name: 'GPT3',
+      model: ChatModelNameEnum.GPT3,
+      trainName: 'davinci',
+      maxToken: 4000,
+      maxTemperature: 2
+    }
+  ]
+};
 
 export enum TrainingStatusEnum {
   pending = 'pending',
@@ -49,5 +63,31 @@ export const formatModelStatus = {
   [ModelStatusEnum.closed]: {
     colorTheme: 'red',
     text: '已关闭'
+  }
+};
+
+export const defaultModel: ModelSchema = {
+  _id: '',
+  userId: '',
+  name: '',
+  avatar: '',
+  status: ModelStatusEnum.pending,
+  updateTime: Date.now(),
+  trainingTimes: 0,
+  systemPrompt: '',
+  intro: '',
+  temperature: 5,
+  service: {
+    company: 'openai',
+    trainId: '',
+    chatModel: ChatModelNameEnum.GPT35,
+    modelName: ChatModelNameEnum.GPT35
+  },
+  security: {
+    domain: ['*'],
+    contextMaxLen: 1,
+    contentMaxLen: 1,
+    expiredTime: 9999,
+    maxLoadAmount: 1
   }
 };
