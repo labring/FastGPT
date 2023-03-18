@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 
 const map = {
   model: dynamic(() => import('./icons/model.svg')),
-  share: dynamic(() => import('./icons/share.svg'))
+  share: dynamic(() => import('./icons/share.svg')),
+  home: dynamic(() => import('./icons/home.svg'))
 };
 
 const MyIcon = ({
