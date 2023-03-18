@@ -41,10 +41,10 @@ export const introPage = `
 `;
 
 export const chatProblem = `
-**代理出错**  
+**代理出错**
 服务器代理不稳定，可以过一会儿再尝试。  
 
-**API key 问题**  
+**API key 问题**
 请把 openai 的 API key 粘贴到账号里再创建对话。如果是使用分享的对话，不需要填写 API key。  
 `;
 
