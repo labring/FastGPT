@@ -1,5 +1,3 @@
-import type { ModelType } from './model';
-
 export type ChatItemType = {
   obj: 'Human' | 'AI' | 'SYSTEM';
   value: string;

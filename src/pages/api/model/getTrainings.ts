@@ -6,7 +6,7 @@ import formidable from 'formidable';
 import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
 import { join } from 'path';
 import fs from 'fs';
-import type { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import type { OpenAIApi } from 'openai';
 import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
 import { httpsAgent } from '@/service/utils/tools';

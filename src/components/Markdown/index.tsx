@@ -12,7 +12,7 @@ import 'katex/dist/katex.min.css';
 import styles from './index.module.scss';
 import { codeLight } from './codeLight';
 
-const Markdown = ({ source, isChatting }: { source: string; isChatting: boolean }) => {
+const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
   const formatSource = useMemo(() => source, [source]);
   const { copyData } = useCopyData();
 

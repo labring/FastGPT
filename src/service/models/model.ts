@@ -1,6 +1,11 @@
 import { Schema, model, models } from 'mongoose';
 
 const ModelSchema = new Schema({
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'user',
+    required: true
+  },
   name: {
     type: String,
     required: true
@@ -10,13 +15,14 @@ const ModelSchema = new Schema({
     default: '/imgs/modelAvatar.png'
   },
   systemPrompt: {
+    // 系统提示词
     type: String,
     default: ''
   },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user',
-    required: true
+  intro: {
+    // 模型介绍
+    type: String,
+    default: ''
   },
   status: {
     type: String,
@@ -30,6 +36,12 @@ const ModelSchema = new Schema({
   trainingTimes: {
     type: Number,
     default: 0
+  },
+  temperature: {
+    type: Number,
+    min: 1,
+    max: 10,
+    default: 5
   },
   service: {
     company: {

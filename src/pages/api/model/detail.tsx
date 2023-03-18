@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { Model } from '@/service/models/model';
-import { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // 根据 userId 获取模型信息
-    const model: ModelType | null = await Model.findOne({
+    const model = await Model.findOne<ModelSchema>({
       userId,
       _id: modelId
     });

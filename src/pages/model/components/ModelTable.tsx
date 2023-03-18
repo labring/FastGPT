@@ -14,14 +14,14 @@ import {
 } from '@chakra-ui/react';
 import { formatModelStatus } from '@/constants/model';
 import dayjs from 'dayjs';
-import type { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { useRouter } from 'next/router';
 
 const ModelTable = ({
   models = [],
   handlePreviewChat
 }: {
-  models: ModelType[];
+  models: ModelSchema[];
   handlePreviewChat: (_: string) => void;
 }) => {
   const router = useRouter();
@@ -34,13 +34,13 @@ const ModelTable = ({
     {
       title: '最后更新时间',
       key: 'updateTime',
-      render: (item: ModelType) => dayjs(item.updateTime).format('YYYY-MM-DD HH:mm')
+      render: (item: ModelSchema) => dayjs(item.updateTime).format('YYYY-MM-DD HH:mm')
     },
     {
       title: '状态',
       key: 'status',
       dataIndex: 'status',
-      render: (item: ModelType) => (
+      render: (item: ModelSchema) => (
         <Tag
           colorScheme={formatModelStatus[item.status].colorTheme}
           variant="solid"
@@ -54,7 +54,7 @@ const ModelTable = ({
     {
       title: 'AI模型',
       key: 'service',
-      render: (item: ModelType) => (
+      render: (item: ModelSchema) => (
         <Box wordBreak={'break-all'} whiteSpace={'pre-wrap'} maxW={'200px'}>
           {item.service.modelName}
         </Box>
@@ -68,7 +68,7 @@ const ModelTable = ({
     {
       title: '操作',
       key: 'control',
-      render: (item: ModelType) => (
+      render: (item: ModelSchema) => (
         <>
           <Button mr={3} onClick={() => handlePreviewChat(item._id)}>
             对话

@@ -8,7 +8,8 @@ import type { ModelUpdateParams } from '@/types/model';
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, service, security, systemPrompt } = req.body as ModelUpdateParams;
+    const { name, service, security, systemPrompt, intro, temperature } =
+      req.body as ModelUpdateParams;
     const { modelId } = req.query as { modelId: string };
     const { authorization } = req.headers;
 
@@ -33,8 +34,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       },
       {
         name,
-        service,
         systemPrompt,
+        intro,
+        temperature,
+        service,
         security
       }
     );

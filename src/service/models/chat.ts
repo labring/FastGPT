@@ -25,19 +25,22 @@ const ChatSchema = new Schema({
     type: Number,
     required: true
   },
-  content: [
-    {
-      obj: {
-        type: String,
-        required: true,
-        enum: ['Human', 'AI', 'SYSTEM']
-      },
-      value: {
-        type: String,
-        required: true
+  content: {
+    type: [
+      {
+        obj: {
+          type: String,
+          required: true,
+          enum: ['Human', 'AI', 'SYSTEM']
+        },
+        value: {
+          type: String,
+          required: true
+        }
       }
-    }
-  ]
+    ],
+    default: []
+  }
 });
 
 export const Chat = models['chat'] || model('chat', ChatSchema);

@@ -16,8 +16,8 @@ import {
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { postCreateModel } from '@/api/model';
-import { ModelType } from '@/types/model';
-import { OpenAiList } from '@/constants/model';
+import type { ModelSchema } from '@/types/mongoSchema';
+import { ModelList } from '@/constants/model';
 
 interface CreateFormType {
   name: string;
@@ -29,7 +29,7 @@ const CreateModel = ({
   onSuccess
 }: {
   setCreateModelOpen: Dispatch<boolean>;
-  onSuccess: Dispatch<ModelType>;
+  onSuccess: Dispatch<ModelSchema>;
 }) => {
   const [requesting, setRequesting] = useState(false);
   const toast = useToast({
@@ -42,7 +42,7 @@ const CreateModel = ({
     formState: { errors }
   } = useForm<CreateFormType>({
     defaultValues: {
-      serviceModelName: OpenAiList[0].model
+      serviceModelName: ModelList['openai'][0].model
     }
   });
 
@@ -95,7 +95,7 @@ const CreateModel = ({
                   required: '底层模型不能为空'
                 })}
               >
-                {OpenAiList.map((item) => (
+                {ModelList['openai'].map((item) => (
                   <option key={item.model} value={item.model}>
                     {item.name}
                   </option>

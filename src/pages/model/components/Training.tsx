@@ -1,10 +1,10 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { Box, TableContainer, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react';
-import { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { getModelTrainings } from '@/api/model';
 import type { TrainingItemType } from '@/types/training';
 
-const Training = ({ model }: { model: ModelType }) => {
+const Training = ({ model }: { model: ModelSchema }) => {
   const columns: {
     title: string;
     key: keyof TrainingItemType;

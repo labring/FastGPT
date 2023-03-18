@@ -3,12 +3,21 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { ModelStatusEnum, OpenAiList } from '@/constants/model';
+import { ModelStatusEnum, ModelList, ChatModelNameEnum } from '@/constants/model';
+import type { ServiceName } from '@/types/mongoSchema';
 import { Model } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, serviceModelName, serviceModelCompany = 'openai' } = req.body;
+    const {
+      name,
+      serviceModelName,
+      serviceModelCompany = 'openai'
+    } = req.body as {
+      name: string;
+      serviceModelName: `${ChatModelNameEnum}`;
+      serviceModelCompany: ServiceName;
+    };
     const { authorization } = req.headers;
 
     if (!authorization) {
@@ -22,10 +31,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const userId = await authToken(authorization);
 
-    const modelItem = OpenAiList.find((item) => item.model === serviceModelName);
+    const modelItem = ModelList[serviceModelCompany].find(
+      (item) => item.model === serviceModelName
+    );
 
     if (!modelItem) {
-      throw new Error('模型错误');
+      throw new Error('模型不存在');
     }
 
     await connectToDatabase();
@@ -43,8 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const authCount = await Model.countDocuments({
       userId
     });
-    if (authCount >= 10) {
-      throw new Error('上限 10 个模型');
+    if (authCount >= 20) {
+      throw new Error('上限 20 个模型');
     }
 
     // 创建模型

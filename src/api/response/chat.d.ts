@@ -6,6 +6,7 @@ export type InitChatResponse = {
   modelId: string;
   name: string;
   avatar: string;
+  intro: string;
   secret: ModelSchema.secret;
   chatModel: ModelSchema.service.ChatModel; // 模型名
   history: ChatItemType[];

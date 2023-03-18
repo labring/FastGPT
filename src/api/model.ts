@@ -1,16 +1,16 @@
 import { GET, POST, DELETE, PUT } from './request';
-import type { ModelType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { ModelUpdateParams } from '@/types/model';
 import { TrainingItemType } from '../types/training';
 
-export const getMyModels = () => GET<ModelType[]>('/model/list');
+export const getMyModels = () => GET<ModelSchema[]>('/model/list');
 
 export const postCreateModel = (data: { name: string; serviceModelName: string }) =>
-  POST<ModelType>('/model/create', data);
+  POST<ModelSchema>('/model/create', data);
 
 export const delModelById = (id: string) => DELETE(`/model/del?modelId=${id}`);
 
-export const getModelById = (id: string) => GET<ModelType>(`/model/detail?modelId=${id}`);
+export const getModelById = (id: string) => GET<ModelSchema>(`/model/detail?modelId=${id}`);
 
 export const putModelById = (id: string, data: ModelUpdateParams) =>
   PUT(`/model/update?modelId=${id}`, data);

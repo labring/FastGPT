@@ -5,6 +5,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
 import { httpsAgent } from '@/service/utils/tools';
+import { ModelList } from '@/constants/model';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,13 +28,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // prompt处理
     const formatPrompt = prompt.map((item) => `${item.value}\n\n###\n\n`).join('');
 
+    // 计算温度
+    const modelConstantsData = ModelList['openai'].find(
+      (item) => item.model === model.service.modelName
+    );
+    if (!modelConstantsData) {
+      throw new Error('模型异常');
+    }
+    const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
+
     // 发送请求
     const response = await chatAPI.createCompletion(
       {
         model: model.service.modelName,
         prompt: formatPrompt,
-        temperature: 0.5,
-        max_tokens: model.security.contentMaxLen,
+        temperature: temperature,
+        max_tokens: modelConstantsData.maxToken,
         top_p: 1,
         frequency_penalty: 0,
         presence_penalty: 0.6,
