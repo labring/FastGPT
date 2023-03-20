@@ -218,10 +218,7 @@ const SlideBar = ({
       </RenderButton>
 
       <RenderButton
-        onClick={() => {
-          onOpenShare();
-          onClose();
-        }}
+        onClick={onOpenShare}
       >
         <>
           <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
@@ -253,6 +250,7 @@ const SlideBar = ({
                     '已复制分享链接'
                   );
                   onCloseShare();
+                  onClose()
                 }}
               >
                 分享空白对话
@@ -263,6 +261,7 @@ const SlideBar = ({
               onClick={() => {
                 copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
                 onCloseShare();
+                onClose()
               }}
             >
               分享当前对话
