@@ -33,6 +33,7 @@ import { streamFetch } from '@/api/fetch';
 import SlideBar from './components/SlideBar';
 import Empty from './components/Empty';
 import { getToken } from '@/utils/user';
+import MyIcon from '@/components/Icon';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
@@ -364,7 +365,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
     <Flex
       h={'100%'}
       flexDirection={media('row', 'column')}
-      backgroundColor={useColorModeValue('blackAlpha.50', 'rgba(52,53,65)')}
+      backgroundColor={useColorModeValue('white', '')}
     >
       {isPc ? (
         <Box flex={'0 0 250px'} w={0} h={'100%'}>
@@ -382,12 +383,18 @@ const Chat = ({ chatId }: { chatId: string }) => {
             alignItems={'center'}
             h={'100%'}
             justifyContent={'space-between'}
-            backgroundColor={'white'}
+            backgroundColor={useColorModeValue('white', 'gray.700')}
+            color={useColorModeValue('blackAlpha.700', 'white')}
             position={'relative'}
             px={7}
           >
             <Box onClick={onOpenSlider}>
-              <Icon name="icon-caidan" width={20} height={20}></Icon>
+              <MyIcon
+                name={'menu'}
+                w={'20px'}
+                h={'20px'}
+                fill={useColorModeValue('blackAlpha.700', 'white')}
+              />
             </Box>
             <Box>{chatData?.name}</Box>
           </Flex>
@@ -418,7 +425,9 @@ const Chat = ({ chatId }: { chatId: string }) => {
               key={index}
               py={media(9, 6)}
               px={media(4, 2)}
-              backgroundColor={index % 2 === 0 ? useColorModeValue('white', 'rgba(68,70,84)') : ''}
+              backgroundColor={
+                index % 2 !== 0 ? useColorModeValue('blackAlpha.50', 'gray.700') : ''
+              }
               color={useColorModeValue('blackAlpha.700', 'white')}
               borderBottom={'1px solid rgba(0,0,0,0.1)'}
             >
@@ -447,13 +456,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
           {chatData.history.length === 0 && <Empty intro={chatData.intro} />}
         </Box>
         {/* 发送区 */}
-        <Box
-          m={media('20px auto', '0 auto')}
-          w={'100%'}
-          maxW={media('min(750px, 100%)', 'auto')}
-          boxShadow={`0 -14px 30px ${useColorModeValue('rgba(255,255,255,0.5)', 'blackAlpha.200')}`}
-          borderTop={media('none', '1px solid rgba(0,0,0,0.1)')}
-        >
+        <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
           {!!chatWindowError ? (
             <Box textAlign={'center'}>
               <Box color={'red'}>{chatWindowError.text}</Box>
@@ -471,9 +474,11 @@ const Chat = ({ chatId }: { chatId: string }) => {
             <Box
               py={5}
               position={'relative'}
-              boxShadow={'base'}
-              overflow={'hidden'}
-              borderRadius={media('md', 'none')}
+              boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
+              border={media('1px solid', '0')}
+              borderColor={useColorModeValue('gray.200', 'gray.700')}
+              borderRadius={['none', 'md']}
+              backgroundColor={useColorModeValue('white', 'gray.700')}
             >
               {/* 输入框 */}
               <Textarea

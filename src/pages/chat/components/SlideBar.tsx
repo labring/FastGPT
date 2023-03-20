@@ -19,7 +19,8 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
-  useColorMode
+  useColorMode,
+  useColorModeValue
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
@@ -100,6 +101,9 @@ const SlideBar = ({
               size={'xs'}
               onClick={(e) => {
                 removeChatHistoryByWindowId(item.chatId);
+                if (item.chatId === chatId) {
+                  resetChat();
+                }
                 e.stopPropagation();
               }}
             />
@@ -132,7 +136,7 @@ const SlideBar = ({
       w={'100%'}
       h={'100%'}
       py={3}
-      backgroundColor={'rgba(32,33,35,1)'}
+      backgroundColor={useColorModeValue('blackAlpha.800', 'blackAlpha.500')}
       color={'white'}
     >
       {/* 新对话 */}
@@ -152,7 +156,7 @@ const SlideBar = ({
 
       {/* 我的模型 & 历史记录 折叠框*/}
       <Box flex={'1 0 0'} px={3} h={0} overflowY={'auto'}>
-        <Accordion defaultIndex={[0]} allowToggle>
+        <Accordion defaultIndex={[0]} allowToggle allowMultiple>
           {isSuccess && (
             <AccordionItem borderTop={0} borderBottom={0}>
               <AccordionButton borderRadius={'md'} pl={1}>
@@ -210,7 +214,7 @@ const SlideBar = ({
         </Accordion>
       </Box>
 
-      <Divider my={4} />
+      <Divider my={4} colorScheme={useColorModeValue('gray', 'white')} />
 
       <RenderButton onClick={() => router.push('/')}>
         <>
@@ -243,7 +247,7 @@ const SlideBar = ({
       {/* 分享提示modal */}
       <Modal isOpen={isOpenShare} onClose={onCloseShare}>
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent color={useColorModeValue('blackAlpha.700', 'white')}>
           <ModalHeader>分享对话</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
@@ -252,7 +256,7 @@ const SlideBar = ({
 
           <ModalFooter>
             <Button colorScheme="gray" variant={'outline'} mr={3} onClick={onCloseShare}>
-              Close
+              取消
             </Button>
             {getToken() && (
               <Button

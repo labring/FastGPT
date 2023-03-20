@@ -1,7 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
 import Icon from '@/components/Iconfont';
 import remarkGfm from 'remark-gfm';
@@ -34,7 +34,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
               <Flex
                 py={2}
                 px={5}
-                backgroundColor={'#323641'}
+                backgroundColor={useColorModeValue('#323641', 'gray.600')}
                 color={'#fff'}
                 fontSize={'sm'}
                 userSelect={'none'}
