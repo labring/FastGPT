@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AddIcon, ChatIcon, DeleteIcon } from '@chakra-ui/icons';
+import { AddIcon, ChatIcon, DeleteIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
 import {
   Box,
   Button,
@@ -18,7 +18,8 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  useDisclosure
+  useDisclosure,
+  useColorMode
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
@@ -45,6 +46,7 @@ const SlideBar = ({
   onClose: () => void;
 }) => {
   const router = useRouter();
+  const { colorMode, toggleColorMode } = useColorMode();
   const { copyData } = useCopyData();
   const { myModels, getMyModels } = useUserStore();
   const { chatHistory, removeChatHistoryByWindowId } = useChatStore();
@@ -217,14 +219,26 @@ const SlideBar = ({
         </>
       </RenderButton>
 
-      <RenderButton
-        onClick={onOpenShare}
-      >
+      <RenderButton onClick={onOpenShare}>
         <>
           <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
           分享
         </>
       </RenderButton>
+
+      <Box textAlign={'end'} mr={4}>
+        <IconButton
+          icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
+          aria-label={''}
+          variant={'outline'}
+          w={'16px'}
+          colorScheme={'white'}
+          _hover={{
+            backgroundColor: 'rgba(255,255,255,0.2)'
+          }}
+          onClick={toggleColorMode}
+        />
+      </Box>
 
       {/* 分享提示modal */}
       <Modal isOpen={isOpenShare} onClose={onCloseShare}>
@@ -250,7 +264,7 @@ const SlideBar = ({
                     '已复制分享链接'
                   );
                   onCloseShare();
-                  onClose()
+                  onClose();
                 }}
               >
                 分享空白对话
@@ -261,7 +275,7 @@ const SlideBar = ({
               onClick={() => {
                 copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
                 onCloseShare();
-                onClose()
+                onClose();
               }}
             >
               分享当前对话
