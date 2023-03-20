@@ -6,9 +6,8 @@ import { useScreen } from '@/hooks/useScreen';
 import type { ResLogin } from '@/api/response/user';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
-
+import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
-const LoginForm = dynamic(() => import('./components/LoginForm'));
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 

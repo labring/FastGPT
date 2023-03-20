@@ -90,6 +90,13 @@ export const theme = extendTheme({
   fonts: {
     body: '-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
   },
+  breakpoints: {
+    sm: '900px',
+    md: '1200px',
+    lg: '1500px',
+    xl: '1800',
+    '2xl': '2100'
+  },
   components: {
     Modal: ModalTheme,
     Button

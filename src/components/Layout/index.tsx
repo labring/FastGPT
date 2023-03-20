@@ -1,6 +1,5 @@
-import React from 'react';
-import { Box } from '@chakra-ui/react';
-import Link from 'next/link';
+import React, { useEffect } from 'react';
+import { Box, useColorMode } from '@chakra-ui/react';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 import { useRouter } from 'next/router';
@@ -44,8 +43,15 @@ const navbarList = [
 const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useScreen();
   const router = useRouter();
+  const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading({ defaultLoading: true });
   const { loading } = useGlobalStore();
+
+  useEffect(() => {
+    if (colorMode === 'dark' && router.pathname !== '/chat') {
+      setColorMode('light');
+    }
+  }, [colorMode, router.pathname, setColorMode]);
 
   return (
     <>
