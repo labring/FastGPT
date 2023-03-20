@@ -361,7 +361,11 @@ const Chat = ({ chatId }: { chatId: string }) => {
   }, [chatData.history, chatId, resetInputVal]);
 
   return (
-    <Flex h={'100%'} flexDirection={media('row', 'column')}>
+    <Flex
+      h={'100%'}
+      flexDirection={media('row', 'column')}
+      backgroundColor={useColorModeValue('blackAlpha.50', 'rgba(52,53,65)')}
+    >
       {isPc ? (
         <Box flex={'0 0 250px'} w={0} h={'100%'}>
           <SlideBar
@@ -414,11 +418,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               key={index}
               py={media(9, 6)}
               px={media(4, 2)}
-              backgroundColor={
-                index % 2 === 0
-                  ? useColorModeValue('blackAlpha.50', '')
-                  : useColorModeValue('white', 'gray.700')
-              }
+              backgroundColor={index % 2 === 0 ? useColorModeValue('white', 'rgba(68,70,84)') : ''}
               color={useColorModeValue('blackAlpha.700', 'white')}
               borderBottom={'1px solid rgba(0,0,0,0.1)'}
             >
@@ -494,7 +494,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
                 maxHeight={'150px'}
                 maxLength={chatData?.secret.contentMaxLen || -1}
                 overflowY={'auto'}
-                color={useColorModeValue('blackAlpha.600', 'white')}
+                color={useColorModeValue('blackAlpha.700', 'white')}
                 onChange={(e) => {
                   const textarea = e.target;
                   setInputVal(textarea.value);

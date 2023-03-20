@@ -132,7 +132,7 @@ const SlideBar = ({
       w={'100%'}
       h={'100%'}
       py={3}
-      backgroundColor={'blackAlpha.800'}
+      backgroundColor={'rgba(32,33,35,1)'}
       color={'white'}
     >
       {/* 新对话 */}
