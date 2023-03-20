@@ -1,7 +1,7 @@
 import type { AppProps, NextWebVitalsMetric } from 'next/app';
 import Script from 'next/script';
 import Head from 'next/head';
-import { ChakraProvider } from '@chakra-ui/react';
+import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import Layout from '@/components/Layout';
 import { theme } from '@/constants/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -41,6 +41,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <Script src="/iconfont.js" strategy="afterInteractive"></Script>
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
+          <ColorModeScript initialColorMode={theme.config.initialColorMode} />
           <Layout>
             <Component {...pageProps} />
           </Layout>

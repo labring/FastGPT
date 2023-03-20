@@ -18,7 +18,8 @@ import {
   useDisclosure,
   Drawer,
   DrawerOverlay,
-  DrawerContent
+  DrawerContent,
+  useColorModeValue
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import Icon from '@/components/Iconfont';
@@ -413,7 +414,12 @@ const Chat = ({ chatId }: { chatId: string }) => {
               key={index}
               py={media(9, 6)}
               px={media(4, 2)}
-              backgroundColor={index % 2 === 0 ? 'rgba(247,247,248,1)' : '#fff'}
+              backgroundColor={
+                index % 2 === 0
+                  ? useColorModeValue('blackAlpha.50', '')
+                  : useColorModeValue('white', 'gray.700')
+              }
+              color={useColorModeValue('blackAlpha.700', 'white')}
               borderBottom={'1px solid rgba(0,0,0,0.1)'}
             >
               <Flex maxW={'750px'} m={'auto'} alignItems={'flex-start'}>
@@ -445,7 +451,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
           m={media('20px auto', '0 auto')}
           w={'100%'}
           maxW={media('min(750px, 100%)', 'auto')}
-          boxShadow={'0 -14px 30px rgba(255,255,255,0.6)'}
+          boxShadow={`0 -14px 30px ${useColorModeValue('rgba(255,255,255,0.5)', 'blackAlpha.200')}`}
           borderTop={media('none', '1px solid rgba(0,0,0,0.1)')}
         >
           {!!chatWindowError ? (
@@ -488,6 +494,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
                 maxHeight={'150px'}
                 maxLength={chatData?.secret.contentMaxLen || -1}
                 overflowY={'auto'}
+                color={useColorModeValue('blackAlpha.600', 'white')}
                 onChange={(e) => {
                   const textarea = e.target;
                   setInputVal(textarea.value);
@@ -517,7 +524,12 @@ const Chat = ({ chatId }: { chatId: string }) => {
                   />
                 ) : (
                   <Box cursor={'pointer'} onClick={sendPrompt}>
-                    <Icon name={'icon-fasong'} width={20} height={20} color={'#718096'}></Icon>
+                    <Icon
+                      name={'icon-fasong'}
+                      width={20}
+                      height={20}
+                      color={useColorModeValue('#718096', 'white')}
+                    ></Icon>
                   </Box>
                 )}
               </Box>
