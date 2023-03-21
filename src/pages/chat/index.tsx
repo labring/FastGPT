@@ -152,7 +152,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
   const resetChat = useCallback(async () => {
     if (!chatData) return;
     try {
-      router.push(`/chat?chatId=${await getChatSiteId(chatData.modelId)}`);
+      router.replace(`/chat?chatId=${await getChatSiteId(chatData.modelId)}`);
     } catch (error: any) {
       toast({
         title: error?.message || '生成新对话失败',
