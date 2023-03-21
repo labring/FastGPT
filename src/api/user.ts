@@ -1,8 +1,11 @@
 import { GET, POST, PUT } from './request';
-import { createHashPassword } from '@/utils/tools';
+import { createHashPassword, Obj2Query } from '@/utils/tools';
 import { ResLogin } from './response/user';
 import { EmailTypeEnum } from '@/constants/common';
 import { UserType, UserUpdateParams } from '@/types/user';
+import type { PagingData, RequestPaging } from '@/types';
+import { BillSchema } from '@/types/mongoSchema';
+import { adaptBill } from '@/utils/adapt';
 
 export const sendCodeToEmail = ({ email, type }: { email: string; type: `${EmailTypeEnum}` }) =>
   GET('/user/sendEmail', { email, type });
@@ -46,3 +49,9 @@ export const postLogin = ({ email, password }: { email: string; password: string
   });
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/user/update', data);
+
+export const getUserBills = (data: RequestPaging) =>
+  GET<PagingData<BillSchema>>(`/user/getBill?${Obj2Query(data)}`).then((res) => ({
+    ...res,
+    data: res.data.map((bill) => adaptBill(bill))
+  }));

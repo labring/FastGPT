@@ -19,3 +19,12 @@ export interface UserUpdateParams {
     value: string;
   }[];
 }
+
+export interface UserBillType {
+  id: string;
+  time: string;
+  textLen: number;
+  userId: string;
+  chatId: string;
+  price: number;
+}

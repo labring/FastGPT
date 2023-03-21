@@ -85,7 +85,7 @@ const SlideBar = ({
             : {})}
           onClick={() => {
             if (item.chatId === chatId) return;
-            router.push(`/chat?chatId=${item.chatId}`);
+            router.replace(`/chat?chatId=${item.chatId}`);
             onClose();
           }}
         >
@@ -187,7 +187,7 @@ const SlideBar = ({
                       : {})}
                     onClick={async () => {
                       if (item.name === name) return;
-                      router.push(`/chat?chatId=${await getChatSiteId(item._id)}`);
+                      router.replace(`/chat?chatId=${await getChatSiteId(item._id)}`);
                       onClose();
                     }}
                   >

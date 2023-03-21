@@ -18,11 +18,13 @@ import {
 import { DeleteIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { putUserInfo } from '@/api/user';
+import { putUserInfo, getUserBills } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
 import { UserType } from '@/types/user';
+import { usePaging } from '@/hooks/usePaging';
+import type { UserBillType } from '@/types/user';
 
 const NumberSetting = () => {
   const { userInfo, updateUserInfo } = useUserStore();
@@ -39,7 +41,11 @@ const NumberSetting = () => {
     control,
     name: 'accounts'
   });
-
+  const { setPageNum, data: bills } = usePaging<UserBillType>({
+    api: getUserBills,
+    pageSize: 20
+  });
+  console.log(bills);
   const onclickSave = useCallback(
     async (data: UserUpdateParams) => {
       setLoading(true);
@@ -156,41 +162,19 @@ const NumberSetting = () => {
           <Table>
             <Thead>
               <Tr>
-                <Th>账号类型</Th>
-                <Th>值</Th>
-                <Th></Th>
+                <Th>时间</Th>
+                <Th>内容长度</Th>
+                <Th>消费</Th>
               </Tr>
             </Thead>
-            <Tbody>
-              {accounts.map((item, i) => (
+            <Tbody fontSize={'sm'}>
+              {bills.map((item) => (
                 <Tr key={item.id}>
-                  <Td minW={'200px'}>
-                    <Select
-                      {...register(`accounts.${i}.type`, {
-                        required: '类型不能为空'
-                      })}
-                    >
-                      <option value="openai">openai</option>
-                    </Select>
-                  </Td>
+                  <Td minW={'200px'}>{item.time}</Td>
                   <Td minW={'200px'} whiteSpace="pre-wrap" wordBreak={'break-all'}>
-                    <Input
-                      {...register(`accounts.${i}.value`, {
-                        required: '账号不能为空'
-                      })}
-                    ></Input>
+                    {item.textLen}
                   </Td>
-                  <Td>
-                    <IconButton
-                      aria-label="删除账号"
-                      icon={<DeleteIcon />}
-                      colorScheme={'red'}
-                      onClick={() => {
-                        removeAccount(i);
-                        handleSubmit(onclickSave)();
-                      }}
-                    />
-                  </Td>
+                  <Td>{item.price}元</Td>
                 </Tr>
               ))}
             </Tbody>

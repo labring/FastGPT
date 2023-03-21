@@ -75,3 +75,12 @@ export interface ChatPopulate extends ChatSchema {
   userId: UserModelSchema;
   modelId: ModelSchema;
 }
+
+export interface BillSchema {
+  _id: string;
+  userId: string;
+  chatId: string;
+  time: number;
+  textLen: number;
+  price: number;
+}

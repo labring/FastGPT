@@ -41,6 +41,14 @@ export const createHashPassword = (text: string) => {
   return hash;
 };
 
+export const Obj2Query = (obj: Record<string, string | number>) => {
+  const queryParams = new URLSearchParams();
+  for (const key in obj) {
+    queryParams.append(key, `${obj[key]}`);
+  }
+  return queryParams.toString();
+};
+
 /**
  * 读取文件内容
  */
