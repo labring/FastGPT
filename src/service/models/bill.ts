@@ -12,8 +12,8 @@ const BillSchema = new Schema({
     required: true
   },
   time: {
-    type: Number,
-    default: () => Date.now()
+    type: Date,
+    default: () => new Date()
   },
   textLen: {
     // 提示词+响应的总字数

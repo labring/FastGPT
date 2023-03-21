@@ -7,7 +7,10 @@ import type { ModelSchema } from '@/types/mongoSchema';
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { modelId } = req.query;
+    const { modelId, isShare = 'false' } = req.query as {
+      modelId: string;
+      isShare?: 'true' | 'false';
+    };
     const { authorization } = req.headers;
 
     if (!authorization) {
@@ -40,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       expiredTime: Date.now() + model.security.expiredTime,
       loadAmount: model.security.maxLoadAmount,
       updateTime: Date.now(),
+      isShare: isShare === 'true',
       content: []
     });
 

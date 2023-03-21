@@ -69,6 +69,7 @@ export interface ChatSchema {
   expiredTime: number;
   loadAmount: number;
   updateTime: number;
+  isShare: boolean;
   content: ChatItemType[];
 }
 export interface ChatPopulate extends ChatSchema {
@@ -80,7 +81,7 @@ export interface BillSchema {
   _id: string;
   userId: string;
   chatId: string;
-  time: number;
+  time: Date;
   textLen: number;
   price: number;
 }
