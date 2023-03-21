@@ -22,8 +22,12 @@ export const generateToken = (userId: string) => {
 };
 
 /* 校验 token */
-export const authToken = (token: string): Promise<string> => {
+export const authToken = (token?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
+    if (!token) {
+      reject('缺少登录凭证');
+      return;
+    }
     const key = process.env.TOKEN_KEY as string;
 
     jwt.verify(token, key, function (err, decoded: any) {

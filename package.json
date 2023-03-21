@@ -28,6 +28,7 @@
     "immer": "^9.0.19",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^6.10.0",
+    "nanoid": "^4.0.1",
     "next": "13.1.6",
     "nodemailer": "^6.9.1",
     "nprogress": "^0.2.0",
@@ -43,7 +44,6 @@
     "sass": "^1.58.3",
     "sharp": "^0.31.3",
     "tunnel": "^0.0.6",
-    "uuid": "^9.0.0",
     "zustand": "^4.3.5"
   },
   "devDependencies": {

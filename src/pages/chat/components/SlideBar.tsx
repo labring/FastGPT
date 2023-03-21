@@ -32,6 +32,7 @@ import { useCopyData } from '@/utils/tools';
 import Markdown from '@/components/Markdown';
 import { shareHint } from '@/constants/common';
 import { getChatSiteId } from '@/api/chat';
+import Image from 'next/image';
 
 const SlideBar = ({
   name,
@@ -53,6 +54,7 @@ const SlideBar = ({
   const { chatHistory, removeChatHistoryByWindowId } = useChatStore();
   const [hasReady, setHasReady] = useState(false);
   const { isOpen: isOpenShare, onOpen: onOpenShare, onClose: onCloseShare } = useDisclosure();
+  const { isOpen: isOpenWx, onOpen: onOpenWx, onClose: onCloseWx } = useDisclosure();
 
   const { isSuccess } = useQuery(['init'], getMyModels, {
     cacheTime: 5 * 60 * 1000
@@ -113,7 +115,13 @@ const SlideBar = ({
     </>
   );
 
-  const RenderButton = ({ onClick, children }: { onClick: () => void; children: JSX.Element }) => (
+  const RenderButton = ({
+    onClick,
+    children
+  }: {
+    onClick: () => void;
+    children: JSX.Element | string;
+  }) => (
     <Box px={3} mb={3}>
       <Flex
         alignItems={'center'}
@@ -229,8 +237,17 @@ const SlideBar = ({
           分享
         </>
       </RenderButton>
+      <RenderButton onClick={() => router.push('/number/setting')}>
+        <>
+          <MyIcon name="pay" fill={'white'} w={'16px'} h={'16px'} mr={4} />
+          充值
+        </>
+      </RenderButton>
 
-      <Box textAlign={'end'} mr={4}>
+      <Flex alignItems={'center'} mr={4}>
+        <Box flex={1}>
+          <RenderButton onClick={onOpenWx}>交流群</RenderButton>
+        </Box>
         <IconButton
           icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
           aria-label={''}
@@ -242,7 +259,7 @@ const SlideBar = ({
           }}
           onClick={toggleColorMode}
         />
-      </Box>
+      </Flex>
 
       {/* 分享提示modal */}
       <Modal isOpen={isOpenShare} onClose={onCloseShare}>
@@ -283,6 +300,35 @@ const SlideBar = ({
               }}
             >
               分享当前对话
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      {/* wx 联系 */}
+      <Modal isOpen={isOpenWx} onClose={onCloseWx}>
+        <ModalOverlay />
+        <ModalContent color={useColorModeValue('blackAlpha.700', 'white')}>
+          <ModalHeader>wx交流群</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody textAlign={'center'}>
+            <Image
+              style={{ margin: 'auto' }}
+              src={'/imgs/wxcode.jpg'}
+              width={200}
+              height={200}
+              alt=""
+            />
+            <Box mt={2}>
+              微信号:{' '}
+              <Box as={'span'} userSelect={'all'}>
+                YNyiqi
+              </Box>
+            </Box>
+          </ModalBody>
+
+          <ModalFooter>
+            <Button variant={'outline'} onClick={onCloseWx}>
+              关闭
             </Button>
           </ModalFooter>
         </ModalContent>

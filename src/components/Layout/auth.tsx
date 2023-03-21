@@ -1,7 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
 import { useToast } from '@chakra-ui/react';
-import { getTokenLogin } from '@/api/user';
 import { useUserStore } from '@/store/user';
 import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
@@ -19,7 +18,7 @@ const Auth = ({ children }: { children: JSX.Element }) => {
     position: 'top',
     status: 'warning'
   });
-  const { userInfo, setUserInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
   const { setLoading } = useGlobalStore();
 
   useQuery(
@@ -29,15 +28,10 @@ const Auth = ({ children }: { children: JSX.Element }) => {
         return setLoading(false);
       } else {
         setLoading(true);
-        return getTokenLogin();
+        return initUserInfo();
       }
     },
     {
-      onSuccess(user) {
-        if (user) {
-          setUserInfo(user);
-        }
-      },
       onError(error) {
         console.log('error->', error);
         router.push('/login');

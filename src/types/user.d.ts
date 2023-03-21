@@ -14,6 +14,7 @@ export interface UserType {
 }
 
 export interface UserUpdateParams {
+  balance?: number;
   accounts?: {
     type: string;
     value: string;

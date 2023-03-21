@@ -6,9 +6,11 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { setToken } from '@/utils/user';
 import { getMyModels } from '@/api/model';
 import { formatPrice } from '@/utils/user';
+import { getTokenLogin } from '@/api/user';
 
 type State = {
   userInfo: UserType | null;
+  initUserInfo: () => Promise<null>;
   setUserInfo: (user: UserType, token?: string) => void;
   updateUserInfo: (user: UserUpdateParams) => void;
   myModels: ModelSchema[];
@@ -20,6 +22,11 @@ export const useUserStore = create<State>()(
   devtools(
     immer((set, get) => ({
       userInfo: null,
+      async initUserInfo() {
+        const res = await getTokenLogin();
+        get().setUserInfo(res);
+        return null;
+      },
       setUserInfo(user: UserType, token?: string) {
         set((state) => {
           state.userInfo = {

@@ -24,7 +24,7 @@ export const ModelList: ModelConstantsData[] = [
     trainName: 'turbo',
     maxToken: 4000,
     maxTemperature: 2,
-    price: 2
+    price: 5
   },
   {
     serviceCompany: 'openai',
@@ -33,7 +33,7 @@ export const ModelList: ModelConstantsData[] = [
     trainName: 'davinci',
     maxToken: 4000,
     maxTemperature: 2,
-    price: 20
+    price: 50
   }
 ];
 
