@@ -12,6 +12,7 @@ import { pushBill } from '@/service/events/bill';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { prompt, chatId } = req.body as { prompt: ChatItemType[]; chatId: string };
+    const { authorization } = req.headers;
 
     if (!prompt || !chatId) {
       throw new Error('缺少参数');
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    const { chat, userApiKey, systemKey, userId } = await authChat(chatId);
+    const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
 
     const model = chat.modelId;
 

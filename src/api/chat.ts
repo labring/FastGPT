@@ -5,7 +5,8 @@ import type { InitChatResponse } from './response/chat';
 /**
  * 获取一个聊天框的ID
  */
-export const getChatSiteId = (modelId: string) => GET<string>(`/chat/generate?modelId=${modelId}`);
+export const getChatSiteId = (modelId: string, isShare = false) =>
+  GET<string>(`/chat/generate?modelId=${modelId}&isShare=${isShare ? 'true' : 'false'}`);
 
 /**
  * 获取初始化聊天内容

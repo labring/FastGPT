@@ -2,6 +2,7 @@ import { Configuration, OpenAIApi } from 'openai';
 import { Chat } from '../mongo';
 import type { ChatPopulate } from '@/types/mongoSchema';
 import { formatPrice } from '@/utils/user';
+import { authToken } from './tools';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({
@@ -11,7 +12,7 @@ export const getOpenAIApi = (apiKey: string) => {
   return new OpenAIApi(configuration, undefined);
 };
 
-export const authChat = async (chatId: string) => {
+export const authChat = async (chatId: string, authorization?: string) => {
   // 获取 chat 数据
   const chat = await Chat.findById<ChatPopulate>(chatId)
     .populate({
@@ -36,12 +37,17 @@ export const authChat = async (chatId: string) => {
     return Promise.reject('聊天框已过期');
   }
 
+  // 分享校验
+  if (!chat.isShare) {
+    await authToken(authorization);
+  }
+
   // 获取 user 的 apiKey
   const user = chat.userId;
 
   const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
 
-  if (!userApiKey && formatPrice(user.balance) <= -1) {
+  if (!userApiKey && formatPrice(user.balance) <= 0) {
     return Promise.reject('该账号余额不足');
   }
 

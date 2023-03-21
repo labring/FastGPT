@@ -17,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     prompt: ChatItemType;
     chatId: string;
   };
+  const { authorization } = req.headers;
 
   try {
     if (!chatId || !prompt) {
@@ -25,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    const { chat, userApiKey, systemKey, userId } = await authChat(chatId);
+    const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
 
     const model: ModelSchema = chat.modelId;
 

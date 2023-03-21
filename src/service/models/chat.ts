@@ -25,6 +25,10 @@ const ChatSchema = new Schema({
     type: Number,
     required: true
   },
+  isShare: {
+    type: Boolean,
+    default: false
+  },
   content: {
     type: [
       {

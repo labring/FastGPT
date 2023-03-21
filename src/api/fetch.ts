@@ -1,3 +1,4 @@
+import { getToken } from '../utils/user';
 interface StreamFetchProps {
   url: string;
   data: any;
@@ -9,7 +10,8 @@ export const streamFetch = ({ url, data, onMessage }: StreamFetchProps) =>
       const res = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: getToken() || ''
         },
         body: JSON.stringify(data)
       });
