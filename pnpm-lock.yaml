@@ -32,6 +32,7 @@ specifiers:
   jsonwebtoken: ^9.0.0
   lint-staged: ^13.1.2
   mongoose: ^6.10.0
+  nanoid: ^4.0.1
   next: 13.1.6
   nodemailer: ^6.9.1
   nprogress: ^0.2.0
@@ -49,7 +50,6 @@ specifiers:
   sharp: ^0.31.3
   tunnel: ^0.0.6
   typescript: 4.9.5
-  uuid: ^9.0.0
   zustand: ^4.3.5
 
 dependencies:
@@ -70,6 +70,7 @@ dependencies:
   immer: registry.npmmirror.com/immer/9.0.19
   jsonwebtoken: registry.npmmirror.com/jsonwebtoken/9.0.0
   mongoose: registry.npmmirror.com/mongoose/6.10.0
+  nanoid: registry.npmmirror.com/nanoid/4.0.1
   next: registry.npmmirror.com/next/13.1.6_wiv434v7erz4aedd5whhdwmpv4
   nodemailer: registry.npmmirror.com/nodemailer/6.9.1
   nprogress: registry.npmmirror.com/nprogress/0.2.0
@@ -85,7 +86,6 @@ dependencies:
   sass: registry.npmmirror.com/sass/1.58.3
   sharp: registry.npmmirror.com/sharp/0.31.3
   tunnel: registry.npmmirror.com/tunnel/0.0.6
-  uuid: registry.npmmirror.com/uuid/9.0.0
   zustand: registry.npmmirror.com/zustand/4.3.5_immer@9.0.19+react@18.2.0
 
 devDependencies:
@@ -8496,6 +8496,14 @@ packages:
     hasBin: true
     dev: false
 
+  registry.npmmirror.com/nanoid/4.0.1:
+    resolution: {integrity: sha512-udKGtCCUafD3nQtJg9wBhRP3KMbPglUsgV5JVsXhvyBs/oefqb4sqMEhKBBgqZncYowu58p1prsZQBYvAj/Gww==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/nanoid/-/nanoid-4.0.1.tgz}
+    name: nanoid
+    version: 4.0.1
+    engines: {node: ^14 || ^16 || >=18}
+    hasBin: true
+    dev: false
+
   registry.npmmirror.com/napi-build-utils/1.0.2:
     resolution: {integrity: sha512-ONmRUqK7zj7DWX0D9ADe03wbwOBZxNAfF20PlGfCWQcD3+/MakShIHrMqx9YwPTfxDdF1zLeL+RGZiR9kGMLdg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/napi-build-utils/-/napi-build-utils-1.0.2.tgz}
     name: napi-build-utils
@@ -10334,13 +10342,6 @@ packages:
     hasBin: true
     dev: false
     optional: true
-
-  registry.npmmirror.com/uuid/9.0.0:
-    resolution: {integrity: sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/uuid/-/uuid-9.0.0.tgz}
-    name: uuid
-    version: 9.0.0
-    hasBin: true
-    dev: false
 
   registry.npmmirror.com/uvu/0.5.6:
     resolution: {integrity: sha512-+g8ENReyr8YsOc6fv/NVJs2vFdHBnBNdfE49rshrTzDWOlUx4Gq7KOS2GD8eqhy2j+Ejq29+SbKH8yjkAqXqoA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/uvu/-/uvu-0.5.6.tgz}

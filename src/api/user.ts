@@ -55,3 +55,12 @@ export const getUserBills = (data: RequestPaging) =>
     ...res,
     data: res.data.map((bill) => adaptBill(bill))
   }));
+
+export const getPayCode = (amount: number) =>
+  GET<{
+    codeUrl: string;
+    orderId: string;
+  }>(`/user/getPayCode?amount=${amount}`);
+
+export const checkPayResult = (orderId: string) =>
+  GET<number>(`/user/checkPayResult?orderId=${orderId}`);

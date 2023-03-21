@@ -1,4 +1,4 @@
-import React, { Dispatch, useState, useCallback } from 'react';
+import React, { Dispatch, useState, useCallback, useMemo } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -12,12 +12,14 @@ import {
   Button,
   useToast,
   Input,
-  Select
+  Select,
+  Box
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { postCreateModel } from '@/api/model';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { ModelList } from '@/constants/model';
+import { formatPrice } from '@/utils/user';
 
 interface CreateFormType {
   name: string;
@@ -37,6 +39,7 @@ const CreateModel = ({
     position: 'top'
   });
   const {
+    getValues,
     register,
     handleSubmit,
     formState: { errors }
@@ -105,6 +108,12 @@ const CreateModel = ({
                 {!!errors.serviceModelName && errors.serviceModelName.message}
               </FormErrorMessage>
             </FormControl>
+            <Box mt={3} textAlign={'center'} fontSize={'sm'} color={'blackAlpha.600'}>
+              {formatPrice(
+                ModelList.find((item) => item.model === getValues('serviceModelName'))?.price || 0
+              ) * 1000}
+              元/1000字(包括上下文和标点符号)
+            </Box>
           </ModalBody>
 
           <ModalFooter>

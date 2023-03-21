@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Card,
   Box,
@@ -25,13 +25,18 @@ import { useUserStore } from '@/store/user';
 import { UserType } from '@/types/user';
 import { usePaging } from '@/hooks/usePaging';
 import type { UserBillType } from '@/types/user';
+import { useQuery } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
+
+const PayModal = dynamic(() => import('./components/PayModal'));
 
 const NumberSetting = () => {
-  const { userInfo, updateUserInfo } = useUserStore();
+  const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
   const { setLoading } = useGlobalStore();
   const { register, handleSubmit, control } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
+  const [showPay, setShowPay] = useState(false);
   const { toast } = useToast();
   const {
     fields: accounts,
@@ -43,9 +48,9 @@ const NumberSetting = () => {
   });
   const { setPageNum, data: bills } = usePaging<UserBillType>({
     api: getUserBills,
-    pageSize: 20
+    pageSize: 30
   });
-  console.log(bills);
+
   const onclickSave = useCallback(
     async (data: UserUpdateParams) => {
       setLoading(true);
@@ -61,6 +66,8 @@ const NumberSetting = () => {
     },
     [setLoading, toast, updateUserInfo]
   );
+
+  useQuery(['init'], initUserInfo);
 
   return (
     <>
@@ -80,9 +87,9 @@ const NumberSetting = () => {
             <Box>
               <strong>{userInfo?.balance}</strong> 元
             </Box>
-            {/* <Button size={'sm'} w={'80px'} ml={5}>
+            <Button size={'sm'} w={'80px'} ml={5} onClick={() => setShowPay(true)}>
               充值
-            </Button> */}
+            </Button>
           </Flex>
         </Box>
       </Card>
@@ -181,6 +188,7 @@ const NumberSetting = () => {
           </Table>
         </TableContainer>
       </Card>
+      {showPay && <PayModal onClose={() => setShowPay(false)} />}
     </>
   );
 };

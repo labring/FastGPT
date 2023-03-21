@@ -31,3 +31,4 @@ export * from './models/model';
 export * from './models/user';
 export * from './models/training';
 export * from './models/bill';
+export * from './models/pay';

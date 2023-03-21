@@ -36,6 +36,6 @@ export const pushBill = async ({
       $inc: { balance: -price }
     });
   } catch (error) {
-    Bill.findByIdAndDelete(billId);
+    billId && Bill.findByIdAndDelete(billId);
   }
 };
