@@ -38,9 +38,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
   });
 
   const canTrain = useMemo(() => {
-    const openai = ModelList[model.service.company].find(
-      (item) => item.model === model?.service.modelName
-    );
+    const openai = ModelList.find((item) => item.model === model?.service.modelName);
     return openai && openai.trainName;
   }, [model]);
 

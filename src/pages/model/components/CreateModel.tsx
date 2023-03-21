@@ -42,7 +42,7 @@ const CreateModel = ({
     formState: { errors }
   } = useForm<CreateFormType>({
     defaultValues: {
-      serviceModelName: ModelList['openai'][0].model
+      serviceModelName: ModelList[0].model
     }
   });
 
@@ -95,7 +95,7 @@ const CreateModel = ({
                   required: '底层模型不能为空'
                 })}
               >
-                {ModelList['openai'].map((item) => (
+                {ModelList.map((item) => (
                   <option key={item.model} value={item.model}>
                     {item.name}
                   </option>

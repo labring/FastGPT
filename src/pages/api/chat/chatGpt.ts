@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { connectToDatabase, Chat } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { httpsAgent } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
@@ -9,6 +9,7 @@ import { jsonRes } from '@/service/response';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { ModelList } from '@/constants/model';
+import { pushBill } from '@/service/events/bill';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    const { chat, userApiKey } = await authChat(chatId);
+    const { chat, userApiKey, systemKey, userId } = await authChat(chatId);
 
     const model: ModelSchema = chat.modelId;
 
@@ -58,16 +59,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 计算温度
-    const modelConstantsData = ModelList['openai'].find(
-      (item) => item.model === model.service.modelName
-    );
+    const modelConstantsData = ModelList.find((item) => item.model === model.service.modelName);
     if (!modelConstantsData) {
       throw new Error('模型异常');
     }
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 
     // 获取 chatAPI
-    const chatAPI = getOpenAIApi(userApiKey);
+    const chatAPI = getOpenAIApi(userApiKey || systemKey);
     let startTime = Date.now();
     // 发出请求
     const chatResponse = await chatAPI.createChatCompletion(
@@ -84,12 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         httpsAgent
       }
     );
-    console.log(
-      'response success',
-      `time: ${(Date.now() - startTime) / 1000}s`,
-      `promptLen: ${formatPrompts.length}`,
-      `contentLen: ${formatPrompts.reduce((sum, item) => sum + item.content.length, 0)}`
-    );
+
+    console.log('api response time:', `time: ${(Date.now() - startTime) / 1000}s`);
 
     // 创建响应流
     res.setHeader('Content-Type', 'text/event-stream;charset-utf-8');
@@ -97,6 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
 
+    let responseContent = '';
     const pass = new PassThrough();
     pass.pipe(res);
 
@@ -108,6 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const json = JSON.parse(data);
         const content: string = json?.choices?.[0].delta.content || '';
         if (!content) return;
+        responseContent += content;
         // console.log('content:', content)
         pass.push(content.replace(/\n/g, '<br/>'));
       } catch (error) {
@@ -125,6 +122,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('pipe error', error);
     }
     pass.push(null);
+
+    const promptsLen = formatPrompts.reduce((sum, item) => sum + item.content.length, 0);
+    console.log(`responseLen: ${responseContent.length}`, `promptLen: ${promptsLen}`);
+    // 只有使用平台的 key 才计费
+    !userApiKey &&
+      pushBill({
+        modelName: model.service.modelName,
+        userId,
+        chatId,
+        textLen: promptsLen + responseContent.length
+      });
   } catch (err: any) {
     res.status(500);
     jsonRes(res, {

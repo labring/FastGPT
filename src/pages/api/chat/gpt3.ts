@@ -6,6 +6,7 @@ import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
 import { httpsAgent } from '@/service/utils/tools';
 import { ModelList } from '@/constants/model';
+import { pushBill } from '@/service/events/bill';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,20 +19,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    const { chat, userApiKey } = await authChat(chatId);
+    const { chat, userApiKey, systemKey, userId } = await authChat(chatId);
 
     const model = chat.modelId;
 
     // 获取 chatAPI
-    const chatAPI = getOpenAIApi(userApiKey);
+    const chatAPI = getOpenAIApi(userApiKey || systemKey);
 
     // prompt处理
-    const formatPrompt = prompt.map((item) => `${item.value}\n\n###\n\n`).join('');
+    const formatPrompts = prompt.map((item) => `${item.value}\n\n###\n\n`).join('');
 
     // 计算温度
-    const modelConstantsData = ModelList['openai'].find(
-      (item) => item.model === model.service.modelName
-    );
+    const modelConstantsData = ModelList.find((item) => item.model === model.service.modelName);
     if (!modelConstantsData) {
       throw new Error('模型异常');
     }
@@ -41,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const response = await chatAPI.createCompletion(
       {
         model: model.service.modelName,
-        prompt: formatPrompt,
+        prompt: formatPrompts,
         temperature: temperature,
         // max_tokens: modelConstantsData.maxToken,
         top_p: 1,
@@ -54,7 +53,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    const responseMessage = response.data.choices[0]?.text;
+    const responseMessage = response.data.choices[0]?.text || '';
+
+    const promptsLen = prompt.reduce((sum, item) => sum + item.value.length, 0);
+    console.log(`responseLen: ${responseMessage.length}`, `promptLen: ${promptsLen}`);
+    // 只有使用平台的 key 才计费
+    !userApiKey &&
+      pushBill({
+        modelName: model.service.modelName,
+        userId,
+        chatId,
+        textLen: promptsLen + responseMessage.length
+      });
 
     jsonRes(res, {
       data: responseMessage

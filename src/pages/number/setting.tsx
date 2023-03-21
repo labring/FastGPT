@@ -68,17 +68,17 @@ const NumberSetting = () => {
             <Box>{userInfo?.email}</Box>
           </Flex>
         </Box>
-        {/* <Box mt={6}>
+        <Box mt={6}>
           <Flex alignItems={'center'}>
             <Box flex={'0 0 60px'}>余额:</Box>
             <Box>
               <strong>{userInfo?.balance}</strong> 元
             </Box>
-            <Button size={'sm'} w={'80px'} ml={5}>
+            {/* <Button size={'sm'} w={'80px'} ml={5}>
               充值
-            </Button>
+            </Button> */}
           </Flex>
-        </Box> */}
+        </Box>
       </Card>
       <Card mt={6} px={6} py={4}>
         <Flex mb={5} justifyContent={'space-between'}>
@@ -103,6 +103,55 @@ const NumberSetting = () => {
             <Button onClick={handleSubmit(onclickSave)}>保存</Button>
           </Box>
         </Flex>
+        <TableContainer>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>账号类型</Th>
+                <Th>值</Th>
+                <Th></Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {accounts.map((item, i) => (
+                <Tr key={item.id}>
+                  <Td minW={'200px'}>
+                    <Select
+                      {...register(`accounts.${i}.type`, {
+                        required: '类型不能为空'
+                      })}
+                    >
+                      <option value="openai">openai</option>
+                    </Select>
+                  </Td>
+                  <Td minW={'200px'} whiteSpace="pre-wrap" wordBreak={'break-all'}>
+                    <Input
+                      {...register(`accounts.${i}.value`, {
+                        required: '账号不能为空'
+                      })}
+                    ></Input>
+                  </Td>
+                  <Td>
+                    <IconButton
+                      aria-label="删除账号"
+                      icon={<DeleteIcon />}
+                      colorScheme={'red'}
+                      onClick={() => {
+                        removeAccount(i);
+                        handleSubmit(onclickSave)();
+                      }}
+                    />
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Card>
+      <Card mt={6} px={6} py={4}>
+        <Box fontSize={'xl'} fontWeight={'bold'}>
+          使用记录
+        </Box>
         <TableContainer>
           <Table>
             <Thead>

@@ -156,7 +156,7 @@ const SlideBar = ({
 
       {/* 我的模型 & 历史记录 折叠框*/}
       <Box flex={'1 0 0'} px={3} h={0} overflowY={'auto'}>
-        <Accordion defaultIndex={[0]} allowToggle allowMultiple>
+        <Accordion defaultIndex={[0]} allowMultiple>
           {isSuccess && (
             <AccordionItem borderTop={0} borderBottom={0}>
               <AccordionButton borderRadius={'md'} pl={1}>

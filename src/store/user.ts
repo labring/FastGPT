@@ -5,6 +5,7 @@ import type { UserType, UserUpdateParams } from '@/types/user';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { setToken } from '@/utils/user';
 import { getMyModels } from '@/api/model';
+import { formatPrice } from '@/utils/user';
 
 type State = {
   userInfo: UserType | null;
@@ -21,7 +22,10 @@ export const useUserStore = create<State>()(
       userInfo: null,
       setUserInfo(user: UserType, token?: string) {
         set((state) => {
-          state.userInfo = user;
+          state.userInfo = {
+            ...user,
+            balance: formatPrice(user.balance)
+          };
         });
         token && setToken(token);
       },
