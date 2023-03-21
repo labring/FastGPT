@@ -4,19 +4,13 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { ModelStatusEnum, ModelList, ChatModelNameEnum } from '@/constants/model';
-import type { ServiceName } from '@/types/mongoSchema';
 import { Model } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const {
-      name,
-      serviceModelName,
-      serviceModelCompany = 'openai'
-    } = req.body as {
+    const { name, serviceModelName } = req.body as {
       name: string;
       serviceModelName: `${ChatModelNameEnum}`;
-      serviceModelCompany: ServiceName;
     };
     const { authorization } = req.headers;
 
@@ -24,16 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('无权操作');
     }
 
-    if (!name || !serviceModelName || !serviceModelCompany) {
+    if (!name || !serviceModelName) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
     const userId = await authToken(authorization);
 
-    const modelItem = ModelList[serviceModelCompany].find(
-      (item) => item.model === serviceModelName
-    );
+    const modelItem = ModelList.find((item) => item.model === serviceModelName);
 
     if (!modelItem) {
       throw new Error('模型不存在');
@@ -64,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userId,
       status: ModelStatusEnum.running,
       service: {
-        company: serviceModelCompany,
+        company: modelItem.serviceCompany,
         trainId: modelItem.trainName,
         chatModel: modelItem.model,
         modelName: modelItem.model

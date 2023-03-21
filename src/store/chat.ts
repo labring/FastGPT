@@ -19,6 +19,7 @@ export const useChatStore = create<Props>()(
         chatHistory: [],
         pushChatHistory(item: HistoryItem) {
           set((state) => {
+            if (state.chatHistory.find((history) => history.chatId === item.chatId)) return;
             state.chatHistory = [item, ...state.chatHistory].slice(0, 20);
           });
         },

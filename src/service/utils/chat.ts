@@ -1,6 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { Chat } from '../mongo';
 import type { ChatPopulate } from '@/types/mongoSchema';
+import { formatPrice } from '@/utils/user';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({
@@ -40,12 +41,14 @@ export const authChat = async (chatId: string) => {
 
   const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
 
-  if (!userApiKey) {
-    return Promise.reject('缺少ApiKey, 无法请求');
+  if (!userApiKey && formatPrice(user.balance) <= -1) {
+    return Promise.reject('该账号余额不足');
   }
 
   return {
     userApiKey,
-    chat
+    systemKey: process.env.OPENAIKEY as string,
+    chat,
+    userId: user._id
   };
 };

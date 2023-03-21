@@ -9,3 +9,10 @@ export const getToken = () => {
 export const clearToken = () => {
   localStorage.removeItem(tokenKey);
 };
+
+/**
+ * 把数据库读取到的price，转化成元
+ */
+export const formatPrice = (val: number) => {
+  return val / 100000;
+};

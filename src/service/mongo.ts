@@ -30,3 +30,4 @@ export * from './models/chat';
 export * from './models/model';
 export * from './models/user';
 export * from './models/training';
+export * from './models/bill';

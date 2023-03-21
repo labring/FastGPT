@@ -7,31 +7,35 @@ export enum ChatModelNameEnum {
 }
 
 export type ModelConstantsData = {
+  serviceCompany: `${ServiceName}`;
   name: string;
   model: `${ChatModelNameEnum}`;
   trainName: string; // 空字符串代表不能训练
   maxToken: number;
   maxTemperature: number;
+  price: number; // 多少钱 / 1字，单位: 0.00001元
 };
 
-export const ModelList: Record<ServiceName, ModelConstantsData[]> = {
-  openai: [
-    {
-      name: 'chatGPT',
-      model: ChatModelNameEnum.GPT35,
-      trainName: 'turbo',
-      maxToken: 4000,
-      maxTemperature: 2
-    },
-    {
-      name: 'GPT3',
-      model: ChatModelNameEnum.GPT3,
-      trainName: 'davinci',
-      maxToken: 4000,
-      maxTemperature: 2
-    }
-  ]
-};
+export const ModelList: ModelConstantsData[] = [
+  {
+    serviceCompany: 'openai',
+    name: 'chatGPT',
+    model: ChatModelNameEnum.GPT35,
+    trainName: 'turbo',
+    maxToken: 4000,
+    maxTemperature: 2,
+    price: 2
+  },
+  {
+    serviceCompany: 'openai',
+    name: 'GPT3',
+    model: ChatModelNameEnum.GPT3,
+    trainName: 'davinci',
+    maxToken: 4000,
+    maxTemperature: 2,
+    price: 20
+  }
+];
 
 export enum TrainingStatusEnum {
   pending = 'pending',
