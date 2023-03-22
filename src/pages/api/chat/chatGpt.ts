@@ -13,13 +13,27 @@ import { pushBill } from '@/service/events/bill';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { chatId, prompt } = req.body as {
-    prompt: ChatItemType;
-    chatId: string;
-  };
-  const { authorization } = req.headers;
+  let step = 0; // step=1时，表示开始了流响应
+  const stream = new PassThrough();
+  stream.on('error', () => {
+    console.log('error: ', 'stream error');
+    stream.destroy();
+  });
+  res.on('close', () => {
+    console.log('stream request close');
+    stream.destroy();
+  });
+  res.on('error', () => {
+    console.log('error: ', 'request error');
+    stream.destroy();
+  });
 
   try {
+    const { chatId, prompt } = req.body as {
+      prompt: ChatItemType;
+      chatId: string;
+    };
+    const { authorization } = req.headers;
     if (!chatId || !prompt) {
       throw new Error('缺少参数');
     }
@@ -92,10 +106,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('X-Accel-Buffering', 'no');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
+    step = 1;
 
     let responseContent = '';
-    const pass = new PassThrough();
-    pass.pipe(res);
+    stream.pipe(res);
 
     const onParse = async (event: ParsedEvent | ReconnectInterval) => {
       if (event.type !== 'event') return;
@@ -107,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!content) return;
         responseContent += content;
         // console.log('content:', content)
-        pass.push(content.replace(/\n/g, '<br/>'));
+        stream.push(content.replace(/\n/g, '<br/>'));
       } catch (error) {
         error;
       }
@@ -116,13 +130,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const decoder = new TextDecoder();
     try {
       for await (const chunk of chatResponse.data as any) {
+        if (stream.destroyed) {
+          // 流被中断了，直接忽略后面的内容
+          break;
+        }
         const parser = createParser(onParse);
         parser.feed(decoder.decode(chunk));
       }
     } catch (error) {
       console.log('pipe error', error);
     }
-    pass.push(null);
+    stream.push(null);
 
     const promptsLen = formatPrompts.reduce((sum, item) => sum + item.content.length, 0);
     console.log(`responseLen: ${responseContent.length}`, `promptLen: ${promptsLen}`);
@@ -135,10 +153,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         textLen: promptsLen + responseContent.length
       });
   } catch (err: any) {
-    res.status(500);
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+    if (step === 1) {
+      console.log('error，结束');
+      // 直接结束流
+      stream.destroy();
+    } else {
+      res.status(500);
+      jsonRes(res, {
+        code: 500,
+        error: err
+      });
+    }
   }
 }
