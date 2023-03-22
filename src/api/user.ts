@@ -4,7 +4,7 @@ import { ResLogin } from './response/user';
 import { EmailTypeEnum } from '@/constants/common';
 import { UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
-import { BillSchema } from '@/types/mongoSchema';
+import { BillSchema, PaySchema } from '@/types/mongoSchema';
 import { adaptBill } from '@/utils/adapt';
 
 export const sendCodeToEmail = ({ email, type }: { email: string; type: `${EmailTypeEnum}` }) =>
@@ -56,11 +56,12 @@ export const getUserBills = (data: RequestPaging) =>
     data: res.data.map((bill) => adaptBill(bill))
   }));
 
+export const getPayOrders = () => GET<PaySchema[]>(`/user/getPayOrders`);
+
 export const getPayCode = (amount: number) =>
   GET<{
     codeUrl: string;
-    orderId: string;
+    payId: string;
   }>(`/user/getPayCode?amount=${amount}`);
 
-export const checkPayResult = (orderId: string) =>
-  GET<number>(`/user/checkPayResult?orderId=${orderId}`);
+export const checkPayResult = (payId: string) => GET<number>(`/user/checkPayResult?payId=${payId}`);

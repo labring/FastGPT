@@ -16,7 +16,7 @@ const UserSchema = new Schema({
   },
   balance: {
     type: Number,
-    default: 0.5
+    default: 0.5 * 100000
   },
   accounts: [
     {

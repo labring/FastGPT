@@ -85,3 +85,12 @@ export interface BillSchema {
   textLen: number;
   price: number;
 }
+
+export interface PaySchema {
+  _id: string;
+  userId: string;
+  createTime: Date;
+  price: number;
+  orderId: string;
+  status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
+}

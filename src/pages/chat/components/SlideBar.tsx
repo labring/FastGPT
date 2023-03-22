@@ -32,7 +32,7 @@ import { useCopyData } from '@/utils/tools';
 import Markdown from '@/components/Markdown';
 import { shareHint } from '@/constants/common';
 import { getChatSiteId } from '@/api/chat';
-import Image from 'next/image';
+import WxConcat from '@/components/WxConcat';
 
 const SlideBar = ({
   name,
@@ -305,34 +305,7 @@ const SlideBar = ({
         </ModalContent>
       </Modal>
       {/* wx 联系 */}
-      <Modal isOpen={isOpenWx} onClose={onCloseWx}>
-        <ModalOverlay />
-        <ModalContent color={useColorModeValue('blackAlpha.700', 'white')}>
-          <ModalHeader>wx交流群</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody textAlign={'center'}>
-            <Image
-              style={{ margin: 'auto' }}
-              src={'/imgs/wxcode.jpg'}
-              width={200}
-              height={200}
-              alt=""
-            />
-            <Box mt={2}>
-              微信号:{' '}
-              <Box as={'span'} userSelect={'all'}>
-                YNyiqi
-              </Box>
-            </Box>
-          </ModalBody>
-
-          <ModalFooter>
-            <Button variant={'outline'} onClick={onCloseWx}>
-              关闭
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      {isOpenWx && <WxConcat onClose={onCloseWx} />}
     </Flex>
   );
 };
