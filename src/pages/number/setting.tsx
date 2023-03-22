@@ -13,12 +13,13 @@ import {
   TableContainer,
   Select,
   Input,
-  IconButton
+  IconButton,
+  useDisclosure
 } from '@chakra-ui/react';
 import { DeleteIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { putUserInfo, getUserBills } from '@/api/user';
+import { putUserInfo, getUserBills, getPayOrders, checkPayResult } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
@@ -27,6 +28,10 @@ import { usePaging } from '@/hooks/usePaging';
 import type { UserBillType } from '@/types/user';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
+import { PaySchema } from '@/types/mongoSchema';
+import dayjs from 'dayjs';
+import { formatPrice } from '@/utils/user';
+import WxConcat from '@/components/WxConcat';
 
 const PayModal = dynamic(() => import('./components/PayModal'));
 
@@ -37,6 +42,7 @@ const NumberSetting = () => {
     defaultValues: userInfo as UserType
   });
   const [showPay, setShowPay] = useState(false);
+  const { isOpen: isOpenWx, onOpen: onOpenWx, onClose: onCloseWx } = useDisclosure();
   const { toast } = useToast();
   const {
     fields: accounts,
@@ -50,6 +56,7 @@ const NumberSetting = () => {
     api: getUserBills,
     pageSize: 30
   });
+  const [payOrders, setPayOrders] = useState<PaySchema[]>([]);
 
   const onclickSave = useCallback(
     async (data: UserUpdateParams) => {
@@ -68,6 +75,31 @@ const NumberSetting = () => {
   );
 
   useQuery(['init'], initUserInfo);
+
+  useQuery(['initPayOrder'], getPayOrders, {
+    onSuccess(res) {
+      setPayOrders(res);
+    }
+  });
+
+  const handleRefreshPayOrder = useCallback(
+    async (payId: string) => {
+      try {
+        setLoading(true);
+        await checkPayResult(payId);
+        const res = await getPayOrders();
+        setPayOrders(res);
+      } catch (error: any) {
+        toast({
+          title: error?.message,
+          status: 'warning'
+        });
+        console.log(error);
+      }
+      setLoading(false);
+    },
+    [setLoading, toast]
+  );
 
   return (
     <>
@@ -162,10 +194,54 @@ const NumberSetting = () => {
         </TableContainer>
       </Card>
       <Card mt={6} px={6} py={4}>
+        <Flex alignItems={'flex-end'}>
+          <Box fontSize={'xl'} fontWeight={'bold'}>
+            充值记录
+          </Box>
+          <Button onClick={onOpenWx} size={'xs'} ml={4} variant={'outline'}>
+            异常问题，wx联系
+          </Button>
+        </Flex>
+        <TableContainer maxH={'400px'} overflowY={'auto'}>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>订单号</Th>
+                <Th>时间</Th>
+                <Th>金额</Th>
+                <Th>消费</Th>
+                <Th></Th>
+              </Tr>
+            </Thead>
+            <Tbody fontSize={'sm'}>
+              {payOrders.map((item) => (
+                <Tr key={item._id}>
+                  <Td>{item.orderId}</Td>
+                  <Td>
+                    {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                  </Td>
+                  <Td whiteSpace="pre-wrap" wordBreak={'break-all'}>
+                    {formatPrice(item.price)}元
+                  </Td>
+                  <Td>{item.status}</Td>
+                  <Td>
+                    {item.status === 'NOTPAY' && (
+                      <Button onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
+                        更新
+                      </Button>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Card>
+      <Card mt={6} px={6} py={4}>
         <Box fontSize={'xl'} fontWeight={'bold'}>
-          使用记录
+          使用记录(最新30条)
         </Box>
-        <TableContainer>
+        <TableContainer maxH={'400px'} overflowY={'auto'}>
           <Table>
             <Thead>
               <Tr>
@@ -177,8 +253,8 @@ const NumberSetting = () => {
             <Tbody fontSize={'sm'}>
               {bills.map((item) => (
                 <Tr key={item.id}>
-                  <Td minW={'200px'}>{item.time}</Td>
-                  <Td minW={'200px'} whiteSpace="pre-wrap" wordBreak={'break-all'}>
+                  <Td>{item.time}</Td>
+                  <Td whiteSpace="pre-wrap" wordBreak={'break-all'}>
                     {item.textLen}
                   </Td>
                   <Td>{item.price}元</Td>
@@ -189,6 +265,8 @@ const NumberSetting = () => {
         </TableContainer>
       </Card>
       {showPay && <PayModal onClose={() => setShowPay(false)} />}
+      {/* wx 联系 */}
+      {isOpenWx && <WxConcat onClose={onCloseWx} />}
     </>
   );
 };

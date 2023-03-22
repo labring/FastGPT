@@ -6,9 +6,9 @@ const PaySchema = new Schema({
     ref: 'user',
     required: true
   },
-  time: {
-    type: Number,
-    default: () => Date.now()
+  createTime: {
+    type: Date,
+    default: () => new Date()
   },
   price: {
     type: Number,
@@ -17,6 +17,12 @@ const PaySchema = new Schema({
   orderId: {
     type: String,
     required: true
+  },
+  status: {
+    // 支付的状态
+    type: String,
+    default: 'NOTPAY',
+    enum: ['SUCCESS', 'REFUND', 'NOTPAY', 'CLOSED']
   }
 });
 

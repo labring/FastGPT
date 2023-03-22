@@ -4,6 +4,8 @@ import { jsonRes } from '@/service/response';
 import axios from 'axios';
 import { authToken } from '@/service/utils/tools';
 import { customAlphabet } from 'nanoid';
+import { connectToDatabase, Pay } from '@/service/mongo';
+
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 20);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,9 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!authorization) {
       throw new Error('缺少登录凭证');
     }
-    await authToken(authorization);
+    const userId = await authToken(authorization);
 
     const id = nanoid();
+    await connectToDatabase();
 
     const response = await axios({
       url: 'https://sif268.laf.dev/wechat-pay',
@@ -29,9 +32,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
 
+    // 充值记录 + 1
+    const payOrder = await Pay.create({
+      userId,
+      price: amount * 100000,
+      orderId: id
+    });
+
     jsonRes(res, {
       data: {
-        orderId: id,
+        payId: payOrder._id,
         codeUrl: response.data?.code_url
       }
     });

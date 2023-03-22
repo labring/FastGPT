@@ -15,14 +15,14 @@ import {
 import { getPayCode, checkPayResult } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
-import { useUserStore } from '@/store/user';
+import { useRouter } from 'next/router';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
+  const router = useRouter();
   const { toast } = useToast();
-  const { initUserInfo } = useUserStore();
   const [inputVal, setInputVal] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
-  const [orderId, setOrderId] = useState('');
+  const [payId, setPayId] = useState('');
 
   const handleClickPay = useCallback(async () => {
     if (!inputVal || inputVal <= 0 || isNaN(+inputVal)) return;
@@ -38,7 +38,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.H
       });
-      setOrderId(res.orderId);
+      setPayId(res.payId);
     } catch (error) {
       toast({
         title: '出现了一些意外...',
@@ -50,21 +50,20 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
   }, [inputVal, toast]);
 
   useQuery(
-    [orderId],
+    [payId],
     () => {
-      if (!orderId) return null;
-      return checkPayResult(orderId);
+      if (!payId) return null;
+      return checkPayResult(payId);
     },
     {
       refetchInterval: 2000,
       onSuccess(res) {
         if (!res) return;
-        onClose();
-        initUserInfo();
         toast({
           title: '充值成功',
           status: 'success'
         });
+        router.reload();
       }
     }
   );
@@ -74,17 +73,17 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       <Modal
         isOpen={true}
         onClose={() => {
-          if (orderId) return;
+          if (payId) return;
           onClose();
         }}
       >
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>充值</ModalHeader>
-          {!orderId && <ModalCloseButton />}
+          {!payId && <ModalCloseButton />}
 
           <ModalBody>
-            {!orderId && (
+            {!payId && (
               <>
                 <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4}>
                   {[5, 10, 20, 50].map((item) => (
@@ -112,18 +111,23 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
             )}
             {/* 付费二维码 */}
             <Box textAlign={'center'}>
-              {orderId && <Box mb={3}>请微信扫码支付: {inputVal}元，请勿关闭页面</Box>}
+              {payId && <Box mb={3}>请微信扫码支付: {inputVal}元，请勿关闭页面</Box>}
               <Box id={'payQRCode'} display={'inline-block'}></Box>
             </Box>
           </ModalBody>
 
           <ModalFooter>
-            {!orderId && (
+            {!payId && (
               <>
                 <Button colorScheme={'gray'} onClick={onClose}>
                   取消
                 </Button>
-                <Button ml={3} isLoading={loading} onClick={handleClickPay}>
+                <Button
+                  ml={3}
+                  isLoading={loading}
+                  isDisabled={!inputVal || inputVal === 0}
+                  onClick={handleClickPay}
+                >
                   获取充值二维码
                 </Button>
               </>
