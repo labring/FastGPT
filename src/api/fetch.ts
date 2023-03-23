@@ -3,8 +3,9 @@ interface StreamFetchProps {
   url: string;
   data: any;
   onMessage: (text: string) => void;
+  abortSignal: AbortController;
 }
-export const streamFetch = ({ url, data, onMessage }: StreamFetchProps) =>
+export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchProps) =>
   new Promise(async (resolve, reject) => {
     try {
       const res = await fetch(url, {
@@ -13,7 +14,8 @@ export const streamFetch = ({ url, data, onMessage }: StreamFetchProps) =>
           'Content-Type': 'application/json',
           Authorization: getToken() || ''
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        signal: abortSignal.signal
       });
       const reader = res.body?.getReader();
       if (!reader) return;
