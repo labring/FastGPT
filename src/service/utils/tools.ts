@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user';
 import tunnel from 'tunnel';
+import type { UserModelSchema } from '@/types/mongoSchema';
+import { formatPrice } from '@/utils/user';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -49,7 +51,37 @@ export const getUserOpenaiKey = async (userId: string) => {
     return Promise.reject('缺少ApiKey, 无法请求');
   }
 
-  return Promise.resolve(userApiKey);
+  return Promise.resolve(userApiKey as string);
+};
+
+/* 获取key，如果没有就用平台的，用平台记得加账单 */
+export const getOpenApiKey = async (authorization?: string) => {
+  const userId = await authToken(authorization);
+  const user = await User.findById<UserModelSchema>(userId);
+
+  if (!user) return Promise.reject('用户不存在');
+
+  const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
+
+  // 有自己的key， 直接使用
+  if (userApiKey) {
+    return {
+      userId,
+      userApiKey: await getUserOpenaiKey(userId),
+      systemKey: ''
+    };
+  }
+
+  // 余额校验
+  if (formatPrice(user.balance) <= 0) {
+    return Promise.reject('该账号余额不足');
+  }
+
+  return {
+    userId,
+    userApiKey: '',
+    systemKey: process.env.OPENAIKEY as string
+  };
 };
 
 /* 代理 */
