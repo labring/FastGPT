@@ -6,7 +6,7 @@ import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
 import { httpsAgent } from '@/service/utils/tools';
 import { ModelList } from '@/constants/model';
-import { pushBill } from '@/service/events/bill';
+import { pushBill } from '@/service/events/pushChatBill';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

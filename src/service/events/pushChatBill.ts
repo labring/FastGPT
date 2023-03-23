@@ -26,6 +26,8 @@ export const pushBill = async ({
       // 插入 Bill 记录
       const res = await Bill.create({
         userId,
+        type: 'chat',
+        modelName: modelItem.model,
         chatId,
         textLen,
         price
