@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useMemo } from 'react';
+import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import {
@@ -88,6 +88,16 @@ const Chat = ({ chatId }: { chatId: string }) => {
   }, [chatData]);
 
   const { pushChatHistory } = useChatStore();
+  // 中断请求
+  const controller = useRef(new AbortController());
+  useEffect(() => {
+    controller.current = new AbortController();
+    return () => {
+      console.log('close========');
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      controller.current?.abort();
+    };
+  }, [chatId]);
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
@@ -212,7 +222,8 @@ const Chat = ({ chatId }: { chatId: string }) => {
               };
             })
           }));
-        }
+        },
+        abortSignal: controller.current
       });
 
       // 保存对话信息
