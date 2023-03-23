@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-
+import { generateQA } from './events/generateQA';
 /**
  * 连接 MongoDB 数据库
  */
@@ -23,6 +23,9 @@ export async function connectToDatabase(): Promise<void> {
     console.log('error->', 'mongo connect error');
     global.mongodb = null;
   }
+
+  // 递归 QA 生成
+  generateQA();
 }
 
 export * from './models/authCode';
@@ -33,3 +36,4 @@ export * from './models/training';
 export * from './models/bill';
 export * from './models/pay';
 export * from './models/data';
+export * from './models/dataItem';

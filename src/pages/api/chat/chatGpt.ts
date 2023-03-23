@@ -9,7 +9,7 @@ import { jsonRes } from '@/service/response';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { ModelList } from '@/constants/model';
-import { pushBill } from '@/service/events/bill';
+import { pushBill } from '@/service/events/pushChatBill';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -98,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    console.log('api response time:', `time: ${(Date.now() - startTime) / 1000}s`);
+    console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
 
     // 创建响应流
     res.setHeader('Content-Type', 'text/event-stream;charset-utf-8');

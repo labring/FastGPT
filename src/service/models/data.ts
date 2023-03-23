@@ -6,21 +6,13 @@ const DataSchema = new Schema({
     ref: 'user',
     required: true
   },
-  docId: {
+  name: {
     type: String,
     required: true
   },
   createTime: {
     type: Date,
     default: () => new Date()
-  },
-  q: {
-    type: String,
-    required: true
-  },
-  a: {
-    type: String,
-    required: true
   }
 });
 
