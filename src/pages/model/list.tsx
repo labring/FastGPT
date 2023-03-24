@@ -14,7 +14,7 @@ import { useUserStore } from '@/store/user';
 
 const CreateModel = dynamic(() => import('./components/CreateModel'));
 
-const ModelList = () => {
+const modelList = () => {
   const { toast } = useToast();
   const { isPc } = useScreen();
   const router = useRouter();
@@ -87,4 +87,4 @@ const ModelList = () => {
   );
 };
 
-export default ModelList;
+export default modelList;

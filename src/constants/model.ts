@@ -16,7 +16,7 @@ export type ModelConstantsData = {
   price: number; // 多少钱 / 1字，单位: 0.00001元
 };
 
-export const ModelList: ModelConstantsData[] = [
+export const modelList: ModelConstantsData[] = [
   {
     serviceCompany: 'openai',
     name: 'chatGPT',
