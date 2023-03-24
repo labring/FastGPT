@@ -2,6 +2,7 @@ import type { Mongoose } from 'mongoose';
 
 declare global {
   var mongodb: Mongoose | string | null;
+  var generatingQA: boolean;
   var QRCode: any;
 }
 
