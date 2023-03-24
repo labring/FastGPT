@@ -141,6 +141,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('pipe error', error);
     }
     // close stream
+    !stream.destroyed && stream.push(null);
     stream.destroy();
 
     const promptsLen = formatPrompts.reduce((sum, item) => sum + item.content.length, 0);
