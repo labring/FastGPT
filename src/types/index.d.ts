@@ -4,6 +4,9 @@ declare global {
   var mongodb: Mongoose | string | null;
   var generatingQA: boolean;
   var QRCode: any;
+  interface Window {
+    ['pdfjs-dist/build/pdf']: any;
+  }
 }
 
 export type PagingData<T> = {

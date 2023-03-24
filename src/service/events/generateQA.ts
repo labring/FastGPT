@@ -23,7 +23,7 @@ export async function generateQA(next = false): Promise<any> {
   try {
     // 找出一个需要生成的 dataItem
     dataItem = await DataItem.findOne({
-      status: 1,
+      status: { $ne: 0 },
       times: { $gt: 0 }
     });
 
@@ -56,7 +56,8 @@ export async function generateQA(next = false): Promise<any> {
       throw new Error('获取 openai key 失败');
     }
 
-    console.log('正在生成一个QA', dataItem._id);
+    console.log('正在生成一个QA, ID:', dataItem._id, 'temperature: ', dataItem.temperature / 100);
+
     const startTime = Date.now();
 
     // 获取 openai 请求实例
@@ -65,7 +66,7 @@ export async function generateQA(next = false): Promise<any> {
     const response = await chatAPI.createChatCompletion(
       {
         model: ChatModelNameEnum.GPT35,
-        temperature: dataItem.temperature,
+        temperature: dataItem.temperature / 100,
         n: 1,
         messages: [
           systemPrompt,
@@ -76,28 +77,27 @@ export async function generateQA(next = false): Promise<any> {
         ]
       },
       {
-        timeout: 60000,
+        timeout: 120000,
         httpsAgent
       }
     );
     const content = response.data.choices[0].message?.content;
     // 从 content 中提取 QA
     const splitResponse = splitText(content || '');
-    if (splitResponse.length > 0) {
-      // 插入数据库，并修改状态
-      await DataItem.findByIdAndUpdate(dataItem._id, {
-        status: 0,
-        $push: {
-          result: {
-            $each: splitResponse
-          }
+    // 插入数据库，并修改状态
+    await DataItem.findByIdAndUpdate(dataItem._id, {
+      status: dataItem.temperature >= 100 ? 0 : 1,
+      temperature: dataItem.temperature >= 100 ? dataItem.temperature : dataItem.temperature + 25,
+      $push: {
+        result: {
+          $each: splitResponse
         }
-      });
-      console.log('生成成功，time:', `${(Date.now() - startTime) / 1000}s`);
-    }
+      }
+    });
+    console.log('生成成功，time:', `${(Date.now() - startTime) / 1000}s`);
   } catch (error: any) {
     console.log('error: 生成QA错误', dataItem?._id);
-    console.log('statusText:', error?.response?.statusText);
+    console.log('response:', error?.response);
     // 重置状态
     if (dataItem?._id) {
       await DataItem.findByIdAndUpdate(dataItem._id, {

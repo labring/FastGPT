@@ -1,5 +1,5 @@
 import { Schema, model, models } from 'mongoose';
-import { ModelList } from '@/constants/model';
+import { modelList } from '@/constants/model';
 
 const BillSchema = new Schema({
   userId: {
@@ -14,7 +14,7 @@ const BillSchema = new Schema({
   },
   modelName: {
     type: String,
-    enum: ModelList.map((item) => item.model),
+    enum: modelList.map((item) => item.model),
     required: true
   },
   chatId: {

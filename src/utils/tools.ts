@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { useToast } from '@/hooks/useToast';
+import mammoth from 'mammoth';
 
 /**
  * copy text data
@@ -50,17 +51,76 @@ export const Obj2Query = (obj: Record<string, string | number>) => {
 };
 
 /**
- * 读取文件内容
+ * 读取 txt 文件内容
  */
-export const loadLocalFileContent = (file: File) => {
+export const readTxtContent = (file: File) => {
   return new Promise((resolve: (_: string) => void, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       resolve(reader.result as string);
     };
     reader.onerror = (err) => {
-      reject(err);
+      console.log('error txt read:', err);
+      reject('读取 txt 文件失败');
     };
     reader.readAsText(file);
   });
 };
+
+/**
+ * 读取 pdf 内容
+ */
+export const readPdfContent = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.workerSrc = '/js/pdf.worker.js';
+
+    const readPDFPage = async (doc: any, pageNo: number) => {
+      const page = await doc.getPage(pageNo);
+      const tokenizedText = await page.getTextContent();
+      const pageText = tokenizedText.items.map((token: any) => token.str).join('');
+      return pageText.replaceAll(/\s+/g, '\n');
+    };
+
+    let reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onload = async (event) => {
+      if (!event?.target?.result) return reject('解析 PDF 失败');
+      try {
+        const doc = await pdfjsLib.getDocument(event.target.result).promise;
+        const pageTextPromises = [];
+        for (let pageNo = 1; pageNo <= doc.numPages; pageNo++) {
+          pageTextPromises.push(readPDFPage(doc, pageNo));
+        }
+        const pageTexts = await Promise.all(pageTextPromises);
+        resolve(pageTexts.join('\n'));
+      } catch (err) {
+        console.log(err, 'pdfjs error');
+        reject('解析 PDF 失败');
+      }
+    };
+    reader.onerror = (err) => {
+      console.log(err, 'reader error');
+      reject('解析 PDF 失败');
+    };
+  });
+
+/**
+ * 读取doc
+ */
+export const readDocContent = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onload = ({ target }) => {
+      if (!target?.result) return reject('读取 doc 文件失败');
+      return mammoth.extractRawText({ arrayBuffer: target.result as ArrayBuffer }).then((res) => {
+        resolve(res.value);
+      });
+    };
+    reader.onerror = (err) => {
+      console.log('error doc read:', err);
+
+      reject('读取 doc 文件失败');
+    };
+  });

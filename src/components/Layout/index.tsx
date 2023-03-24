@@ -26,12 +26,12 @@ const navbarList = [
     link: '/model/list',
     activeLink: ['/model/list', '/model/detail']
   },
-  // {
-  //   label: '数据',
-  //   icon: 'icon-datafull',
-  //   link: '/training/dataList',
-  //   activeLink: ['/training/dataList']
-  // },
+  {
+    label: '数据',
+    icon: 'icon-datafull',
+    link: '/data/list',
+    activeLink: ['/data/list']
+  },
   {
     label: '账号',
     icon: 'icon-yonghu-yuan',
@@ -62,8 +62,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               <Box h={'100%'} position={'fixed'} left={0} top={0} w={'80px'}>
                 <Navbar navbarList={navbarList} />
               </Box>
-              <Box ml={'80px'} p={7}>
-                <Box maxW={'1100px'} m={'auto'}>
+              <Box ml={'80px'} p={7} h={'100%'}>
+                <Box maxW={'1100px'} m={'auto'} h={'100%'}>
                   <Auth>{children}</Auth>
                 </Box>
               </Box>
