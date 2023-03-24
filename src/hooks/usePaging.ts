@@ -1,16 +1,18 @@
 import { useState, useCallback } from 'react';
 import type { PagingData } from '../types/index';
 import { useQuery } from '@tanstack/react-query';
+import { useToast } from './useToast';
 
 export const usePaging = <T = any>({
   api,
   pageSize = 10,
-  params
+  params = {}
 }: {
   api: (data: any) => Promise<PagingData<T>>;
   pageSize?: number;
   params?: Record<string, any>;
 }) => {
+  const { toast } = useToast();
   const [data, setData] = useState<T[]>([]);
   const [pageNum, setPageNum] = useState(1);
   const [total, setTotal] = useState(0);
@@ -18,36 +20,40 @@ export const usePaging = <T = any>({
   const [requesting, setRequesting] = useState(false);
 
   const getData = useCallback(
-    async (init = false) => {
+    async (num: number, init = false) => {
       if (requesting) return;
       if (!init && isLoadAll) return;
       setRequesting(true);
 
       try {
         const res = await api({
-          pageNum,
+          pageNum: num,
           pageSize,
-          ...(params ? params : {})
+          ...params
         });
         setData((state) => {
           const data = init ? res.data : state.concat(res.data);
           if (data.length >= res.total) {
             setIsLoadAll(true);
           }
+          setTotal(res.total);
           return data;
         });
-        setTotal(res.total);
-      } catch (error) {
+      } catch (error: any) {
+        toast({
+          title: error?.message || '获取数据异常',
+          status: 'error'
+        });
         console.log(error);
       }
 
       setRequesting(false);
       return null;
     },
-    [api, isLoadAll, pageNum, pageSize, params, requesting]
+    [api, isLoadAll, pageSize, params, requesting, toast]
   );
 
-  useQuery(['init', pageNum], () => getData(pageNum === 1));
+  useQuery(['init', pageNum], () => getData(pageNum, pageNum === 1));
 
   return {
     pageNum,
@@ -55,6 +61,7 @@ export const usePaging = <T = any>({
     setPageNum,
     total,
     data,
-    getData
+    getData,
+    requesting
   };
 };

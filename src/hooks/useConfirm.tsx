@@ -19,9 +19,10 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
   return {
     openConfirm: useCallback(
       (confirm?: any, cancel?: any) => {
-        onOpen();
         confirmCb.current = confirm;
         cancelCb.current = cancel;
+
+        return onOpen;
       },
       [onOpen]
     ),

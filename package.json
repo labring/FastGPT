@@ -27,6 +27,7 @@
     "hyperdown": "^2.4.29",
     "immer": "^9.0.19",
     "jsonwebtoken": "^9.0.0",
+    "mammoth": "^1.5.1",
     "mongoose": "^6.10.0",
     "nanoid": "^4.0.1",
     "next": "13.1.6",

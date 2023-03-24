@@ -291,15 +291,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           </Box>
           <Flex mt={5} alignItems={'center'}>
             <Box flex={'0 0 80px'}>删除模型:</Box>
-            <Button
-              colorScheme={'red'}
-              size={'sm'}
-              onClick={() => {
-                openConfirm(() => {
-                  handleDelModel();
-                });
-              }}
-            >
+            <Button colorScheme={'red'} size={'sm'} onClick={openConfirm(handleDelModel)}>
               删除模型
             </Button>
           </Flex>
