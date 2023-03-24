@@ -121,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!content) return;
         responseContent += content;
         // console.log('content:', content)
-        stream.push(content.replace(/\n/g, '<br/>'));
+        !stream.destroyed && stream.push(content.replace(/\n/g, '<br/>'));
       } catch (error) {
         error;
       }
@@ -140,7 +140,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
       console.log('pipe error', error);
     }
-    stream.push(null);
+    // close stream
+    stream.destroy();
 
     const promptsLen = formatPrompts.reduce((sum, item) => sum + item.content.length, 0);
     console.log(`responseLen: ${responseContent.length}`, `promptLen: ${promptsLen}`);
@@ -154,8 +155,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
   } catch (err: any) {
     if (step === 1) {
-      console.log('error，结束');
       // 直接结束流
+      console.log('error，结束');
       stream.destroy();
     } else {
       res.status(500);

@@ -14,15 +14,9 @@ export const pushBill = async ({
 }) => {
   await connectToDatabase();
 
-  const modelItem = modelList.find((item) => item.model === modelName);
-
-  if (!modelItem) return;
-
   let billId;
 
   try {
-    await connectToDatabase();
-
     const modelItem = modelList.find((item) => item.model === modelName);
 
     if (!modelItem) return;
