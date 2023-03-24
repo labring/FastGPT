@@ -18,7 +18,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { postCreateModel } from '@/api/model';
 import type { ModelSchema } from '@/types/mongoSchema';
-import { ModelList } from '@/constants/model';
+import { modelList } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 
 interface CreateFormType {
@@ -45,7 +45,7 @@ const CreateModel = ({
     formState: { errors }
   } = useForm<CreateFormType>({
     defaultValues: {
-      serviceModelName: ModelList[0].model
+      serviceModelName: modelList[0].model
     }
   });
 
@@ -98,7 +98,7 @@ const CreateModel = ({
                   required: '底层模型不能为空'
                 })}
               >
-                {ModelList.map((item) => (
+                {modelList.map((item) => (
                   <option key={item.model} value={item.model}>
                     {item.name}
                   </option>
@@ -110,7 +110,7 @@ const CreateModel = ({
             </FormControl>
             <Box mt={3} textAlign={'center'} fontSize={'sm'} color={'blackAlpha.600'}>
               {formatPrice(
-                ModelList.find((item) => item.model === getValues('serviceModelName'))?.price || 0
+                modelList.find((item) => item.model === getValues('serviceModelName'))?.price || 0
               ) * 1000}
               元/1000字(包括上下文和标点符号)
             </Box>

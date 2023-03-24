@@ -1,5 +1,5 @@
 import { connectToDatabase, Bill, User } from '../mongo';
-import { ModelList } from '@/constants/model';
+import { modelList } from '@/constants/model';
 
 export const pushBill = async ({
   modelName,
@@ -12,16 +12,23 @@ export const pushBill = async ({
   chatId: string;
   textLen: number;
 }) => {
+  await connectToDatabase();
+
+  const modelItem = modelList.find((item) => item.model === modelName);
+
+  if (!modelItem) return;
+
+  let billId;
+
   try {
     await connectToDatabase();
 
-    const modelItem = ModelList.find((item) => item.model === modelName);
+    const modelItem = modelList.find((item) => item.model === modelName);
 
     if (!modelItem) return;
 
     const price = modelItem.price * textLen;
 
-    let billId;
     try {
       // 插入 Bill 记录
       const res = await Bill.create({
