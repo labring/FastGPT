@@ -13,7 +13,7 @@ import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
-import { formatModelStatus, ModelStatusEnum, ModelList, defaultModel } from '@/constants/model';
+import { formatModelStatus, ModelStatusEnum, modelList, defaultModel } from '@/constants/model';
 import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import ModelEditForm from './components/ModelEditForm';
@@ -38,7 +38,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
   });
 
   const canTrain = useMemo(() => {
-    const openai = ModelList.find((item) => item.model === model?.service.modelName);
+    const openai = modelList.find((item) => item.model === model?.service.modelName);
     return openai && openai.trainName;
   }, [model]);
 

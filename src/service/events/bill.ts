@@ -1,5 +1,5 @@
 import { connectToDatabase, Bill, User } from '../mongo';
-import { ModelList } from '@/constants/model';
+import { modelList } from '@/constants/model';
 
 export const pushBill = async ({
   modelName,
@@ -14,7 +14,7 @@ export const pushBill = async ({
 }) => {
   await connectToDatabase();
 
-  const modelItem = ModelList.find((item) => item.model === modelName);
+  const modelItem = modelList.find((item) => item.model === modelName);
 
   if (!modelItem) return;
 

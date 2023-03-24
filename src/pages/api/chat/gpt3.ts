@@ -5,7 +5,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
 import { httpsAgent } from '@/service/utils/tools';
-import { ModelList } from '@/constants/model';
+import { modelList } from '@/constants/model';
 import { pushBill } from '@/service/events/bill';
 
 /* 发送提示词 */
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const formatPrompts = prompt.map((item) => `${item.value}\n\n###\n\n`).join('');
 
     // 计算温度
-    const modelConstantsData = ModelList.find((item) => item.model === model.service.modelName);
+    const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
     if (!modelConstantsData) {
       throw new Error('模型异常');
     }
