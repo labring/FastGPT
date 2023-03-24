@@ -1,9 +1,20 @@
 import { Schema, model, models } from 'mongoose';
+import { ModelList } from '@/constants/model';
 
 const BillSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user',
+    required: true
+  },
+  type: {
+    type: String,
+    enum: ['chat', 'generateData', 'return'],
+    required: true
+  },
+  modelName: {
+    type: String,
+    enum: ModelList.map((item) => item.model),
     required: true
   },
   chatId: {

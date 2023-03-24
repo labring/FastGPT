@@ -94,3 +94,28 @@ export interface PaySchema {
   orderId: string;
   status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
 }
+
+export interface DataSchema {
+  _id: string;
+  userId: string;
+  name: string;
+  createTime: string;
+}
+
+export interface DataItemSchema {
+  _id: string;
+  userId: string;
+  dataId: string;
+  times: number;
+  temperature: number;
+  text: string;
+  result: {
+    q: string;
+    a: string;
+  }[];
+  status: 0 | 1 | 2;
+}
+
+export interface DataItemPopulate extends DataItemSchema {
+  userId: UserModelSchema;
+}

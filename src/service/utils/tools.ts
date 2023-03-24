@@ -55,8 +55,7 @@ export const getUserOpenaiKey = async (userId: string) => {
 };
 
 /* 获取key，如果没有就用平台的，用平台记得加账单 */
-export const getOpenApiKey = async (authorization?: string) => {
-  const userId = await authToken(authorization);
+export const getOpenApiKey = async (userId: string) => {
   const user = await User.findById<UserModelSchema>(userId);
 
   if (!user) return Promise.reject('用户不存在');
@@ -66,7 +65,6 @@ export const getOpenApiKey = async (authorization?: string) => {
   // 有自己的key， 直接使用
   if (userApiKey) {
     return {
-      userId,
       userApiKey: await getUserOpenaiKey(userId),
       systemKey: ''
     };
@@ -78,7 +76,6 @@ export const getOpenApiKey = async (authorization?: string) => {
   }
 
   return {
-    userId,
     userApiKey: '',
     systemKey: process.env.OPENAIKEY as string
   };
