@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { ModelStatusEnum, ModelList, ChatModelNameEnum } from '@/constants/model';
+import { ModelStatusEnum, modelList, ChatModelNameEnum } from '@/constants/model';
 import { Model } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const userId = await authToken(authorization);
 
-    const modelItem = ModelList.find((item) => item.model === serviceModelName);
+    const modelItem = modelList.find((item) => item.model === serviceModelName);
 
     if (!modelItem) {
       throw new Error('模型不存在');

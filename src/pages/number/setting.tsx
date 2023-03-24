@@ -123,6 +123,9 @@ const NumberSetting = () => {
               充值
             </Button>
           </Flex>
+          <Box fontSize={'xs'} color={'blackAlpha.500'}>
+            如果填写了自己的 openai 账号，将不会计费
+          </Box>
         </Box>
       </Card>
       <Card mt={6} px={6} py={4}>

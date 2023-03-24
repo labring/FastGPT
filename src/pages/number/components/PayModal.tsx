@@ -10,12 +10,21 @@ import {
   Button,
   Input,
   Box,
-  Grid
+  Grid,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer
 } from '@chakra-ui/react';
 import { getPayCode, checkPayResult } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
+import { modelList } from '@/constants/model';
+import { formatPrice } from '../../../utils/user';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
@@ -82,9 +91,28 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
           <ModalHeader>充值</ModalHeader>
           {!payId && <ModalCloseButton />}
 
-          <ModalBody>
+          <ModalBody py={0}>
             {!payId && (
               <>
+                {/* 价格表 */}
+                <TableContainer mb={4}>
+                  <Table>
+                    <Thead>
+                      <Tr>
+                        <Th>模型类型</Th>
+                        <Th>价格(元/1000字符，包含所有上下文)</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {modelList.map((item, i) => (
+                        <Tr key={item.model}>
+                          <Td>{item.name}</Td>
+                          <Td>{formatPrice(item.price) * 1000}</Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                </TableContainer>
                 <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4}>
                   {[5, 10, 20, 50].map((item) => (
                     <Button
