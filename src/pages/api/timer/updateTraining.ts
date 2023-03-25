@@ -11,6 +11,9 @@ import { sendTrainSucceed } from '@/service/utils/sendEmail';
 import { httpsAgent } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.headers.auth !== 'archer') {
+    throw new Error('凭证错误');
+  }
   try {
     await connectToDatabase();
 

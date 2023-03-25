@@ -13,6 +13,10 @@ const DataSchema = new Schema({
   createTime: {
     type: Date,
     default: () => new Date()
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
   }
 });
 
