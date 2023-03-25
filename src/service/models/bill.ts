@@ -1,5 +1,6 @@
-import { Schema, model, models } from 'mongoose';
+import { Schema, model, models, Model } from 'mongoose';
 import { modelList } from '@/constants/model';
+import { BillSchema as BillType } from '@/types/mongoSchema';
 
 const BillSchema = new Schema({
   userId: {
@@ -42,4 +43,4 @@ const BillSchema = new Schema({
   }
 });
 
-export const Bill = models['bill'] || model('bill', BillSchema);
+export const Bill: Model<BillType> = models['bill'] || model('bill', BillSchema);

@@ -264,10 +264,10 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
               onClick={() => {
                 SelectFileDom.current?.click();
               }}
-              title={!canTrain ? '' : '模型不支持微调'}
+              title={!canTrain ? '模型不支持微调' : ''}
               isDisabled={!canTrain}
             >
-              上传微调数据集
+              上传数据集
             </Button>
             <Flex
               as={'a'}
@@ -283,16 +283,30 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
             </Flex>
           </Flex>
           {/* 提示 */}
-          <Box mt={3} py={3} color={'blackAlpha.500'}>
+          <Box mt={3} py={3} color={'blackAlpha.600'}>
+            <Box as={'li'} lineHeight={1.9}>
+              可以使用
+              <Box
+                as={'span'}
+                fontWeight={'bold'}
+                textDecoration={'underline'}
+                color={'blackAlpha.800'}
+                mx={2}
+                cursor={'pointer'}
+                onClick={() => router.push('/data/list')}
+              >
+                数据拆分
+              </Box>
+              功能，从任意文本中提取数据集。
+            </Box>
             <Box as={'li'} lineHeight={1.9}>
               每行包括一个 prompt 和一个 completion
             </Box>
             <Box as={'li'} lineHeight={1.9}>
-              prompt 必须以 \n\n###\n\n 结尾，且尽量保障每个 prompt
-              内容不都是同一个标点结尾，可以加一个空格打断相同性，
+              prompt 必须以 {'</s>'} 结尾
             </Box>
             <Box as={'li'} lineHeight={1.9}>
-              completion 开头必须有一个空格，末尾必须以 ### 结尾，同样的不要都是同一个标点结尾。
+              completion 开头必须有一个空格，必须以 {'</s>'} 结尾
             </Box>
           </Box>
           <Flex mt={5} alignItems={'center'}>

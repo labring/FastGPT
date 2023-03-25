@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import { Schema, model, models, Model } from 'mongoose';
+import { AuthCodeSchema as AuthCodeType } from '@/types/mongoSchema';
 
 const AuthCodeSchema = new Schema({
   email: {
@@ -21,4 +22,5 @@ const AuthCodeSchema = new Schema({
   }
 });
 
-export const AuthCode = models['auth_code'] || model('auth_code', AuthCodeSchema);
+export const AuthCode: Model<AuthCodeType> =
+  models['auth_code'] || model('auth_code', AuthCodeSchema);

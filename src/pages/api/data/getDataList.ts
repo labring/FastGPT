@@ -24,7 +24,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    // 根据 id 获取用户账单
     const datalist = await Data.aggregate<DataListItem>([
       {
         $match: {

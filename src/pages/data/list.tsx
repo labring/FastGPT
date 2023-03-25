@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Card,
   Box,
@@ -12,21 +12,30 @@ import {
   Td,
   TableContainer,
   useDisclosure,
-  Input
+  Input,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem
 } from '@chakra-ui/react';
-import { getDataList, updateDataName, delData } from '@/api/data';
+import { getDataList, updateDataName, delData, getDataItems } from '@/api/data';
 import { usePaging } from '@/hooks/usePaging';
 import type { DataListItem } from '@/types/data';
 import ScrollData from '@/components/ScrollData';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/router';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useRequest } from '@/hooks/useRequest';
+import { DataItemSchema } from '@/types/mongoSchema';
 
 const CreateDataModal = dynamic(() => import('./components/CreateDataModal'));
 const ImportDataModal = dynamic(() => import('./components/ImportDataModal'));
 
+export type ExportDataType = 'jsonl';
+
 const DataList = () => {
+  const router = useRouter();
   const {
     nextPage,
     isLoadAll,
@@ -58,13 +67,51 @@ const DataList = () => {
     }
   });
 
+  const { mutate: handleExportData, isLoading: isExporting } = useRequest({
+    mutationFn: async ({ data, type }: { data: DataListItem; type: ExportDataType }) => ({
+      type,
+      data: await getDataItems({ dataId: data._id, pageNum: 1, pageSize: data.totalData }).then(
+        (res) => res.data
+      )
+    }),
+    successToast: '导出数据集成功',
+    errorToast: '导出数据集异常',
+    onSuccess(res: { type: ExportDataType; data: DataItemSchema[] }) {
+      // 合并数据
+      const data = res.data.map((item) => item.result).flat();
+      let text = '';
+      // 生成 jsonl
+      data.forEach((item) => {
+        const result = JSON.stringify({
+          prompt: `${item.q.toLocaleLowerCase()}</s>`,
+          completion: ` ${item.a}</s>`
+        });
+        text += `${result}\n`;
+      });
+      // 去掉最后一个 \n
+      text = text.substring(0, text.length - 1);
+      // 导出为文件
+      const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+
+      // 创建下载链接
+      const downloadLink = document.createElement('a');
+      downloadLink.href = window.URL.createObjectURL(blob);
+      downloadLink.download = 'file.jsonl';
+
+      // 添加链接到页面并触发下载
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  });
+
   return (
     <Box display={['block', 'flex']} flexDirection={'column'} h={'100%'}>
       <Card px={6} py={4}>
         <Flex>
           <Box flex={1} mr={1}>
             <Box fontSize={'xl'} fontWeight={'bold'}>
-              对话数据管理
+              训练数据管理
             </Box>
             <Box fontSize={'xs'} color={'blackAlpha.600'}>
               允许你将任意文本数据拆分成 QA 的形式。你可以使用这些 QA 去微调你的对话模型。
@@ -99,6 +146,7 @@ const DataList = () => {
                   <Tr key={item._id}>
                     <Td>
                       <Input
+                        minW={'150px'}
                         placeholder="请输入数据集名称"
                         defaultValue={item.name}
                         size={'sm'}
@@ -118,7 +166,9 @@ const DataList = () => {
                         variant={'outline'}
                         colorScheme={'gray'}
                         mr={2}
-                        onClick={() => setImportDataId(item._id)}
+                        onClick={() =>
+                          router.push(`/data/detail?dataId=${item._id}&dataName=${item.name}`)
+                        }
                       >
                         详细
                       </Button>
@@ -130,9 +180,17 @@ const DataList = () => {
                       >
                         导入
                       </Button>
-                      <Button mr={2} size={'sm'}>
-                        导出
-                      </Button>
+                      <Menu>
+                        <MenuButton as={Button} mr={2} size={'sm'}>
+                          导出
+                        </MenuButton>
+                        <MenuList>
+                          <MenuItem onClick={() => handleExportData({ data: item, type: 'jsonl' })}>
+                            jsonl
+                          </MenuItem>
+                        </MenuList>
+                      </Menu>
+
                       <Button
                         size={'sm'}
                         colorScheme={'red'}
