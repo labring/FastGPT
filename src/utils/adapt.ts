@@ -10,6 +10,7 @@ export const adaptBill = (bill: BillSchema): UserBillType => {
     chatId: bill.chatId,
     time: dayjs(bill.time).format('YYYY/MM/DD HH:mm:ss'),
     textLen: bill.textLen,
+    tokenLen: bill.tokenLen,
     price: formatPrice(bill.price)
   };
 };

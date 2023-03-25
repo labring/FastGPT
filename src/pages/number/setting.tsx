@@ -235,9 +235,7 @@ const NumberSetting = () => {
                   <Td>
                     {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                   </Td>
-                  <Td whiteSpace="pre-wrap" wordBreak={'break-all'}>
-                    {formatPrice(item.price)}元
-                  </Td>
+                  <Td>{formatPrice(item.price)}元</Td>
                   <Td>{item.status}</Td>
                   <Td>
                     {item.status === 'NOTPAY' && (
@@ -269,6 +267,7 @@ const NumberSetting = () => {
                 <Tr>
                   <Th>时间</Th>
                   <Th>内容长度</Th>
+                  <Th>Tokens 长度</Th>
                   <Th>消费</Th>
                 </Tr>
               </Thead>
@@ -276,9 +275,8 @@ const NumberSetting = () => {
                 {bills.map((item) => (
                   <Tr key={item.id}>
                     <Td>{item.time}</Td>
-                    <Td whiteSpace="pre-wrap" wordBreak={'break-all'}>
-                      {item.textLen}
-                    </Td>
+                    <Td>{item.textLen}</Td>
+                    <Td>{item.tokenLen}</Td>
                     <Td>{item.price}元</Td>
                   </Tr>
                 ))}

@@ -25,6 +25,7 @@ export interface UserBillType {
   id: string;
   time: string;
   textLen: number;
+  tokenLen: number;
   userId: string;
   chatId: string;
   price: number;

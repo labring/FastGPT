@@ -83,6 +83,7 @@ export interface BillSchema {
   chatId: string;
   time: Date;
   textLen: number;
+  tokenLen: number;
   price: number;
 }
 
