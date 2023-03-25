@@ -24,6 +24,7 @@ export interface UserUpdateParams {
 export interface UserBillType {
   id: string;
   time: string;
+  type: 'chat' | 'splitData' | 'return';
   textLen: number;
   tokenLen: number;
   userId: string;

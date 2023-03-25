@@ -9,7 +9,7 @@ import { jsonRes } from '@/service/response';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
-import { pushBill } from '@/service/events/pushChatBill';
+import { pushChatBill } from '@/service/events/pushBill';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -91,7 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: formatPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: true
+        stream: true,
+        stop: ['。！？.!.']
       },
       {
         timeout: 40000,
@@ -149,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const promptsContent = formatPrompts.map((item) => item.content).join('');
     // 只有使用平台的 key 才计费
     !userApiKey &&
-      pushBill({
+      pushChatBill({
         modelName: model.service.modelName,
         userId,
         chatId,

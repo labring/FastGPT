@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       dataId,
       status: 0
     })
-      .sort({ time: -1 }) // 按照创建时间倒序排列
+      .sort({ _id: -1 }) // 按照创建时间倒序排列
       .skip((pageNum - 1) * pageSize)
       .limit(pageSize);
 

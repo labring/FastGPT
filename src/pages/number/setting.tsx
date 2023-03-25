@@ -33,6 +33,7 @@ import dayjs from 'dayjs';
 import { formatPrice } from '@/utils/user';
 import WxConcat from '@/components/WxConcat';
 import ScrollData from '@/components/ScrollData';
+import { BillTypeMap } from '@/constants/user';
 
 const PayModal = dynamic(() => import('./components/PayModal'));
 
@@ -266,6 +267,7 @@ const NumberSetting = () => {
               <Thead>
                 <Tr>
                   <Th>时间</Th>
+                  <Th>类型</Th>
                   <Th>内容长度</Th>
                   <Th>Tokens 长度</Th>
                   <Th>消费</Th>
@@ -275,6 +277,7 @@ const NumberSetting = () => {
                 {bills.map((item) => (
                   <Tr key={item.id}>
                     <Td>{item.time}</Td>
+                    <Td>{BillTypeMap[item.type]}</Td>
                     <Td>{item.textLen}</Td>
                     <Td>{item.tokenLen}</Td>
                     <Td>{item.price}元</Td>

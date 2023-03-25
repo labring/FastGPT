@@ -80,6 +80,7 @@ export interface ChatPopulate extends ChatSchema {
 export interface BillSchema {
   _id: string;
   userId: string;
+  type: 'chat' | 'splitData' | 'return';
   chatId: string;
   time: Date;
   textLen: number;

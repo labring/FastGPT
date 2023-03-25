@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const bills = await Bill.find<BillSchema>({
       userId
     })
-      .sort({ time: -1 }) // 按照创建时间倒序排列
+      .sort({ _id: -1 }) // 按照创建时间倒序排列
       .skip((pageNum - 1) * pageSize)
       .limit(pageSize);
 

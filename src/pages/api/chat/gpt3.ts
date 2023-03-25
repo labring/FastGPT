@@ -8,7 +8,7 @@ import { jsonRes } from '@/service/response';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
-import { pushBill } from '@/service/events/pushChatBill';
+import { pushChatBill } from '@/service/events/pushBill';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -142,7 +142,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 只有使用平台的 key 才计费
     !userApiKey &&
-      pushBill({
+      pushChatBill({
         modelName: model.service.modelName,
         userId,
         chatId,
