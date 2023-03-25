@@ -12,12 +12,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    await Bill.updateMany(
-      {},
-      {
-        type: 'chat',
-        modelName: 'gpt-3.5-turbo'
-      }
+    const bills = await Bill.find({
+      tokenLen: { $exists: false }
+    });
+    await Promise.all(
+      bills.map((bill) =>
+        Bill.findByIdAndUpdate(bill._id, {
+          tokenLen: bill.textLen
+        })
+      )
     );
 
     jsonRes(res, {

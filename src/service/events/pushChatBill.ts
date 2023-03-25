@@ -1,41 +1,49 @@
 import { connectToDatabase, Bill, User } from '../mongo';
 import { modelList } from '@/constants/model';
+import { encode } from 'gpt-token-utils';
+import { formatPrice } from '@/utils/user';
 
 export const pushBill = async ({
   modelName,
   userId,
   chatId,
-  textLen
+  text
 }: {
   modelName: string;
   userId: string;
   chatId: string;
-  textLen: number;
+  text: string;
 }) => {
   await connectToDatabase();
 
   let billId;
 
   try {
+    // 获取模型单价格
     const modelItem = modelList.find((item) => item.model === modelName);
+    const unitPrice = modelItem?.price || 5;
 
-    if (!modelItem) return;
+    // 计算 token 数量
+    const tokens = encode(text);
 
-    const price = modelItem.price * textLen;
+    // 计算价格
+    const price = unitPrice * tokens.length;
+    console.log('token len:', tokens.length, 'price: ', `${formatPrice(price)}元`);
 
     try {
       // 插入 Bill 记录
       const res = await Bill.create({
         userId,
         type: 'chat',
-        modelName: modelItem.model,
+        modelName,
         chatId,
-        textLen,
+        textLen: text.length,
+        tokenLen: tokens.length,
         price
       });
       billId = res._id;
 
-      // 扣费
+      // 账号扣费
       await User.findByIdAndUpdate(userId, {
         $inc: { balance: -price }
       });

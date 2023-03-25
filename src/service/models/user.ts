@@ -1,5 +1,6 @@
 import { Schema, model, models } from 'mongoose';
 import { hashPassword } from '@/service/utils/tools';
+import { PRICE_SCALE } from '@/utils/user';
 
 const UserSchema = new Schema({
   email: {
@@ -16,7 +17,7 @@ const UserSchema = new Schema({
   },
   balance: {
     type: Number,
-    default: 0.5 * 100000
+    default: 0.5 * PRICE_SCALE
   },
   accounts: [
     {

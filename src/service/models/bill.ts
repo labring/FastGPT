@@ -31,6 +31,11 @@ const BillSchema = new Schema({
     type: Number,
     required: true
   },
+  tokenLen: {
+    // 折算成 token 的数量
+    type: Number,
+    required: true
+  },
   price: {
     type: Number,
     required: true

@@ -100,7 +100,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                     <Thead>
                       <Tr>
                         <Th>模型类型</Th>
-                        <Th>价格(元/1000字符，包含所有上下文)</Th>
+                        <Th>价格(元/1K tokens，包含所有上下文)</Th>
                       </Tr>
                     </Thead>
                     <Tbody>

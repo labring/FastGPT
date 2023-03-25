@@ -5,6 +5,7 @@ import axios from 'axios';
 import { authToken } from '@/service/utils/tools';
 import { customAlphabet } from 'nanoid';
 import { connectToDatabase, Pay } from '@/service/mongo';
+import { PRICE_SCALE } from '@/utils/user';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 20);
 
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 充值记录 + 1
     const payOrder = await Pay.create({
       userId,
-      price: amount * 100000,
+      price: amount * PRICE_SCALE,
       orderId: id
     });
 

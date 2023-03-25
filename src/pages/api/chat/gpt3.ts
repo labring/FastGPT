@@ -54,21 +54,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    const responseMessage = response.data.choices[0]?.text || '';
+    const responseContent = response.data.choices[0]?.text || '';
 
-    const promptsLen = prompt.reduce((sum, item) => sum + item.value.length, 0);
-    console.log(`responseLen: ${responseMessage.length}`, `promptLen: ${promptsLen}`);
+    console.log(`responseLen: ${responseContent.length}`, `promptLen: ${formatPrompts.length}`);
     // 只有使用平台的 key 才计费
     !userApiKey &&
       pushBill({
         modelName: model.service.modelName,
         userId,
         chatId,
-        textLen: promptsLen + responseMessage.length
+        text: formatPrompts + responseContent
       });
 
     jsonRes(res, {
-      data: responseMessage
+      data: responseContent
     });
   } catch (err: any) {
     jsonRes(res, {

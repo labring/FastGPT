@@ -2,15 +2,25 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box } from '@chakra-ui/react';
 import { throttle } from 'lodash';
+import { useLoading } from '@/hooks/useLoading';
 
 interface Props extends BoxProps {
   nextPage: () => void;
   isLoadAll: boolean;
   requesting: boolean;
   children: React.ReactNode;
+  initRequesting?: boolean;
 }
 
-const ScrollData = ({ children, nextPage, isLoadAll, requesting, ...props }: Props) => {
+const ScrollData = ({
+  children,
+  nextPage,
+  isLoadAll,
+  requesting,
+  initRequesting,
+  ...props
+}: Props) => {
+  const { Loading } = useLoading({ defaultLoading: true });
   const elementRef = useRef<HTMLDivElement>(null);
   const loadText = useMemo(() => {
     if (requesting) return '请求中……';
@@ -43,7 +53,7 @@ const ScrollData = ({ children, nextPage, isLoadAll, requesting, ...props }: Pro
   }, [elementRef, nextPage]);
 
   return (
-    <Box {...props} ref={elementRef} overflow={'auto'}>
+    <Box {...props} ref={elementRef} overflow={'auto'} position={'relative'}>
       {children}
       <Box
         mt={2}
@@ -58,6 +68,7 @@ const ScrollData = ({ children, nextPage, isLoadAll, requesting, ...props }: Pro
       >
         {loadText}
       </Box>
+      {initRequesting && <Loading fixed={false} />}
     </Box>
   );
 };
