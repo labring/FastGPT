@@ -39,9 +39,9 @@ const ModelSchema = new Schema({
   },
   temperature: {
     type: Number,
-    min: 1,
+    min: 0,
     max: 10,
-    default: 5
+    default: 4
   },
   service: {
     company: {

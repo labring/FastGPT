@@ -107,7 +107,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                       {modelList.map((item, i) => (
                         <Tr key={item.model}>
                           <Td>{item.name}</Td>
-                          <Td>{formatPrice(item.price) * 1000}</Td>
+                          <Td>{formatPrice(item.price, 1000)}</Td>
                         </Tr>
                       ))}
                     </Tbody>

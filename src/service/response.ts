@@ -28,11 +28,11 @@ export const jsonRes = <T = any>(
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }
-    // console.log(error?.response);
     console.log('error->');
     console.log('code:', error.code);
     console.log('statusText:', error?.response?.statusText);
     console.log('msg:', msg);
+    error?.response && console.log('chat err:', error?.response);
   }
 
   res.json({

@@ -28,7 +28,9 @@ export const pushBill = async ({
 
     // 计算价格
     const price = unitPrice * tokens.length;
-    console.log('token len:', tokens.length, 'price: ', `${formatPrice(price)}元`);
+    console.log('token len:', tokens.length);
+    console.log('text len: ', text.length);
+    console.log('price: ', `${formatPrice(price)}元`);
 
     try {
       // 插入 Bill 记录

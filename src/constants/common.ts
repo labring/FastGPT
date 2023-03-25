@@ -3,6 +3,8 @@ export enum EmailTypeEnum {
   findPassword = 'findPassword'
 }
 
+export const PRICE_SCALE = 100000;
+
 export const introPage = `
 ## 欢迎使用 Fast GPT
 

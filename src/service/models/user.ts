@@ -1,6 +1,6 @@
 import { Schema, model, models } from 'mongoose';
 import { hashPassword } from '@/service/utils/tools';
-import { PRICE_SCALE } from '@/utils/user';
+import { PRICE_SCALE } from '@/constants/common';
 
 const UserSchema = new Schema({
   email: {

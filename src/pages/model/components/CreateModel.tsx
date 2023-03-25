@@ -34,6 +34,7 @@ const CreateModel = ({
   onSuccess: Dispatch<ModelSchema>;
 }) => {
   const [requesting, setRequesting] = useState(false);
+  const [refresh, setRefresh] = useState(false);
   const toast = useToast({
     duration: 2000,
     position: 'top'
@@ -95,7 +96,10 @@ const CreateModel = ({
               <Select
                 placeholder="选择基础模型类型"
                 {...register('serviceModelName', {
-                  required: '底层模型不能为空'
+                  required: '底层模型不能为空',
+                  onChange() {
+                    setRefresh(!refresh);
+                  }
                 })}
               >
                 {modelList.map((item) => (
@@ -110,8 +114,9 @@ const CreateModel = ({
             </FormControl>
             <Box mt={3} textAlign={'center'} fontSize={'sm'} color={'blackAlpha.600'}>
               {formatPrice(
-                modelList.find((item) => item.model === getValues('serviceModelName'))?.price || 0
-              ) * 1000}
+                modelList.find((item) => item.model === getValues('serviceModelName'))?.price || 0,
+                1000
+              )}
               元/1K tokens(包括上下文和标点符号)
             </Box>
           </ModalBody>

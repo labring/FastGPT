@@ -89,6 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         temperature: temperature,
         // max_tokens: modelConstantsData.maxToken,
         messages: formatPrompts,
+        frequency_penalty: 0.5, // 越大，重复内容越少
+        presence_penalty: -0.5, // 越大，越容易出现新内容
         stream: true
       },
       {
@@ -117,7 +119,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const json = JSON.parse(data);
         const content: string = json?.choices?.[0].delta.content || '';
-        if (!content) return;
+        if (!content || (responseContent === '' && content === '\n')) return;
+
         responseContent += content;
         // console.log('content:', content)
         !stream.destroyed && stream.push(content.replace(/\n/g, '<br/>'));
@@ -144,7 +147,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     stream.destroy();
 
     const promptsContent = formatPrompts.map((item) => item.content).join('');
-    console.log(`responseLen: ${responseContent.length}`, `promptLen: ${promptsContent.length}`);
     // 只有使用平台的 key 才计费
     !userApiKey &&
       pushBill({
