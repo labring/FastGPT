@@ -31,11 +31,6 @@ const Empty = ({ intro }: { intro: string }) => {
       </Card>
       {/* version intro */}
       <Card p={4}>
-        <Header>Fast Gpt version1.4</Header>
-        <Box>
-          聊天的数据结构发生了比较大的改动。如果出现问题，请手动删除左侧旧的历史记录，并重新从模型页生成对话框进入。
-        </Box>
-        <br />
         <Markdown source={versionIntro} />
       </Card>
     </Box>
