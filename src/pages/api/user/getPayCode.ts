@@ -5,7 +5,7 @@ import axios from 'axios';
 import { authToken } from '@/service/utils/tools';
 import { customAlphabet } from 'nanoid';
 import { connectToDatabase, Pay } from '@/service/mongo';
-import { PRICE_SCALE } from '@/utils/user';
+import { PRICE_SCALE } from '@/constants/common';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 20);
 

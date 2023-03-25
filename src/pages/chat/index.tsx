@@ -197,16 +197,22 @@ const Chat = ({ chatId }: { chatId: string }) => {
     [chatId]
   );
 
-  // chatGPT
-  const chatGPTPrompt = useCallback(
-    async (newChatList: ChatSiteItemType[]) => {
+  // gpt 对话
+  const gptChatPrompt = useCallback(
+    async (prompts: ChatSiteItemType) => {
+      const urlMap: Record<string, string> = {
+        [ChatModelNameEnum.GPT35]: '/api/chat/chatGpt',
+        [ChatModelNameEnum.GPT3]: '/api/chat/gpt3'
+      };
+      if (!urlMap[chatData.chatModel]) return Promise.reject('找不到模型');
+
       const prompt = {
-        obj: newChatList[newChatList.length - 1].obj,
-        value: newChatList[newChatList.length - 1].value
+        obj: prompts.obj,
+        value: prompts.value
       };
       // 流请求，获取数据
       const res = await streamFetch({
-        url: '/api/chat/chatGpt',
+        url: urlMap[chatData.chatModel],
         data: {
           prompt,
           chatId
@@ -240,7 +246,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         });
       } catch (err) {
         toast({
-          title: '存储对话出现异常, 继续对话会导致上下文丢失，请刷新页面',
+          title: '对话出现异常, 继续对话会导致上下文丢失，请刷新页面',
           status: 'warning',
           duration: 3000,
           isClosable: true
@@ -259,7 +265,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         })
       }));
     },
-    [chatId, toast]
+    [chatData.chatModel, chatId, toast]
   );
 
   /**
@@ -272,7 +278,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
       .trim()
       .split('\n')
       .filter((val) => val)
-      .join('\n\n');
+      .join('\n');
     if (!chatData?.modelId || !val || !ChatBox.current || isChatting) {
       return;
     }
@@ -301,22 +307,8 @@ const Chat = ({ chatId }: { chatId: string }) => {
     resetInputVal('');
     scrollToBottom();
 
-    const fnMap: { [key: string]: any } = {
-      [ChatModelNameEnum.GPT35]: chatGPTPrompt,
-      [ChatModelNameEnum.GPT3]: gpt3ChatPrompt
-    };
-
     try {
-      /* 对长度进行限制 */
-      const maxContext = chatData.secret.contextMaxLen;
-      const requestPrompt =
-        newChatList.length > maxContext + 1
-          ? newChatList.slice(newChatList.length - maxContext - 1, -1)
-          : newChatList.slice(0, -1);
-
-      if (typeof fnMap[chatData.chatModel] === 'function') {
-        await fnMap[chatData.chatModel](requestPrompt);
-      }
+      await gptChatPrompt(newChatList[newChatList.length - 2]);
 
       // 如果是 Human 第一次发送，插入历史记录
       const humanChat = newChatList.filter((item) => item.obj === 'Human');
@@ -343,15 +335,12 @@ const Chat = ({ chatId }: { chatId: string }) => {
     }
   }, [
     inputVal,
-    chatData.modelId,
+    chatData?.modelId,
     chatData.history,
-    chatData.secret.contextMaxLen,
-    chatData.chatModel,
     isChatting,
     resetInputVal,
     scrollToBottom,
-    chatGPTPrompt,
-    gpt3ChatPrompt,
+    gptChatPrompt,
     pushChatHistory,
     chatId,
     toast
