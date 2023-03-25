@@ -11,3 +11,8 @@ export const postData = (name: string) => POST<string>(`/data/postData?name=${na
 
 export const postSplitData = (dataId: string, text: string) =>
   POST(`/data/splitData`, { dataId, text });
+
+export const updateDataName = (dataId: string, name: string) =>
+  PUT(`/data/putDataName?dataId=${dataId}&name=${name}`);
+
+export const delData = (dataId: string) => DELETE(`/data/delData?dataId=${dataId}`);

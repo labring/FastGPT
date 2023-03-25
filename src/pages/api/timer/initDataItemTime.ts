@@ -1,9 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Bill } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
-import type { BillSchema } from '@/types/mongoSchema';
+import { connectToDatabase, DataItem, Data } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -12,11 +10,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    await Bill.updateMany(
+    // await DataItem.updateMany(
+    //   {},
+    //   {
+    //     times: 2
+    //   }
+    // );
+
+    await Data.updateMany(
       {},
       {
-        type: 'chat',
-        modelName: 'gpt-3.5-turbo'
+        isDeleted: false
       }
     );
 

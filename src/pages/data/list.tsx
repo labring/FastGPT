@@ -11,14 +11,17 @@ import {
   Th,
   Td,
   TableContainer,
-  useDisclosure
+  useDisclosure,
+  Input
 } from '@chakra-ui/react';
-import { getDataList } from '@/api/data';
+import { getDataList, updateDataName, delData } from '@/api/data';
 import { usePaging } from '@/hooks/usePaging';
 import type { DataListItem } from '@/types/data';
 import ScrollData from '@/components/ScrollData';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
+import { useConfirm } from '@/hooks/useConfirm';
+import { useRequest } from '@/hooks/useRequest';
 
 const CreateDataModal = dynamic(() => import('./components/CreateDataModal'));
 const ImportDataModal = dynamic(() => import('./components/ImportDataModal'));
@@ -34,12 +37,24 @@ const DataList = () => {
     pageSize: 20
   });
   const [ImportDataId, setImportDataId] = useState<string>();
+  const { openConfirm, ConfirmChild } = useConfirm({
+    content: '删除数据集，将删除里面的所有内容，请确认！'
+  });
 
   const {
     isOpen: isOpenCreateDataModal,
     onOpen: onOpenCreateDataModal,
     onClose: onCloseCreateDataModal
   } = useDisclosure();
+
+  const { mutate: handleDelData, isLoading: isDeleting } = useRequest({
+    mutationFn: (dataId: string) => delData(dataId),
+    successToast: '删除数据集成功',
+    errorToast: '删除数据集异常',
+    onSuccess() {
+      getData(1, true);
+    }
+  });
 
   return (
     <Box display={['block', 'flex']} flexDirection={'column'} h={'100%'}>
@@ -74,7 +89,17 @@ const DataList = () => {
               <Tbody>
                 {dataList.map((item, i) => (
                   <Tr key={item._id}>
-                    <Td>{item.name}</Td>
+                    <Td>
+                      <Input
+                        placeholder="请输入数据集名称"
+                        defaultValue={item.name}
+                        size={'sm'}
+                        onBlur={(e) => {
+                          if (!e.target.value) return;
+                          updateDataName(item._id, e.target.value);
+                        }}
+                      />
+                    </Td>
                     <Td>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
                     <Td>
                       {item.trainingData} / {item.totalData}
@@ -83,12 +108,31 @@ const DataList = () => {
                       <Button
                         size={'sm'}
                         variant={'outline'}
+                        colorScheme={'gray'}
+                        mr={2}
+                        onClick={() => setImportDataId(item._id)}
+                      >
+                        详细
+                      </Button>
+                      <Button
+                        size={'sm'}
+                        variant={'outline'}
                         mr={2}
                         onClick={() => setImportDataId(item._id)}
                       >
                         导入
                       </Button>
-                      <Button size={'sm'}>导出</Button>
+                      <Button mr={2} size={'sm'}>
+                        导出
+                      </Button>
+                      <Button
+                        size={'sm'}
+                        colorScheme={'red'}
+                        isLoading={isDeleting}
+                        onClick={openConfirm(() => handleDelData(item._id))}
+                      >
+                        删除
+                      </Button>
                     </Td>
                   </Tr>
                 ))}
@@ -104,6 +148,7 @@ const DataList = () => {
       {isOpenCreateDataModal && (
         <CreateDataModal onClose={onCloseCreateDataModal} onSuccess={() => getData(1, true)} />
       )}
+      <ConfirmChild />
     </Box>
   );
 };

@@ -28,7 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const datalist = await Data.aggregate<DataListItem>([
       {
         $match: {
-          userId: new mongoose.Types.ObjectId(userId)
+          userId: new mongoose.Types.ObjectId(userId),
+          isDeleted: false
         }
       },
       {

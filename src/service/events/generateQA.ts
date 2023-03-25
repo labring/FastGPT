@@ -35,10 +35,7 @@ export async function generateQA(next = false): Promise<any> {
 
     // 减少一次重试次数, 并更新状态为生成中
     await DataItem.findByIdAndUpdate(dataItem._id, {
-      status: 2,
-      $inc: {
-        time: -1
-      }
+      status: 2
     });
 
     // 获取 openapi Key
@@ -86,22 +83,31 @@ export async function generateQA(next = false): Promise<any> {
     const splitResponse = splitText(content || '');
     // 插入数据库，并修改状态
     await DataItem.findByIdAndUpdate(dataItem._id, {
-      status: dataItem.temperature >= 100 ? 0 : 1,
-      temperature: dataItem.temperature >= 100 ? dataItem.temperature : dataItem.temperature + 25,
+      status: dataItem.temperature >= 80 ? 0 : 1, // 需要生成 5 组内容。0,0.2,0.4,0.6,0.8
+      temperature: dataItem.temperature >= 80 ? dataItem.temperature : dataItem.temperature + 20,
       $push: {
         result: {
           $each: splitResponse
         }
       }
     });
-    console.log('生成成功，time:', `${(Date.now() - startTime) / 1000}s`);
+    console.log(
+      '生成成功，time:',
+      `${(Date.now() - startTime) / 1000}s`,
+      'result length: ',
+      splitResponse.length
+    );
   } catch (error: any) {
     console.log('error: 生成QA错误', dataItem?._id);
     console.log('response:', error?.response);
     // 重置状态
     if (dataItem?._id) {
       await DataItem.findByIdAndUpdate(dataItem._id, {
-        status: dataItem.times > 0 ? 1 : 0 // 还有重试次数则可以继续进行
+        status: dataItem.times > 0 ? 1 : 0, // 还有重试次数则可以继续进行
+        $inc: {
+          // 剩余尝试次数-1
+          times: -1
+        }
       });
     }
   }
