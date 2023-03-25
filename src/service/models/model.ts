@@ -1,5 +1,5 @@
-import { Schema, model, models } from 'mongoose';
-
+import { Schema, model, models, Model as MongoModel } from 'mongoose';
+import { ModelSchema as ModelType } from '@/types/mongoSchema';
 const ModelSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
@@ -95,4 +95,4 @@ const ModelSchema = new Schema({
   }
 });
 
-export const Model = models['model'] || model('model', ModelSchema);
+export const Model: MongoModel<ModelType> = models['model'] || model('model', ModelSchema);

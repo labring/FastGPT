@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import { Schema, model, models, Model } from 'mongoose';
+import { DataItemSchema as Datatype } from '@/types/mongoSchema';
 
 const DataSchema = new Schema({
   userId: {
@@ -20,4 +21,4 @@ const DataSchema = new Schema({
   }
 });
 
-export const Data = models['data'] || model('data', DataSchema);
+export const Data: Model<Datatype> = models['data'] || model('data', DataSchema);

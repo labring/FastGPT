@@ -30,7 +30,7 @@ const navbarList = [
     label: '数据',
     icon: 'icon-datafull',
     link: '/data/list',
-    activeLink: ['/data/list']
+    activeLink: ['/data/list', '/data/detail']
   },
   {
     label: '账号',

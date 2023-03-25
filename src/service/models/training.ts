@@ -1,5 +1,5 @@
-import { Schema, model, models } from 'mongoose';
-
+import { Schema, model, models, Model } from 'mongoose';
+import { TrainingSchema as TrainingType } from '@/types/mongoSchema';
 const TrainingSChema = new Schema({
   serviceName: {
     // 模型厂商名
@@ -25,4 +25,5 @@ const TrainingSChema = new Schema({
   }
 });
 
-export const Training = models['training'] || model('training', TrainingSChema);
+export const Training: Model<TrainingType> =
+  models['training'] || model('training', TrainingSChema);

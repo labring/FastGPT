@@ -16,4 +16,4 @@ export type PagingData<T> = {
   total;
 };
 
-export type RequestPaging = { pageNum: number; pageSize: number };
+export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };

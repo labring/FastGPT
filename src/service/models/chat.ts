@@ -1,4 +1,5 @@
-import { Schema, model, models } from 'mongoose';
+import { Schema, model, models, Model } from 'mongoose';
+import { ChatSchema as ChatType } from '@/types/mongoSchema';
 
 const ChatSchema = new Schema({
   userId: {
@@ -47,4 +48,4 @@ const ChatSchema = new Schema({
   }
 });
 
-export const Chat = models['chat'] || model('chat', ChatSchema);
+export const Chat: Model<ChatType> = models['chat'] || model('chat', ChatSchema);

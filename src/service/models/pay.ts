@@ -1,5 +1,5 @@
-import { Schema, model, models } from 'mongoose';
-
+import { Schema, model, models, Model } from 'mongoose';
+import { PaySchema as PayType } from '@/types/mongoSchema';
 const PaySchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
@@ -26,4 +26,4 @@ const PaySchema = new Schema({
   }
 });
 
-export const Pay = models['pay'] || model('pay', PaySchema);
+export const Pay: Model<PayType> = models['pay'] || model('pay', PaySchema);

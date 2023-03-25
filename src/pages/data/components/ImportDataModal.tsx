@@ -22,18 +22,20 @@ import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 
+const fileExtension = '.txt,.doc,.docx,.pdf,.md';
+
 const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => void }) => {
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认提交生成任务？该任务无法终止！'
   });
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
-  const { File, onOpen } = useSelectFile({ fileType: '.txt,.doc,.docx,.pdf', multiple: true });
+  const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
   const { tabs, activeTab, setActiveTab } = useTabs({
     tabs: [
       { id: 'text', label: '文本' },
-      { id: 'doc', label: '文件' },
-      { id: 'url', label: '链接' }
+      { id: 'doc', label: '文件' }
+      // { id: 'url', label: '链接' }
     ]
   });
 
@@ -76,14 +78,18 @@ const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => v
             e.map((file) => {
               // @ts-ignore
               const extension = file?.name?.split('.').pop().toLowerCase();
-              if (extension === 'txt') {
-                return readTxtContent(file);
-              } else if (extension === 'pdf') {
-                return readPdfContent(file);
-              } else if (extension === 'docx' || extension === 'doc') {
-                return readDocContent(file);
+              switch (extension) {
+                case 'txt':
+                case 'md':
+                  return readTxtContent(file);
+                case 'pdf':
+                  return readPdfContent(file);
+                case 'doc':
+                case 'docx':
+                  return readDocContent(file);
+                default:
+                  return '';
               }
-              return '';
             })
           )
         ).join('\n');
@@ -137,6 +143,7 @@ const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => v
             {activeTab === 'doc' && (
               <Flex
                 flexDirection={'column'}
+                p={2}
                 h={'100%'}
                 alignItems={'center'}
                 justifyContent={'center'}
@@ -145,7 +152,23 @@ const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => v
                 borderRadius={'md'}
               >
                 <Button onClick={onOpen}>选择文件</Button>
-                {fileText && <Box mt={2}>一共 {fileText.length} 个字</Box>}
+                <Box mt={2}>支持 {fileExtension} 文件</Box>
+                {fileText && (
+                  <>
+                    <Box mt={2}>一共 {fileText.length} 个字</Box>
+                    <Box
+                      maxH={'300px'}
+                      w={'100%'}
+                      overflow={'auto'}
+                      p={2}
+                      backgroundColor={'blackAlpha.50'}
+                      whiteSpace={'pre'}
+                      fontSize={'xs'}
+                    >
+                      {fileText}
+                    </Box>
+                  </>
+                )}
               </Flex>
             )}
           </Box>

@@ -1,7 +1,7 @@
-import { Schema, model, models } from 'mongoose';
+import { Schema, model, models, Model } from 'mongoose';
 import { hashPassword } from '@/service/utils/tools';
 import { PRICE_SCALE } from '@/constants/common';
-
+import { UserModelSchema } from '@/types/mongoSchema';
 const UserSchema = new Schema({
   email: {
     type: String,
@@ -38,4 +38,4 @@ const UserSchema = new Schema({
   }
 });
 
-export const User = models['user'] || model('user', UserSchema);
+export const User: Model<UserModelSchema> = models['user'] || model('user', UserSchema);
