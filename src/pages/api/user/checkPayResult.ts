@@ -4,6 +4,7 @@ import axios from 'axios';
 import { connectToDatabase, User, Pay } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { PaySchema } from '@/types/mongoSchema';
+import dayjs from 'dayjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -28,6 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `https://sif268.laf.dev/wechat-order-query?order_number=${payOrder.orderId}&api_key=${process.env.WXPAYCODE}`
     );
 
+    // 校验下是否超过一天
+    const orderTime = dayjs(payOrder.createTime);
+    const diffInHours = dayjs().diff(orderTime, 'hours');
+
     if (data.trade_state === 'SUCCESS') {
       // 订单已支付
       try {
@@ -47,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             $inc: { balance: payOrder.price }
           });
           jsonRes(res, {
-            data: 'success'
+            data: '支付成功'
           });
         }
       } catch (error) {
@@ -56,17 +61,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         console.log(error);
       }
-    } else if (data.trade_state === 'CLOSED') {
+    } else if (data.trade_state === 'CLOSED' || diffInHours > 24) {
       // 订单已关闭
       await Pay.findByIdAndUpdate(payId, {
         status: 'CLOSED'
       });
+      jsonRes(res, {
+        data: '订单已过期'
+      });
     } else {
       throw new Error(data.trade_state_desc);
     }
-    throw new Error('订单已过期');
   } catch (err) {
-    console.log(err);
+    // console.log(err);
     jsonRes(res, {
       code: 500,
       error: err

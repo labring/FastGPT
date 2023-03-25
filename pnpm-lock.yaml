@@ -10,6 +10,7 @@ specifiers:
   '@tanstack/react-query': ^4.24.10
   '@types/formidable': ^2.0.5
   '@types/jsonwebtoken': ^9.0.1
+  '@types/lodash': ^4.14.191
   '@types/node': 18.14.0
   '@types/nodemailer': ^6.4.7
   '@types/nprogress': ^0.2.0
@@ -31,6 +32,7 @@ specifiers:
   immer: ^9.0.19
   jsonwebtoken: ^9.0.0
   lint-staged: ^13.1.2
+  lodash: ^4.17.21
   mammoth: ^1.5.1
   mongoose: ^6.10.0
   nanoid: ^4.0.1
@@ -70,6 +72,7 @@ dependencies:
   hyperdown: registry.npmmirror.com/hyperdown/2.4.29
   immer: registry.npmmirror.com/immer/9.0.19
   jsonwebtoken: registry.npmmirror.com/jsonwebtoken/9.0.0
+  lodash: registry.npmmirror.com/lodash/4.17.21
   mammoth: registry.npmmirror.com/mammoth/1.5.1
   mongoose: registry.npmmirror.com/mongoose/6.10.0
   nanoid: registry.npmmirror.com/nanoid/4.0.1
@@ -94,6 +97,7 @@ devDependencies:
   '@svgr/webpack': registry.npmmirror.com/@svgr/webpack/6.5.1
   '@types/formidable': registry.npmmirror.com/@types/formidable/2.0.5
   '@types/jsonwebtoken': registry.npmmirror.com/@types/jsonwebtoken/9.0.1
+  '@types/lodash': registry.npmmirror.com/@types/lodash/4.14.191
   '@types/node': registry.npmmirror.com/@types/node/18.14.0
   '@types/nodemailer': registry.npmmirror.com/@types/nodemailer/6.4.7
   '@types/react': registry.npmmirror.com/@types/react/18.0.28
@@ -4794,7 +4798,6 @@ packages:
     resolution: {integrity: sha512-BdZ5BCCvho3EIXw6wUCXHe7rS53AIDPLE+JzwgT+OsJk53oBfbSmZZ7CX4VaRoN78N+TJpFi9QPlfIVNmJYWxQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/lodash/-/lodash-4.14.191.tgz}
     name: '@types/lodash'
     version: 4.14.191
-    dev: false
 
   registry.npmmirror.com/@types/mdast/3.0.10:
     resolution: {integrity: sha512-W864tg/Osz1+9f4lrGTZpCSO5/z4608eUp19tbozkq2HJK6i3z1kT0H9tlADXuYIb1YYOBByU4Jsqkk75q48qA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/mdast/-/mdast-3.0.10.tgz}

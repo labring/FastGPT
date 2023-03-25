@@ -32,6 +32,7 @@ import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { formatPrice } from '@/utils/user';
 import WxConcat from '@/components/WxConcat';
+import ScrollData from '@/components/ScrollData';
 
 const PayModal = dynamic(() => import('./components/PayModal'));
 
@@ -52,7 +53,12 @@ const NumberSetting = () => {
     control,
     name: 'accounts'
   });
-  const { setPageNum, data: bills } = usePaging<UserBillType>({
+  const {
+    nextPage,
+    isLoadAll,
+    requesting,
+    data: bills
+  } = usePaging<UserBillType>({
     api: getUserBills,
     pageSize: 30
   });
@@ -84,9 +90,14 @@ const NumberSetting = () => {
 
   const handleRefreshPayOrder = useCallback(
     async (payId: string) => {
+      setLoading(true);
+
       try {
-        setLoading(true);
-        await checkPayResult(payId);
+        const data = await checkPayResult(payId);
+        toast({
+          title: data,
+          status: 'info'
+        });
         const res = await getPayOrders();
         setPayOrders(res);
       } catch (error: any) {
@@ -96,6 +107,7 @@ const NumberSetting = () => {
         });
         console.log(error);
       }
+
       setLoading(false);
     },
     [setLoading, toast]
@@ -196,8 +208,8 @@ const NumberSetting = () => {
           </Table>
         </TableContainer>
       </Card>
-      <Card mt={6} px={6} py={4}>
-        <Flex alignItems={'flex-end'}>
+      <Card mt={6} py={4}>
+        <Flex alignItems={'flex-end'} px={6} mb={1}>
           <Box fontSize={'xl'} fontWeight={'bold'}>
             充值记录
           </Box>
@@ -205,7 +217,7 @@ const NumberSetting = () => {
             异常问题，wx联系
           </Button>
         </Flex>
-        <TableContainer maxH={'400px'} overflowY={'auto'}>
+        <TableContainer maxH={'400px'} overflowY={'auto'} px={6}>
           <Table>
             <Thead>
               <Tr>
@@ -240,32 +252,40 @@ const NumberSetting = () => {
           </Table>
         </TableContainer>
       </Card>
-      <Card mt={6} px={6} py={4}>
-        <Box fontSize={'xl'} fontWeight={'bold'}>
-          使用记录(最新30条)
+      <Card mt={6} py={4}>
+        <Box fontSize={'xl'} fontWeight={'bold'} px={6} mb={1}>
+          使用记录
         </Box>
-        <TableContainer maxH={'400px'} overflowY={'auto'}>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>时间</Th>
-                <Th>内容长度</Th>
-                <Th>消费</Th>
-              </Tr>
-            </Thead>
-            <Tbody fontSize={'sm'}>
-              {bills.map((item) => (
-                <Tr key={item.id}>
-                  <Td>{item.time}</Td>
-                  <Td whiteSpace="pre-wrap" wordBreak={'break-all'}>
-                    {item.textLen}
-                  </Td>
-                  <Td>{item.price}元</Td>
+        <ScrollData
+          maxH={'400px'}
+          px={6}
+          isLoadAll={isLoadAll}
+          requesting={requesting}
+          nextPage={nextPage}
+        >
+          <TableContainer>
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>时间</Th>
+                  <Th>内容长度</Th>
+                  <Th>消费</Th>
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
+              </Thead>
+              <Tbody fontSize={'sm'}>
+                {bills.map((item) => (
+                  <Tr key={item.id}>
+                    <Td>{item.time}</Td>
+                    <Td whiteSpace="pre-wrap" wordBreak={'break-all'}>
+                      {item.textLen}
+                    </Td>
+                    <Td>{item.price}元</Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
+        </ScrollData>
       </Card>
       {showPay && <PayModal onClose={() => setShowPay(false)} />}
       {/* wx 联系 */}
