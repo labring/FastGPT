@@ -23,8 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authToken(authorization);
 
     const dataItems = await DataItem.find({
-      dataId,
-      status: 0
+      dataId
     })
       .sort({ _id: -1 }) // 按照创建时间倒序排列
       .skip((pageNum - 1) * pageSize)

@@ -111,6 +111,7 @@ export interface DataItemSchema {
   times: number;
   temperature: number;
   text: string;
+  rawResponse: string[];
   result: {
     q: string;
     a: string;

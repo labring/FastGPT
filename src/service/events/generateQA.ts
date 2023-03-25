@@ -86,6 +86,7 @@ export async function generateQA(next = false): Promise<any> {
     await DataItem.findByIdAndUpdate(dataItem._id, {
       status: dataItem.temperature >= 90 ? 0 : 1, // 需要生成 4 组内容。0,0.3,0.6,0.9
       temperature: dataItem.temperature >= 90 ? dataItem.temperature : dataItem.temperature + 30,
+      rawResponse: content,
       $push: {
         result: {
           $each: splitResponse
@@ -94,11 +95,17 @@ export async function generateQA(next = false): Promise<any> {
     });
     // 计费
     !userApiKey &&
+      splitResponse.length > 0 &&
       pushSplitDataBill({
         userId: dataItem.userId,
         text: systemPrompt.content + dataItem.text + content
       });
-    console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
+    console.log(
+      '生成QA成功，time:',
+      `${(Date.now() - startTime) / 1000}s`,
+      'QA数量：',
+      splitResponse.length
+    );
   } catch (error: any) {
     console.log('error: 生成QA错误', dataItem?._id);
     console.log('response:', error?.response);
