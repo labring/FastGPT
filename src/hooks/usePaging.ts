@@ -18,11 +18,15 @@ export const usePaging = <T = any>({
   const [total, setTotal] = useState(0);
   const [isLoadAll, setIsLoadAll] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [initRequesting, setInitRequesting] = useState(false);
 
   const getData = useCallback(
     async (num: number, init = false) => {
       if (requesting) return;
       if (!init && isLoadAll) return;
+      if (init) {
+        setInitRequesting(true);
+      }
       setRequesting(true);
 
       try {
@@ -49,6 +53,7 @@ export const usePaging = <T = any>({
       }
 
       setRequesting(false);
+      setInitRequesting(false);
       return null;
     },
     [api, isLoadAll, pageSize, params, requesting, toast]
@@ -66,6 +71,7 @@ export const usePaging = <T = any>({
     getData,
     requesting,
     isLoadAll,
-    nextPage
+    nextPage,
+    initRequesting
   };
 };

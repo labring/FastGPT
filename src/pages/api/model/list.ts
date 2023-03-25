@@ -21,6 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 根据 userId 获取模型信息
     const models = await Model.find({
       userId
+    }).sort({
+      _id: -1
     });
 
     jsonRes(res, {

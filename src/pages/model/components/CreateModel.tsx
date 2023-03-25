@@ -112,7 +112,7 @@ const CreateModel = ({
               {formatPrice(
                 modelList.find((item) => item.model === getValues('serviceModelName'))?.price || 0
               ) * 1000}
-              元/1000字(包括上下文和标点符号)
+              元/1K tokens(包括上下文和标点符号)
             </Box>
           </ModalBody>
 

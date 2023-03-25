@@ -143,15 +143,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     !stream.destroyed && stream.push(null);
     stream.destroy();
 
-    const promptsLen = formatPrompts.reduce((sum, item) => sum + item.content.length, 0);
-    console.log(`responseLen: ${responseContent.length}`, `promptLen: ${promptsLen}`);
+    const promptsContent = formatPrompts.map((item) => item.content).join('');
+    console.log(`responseLen: ${responseContent.length}`, `promptLen: ${promptsContent.length}`);
     // 只有使用平台的 key 才计费
     !userApiKey &&
       pushBill({
         modelName: model.service.modelName,
         userId,
         chatId,
-        textLen: promptsLen + responseContent.length
+        text: promptsContent + responseContent
       });
   } catch (err: any) {
     if (step === 1) {

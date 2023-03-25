@@ -195,7 +195,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     return () => {
       window.onbeforeunload = null;
     };
-  }, []);
+  }, [router]);
 
   return (
     <>
@@ -246,7 +246,13 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
       </Card>
       <Grid mt={5} gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
         <ModelEditForm formHooks={formHooks} />
-        <Card p={4}>{!!model && <Training model={model} />}</Card>
+
+        {canTrain && (
+          <Card p={4}>
+            <Training model={model} />
+          </Card>
+        )}
+
         <Card p={4}>
           <Box fontWeight={'bold'} fontSize={'lg'}>
             神奇操作

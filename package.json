@@ -24,6 +24,7 @@
     "eventsource-parser": "^0.1.0",
     "formidable": "^2.1.1",
     "framer-motion": "^9.0.6",
+    "gpt-token-utils": "^1.2.0",
     "hyperdown": "^2.4.29",
     "immer": "^9.0.19",
     "jsonwebtoken": "^9.0.0",

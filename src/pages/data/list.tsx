@@ -32,7 +32,8 @@ const DataList = () => {
     isLoadAll,
     requesting,
     data: dataList,
-    getData
+    getData,
+    initRequesting
   } = usePaging<DataListItem>({
     api: getDataList,
     pageSize: 20
@@ -76,7 +77,13 @@ const DataList = () => {
       </Card>
       {/* 数据表 */}
       <Card mt={3} flex={'1 0 0'} h={['auto', '0']} px={6} py={4}>
-        <ScrollData h={'100%'} nextPage={nextPage} isLoadAll={isLoadAll} requesting={requesting}>
+        <ScrollData
+          h={'100%'}
+          nextPage={nextPage}
+          isLoadAll={isLoadAll}
+          requesting={requesting}
+          initRequesting={initRequesting}
+        >
           <TableContainer>
             <Table>
               <Thead>
@@ -96,7 +103,7 @@ const DataList = () => {
                         defaultValue={item.name}
                         size={'sm'}
                         onBlur={(e) => {
-                          if (!e.target.value) return;
+                          if (!e.target.value || e.target.value === item.name) return;
                           updateDataName(item._id, e.target.value);
                         }}
                       />

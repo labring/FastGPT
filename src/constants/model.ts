@@ -13,7 +13,7 @@ export type ModelConstantsData = {
   trainName: string; // 空字符串代表不能训练
   maxToken: number;
   maxTemperature: number;
-  price: number; // 多少钱 / 1字，单位: 0.00001元
+  price: number; // 多少钱 / 1token，单位: 0.00001元
 };
 
 export const modelList: ModelConstantsData[] = [
@@ -21,10 +21,10 @@ export const modelList: ModelConstantsData[] = [
     serviceCompany: 'openai',
     name: 'chatGPT',
     model: ChatModelNameEnum.GPT35,
-    trainName: 'turbo',
+    trainName: '',
     maxToken: 4000,
     maxTemperature: 2,
-    price: 5
+    price: 3
   },
   {
     serviceCompany: 'openai',
@@ -33,7 +33,7 @@ export const modelList: ModelConstantsData[] = [
     trainName: 'davinci',
     maxToken: 4000,
     maxTemperature: 2,
-    price: 50
+    price: 30
   }
 ];
 
