@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Data } from '@/service/mongo';
+import { connectToDatabase, Data, DataItem } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import type { DataListItem } from '@/types/data';
 import type { PagingData } from '@/types';
@@ -26,6 +26,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await Data.findByIdAndUpdate(dataId, {
       isDeleted: true
     });
+
+    // 改变 dataItem 状态为 0
+    await DataItem.updateMany(
+      {
+        dataId
+      },
+      {
+        status: 0
+      }
+    );
 
     jsonRes<PagingData<DataListItem>>(res);
   } catch (err) {

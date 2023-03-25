@@ -209,7 +209,11 @@ const DataList = () => {
       </Card>
 
       {ImportDataId && (
-        <ImportDataModal dataId={ImportDataId} onClose={() => setImportDataId(undefined)} />
+        <ImportDataModal
+          dataId={ImportDataId}
+          onClose={() => setImportDataId(undefined)}
+          onSuccess={() => getData(1, true)}
+        />
       )}
       {isOpenCreateDataModal && (
         <CreateDataModal onClose={onCloseCreateDataModal} onSuccess={() => getData(1, true)} />

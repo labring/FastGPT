@@ -4,6 +4,7 @@ import { httpsAgent, getOpenApiKey } from '@/service/utils/tools';
 import type { ChatCompletionRequestMessage } from 'openai';
 import { DataItemSchema } from '@/types/mongoSchema';
 import { ChatModelNameEnum } from '@/constants/model';
+import { pushSplitDataBill } from '@/service/events/pushBill';
 
 export async function generateQA(next = false): Promise<any> {
   if (global.generatingQA && !next) return;
@@ -83,20 +84,21 @@ export async function generateQA(next = false): Promise<any> {
     const splitResponse = splitText(content || '');
     // 插入数据库，并修改状态
     await DataItem.findByIdAndUpdate(dataItem._id, {
-      status: dataItem.temperature >= 80 ? 0 : 1, // 需要生成 5 组内容。0,0.2,0.4,0.6,0.8
-      temperature: dataItem.temperature >= 80 ? dataItem.temperature : dataItem.temperature + 20,
+      status: dataItem.temperature >= 90 ? 0 : 1, // 需要生成 4 组内容。0,0.3,0.6,0.9
+      temperature: dataItem.temperature >= 90 ? dataItem.temperature : dataItem.temperature + 30,
       $push: {
         result: {
           $each: splitResponse
         }
       }
     });
-    console.log(
-      '生成成功，time:',
-      `${(Date.now() - startTime) / 1000}s`,
-      'result length: ',
-      splitResponse.length
-    );
+    // 计费
+    !userApiKey &&
+      pushSplitDataBill({
+        userId: dataItem.userId,
+        text: systemPrompt.content + dataItem.text + content
+      });
+    console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
   } catch (error: any) {
     console.log('error: 生成QA错误', dataItem?._id);
     console.log('response:', error?.response);

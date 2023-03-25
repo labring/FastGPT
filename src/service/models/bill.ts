@@ -10,7 +10,7 @@ const BillSchema = new Schema({
   },
   type: {
     type: String,
-    enum: ['chat', 'generateData', 'return'],
+    enum: ['chat', 'splitData', 'return'],
     required: true
   },
   modelName: {
@@ -20,8 +20,7 @@ const BillSchema = new Schema({
   },
   chatId: {
     type: Schema.Types.ObjectId,
-    ref: 'chat',
-    required: true
+    ref: 'chat'
   },
   time: {
     type: Date,

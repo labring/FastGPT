@@ -8,7 +8,6 @@ import {
   ModalBody,
   ModalCloseButton,
   Button,
-  Input,
   Box,
   Flex,
   Textarea
@@ -21,10 +20,20 @@ import { postSplitData } from '@/api/data';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
+import { formatPrice } from '@/utils/user';
+import { modelList, ChatModelNameEnum } from '@/constants/model';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
-const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => void }) => {
+const ImportDataModal = ({
+  dataId,
+  onClose,
+  onSuccess
+}: {
+  dataId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认提交生成任务？该任务无法终止！'
   });
@@ -60,6 +69,7 @@ const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => v
         status: 'success'
       });
       onClose();
+      onSuccess();
     },
     onError(err: any) {
       toast({
@@ -110,7 +120,16 @@ const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => v
     <Modal isOpen={true} onClose={onClose}>
       <ModalOverlay />
       <ModalContent position={'relative'} maxW={['90vw', '800px']}>
-        <ModalHeader>导入数据，生成QA</ModalHeader>
+        <ModalHeader>
+          导入数据，生成QA
+          <Box ml={2} as={'span'} fontSize={'sm'} color={'blackAlpha.600'}>
+            {formatPrice(
+              modelList.find((item) => item.model === ChatModelNameEnum.GPT35)?.price || 0,
+              1000
+            )}
+            元/1K tokens
+          </Box>
+        </ModalHeader>
         <ModalCloseButton />
 
         <ModalBody display={'flex'}>
@@ -132,13 +151,16 @@ const ImportDataModal = ({ dataId, onClose }: { dataId: string; onClose: () => v
 
           <Box flex={'1 0 0'} w={0} ml={3} minH={'200px'}>
             {activeTab === 'text' && (
-              <Textarea
-                h={'100%'}
-                maxLength={-1}
-                value={textInput}
-                placeholder={'请粘贴或输入需要处理的文本'}
-                onChange={(e) => setTextInput(e.target.value)}
-              />
+              <>
+                <Textarea
+                  h={'100%'}
+                  maxLength={-1}
+                  value={textInput}
+                  placeholder={'请粘贴或输入需要处理的文本'}
+                  onChange={(e) => setTextInput(e.target.value)}
+                />
+                <Box mt={2}>一共 {textInput.length} 个字</Box>
+              </>
             )}
             {activeTab === 'doc' && (
               <Flex

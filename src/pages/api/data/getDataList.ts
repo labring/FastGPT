@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               $filter: {
                 input: '$items',
                 as: 'item',
-                cond: { $eq: ['$$item.status', 1] } // 统计status为1的数量
+                cond: { $ne: ['$$item.status', 0] } // 统计 status 不为0的数量
               }
             }
           }
