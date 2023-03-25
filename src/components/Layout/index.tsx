@@ -62,8 +62,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               <Box h={'100%'} position={'fixed'} left={0} top={0} w={'80px'}>
                 <Navbar navbarList={navbarList} />
               </Box>
-              <Box ml={'80px'} p={7} h={'100%'}>
-                <Box maxW={'1100px'} m={'auto'} h={'100%'}>
+              <Box ml={'80px'} h={'100%'}>
+                <Box maxW={'1100px'} m={'auto'} h={'100%'} p={7} overflowY={'auto'}>
                   <Auth>{children}</Auth>
                 </Box>
               </Box>

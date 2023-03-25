@@ -37,7 +37,7 @@ function checkRes(data: ResponseDataType) {
     console.log('error->', data, 'data is empty');
     return Promise.reject('服务器异常');
   } else if (data.code < 200 || data.code >= 400) {
-    return Promise.reject(data.message);
+    return Promise.reject(data);
   }
   return data.data;
 }

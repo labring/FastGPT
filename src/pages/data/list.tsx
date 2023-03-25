@@ -28,8 +28,9 @@ const ImportDataModal = dynamic(() => import('./components/ImportDataModal'));
 
 const DataList = () => {
   const {
-    setPageNum,
-    pageNum,
+    nextPage,
+    isLoadAll,
+    requesting,
     data: dataList,
     getData
   } = usePaging<DataListItem>({
@@ -75,7 +76,7 @@ const DataList = () => {
       </Card>
       {/* 数据表 */}
       <Card mt={3} flex={'1 0 0'} h={['auto', '0']} px={6} py={4}>
-        <ScrollData h={'100%'} nextPage={() => setPageNum(pageNum + 1)}>
+        <ScrollData h={'100%'} nextPage={nextPage} isLoadAll={isLoadAll} requesting={requesting}>
           <TableContainer>
             <Table>
               <Thead>

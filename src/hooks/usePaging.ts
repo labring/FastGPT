@@ -37,6 +37,7 @@ export const usePaging = <T = any>({
             setIsLoadAll(true);
           }
           setTotal(res.total);
+          setPageNum(num);
           return data;
         });
       } catch (error: any) {
@@ -53,15 +54,18 @@ export const usePaging = <T = any>({
     [api, isLoadAll, pageSize, params, requesting, toast]
   );
 
-  useQuery(['init', pageNum], () => getData(pageNum, pageNum === 1));
+  const nextPage = useCallback(() => getData(pageNum + 1), [getData, pageNum]);
+
+  useQuery(['init'], () => getData(1, true));
 
   return {
     pageNum,
     pageSize,
-    setPageNum,
     total,
     data,
     getData,
-    requesting
+    requesting,
+    isLoadAll,
+    nextPage
   };
 };
