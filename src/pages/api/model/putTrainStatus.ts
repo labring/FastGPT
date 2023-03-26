@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 删除训练文件
       openai.deleteFile(data.training_files[0].id, { httpsAgent });
 
-      // 更新模型
+      // 更新模型状态和模型内容
       await Model.findByIdAndUpdate(modelId, {
         status: ModelStatusEnum.running,
         updateTime: new Date(),
@@ -72,6 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    /* 取消微调 */
     if (data.status === OpenAiTuneStatusEnum.cancelled) {
       // 删除训练文件
       openai.deleteFile(data.training_files[0].id, { httpsAgent });
@@ -87,11 +88,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       return jsonRes(res, {
-        data: '模型微调取消'
+        data: '模型微调已取消'
       });
     }
 
-    throw new Error('模型还在训练中');
+    jsonRes(res, {
+      data: '模型还在训练中'
+    });
   } catch (err: any) {
     jsonRes(res, {
       code: 500,

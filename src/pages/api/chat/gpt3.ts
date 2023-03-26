@@ -51,11 +51,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       prompts.length > maxContext ? prompts.slice(prompts.length - maxContext) : prompts;
 
     // 格式化文本内容
-    const map = {
-      Human: 'Human',
-      AI: 'AI',
-      SYSTEM: 'SYSTEM'
-    };
     const formatPrompts: string[] = filterPrompts.map((item: ChatItemType) => item.value);
     // 如果有系统提示词，自动插入
     if (model.systemPrompt) {
@@ -85,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         max_tokens: modelConstantsData.maxToken,
         presence_penalty: 0, // 越大，越容易出现新内容
         frequency_penalty: 0, // 越大，重复内容越少
-        stop: ['。！？.!.', `</s>`]
+        stop: [`</s>`, '。！？.!.']
       },
       {
         timeout: 40000,
@@ -113,10 +108,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const json = JSON.parse(data);
         const content: string = json?.choices?.[0].text || '';
+        console.log('content:', content);
         if (!content || (responseContent === '' && content === '\n')) return;
 
         responseContent += content;
-        // console.log('content:', content);
         !stream.destroyed && stream.push(content.replace(/\n/g, '<br/>'));
       } catch (error) {
         error;
@@ -143,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 只有使用平台的 key 才计费
     !userApiKey &&
       pushChatBill({
-        modelName: model.service.modelName,
+        modelName: model.service.chatModel,
         userId,
         chatId,
         text: promptText + responseContent

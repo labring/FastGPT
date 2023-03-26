@@ -1,15 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Model, Training } from '@/service/mongo';
-import { getOpenAIApi } from '@/service/utils/chat';
-import formidable from 'formidable';
-import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
-import { join } from 'path';
-import fs from 'fs';
-import type { ModelSchema } from '@/types/mongoSchema';
-import type { OpenAIApi } from 'openai';
-import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
-import { httpsAgent } from '@/service/utils/tools';
+import { connectToDatabase, Training } from '@/service/mongo';
+import { authToken } from '@/service/utils/tools';
 
 // 关闭next默认的bodyParser处理方式
 export const config = {
@@ -18,7 +10,7 @@ export const config = {
   }
 };
 
-/* 上传文件，开始微调 */
+/* 获取模型训练记录 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { authorization } = req.headers;
@@ -30,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!modelId) {
       throw new Error('参数错误');
     }
-    const userId = await authToken(authorization);
+    await authToken(authorization);
 
     await connectToDatabase();
 
