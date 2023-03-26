@@ -102,7 +102,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         await postTrainModel(modelId, formData);
 
         toast({
-          title: '开始训练，大约需要 30 分钟',
+          title: '开始训练...',
           status: 'success'
         });
 
