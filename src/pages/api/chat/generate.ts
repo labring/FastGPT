@@ -42,7 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       modelId,
       expiredTime: Date.now() + model.security.expiredTime,
       loadAmount: model.security.maxLoadAmount,
-      updateTime: Date.now(),
       isShare: isShare === 'true',
       content: []
     });

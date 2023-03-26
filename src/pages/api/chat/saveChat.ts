@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }))
         }
       },
-      updateTime: Date.now()
+      updateTime: new Date()
     });
 
     jsonRes(res);

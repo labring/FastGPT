@@ -8,7 +8,9 @@ const map = {
   share: require('./icons/share.svg').default,
   home: require('./icons/home.svg').default,
   menu: require('./icons/menu.svg').default,
-  pay: require('./icons/pay.svg').default
+  pay: require('./icons/pay.svg').default,
+  copy: require('./icons/copy.svg').default,
+  chatSend: require('./icons/chatSend.svg').default
 };
 
 export type IconName = keyof typeof map;

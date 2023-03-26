@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
-import Icon from '@/components/Iconfont';
+import Icon from '@/components/Icon';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -41,7 +41,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
               >
                 <Box flex={1}>{match?.[1]}</Box>
                 <Flex cursor={'pointer'} onClick={() => copyData(code)} alignItems={'center'}>
-                  <Icon name={'icon-fuzhi'} width={15} height={15} color={'#fff'}></Icon>
+                  <Icon name={'copy'} width={15} height={15} fill={'#fff'}></Icon>
                   <Box ml={1}>复制代码</Box>
                 </Flex>
               </Flex>

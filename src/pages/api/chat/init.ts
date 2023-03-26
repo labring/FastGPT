@@ -38,6 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
     }
 
+    // filter 掉被 deleted 的内容
+    chat.content = chat.content.filter((item) => item.deleted !== true);
+
     const model = chat.modelId;
     jsonRes<InitChatResponse>(res, {
       code: 201,

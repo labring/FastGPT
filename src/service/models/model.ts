@@ -52,7 +52,7 @@ const ModelSchema = new Schema({
     trainId: {
       // 训练时需要的 ID
       type: String,
-      required: true
+      required: false
     },
     chatModel: {
       // 聊天时使用的模型
