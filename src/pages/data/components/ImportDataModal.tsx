@@ -102,7 +102,9 @@ const ImportDataModal = ({
               }
             })
           )
-        ).join('\n');
+        )
+          .join('\n')
+          .replace(/\n+/g, '\n');
         setFileText(fileTexts);
       } catch (error: any) {
         console.log(error);
