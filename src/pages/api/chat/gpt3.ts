@@ -69,7 +69,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
     let startTime = Date.now();
-
+    // console.log({
+    //   model: model.service.chatModel,
+    //   temperature: temperature,
+    //   prompt: promptText,
+    //   stream: true,
+    //   max_tokens:
+    //     model.trainingTimes > 0 ? modelConstantsData.trainedMaxToken : modelConstantsData.maxToken,
+    //   presence_penalty: -0.5, // 越大，越容易出现新内容
+    //   frequency_penalty: 0.5, // 越大，重复内容越少
+    //   stop: [`</s>`, '。！？.!.']
+    // });
     // 发出请求
     const chatResponse = await chatAPI.createCompletion(
       {
@@ -77,9 +87,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         temperature: temperature,
         prompt: promptText,
         stream: true,
-        max_tokens: modelConstantsData.maxToken,
-        presence_penalty: 0, // 越大，越容易出现新内容
-        frequency_penalty: 0, // 越大，重复内容越少
+        max_tokens:
+          model.trainingTimes > 0
+            ? modelConstantsData.trainedMaxToken
+            : modelConstantsData.maxToken,
+        presence_penalty: -0.5, // 越大，越容易出现新内容
+        frequency_penalty: 0.5, // 越大，重复内容越少
         stop: [`</s>`, '。！？.!.']
       },
       {
@@ -108,7 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const json = JSON.parse(data);
         const content: string = json?.choices?.[0].text || '';
-        console.log('content:', content);
+        // console.log('content:', content);
         if (!content || (responseContent === '' && content === '\n')) return;
 
         responseContent += content;
