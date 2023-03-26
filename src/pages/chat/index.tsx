@@ -62,6 +62,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
     intro: '',
     secret: {},
     chatModel: '',
+    modelName: '',
     history: [],
     isExpiredTime: false
   }); // 聊天框整体数据
@@ -156,7 +157,8 @@ const Chat = ({ chatId }: { chatId: string }) => {
         [ChatModelNameEnum.GPT35]: '/api/chat/chatGpt',
         [ChatModelNameEnum.GPT3]: '/api/chat/gpt3'
       };
-      if (!urlMap[chatData.chatModel]) return Promise.reject('找不到模型');
+
+      if (!urlMap[chatData.modelName]) return Promise.reject('找不到模型');
 
       const prompt = {
         obj: prompts.obj,
@@ -164,7 +166,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
       };
       // 流请求，获取数据
       const res = await streamFetch({
-        url: urlMap[chatData.chatModel],
+        url: urlMap[chatData.modelName],
         data: {
           prompt,
           chatId
@@ -217,7 +219,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         })
       }));
     },
-    [chatData.chatModel, chatId, toast]
+    [chatData.modelName, chatId, toast]
   );
 
   /**

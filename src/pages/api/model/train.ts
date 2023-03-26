@@ -30,6 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('无权操作');
     }
     const { modelId } = req.query;
+
     if (!modelId) {
       throw new Error('参数错误');
     }
@@ -67,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     const file = files.file;
 
-    // 上传文件
+    // 上传文件到 openai
     // @ts-ignore
     const uploadRes = await openai.createFile(
       // @ts-ignore

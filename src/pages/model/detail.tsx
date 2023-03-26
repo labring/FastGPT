@@ -108,9 +108,9 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
 
         // 重新获取模型
         loadModel();
-      } catch (err) {
+      } catch (err: any) {
         toast({
-          title: typeof err === 'string' ? err : '文件格式错误',
+          title: err?.message || '上传文件失败',
           status: 'error'
         });
         console.log('error->', err);
@@ -126,7 +126,12 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     setLoading(true);
 
     try {
-      await putModelTrainingStatus(model._id);
+      const res = await putModelTrainingStatus(model._id);
+      typeof res === 'string' &&
+        toast({
+          title: res,
+          status: 'info'
+        });
       loadModel();
     } catch (error: any) {
       console.log('error->', error);
@@ -284,6 +289,9 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           </Flex>
           {/* 提示 */}
           <Box mt={3} py={3} color={'blackAlpha.600'}>
+            <Box as={'li'} lineHeight={1.9}>
+              暂时需要使用自己的openai key
+            </Box>
             <Box as={'li'} lineHeight={1.9}>
               可以使用
               <Box
