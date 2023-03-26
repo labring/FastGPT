@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import { generateQA } from './events/generateQA';
+import { generateAbstract } from './events/generateAbstract';
+
 /**
  * 连接 MongoDB 数据库
  */
@@ -24,8 +26,8 @@ export async function connectToDatabase(): Promise<void> {
     global.mongodb = null;
   }
 
-  // 递归 QA 生成
   generateQA();
+  generateAbstract();
 }
 
 export * from './models/authCode';

@@ -22,7 +22,7 @@ const DataDetail = ({ dataName, dataId }: { dataName: string; dataId: string }) 
   return (
     <Card py={4} h={'100%'} display={'flex'} flexDirection={'column'}>
       <Box px={6} fontSize={'xl'} fontWeight={'bold'}>
-        {dataName} 拆分结果
+        {dataName} 结果
       </Box>
       <ScrollData
         flex={'1 0 0'}
@@ -38,8 +38,13 @@ const DataDetail = ({ dataName, dataId }: { dataName: string; dataId: string }) 
           <Box key={item._id}>
             {item.result.map((result, i) => (
               <Box key={i} mb={3}>
-                <Box fontWeight={'bold'}>Q: {result.q}</Box>
-                <Box>A: {result.a}</Box>
+                {item.type === 'QA' && (
+                  <>
+                    <Box fontWeight={'bold'}>Q: {result.q}</Box>
+                    <Box>A: {result.a}</Box>
+                  </>
+                )}
+                {item.type === 'abstract' && <Box fontSize={'sm'}>{result.abstract}</Box>}
               </Box>
             ))}
           </Box>
