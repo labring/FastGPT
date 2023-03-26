@@ -44,6 +44,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       email
     });
 
+    if (!user) {
+      throw new Error('获取用户信息异常');
+    }
+
     jsonRes(res, {
       data: {
         token: generateToken(user._id),

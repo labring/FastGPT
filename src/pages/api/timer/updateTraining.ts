@@ -9,6 +9,7 @@ import { getUserOpenaiKey } from '@/service/utils/tools';
 import { OpenAiTuneStatusEnum } from '@/service/constants/training';
 import { sendTrainSucceed } from '@/service/utils/sendEmail';
 import { httpsAgent } from '@/service/utils/tools';
+import { ModelPopulate } from '@/types/mongoSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.headers.auth !== 'archer') {
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // 删除训练文件
           openai.deleteFile(data.training_files[0].id, { httpsAgent });
 
-          const model = await Model.findById(item.modelId).populate({
+          const model = await Model.findById<ModelPopulate>(item.modelId).populate({
             path: 'userId',
             options: {
               strictPopulate: false

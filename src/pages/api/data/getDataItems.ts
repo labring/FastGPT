@@ -35,8 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pageSize,
         data: dataItems,
         total: await DataItem.countDocuments({
-          dataId,
-          status: 0
+          dataId
         })
       }
     });

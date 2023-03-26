@@ -46,6 +46,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 根据 id 获取用户信息
     const user = await User.findById(response._id);
 
+    if (!user) {
+      throw new Error('获取用户信息异常');
+    }
+
     jsonRes(res, {
       data: {
         token: generateToken(user._id),
