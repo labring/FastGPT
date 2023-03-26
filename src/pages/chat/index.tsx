@@ -5,7 +5,7 @@ import {
   getInitChatSiteInfo,
   getChatSiteId,
   postGPT3SendPrompt,
-  delLastMessage,
+  delChatRecordByIndex,
   postSaveChat
 } from '@/api/chat';
 import type { InitChatResponse } from '@/api/response/chat';
@@ -19,21 +19,25 @@ import {
   Drawer,
   DrawerOverlay,
   DrawerContent,
-  useColorModeValue
+  useColorModeValue,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
-import Icon from '@/components/Iconfont';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import { ChatModelNameEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { useChatStore } from '@/store/chat';
+import { useCopyData } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import SlideBar from './components/SlideBar';
 import Empty from './components/Empty';
 import { getToken } from '@/utils/user';
-import MyIcon from '@/components/Icon';
+import Icon from '@/components/Icon';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
@@ -46,8 +50,10 @@ interface ChatType extends InitChatResponse {
 const Chat = ({ chatId }: { chatId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc, media } = useScreen();
-  const { setLoading } = useGlobalStore();
+  const ChatBox = useRef<HTMLDivElement>(null);
+  const TextareaDom = useRef<HTMLTextAreaElement>(null);
+  // 中断请求
+  const controller = useRef(new AbortController());
   const [chatData, setChatData] = useState<ChatType>({
     chatId: '',
     modelId: '',
@@ -59,45 +65,27 @@ const Chat = ({ chatId }: { chatId: string }) => {
     history: [],
     isExpiredTime: false
   }); // 聊天框整体数据
-
-  const ChatBox = useRef<HTMLDivElement>(null);
-  const TextareaDom = useRef<HTMLTextAreaElement>(null);
-
   const [inputVal, setInputVal] = useState(''); // 输入的内容
-  const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
   const isChatting = useMemo(
     () => chatData.history[chatData.history.length - 1]?.status === 'loading',
     [chatData.history]
   );
   const chatWindowError = useMemo(() => {
-    if (chatData.history[chatData.history.length - 1]?.obj === 'Human') {
-      return {
-        text: '内容出现异常',
-        canDelete: true
-      };
-    }
     if (chatData.isExpiredTime) {
       return {
-        text: '聊天框已过期',
-        canDelete: false
+        text: '聊天框已过期'
       };
     }
 
     return '';
   }, [chatData]);
+  const { copyData } = useCopyData();
+  const { isPc, media } = useScreen();
+  const { setLoading } = useGlobalStore();
 
+  const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const { pushChatHistory } = useChatStore();
-  // 中断请求
-  const controller = useRef(new AbortController());
-  useEffect(() => {
-    controller.current = new AbortController();
-    return () => {
-      console.log('close========');
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      controller.current?.abort();
-    };
-  }, [chatId]);
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
@@ -109,42 +97,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
         });
     }, 100);
   }, []);
-
-  // 初始化聊天框
-  useQuery(
-    ['init', chatId],
-    () => {
-      setLoading(true);
-      return getInitChatSiteInfo(chatId);
-    },
-    {
-      onSuccess(res) {
-        setChatData({
-          ...res,
-          history: res.history.map((item) => ({
-            ...item,
-            status: 'finish'
-          }))
-        });
-        if (res.history.length > 0) {
-          setTimeout(() => {
-            scrollToBottom();
-          }, 500);
-        }
-      },
-      onError(e: any) {
-        toast({
-          title: e?.message || '初始化异常,请检查地址',
-          status: 'error',
-          isClosable: true,
-          duration: 5000
-        });
-      },
-      onSettled() {
-        setLoading(false);
-      }
-    }
-  );
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {
@@ -346,20 +298,79 @@ const Chat = ({ chatId }: { chatId: string }) => {
     toast
   ]);
 
-  // 重新编辑
-  const reEdit = useCallback(async () => {
-    if (chatData.history[chatData.history.length - 1]?.obj !== 'Human') return;
-    // 删除数据库最后一句
-    await delLastMessage(chatId);
-    const val = chatData.history[chatData.history.length - 1].value;
+  // 删除一句话
+  const delChatRecord = useCallback(
+    async (index: number) => {
+      setLoading(true);
+      try {
+        // 删除数据库最后一句
+        await delChatRecordByIndex(chatId, index);
 
-    resetInputVal(val);
+        setChatData((state) => ({
+          ...state,
+          history: state.history.filter((_, i) => i !== index)
+        }));
+      } catch (err) {
+        console.log(err);
+      }
+      setLoading(false);
+    },
+    [chatId, setLoading]
+  );
 
-    setChatData((state) => ({
-      ...state,
-      history: state.history.slice(0, -1)
-    }));
-  }, [chatData.history, chatId, resetInputVal]);
+  // 复制内容
+  const onclickCopy = useCallback(
+    (chatId: string) => {
+      const dom = document.getElementById(chatId);
+      const innerText = dom?.innerText;
+      innerText && copyData(innerText);
+    },
+    [copyData]
+  );
+
+  useEffect(() => {
+    controller.current = new AbortController();
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      controller.current?.abort();
+    };
+  }, [chatId]);
+
+  // 初始化聊天框
+  useQuery(
+    ['init', chatId],
+    () => {
+      setLoading(true);
+      return getInitChatSiteInfo(chatId);
+    },
+    {
+      onSuccess(res) {
+        setChatData({
+          ...res,
+          history: res.history.map((item) => ({
+            ...item,
+            status: 'finish'
+          }))
+        });
+        if (res.history.length > 0) {
+          setTimeout(() => {
+            scrollToBottom();
+          }, 500);
+        }
+      },
+      onError(e: any) {
+        toast({
+          title: e?.message || '初始化异常,请检查地址',
+          status: 'error',
+          isClosable: true,
+          duration: 5000
+        });
+      },
+      onSettled() {
+        setLoading(false);
+      }
+    }
+  );
 
   return (
     <Flex
@@ -389,7 +400,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
             px={7}
           >
             <Box onClick={onOpenSlider}>
-              <MyIcon
+              <Icon
                 name={'menu'}
                 w={'20px'}
                 h={'20px'}
@@ -432,15 +443,21 @@ const Chat = ({ chatId }: { chatId: string }) => {
               borderBottom={'1px solid rgba(0,0,0,0.1)'}
             >
               <Flex maxW={'750px'} m={'auto'} alignItems={'flex-start'}>
-                <Box mr={media(4, 1)}>
-                  <Image
-                    src={item.obj === 'Human' ? '/icon/human.png' : '/icon/logo.png'}
-                    alt="/icon/logo.png"
-                    width={media(30, 20)}
-                    height={media(30, 20)}
-                  />
-                </Box>
-                <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
+                <Menu>
+                  <MenuButton as={Box} mr={media(4, 1)} cursor={'pointer'}>
+                    <Image
+                      src={item.obj === 'Human' ? '/icon/human.png' : '/icon/logo.png'}
+                      alt="/icon/logo.png"
+                      width={media(30, 20)}
+                      height={media(30, 20)}
+                    />
+                  </MenuButton>
+                  <MenuList fontSize={'sm'}>
+                    <MenuItem onClick={() => onclickCopy(`chat${index}`)}>复制</MenuItem>
+                    <MenuItem onClick={() => delChatRecord(index)}>删除该行</MenuItem>
+                  </MenuList>
+                </Menu>
+                <Box flex={'1 0 0'} w={0} overflow={'hidden'} id={`chat${index}`}>
                   {item.obj === 'AI' ? (
                     <Markdown
                       source={item.value}
@@ -462,12 +479,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
               <Box color={'red'}>{chatWindowError.text}</Box>
               <Flex py={5} justifyContent={'center'}>
                 {getToken() && <Button onClick={resetChat}>重开对话</Button>}
-
-                {chatWindowError.canDelete && (
-                  <Button ml={20} colorScheme={'green'} onClick={reEdit}>
-                    重新编辑最后一句
-                  </Button>
-                )}
               </Flex>
             </Box>
           ) : (
@@ -530,10 +541,10 @@ const Chat = ({ chatId }: { chatId: string }) => {
                 ) : (
                   <Box cursor={'pointer'} onClick={sendPrompt}>
                     <Icon
-                      name={'icon-fasong'}
-                      width={20}
-                      height={20}
-                      color={useColorModeValue('#718096', 'white')}
+                      name={'chatSend'}
+                      width={'20px'}
+                      height={'20px'}
+                      fill={useColorModeValue('#718096', 'white')}
                     ></Icon>
                   </Box>
                 )}

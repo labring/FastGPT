@@ -53,6 +53,7 @@ export const chatProblem = `
 
 export const versionIntro = `
 ## Fast GPT V2.0
+* 删除和复制功能：点击对话头像，可以选择复制或删除该条内容。
 * 优化记账模式： 不再根据文本长度进行记账，而是根据实际消耗 tokens 数量进行记账。
 * 文本 QA 拆分: 可以在[数据]模块，使用 QA 拆分功能，粘贴文字或者选择文件均可以实现自动生成 QA。可以一键导出，用于微调模型。
 `;

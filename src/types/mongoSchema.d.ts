@@ -68,7 +68,7 @@ export interface ChatSchema {
   modelId: string;
   expiredTime: number;
   loadAmount: number;
-  updateTime: number;
+  updateTime: Date;
   isShare: boolean;
   content: ChatItemType[];
 }

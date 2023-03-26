@@ -23,8 +23,8 @@ const ChatSchema = new Schema({
     required: true
   },
   updateTime: {
-    type: Number,
-    required: true
+    type: Date,
+    default: () => new Date()
   },
   isShare: {
     type: Boolean,
@@ -41,6 +41,10 @@ const ChatSchema = new Schema({
         value: {
           type: String,
           required: true
+        },
+        deleted: {
+          type: Boolean,
+          default: false
         }
       }
     ],

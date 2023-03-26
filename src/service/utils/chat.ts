@@ -51,6 +51,9 @@ export const authChat = async (chatId: string, authorization?: string) => {
     return Promise.reject('该账号余额不足');
   }
 
+  // filter 掉被 deleted 的内容
+  chat.content = chat.content.filter((item) => item.deleted !== true);
+
   return {
     userApiKey,
     systemKey: process.env.OPENAIKEY as string,

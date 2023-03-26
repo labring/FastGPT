@@ -39,6 +39,7 @@ export const postSaveChat = (data: { chatId: string; prompts: ChatItemType[] }) 
   POST('/chat/saveChat', data);
 
 /**
- * 删除最后一句
+ * 删除一句对话
  */
-export const delLastMessage = (chatId: string) => DELETE(`/chat/delLastMessage?chatId=${chatId}`);
+export const delChatRecordByIndex = (chatId: string, index: number) =>
+  DELETE(`/chat/delChatRecordByIndex?chatId=${chatId}&index=${index}`);
