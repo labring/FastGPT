@@ -44,6 +44,9 @@ export const introPage = `
 `;
 
 export const chatProblem = `
+**模型问题**
+一般情况下，请直接选择 chatGPT 模型，价格低效果好。
+
 **代理出错**
 服务器代理不稳定，可以过一会儿再尝试。  
 

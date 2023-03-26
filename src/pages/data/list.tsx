@@ -122,7 +122,7 @@ const DataList = () => {
               训练数据管理
             </Box>
             <Box fontSize={'xs'} color={'blackAlpha.600'}>
-              允许你将任意文本数据拆分成 QA 的形式。你可以使用这些 QA 去微调你的对话模型。
+              允许你将任意文本数据拆分成 QA 形式，或者进行文本摘要总结。
             </Box>
           </Box>
           <Button variant={'outline'} onClick={onOpenCreateDataModal}>
