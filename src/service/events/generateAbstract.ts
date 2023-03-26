@@ -12,7 +12,7 @@ export async function generateAbstract(next = false): Promise<any> {
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `我会向你发送一段长文本，请从中总结出3~10个摘要，尽量详细，请按以下格式返回: "(1):"\n"(2):"\n"(3):"\n`
+    content: `请从长文本中总结出5至15个摘要，尽量详细，请务必按以下格式返回: "(1):"\n"(2):"\n"(3):"\n`
   };
   let dataItem: DataItemSchema | null = null;
 
@@ -57,37 +57,29 @@ export async function generateAbstract(next = false): Promise<any> {
     // 获取 openai 请求实例
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
     // 请求 chatgpt 获取摘要
-    const abstractResponse = await Promise.allSettled(
-      [0.5, 1].map((temperature) =>
-        chatAPI.createChatCompletion(
+    const abstractResponse = await chatAPI.createChatCompletion(
+      {
+        model: ChatModelNameEnum.GPT35,
+        temperature: 0.8,
+        n: 1,
+        messages: [
+          systemPrompt,
           {
-            model: ChatModelNameEnum.GPT35,
-            temperature: temperature,
-            n: 1,
-            messages: [
-              systemPrompt,
-              {
-                role: 'user',
-                content: dataItem?.text || ''
-              }
-            ]
-          },
-          {
-            timeout: 120000,
-            httpsAgent
+            role: 'user',
+            content: dataItem?.text || ''
           }
-        )
-      )
+        ]
+      },
+      {
+        timeout: 120000,
+        httpsAgent
+      }
     );
 
-    // 过滤出成功的响应
-    const successAbstracts = abstractResponse.filter((item) => item.status === 'fulfilled');
     // 提取摘要内容
-    const rawContents: string[] = successAbstracts.map(
-      (item: any) => item?.value?.data.choices[0].message?.content || ''
-    );
+    const rawContent: string = abstractResponse?.data.choices[0].message?.content || '';
     // 从 content 中提取摘要内容
-    const splitContents = rawContents.map((content) => splitText(content)).flat();
+    const splitContents = splitText(rawContent);
 
     // 生成词向量
     const vectorResponse = await Promise.allSettled(
@@ -101,7 +93,13 @@ export async function generateAbstract(next = false): Promise<any> {
     // 筛选成功的向量请求
     const vectorSuccessResponse = vectorResponse
       .map((item: any, i) => {
-        if (item.status !== 'fulfilled') return '';
+        if (item.status !== 'fulfilled') {
+          console.log('获取词向量错误: ', item);
+          return {
+            abstract: splitContents[i].abstract,
+            abstractVector: ''
+          };
+        }
         return {
           abstract: splitContents[i].abstract,
           abstractVector: item?.value?.data?.data?.[0]?.embedding
@@ -113,9 +111,7 @@ export async function generateAbstract(next = false): Promise<any> {
     await DataItem.findByIdAndUpdate(dataItem._id, {
       status: 0,
       $push: {
-        rawResponse: {
-          $each: rawContents
-        },
+        rawResponse: rawContent,
         result: {
           $each: vectorSuccessResponse
         }
@@ -124,21 +120,21 @@ export async function generateAbstract(next = false): Promise<any> {
 
     // 计费
     !userApiKey &&
-      splitContents.length > 0 &&
+      vectorResponse.length > 0 &&
       pushSplitDataBill({
         userId: dataItem.userId,
         type: 'abstract',
         text:
           systemPrompt.content +
           dataItem.text +
-          rawContents.join('') +
-          rawContents.join('').substring(0, Math.floor(dataItem.text.length / 10)) // 向量价格是gpt35的1/10
+          rawContent +
+          rawContent.substring(0, Math.floor(dataItem.text.length / 10)) // 向量价格是gpt35的1/10
       });
     console.log(
       '生成摘要成功，time:',
       `${(Date.now() - startTime) / 1000}s`,
       '摘要数量：',
-      splitContents.length
+      vectorResponse.length
     );
   } catch (error: any) {
     console.log('error: 生成摘要错误', dataItem?._id);

@@ -13,7 +13,7 @@ const DataDetail = ({ dataName, dataId }: { dataName: string; dataId: string }) 
     data: dataItems
   } = usePaging<DataItemSchema>({
     api: getDataItems,
-    pageSize: 5,
+    pageSize: 10,
     params: {
       dataId
     }
