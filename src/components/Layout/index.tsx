@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Box, useColorMode } from '@chakra-ui/react';
+import { Box, useColorMode, Flex } from '@chakra-ui/react';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 import { useRouter } from 'next/router';
@@ -62,29 +62,21 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               <Box h={'100%'} position={'fixed'} left={0} top={0} w={'80px'}>
                 <Navbar navbarList={navbarList} />
               </Box>
-              <Box ml={'80px'} h={'100%'}>
-                <Box maxW={'1100px'} m={'auto'} h={'100%'} p={7} overflowY={'auto'}>
+              <Box h={'100%'} ml={'80px'}>
+                <Box h={'100%'} py={7} px={'5vw'} m={'auto'} overflowY={'auto'}>
                   <Auth>{children}</Auth>
                 </Box>
               </Box>
             </>
           ) : (
-            <Box pt={'60px'}>
-              <Box
-                h={'60px'}
-                position={'fixed'}
-                top={0}
-                left={0}
-                right={0}
-                zIndex={100}
-                borderBottom={'1px solid rgba(0,0,0,0.1)'}
-              >
+            <Flex h={'100%'} flexDirection={'column'}>
+              <Box h={'60px'} borderBottom={'1px solid rgba(0,0,0,0.1)'}>
                 <NavbarPhone navbarList={navbarList} />
               </Box>
-              <Box py={3} px={4}>
+              <Box flex={'1 0 0'} h={0} py={3} px={4} overflowY={'auto'}>
                 <Auth>{children}</Auth>
               </Box>
-            </Box>
+            </Flex>
           )}
         </Box>
       ) : (
