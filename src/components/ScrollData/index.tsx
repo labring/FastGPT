@@ -53,7 +53,7 @@ const ScrollData = ({
   }, [elementRef, nextPage]);
 
   return (
-    <Box {...props} ref={elementRef} overflow={'auto'} position={'relative'}>
+    <Box {...props} ref={elementRef} overflowY={'auto'} position={'relative'}>
       {children}
       <Box
         mt={2}

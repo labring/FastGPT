@@ -12,7 +12,7 @@ export async function generateAbstract(next = false): Promise<any> {
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `请从长文本中总结出5至15个摘要，尽量详细，请务必按以下格式返回: "(1):"\n"(2):"\n"(3):"\n`
+    content: `请从长文本中总结出5至15个摘要，尽量详细，并按以下格式返回: "A:"\n"A:"\n"A:"\n`
   };
   let dataItem: DataItemSchema | null = null;
 
@@ -97,7 +97,7 @@ export async function generateAbstract(next = false): Promise<any> {
           console.log('获取词向量错误: ', item);
           return {
             abstract: splitContents[i].abstract,
-            abstractVector: ''
+            abstractVector: []
           };
         }
         return {
@@ -120,7 +120,7 @@ export async function generateAbstract(next = false): Promise<any> {
 
     // 计费
     !userApiKey &&
-      vectorResponse.length > 0 &&
+      splitContents.length > 0 &&
       pushSplitDataBill({
         userId: dataItem.userId,
         type: 'abstract',
@@ -134,7 +134,7 @@ export async function generateAbstract(next = false): Promise<any> {
       '生成摘要成功，time:',
       `${(Date.now() - startTime) / 1000}s`,
       '摘要数量：',
-      vectorResponse.length
+      splitContents.length
     );
   } catch (error: any) {
     console.log('error: 生成摘要错误', dataItem?._id);
@@ -157,7 +157,7 @@ export async function generateAbstract(next = false): Promise<any> {
  * 检查文本是否按格式返回
  */
 function splitText(text: string) {
-  const regex = /\(\d+\):(\s*)(.*)(\s*)/g;
+  const regex = /A:(\s*)(.*)(\s*)/g;
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
   const result = []; // 存储最终的结果
