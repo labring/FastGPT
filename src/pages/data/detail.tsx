@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Card, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import { Box, Card } from '@chakra-ui/react';
 import ScrollData from '@/components/ScrollData';
 import { getDataItems } from '@/api/data';
 import { usePaging } from '@/hooks/usePaging';
@@ -13,7 +13,7 @@ const DataDetail = ({ dataName, dataId }: { dataName: string; dataId: string }) 
     data: dataItems
   } = usePaging<DataItemSchema>({
     api: getDataItems,
-    pageSize: 10,
+    pageSize: 5,
     params: {
       dataId
     }
