@@ -91,8 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: formatPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: true,
-        stop: ['。！？.!.']
+        stream: true
       },
       {
         timeout: 40000,
