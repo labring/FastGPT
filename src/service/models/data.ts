@@ -1,5 +1,6 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { DataItemSchema as Datatype } from '@/types/mongoSchema';
+import { DataSchema as Datatype } from '@/types/mongoSchema';
+import { DataTypeTextMap } from '@/constants/data';
 
 const DataSchema = new Schema({
   userId: {
@@ -14,6 +15,11 @@ const DataSchema = new Schema({
   createTime: {
     type: Date,
     default: () => new Date()
+  },
+  type: {
+    type: String,
+    required: true,
+    enum: Object.keys(DataTypeTextMap)
   },
   isDeleted: {
     type: Boolean,

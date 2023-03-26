@@ -1,5 +1,6 @@
 import type { ChatItemType } from './chat';
 import { ModelStatusEnum, TrainingStatusEnum, ChatModelNameEnum } from '@/constants/model';
+import type { DataType } from './data';
 
 export type ServiceName = 'openai';
 
@@ -102,19 +103,21 @@ export interface DataSchema {
   userId: string;
   name: string;
   createTime: string;
+  type: DataType;
 }
 
 export interface DataItemSchema {
   _id: string;
   userId: string;
   dataId: string;
+  type: DataType;
   times: number;
-  temperature: number;
   text: string;
   rawResponse: string[];
   result: {
-    q: string;
-    a: string;
+    q?: string;
+    a?: string;
+    abstract?: string;
   }[];
   status: 0 | 1 | 2;
 }

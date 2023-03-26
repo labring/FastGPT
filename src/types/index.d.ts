@@ -3,6 +3,7 @@ import type { Mongoose } from 'mongoose';
 declare global {
   var mongodb: Mongoose | string | null;
   var generatingQA: boolean;
+  var generatingAbstract: boolean;
   var QRCode: any;
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

@@ -3,12 +3,13 @@ import { RequestPaging } from '../types/index';
 import { Obj2Query } from '@/utils/tools';
 import type { DataListItem } from '@/types/data';
 import type { PagingData } from '../types/index';
-import { DataItemSchema } from '@/types/mongoSchema';
+import type { DataItemSchema } from '@/types/mongoSchema';
+import type { CreateDataProps } from '@/pages/data/components/CreateDataModal';
 
 export const getDataList = (data: RequestPaging) =>
   GET<PagingData<DataListItem>>(`/data/getDataList?${Obj2Query(data)}`);
 
-export const postData = (name: string) => POST<string>(`/data/postData?name=${name}`);
+export const postData = (data: CreateDataProps) => POST<string>(`/data/postData`, data);
 
 export const postSplitData = (dataId: string, text: string) =>
   POST(`/data/splitData`, { dataId, text });

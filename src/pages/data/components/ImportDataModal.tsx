@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import { formatPrice } from '@/utils/user';
 import { modelList, ChatModelNameEnum } from '@/constants/model';
+import { encode, decode } from 'gpt-token-utils';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
@@ -106,6 +107,7 @@ const ImportDataModal = ({
           .join('\n')
           .replace(/\n+/g, '\n');
         setFileText(fileTexts);
+        console.log(encode(fileTexts));
       } catch (error: any) {
         console.log(error);
         toast({
@@ -161,7 +163,9 @@ const ImportDataModal = ({
                   placeholder={'请粘贴或输入需要处理的文本'}
                   onChange={(e) => setTextInput(e.target.value)}
                 />
-                <Box mt={2}>一共 {textInput.length} 个字</Box>
+                <Box mt={2}>
+                  一共 {textInput.length} 个字，{encode(textInput).length} 个tokens
+                </Box>
               </>
             )}
             {activeTab === 'doc' && (
@@ -174,12 +178,15 @@ const ImportDataModal = ({
                 border={'1px solid '}
                 borderColor={'blackAlpha.200'}
                 borderRadius={'md'}
+                fontSize={'sm'}
               >
                 <Button onClick={onOpen}>选择文件</Button>
                 <Box mt={2}>支持 {fileExtension} 文件</Box>
                 {fileText && (
                   <>
-                    <Box mt={2}>一共 {fileText.length} 个字</Box>
+                    <Box mt={2}>
+                      一共 {fileText.length} 个字，{encode(fileText).length} 个tokens
+                    </Box>
                     <Box
                       maxH={'300px'}
                       w={'100%'}

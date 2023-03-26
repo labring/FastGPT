@@ -97,7 +97,7 @@ const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> })
           <Box mb={1}>系统提示词</Box>
           <Textarea
             rows={6}
-            maxLength={500}
+            maxLength={-1}
             {...register('systemPrompt')}
             placeholder={
               '模型默认的 prompt 词，通过调整该内容，可以生成一个限定范围的模型。\n\n注意，改功能会影响对话的整体朝向！'

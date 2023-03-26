@@ -13,14 +13,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // await DataItem.updateMany(
     //   {},
     //   {
-    //     times: 2
+    //     type: 'QA'
+    //     // times: 2
     //   }
     // );
 
     await Data.updateMany(
       {},
       {
-        isDeleted: false
+        type: 'QA'
       }
     );
 

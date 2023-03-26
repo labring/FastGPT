@@ -1,5 +1,6 @@
 import type { DataItemSchema as DataItemType } from '@/types/mongoSchema';
 import { Schema, model, models, Model } from 'mongoose';
+import { DataTypeTextMap } from '@/constants/data';
 
 const DataItemSchema = new Schema({
   userId: {
@@ -12,19 +13,23 @@ const DataItemSchema = new Schema({
     ref: 'data',
     required: true
   },
+  type: {
+    type: String,
+    required: true,
+    enum: Object.keys(DataTypeTextMap)
+  },
   times: {
+    // 剩余重试次数
     type: Number,
     default: 3
   },
   text: {
+    // 文本内容
     type: String,
     required: true
   },
-  temperature: {
-    type: Number,
-    required: true
-  },
   rawResponse: {
+    // 原始拆分结果
     type: [String],
     default: []
   },
@@ -33,11 +38,21 @@ const DataItemSchema = new Schema({
       {
         q: {
           type: String,
-          required: true
+          default: ''
         },
         a: {
           type: String,
-          required: true
+          default: ''
+        },
+        abstract: {
+          // 摘要
+          type: String,
+          default: ''
+        },
+        abstractVector: {
+          // 摘要对应的向量
+          type: [Number],
+          default: []
         }
       }
     ],

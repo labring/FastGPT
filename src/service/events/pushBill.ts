@@ -2,6 +2,7 @@ import { connectToDatabase, Bill, User } from '../mongo';
 import { modelList, ChatModelNameEnum } from '@/constants/model';
 import { encode } from 'gpt-token-utils';
 import { formatPrice } from '@/utils/user';
+import type { DataType } from '@/types/data';
 
 export const pushChatBill = async ({
   modelName,
@@ -59,7 +60,15 @@ export const pushChatBill = async ({
   }
 };
 
-export const pushSplitDataBill = async ({ userId, text }: { userId: string; text: string }) => {
+export const pushSplitDataBill = async ({
+  userId,
+  text,
+  type
+}: {
+  userId: string;
+  text: string;
+  type: DataType;
+}) => {
   await connectToDatabase();
 
   let billId;
@@ -83,7 +92,7 @@ export const pushSplitDataBill = async ({ userId, text }: { userId: string; text
       // 插入 Bill 记录
       const res = await Bill.create({
         userId,
-        type: 'splitData',
+        type,
         modelName: ChatModelNameEnum.GPT35,
         textLen: text.length,
         tokenLen: tokens.length,
