@@ -1,6 +1,7 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { modelList } from '@/constants/model';
 import { BillSchema as BillType } from '@/types/mongoSchema';
+import { BillTypeMap } from '@/constants/user';
 
 const BillSchema = new Schema({
   userId: {
@@ -10,7 +11,7 @@ const BillSchema = new Schema({
   },
   type: {
     type: String,
-    enum: ['chat', 'splitData', 'return'],
+    enum: Object.keys(BillTypeMap),
     required: true
   },
   modelName: {
