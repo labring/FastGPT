@@ -151,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 只有使用平台的 key 才计费
     !userApiKey &&
       pushChatBill({
-        modelName: model.service.chatModel,
+        modelName: model.service.modelName,
         userId,
         chatId,
         text: promptText + responseContent
