@@ -33,6 +33,7 @@ const DataDetail = ({ dataName, dataId }: { dataName: string; dataId: string }) 
         requesting={requesting}
         nextPage={nextPage}
         fontSize={'xs'}
+        whiteSpace={'pre-wrap'}
       >
         {dataItems.map((item) => (
           <Box key={item._id}>
