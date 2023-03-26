@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     //     model.trainingTimes > 0 ? modelConstantsData.trainedMaxToken : modelConstantsData.maxToken,
     //   presence_penalty: -0.5, // 越大，越容易出现新内容
     //   frequency_penalty: 0.5, // 越大，重复内容越少
-    //   stop: [`</s>`, '。！？.!.']
+    //   stop: [`###`]
     // });
     // 发出请求
     const chatResponse = await chatAPI.createCompletion(
@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             : modelConstantsData.maxToken,
         presence_penalty: -0.5, // 越大，越容易出现新内容
         frequency_penalty: 0.5, // 越大，重复内容越少
-        stop: [`</s>`, '。！？.!.']
+        stop: [`###`, '。！？.!.']
       },
       {
         timeout: 40000,

@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 获取 openai 的训练情况
     const { data } = await openai.retrieveFineTune(training.tuneId, { httpsAgent });
-
+    // console.log(data);
     if (data.status === OpenAiTuneStatusEnum.succeeded) {
       // 删除训练文件
       openai.deleteFile(data.training_files[0].id, { httpsAgent });

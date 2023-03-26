@@ -28,6 +28,8 @@ import { useRouter } from 'next/router';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useRequest } from '@/hooks/useRequest';
 import { DataItemSchema } from '@/types/mongoSchema';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('.,', 1);
 
 const CreateDataModal = dynamic(() => import('./components/CreateDataModal'));
 const ImportDataModal = dynamic(() => import('./components/ImportDataModal'));
@@ -83,8 +85,8 @@ const DataList = () => {
       // 生成 jsonl
       data.forEach((item) => {
         const result = JSON.stringify({
-          prompt: `${item.q.toLocaleLowerCase()}</s>`,
-          completion: ` ${item.a}</s>`
+          prompt: `${item.q.toLocaleLowerCase()}${nanoid()}</s>`,
+          completion: ` ${item.a}###`
         });
         text += `${result}\n`;
       });
@@ -181,7 +183,7 @@ const DataList = () => {
                         导入
                       </Button>
                       <Menu>
-                        <MenuButton as={Button} mr={2} size={'sm'}>
+                        <MenuButton as={Button} mr={2} size={'sm'} isLoading={isExporting}>
                           导出
                         </MenuButton>
                         <MenuList>
