@@ -84,21 +84,25 @@ export async function generateAbstract(next = false): Promise<any> {
     // 生成词向量
     const vectorResponse = await Promise.allSettled(
       splitContents.map((item) =>
-        chatAPI.createEmbedding({
-          model: 'text-embedding-ada-002',
-          input: item.abstract
-        })
+        chatAPI.createEmbedding(
+          {
+            model: 'text-embedding-ada-002',
+            input: item.abstract
+          },
+          {
+            timeout: 120000,
+            httpsAgent
+          }
+        )
       )
     );
     // 筛选成功的向量请求
     const vectorSuccessResponse = vectorResponse
       .map((item: any, i) => {
         if (item.status !== 'fulfilled') {
+          // 没有词向量的【摘要】不要
           console.log('获取词向量错误: ', item);
-          return {
-            abstract: splitContents[i].abstract,
-            abstractVector: []
-          };
+          return '';
         }
         return {
           abstract: splitContents[i].abstract,
@@ -120,7 +124,7 @@ export async function generateAbstract(next = false): Promise<any> {
 
     // 计费
     !userApiKey &&
-      splitContents.length > 0 &&
+      vectorSuccessResponse.length > 0 &&
       pushSplitDataBill({
         userId: dataItem.userId,
         type: 'abstract',
@@ -128,13 +132,13 @@ export async function generateAbstract(next = false): Promise<any> {
           systemPrompt.content +
           dataItem.text +
           rawContent +
-          rawContent.substring(0, Math.floor(dataItem.text.length / 10)) // 向量价格是gpt35的1/10
+          rawContent.substring(0, Math.floor(dataItem.text.length / 10)) // 向量价格是 gpt35 的1/10
       });
     console.log(
       '生成摘要成功，time:',
       `${(Date.now() - startTime) / 1000}s`,
       '摘要数量：',
-      splitContents.length
+      vectorSuccessResponse.length
     );
   } catch (error: any) {
     console.log('error: 生成摘要错误', dataItem?._id);
