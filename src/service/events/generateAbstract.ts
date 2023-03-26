@@ -12,7 +12,7 @@ export async function generateAbstract(next = false): Promise<any> {
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `请从长文本中总结出5至15个摘要，尽量详细，并按以下格式返回: "A:"\n"A:"\n"A:"\n`
+    content: `总结助手,我会向你发送一段长文本,请从文本中归纳总结5至15条信息,请直接输出总结内容,并按以下格式输出: 'A1:'\n'A2:'\n'A3:'\n`
   };
   let dataItem: DataItemSchema | null = null;
 
@@ -80,7 +80,7 @@ export async function generateAbstract(next = false): Promise<any> {
     const rawContent: string = abstractResponse?.data.choices[0].message?.content || '';
     // 从 content 中提取摘要内容
     const splitContents = splitText(rawContent);
-
+    console.log(rawContent);
     // 生成词向量
     const vectorResponse = await Promise.allSettled(
       splitContents.map((item) =>
@@ -135,17 +135,16 @@ export async function generateAbstract(next = false): Promise<any> {
           rawContent.substring(0, Math.floor(dataItem.text.length / 10)) // 向量价格是 gpt35 的1/10
       });
     console.log(
-      '生成摘要成功，time:',
-      `${(Date.now() - startTime) / 1000}s`,
-      '摘要数量：',
-      vectorSuccessResponse.length
+      `生成摘要成功，time: ${(Date.now() - startTime) / 1000}s`,
+      `摘要匹配数量: ${splitContents.length}`,
+      `有向量摘要数量：${vectorSuccessResponse.length}`
     );
   } catch (error: any) {
     console.log('error: 生成摘要错误', dataItem?._id);
     console.log('response:', error);
     if (dataItem?._id) {
       await DataItem.findByIdAndUpdate(dataItem._id, {
-        status: dataItem.times > 0 ? 1 : 0, // 还有重试次数则可以继续进行
+        status: dataItem.times > 1 ? 1 : 0, // 还有重试次数则可以继续进行
         $inc: {
           // 剩余尝试次数-1
           times: -1
@@ -161,7 +160,7 @@ export async function generateAbstract(next = false): Promise<any> {
  * 检查文本是否按格式返回
  */
 function splitText(text: string) {
-  const regex = /A:(\s*)(.*)(\s*)/g;
+  const regex = /A\d+:(\s*)(.*?)\s*(?=A\d+:|$)/gs;
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
   const result = []; // 存储最终的结果
@@ -171,6 +170,12 @@ function splitText(text: string) {
         abstract: match[2] as string
       });
     }
+  }
+
+  if (result.length === 0) {
+    result.push({
+      abstract: text
+    });
   }
 
   return result;
