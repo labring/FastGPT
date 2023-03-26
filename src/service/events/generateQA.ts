@@ -12,12 +12,7 @@ export async function generateQA(next = false): Promise<any> {
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `总结助手。我会向你发送一段长文本，请从中总结出10个问题和答案，答案请尽量详细，请按以下格式返回：
-"Q1:"
-"A1:"
-"Q2:"
-"A2:"
-`
+    content: `总结助手。我会向你发送一段长文本,请从中总结出5至15个问题和答案,答案请尽量详细,请按以下格式返回: "Q1:"\n"A1:"\n"Q2:"\n"A2:"\n`
   };
   let dataItem: DataItemSchema | null = null;
 
@@ -34,7 +29,7 @@ export async function generateQA(next = false): Promise<any> {
       return;
     }
 
-    // 减少一次重试次数, 并更新状态为生成中
+    // 更新状态为生成中
     await DataItem.findByIdAndUpdate(dataItem._id, {
       status: 2
     });
@@ -86,8 +81,8 @@ export async function generateQA(next = false): Promise<any> {
     await DataItem.findByIdAndUpdate(dataItem._id, {
       status: dataItem.temperature >= 90 ? 0 : 1, // 需要生成 4 组内容。0,0.3,0.6,0.9
       temperature: dataItem.temperature >= 90 ? dataItem.temperature : dataItem.temperature + 30,
-      rawResponse: content,
       $push: {
+        rawResponse: content,
         result: {
           $each: splitResponse
         }
@@ -128,13 +123,13 @@ export async function generateQA(next = false): Promise<any> {
  * 检查文本是否按格式返回
  */
 function splitText(text: string) {
-  const regex = /Q\d+:\s(.+)?\nA\d+:\s(.+)?/g; // 匹配Q和A的正则表达式
+  const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)(.*)(\s*)/g; // 匹配Q和A的正则表达式
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
   const result = []; // 存储最终的结果
   for (const match of matches) {
-    const q = match[1];
-    const a = match[2];
+    const q = match[2];
+    const a = match[5];
     if (q && a) {
       result.push({ q, a }); // 如果Q和A都存在，就将其添加到结果中
     }

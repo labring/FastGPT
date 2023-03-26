@@ -26,7 +26,7 @@ const DataItemSchema = new Schema({
   },
   rawResponse: {
     type: [String],
-    default: ''
+    default: []
   },
   result: {
     type: [
