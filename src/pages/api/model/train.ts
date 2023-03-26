@@ -83,7 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         training_file: uploadFileId,
         model: trainingType,
-        suffix: model.name
+        suffix: model.name,
+        n_epochs: 2
       },
       { httpsAgent }
     );

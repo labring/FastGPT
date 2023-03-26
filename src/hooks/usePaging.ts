@@ -59,7 +59,10 @@ export const usePaging = <T = any>({
     [api, isLoadAll, pageSize, params, requesting, toast]
   );
 
-  const nextPage = useCallback(() => getData(pageNum + 1), [getData, pageNum]);
+  const nextPage = useCallback(() => {
+    if (requesting || isLoadAll) return;
+    getData(pageNum + 1);
+  }, [getData, isLoadAll, pageNum, requesting]);
 
   useQuery(['init'], () => getData(1, true));
 
