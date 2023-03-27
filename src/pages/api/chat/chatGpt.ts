@@ -148,13 +148,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const promptsContent = formatPrompts.map((item) => item.content).join('');
     // 只有使用平台的 key 才计费
-    !userApiKey &&
-      pushChatBill({
-        modelName: model.service.modelName,
-        userId,
-        chatId,
-        text: promptsContent + responseContent
-      });
+    pushChatBill({
+      isPay: !userApiKey,
+      modelName: model.service.modelName,
+      userId,
+      chatId,
+      text: promptsContent + responseContent
+    });
   } catch (err: any) {
     if (step === 1) {
       // 直接结束流

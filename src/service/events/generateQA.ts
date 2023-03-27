@@ -12,7 +12,7 @@ export async function generateQA(next = false): Promise<any> {
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `总结助手。我会向你发送一段长文本,请从中总结出5至15个问题和答案,答案请尽量详细,请按以下格式返回: "Q1:"\n"A1:"\n"Q2:"\n"A2:"\n`
+    content: `总结助手。我会向你发送一段长文本,请从中总结出5至15个问题和答案,答案请尽量详细,请按以下格式返回: Q1:\nA1:\nQ2:\nA2:\n`
   };
   let dataItem: DataItemSchema | null = null;
 
@@ -58,61 +58,68 @@ export async function generateQA(next = false): Promise<any> {
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
     // 请求 chatgpt 获取回答
     const response = await Promise.allSettled(
-      [0, 0.5, 0.8].map((temperature) =>
-        chatAPI.createChatCompletion(
-          {
-            model: ChatModelNameEnum.GPT35,
-            temperature: temperature,
-            n: 1,
-            messages: [
-              systemPrompt,
+      [0.2, 0.8].map(
+        (temperature) =>
+          chatAPI
+            .createChatCompletion(
               {
-                role: 'user',
-                content: dataItem?.text || ''
+                model: ChatModelNameEnum.GPT35,
+                temperature: temperature,
+                n: 1,
+                messages: [
+                  systemPrompt,
+                  {
+                    role: 'user',
+                    content: dataItem?.text || ''
+                  }
+                ]
+              },
+              {
+                timeout: 120000,
+                httpsAgent
               }
-            ]
-          },
-          {
-            timeout: 120000,
-            httpsAgent
-          }
-        )
+            )
+            .then((res) => ({
+              rawContent: res?.data.choices[0].message?.content || '',
+              result: splitText(res?.data.choices[0].message?.content || '')
+            })) // 从 content 中提取 QA
       )
     );
     // 过滤出成功的响应
-    const successResponse = response.filter((item) => item.status === 'fulfilled');
-    // 提取响应内容
-    const rawContents: string[] = successResponse.map(
-      (item: any) => item?.value?.data.choices[0].message?.content || ''
-    );
-    // 从 content 中提取 QA
-    const splitResponses = rawContents.map((content) => splitText(content)).flat();
+    const successResponse: {
+      rawContent: string;
+      result: { q: string; a: string }[];
+    }[] = response.filter((item) => item.status === 'fulfilled').map((item: any) => item.value);
+
+    const rawContents = successResponse.map((item) => item.rawContent);
+    const results = successResponse.map((item) => item.result).flat();
+
     // 插入数据库，并修改状态
     await DataItem.findByIdAndUpdate(dataItem._id, {
       status: 0,
       $push: {
         rawResponse: {
-          $each: rawContents
+          $each: successResponse.map((item) => item.rawContent)
         },
         result: {
-          $each: splitResponses
+          $each: results
         }
       }
     });
-    // 计费
-    !userApiKey &&
-      splitResponses.length > 0 &&
-      pushSplitDataBill({
-        userId: dataItem.userId,
-        type: 'QA',
-        text: systemPrompt.content + dataItem.text + rawContents.join('')
-      });
     console.log(
       '生成QA成功，time:',
       `${(Date.now() - startTime) / 1000}s`,
       'QA数量：',
-      splitResponses.length
+      results.length
     );
+
+    // 计费
+    pushSplitDataBill({
+      isPay: !userApiKey && results.length > 0,
+      userId: dataItem.userId,
+      type: 'QA',
+      text: systemPrompt.content + dataItem.text + rawContents.join('')
+    });
   } catch (error: any) {
     console.log('error: 生成QA错误', dataItem?._id);
     console.log('response:', error?.response);

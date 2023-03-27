@@ -12,7 +12,7 @@ export async function generateAbstract(next = false): Promise<any> {
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `总结助手,我会向你发送一段长文本,请从文本中归纳总结5至15条信息,请直接输出总结内容,并按以下格式输出: 'A1:'\n'A2:'\n'A3:'\n`
+    content: `总结助手,我会向你发送一段长文本,请从文本中归纳总结5至15条信息,如果是英文,请增加一条中文的总结,并按以下格式输出: A1:\nA2:\nA3:\n`
   };
   let dataItem: DataItemSchema | null = null;
 
@@ -80,36 +80,36 @@ export async function generateAbstract(next = false): Promise<any> {
     const rawContent: string = abstractResponse?.data.choices[0].message?.content || '';
     // 从 content 中提取摘要内容
     const splitContents = splitText(rawContent);
-    console.log(rawContent);
+    // console.log(rawContent);
     // 生成词向量
-    const vectorResponse = await Promise.allSettled(
-      splitContents.map((item) =>
-        chatAPI.createEmbedding(
-          {
-            model: 'text-embedding-ada-002',
-            input: item.abstract
-          },
-          {
-            timeout: 120000,
-            httpsAgent
-          }
-        )
-      )
-    );
+    // const vectorResponse = await Promise.allSettled(
+    //   splitContents.map((item) =>
+    //     chatAPI.createEmbedding(
+    //       {
+    //         model: 'text-embedding-ada-002',
+    //         input: item.abstract
+    //       },
+    //       {
+    //         timeout: 120000,
+    //         httpsAgent
+    //       }
+    //     )
+    //   )
+    // );
     // 筛选成功的向量请求
-    const vectorSuccessResponse = vectorResponse
-      .map((item: any, i) => {
-        if (item.status !== 'fulfilled') {
-          // 没有词向量的【摘要】不要
-          console.log('获取词向量错误: ', item);
-          return '';
-        }
-        return {
-          abstract: splitContents[i].abstract,
-          abstractVector: item?.value?.data?.data?.[0]?.embedding
-        };
-      })
-      .filter((item) => item);
+    // const vectorSuccessResponse = vectorResponse
+    //   .map((item: any, i) => {
+    //     if (item.status !== 'fulfilled') {
+    //       // 没有词向量的【摘要】不要
+    //       console.log('获取词向量错误: ', item);
+    //       return '';
+    //     }
+    //     return {
+    //       abstract: splitContents[i].abstract,
+    //       abstractVector: item?.value?.data?.data?.[0]?.embedding
+    //     };
+    //   })
+    //   .filter((item) => item);
 
     // 插入数据库，并修改状态
     await DataItem.findByIdAndUpdate(dataItem._id, {
@@ -117,28 +117,22 @@ export async function generateAbstract(next = false): Promise<any> {
       $push: {
         rawResponse: rawContent,
         result: {
-          $each: vectorSuccessResponse
+          $each: splitContents
         }
       }
     });
 
-    // 计费
-    !userApiKey &&
-      vectorSuccessResponse.length > 0 &&
-      pushSplitDataBill({
-        userId: dataItem.userId,
-        type: 'abstract',
-        text:
-          systemPrompt.content +
-          dataItem.text +
-          rawContent +
-          rawContent.substring(0, Math.floor(dataItem.text.length / 10)) // 向量价格是 gpt35 的1/10
-      });
     console.log(
       `生成摘要成功，time: ${(Date.now() - startTime) / 1000}s`,
-      `摘要匹配数量: ${splitContents.length}`,
-      `有向量摘要数量：${vectorSuccessResponse.length}`
+      `摘要匹配数量: ${splitContents.length}`
     );
+    // 计费
+    pushSplitDataBill({
+      isPay: !userApiKey && splitContents.length > 0,
+      userId: dataItem.userId,
+      type: 'abstract',
+      text: systemPrompt.content + dataItem.text + rawContent
+    });
   } catch (error: any) {
     console.log('error: 生成摘要错误', dataItem?._id);
     console.log('response:', error);
