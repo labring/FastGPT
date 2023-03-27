@@ -7,6 +7,8 @@ import { ChatModelNameEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 
 export async function generateQA(next = false): Promise<any> {
+  if (process.env.NODE_ENV === 'development') return;
+
   if (global.generatingQA && !next) return;
   global.generatingQA = true;
 

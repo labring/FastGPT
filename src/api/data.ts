@@ -6,8 +6,7 @@ import type { PagingData } from '../types/index';
 import type { DataItemSchema } from '@/types/mongoSchema';
 import type { CreateDataProps } from '@/pages/data/components/CreateDataModal';
 
-export const getDataList = (data: RequestPaging) =>
-  GET<PagingData<DataListItem>>(`/data/getDataList?${Obj2Query(data)}`);
+export const getDataList = () => GET<DataListItem[]>(`/data/getDataList`);
 
 export const postData = (data: CreateDataProps) => POST<string>(`/data/postData`, data);
 
