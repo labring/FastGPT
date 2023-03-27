@@ -8,11 +8,10 @@ import { generateAbstract } from '@/service/events/generateAbstract';
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { text, dataId } = req.body as { text: string; dataId: string };
+    const { text, dataId } = req.body as { text: string; dataId: string };
     if (!text || !dataId) {
       throw new Error('参数错误');
     }
-    text = text.replace(/\n+/g, '\n');
     await connectToDatabase();
 
     const { authorization } = req.headers;
@@ -24,19 +23,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!DataRecord) {
       throw new Error('找不到数据集');
     }
+    const replaceText = text.replace(/[\r\n\\n]+/g, ' ');
+
+    // 文本拆分成 chunk
+    let chunks = replaceText.match(/[^!?.。]+[!?.。]/g) || [];
 
     const dataItems: any[] = [];
+    let splitText = '';
 
-    // 每 1000 字符一组
-    for (let i = 0; i <= text.length / 1000; i++) {
-      dataItems.push({
-        userId,
-        dataId,
-        type: DataRecord.type,
-        text: text.slice(i * 1000, (i + 1) * 1000),
-        status: 1
-      });
-    }
+    chunks.forEach((chunk) => {
+      splitText += chunk;
+      if (splitText.length >= 980) {
+        dataItems.push({
+          userId,
+          dataId,
+          type: DataRecord.type,
+          text: splitText,
+          status: 1
+        });
+        splitText = '';
+      }
+    });
 
     // 批量插入数据
     await DataItem.insertMany(dataItems);
@@ -49,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     jsonRes(res, {
-      data: ''
+      data: { chunks, replaceText }
     });
   } catch (err) {
     jsonRes(res, {
