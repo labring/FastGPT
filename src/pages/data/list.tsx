@@ -19,9 +19,7 @@ import {
   MenuItem
 } from '@chakra-ui/react';
 import { getDataList, updateDataName, delData, getDataItems } from '@/api/data';
-import { usePaging } from '@/hooks/usePaging';
 import type { DataListItem } from '@/types/data';
-import ScrollData from '@/components/ScrollData';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
@@ -30,6 +28,7 @@ import { useRequest } from '@/hooks/useRequest';
 import { DataItemSchema } from '@/types/mongoSchema';
 import { DataTypeTextMap } from '@/constants/data';
 import { customAlphabet } from 'nanoid';
+import { useQuery } from '@tanstack/react-query';
 const nanoid = customAlphabet('.,', 1);
 
 const CreateDataModal = dynamic(() => import('./components/CreateDataModal'));
@@ -39,17 +38,6 @@ export type ExportDataType = 'jsonl' | 'txt';
 
 const DataList = () => {
   const router = useRouter();
-  const {
-    nextPage,
-    isLoadAll,
-    requesting,
-    data: dataList,
-    getData,
-    initRequesting
-  } = usePaging<DataListItem>({
-    api: getDataList,
-    pageSize: 20
-  });
   const [ImportDataId, setImportDataId] = useState<string>();
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '删除数据集，将删除里面的所有内容，请确认！'
@@ -61,12 +49,16 @@ const DataList = () => {
     onClose: onCloseCreateDataModal
   } = useDisclosure();
 
+  const { data: dataList = [], refetch } = useQuery(['getDataList'], getDataList, {
+    refetchInterval: 10000
+  });
+
   const { mutate: handleDelData, isLoading: isDeleting } = useRequest({
     mutationFn: (dataId: string) => delData(dataId),
     successToast: '删除数据集成功',
     errorToast: '删除数据集异常',
     onSuccess() {
-      getData(1, true);
+      refetch();
     }
   });
 
@@ -131,111 +123,109 @@ const DataList = () => {
         </Flex>
       </Card>
       {/* 数据表 */}
-      <Card mt={3} flex={'1 0 0'} h={['auto', '0']} px={6} py={4}>
-        <ScrollData
-          h={'100%'}
-          nextPage={nextPage}
-          isLoadAll={isLoadAll}
-          requesting={requesting}
-          initRequesting={initRequesting}
-        >
-          <TableContainer>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>集合名</Th>
-                  <Th>类型</Th>
-                  <Th>创建时间</Th>
-                  <Th>训练中 / 总数据</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {dataList.map((item, i) => (
-                  <Tr key={item._id}>
-                    <Td>
-                      <Input
-                        minW={'150px'}
-                        placeholder="请输入数据集名称"
-                        defaultValue={item.name}
-                        size={'sm'}
-                        onBlur={(e) => {
-                          if (!e.target.value || e.target.value === item.name) return;
-                          updateDataName(item._id, e.target.value);
-                        }}
-                      />
-                    </Td>
-                    <Td>{DataTypeTextMap[item.type || 'QA']}</Td>
-                    <Td>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
-                    <Td>
-                      {item.trainingData} / {item.totalData}
-                    </Td>
-                    <Td>
-                      <Button
-                        size={'sm'}
-                        variant={'outline'}
-                        colorScheme={'gray'}
-                        mr={2}
-                        onClick={() =>
-                          router.push(`/data/detail?dataId=${item._id}&dataName=${item.name}`)
-                        }
-                      >
-                        详细
-                      </Button>
-                      <Button
-                        size={'sm'}
-                        variant={'outline'}
-                        mr={2}
-                        onClick={() => setImportDataId(item._id)}
-                      >
-                        导入
-                      </Button>
-                      <Menu>
-                        <MenuButton as={Button} mr={2} size={'sm'} isLoading={isExporting}>
-                          导出
-                        </MenuButton>
-                        <MenuList>
-                          {item.type === 'QA' && (
-                            <MenuItem
-                              onClick={() => handleExportData({ data: item, type: 'jsonl' })}
-                            >
-                              jsonl
-                            </MenuItem>
-                          )}
-                          {item.type === 'abstract' && (
-                            <MenuItem onClick={() => handleExportData({ data: item, type: 'txt' })}>
-                              txt
-                            </MenuItem>
-                          )}
-                        </MenuList>
-                      </Menu>
+      <TableContainer
+        mt={3}
+        flex={'1 0 0'}
+        h={['auto', '0']}
+        overflowY={'auto'}
+        px={6}
+        py={4}
+        backgroundColor={'white'}
+        borderRadius={'md'}
+        boxShadow={'base'}
+      >
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>集合名</Th>
+              <Th>类型</Th>
+              <Th>创建时间</Th>
+              <Th>训练中 / 总数据</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {dataList.map((item, i) => (
+              <Tr key={item._id}>
+                <Td>
+                  <Input
+                    minW={'150px'}
+                    placeholder="请输入数据集名称"
+                    defaultValue={item.name}
+                    size={'sm'}
+                    onBlur={(e) => {
+                      if (!e.target.value || e.target.value === item.name) return;
+                      updateDataName(item._id, e.target.value);
+                    }}
+                  />
+                </Td>
+                <Td>{DataTypeTextMap[item.type || 'QA']}</Td>
+                <Td>{dayjs(item.createTime).format('YYYY/MM/DD HH:mm')}</Td>
+                <Td>
+                  {item.trainingData} / {item.totalData}
+                </Td>
+                <Td>
+                  <Button
+                    size={'sm'}
+                    variant={'outline'}
+                    colorScheme={'gray'}
+                    mr={2}
+                    onClick={() =>
+                      router.push(`/data/detail?dataId=${item._id}&dataName=${item.name}`)
+                    }
+                  >
+                    详细
+                  </Button>
+                  <Button
+                    size={'sm'}
+                    variant={'outline'}
+                    mr={2}
+                    onClick={() => setImportDataId(item._id)}
+                  >
+                    导入
+                  </Button>
+                  <Menu>
+                    <MenuButton as={Button} mr={2} size={'sm'} isLoading={isExporting}>
+                      导出
+                    </MenuButton>
+                    <MenuList>
+                      {item.type === 'QA' && (
+                        <MenuItem onClick={() => handleExportData({ data: item, type: 'jsonl' })}>
+                          jsonl
+                        </MenuItem>
+                      )}
+                      {item.type === 'abstract' && (
+                        <MenuItem onClick={() => handleExportData({ data: item, type: 'txt' })}>
+                          txt
+                        </MenuItem>
+                      )}
+                    </MenuList>
+                  </Menu>
 
-                      <Button
-                        size={'sm'}
-                        colorScheme={'red'}
-                        isLoading={isDeleting}
-                        onClick={openConfirm(() => handleDelData(item._id))}
-                      >
-                        删除
-                      </Button>
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        </ScrollData>
-      </Card>
+                  <Button
+                    size={'sm'}
+                    colorScheme={'red'}
+                    isLoading={isDeleting}
+                    onClick={openConfirm(() => handleDelData(item._id))}
+                  >
+                    删除
+                  </Button>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
 
       {ImportDataId && (
         <ImportDataModal
           dataId={ImportDataId}
           onClose={() => setImportDataId(undefined)}
-          onSuccess={() => getData(1, true)}
+          onSuccess={refetch}
         />
       )}
       {isOpenCreateDataModal && (
-        <CreateDataModal onClose={onCloseCreateDataModal} onSuccess={() => getData(1, true)} />
+        <CreateDataModal onClose={onCloseCreateDataModal} onSuccess={refetch} />
       )}
       <ConfirmChild />
     </Box>

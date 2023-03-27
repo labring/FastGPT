@@ -7,6 +7,8 @@ import { ChatModelNameEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 
 export async function generateAbstract(next = false): Promise<any> {
+  if (process.env.NODE_ENV === 'development') return;
+
   if (global.generatingAbstract && !next) return;
   global.generatingAbstract = true;
 
