@@ -149,13 +149,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     stream.destroy();
 
     // 只有使用平台的 key 才计费
-    !userApiKey &&
-      pushChatBill({
-        modelName: model.service.modelName,
-        userId,
-        chatId,
-        text: promptText + responseContent
-      });
+    pushChatBill({
+      isPay: !userApiKey,
+      modelName: model.service.modelName,
+      userId,
+      chatId,
+      text: promptText + responseContent
+    });
   } catch (err: any) {
     // console.log(err?.response);
     if (step === 1) {
