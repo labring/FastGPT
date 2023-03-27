@@ -27,17 +27,17 @@ export const modelList: ModelConstantsData[] = [
     trainedMaxToken: 2000,
     maxTemperature: 2,
     price: 3
-  },
-  {
-    serviceCompany: 'openai',
-    name: 'GPT3',
-    model: ChatModelNameEnum.GPT3,
-    trainName: 'davinci',
-    maxToken: 4000,
-    trainedMaxToken: 2000,
-    maxTemperature: 2,
-    price: 30
   }
+  // {
+  //   serviceCompany: 'openai',
+  //   name: 'GPT3',
+  //   model: ChatModelNameEnum.GPT3,
+  //   trainName: 'davinci',
+  //   maxToken: 4000,
+  //   trainedMaxToken: 2000,
+  //   maxTemperature: 2,
+  //   price: 30
+  // }
 ];
 
 export enum TrainingStatusEnum {

@@ -44,6 +44,9 @@ export const introPage = `
 `;
 
 export const chatProblem = `
+**内容长度**
+单次最长 4000 tokens, 上下文最长 8000 tokens, 上下文超长时会被截断。
+
 **模型问题**
 一般情况下，请直接选择 chatGPT 模型，价格低效果好。
 

@@ -231,12 +231,12 @@ const SlideBar = ({
         </>
       </RenderButton>
 
-      <RenderButton onClick={onOpenShare}>
+      {/* <RenderButton onClick={onOpenShare}>
         <>
           <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
           分享
         </>
-      </RenderButton>
+      </RenderButton> */}
       <RenderButton onClick={() => router.push('/number/setting')}>
         <>
           <MyIcon name="pay" fill={'white'} w={'16px'} h={'16px'} mr={4} />

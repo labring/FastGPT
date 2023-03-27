@@ -105,7 +105,7 @@ const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> })
           />
         </Box>
       </Card>
-      <Card p={4}>
+      {/* <Card p={4}>
         <Box fontWeight={'bold'}>安全策略</Box>
         <FormControl mt={2}>
           <Flex alignItems={'center'}>
@@ -201,7 +201,7 @@ const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> })
             <Box ml={3}>次</Box>
           </Flex>
         </FormControl>
-      </Card>
+      </Card> */}
     </>
   );
 };

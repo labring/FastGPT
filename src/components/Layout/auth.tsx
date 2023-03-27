@@ -7,8 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 
 const unAuthPage: { [key: string]: boolean } = {
   '/': true,
-  '/login': true,
-  '/chat': true
+  '/login': true
 };
 
 const Auth = ({ children }: { children: JSX.Element }) => {

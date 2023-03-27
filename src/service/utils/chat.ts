@@ -32,14 +32,11 @@ export const authChat = async (chatId: string, authorization?: string) => {
     return Promise.reject('模型不存在');
   }
 
-  // 安全校验
-  if (chat.loadAmount === 0 || chat.expiredTime <= Date.now()) {
-    return Promise.reject('聊天框已过期');
-  }
-
-  // 分享校验
+  // 凭证校验
   if (!chat.isShare) {
     await authToken(authorization);
+  } else if (chat.loadAmount === 0 || chat.expiredTime <= Date.now()) {
+    return Promise.reject('聊天框已过期');
   }
 
   // 获取 user 的 apiKey
@@ -47,6 +44,7 @@ export const authChat = async (chatId: string, authorization?: string) => {
 
   const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
 
+  // 没有 apikey ，校验余额
   if (!userApiKey && formatPrice(user.balance) <= 0) {
     return Promise.reject('该账号余额不足');
   }
