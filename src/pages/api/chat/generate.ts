@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { authorization } = req.headers;
 
     if (!authorization) {
-      throw new Error('无权操作');
+      throw new Error('无权生成对话');
     }
 
     if (!modelId) {

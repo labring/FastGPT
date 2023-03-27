@@ -10,6 +10,7 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
+import { openaiChatFilter } from '@/service/utils/tools';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -32,6 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       prompt: ChatItemType;
       chatId: string;
     };
+
     const { authorization } = req.headers;
     if (!chatId || !prompt) {
       throw new Error('缺少参数');
@@ -46,12 +48,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 读取对话内容
     const prompts = [...chat.content, prompt];
 
-    // 上下文长度过滤
-    const maxContext = model.security.contextMaxLen;
-    const filterPrompts =
-      prompts.length > maxContext ? prompts.slice(prompts.length - maxContext) : prompts;
+    // 如果有系统提示词，自动插入
+    if (model.systemPrompt) {
+      prompts.unshift({
+        obj: 'SYSTEM',
+        value: model.systemPrompt
+      });
+    }
 
-    // 格式化文本内容
+    // 控制在 tokens 数量，防止超出
+    const filterPrompts = openaiChatFilter(prompts, 7500);
+
+    // 格式化文本内容成 chatgpt 格式
     const map = {
       Human: ChatCompletionRequestMessageRoleEnum.User,
       AI: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -63,15 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         content: item.value
       })
     );
-
-    // 如果有系统提示词，自动插入
-    if (model.systemPrompt) {
-      formatPrompts.unshift({
-        role: 'system',
-        content: model.systemPrompt
-      });
-    }
-
+    // console.log(formatPrompts);
     // 计算温度
     const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
     if (!modelConstantsData) {

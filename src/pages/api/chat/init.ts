@@ -3,10 +3,14 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import type { ChatPopulate } from '@/types/mongoSchema';
 import type { InitChatResponse } from '@/api/response/chat';
+import { authToken } from '@/service/utils/tools';
 
-/* 获取我的模型 */
+/* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const { authorization } = req.headers;
+    const userId = await authToken(authorization);
+
     const { chatId } = req.query as { chatId: string };
 
     if (!chatId) {
@@ -16,7 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 获取 chat 数据
-    const chat = await Chat.findById<ChatPopulate>(chatId).populate({
+    const chat = await Chat.findOne<ChatPopulate>({
+      _id: chatId,
+      userId
+    }).populate({
       path: 'modelId',
       options: {
         strictPopulate: false
@@ -27,31 +34,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('聊天框不存在');
     }
 
-    if (chat.loadAmount > 0) {
-      await Chat.updateOne(
-        {
-          _id: chat._id
-        },
-        {
-          $inc: { loadAmount: -1 }
-        }
-      );
-    }
-
     // filter 掉被 deleted 的内容
     chat.content = chat.content.filter((item) => item.deleted !== true);
 
     const model = chat.modelId;
     jsonRes<InitChatResponse>(res, {
-      code: 201,
       data: {
         chatId: chat._id,
-        isExpiredTime: chat.loadAmount === 0 || chat.expiredTime <= Date.now(),
         modelId: model._id,
         name: model.name,
         avatar: model.avatar,
         intro: model.intro,
-        secret: model.security,
         modelName: model.service.modelName,
         chatModel: model.service.chatModel,
         history: chat.content

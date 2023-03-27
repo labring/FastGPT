@@ -31,7 +31,6 @@ export const jsonRes = <T = any>(
     console.log('error->');
     console.log('code:', error.code);
     console.log('statusText:', error?.response?.statusText);
-    console.log('data len:', error?.response?.config?.data.length);
     console.log('msg:', msg);
   }
 

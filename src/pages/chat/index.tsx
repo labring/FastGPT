@@ -14,7 +14,6 @@ import {
   Textarea,
   Box,
   Flex,
-  Button,
   useDisclosure,
   Drawer,
   DrawerOverlay,
@@ -36,8 +35,8 @@ import { useCopyData } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import SlideBar from './components/SlideBar';
 import Empty from './components/Empty';
-import { getToken } from '@/utils/user';
 import Icon from '@/components/Icon';
+import { encode } from 'gpt-token-utils';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
@@ -60,11 +59,9 @@ const Chat = ({ chatId }: { chatId: string }) => {
     name: '',
     avatar: '',
     intro: '',
-    secret: {},
     chatModel: '',
     modelName: '',
-    history: [],
-    isExpiredTime: false
+    history: []
   }); // 聊天框整体数据
   const [inputVal, setInputVal] = useState(''); // 输入的内容
 
@@ -72,15 +69,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
     () => chatData.history[chatData.history.length - 1]?.status === 'loading',
     [chatData.history]
   );
-  const chatWindowError = useMemo(() => {
-    if (chatData.isExpiredTime) {
-      return {
-        text: '聊天框已过期'
-      };
-    }
-
-    return '';
-  }, [chatData]);
   const { copyData } = useCopyData();
   const { isPc, media } = useScreen();
   const { setLoading } = useGlobalStore();
@@ -124,31 +112,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
     }
     onCloseSlider();
   }, [chatData, onCloseSlider, router, toast]);
-
-  // gpt3 方法
-  const gpt3ChatPrompt = useCallback(
-    async (newChatList: ChatSiteItemType[]) => {
-      // 请求内容
-      const response = await postGPT3SendPrompt({
-        prompt: newChatList,
-        chatId: chatId as string
-      });
-
-      // 更新 AI 的内容
-      setChatData((state) => ({
-        ...state,
-        history: state.history.map((item, index) => {
-          if (index !== state.history.length - 1) return item;
-          return {
-            ...item,
-            status: 'finish',
-            value: response
-          };
-        })
-      }));
-    },
-    [chatId]
-  );
 
   // gpt 对话
   const gptChatPrompt = useCallback(
@@ -476,83 +439,74 @@ const Chat = ({ chatId }: { chatId: string }) => {
         </Box>
         {/* 发送区 */}
         <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
-          {!!chatWindowError ? (
-            <Box textAlign={'center'}>
-              <Box color={'red'}>{chatWindowError.text}</Box>
-              <Flex py={5} justifyContent={'center'}>
-                {getToken() && <Button onClick={resetChat}>重开对话</Button>}
-              </Flex>
+          <Box
+            py={5}
+            position={'relative'}
+            boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
+            border={media('1px solid', '0')}
+            borderColor={useColorModeValue('gray.200', 'gray.700')}
+            borderRadius={['none', 'md']}
+            backgroundColor={useColorModeValue('white', 'gray.700')}
+          >
+            {/* 输入框 */}
+            <Textarea
+              ref={TextareaDom}
+              w={'100%'}
+              pr={'45px'}
+              py={0}
+              border={'none'}
+              _focusVisible={{
+                border: 'none'
+              }}
+              placeholder="提问"
+              resize={'none'}
+              value={inputVal}
+              rows={1}
+              height={'22px'}
+              lineHeight={'22px'}
+              maxHeight={'150px'}
+              maxLength={-1}
+              overflowY={'auto'}
+              color={useColorModeValue('blackAlpha.700', 'white')}
+              onChange={(e) => {
+                const textarea = e.target;
+                setInputVal(textarea.value);
+                textarea.style.height = textareaMinH;
+                textarea.style.height = `${textarea.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                // 触发快捷发送
+                if (isPc && e.keyCode === 13 && !e.shiftKey) {
+                  sendPrompt();
+                  e.preventDefault();
+                }
+                // 全选内容
+                // @ts-ignore
+                e.key === 'a' && e.ctrlKey && e.target?.select();
+              }}
+            />
+            {/* 发送和等待按键 */}
+            <Box position={'absolute'} bottom={5} right={media('20px', '10px')}>
+              {isChatting ? (
+                <Image
+                  style={{ transform: 'translateY(4px)' }}
+                  src={'/icon/chatting.svg'}
+                  width={30}
+                  height={30}
+                  alt={''}
+                />
+              ) : (
+                <Box cursor={'pointer'} onClick={sendPrompt}>
+                  <Icon
+                    name={'chatSend'}
+                    width={'20px'}
+                    height={'20px'}
+                    fill={useColorModeValue('#718096', 'white')}
+                  ></Icon>
+                </Box>
+              )}
             </Box>
-          ) : (
-            <Box
-              py={5}
-              position={'relative'}
-              boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
-              border={media('1px solid', '0')}
-              borderColor={useColorModeValue('gray.200', 'gray.700')}
-              borderRadius={['none', 'md']}
-              backgroundColor={useColorModeValue('white', 'gray.700')}
-            >
-              {/* 输入框 */}
-              <Textarea
-                ref={TextareaDom}
-                w={'100%'}
-                pr={'45px'}
-                py={0}
-                border={'none'}
-                _focusVisible={{
-                  border: 'none'
-                }}
-                placeholder="提问"
-                resize={'none'}
-                value={inputVal}
-                rows={1}
-                height={'22px'}
-                lineHeight={'22px'}
-                maxHeight={'150px'}
-                maxLength={chatData?.secret.contentMaxLen || -1}
-                overflowY={'auto'}
-                color={useColorModeValue('blackAlpha.700', 'white')}
-                onChange={(e) => {
-                  const textarea = e.target;
-                  setInputVal(textarea.value);
-                  textarea.style.height = textareaMinH;
-                  textarea.style.height = `${textarea.scrollHeight}px`;
-                }}
-                onKeyDown={(e) => {
-                  // 触发快捷发送
-                  if (isPc && e.keyCode === 13 && !e.shiftKey) {
-                    sendPrompt();
-                    e.preventDefault();
-                  }
-                  // 全选内容
-                  // @ts-ignore
-                  e.key === 'a' && e.ctrlKey && e.target?.select();
-                }}
-              />
-              {/* 发送和等待按键 */}
-              <Box position={'absolute'} bottom={5} right={media('20px', '10px')}>
-                {isChatting ? (
-                  <Image
-                    style={{ transform: 'translateY(4px)' }}
-                    src={'/icon/chatting.svg'}
-                    width={30}
-                    height={30}
-                    alt={''}
-                  />
-                ) : (
-                  <Box cursor={'pointer'} onClick={sendPrompt}>
-                    <Icon
-                      name={'chatSend'}
-                      width={'20px'}
-                      height={'20px'}
-                      fill={useColorModeValue('#718096', 'white')}
-                    ></Icon>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          )}
+          </Box>
         </Box>
       </Flex>
     </Flex>

@@ -4,6 +4,8 @@ import { User } from '../models/user';
 import tunnel from 'tunnel';
 import type { UserModelSchema } from '@/types/mongoSchema';
 import { formatPrice } from '@/utils/user';
+import { ChatItemType } from '@/types/chat';
+import { encode } from 'gpt-token-utils';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -91,3 +93,29 @@ export const httpsAgent =
         }
       })
     : undefined;
+
+/* tokens 截断 */
+export const openaiChatFilter = (prompts: ChatItemType[], maxTokens: number) => {
+  let res: ChatItemType[] = [];
+
+  let systemPrompt: ChatItemType | null = null;
+
+  //  System 词保留
+  if (prompts[0]?.obj === 'SYSTEM') {
+    systemPrompt = prompts.shift() as ChatItemType;
+    maxTokens -= encode(prompts[0].value).length;
+  }
+
+  // 从后往前截取
+  for (let i = prompts.length - 1; i >= 0; i--) {
+    const tokens = encode(prompts[i].value).length;
+    if (maxTokens >= tokens) {
+      res.unshift(prompts[i]);
+      maxTokens -= tokens;
+    } else {
+      break;
+    }
+  }
+
+  return systemPrompt ? [systemPrompt, ...res] : res;
+};

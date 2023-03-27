@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import { formatPrice } from '@/utils/user';
 import { modelList, ChatModelNameEnum } from '@/constants/model';
-import { encode, decode } from 'gpt-token-utils';
+import { encode } from 'gpt-token-utils';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
