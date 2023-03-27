@@ -1,6 +1,6 @@
 # Fast GPT 
 
-Fast GPT 允许你是用自己的 openai API KEY 来快速的调用 openai 接口，包括 GPT3 及其微调方法，以及最新的 gpt3.5 接口。
+Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接口，包括 GPT3 及其微调方法，以及最新的 gpt3.5 接口。
 
 ## 初始化
 复制 .env.template 成 .env.local ，填写核心参数  
@@ -11,7 +11,7 @@ AXIOS_PROXY_PORT=代理端口
 MONGODB_URI=mongo数据库地址（例如：mongodb://username:password@ip:27017/?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false）
 MY_MAIL=发送验证码邮箱
 MAILE_CODE=邮箱秘钥（代理里设置的是QQ邮箱，不知道怎么找这个 code 的，可以百度搜"nodemailer发送邮件"）
-TOKEN_KEY=随便填一个，用于生成和校验token
+TOKEN_KEY=随便填一个，用于生成和校验 token
 ```
 
 ```bash

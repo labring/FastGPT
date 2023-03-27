@@ -1,4 +1,0 @@
-{"prompt": "sealos的介绍", "completion": "sealos 是以 kubernetes 为内核的云操作系统发行版"}
-{"prompt": "sealos是什么", "completion": "sealos 是以 kubernetes 为内核的云操作系统发行版"}
-{"prompt": "sealos安装的先决条件", "completion": "sealos 是一个简单的 go 二进制文件，可以安装在大多数 Linux 操作系统中。"}
-{"prompt": "sealos的CPU架构", "completion": "目前支持 amd64 和 arm64 架构。"}
