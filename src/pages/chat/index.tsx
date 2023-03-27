@@ -37,6 +37,7 @@ import SlideBar from './components/SlideBar';
 import Empty from './components/Empty';
 import Icon from '@/components/Icon';
 import { encode } from 'gpt-token-utils';
+import { modelList } from '@/constants/model';
 
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
@@ -200,6 +201,18 @@ const Chat = ({ chatId }: { chatId: string }) => {
       return;
     }
 
+    // 长度校验
+    const tokens = encode(val).length;
+    const model = modelList.find((item) => item.model === chatData.modelName);
+
+    if (model && tokens >= model.maxToken) {
+      toast({
+        title: '单次输入超出 4000 tokens',
+        status: 'warning'
+      });
+      return;
+    }
+
     const newChatList: ChatSiteItemType[] = [
       ...chatData.history,
       {
@@ -252,15 +265,14 @@ const Chat = ({ chatId }: { chatId: string }) => {
     }
   }, [
     inputVal,
-    chatData?.modelId,
-    chatData.history,
+    chatData,
     isChatting,
     resetInputVal,
     scrollToBottom,
+    toast,
     gptChatPrompt,
     pushChatHistory,
-    chatId,
-    toast
+    chatId
   ]);
 
   // 删除一句话

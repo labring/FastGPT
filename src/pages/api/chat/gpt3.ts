@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 计算温度
     const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
     if (!modelConstantsData) {
-      throw new Error('模型异常');
+      throw new Error('模型异常,请用 chatgpt 模型');
     }
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 

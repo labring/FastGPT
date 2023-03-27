@@ -44,6 +44,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
 
     const model: ModelSchema = chat.modelId;
+    const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
+    if (!modelConstantsData) {
+      throw new Error('模型异常,请用 chatgpt 模型');
+    }
 
     // 读取对话内容
     const prompts = [...chat.content, prompt];
@@ -57,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 控制在 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter(prompts, 7500);
+    const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
 
     // 格式化文本内容成 chatgpt 格式
     const map = {
@@ -73,10 +77,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     // console.log(formatPrompts);
     // 计算温度
-    const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
-    if (!modelConstantsData) {
-      throw new Error('模型异常');
-    }
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 
     // 获取 chatAPI

@@ -9,13 +9,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!chatId || !index) {
       throw new Error('缺少参数');
     }
-    console.log(index);
+
     await connectToDatabase();
+
+    const chatRecord = await Chat.findById(chatId);
+
+    if (!chatRecord) {
+      throw new Error('找不到对话');
+    }
+
+    // 重新计算 index，跳过已经被删除的内容
+    let unDeleteIndex = +index;
+    let deletedIndex = 0;
+    for (deletedIndex = 0; deletedIndex < chatRecord.content.length; deletedIndex++) {
+      if (!chatRecord.content[deletedIndex].deleted) {
+        unDeleteIndex--;
+        if (unDeleteIndex < 0) {
+          break;
+        }
+      }
+    }
 
     // 删除最一条数据库记录, 也就是预发送的那一条
     await Chat.findByIdAndUpdate(chatId, {
       $set: {
-        [`content.${index}.deleted`]: true,
+        [`content.${deletedIndex}.deleted`]: true,
         updateTime: Date.now()
       }
     });

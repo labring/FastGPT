@@ -12,6 +12,7 @@ export type ModelConstantsData = {
   model: `${ChatModelNameEnum}`;
   trainName: string; // 空字符串代表不能训练
   maxToken: number;
+  contextMaxToken: number;
   maxTemperature: number;
   trainedMaxToken: number; // 训练后最大多少tokens
   price: number; // 多少钱 / 1token，单位: 0.00001元
@@ -24,6 +25,7 @@ export const modelList: ModelConstantsData[] = [
     model: ChatModelNameEnum.GPT35,
     trainName: '',
     maxToken: 4000,
+    contextMaxToken: 7500,
     trainedMaxToken: 2000,
     maxTemperature: 2,
     price: 3
@@ -34,6 +36,7 @@ export const modelList: ModelConstantsData[] = [
   //   model: ChatModelNameEnum.GPT3,
   //   trainName: 'davinci',
   //   maxToken: 4000,
+  //   contextMaxToken: 7500,
   //   trainedMaxToken: 2000,
   //   maxTemperature: 2,
   //   price: 30
