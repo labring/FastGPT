@@ -11,36 +11,34 @@ import { getChatSiteId } from '@/api/chat';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
-import { useConfirm } from '@/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
 import { formatModelStatus, ModelStatusEnum, modelList, defaultModel } from '@/constants/model';
 import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import ModelEditForm from './components/ModelEditForm';
-import Icon from '@/components/Iconfont';
+// import Icon from '@/components/Iconfont';
 import { useQuery } from '@tanstack/react-query';
-import dynamic from 'next/dynamic';
+// import dynamic from 'next/dynamic';
+import ModelDataCard from './components/ModelDataCard';
 
-const Training = dynamic(() => import('./components/Training'));
+// const Training = dynamic(() => import('./components/Training'));
 
 const ModelDetail = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { isPc, media } = useScreen();
   const { setLoading } = useGlobalStore();
-  const { openConfirm, ConfirmChild } = useConfirm({
-    content: '确认删除该模型?'
-  });
+
   const SelectFileDom = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState<ModelSchema>(defaultModel);
   const formHooks = useForm<ModelSchema>({
     defaultValues: model
   });
 
-  const canTrain = useMemo(() => {
-    const openai = modelList.find((item) => item.model === model?.service.modelName);
-    return openai && openai.trainName;
-  }, [model]);
+  // const canTrain = useMemo(() => {
+  //   const openai = modelList.find((item) => item.model === model?.service.modelName);
+  //   return openai && openai.trainName;
+  // }, [model]);
 
   /* 加载模型数据 */
   const loadModel = useCallback(async () => {
@@ -250,79 +248,15 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         )}
       </Card>
       <Grid mt={5} gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
-        <ModelEditForm formHooks={formHooks} />
+        <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} />
 
-        {canTrain && (
+        {/* {canTrain && (
           <Card p={4}>
             <Training model={model} />
           </Card>
-        )}
-
-        <Card p={4}>
-          <Box fontWeight={'bold'} fontSize={'lg'}>
-            神奇操作
-          </Box>
-          <Flex mt={5} alignItems={'center'}>
-            <Box flex={'0 0 80px'}>模型微调:</Box>
-            <Button
-              size={'sm'}
-              onClick={() => {
-                SelectFileDom.current?.click();
-              }}
-              title={!canTrain ? '模型不支持微调' : ''}
-              isDisabled={!canTrain}
-            >
-              上传数据集
-            </Button>
-            <Flex
-              as={'a'}
-              href="/TrainingTemplate.jsonl"
-              download
-              ml={5}
-              cursor={'pointer'}
-              alignItems={'center'}
-              color={'blue.500'}
-            >
-              <Icon name={'icon-yunxiazai'} color={'#3182ce'} />
-              下载模板
-            </Flex>
-          </Flex>
-          {/* 提示 */}
-          <Box mt={3} py={3} color={'blackAlpha.600'}>
-            <Box as={'li'} lineHeight={1.9}>
-              暂时需要使用自己的openai key
-            </Box>
-            <Box as={'li'} lineHeight={1.9}>
-              可以使用
-              <Box
-                as={'span'}
-                fontWeight={'bold'}
-                textDecoration={'underline'}
-                color={'blackAlpha.800'}
-                mx={2}
-                cursor={'pointer'}
-                onClick={() => router.push('/data/list')}
-              >
-                数据拆分
-              </Box>
-              功能，从任意文本中提取数据集。
-            </Box>
-            <Box as={'li'} lineHeight={1.9}>
-              每行包括一个 prompt 和一个 completion
-            </Box>
-            <Box as={'li'} lineHeight={1.9}>
-              prompt 必须以 {'</s>'} 结尾
-            </Box>
-            <Box as={'li'} lineHeight={1.9}>
-              completion 开头必须有一个空格，必须以 {'</s>'} 结尾
-            </Box>
-          </Box>
-          <Flex mt={5} alignItems={'center'}>
-            <Box flex={'0 0 80px'}>删除模型:</Box>
-            <Button colorScheme={'red'} size={'sm'} onClick={openConfirm(handleDelModel)}>
-              删除模型
-            </Button>
-          </Flex>
+        )} */}
+        <Card p={4} height={'400px'} gridColumnStart={1} gridColumnEnd={3}>
+          {model._id && <ModelDataCard model={model} />}
         </Card>
       </Grid>
 
@@ -330,7 +264,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
       <Box position={'absolute'} w={0} h={0} overflow={'hidden'}>
         <input ref={SelectFileDom} type="file" accept=".jsonl" onChange={startTraining} />
       </Box>
-      <ConfirmChild />
     </>
   );
 };

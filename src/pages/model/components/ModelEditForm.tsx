@@ -11,13 +11,26 @@ import {
   SliderFilledTrack,
   SliderThumb,
   SliderMark,
-  Tooltip
+  Tooltip,
+  Button
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { UseFormReturn } from 'react-hook-form';
+import { modelList } from '@/constants/model';
+import { formatPrice } from '@/utils/user';
+import { useConfirm } from '@/hooks/useConfirm';
 
-const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> }) => {
+const ModelEditForm = ({
+  formHooks,
+  handleDelModel
+}: {
+  formHooks: UseFormReturn<ModelSchema>;
+  handleDelModel: () => void;
+}) => {
+  const { openConfirm, ConfirmChild } = useConfirm({
+    content: '确认删除该模型?'
+  });
   const { register, setValue, getValues } = formHooks;
   const [refresh, setRefresh] = useState(false);
 
@@ -29,7 +42,7 @@ const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> })
         </Flex>
         <FormControl mt={4}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 50px'} w={0}>
+            <Box flex={'0 0 80px'} w={0}>
               名称:
             </Box>
             <Input
@@ -39,7 +52,36 @@ const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> })
             ></Input>
           </Flex>
         </FormControl>
-        <FormControl mt={4}>
+        <Flex alignItems={'center'} mt={4}>
+          <Box flex={'0 0 80px'} w={0}>
+            底层模型:
+          </Box>
+          <Box>{getValues('service.modelName')}</Box>
+        </Flex>
+        <Flex alignItems={'center'} mt={4}>
+          <Box flex={'0 0 80px'} w={0}>
+            价格:
+          </Box>
+          <Box>
+            {formatPrice(
+              modelList.find((item) => item.model === getValues('service.modelName'))?.price || 0,
+              1000
+            )}
+            元/1K tokens(包括上下文和回答)
+          </Box>
+        </Flex>
+        <Flex mt={5} alignItems={'center'}>
+          <Box flex={'0 0 80px'}>删除:</Box>
+          <Button
+            colorScheme={'gray'}
+            variant={'outline'}
+            size={'sm'}
+            onClick={openConfirm(handleDelModel)}
+          >
+            删除模型
+          </Button>
+        </Flex>
+        {/* <FormControl mt={4}>
           <Box mb={1}>介绍:</Box>
           <Textarea
             rows={5}
@@ -47,7 +89,7 @@ const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> })
             {...register('intro')}
             placeholder={'模型的介绍，仅做展示，不影响模型的效果'}
           />
-        </FormControl>
+        </FormControl> */}
       </Card>
       <Card p={4}>
         <Box fontWeight={'bold'}>模型效果</Box>
@@ -202,6 +244,7 @@ const ModelEditForm = ({ formHooks }: { formHooks: UseFormReturn<ModelSchema> })
           </Flex>
         </FormControl>
       </Card> */}
+      <ConfirmChild />
     </>
   );
 };

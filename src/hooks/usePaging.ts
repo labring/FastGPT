@@ -8,7 +8,7 @@ export const usePaging = <T = any>({
   pageSize = 10,
   params = {}
 }: {
-  api: (data: any) => Promise<PagingData<T>>;
+  api: (data: any) => any;
   pageSize?: number;
   params?: Record<string, any>;
 }) => {
@@ -30,7 +30,7 @@ export const usePaging = <T = any>({
       setRequesting(true);
 
       try {
-        const res = await api({
+        const res: PagingData<T> = await api({
           pageNum: num,
           pageSize,
           ...params
