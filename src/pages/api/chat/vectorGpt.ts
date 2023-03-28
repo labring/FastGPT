@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { connectToDatabase } from '@/service/mongo';
+import { connectToDatabase, ModelData } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
-import { httpsAgent } from '@/service/utils/tools';
+import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
@@ -10,7 +10,14 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
-import { openaiChatFilter } from '@/service/utils/tools';
+import { connectRedis } from '@/service/redis';
+import { VecModelDataIndex } from '@/constants/redis';
+import { vectorToBuffer } from '@/utils/tools';
+
+let vectorData = [
+  -0.025028639, -0.010407282, 0.026523087, -0.0107438695, -0.006967359, 0.010043768, -0.012043097,
+  0.008724345, -0.028919589, -0.0117738275, 0.0050690062, 0.02961969
+].concat(new Array(1524).fill(0));
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,6 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     await connectToDatabase();
+    const redis = await connectRedis();
 
     const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
 
@@ -52,13 +60,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 读取对话内容
     const prompts = [...chat.content, prompt];
 
-    // 如果有系统提示词，自动插入
-    if (model.systemPrompt) {
-      prompts.unshift({
-        obj: 'SYSTEM',
-        value: model.systemPrompt
-      });
+    // 获取 chatAPI
+    const chatAPI = getOpenAIApi(userApiKey || systemKey);
+
+    // 把输入的内容转成向量
+    const promptVector = await chatAPI
+      .createEmbedding(
+        {
+          model: 'text-embedding-ada-002',
+          input: prompt.value
+        },
+        {
+          timeout: 120000,
+          httpsAgent
+        }
+      )
+      .then((res) => res?.data?.data?.[0]?.embedding || []);
+
+    const binary = vectorToBuffer(promptVector);
+
+    // 搜索系统提示词, 按相似度从 redis 中搜出前3条不同 dataId 的数据
+    const redisData: any[] = await redis.sendCommand([
+      'FT.SEARCH',
+      `idx:${VecModelDataIndex}`,
+      `@modelId:{${String(chat.modelId._id)}} @vector:[VECTOR_RANGE 0.2 $blob]`,
+      // `@modelId:{${String(chat.modelId._id)}}=>[KNN 10 @vector $blob AS score]`,
+      'RETURN',
+      '1',
+      'dataId',
+      // 'SORTBY',
+      // 'score',
+      'PARAMS',
+      '2',
+      'blob',
+      binary,
+      'DIALECT',
+      '2'
+    ]);
+
+    // 格式化响应值，获取去重后的id
+    let formatIds = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+      .map((i) => {
+        if (!redisData[i] || !redisData[i][1]) return '';
+        return redisData[i][1];
+      })
+      .filter((item) => item);
+    formatIds = Array.from(new Set(formatIds));
+
+    if (formatIds.length === 0) {
+      throw new Error('对不起，我没有找到你的问题');
     }
+
+    // 从 mongo 中取出原文作为提示词
+    const textArr = (
+      await Promise.all(
+        [2, 4, 6, 8, 10, 12, 14, 16, 18, 20].map((i) => {
+          if (!redisData[i] || !redisData[i][1]) return '';
+          return ModelData.findById(redisData[i][1])
+            .select('text')
+            .then((res) => res?.text || '');
+        })
+      )
+    ).filter((item) => item);
+
+    // textArr 筛选，最多 3000 tokens
+    const systemPrompt = systemPromptFilter(textArr, 2800);
+
+    prompts.unshift({
+      obj: 'SYSTEM',
+      value: `请根据下面的知识回答问题： ${systemPrompt}`
+    });
 
     // 控制在 tokens 数量，防止超出
     const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
@@ -79,8 +150,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 
-    // 获取 chatAPI
-    const chatAPI = getOpenAIApi(userApiKey || systemKey);
     let startTime = Date.now();
     // 发出请求
     const chatResponse = await chatAPI.createChatCompletion(
@@ -155,6 +224,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatId,
       text: promptsContent + responseContent
     });
+    // jsonRes(res);
   } catch (err: any) {
     if (step === 1) {
       // 直接结束流

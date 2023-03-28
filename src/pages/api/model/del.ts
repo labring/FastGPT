@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, Model, Training, connectToDatabase } from '@/service/mongo';
+import { Chat, Model, Training, connectToDatabase, ModelData } from '@/service/mongo';
 import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
 import { TrainingStatusEnum } from '@/constants/model';
 import { getOpenAIApi } from '@/service/utils/chat';
@@ -26,16 +26,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    // 删除模型
-    await Model.deleteOne({
-      _id: modelId,
-      userId
-    });
-
+    let requestQueue: any[] = [];
     // 删除对应的聊天
-    await Chat.deleteMany({
-      modelId
-    });
+    requestQueue.push(
+      Chat.deleteMany({
+        modelId
+      })
+    );
+
+    // 删除数据集
+    requestQueue.push(
+      ModelData.deleteMany({
+        modelId
+      })
+    );
 
     // 查看是否正在训练
     const training: TrainingItemType | null = await Training.findOne({
@@ -56,9 +60,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 删除对应训练记录
-    await Training.deleteMany({
-      modelId
-    });
+    requestQueue.push(
+      Training.deleteMany({
+        modelId
+      })
+    );
+
+    // 删除模型
+    requestQueue.push(
+      Model.deleteOne({
+        _id: modelId,
+        userId
+      })
+    );
+    await requestQueue;
 
     jsonRes(res);
   } catch (err) {

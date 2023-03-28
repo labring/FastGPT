@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { ModelStatusEnum, modelList, ChatModelNameEnum } from '@/constants/model';
+import { ModelStatusEnum, modelList, ChatModelNameEnum, ChatModelNameMap } from '@/constants/model';
 import { Model } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -33,15 +33,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    // 重名校验
-    const authRepeatName = await Model.findOne({
-      name,
-      userId
-    });
-    if (authRepeatName) {
-      throw new Error('模型名重复');
-    }
-
     // 上限校验
     const authCount = await Model.countDocuments({
       userId
@@ -57,9 +48,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       status: ModelStatusEnum.running,
       service: {
         company: modelItem.serviceCompany,
-        trainId: modelItem.trainName,
-        chatModel: modelItem.model,
-        modelName: modelItem.model
+        trainId: '',
+        chatModel: ChatModelNameMap[modelItem.model], // 聊天时用的模型
+        modelName: modelItem.model // 最底层的模型，不会变，用于计费等核心操作
       }
     });
 
