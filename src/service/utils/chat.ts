@@ -34,7 +34,10 @@ export const authChat = async (chatId: string, authorization?: string) => {
 
   // 凭证校验
   if (!chat.isShare) {
-    await authToken(authorization);
+    const userId = await authToken(authorization);
+    if (userId !== String(chat.userId._id)) {
+      return Promise.reject('无权使用该对话');
+    }
   } else if (chat.loadAmount === 0 || chat.expiredTime <= Date.now()) {
     return Promise.reject('聊天框已过期');
   }
