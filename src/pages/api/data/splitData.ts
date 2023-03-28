@@ -4,6 +4,7 @@ import { connectToDatabase, DataItem, Data } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { generateQA } from '@/service/events/generateQA';
 import { generateAbstract } from '@/service/events/generateAbstract';
+import { encode } from 'gpt-token-utils';
 
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -33,7 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     chunks.forEach((chunk) => {
       splitText += chunk;
-      if (splitText.length >= 980) {
+      const tokens = encode(splitText).length;
+      if (tokens >= 980) {
         dataItems.push({
           userId,
           dataId,

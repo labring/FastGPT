@@ -51,6 +51,14 @@ export interface ModelPopulate extends ModelSchema {
   userId: UserModelSchema;
 }
 
+export interface ModelDataSchema {
+  _id: string;
+  q: string;
+  a: string;
+  status: 0 | 1 | 2;
+  createTime: Date;
+}
+
 export interface TrainingSchema {
   _id: string;
   serviceName: ServiceName;
