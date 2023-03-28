@@ -2,6 +2,9 @@ import { GET, POST, DELETE, PUT } from './request';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { ModelUpdateParams } from '@/types/model';
 import { TrainingItemType } from '../types/training';
+import { PagingData } from '@/types';
+import { RequestPaging } from '../types/index';
+import { Obj2Query } from '@/utils/tools';
 
 export const getMyModels = () => GET<ModelSchema[]>('/model/list');
 
@@ -16,13 +19,30 @@ export const putModelById = (id: string, data: ModelUpdateParams) =>
   PUT(`/model/update?modelId=${id}`, data);
 
 export const postTrainModel = (id: string, form: FormData) =>
-  POST(`/model/train?modelId=${id}`, form, {
+  POST(`/model/train/train?modelId=${id}`, form, {
     headers: {
       'content-type': 'multipart/form-data'
     }
   });
 
-export const putModelTrainingStatus = (id: string) => PUT(`/model/putTrainStatus?modelId=${id}`);
+export const putModelTrainingStatus = (id: string) =>
+  PUT(`/model/train/putTrainStatus?modelId=${id}`);
 
 export const getModelTrainings = (id: string) =>
-  GET<TrainingItemType[]>(`/model/getTrainings?modelId=${id}`);
+  GET<TrainingItemType[]>(`/model/train/getTrainings?modelId=${id}`);
+
+/* 模型 data */
+
+type GetModelDataListProps = RequestPaging & {
+  modelId: string;
+};
+export const getModelDataList = (props: GetModelDataListProps) =>
+  GET(`/model/data/getModelData?${Obj2Query(props)}`);
+
+export const postModelData = (data: { modelId: string; data: { q: string; a: string }[] }) =>
+  POST(`/model/data/pushModelData`, data);
+
+export const putModelDataById = (data: { modelId: string; answer: string }) =>
+  PUT('/model/data/putModelData', data);
+export const DelOneModelData = (modelId: string) =>
+  DELETE(`/model/data/delModelDataById?modelId=${modelId}`);

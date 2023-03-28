@@ -1,5 +1,4 @@
-import type { ServiceName } from '@/types/mongoSchema';
-import { ModelSchema } from '../types/mongoSchema';
+import type { ServiceName, ModelDataType, ModelSchema } from '@/types/mongoSchema';
 
 export enum ChatModelNameEnum {
   GPT35 = 'gpt-3.5-turbo',
@@ -74,6 +73,12 @@ export const formatModelStatus = {
     colorTheme: 'red',
     text: '已关闭'
   }
+};
+
+export const ModelDataStatusMap: Record<ModelDataType, string> = {
+  0: '训练完成',
+  1: '等待训练',
+  2: '训练中'
 };
 
 export const defaultModel: ModelSchema = {
