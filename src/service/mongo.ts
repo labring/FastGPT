@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { generateQA } from './events/generateQA';
 import { generateAbstract } from './events/generateAbstract';
+import { generateVector } from './events/generateVector';
 
 /**
  * 连接 MongoDB 数据库
@@ -27,7 +28,8 @@ export async function connectToDatabase(): Promise<void> {
   }
 
   generateQA();
-  generateAbstract();
+  // generateAbstract();
+  generateVector();
 }
 
 export * from './models/authCode';
@@ -40,3 +42,4 @@ export * from './models/bill';
 export * from './models/pay';
 export * from './models/data';
 export * from './models/dataItem';
+export * from './models/splitData';

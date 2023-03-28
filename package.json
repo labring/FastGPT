@@ -41,6 +41,7 @@
     "react-hook-form": "^7.43.1",
     "react-markdown": "^8.0.5",
     "react-syntax-highlighter": "^15.5.0",
+    "redis": "^4.6.5",
     "rehype-katex": "^6.0.2",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",

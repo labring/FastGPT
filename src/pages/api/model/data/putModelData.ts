@@ -5,9 +5,9 @@ import { authToken } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    let { modelId, answer } = req.body as {
-      modelId: string;
-      answer: string;
+    let { dataId, text } = req.body as {
+      dataId: string;
+      text: string;
     };
     const { authorization } = req.headers;
 
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('无权操作');
     }
 
-    if (!modelId) {
+    if (!dataId) {
       throw new Error('缺少参数');
     }
 
@@ -26,11 +26,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await ModelData.updateOne(
       {
-        modelId,
+        _id: dataId,
         userId
       },
       {
-        a: answer
+        text
       }
     );
 

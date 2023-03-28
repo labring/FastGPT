@@ -14,6 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       pageNum: string;
       pageSize: string;
     };
+
     const { authorization } = req.headers;
 
     pageNum = +pageNum;
@@ -41,7 +42,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .limit(pageSize);
 
     jsonRes(res, {
-      data
+      data: {
+        pageNum,
+        pageSize,
+        data,
+        total: await ModelData.countDocuments({
+          modelId,
+          userId
+        })
+      }
     });
   } catch (err) {
     jsonRes(res, {

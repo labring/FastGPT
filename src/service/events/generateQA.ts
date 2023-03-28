@@ -1,29 +1,26 @@
-import { DataItem } from '@/service/mongo';
+import { SplitData, ModelData } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { httpsAgent, getOpenApiKey } from '@/service/utils/tools';
 import type { ChatCompletionRequestMessage } from 'openai';
-import { DataItemSchema } from '@/types/mongoSchema';
 import { ChatModelNameEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
+import { generateVector } from './generateVector';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export async function generateQA(next = false): Promise<any> {
-  if (process.env.NODE_ENV === 'development') return;
-
   if (global.generatingQA && !next) return;
   global.generatingQA = true;
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `总结助手。我会向你发送一段长文本,请从中总结出5至15个问题和答案,答案请尽量详细,请按以下格式返回: Q1:\nA1:\nQ2:\nA2:\n`
+    content: `总结助手。我会向你发送一段长文本,请从中总结出5至15个问题和答案,答案请尽量详细,并按以下格式返回: Q1:\nA1:\nQ2:\nA2:\n`
   };
-  let dataItem: DataItemSchema | null = null;
 
   try {
     // 找出一个需要生成的 dataItem
-    dataItem = await DataItem.findOne({
-      status: { $ne: 0 },
-      times: { $gt: 0 },
-      type: 'QA'
+    const dataItem = await SplitData.findOne({
+      textList: { $exists: true, $ne: [] }
     });
 
     if (!dataItem) {
@@ -32,10 +29,13 @@ export async function generateQA(next = false): Promise<any> {
       return;
     }
 
-    // 更新状态为生成中
-    await DataItem.findByIdAndUpdate(dataItem._id, {
-      status: 2
-    });
+    // 弹出文本
+    await SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } });
+
+    const text = dataItem.textList[dataItem.textList.length - 1];
+    if (!text) {
+      throw new Error('无文本');
+    }
 
     // 获取 openapi Key
     let userApiKey, systemKey;
@@ -44,10 +44,10 @@ export async function generateQA(next = false): Promise<any> {
       userApiKey = key.userApiKey;
       systemKey = key.systemKey;
     } catch (error) {
-      // 余额不够了, 把用户所有记录改成闲置
-      await DataItem.updateMany({
-        userId: dataItem.userId,
-        status: 0
+      // 余额不够了, 清空该记录
+      await SplitData.findByIdAndUpdate(dataItem._id, {
+        textList: [],
+        errorText: '余额不足，生成数据集任务终止'
       });
       throw new Error('获取 openai key 失败');
     }
@@ -59,84 +59,71 @@ export async function generateQA(next = false): Promise<any> {
     // 获取 openai 请求实例
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
     // 请求 chatgpt 获取回答
-    const response = await Promise.allSettled(
-      [0.2, 0.8].map(
-        (temperature) =>
-          chatAPI
-            .createChatCompletion(
-              {
-                model: ChatModelNameEnum.GPT35,
-                temperature: temperature,
-                n: 1,
-                messages: [
-                  systemPrompt,
-                  {
-                    role: 'user',
-                    content: dataItem?.text || ''
-                  }
-                ]
-              },
-              {
-                timeout: 120000,
-                httpsAgent
-              }
-            )
-            .then((res) => ({
-              rawContent: res?.data.choices[0].message?.content || '',
-              result: splitText(res?.data.choices[0].message?.content || '')
-            })) // 从 content 中提取 QA
-      )
-    );
-    // 过滤出成功的响应
-    const successResponse: {
-      rawContent: string;
-      result: { q: string; a: string }[];
-    }[] = response.filter((item) => item.status === 'fulfilled').map((item: any) => item.value);
-
-    const rawContents = successResponse.map((item) => item.rawContent);
-    const results = successResponse.map((item) => item.result).flat();
-
-    // 插入数据库，并修改状态
-    await DataItem.findByIdAndUpdate(dataItem._id, {
-      status: 0,
-      $push: {
-        rawResponse: {
-          $each: successResponse.map((item) => item.rawContent)
+    const response = await chatAPI
+      .createChatCompletion(
+        {
+          model: ChatModelNameEnum.GPT35,
+          temperature: 0.2,
+          n: 1,
+          messages: [
+            systemPrompt,
+            {
+              role: 'user',
+              content: text
+            }
+          ]
         },
-        result: {
-          $each: results
+        {
+          timeout: 120000,
+          httpsAgent
         }
-      }
-    });
+      )
+      .then((res) => ({
+        rawContent: res?.data.choices[0].message?.content || '',
+        result: splitText(res?.data.choices[0].message?.content || '')
+      })); // 从 content 中提取 QA
+
+    // 插入 modelData 表，生成向量
+    await ModelData.insertMany(
+      response.result.map((item) => ({
+        modelId: dataItem.modelId,
+        userId: dataItem.userId,
+        text: item.a,
+        q: [
+          {
+            id: nanoid(),
+            text: item.q
+          }
+        ],
+        status: 1
+      }))
+    );
+
     console.log(
       '生成QA成功，time:',
       `${(Date.now() - startTime) / 1000}s`,
       'QA数量：',
-      results.length
+      response.result.length
     );
 
     // 计费
     pushSplitDataBill({
-      isPay: !userApiKey && results.length > 0,
+      isPay: !userApiKey && response.result.length > 0,
       userId: dataItem.userId,
       type: 'QA',
-      text: systemPrompt.content + dataItem.text + rawContents.join('')
+      text: systemPrompt.content + text + response.rawContent
     });
-  } catch (error: any) {
-    console.log('error: 生成QA错误', dataItem?._id);
-    console.log('response:', error?.response);
-    if (dataItem?._id) {
-      await DataItem.findByIdAndUpdate(dataItem._id, {
-        status: dataItem.times > 0 ? 1 : 0, // 还有重试次数则可以继续进行
-        $inc: {
-          // 剩余尝试次数-1
-          times: -1
-        }
-      });
-    }
-  }
 
-  generateQA(true);
+    generateQA(true);
+    generateVector(true);
+  } catch (error: any) {
+    console.log(error);
+    console.log('生成QA错误:', error?.response);
+
+    setTimeout(() => {
+      generateQA(true);
+    }, 10000);
+  }
 }
 
 /**

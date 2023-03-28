@@ -184,7 +184,7 @@ const DataList = () => {
                   >
                     导入
                   </Button>
-                  <Menu>
+                  {/* <Menu>
                     <MenuButton as={Button} mr={2} size={'sm'} isLoading={isExporting}>
                       导出
                     </MenuButton>
@@ -200,7 +200,7 @@ const DataList = () => {
                         </MenuItem>
                       )}
                     </MenuList>
-                  </Menu>
+                  </Menu> */}
 
                   <Button
                     size={'sm'}

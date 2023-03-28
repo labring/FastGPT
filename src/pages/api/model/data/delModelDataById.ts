@@ -5,8 +5,8 @@ import { authToken } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    let { modelId } = req.query as {
-      modelId: string;
+    let { dataId } = req.query as {
+      dataId: string;
     };
     const { authorization } = req.headers;
 
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('无权操作');
     }
 
-    if (!modelId) {
+    if (!dataId) {
       throw new Error('缺少参数');
     }
 
@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     await ModelData.deleteOne({
-      modelId,
+      _id: dataId,
       userId
     });
 
