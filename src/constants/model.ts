@@ -75,10 +75,9 @@ export const formatModelStatus = {
   }
 };
 
-export const ModelDataStatusMap: Record<ModelDataType, string> = {
+export const ModelDataStatusMap = {
   0: '训练完成',
-  1: '等待训练',
-  2: '训练中'
+  1: '训练中'
 };
 
 export const defaultModel: ModelSchema = {
