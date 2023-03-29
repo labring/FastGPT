@@ -255,7 +255,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
             <Training model={model} />
           </Card>
         )} */}
-        <Card p={4} height={'400px'} gridColumnStart={1} gridColumnEnd={3}>
+        <Card p={4} height={'500px'} gridColumnStart={1} gridColumnEnd={3}>
           {model._id && <ModelDataCard model={model} />}
         </Card>
       </Grid>

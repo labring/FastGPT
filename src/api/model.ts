@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from './request';
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
 import { ModelUpdateParams } from '@/types/model';
 import { TrainingItemType } from '../types/training';
 import { PagingData } from '@/types';
@@ -39,10 +39,15 @@ type GetModelDataListProps = RequestPaging & {
 export const getModelDataList = (props: GetModelDataListProps) =>
   GET(`/model/data/getModelData?${Obj2Query(props)}`);
 
-export const postModelData = (data: { modelId: string; data: { q: string; a: string }[] }) =>
-  POST(`/model/data/pushModelData`, data);
+export const postModelDataInput = (data: {
+  modelId: string;
+  data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
+}) => POST(`/model/data/pushModelDataInput`, data);
 
-export const putModelDataById = (data: { modelId: string; answer: string }) =>
+export const postModelDataSelect = (modelId: string, dataIds: string[]) =>
+  POST(`/model/data/pushModelDataSelectData`, { modelId, dataIds });
+
+export const putModelDataById = (data: { dataId: string; text: string }) =>
   PUT('/model/data/putModelData', data);
-export const DelOneModelData = (modelId: string) =>
-  DELETE(`/model/data/delModelDataById?modelId=${modelId}`);
+export const delOneModelData = (dataId: string) =>
+  DELETE(`/model/data/delModelDataById?dataId=${dataId}`);

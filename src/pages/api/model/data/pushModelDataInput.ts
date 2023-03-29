@@ -2,12 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, ModelData, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
+import { ModelDataSchema } from '@/types/mongoSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { modelId, data } = req.body as {
       modelId: string;
-      data: { q: string; a: string }[];
+      data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
     };
     const { authorization } = req.headers;
 

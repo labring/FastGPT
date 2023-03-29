@@ -13,22 +13,23 @@ const ModelDataSchema = new Schema({
     ref: 'user',
     required: true
   },
-  q: {
+  text: {
     type: String,
     required: true
   },
-  a: {
-    type: String,
-    default: ''
+  q: {
+    type: [
+      {
+        id: String, // 对应redis的key
+        text: String
+      }
+    ],
+    default: []
   },
   status: {
     type: Number,
-    enum: [0, 1, 2],
+    enum: [0, 1], // 1 训练ing
     default: 1
-  },
-  createTime: {
-    type: Date,
-    default: () => new Date()
   }
 });
 

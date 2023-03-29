@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { generateQA } from './events/generateQA';
 import { generateAbstract } from './events/generateAbstract';
-import { connectRedis } from './redis';
 
 /**
  * 连接 MongoDB 数据库
@@ -29,7 +28,6 @@ export async function connectToDatabase(): Promise<void> {
 
   generateQA();
   generateAbstract();
-  // connectRedis();
 }
 
 export * from './models/authCode';

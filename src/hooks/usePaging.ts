@@ -75,6 +75,7 @@ export const usePaging = <T = any>({
     requesting,
     isLoadAll,
     nextPage,
-    initRequesting
+    initRequesting,
+    setData
   };
 };
