@@ -29,9 +29,6 @@ export async function generateQA(next = false): Promise<any> {
       return;
     }
 
-    // 弹出文本
-    await SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } });
-
     const text = dataItem.textList[dataItem.textList.length - 1];
     if (!text) {
       throw new Error('无文本');
@@ -83,21 +80,23 @@ export async function generateQA(next = false): Promise<any> {
         result: splitText(res?.data.choices[0].message?.content || '')
       })); // 从 content 中提取 QA
 
-    // 插入 modelData 表，生成向量
-    await ModelData.insertMany(
-      response.result.map((item) => ({
-        modelId: dataItem.modelId,
-        userId: dataItem.userId,
-        text: item.a,
-        q: [
-          {
-            id: nanoid(),
-            text: item.q
-          }
-        ],
-        status: 1
-      }))
-    );
+    await Promise.allSettled([
+      SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } }),
+      ModelData.insertMany(
+        response.result.map((item) => ({
+          modelId: dataItem.modelId,
+          userId: dataItem.userId,
+          text: item.a,
+          q: [
+            {
+              id: nanoid(),
+              text: item.q
+            }
+          ],
+          status: 1
+        }))
+      )
+    ]);
 
     console.log(
       '生成QA成功，time:',
