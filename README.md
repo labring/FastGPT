@@ -101,3 +101,10 @@ echo "Restart clash"
 
 #### 软件教程：Nginx
 ...没写，这个百度吧。
+
+#### redis
+
+```bash
+# 索引
+FT.CREATE idx:model:data ON JSON PREFIX 1 model:data: SCHEMA $.modelId AS modelId TAG $.dataId AS dataId TAG $.vector AS vector VECTOR FLAT 6 DIM 1536 DISTANCE_METRIC COSINE TYPE FLOAT32
+```
