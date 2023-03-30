@@ -126,13 +126,7 @@ export const readDocContent = (file: File) =>
   });
 
 export const vectorToBuffer = (vector: number[]) => {
-  const float32Arr = new Float32Array(vector);
-  const myBuffer = new ArrayBuffer(float32Arr.length * Float32Array.BYTES_PER_ELEMENT);
-  const myView = new DataView(myBuffer);
+  let npVector = new Float32Array(vector);
 
-  for (let i = 0; i < float32Arr.length; i++) {
-    myView.setFloat32(i * Float32Array.BYTES_PER_ELEMENT, float32Arr[i], true);
-  }
-
-  return Buffer.from(myBuffer);
+  return Buffer.from(npVector.buffer);
 };

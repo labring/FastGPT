@@ -12,8 +12,8 @@ import { httpsAgent } from '@/service/utils/tools';
 import { ModelPopulate } from '@/types/mongoSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.headers.auth !== 'archer') {
-    throw new Error('凭证错误');
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('不是开发环境');
   }
   try {
     await connectToDatabase();
