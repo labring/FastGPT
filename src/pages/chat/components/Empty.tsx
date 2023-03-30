@@ -25,13 +25,13 @@ const Empty = ({ intro }: { intro: string }) => {
           <Box whiteSpace={'pre-line'}>{intro}</Box>
         </Card>
       )}
+      {/* version intro */}
       <Card p={4} mb={10}>
+        <Markdown source={versionIntro} />
+      </Card>
+      <Card p={4}>
         <Header>常见问题</Header>
         <Markdown source={chatProblem} />
-      </Card>
-      {/* version intro */}
-      <Card p={4}>
-        <Markdown source={versionIntro} />
       </Card>
     </Box>
   );

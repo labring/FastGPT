@@ -48,6 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
     const redis = await connectRedis();
+    let startTime = Date.now();
 
     const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
 
@@ -83,17 +84,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
       `idx:${VecModelDataIndex}`,
-      `@modelId:{${String(chat.modelId._id)}} @vector:[VECTOR_RANGE 0.2 $blob]`,
+      `@modelId:{${String(
+        chat.modelId._id
+      )}} @vector:[VECTOR_RANGE 0.15 $blob]=>{$YIELD_DISTANCE_AS: score}`,
       // `@modelId:{${String(chat.modelId._id)}}=>[KNN 10 @vector $blob AS score]`,
       'RETURN',
       '1',
       'dataId',
-      // 'SORTBY',
-      // 'score',
+      'SORTBY',
+      'score',
       'PARAMS',
       '2',
       'blob',
       binary,
+      'LIMIT',
+      '0',
+      '20',
       'DIALECT',
       '2'
     ]);
@@ -117,8 +123,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         [2, 4, 6, 8, 10, 12, 14, 16, 18, 20].map((i) => {
           if (!redisData[i] || !redisData[i][1]) return '';
           return ModelData.findById(redisData[i][1])
-            .select('text')
-            .then((res) => res?.text || '');
+            .select('text q')
+            .then((res) => {
+              if (!res) return '';
+              const questions = res.q.map((item) => item.text).join(' ');
+              const answer = res.text;
+              return `${questions} ${answer}`;
+            });
         })
       )
     ).filter((item) => item);
@@ -128,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     prompts.unshift({
       obj: 'SYSTEM',
-      value: `请根据下面的知识回答问题： ${systemPrompt}`
+      value: `根据下面的知识回答问题： ${systemPrompt}`
     });
 
     // 控制在 tokens 数量，防止超出
@@ -150,7 +161,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 
-    let startTime = Date.now();
     // 发出请求
     const chatResponse = await chatAPI.createChatCompletion(
       {

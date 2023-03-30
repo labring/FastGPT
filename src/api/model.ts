@@ -1,8 +1,7 @@
 import { GET, POST, DELETE, PUT } from './request';
-import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
+import type { ModelSchema, ModelDataSchema, ModelSplitDataSchema } from '@/types/mongoSchema';
 import { ModelUpdateParams } from '@/types/model';
 import { TrainingItemType } from '../types/training';
-import { PagingData } from '@/types';
 import { RequestPaging } from '../types/index';
 import { Obj2Query } from '@/utils/tools';
 
@@ -38,6 +37,9 @@ type GetModelDataListProps = RequestPaging & {
 };
 export const getModelDataList = (props: GetModelDataListProps) =>
   GET(`/model/data/getModelData?${Obj2Query(props)}`);
+
+export const getModelSplitDataList = (modelId: string) =>
+  GET<ModelSplitDataSchema[]>(`/model/data/getSplitData?modelId=${modelId}`);
 
 export const postModelDataInput = (data: {
   modelId: string;
