@@ -6,6 +6,8 @@ import { TrainingStatusEnum } from '@/constants/model';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { TrainingItemType } from '@/types/training';
 import { httpsAgent } from '@/service/utils/tools';
+import { connectRedis } from '@/service/redis';
+import { VecModelDataIndex } from '@/constants/redis';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -25,6 +27,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(authorization);
 
     await connectToDatabase();
+    const redis = await connectRedis();
+
+    const modelDataList = await ModelData.find({
+      modelId
+    });
+
+    // 删除 redis
+    modelDataList?.forEach((modelData) =>
+      modelData.q.forEach(async (item) => {
+        try {
+          await redis.json.del(`${VecModelDataIndex}:${item.id}`);
+        } catch (error) {
+          console.log(error);
+        }
+      })
+    );
 
     let requestQueue: any[] = [];
     // 删除对应的聊天
@@ -73,7 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         userId
       })
     );
-    await requestQueue;
+
+    await Promise.all(requestQueue);
 
     jsonRes(res);
   } catch (err) {

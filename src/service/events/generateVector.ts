@@ -48,7 +48,7 @@ export async function generateVector(next = false): Promise<any> {
           .then((vector) =>
             redis.sendCommand([
               'JSON.SET',
-              `${VecModelDataIndex}:${dataId}:${i}`,
+              `${VecModelDataIndex}:${item.id}`,
               '$',
               JSON.stringify({
                 dataId,

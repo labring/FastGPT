@@ -172,7 +172,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                       aria-label={'delete'}
                       size={'sm'}
                       onClick={async () => {
-                        delOneModelData(item._id);
+                        await delOneModelData(item._id);
                         refetchData(pageNum);
                       }}
                     />
