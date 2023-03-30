@@ -40,6 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     await connectToDatabase();
+    let startTime = Date.now();
 
     const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
 
@@ -81,7 +82,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
-    let startTime = Date.now();
     // 发出请求
     const chatResponse = await chatAPI.createChatCompletion(
       {

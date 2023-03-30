@@ -21,13 +21,18 @@ import {
 import type { ModelSchema } from '@/types/mongoSchema';
 import { ModelDataSchema } from '@/types/mongoSchema';
 import { ModelDataStatusMap } from '@/constants/model';
-import { usePaging } from '@/hooks/usePaging';
-import ScrollData from '@/components/ScrollData';
-import { getModelDataList, delOneModelData, putModelDataById } from '@/api/model';
+import { usePagination } from '@/hooks/usePagination';
+import {
+  getModelDataList,
+  delOneModelData,
+  putModelDataById,
+  getModelSplitDataList
+} from '@/api/model';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import dynamic from 'next/dynamic';
+import { useQuery } from '@tanstack/react-query';
 
 const InputModel = dynamic(() => import('./InputDataModal'));
 const SelectModel = dynamic(() => import('./SelectFileModal'));
@@ -37,16 +42,15 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
   const { Loading } = useLoading();
 
   const {
-    nextPage,
-    isLoadAll,
-    requesting,
     data: modelDataList,
+    isLoading,
+    Pagination,
     total,
-    setData,
-    getData
-  } = usePaging<ModelDataSchema>({
+    getData,
+    pageNum
+  } = usePagination<ModelDataSchema>({
     api: getModelDataList,
-    pageSize: 20,
+    pageSize: 10,
     params: {
       modelId: model._id
     }
@@ -77,6 +81,18 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     onClose: onCloseSelectModal
   } = useDisclosure();
 
+  const { data, refetch } = useQuery(['getModelSplitDataList'], () =>
+    getModelSplitDataList(model._id)
+  );
+
+  const refetchData = useCallback(
+    (num = 1) => {
+      getData(num);
+      refetch();
+    },
+    [getData, refetch]
+  );
+
   return (
     <>
       <Flex>
@@ -91,7 +107,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           aria-label={'refresh'}
           variant={'outline'}
           mr={4}
-          onClick={() => getData(1, true)}
+          onClick={() => refetchData(pageNum)}
         />
         <Menu>
           <MenuButton as={Button}>导入</MenuButton>
@@ -101,16 +117,9 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           </MenuList>
         </Menu>
       </Flex>
-      <ScrollData
-        h={'100%'}
-        px={6}
-        mt={3}
-        isLoadAll={isLoadAll}
-        requesting={requesting}
-        nextPage={nextPage}
-        position={'relative'}
-      >
-        <TableContainer mt={4}>
+      {data && data.length > 0 && <Box fontSize={'xs'}>{data.length}条数据正在拆分中...</Box>}
+      <Box mt={4}>
+        <TableContainer h={'600px'} overflowY={'auto'}>
           <Table variant={'simple'}>
             <Thead>
               <Tr>
@@ -150,12 +159,6 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                         const oldVal = modelDataList.find((data) => item._id === data._id)?.text;
                         if (oldVal !== e.target.value) {
                           updateAnswer(item._id, e.target.value);
-                          setData((state) =>
-                            state.map((data) => ({
-                              ...data,
-                              text: data._id === item._id ? e.target.value : data.text
-                            }))
-                          );
                         }
                       }}
                     ></Textarea>
@@ -170,7 +173,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                       size={'sm'}
                       onClick={async () => {
                         delOneModelData(item._id);
-                        setData((state) => state.filter((data) => data._id !== item._id));
+                        refetchData(pageNum);
                       }}
                     />
                   </Td>
@@ -179,21 +182,17 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             </Tbody>
           </Table>
         </TableContainer>
-        <Loading loading={requesting} fixed={false} />
-      </ScrollData>
+        <Box mt={2} textAlign={'end'}>
+          <Pagination />
+        </Box>
+      </Box>
+
+      <Loading loading={isLoading} fixed={false} />
       {isOpenInputModal && (
-        <InputModel
-          modelId={model._id}
-          onClose={onCloseInputModal}
-          onSuccess={() => getData(1, true)}
-        />
+        <InputModel modelId={model._id} onClose={onCloseInputModal} onSuccess={refetchData} />
       )}
       {isOpenSelectModal && (
-        <SelectModel
-          modelId={model._id}
-          onClose={onCloseSelectModal}
-          onSuccess={() => getData(1, true)}
-        />
+        <SelectModel modelId={model._id} onClose={onCloseSelectModal} onSuccess={refetchData} />
       )}
     </>
   );

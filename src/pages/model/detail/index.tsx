@@ -11,8 +11,7 @@ import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import ModelEditForm from './components/ModelEditForm';
 import { useQuery } from '@tanstack/react-query';
-// import dynamic from 'next/dynamic';
-import ModelDataCard from './components/ModelDataCard';
+import dynamic from 'next/dynamic';
 
 const ModelDataCard = dynamic(() => import('./components/ModelDataCard'));
 
@@ -251,7 +250,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         {canTrain && model._id && (
           <Card
             p={4}
-            height={'700px'}
             {...media(
               {
                 gridColumnStart: 1,

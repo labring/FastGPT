@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       textList
     });
 
-    // generateQA();
+    generateQA();
 
     jsonRes(res, {
       data: { chunks, replaceText }
