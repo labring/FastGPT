@@ -3,6 +3,7 @@ import { httpsAgent } from '@/service/utils/tools';
 import { ModelData } from '../models/modelData';
 import { connectRedis } from '../redis';
 import { VecModelDataIndex } from '@/constants/redis';
+import { vectorToBuffer } from '@/utils/tools';
 
 export async function generateVector(next = false): Promise<any> {
   if (global.generatingVector && !next) return;
@@ -47,14 +48,14 @@ export async function generateVector(next = false): Promise<any> {
           .then((res) => res?.data?.data?.[0]?.embedding || [])
           .then((vector) =>
             redis.sendCommand([
-              'JSON.SET',
+              'HMSET',
               `${VecModelDataIndex}:${item.id}`,
-              '$',
-              JSON.stringify({
-                dataId,
-                modelId: String(dataItem.modelId),
-                vector
-              })
+              'vector',
+              vectorToBuffer(vector),
+              'modelId',
+              String(dataItem.modelId),
+              'dataId',
+              String(dataId)
             ])
           )
       )

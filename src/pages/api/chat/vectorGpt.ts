@@ -14,11 +14,6 @@ import { connectRedis } from '@/service/redis';
 import { VecModelDataIndex } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
 
-let vectorData = [
-  -0.025028639, -0.010407282, 0.026523087, -0.0107438695, -0.006967359, 0.010043768, -0.012043097,
-  0.008724345, -0.028919589, -0.0117738275, 0.0050690062, 0.02961969
-].concat(new Array(1524).fill(0));
-
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let step = 0; // step=1时，表示开始了流响应
@@ -78,12 +73,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       )
       .then((res) => res?.data?.data?.[0]?.embedding || []);
 
-    const binary = vectorToBuffer(promptVector);
-
     // 搜索系统提示词, 按相似度从 redis 中搜出前3条不同 dataId 的数据
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
-      `idx:${VecModelDataIndex}`,
+      `idx:${VecModelDataIndex}:hash`,
       `@modelId:{${String(
         chat.modelId._id
       )}} @vector:[VECTOR_RANGE 0.15 $blob]=>{$YIELD_DISTANCE_AS: score}`,
@@ -96,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'PARAMS',
       '2',
       'blob',
-      binary,
+      vectorToBuffer(promptVector),
       'LIMIT',
       '0',
       '20',
