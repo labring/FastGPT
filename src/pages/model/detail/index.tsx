@@ -1,12 +1,6 @@
 import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import {
-  getModelById,
-  delModelById,
-  postTrainModel,
-  putModelTrainingStatus,
-  putModelById
-} from '@/api/model';
+import { getModelById, delModelById, putModelTrainingStatus, putModelById } from '@/api/model';
 import { getChatSiteId } from '@/api/chat';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
@@ -16,12 +10,11 @@ import { formatModelStatus, ModelStatusEnum, modelList, defaultModel } from '@/c
 import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import ModelEditForm from './components/ModelEditForm';
-// import Icon from '@/components/Iconfont';
 import { useQuery } from '@tanstack/react-query';
 // import dynamic from 'next/dynamic';
 import ModelDataCard from './components/ModelDataCard';
 
-// const Training = dynamic(() => import('./components/Training'));
+const ModelDataCard = dynamic(() => import('./components/ModelDataCard'));
 
 const ModelDetail = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
@@ -29,16 +22,16 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
   const { isPc, media } = useScreen();
   const { setLoading } = useGlobalStore();
 
-  const SelectFileDom = useRef<HTMLInputElement>(null);
+  // const SelectFileDom = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState<ModelSchema>(defaultModel);
   const formHooks = useForm<ModelSchema>({
     defaultValues: model
   });
 
-  // const canTrain = useMemo(() => {
-  //   const openai = modelList.find((item) => item.model === model?.service.modelName);
-  //   return openai && openai.trainName;
-  // }, [model]);
+  const canTrain = useMemo(() => {
+    const openai = modelList.find((item) => item.model === model?.service.modelName);
+    return !!(openai && openai.trainName);
+  }, [model]);
 
   /* 加载模型数据 */
   const loadModel = useCallback(async () => {
@@ -89,34 +82,34 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
   }, [setLoading, model, router]);
 
   /* 上传数据集,触发微调 */
-  const startTraining = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!modelId || !e.target.files || e.target.files?.length === 0) return;
-      setLoading(true);
-      try {
-        const file = e.target.files[0];
-        const formData = new FormData();
-        formData.append('file', file);
-        await postTrainModel(modelId, formData);
+  // const startTraining = useCallback(
+  //   async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //     if (!modelId || !e.target.files || e.target.files?.length === 0) return;
+  //     setLoading(true);
+  //     try {
+  //       const file = e.target.files[0];
+  //       const formData = new FormData();
+  //       formData.append('file', file);
+  //       await postTrainModel(modelId, formData);
 
-        toast({
-          title: '开始训练...',
-          status: 'success'
-        });
+  //       toast({
+  //         title: '开始训练...',
+  //         status: 'success'
+  //       });
 
-        // 重新获取模型
-        loadModel();
-      } catch (err: any) {
-        toast({
-          title: err?.message || '上传文件失败',
-          status: 'error'
-        });
-        console.log('error->', err);
-      }
-      setLoading(false);
-    },
-    [setLoading, loadModel, modelId, toast]
-  );
+  //       // 重新获取模型
+  //       loadModel();
+  //     } catch (err: any) {
+  //       toast({
+  //         title: err?.message || '上传文件失败',
+  //         status: 'error'
+  //       });
+  //       console.log('error->', err);
+  //     }
+  //     setLoading(false);
+  //   },
+  //   [setLoading, loadModel, modelId, toast]
+  // );
 
   /* 点击更新模型状态 */
   const handleClickUpdateStatus = useCallback(async () => {
@@ -248,22 +241,34 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         )}
       </Card>
       <Grid mt={5} gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
-        <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} />
+        <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} canTrain={canTrain} />
 
         {/* {canTrain && (
           <Card p={4}>
             <Training model={model} />
           </Card>
         )} */}
-        <Card p={4} height={'500px'} gridColumnStart={1} gridColumnEnd={3}>
-          {model._id && <ModelDataCard model={model} />}
-        </Card>
+        {canTrain && model._id && (
+          <Card
+            p={4}
+            height={'700px'}
+            {...media(
+              {
+                gridColumnStart: 1,
+                gridColumnEnd: 3
+              },
+              {}
+            )}
+          >
+            <ModelDataCard model={model} />
+          </Card>
+        )}
       </Grid>
 
       {/* 文件选择 */}
-      <Box position={'absolute'} w={0} h={0} overflow={'hidden'}>
+      {/* <Box position={'absolute'} w={0} h={0} overflow={'hidden'}>
         <input ref={SelectFileDom} type="file" accept=".jsonl" onChange={startTraining} />
-      </Box>
+      </Box> */}
     </>
   );
 };

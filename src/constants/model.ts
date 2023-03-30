@@ -2,8 +2,15 @@ import type { ServiceName, ModelDataType, ModelSchema } from '@/types/mongoSchem
 
 export enum ChatModelNameEnum {
   GPT35 = 'gpt-3.5-turbo',
+  VECTOR_GPT = 'VECTOR_GPT',
   GPT3 = 'text-davinci-003'
 }
+
+export const ChatModelNameMap = {
+  [ChatModelNameEnum.GPT35]: 'gpt-3.5-turbo',
+  [ChatModelNameEnum.VECTOR_GPT]: 'gpt-3.5-turbo',
+  [ChatModelNameEnum.GPT3]: 'text-davinci-003'
+};
 
 export type ModelConstantsData = {
   serviceCompany: `${ServiceName}`;
@@ -27,6 +34,17 @@ export const modelList: ModelConstantsData[] = [
     contextMaxToken: 7500,
     trainedMaxToken: 2000,
     maxTemperature: 2,
+    price: 3
+  },
+  {
+    serviceCompany: 'openai',
+    name: '知识库',
+    model: ChatModelNameEnum.VECTOR_GPT,
+    trainName: 'vector',
+    maxToken: 4000,
+    contextMaxToken: 7500,
+    trainedMaxToken: 2000,
+    maxTemperature: 1,
     price: 3
   }
   // {

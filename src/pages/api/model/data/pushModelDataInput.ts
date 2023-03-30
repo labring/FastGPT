@@ -3,6 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, ModelData, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { ModelDataSchema } from '@/types/mongoSchema';
+import { generateVector } from '@/service/events/generateVector';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -43,6 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         userId
       }))
     );
+
+    generateVector(true);
 
     jsonRes(res, {
       data: model

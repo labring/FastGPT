@@ -1,5 +1,4 @@
-import { createClient, SchemaFieldTypes } from 'redis';
-import { ModelDataIndex } from '@/constants/redis';
+import { createClient } from 'redis';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 10);
 
@@ -14,7 +13,7 @@ export const connectRedis = async () => {
 
   try {
     global.redisClient = createClient({
-      url: 'redis://default:121914yu@120.76.193.200:8100'
+      url: process.env.REDIS_URL
     });
 
     global.redisClient.on('error', (err) => {
@@ -33,46 +32,6 @@ export const connectRedis = async () => {
     // 0 - 测试库，1 - 正式
     await global.redisClient.select(0);
 
-    // 创建索引
-    try {
-      await global.redisClient.ft.create(
-        ModelDataIndex,
-        {
-          // '$.vector': SchemaFieldTypes.VECTOR,
-          '$.modelId': {
-            type: SchemaFieldTypes.TEXT,
-            AS: 'modelId'
-          },
-          '$.userId': {
-            type: SchemaFieldTypes.TEXT,
-            AS: 'userId'
-          },
-          '$.status': {
-            type: SchemaFieldTypes.NUMERIC,
-            AS: 'status'
-          }
-        },
-        {
-          ON: 'JSON',
-          PREFIX: 'model:data'
-        }
-      );
-    } catch (error) {
-      console.log('创建索引失败', error);
-    }
-
-    // await global.redisClient.json.set('fastgpt:modeldata:2', '$', {
-    //   vector: [124, 214, 412, 4, 124, 1, 4, 1, 4, 3, 423],
-    //   modelId: 'daf',
-    //   userId: 'adfd',
-    //   q: 'fasf',
-    //   a: 'afasf',
-    //   status: 0,
-    //   createTime: new Date()
-    // });
-    // const value = await global.redisClient.json.get('fastgpt:modeldata:2');
-
-    // console.log(value);
     return global.redisClient;
   } catch (error) {
     console.log(error, '==');

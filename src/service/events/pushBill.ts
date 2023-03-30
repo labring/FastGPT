@@ -34,7 +34,7 @@ export const pushChatBill = async ({
       // 计算价格
       const unitPrice = modelItem?.price || 5;
       const price = unitPrice * tokens.length;
-      console.log(`chat bill, price: ${formatPrice(price)}元`);
+      console.log(`chat bill, unit price: ${unitPrice}, price: ${formatPrice(price)}元`);
 
       try {
         // 插入 Bill 记录

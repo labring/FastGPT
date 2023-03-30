@@ -26,12 +26,12 @@ const navbarList = [
     link: '/model/list',
     activeLink: ['/model/list', '/model/detail']
   },
-  {
-    label: '数据',
-    icon: 'icon-datafull',
-    link: '/data/list',
-    activeLink: ['/data/list', '/data/detail']
-  },
+  // {
+  //   label: '数据',
+  //   icon: 'icon-datafull',
+  //   link: '/data/list',
+  //   activeLink: ['/data/list', '/data/detail']
+  // },
   {
     label: '账号',
     icon: 'icon-yonghu-yuan',
