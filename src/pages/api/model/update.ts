@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         systemPrompt,
         intro,
         temperature,
-        service,
+        // service,
         security
       }
     );

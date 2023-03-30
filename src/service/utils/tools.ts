@@ -119,3 +119,21 @@ export const openaiChatFilter = (prompts: ChatItemType[], maxTokens: number) => 
 
   return systemPrompt ? [systemPrompt, ...res] : res;
 };
+
+/* system 内容截断 */
+export const systemPromptFilter = (prompts: string[], maxTokens: number) => {
+  let splitText = '';
+
+  // 从前往前截取
+  for (let i = 0; i < prompts.length; i++) {
+    const prompt = prompts[i];
+
+    splitText += `${prompt}\n`;
+    const tokens = encode(splitText).length;
+    if (tokens >= maxTokens) {
+      break;
+    }
+  }
+
+  return splitText;
+};

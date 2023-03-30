@@ -64,6 +64,15 @@ export interface ModelDataSchema {
   status: ModelDataType;
 }
 
+export interface ModelSplitDataSchema {
+  _id: string;
+  userId: string;
+  modelId: string;
+  rawText: string;
+  errorText: string;
+  textList: string[];
+}
+
 export interface TrainingSchema {
   _id: string;
   serviceName: ServiceName;

@@ -44,8 +44,8 @@ export const postModelDataInput = (data: {
   data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
 }) => POST(`/model/data/pushModelDataInput`, data);
 
-export const postModelDataSelect = (modelId: string, dataIds: string[]) =>
-  POST(`/model/data/pushModelDataSelectData`, { modelId, dataIds });
+export const postModelDataFileText = (modelId: string, text: string) =>
+  POST(`/model/data/splitData`, { modelId, text });
 
 export const putModelDataById = (data: { dataId: string; text: string }) =>
   PUT('/model/data/putModelData', data);

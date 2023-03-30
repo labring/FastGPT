@@ -1,16 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, DataItem, Data } from '@/service/mongo';
+import { connectToDatabase, SplitData, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { generateQA } from '@/service/events/generateQA';
-import { generateAbstract } from '@/service/events/generateAbstract';
 import { encode } from 'gpt-token-utils';
 
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { text, dataId } = req.body as { text: string; dataId: string };
-    if (!text || !dataId) {
+    const { text, modelId } = req.body as { text: string; modelId: string };
+    if (!text || !modelId) {
       throw new Error('参数错误');
     }
     await connectToDatabase();
@@ -19,43 +18,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const userId = await authToken(authorization);
 
-    const DataRecord = await Data.findById(dataId);
+    // 验证是否是该用户的 model
+    const model = await Model.findOne({
+      _id: modelId,
+      userId
+    });
 
-    if (!DataRecord) {
-      throw new Error('找不到数据集');
+    if (!model) {
+      throw new Error('无权操作该模型');
     }
-    const replaceText = text.replace(/[\\n]+/g, ' ');
+
+    const replaceText = text.replace(/(\\n|\n)+/g, ' ');
 
     // 文本拆分成 chunk
     let chunks = replaceText.match(/[^!?.。]+[!?.。]/g) || [];
 
-    const dataItems: any[] = [];
+    const textList: string[] = [];
     let splitText = '';
 
     chunks.forEach((chunk) => {
       splitText += chunk;
       const tokens = encode(splitText).length;
-      if (tokens >= 780) {
-        dataItems.push({
-          userId,
-          dataId,
-          type: DataRecord.type,
-          text: splitText,
-          status: 1
-        });
+      if (tokens >= 980) {
+        textList.push(splitText);
         splitText = '';
       }
     });
 
     // 批量插入数据
-    await DataItem.insertMany(dataItems);
+    await SplitData.create({
+      userId,
+      modelId,
+      rawText: text,
+      textList
+    });
 
-    try {
-      generateQA();
-      generateAbstract();
-    } catch (error) {
-      error;
-    }
+    // generateQA();
 
     jsonRes(res, {
       data: { chunks, replaceText }

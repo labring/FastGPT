@@ -23,9 +23,11 @@ import { useConfirm } from '@/hooks/useConfirm';
 
 const ModelEditForm = ({
   formHooks,
+  canTrain,
   handleDelModel
 }: {
   formHooks: UseFormReturn<ModelSchema>;
+  canTrain: boolean;
   handleDelModel: () => void;
 }) => {
   const { openConfirm, ConfirmChild } = useConfirm({
@@ -136,15 +138,24 @@ const ModelEditForm = ({
           </Flex>
         </FormControl>
         <Box mt={4}>
-          <Box mb={1}>系统提示词</Box>
-          <Textarea
-            rows={6}
-            maxLength={-1}
-            {...register('systemPrompt')}
-            placeholder={
-              '模型默认的 prompt 词，通过调整该内容，可以生成一个限定范围的模型。\n\n注意，改功能会影响对话的整体朝向！'
-            }
-          />
+          {canTrain ? (
+            <Box fontWeight={'bold'}>
+              训练的模型会自动根据知识库内容回答，无法设置系统prompt。注意：
+              使用该模型，在对话时需要消耗等多的 tokens
+            </Box>
+          ) : (
+            <>
+              <Box mb={1}>系统提示词</Box>
+              <Textarea
+                rows={6}
+                maxLength={-1}
+                {...register('systemPrompt')}
+                placeholder={
+                  '模型默认的 prompt 词，通过调整该内容，可以生成一个限定范围的模型。\n\n注意，改功能会影响对话的整体朝向！'
+                }
+              />
+            </>
+          )}
         </Box>
       </Card>
       {/* <Card p={4}>

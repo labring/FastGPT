@@ -6,6 +6,7 @@ declare global {
   var redisClient: RedisClientType | null;
   var generatingQA: boolean;
   var generatingAbstract: boolean;
+  var generatingVector: boolean;
   var QRCode: any;
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
