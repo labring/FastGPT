@@ -7,7 +7,6 @@ import { ChatItemType } from '@/types/chat';
 import { encode } from 'gpt-token-utils';
 import { getOpenAIApi } from '@/service/utils/chat';
 import axios from 'axios';
-import { UserModelSchema } from '@/types/mongoSchema';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -46,14 +45,25 @@ export const authToken = (token?: string): Promise<string> => {
   });
 };
 
+/* 代理 */
+export const httpsAgent =
+  process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT
+    ? tunnel.httpsOverHttp({
+        proxy: {
+          host: process.env.AXIOS_PROXY_HOST,
+          port: +process.env.AXIOS_PROXY_PORT
+        }
+      })
+    : undefined;
+
 /* 判断 apikey 是否还有余额 */
 export const checkKeyGrant = async (apiKey: string) => {
   const grant = await axios.get('https://api.openai.com/dashboard/billing/credit_grants', {
     headers: {
       Authorization: `Bearer ${apiKey}`
-    }
+    },
+    httpsAgent
   });
-  console.log(grant.data?.total_available);
   if (grant.data?.total_available <= 0.2) {
     return false;
   }
@@ -127,17 +137,6 @@ export const getOpenApiKey = async (userId: string) => {
     systemKey: process.env.OPENAIKEY as string
   };
 };
-
-/* 代理 */
-export const httpsAgent =
-  process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT
-    ? tunnel.httpsOverHttp({
-        proxy: {
-          host: process.env.AXIOS_PROXY_HOST,
-          port: +process.env.AXIOS_PROXY_PORT
-        }
-      })
-    : undefined;
 
 /* tokens 截断 */
 export const openaiChatFilter = (prompts: ChatItemType[], maxTokens: number) => {

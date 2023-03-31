@@ -14,25 +14,22 @@ export const useCopyData = () => {
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(data);
         } else {
-          const textarea = document.createElement('textarea');
-          textarea.value = data;
-          document.body.appendChild(textarea);
-          textarea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textarea);
+          throw new Error('');
         }
-        toast({
-          title,
-          status: 'success',
-          duration: 1000
-        });
       } catch (error) {
-        console.log('error->', error);
-        toast({
-          title: '复制失败',
-          status: 'error'
-        });
+        const textarea = document.createElement('textarea');
+        textarea.value = data;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
       }
+
+      toast({
+        title,
+        status: 'success',
+        duration: 1000
+      });
     }
   };
 };
