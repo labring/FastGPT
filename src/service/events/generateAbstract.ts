@@ -40,7 +40,7 @@ export async function generateAbstract(next = false): Promise<any> {
     // 获取 openapi Key
     let userApiKey, systemKey;
     try {
-      const key = await getOpenApiKey(dataItem.userId);
+      const key = await getOpenApiKey(dataItem.userId, true);
       userApiKey = key.userApiKey;
       systemKey = key.systemKey;
     } catch (error: any) {

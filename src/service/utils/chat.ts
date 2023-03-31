@@ -35,7 +35,10 @@ export const authChat = async (chatId: string, authorization?: string) => {
   }
 
   // 获取 user 的 apiKey
-  const { user, userApiKey, systemKey } = await getOpenApiKey(chat.userId as unknown as string);
+  const { user, userApiKey, systemKey } = await getOpenApiKey(
+    chat.userId as unknown as string,
+    false
+  );
 
   // filter 掉被 deleted 的内容
   chat.content = chat.content.filter((item) => item.deleted !== true);

@@ -97,7 +97,7 @@ export const getUserApiOpenai = async (userId: string) => {
 };
 
 /* 获取 open api key，如果用户没有自己的key，就用平台的，用平台记得加账单 */
-export const getOpenApiKey = async (userId: string) => {
+export const getOpenApiKey = async (userId: string, checkGrant = false) => {
   const user = await User.findById(userId);
   if (!user) {
     return Promise.reject('找不到用户');
@@ -108,12 +108,14 @@ export const getOpenApiKey = async (userId: string) => {
   // 有自己的key
   if (userApiKey) {
     // api 余额校验
-    const hasGrant = await checkKeyGrant(userApiKey);
-    if (!hasGrant) {
-      return Promise.reject({
-        code: 501,
-        message: 'API 余额不足'
-      });
+    if (checkGrant) {
+      const hasGrant = await checkKeyGrant(userApiKey);
+      if (!hasGrant) {
+        return Promise.reject({
+          code: 501,
+          message: 'API 余额不足'
+        });
+      }
     }
 
     return {
