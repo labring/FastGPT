@@ -19,7 +19,7 @@ import { DeleteIcon } from '@chakra-ui/icons';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-type FormData = { text: string; q: { val: string }[] };
+type FormData = { text: string; q: string };
 
 const InputDataModal = ({
   onClose,
@@ -36,16 +36,8 @@ const InputDataModal = ({
   const { register, handleSubmit, control } = useForm<FormData>({
     defaultValues: {
       text: '',
-      q: [{ val: '' }]
+      q: ''
     }
-  });
-  const {
-    fields: inputQ,
-    append: appendQ,
-    remove: removeQ
-  } = useFieldArray({
-    control,
-    name: 'q'
   });
 
   const sureImportData = useCallback(
@@ -58,10 +50,12 @@ const InputDataModal = ({
           data: [
             {
               text: e.text,
-              q: e.q.map((item) => ({
-                id: nanoid(),
-                text: item.val
-              }))
+              q: [
+                {
+                  id: nanoid(),
+                  text: e.q
+                }
+              ]
             }
           ]
         });
@@ -81,50 +75,46 @@ const InputDataModal = ({
   );
 
   return (
-    <Modal isOpen={true} onClose={onClose}>
+    <Modal isOpen={true} onClose={onClose} isCentered>
       <ModalOverlay />
-      <ModalContent maxW={'min(900px, 90vw)'} maxH={'80vh'} position={'relative'}>
+      <ModalContent
+        m={0}
+        display={'flex'}
+        flexDirection={'column'}
+        h={'90vh'}
+        maxW={'90vw'}
+        position={'relative'}
+      >
         <ModalHeader>手动导入</ModalHeader>
         <ModalCloseButton />
-        <Box px={6} pb={2} overflowY={'auto'}>
-          <Box mb={2}>知识点:</Box>
-          <Textarea
-            mb={4}
-            placeholder="知识点"
-            rows={3}
-            maxH={'200px'}
-            {...register(`text`, {
-              required: '知识点'
-            })}
-          />
-          {inputQ.map((item, index) => (
-            <Box key={item.id} mb={5}>
-              <Box mb={2}>问法{index + 1}:</Box>
-              <Flex>
-                <Input
-                  placeholder="问法"
-                  {...register(`q.${index}.val`, {
-                    required: '问法不能为空'
-                  })}
-                ></Input>
-                {inputQ.length > 1 && (
-                  <IconButton
-                    icon={<DeleteIcon />}
-                    aria-label={'delete'}
-                    colorScheme={'gray'}
-                    variant={'unstyled'}
-                    onClick={() => removeQ(index)}
-                  />
-                )}
-              </Flex>
-            </Box>
-          ))}
-        </Box>
+
+        <Flex flex={'1 0 0'} h={0} px={6} pb={2}>
+          <Box flex={2} mr={4} h={'100%'}>
+            <Box h={'30px'}>问题</Box>
+            <Textarea
+              placeholder="相关问题，可以回车输入多个问法, 最多500字"
+              maxLength={500}
+              resize={'none'}
+              h={'calc(100% - 30px)'}
+              {...register(`q`, {
+                required: '相关问题，可以回车输入多个问法'
+              })}
+            />
+          </Box>
+          <Box flex={3} h={'100%'}>
+            <Box h={'30px'}>知识点</Box>
+            <Textarea
+              placeholder="知识点"
+              resize={'none'}
+              h={'calc(100% - 30px)'}
+              {...register(`text`, {
+                required: '知识点'
+              })}
+            />
+          </Box>
+        </Flex>
 
         <Flex px={6} pt={2} pb={4}>
-          <Button alignSelf={'flex-start'} variant={'outline'} onClick={() => appendQ({ val: '' })}>
-            增加问法
-          </Button>
           <Box flex={1}></Box>
           <Button variant={'outline'} mr={3} onClick={onClose}>
             取消

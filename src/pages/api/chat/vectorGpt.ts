@@ -119,20 +119,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .select('text q')
             .then((res) => {
               if (!res) return '';
-              const questions = res.q.map((item) => item.text).join(' ');
+              // const questions = res.q.map((item) => item.text).join(' ');
               const answer = res.text;
-              return `${questions} ${answer}`;
+              return `${answer}`;
             });
         })
       )
     ).filter((item) => item);
 
     // textArr 筛选，最多 3000 tokens
-    const systemPrompt = systemPromptFilter(textArr, 2800);
+    const systemPrompt = systemPromptFilter(textArr, 3400);
 
     prompts.unshift({
       obj: 'SYSTEM',
-      value: `根据下面的知识回答问题： ${systemPrompt}`
+      value: `${model.systemPrompt}。 我的知识库: "${systemPrompt}"`
     });
 
     // 控制在 tokens 数量，防止超出

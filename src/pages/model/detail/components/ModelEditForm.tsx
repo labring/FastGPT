@@ -108,7 +108,7 @@ const ModelEditForm = ({
 
             <Slider
               aria-label="slider-ex-1"
-              min={1}
+              min={0}
               max={10}
               step={1}
               value={getValues('temperature')}
@@ -138,24 +138,17 @@ const ModelEditForm = ({
           </Flex>
         </FormControl>
         <Box mt={4}>
-          {canTrain ? (
-            <Box fontWeight={'bold'}>
-              训练的模型会自动根据知识库内容回答，无法设置系统prompt。注意：
-              使用该模型，在对话时需要消耗等多的 tokens
-            </Box>
-          ) : (
-            <>
-              <Box mb={1}>系统提示词</Box>
-              <Textarea
-                rows={6}
-                maxLength={-1}
-                {...register('systemPrompt')}
-                placeholder={
-                  '模型默认的 prompt 词，通过调整该内容，可以生成一个限定范围的模型。\n\n注意，改功能会影响对话的整体朝向！'
-                }
-              />
-            </>
-          )}
+          <Box mb={1}>系统提示词</Box>
+          <Textarea
+            rows={6}
+            maxLength={-1}
+            {...register('systemPrompt')}
+            placeholder={
+              canTrain
+                ? '训练的模型会根据知识库内容，生成一部分系统提示词，因此在对话时需要消耗更多的 tokens。你仍可以增加一些提示词，让其效果更精确。'
+                : '模型默认的 prompt 词，通过调整该内容，可以生成一个限定范围的模型。\n\n注意，改功能会影响对话的整体朝向！'
+            }
+          />
         </Box>
       </Card>
       {/* <Card p={4}>

@@ -50,7 +50,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     pageNum
   } = usePagination<ModelDataSchema>({
     api: getModelDataList,
-    pageSize: 10,
+    pageSize: 8,
     params: {
       modelId: model._id
     }
@@ -119,7 +119,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
       </Flex>
       {data && data.length > 0 && <Box fontSize={'xs'}>{data.length}条数据正在拆分中...</Box>}
       <Box mt={4}>
-        <TableContainer h={'600px'} overflowY={'auto'}>
+        <TableContainer>
           <Table variant={'simple'}>
             <Thead>
               <Tr>
@@ -141,10 +141,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                         whiteSpace={'pre-wrap'}
                         _notLast={{ mb: 1 }}
                       >
-                        Q{i + 1}:{' '}
-                        <Box as={'span'} userSelect={'all'}>
-                          {item.text}
-                        </Box>
+                        {item.text}
                       </Box>
                     ))}
                   </Td>
