@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Model, Training } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/chat';
-import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
+import { authToken, getUserApiOpenai } from '@/service/utils/tools';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { TrainingItemType } from '@/types/training';
 import { ModelStatusEnum, TrainingStatusEnum } from '@/constants/model';
@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 用户的 openai 实例
-    const openai = getOpenAIApi(await getUserOpenaiKey(userId));
+    const { openai } = await getUserApiOpenai(userId);
 
     // 获取 openai 的训练情况
     const { data } = await openai.retrieveFineTune(training.tuneId, { httpsAgent });

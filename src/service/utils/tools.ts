@@ -2,10 +2,12 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user';
 import tunnel from 'tunnel';
-import type { UserModelSchema } from '@/types/mongoSchema';
 import { formatPrice } from '@/utils/user';
 import { ChatItemType } from '@/types/chat';
 import { encode } from 'gpt-token-utils';
+import { getOpenAIApi } from '@/service/utils/chat';
+import axios from 'axios';
+import { UserModelSchema } from '@/types/mongoSchema';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -44,40 +46,83 @@ export const authToken = (token?: string): Promise<string> => {
   });
 };
 
-/* 获取用户的 openai APIkey */
-export const getUserOpenaiKey = async (userId: string) => {
+/* 判断 apikey 是否还有余额 */
+export const checkKeyGrant = async (apiKey: string) => {
+  const grant = await axios.get('https://api.openai.com/dashboard/billing/credit_grants', {
+    headers: {
+      Authorization: `Bearer ${apiKey}`
+    }
+  });
+  console.log(grant.data?.total_available);
+  if (grant.data?.total_available <= 0.2) {
+    return false;
+  }
+  return true;
+};
+
+/* 获取用户 api 的 openai 信息 */
+export const getUserApiOpenai = async (userId: string) => {
   const user = await User.findById(userId);
 
   const userApiKey = user?.accounts?.find((item: any) => item.type === 'openai')?.value;
+
   if (!userApiKey) {
     return Promise.reject('缺少ApiKey, 无法请求');
   }
 
-  return Promise.resolve(userApiKey as string);
+  // 余额校验
+  const hasGrant = await checkKeyGrant(userApiKey);
+  if (!hasGrant) {
+    return Promise.reject({
+      code: 501,
+      message: 'API 余额不足'
+    });
+  }
+
+  return {
+    user,
+    openai: getOpenAIApi(userApiKey),
+    apiKey: userApiKey
+  };
 };
 
-/* 获取key，如果没有就用平台的，用平台记得加账单 */
+/* 获取 open api key，如果用户没有自己的key，就用平台的，用平台记得加账单 */
 export const getOpenApiKey = async (userId: string) => {
-  const user = await User.findById<UserModelSchema>(userId);
+  const user = await User.findById(userId);
+  if (!user) {
+    return Promise.reject('找不到用户');
+  }
 
-  if (!user) return Promise.reject('用户不存在');
+  const userApiKey = user?.accounts?.find((item: any) => item.type === 'openai')?.value;
 
-  const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
-
-  // 有自己的key， 直接使用
+  // 有自己的key
   if (userApiKey) {
+    // api 余额校验
+    const hasGrant = await checkKeyGrant(userApiKey);
+    if (!hasGrant) {
+      return Promise.reject({
+        code: 501,
+        message: 'API 余额不足'
+      });
+    }
+
     return {
-      userApiKey: await getUserOpenaiKey(userId),
+      user,
+      userApiKey,
       systemKey: ''
     };
   }
 
-  // 余额校验
+  // 平台账号余额校验
   if (formatPrice(user.balance) <= 0) {
-    return Promise.reject('该账号余额不足');
+    return Promise.reject({
+      code: 501,
+      message: '账号余额不足'
+    });
   }
 
   return {
+    user,
     userApiKey: '',
     systemKey: process.env.OPENAIKEY as string
   };

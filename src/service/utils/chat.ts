@@ -1,8 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { Chat } from '../mongo';
 import type { ChatPopulate } from '@/types/mongoSchema';
-import { formatPrice } from '@/utils/user';
-import { authToken } from './tools';
+import { authToken, getOpenApiKey } from './tools';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({
@@ -14,19 +13,12 @@ export const getOpenAIApi = (apiKey: string) => {
 
 export const authChat = async (chatId: string, authorization?: string) => {
   // 获取 chat 数据
-  const chat = await Chat.findById<ChatPopulate>(chatId)
-    .populate({
-      path: 'modelId',
-      options: {
-        strictPopulate: false
-      }
-    })
-    .populate({
-      path: 'userId',
-      options: {
-        strictPopulate: false
-      }
-    });
+  const chat = await Chat.findById<ChatPopulate>(chatId).populate({
+    path: 'modelId',
+    options: {
+      strictPopulate: false
+    }
+  });
 
   if (!chat || !chat.modelId || !chat.userId) {
     return Promise.reject('模型不存在');
@@ -43,21 +35,14 @@ export const authChat = async (chatId: string, authorization?: string) => {
   }
 
   // 获取 user 的 apiKey
-  const user = chat.userId;
-
-  const userApiKey = user.accounts?.find((item: any) => item.type === 'openai')?.value;
-
-  // 没有 apikey ，校验余额
-  if (!userApiKey && formatPrice(user.balance) <= 0) {
-    return Promise.reject('该账号余额不足');
-  }
+  const { user, userApiKey, systemKey } = await getOpenApiKey(chat.userId as unknown as string);
 
   // filter 掉被 deleted 的内容
   chat.content = chat.content.filter((item) => item.deleted !== true);
 
   return {
     userApiKey,
-    systemKey: process.env.OPENAIKEY as string,
+    systemKey,
     chat,
     userId: user._id
   };
