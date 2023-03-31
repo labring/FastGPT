@@ -408,7 +408,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         flexDirection={'column'}
       >
         {/* 聊天内容 */}
-        <Box ref={ChatBox} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
+        <Box ref={ChatBox} pb={[4, 0]} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
           {chatData.history.map((item, index) => (
             <Box
               key={index}
@@ -452,7 +452,8 @@ const Chat = ({ chatId }: { chatId: string }) => {
         </Box>
         {/* 发送区 */}
         <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
-          <Box
+          <Flex
+            alignItems={'flex-end'}
             py={5}
             position={'relative'}
             boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
@@ -464,8 +465,8 @@ const Chat = ({ chatId }: { chatId: string }) => {
             {/* 输入框 */}
             <Textarea
               ref={TextareaDom}
-              w={'100%'}
-              pr={'45px'}
+              flex={1}
+              w={0}
               py={0}
               border={'none'}
               _focusVisible={{
@@ -499,7 +500,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               }}
             />
             {/* 发送和等待按键 */}
-            <Box position={'absolute'} bottom={5} right={media('20px', '10px')}>
+            <Box px={4} onClick={sendPrompt}>
               {isChatting ? (
                 <Image
                   style={{ transform: 'translateY(4px)' }}
@@ -509,7 +510,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
                   alt={''}
                 />
               ) : (
-                <Box cursor={'pointer'} onClick={sendPrompt}>
+                <Box cursor={'pointer'}>
                   <Icon
                     name={'chatSend'}
                     width={'20px'}
@@ -519,7 +520,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
                 </Box>
               )}
             </Box>
-          </Box>
+          </Flex>
         </Box>
       </Flex>
     </Flex>
