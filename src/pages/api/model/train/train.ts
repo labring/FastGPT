@@ -2,9 +2,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Model, Training } from '@/service/mongo';
-import { getOpenAIApi } from '@/service/utils/chat';
 import formidable from 'formidable';
-import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
+import { authToken, getUserApiOpenai } from '@/service/utils/tools';
 import { join } from 'path';
 import fs from 'fs';
 import type { ModelSchema } from '@/types/mongoSchema';
@@ -49,7 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const trainingType = model.service.trainId; // 目前都默认是 openai text-davinci-03
 
     // 获取用户的 API Key 实例化后的对象
-    openai = getOpenAIApi(await getUserOpenaiKey(userId));
+    const user = await getUserApiOpenai(userId);
+    openai = user.openai;
 
     // 接收文件并保存
     const form = formidable({

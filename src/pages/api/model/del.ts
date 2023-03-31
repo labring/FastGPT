@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { Chat, Model, Training, connectToDatabase, ModelData } from '@/service/mongo';
-import { authToken, getUserOpenaiKey } from '@/service/utils/tools';
+import { authToken, getUserApiOpenai } from '@/service/utils/tools';
 import { TrainingStatusEnum } from '@/constants/model';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { TrainingItemType } from '@/types/training';
@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 如果正在训练，需要删除openai上的相关信息
     if (training) {
-      const openai = getOpenAIApi(await getUserOpenaiKey(userId));
+      const { openai } = await getUserApiOpenai(userId);
       // 获取训练记录
       const tuneRecord = await openai.retrieveFineTune(training.tuneId, { httpsAgent });
 

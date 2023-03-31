@@ -5,7 +5,7 @@ import { connectToDatabase, Training, Model } from '@/service/mongo';
 import type { TrainingItemType } from '@/types/training';
 import { TrainingStatusEnum, ModelStatusEnum } from '@/constants/model';
 import { getOpenAIApi } from '@/service/utils/chat';
-import { getUserOpenaiKey } from '@/service/utils/tools';
+import { getUserApiOpenai } from '@/service/utils/tools';
 import { OpenAiTuneStatusEnum } from '@/service/constants/training';
 import { sendTrainSucceed } from '@/service/utils/sendEmail';
 import { httpsAgent } from '@/service/utils/tools';
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       status: TrainingStatusEnum.pending
     });
 
-    const openai = getOpenAIApi(await getUserOpenaiKey('63f9a14228d2a688d8dc9e1b'));
+    const { openai } = await getUserApiOpenai('63f9a14228d2a688d8dc9e1b');
 
     const response = await Promise.all(
       trainingRecords.map(async (item) => {

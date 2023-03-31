@@ -45,6 +45,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
 
+    if (splitText) {
+      textList.push(splitText);
+    }
+
     // 批量插入数据
     await SplitData.create({
       userId,
@@ -55,9 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     generateQA();
 
-    jsonRes(res, {
-      data: { chunks, replaceText }
-    });
+    jsonRes(res);
   } catch (err) {
     jsonRes(res, {
       code: 500,

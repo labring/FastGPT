@@ -85,5 +85,9 @@ export async function generateVector(next = false): Promise<any> {
         generateVector(true);
       }, 60000);
     }
+
+    setTimeout(() => {
+      generateVector(true);
+    }, 3000);
   }
 }

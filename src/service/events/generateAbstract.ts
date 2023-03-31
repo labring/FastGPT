@@ -43,12 +43,15 @@ export async function generateAbstract(next = false): Promise<any> {
       const key = await getOpenApiKey(dataItem.userId);
       userApiKey = key.userApiKey;
       systemKey = key.systemKey;
-    } catch (error) {
-      // 余额不够了, 把用户所有记录改成闲置
-      await DataItem.updateMany({
-        userId: dataItem.userId,
-        status: 0
-      });
+    } catch (error: any) {
+      if (error?.code === 501) {
+        // 余额不够了, 把用户所有记录改成闲置
+        await DataItem.updateMany({
+          userId: dataItem.userId,
+          status: 0
+        });
+      }
+
       throw new Error('获取 openai key 失败');
     }
 

@@ -40,12 +40,15 @@ export async function generateQA(next = false): Promise<any> {
       const key = await getOpenApiKey(dataItem.userId);
       userApiKey = key.userApiKey;
       systemKey = key.systemKey;
-    } catch (error) {
-      // 余额不够了, 清空该记录
-      await SplitData.findByIdAndUpdate(dataItem._id, {
-        textList: [],
-        errorText: '余额不足，生成数据集任务终止'
-      });
+    } catch (error: any) {
+      if (error?.code === 501) {
+        // 余额不够了, 清空该记录
+        await SplitData.findByIdAndUpdate(dataItem._id, {
+          textList: [],
+          errorText: error.message
+        });
+      }
+
       throw new Error('获取 openai key 失败');
     }
 
@@ -121,7 +124,7 @@ export async function generateQA(next = false): Promise<any> {
 
     setTimeout(() => {
       generateQA(true);
-    }, 10000);
+    }, 5000);
   }
 }
 
