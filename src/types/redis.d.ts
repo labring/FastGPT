@@ -1,6 +1,7 @@
+import { ModelDataStatusEnum } from '@/constants/redis';
 export interface RedisModelDataItemType {
   id: string;
-  vector: number[];
-  dataId: string;
-  modelId: string;
+  q: string;
+  text: string;
+  status: `${ModelDataStatusEnum}`;
 }

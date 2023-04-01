@@ -19,7 +19,7 @@ import {
   MenuItem
 } from '@chakra-ui/react';
 import type { ModelSchema } from '@/types/mongoSchema';
-import { ModelDataSchema } from '@/types/mongoSchema';
+import type { RedisModelDataItemType } from '@/types/redis';
 import { ModelDataStatusMap } from '@/constants/model';
 import { usePagination } from '@/hooks/usePagination';
 import {
@@ -35,7 +35,8 @@ import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 
 const InputModel = dynamic(() => import('./InputDataModal'));
-const SelectModel = dynamic(() => import('./SelectFileModal'));
+const SelectFileModel = dynamic(() => import('./SelectFileModal'));
+const SelectJsonModel = dynamic(() => import('./SelectJsonModal'));
 
 const ModelDataCard = ({ model }: { model: ModelSchema }) => {
   const { toast } = useToast();
@@ -48,7 +49,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     total,
     getData,
     pageNum
-  } = usePagination<ModelDataSchema>({
+  } = usePagination<RedisModelDataItemType>({
     api: getModelDataList,
     pageSize: 8,
     params: {
@@ -76,12 +77,17 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     onClose: onCloseInputModal
   } = useDisclosure();
   const {
-    isOpen: isOpenSelectModal,
-    onOpen: onOpenSelectModal,
-    onClose: onCloseSelectModal
+    isOpen: isOpenSelectFileModal,
+    onOpen: onOpenSelectFileModal,
+    onClose: onCloseSelectFileModal
+  } = useDisclosure();
+  const {
+    isOpen: isOpenSelectJsonModal,
+    onOpen: onOpenSelectJsonModal,
+    onClose: onCloseSelectJsonModal
   } = useDisclosure();
 
-  const { data, refetch } = useQuery(['getModelSplitDataList'], () =>
+  const { data: splitDataList, refetch } = useQuery(['getModelSplitDataList'], () =>
     getModelSplitDataList(model._id)
   );
 
@@ -113,13 +119,18 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           <MenuButton as={Button}>导入</MenuButton>
           <MenuList>
             <MenuItem onClick={onOpenInputModal}>手动输入</MenuItem>
-            <MenuItem onClick={onOpenSelectModal}>文件导入</MenuItem>
+            <MenuItem onClick={onOpenSelectFileModal}>文件导入</MenuItem>
+            <MenuItem onClick={onOpenSelectJsonModal}>JSON导入</MenuItem>
           </MenuList>
         </Menu>
       </Flex>
-      {data && data.length > 0 && <Box fontSize={'xs'}>{data.length}条数据正在拆分中...</Box>}
+      {splitDataList && splitDataList.length > 0 && (
+        <Box fontSize={'xs'}>
+          {splitDataList.map((item) => item.textList).flat().length}条数据正在拆分...
+        </Box>
+      )}
       <Box mt={4}>
-        <TableContainer>
+        <TableContainer minH={'500px'}>
           <Table variant={'simple'}>
             <Thead>
               <Tr>
@@ -131,19 +142,11 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             </Thead>
             <Tbody>
               {modelDataList.map((item) => (
-                <Tr key={item._id}>
+                <Tr key={item.id}>
                   <Td w={'350px'}>
-                    {item.q.map((item, i) => (
-                      <Box
-                        key={item.id}
-                        fontSize={'xs'}
-                        w={'100%'}
-                        whiteSpace={'pre-wrap'}
-                        _notLast={{ mb: 1 }}
-                      >
-                        {item.text}
-                      </Box>
-                    ))}
+                    <Box fontSize={'xs'} w={'100%'} whiteSpace={'pre-wrap'} _notLast={{ mb: 1 }}>
+                      {item.q}
+                    </Box>
                   </Td>
                   <Td minW={'200px'}>
                     <Textarea
@@ -153,9 +156,9 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                       fontSize={'xs'}
                       resize={'both'}
                       onBlur={(e) => {
-                        const oldVal = modelDataList.find((data) => item._id === data._id)?.text;
+                        const oldVal = modelDataList.find((data) => item.id === data.id)?.text;
                         if (oldVal !== e.target.value) {
-                          updateAnswer(item._id, e.target.value);
+                          updateAnswer(item.id, e.target.value);
                         }
                       }}
                     ></Textarea>
@@ -169,7 +172,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                       aria-label={'delete'}
                       size={'sm'}
                       onClick={async () => {
-                        await delOneModelData(item._id);
+                        await delOneModelData(item.id);
                         refetchData(pageNum);
                       }}
                     />
@@ -188,8 +191,19 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
       {isOpenInputModal && (
         <InputModel modelId={model._id} onClose={onCloseInputModal} onSuccess={refetchData} />
       )}
-      {isOpenSelectModal && (
-        <SelectModel modelId={model._id} onClose={onCloseSelectModal} onSuccess={refetchData} />
+      {isOpenSelectFileModal && (
+        <SelectFileModel
+          modelId={model._id}
+          onClose={onCloseSelectFileModal}
+          onSuccess={refetchData}
+        />
+      )}
+      {isOpenSelectJsonModal && (
+        <SelectJsonModel
+          modelId={model._id}
+          onClose={onCloseSelectJsonModal}
+          onSuccess={refetchData}
+        />
       )}
     </>
   );

@@ -1,10 +1,12 @@
-import { SplitData, ModelData } from '@/service/mongo';
+import { SplitData } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { httpsAgent, getOpenApiKey } from '@/service/utils/tools';
 import type { ChatCompletionRequestMessage } from 'openai';
 import { ChatModelNameEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 import { generateVector } from './generateVector';
+import { connectRedis } from '../redis';
+import { VecModelDataPrefix } from '@/constants/redis';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
@@ -18,6 +20,7 @@ export async function generateQA(next = false): Promise<any> {
   };
 
   try {
+    const redis = await connectRedis();
     // 找出一个需要生成的 dataItem
     const dataItem = await SplitData.findOne({
       textList: { $exists: true, $ne: [] }
@@ -29,8 +32,10 @@ export async function generateQA(next = false): Promise<any> {
       return;
     }
 
+    // 源文本
     const text = dataItem.textList[dataItem.textList.length - 1];
     if (!text) {
+      await SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } }); // 弹出无效文本
       throw new Error('无文本');
     }
 
@@ -63,7 +68,7 @@ export async function generateQA(next = false): Promise<any> {
       .createChatCompletion(
         {
           model: ChatModelNameEnum.GPT35,
-          temperature: 0.2,
+          temperature: 0.4,
           n: 1,
           messages: [
             systemPrompt,
@@ -79,26 +84,29 @@ export async function generateQA(next = false): Promise<any> {
         }
       )
       .then((res) => ({
-        rawContent: res?.data.choices[0].message?.content || '',
-        result: splitText(res?.data.choices[0].message?.content || '')
-      })); // 从 content 中提取 QA
+        rawContent: res?.data.choices[0].message?.content || '', // chatgpt原本的回复
+        result: splitText(res?.data.choices[0].message?.content || '') // 格式化后的QA对
+      }));
 
     await Promise.allSettled([
-      SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } }),
-      ModelData.insertMany(
-        response.result.map((item) => ({
-          modelId: dataItem.modelId,
-          userId: dataItem.userId,
-          text: item.a,
-          q: [
-            {
-              id: nanoid(),
-              text: item.q
-            }
-          ],
-          status: 1
-        }))
-      )
+      SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } }), // 弹出已经拆分的文本
+      ...response.result.map((item) => {
+        // 插入 redis
+        return redis.sendCommand([
+          'HMSET',
+          `${VecModelDataPrefix}:${nanoid()}`,
+          'userId',
+          String(dataItem.userId),
+          'modelId',
+          String(dataItem.modelId),
+          'q',
+          item.q,
+          'text',
+          item.a,
+          'status',
+          'waiting'
+        ]);
+      })
     ]);
 
     console.log(

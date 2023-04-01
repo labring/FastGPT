@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { connectToDatabase, ModelData } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
@@ -11,7 +11,7 @@ import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { connectRedis } from '@/service/redis';
-import { VecModelDataIndex } from '@/constants/redis';
+import { VecModelDataPrefix } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
 
 /* 发送提示词 */
@@ -73,17 +73,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       )
       .then((res) => res?.data?.data?.[0]?.embedding || []);
 
-    // 搜索系统提示词, 按相似度从 redis 中搜出前3条不同 dataId 的数据
+    // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
-      `idx:${VecModelDataIndex}:hash`,
+      `idx:${VecModelDataPrefix}:hash`,
       `@modelId:{${String(
         chat.modelId._id
       )}} @vector:[VECTOR_RANGE 0.15 $blob]=>{$YIELD_DISTANCE_AS: score}`,
       // `@modelId:{${String(chat.modelId._id)}}=>[KNN 10 @vector $blob AS score]`,
       'RETURN',
       '1',
-      'dataId',
+      'text',
       'SORTBY',
       'score',
       'PARAMS',
@@ -97,42 +97,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       '2'
     ]);
 
-    // 格式化响应值，获取去重后的id
-    let formatIds = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+    // 格式化响应值，获取 qa
+    const formatRedisPrompt = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
       .map((i) => {
-        if (!redisData[i] || !redisData[i][1]) return '';
-        return redisData[i][1];
+        if (!redisData[i]) return '';
+        const text = (redisData[i][1] as string) || '';
+
+        if (!text) return '';
+
+        return text;
       })
       .filter((item) => item);
-    formatIds = Array.from(new Set(formatIds));
 
-    if (formatIds.length === 0) {
+    if (formatRedisPrompt.length === 0) {
       throw new Error('对不起，我没有找到你的问题');
     }
 
-    // 从 mongo 中取出原文作为提示词
-    const textArr = (
-      await Promise.all(
-        [2, 4, 6, 8, 10, 12, 14, 16, 18, 20].map((i) => {
-          if (!redisData[i] || !redisData[i][1]) return '';
-          return ModelData.findById(redisData[i][1])
-            .select('text q')
-            .then((res) => {
-              if (!res) return '';
-              // const questions = res.q.map((item) => item.text).join(' ');
-              const answer = res.text;
-              return `${answer}`;
-            });
-        })
-      )
-    ).filter((item) => item);
-
     // textArr 筛选，最多 3000 tokens
-    const systemPrompt = systemPromptFilter(textArr, 3400);
+    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3400);
 
     prompts.unshift({
       obj: 'SYSTEM',
-      value: `${model.systemPrompt}。 我的知识库: "${systemPrompt}"`
+      value: `${model.systemPrompt} 我的知识库: "${systemPrompt}"`
     });
 
     // 控制在 tokens 数量，防止超出

@@ -1,9 +1,9 @@
 import { getOpenAIApi } from '@/service/utils/chat';
 import { httpsAgent } from '@/service/utils/tools';
-import { ModelData } from '../models/modelData';
 import { connectRedis } from '../redis';
-import { VecModelDataIndex } from '@/constants/redis';
+import { VecModelDataIdx } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
+import { ModelDataStatusEnum } from '@/constants/redis';
 
 export async function generateVector(next = false): Promise<any> {
   if (global.generatingVector && !next) return;
@@ -12,16 +12,29 @@ export async function generateVector(next = false): Promise<any> {
   try {
     const redis = await connectRedis();
 
-    // 找出一个需要生成的 dataItem
-    const dataItem = await ModelData.findOne({
-      status: { $ne: 0 }
-    });
+    // 从找出一个 status = waiting 的数据
+    const searchRes = await redis.ft.search(
+      VecModelDataIdx,
+      `@status:{${ModelDataStatusEnum.waiting}}`,
+      {
+        RETURN: ['q'],
+        LIMIT: {
+          from: 0,
+          size: 1
+        }
+      }
+    );
 
-    if (!dataItem) {
+    if (searchRes.total === 0) {
       console.log('没有需要生成 【向量】 的数据');
       global.generatingVector = false;
       return;
     }
+
+    const dataItem: { id: string; q: string } = {
+      id: searchRes.documents[0].id,
+      q: String(searchRes.documents[0]?.value?.q || '')
+    };
 
     // 获取 openapi Key
     const openAiKey = process.env.OPENAIKEY as string;
@@ -29,57 +42,41 @@ export async function generateVector(next = false): Promise<any> {
     // 获取 openai 请求实例
     const chatAPI = getOpenAIApi(openAiKey);
 
-    const dataId = String(dataItem._id);
-
     // 生成词向量
-    const response = await Promise.allSettled(
-      dataItem.q.map((item, i) =>
-        chatAPI
-          .createEmbedding(
-            {
-              model: 'text-embedding-ada-002',
-              input: item.text
-            },
-            {
-              timeout: 120000,
-              httpsAgent
-            }
-          )
-          .then((res) => res?.data?.data?.[0]?.embedding || [])
-          .then((vector) =>
-            redis.sendCommand([
-              'HMSET',
-              `${VecModelDataIndex}:${item.id}`,
-              'vector',
-              vectorToBuffer(vector),
-              'modelId',
-              String(dataItem.modelId),
-              'dataId',
-              String(dataId)
-            ])
-          )
+    const vector = await chatAPI
+      .createEmbedding(
+        {
+          model: 'text-embedding-ada-002',
+          input: dataItem.q
+        },
+        {
+          timeout: 120000,
+          httpsAgent
+        }
       )
-    );
+      .then((res) => res?.data?.data?.[0]?.embedding || []);
 
-    if (response.filter((item) => item.status === 'fulfilled').length === 0) {
-      throw new Error(JSON.stringify(response));
-    }
-    // 修改该数据状态
-    await ModelData.findByIdAndUpdate(dataItem._id, {
-      status: 0
-    });
+    // 更新 redis 向量和状态数据
+    await redis.sendCommand([
+      'HMSET',
+      dataItem.id,
+      'vector',
+      vectorToBuffer(vector),
+      'status',
+      ModelDataStatusEnum.ready
+    ]);
 
-    console.log(`生成向量成功: ${dataItem._id}`);
+    console.log(`生成向量成功: ${dataItem.id}`);
 
     setTimeout(() => {
       generateVector(true);
-    }, 3000);
+    }, 2000);
   } catch (error: any) {
-    console.log(error);
-    console.log('error: 生成向量错误', error?.response?.data);
+    console.log('error: 生成向量错误', error?.response?.statusText);
+    !error?.response && console.log(error);
 
     if (error?.response?.statusText === 'Too Many Requests') {
-      console.log('次数限制，1分钟后尝试');
+      console.log('生成向量次数限制，1分钟后尝试');
       // 限制次数，1分钟后再试
       setTimeout(() => {
         generateVector(true);

@@ -29,8 +29,8 @@ export const connectRedis = async () => {
 
     await global.redisClient.connect();
 
-    // 0 - 测试库，1 - 正式
-    await global.redisClient.select(0);
+    // 1 - 测试库，0 - 正式
+    await global.redisClient.select(process.env.NODE_ENV === 'development' ? 0 : 0);
 
     return global.redisClient;
   } catch (error) {
