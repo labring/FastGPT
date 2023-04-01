@@ -127,3 +127,9 @@ export const vectorToBuffer = (vector: number[]) => {
 
   return Buffer.from(npVector.buffer);
 };
+export function formatVector(vector: number[]) {
+  let formattedVector = vector.slice(0, 1536); // 截取前1536个元素
+  formattedVector = formattedVector.concat(Array(1536 - formattedVector.length).fill(0)); // 在后面添加0
+
+  return formattedVector;
+}

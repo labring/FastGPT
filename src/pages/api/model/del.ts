@@ -1,13 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, Model, Training, connectToDatabase, ModelData } from '@/service/mongo';
+import { Chat, Model, Training, connectToDatabase } from '@/service/mongo';
 import { authToken, getUserApiOpenai } from '@/service/utils/tools';
 import { TrainingStatusEnum } from '@/constants/model';
-import { getOpenAIApi } from '@/service/utils/chat';
 import { TrainingItemType } from '@/types/training';
 import { httpsAgent } from '@/service/utils/tools';
 import { connectRedis } from '@/service/redis';
-import { VecModelDataIndex } from '@/constants/redis';
+import { VecModelDataIdx } from '@/constants/redis';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -26,38 +25,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const userId = await authToken(authorization);
 
+    // 验证是否是该用户的 model
+    const model = await Model.findOne({
+      _id: modelId,
+      userId
+    });
+
+    if (!model) {
+      throw new Error('无权操作该模型');
+    }
+
     await connectToDatabase();
     const redis = await connectRedis();
 
-    const modelDataList = await ModelData.find({
+    // 获取 redis 中模型关联的所有数据
+    const searchRes = await redis.ft.search(
+      VecModelDataIdx,
+      `@modelId:{${modelId}} @userId:{${userId}}`,
+      {
+        LIMIT: {
+          from: 0,
+          size: 10000
+        }
+      }
+    );
+    // 删除 redis 内容
+    await Promise.all(searchRes.documents.map((item) => redis.del(item.id)));
+
+    // 删除对应的聊天
+    await Chat.deleteMany({
       modelId
     });
-
-    // 删除 redis
-    modelDataList?.forEach((modelData) =>
-      modelData.q.forEach(async (item) => {
-        try {
-          await redis.json.del(`${VecModelDataIndex}:${item.id}`);
-        } catch (error) {
-          console.log(error);
-        }
-      })
-    );
-
-    let requestQueue: any[] = [];
-    // 删除对应的聊天
-    requestQueue.push(
-      Chat.deleteMany({
-        modelId
-      })
-    );
-
-    // 删除数据集
-    requestQueue.push(
-      ModelData.deleteMany({
-        modelId
-      })
-    );
 
     // 查看是否正在训练
     const training: TrainingItemType | null = await Training.findOne({
@@ -78,21 +76,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 删除对应训练记录
-    requestQueue.push(
-      Training.deleteMany({
-        modelId
-      })
-    );
+    await Training.deleteMany({
+      modelId
+    });
 
     // 删除模型
-    requestQueue.push(
-      Model.deleteOne({
-        _id: modelId,
-        userId
-      })
-    );
-
-    await Promise.all(requestQueue);
+    await Model.deleteOne({
+      _id: modelId,
+      userId
+    });
 
     jsonRes(res);
   } catch (err) {

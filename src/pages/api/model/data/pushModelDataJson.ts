@@ -2,16 +2,18 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { ModelDataSchema } from '@/types/mongoSchema';
 import { generateVector } from '@/service/events/generateVector';
+import { vectorToBuffer, formatVector } from '@/utils/tools';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix, ModelDataStatusEnum } from '@/constants/redis';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { modelId, data } = req.body as {
       modelId: string;
-      data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
+      data: { prompt: string; completion: string; vector?: number[] }[];
     };
     const { authorization } = req.headers;
 
@@ -39,21 +41,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('无权操作该模型');
     }
 
-    const insertRes = await Promise.allSettled(
+    // 插入 redis
+    const insertRedisRes = await Promise.allSettled(
       data.map((item) => {
+        const vector = item.vector;
+
         return redis.sendCommand([
           'HMSET',
-          `${VecModelDataPrefix}:${item.q.id}`,
+          `${VecModelDataPrefix}:${nanoid()}`,
           'userId',
           userId,
           'modelId',
-          modelId,
+          String(modelId),
+          ...(vector ? ['vector', vectorToBuffer(formatVector(vector))] : []),
           'q',
-          item.q.text,
+          item.prompt,
           'text',
-          item.text,
+          item.completion,
           'status',
-          ModelDataStatusEnum.waiting
+          vector ? ModelDataStatusEnum.ready : ModelDataStatusEnum.waiting
         ]);
       })
     );
@@ -61,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     generateVector(true);
 
     jsonRes(res, {
-      data: insertRes.filter((item) => item.status === 'rejected').length
+      data: insertRedisRes.filter((item) => item.status === 'rejected').length
     });
   } catch (err) {
     jsonRes(res, {

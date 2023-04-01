@@ -44,10 +44,15 @@ export const getModelSplitDataList = (modelId: string) =>
 export const postModelDataInput = (data: {
   modelId: string;
   data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
-}) => POST(`/model/data/pushModelDataInput`, data);
+}) => POST<number>(`/model/data/pushModelDataInput`, data);
 
 export const postModelDataFileText = (modelId: string, text: string) =>
   POST(`/model/data/splitData`, { modelId, text });
+
+export const postModelDataJsonData = (
+  modelId: string,
+  jsonData: { prompt: string; completion: string; vector?: number[] }[]
+) => POST(`/model/data/pushModelDataJson`, { modelId, data: jsonData });
 
 export const putModelDataById = (data: { dataId: string; text: string }) =>
   PUT('/model/data/putModelData', data);

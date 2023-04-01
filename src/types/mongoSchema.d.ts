@@ -60,7 +60,7 @@ export interface ModelDataSchema {
   q: {
     id: string;
     text: string;
-  }[];
+  };
   status: ModelDataType;
 }
 

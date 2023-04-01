@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ModelData } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
+import { connectRedis } from '@/service/redis';
+import { VecModelDataIdx } from '@/constants/redis';
+import { SearchOptions } from 'redis';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -32,24 +35,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(authorization);
 
     await connectToDatabase();
+    const redis = await connectRedis();
 
-    const data = await ModelData.find({
-      modelId,
-      userId
-    })
-      .sort({ _id: -1 }) // 按照创建时间倒序排列
-      .skip((pageNum - 1) * pageSize)
-      .limit(pageSize);
+    // 从 redis 中获取数据
+    const searchRes = await redis.ft.search(
+      VecModelDataIdx,
+      `@modelId:{${modelId}} @userId:{${userId}}`,
+      {
+        RETURN: ['q', 'text', 'status'],
+        LIMIT: {
+          from: (pageNum - 1) * pageSize,
+          size: pageSize
+        },
+        SORTBY: {
+          BY: 'modelId',
+          DIRECTION: 'DESC'
+        }
+      }
+    );
 
     jsonRes(res, {
       data: {
         pageNum,
         pageSize,
-        data,
-        total: await ModelData.countDocuments({
-          modelId,
-          userId
-        })
+        data: searchRes.documents.map((item) => ({
+          id: item.id,
+          ...item.value
+        })),
+        total: searchRes.total
       }
     });
   } catch (err) {

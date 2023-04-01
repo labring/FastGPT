@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ModelData } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
+import { connectRedis } from '@/service/redis';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -22,17 +22,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const userId = await authToken(authorization);
 
-    await connectToDatabase();
+    const redis = await connectRedis();
 
-    await ModelData.updateOne(
-      {
-        _id: dataId,
-        userId
-      },
-      {
-        text
-      }
-    );
+    // 校验是否为该用户的数据
+    const dataItemUserId = await redis.hGet(dataId, 'userId');
+    if (dataItemUserId !== userId) {
+      throw new Error('无权操作');
+    }
+
+    // 更新
+    await redis.hSet(dataId, 'text', text);
 
     jsonRes(res);
   } catch (err) {

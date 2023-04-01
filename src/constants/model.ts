@@ -1,4 +1,5 @@
 import type { ServiceName, ModelDataType, ModelSchema } from '@/types/mongoSchema';
+import type { RedisModelDataItemType } from '@/types/redis';
 
 export enum ChatModelNameEnum {
   GPT35 = 'gpt-3.5-turbo',
@@ -93,9 +94,9 @@ export const formatModelStatus = {
   }
 };
 
-export const ModelDataStatusMap = {
-  0: '训练完成',
-  1: '训练中'
+export const ModelDataStatusMap: Record<RedisModelDataItemType['status'], string> = {
+  ready: '训练完成',
+  waiting: '训练中'
 };
 
 export const defaultModel: ModelSchema = {

@@ -100,40 +100,43 @@ const SelectFileModal = ({
   });
 
   return (
-    <Modal isOpen={true} onClose={onClose}>
+    <Modal isOpen={true} onClose={onClose} isCentered>
       <ModalOverlay />
-      <ModalContent maxW={'min(900px, 90vw)'} position={'relative'}>
+      <ModalContent maxW={'min(900px, 90vw)'} m={0} position={'relative'} h={['90vh', '70vh']}>
         <ModalHeader>文件导入</ModalHeader>
         <ModalCloseButton />
 
-        <ModalBody>
-          <Flex
-            flexDirection={'column'}
+        <ModalBody
+          display={'flex'}
+          flexDirection={'column'}
+          p={4}
+          h={'100%'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          fontSize={'sm'}
+        >
+          <Button isLoading={selecting} onClick={onOpen}>
+            选择文件
+          </Button>
+          <Box mt={2} maxW={['100%', '70%']}>
+            支持 {fileExtension} 文件。模型会自动对文本进行 QA 拆分，需要较长训练时间，拆分需要消耗
+            tokens，大约0.04元/1k tokens，请确保账号余额充足。
+          </Box>
+          <Box mt={2}>
+            一共 {fileText.length} 个字，{encode(fileText).length} 个tokens
+          </Box>
+          <Box
+            flex={'1 0 0'}
+            h={0}
+            w={'100%'}
+            overflowY={'auto'}
             p={2}
-            h={'100%'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            fontSize={'sm'}
+            backgroundColor={'blackAlpha.50'}
+            whiteSpace={'pre-wrap'}
+            fontSize={'xs'}
           >
-            <Button isLoading={selecting} onClick={onOpen}>
-              选择文件
-            </Button>
-            <Box mt={2}>支持 {fileExtension} 文件. 会先对文本进行拆分，需要时间较长。</Box>
-            <Box mt={2}>
-              一共 {fileText.length} 个字，{encode(fileText).length} 个tokens
-            </Box>
-            <Box
-              h={'300px'}
-              w={'100%'}
-              overflow={'auto'}
-              p={2}
-              backgroundColor={'blackAlpha.50'}
-              whiteSpace={'pre'}
-              fontSize={'xs'}
-            >
-              {fileText}
-            </Box>
-          </Flex>
+            {fileText}
+          </Box>
         </ModalBody>
 
         <Flex px={6} pt={2} pb={4}>

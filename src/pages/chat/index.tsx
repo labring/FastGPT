@@ -190,97 +190,91 @@ const Chat = ({ chatId }: { chatId: string }) => {
   /**
    * 发送一个内容
    */
-  const sendPrompt = useCallback(
-    async (e?: React.MouseEvent<HTMLDivElement>) => {
-      e?.stopPropagation();
-      e?.preventDefault();
+  const sendPrompt = useCallback(async () => {
+    const storeInput = inputVal;
+    // 去除空行
+    const val = inputVal
+      .trim()
+      .split('\n')
+      .filter((val) => val)
+      .join('\n');
+    if (!chatData?.modelId || !val || !ChatBox.current || isChatting) {
+      return;
+    }
 
-      const storeInput = inputVal;
-      // 去除空行
-      const val = inputVal
-        .trim()
-        .split('\n')
-        .filter((val) => val)
-        .join('\n');
-      if (!chatData?.modelId || !val || !ChatBox.current || isChatting) {
-        return;
+    // 长度校验
+    const tokens = encode(val).length;
+    const model = modelList.find((item) => item.model === chatData.modelName);
+
+    if (model && tokens >= model.maxToken) {
+      toast({
+        title: '单次输入超出 4000 tokens',
+        status: 'warning'
+      });
+      return;
+    }
+
+    const newChatList: ChatSiteItemType[] = [
+      ...chatData.history,
+      {
+        obj: 'Human',
+        value: val,
+        status: 'finish'
+      },
+      {
+        obj: 'AI',
+        value: '',
+        status: 'loading'
       }
+    ];
 
-      // 长度校验
-      const tokens = encode(val).length;
-      const model = modelList.find((item) => item.model === chatData.modelName);
+    // 插入内容
+    setChatData((state) => ({
+      ...state,
+      history: newChatList
+    }));
 
-      if (model && tokens >= model.maxToken) {
-        toast({
-          title: '单次输入超出 4000 tokens',
-          status: 'warning'
+    // 清空输入内容
+    resetInputVal('');
+    scrollToBottom();
+
+    try {
+      await gptChatPrompt(newChatList[newChatList.length - 2]);
+
+      // 如果是 Human 第一次发送，插入历史记录
+      const humanChat = newChatList.filter((item) => item.obj === 'Human');
+      if (humanChat.length === 1) {
+        pushChatHistory({
+          chatId,
+          title: humanChat[0].value
         });
-        return;
       }
+    } catch (err: any) {
+      toast({
+        title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true
+      });
 
-      const newChatList: ChatSiteItemType[] = [
-        ...chatData.history,
-        {
-          obj: 'Human',
-          value: val,
-          status: 'finish'
-        },
-        {
-          obj: 'AI',
-          value: '',
-          status: 'loading'
-        }
-      ];
+      resetInputVal(storeInput);
 
-      // 插入内容
       setChatData((state) => ({
         ...state,
-        history: newChatList
+        history: newChatList.slice(0, newChatList.length - 2)
       }));
-
-      // 清空输入内容
-      resetInputVal('');
-      scrollToBottom();
-
-      try {
-        await gptChatPrompt(newChatList[newChatList.length - 2]);
-
-        // 如果是 Human 第一次发送，插入历史记录
-        const humanChat = newChatList.filter((item) => item.obj === 'Human');
-        if (humanChat.length === 1) {
-          pushChatHistory({
-            chatId,
-            title: humanChat[0].value
-          });
-        }
-      } catch (err: any) {
-        toast({
-          title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
-          status: 'warning',
-          duration: 5000,
-          isClosable: true
-        });
-
-        resetInputVal(storeInput);
-
-        setChatData((state) => ({
-          ...state,
-          history: newChatList.slice(0, newChatList.length - 2)
-        }));
-      }
-    },
-    [
-      inputVal,
-      chatData,
-      isChatting,
-      resetInputVal,
-      scrollToBottom,
-      toast,
-      gptChatPrompt,
-      pushChatHistory,
-      chatId
-    ]
-  );
+    }
+  }, [
+    inputVal,
+    chatData,
+    isChatting,
+    resetInputVal,
+    scrollToBottom,
+    toast,
+    gptChatPrompt,
+    pushChatHistory,
+    chatId
+  ]);
 
   // 删除一句话
   const delChatRecord = useCallback(
@@ -474,6 +468,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               flex={1}
               w={0}
               py={0}
+              pr={0}
               border={'none'}
               _focusVisible={{
                 border: 'none'
