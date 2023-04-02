@@ -71,7 +71,6 @@ const Login = () => {
           order={1}
           flex={`0 0 ${isPc ? '400px' : '100%'}`}
           height={'100%'}
-          maxH={'450px'}
           border="1px"
           borderColor="gray.200"
           py={5}

@@ -123,13 +123,26 @@ export const readDocContent = (file: File) =>
   });
 
 export const vectorToBuffer = (vector: number[]) => {
-  let npVector = new Float32Array(vector);
+  const npVector = new Float32Array(vector);
 
-  return Buffer.from(npVector.buffer);
+  const buffer = Buffer.from(npVector.buffer);
+
+  return buffer;
+};
+export const BufferToVector = (bufferStr: string) => {
+  let buffer = Buffer.from(`bufferStr`, 'binary'); // 将字符串转换成 Buffer 对象
+  const npVector = new Float32Array(
+    buffer,
+    buffer.byteOffset,
+    buffer.byteLength / Float32Array.BYTES_PER_ELEMENT
+  );
+  return Array.from(npVector);
 };
 export function formatVector(vector: number[]) {
   let formattedVector = vector.slice(0, 1536); // 截取前1536个元素
-  formattedVector = formattedVector.concat(Array(1536 - formattedVector.length).fill(0)); // 在后面添加0
+  if (vector.length > 1536) {
+    formattedVector = formattedVector.concat(Array(1536 - formattedVector.length).fill(0)); // 在后面添加0
+  }
 
   return formattedVector;
 }

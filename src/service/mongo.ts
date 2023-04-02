@@ -17,7 +17,7 @@ export async function connectToDatabase(): Promise<void> {
     mongoose.set('strictQuery', true);
     global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
       bufferCommands: true,
-      dbName: 'doc_gpt',
+      dbName: process.env.NODE_ENV === 'development' ? 'doc_gpt_test' : 'doc_gpt',
       maxPoolSize: 5,
       minPoolSize: 1,
       maxConnecting: 5
