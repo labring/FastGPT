@@ -105,7 +105,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     mutationFn: () => getExportDataList(model._id),
     onSuccess(res) {
       // 导出为文件
-      const blob = new Blob([JSON.stringify(res)], { type: 'application/json;charset=utf-8' });
+      const blob = new Blob([res], { type: 'application/json;charset=utf-8' });
 
       // 创建下载链接
       const downloadLink = document.createElement('a');
@@ -136,7 +136,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           size={'sm'}
           onClick={() => refetchData(pageNum)}
         />
-        {/* <Button
+        <Button
           variant={'outline'}
           mr={2}
           size={'sm'}
@@ -144,7 +144,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           onClick={() => onclickExport()}
         >
           导出
-        </Button> */}
+        </Button>
         <Menu>
           <MenuButton as={Button} size={'sm'}>
             导入

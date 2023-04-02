@@ -39,9 +39,7 @@ export const getModelDataList = (props: GetModelDataListProps) =>
   GET(`/model/data/getModelData?${Obj2Query(props)}`);
 
 export const getExportDataList = (modelId: string) =>
-  GET<{ prompt: string; completion: string; vector: number[] }>(
-    `/model/data/exportModelData?modelId=${modelId}`
-  );
+  GET<string>(`/model/data/exportModelData?modelId=${modelId}`);
 
 export const getModelSplitDataList = (modelId: string) =>
   GET<ModelSplitDataSchema[]>(`/model/data/getSplitData?modelId=${modelId}`);

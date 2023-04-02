@@ -53,7 +53,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           userId,
           'modelId',
           String(modelId),
-          ...(vector ? ['vector', vectorToBuffer(formatVector(vector))] : []),
+          ...(vector
+            ? ['vector', vectorToBuffer(formatVector(vector)), 'rawVector', JSON.stringify(vector)]
+            : []),
           'q',
           item.prompt,
           'text',
