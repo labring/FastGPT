@@ -8,8 +8,8 @@ import { encode } from 'gpt-token-utils';
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { text, modelId } = req.body as { text: string; modelId: string };
-    if (!text || !modelId) {
+    const { text, modelId, prompt } = req.body as { text: string; modelId: string; prompt: string };
+    if (!text || !modelId || !prompt) {
       throw new Error('参数错误');
     }
     await connectToDatabase();
@@ -62,7 +62,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId,
       modelId,
       rawText: text,
-      textList
+      textList,
+      prompt
     });
 
     generateQA();

@@ -8,6 +8,11 @@ const SplitDataSchema = new Schema({
     ref: 'user',
     required: true
   },
+  prompt: {
+    // 拆分时的提示词
+    type: String,
+    required: true
+  },
   modelId: {
     type: Schema.Types.ObjectId,
     ref: 'model',

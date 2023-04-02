@@ -8,7 +8,8 @@ import {
   ModalContent,
   ModalHeader,
   ModalCloseButton,
-  ModalBody
+  ModalBody,
+  Input
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -34,6 +35,7 @@ const SelectFileModal = ({
 }) => {
   const [selecting, setSelecting] = useState(false);
   const { toast } = useToast();
+  const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
   const [fileText, setFileText] = useState('');
   const { openConfirm, ConfirmChild } = useConfirm({
@@ -83,7 +85,11 @@ const SelectFileModal = ({
   const { mutate, isLoading } = useMutation({
     mutationFn: async () => {
       if (!fileText) return;
-      await postModelDataFileText(modelId, fileText);
+      await postModelDataFileText({
+        modelId,
+        text: fileText,
+        prompt: `下面是${prompt || '一段长文本'}`
+      });
       toast({
         title: '导入数据成功,需要一段拆解和训练',
         status: 'success'
@@ -102,7 +108,7 @@ const SelectFileModal = ({
   return (
     <Modal isOpen={true} onClose={onClose} isCentered>
       <ModalOverlay />
-      <ModalContent maxW={'min(900px, 90vw)'} m={0} position={'relative'} h={['90vh', '70vh']}>
+      <ModalContent maxW={'min(900px, 90vw)'} m={0} position={'relative'} h={'90vh'}>
         <ModalHeader>文件导入</ModalHeader>
         <ModalCloseButton />
 
@@ -125,6 +131,17 @@ const SelectFileModal = ({
           <Box mt={2}>
             一共 {fileText.length} 个字，{encode(fileText).length} 个tokens
           </Box>
+          <Flex w={'100%'} alignItems={'center'} my={4}>
+            <Box flex={'0 0 auto'} mr={2}>
+              下面是
+            </Box>
+            <Input
+              placeholder="提示词，例如: Laf的介绍/关于gpt4的论文/一段长文本"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              size={'sm'}
+            />
+          </Flex>
           <Box
             flex={'1 0 0'}
             h={0}

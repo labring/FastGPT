@@ -49,8 +49,8 @@ export const postModelDataInput = (data: {
   data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
 }) => POST<number>(`/model/data/pushModelDataInput`, data);
 
-export const postModelDataFileText = (modelId: string, text: string) =>
-  POST(`/model/data/splitData`, { modelId, text });
+export const postModelDataFileText = (data: { modelId: string; text: string; prompt: string }) =>
+  POST(`/model/data/splitData`, data);
 
 export const postModelDataJsonData = (
   modelId: string,
