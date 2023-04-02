@@ -17,13 +17,10 @@ export const usePagination = <T = any,>({
   const { toast } = useToast();
   const [pageNum, setPageNum] = useState(1);
   const [total, setTotal] = useState(0);
+  const [data, setData] = useState<T[]>([]);
   const maxPage = useMemo(() => Math.ceil(total / pageSize), [pageSize, total]);
 
-  const {
-    mutate,
-    data = [],
-    isLoading
-  } = useMutation({
+  const { mutate, isLoading } = useMutation({
     mutationFn: async (num: number = pageNum) => {
       try {
         const res: PagingData<T> = await api({
@@ -33,7 +30,7 @@ export const usePagination = <T = any,>({
         });
         setPageNum(num);
         setTotal(res.total);
-        return res.data;
+        setData(res.data);
       } catch (error: any) {
         toast({
           title: error?.message || '获取数据异常',
@@ -43,7 +40,6 @@ export const usePagination = <T = any,>({
       }
     }
   });
-
   useQuery(['init'], () => {
     mutate(1);
     return null;
