@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const replaceText = text.replace(/(\\n|\n)+/g, ' ');
 
     // 文本拆分成 chunk
-    let chunks = replaceText.match(/[^!?.。]+[!?.。]/g) || [];
+    const chunks = replaceText.match(/[^!?.。]+[!?.。]/g) || [];
 
     const textList: string[] = [];
     let splitText = '';
