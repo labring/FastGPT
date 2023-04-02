@@ -16,7 +16,7 @@ export async function generateQA(next = false): Promise<any> {
 
   const systemPrompt: ChatCompletionRequestMessage = {
     role: 'system',
-    content: `总结助手。我会向你发送一段长文本,请从中总结出5至15个问题和答案,答案请尽量详细,并按以下格式返回: Q1:\nA1:\nQ2:\nA2:\n`
+    content: `总结助手。我会向你发送一段长文本,请从中总结出5至30个问题和答案,答案请尽量详细,并按以下格式返回: Q1:\nA1:\nQ2:\nA2:\n`
   };
 
   try {

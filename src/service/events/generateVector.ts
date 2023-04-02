@@ -62,6 +62,8 @@ export async function generateVector(next = false): Promise<any> {
       dataItem.id,
       'vector',
       vectorToBuffer(vector),
+      'rawVector',
+      JSON.stringify(vector),
       'status',
       ModelDataStatusEnum.ready
     ]);

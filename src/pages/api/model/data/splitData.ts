@@ -36,12 +36,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const textList: string[] = [];
     let splitText = '';
 
+    /* 取 3k ~ 4K tokens 内容 */
     chunks.forEach((chunk) => {
-      splitText += chunk;
-      const tokens = encode(splitText).length;
-      if (tokens >= 980) {
+      const tokens = encode(splitText + chunk).length;
+      if (tokens >= 4000) {
+        // 超过 4000，不要这块内容
         textList.push(splitText);
+        splitText = chunk;
+      } else if (tokens >= 3000) {
+        // 超过 3000，取内容
+        textList.push(splitText + chunk);
         splitText = '';
+      } else {
+        //没超过 3000，继续添加
+        splitText += chunk;
       }
     });
 

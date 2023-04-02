@@ -70,7 +70,7 @@ const SelectJsonModal = ({
       const res = await postModelDataJsonData(modelId, fileData);
       console.log(res);
       toast({
-        title: '导入数据成功,需要一段拆解和训练',
+        title: '导入数据成功,需要一段时间训练',
         status: 'success'
       });
       onClose();
