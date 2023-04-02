@@ -30,7 +30,6 @@ const Empty = ({ intro }: { intro: string }) => {
         <Markdown source={versionIntro} />
       </Card>
       <Card p={4}>
-        <Header>常见问题</Header>
         <Markdown source={chatProblem} />
       </Card>
     </Box>

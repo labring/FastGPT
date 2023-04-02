@@ -42,12 +42,12 @@ const ModelTable = ({
       dataIndex: 'status',
       render: (item: ModelSchema) => (
         <Tag
-          colorScheme={formatModelStatus[item.status].colorTheme}
+          colorScheme={formatModelStatus[item.status]?.colorTheme}
           variant="solid"
           px={3}
           size={'md'}
         >
-          {formatModelStatus[item.status].text}
+          {formatModelStatus[item.status]?.text}
         </Tag>
       )
     },

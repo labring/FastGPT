@@ -23,7 +23,7 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
         <ModalBody textAlign={'center'}>
           <Image
             style={{ margin: 'auto' }}
-            src={'/imgs/wxcode.jpg'}
+            src={'/imgs/wxcode300.jpg'}
             width={200}
             height={200}
             alt=""

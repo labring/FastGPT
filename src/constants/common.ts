@@ -10,6 +10,11 @@ export const introPage = `
 
 [Git 仓库](https://github.com/c121914yu/FastGPT)
 
+### 交流群/问题反馈
+wx: YNyiqi
+![](/imgs/wxcode300.jpg)
+
+
 ### 快速开始
 1. 使用邮箱注册账号。  
 2. 进入账号页面，添加关联账号，目前只有 openai 的账号可以添加，直接去 openai 官网，把 API Key 粘贴过来。  
@@ -31,30 +36,25 @@ export const introPage = `
 4. 使用该模型对话。  
 
 注意：使用知识库模型对话时，tokens 消耗会加快。  
-
-### 其他问题
-还有其他问题，可以加我 wx: YNyiqi，拉个交流群大家一起聊聊。
-
 `;
 
 export const chatProblem = `
+## 常见问题
 **内容长度**
 单次最长 4000 tokens, 上下文最长 8000 tokens, 上下文超长时会被截断。
 
-**模型问题**
-一般情况下，请直接选择 chatGPT 模型，价格低效果好。
+**删除和复制**
+点击对话头像，可以选择复制或删除该条内容。
 
 **代理出错**
 服务器代理不稳定，可以过一会儿再尝试。  
-
-**API key 问题**
-请把 openai 的 API key 粘贴到账号里再创建对话。如果是使用分享的对话，不需要填写 API key。  
 `;
 
 export const versionIntro = `
-## Fast GPT V2.2
+## Fast GPT V2.3
+* 数据集导出功能，可用于知识库分享。
+* 优化文件拆分功能，可自定义提示词。
 * 定制知识库：创建模型时可以选择【知识库】模型, 可以手动导入知识点或者直接导入一个文件自动学习。
-* 删除和复制功能：点击对话头像，可以选择复制或删除该条内容。
 `;
 
 export const shareHint = `

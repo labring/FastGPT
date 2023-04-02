@@ -141,6 +141,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           mr={2}
           size={'sm'}
           isLoading={isLoadingExport}
+          title={'v2.3之前版本的数据无法导出'}
           onClick={() => onclickExport()}
         >
           导出
