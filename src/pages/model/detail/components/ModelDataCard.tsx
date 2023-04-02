@@ -26,13 +26,14 @@ import {
   getModelDataList,
   delOneModelData,
   putModelDataById,
-  getModelSplitDataList
+  getModelSplitDataList,
+  getExportDataList
 } from '@/api/model';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import dynamic from 'next/dynamic';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 const InputModel = dynamic(() => import('./InputDataModal'));
 const SelectFileModel = dynamic(() => import('./SelectFileModal'));
@@ -99,10 +100,29 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     [getData, refetch]
   );
 
+  // 获取所有的数据，并导出 json
+  const { mutate: onclickExport, isLoading: isLoadingExport } = useMutation({
+    mutationFn: () => getExportDataList(model._id),
+    onSuccess(res) {
+      // 导出为文件
+      const blob = new Blob([JSON.stringify(res)], { type: 'application/json;charset=utf-8' });
+
+      // 创建下载链接
+      const downloadLink = document.createElement('a');
+      downloadLink.href = window.URL.createObjectURL(blob);
+      downloadLink.download = `data.json`;
+
+      // 添加链接到页面并触发下载
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  });
+
   return (
     <>
       <Flex>
-        <Box fontWeight={'bold'} fontSize={'lg'} flex={1}>
+        <Box fontWeight={'bold'} fontSize={'lg'} flex={1} mr={2}>
           模型数据: {total}组{' '}
           <Box as={'span'} fontSize={'sm'}>
             （测试版本）
@@ -113,10 +133,22 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           aria-label={'refresh'}
           variant={'outline'}
           mr={4}
+          size={'sm'}
           onClick={() => refetchData(pageNum)}
         />
+        {/* <Button
+          variant={'outline'}
+          mr={2}
+          size={'sm'}
+          isLoading={isLoadingExport}
+          onClick={() => onclickExport()}
+        >
+          导出
+        </Button> */}
         <Menu>
-          <MenuButton as={Button}>导入</MenuButton>
+          <MenuButton as={Button} size={'sm'}>
+            导入
+          </MenuButton>
           <MenuList>
             <MenuItem onClick={onOpenInputModal}>手动输入</MenuItem>
             <MenuItem onClick={onOpenSelectFileModal}>文件导入</MenuItem>
