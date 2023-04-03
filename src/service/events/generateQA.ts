@@ -155,10 +155,7 @@ function splitText(text: string) {
       // 如果Q和A都存在，就将其添加到结果中
       result.push({
         q,
-        a: a // 过滤空行
-          .split('\n')
-          .filter((item) => item)
-          .join('\n')
+        a: a.trim().replace(/\n\s*/g, '\n')
       });
     }
   }

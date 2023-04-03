@@ -194,11 +194,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
   const sendPrompt = useCallback(async () => {
     const storeInput = inputVal;
     // 去除空行
-    const val = inputVal
-      .trim()
-      .split('\n')
-      .filter((val) => val)
-      .join('\n');
+    const val = inputVal.trim().replace(/\n\s*/g, '\n');
 
     if (!chatData?.modelId || !val || isChatting) {
       toast({
@@ -458,8 +454,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         </Box>
         {/* 发送区 */}
         <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
-          <Flex
-            alignItems={'center'}
+          <Box
             py={5}
             position={'relative'}
             boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
@@ -471,23 +466,23 @@ const Chat = ({ chatId }: { chatId: string }) => {
             {/* 输入框 */}
             <Textarea
               ref={TextareaDom}
-              flex={1}
-              w={0}
               py={0}
-              pr={0}
+              pr={['45px', '55px']}
               border={'none'}
               _focusVisible={{
                 border: 'none'
               }}
               placeholder="提问"
               resize={'none'}
-              value={inputVal}
+              defaultValue={inputVal}
               rows={1}
               height={'22px'}
               lineHeight={'22px'}
               maxHeight={'150px'}
               maxLength={-1}
               overflowY={'auto'}
+              whiteSpace={'pre-wrap'}
+              wordBreak={'break-all'}
               color={useColorModeValue('blackAlpha.700', 'white')}
               onChange={(e) => {
                 const textarea = e.target;
@@ -507,7 +502,16 @@ const Chat = ({ chatId }: { chatId: string }) => {
               }}
             />
             {/* 发送和等待按键 */}
-            <Flex px={4} h={'30px'} alignItems={'flex-end'} onClick={sendPrompt}>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              h={'30px'}
+              w={'30px'}
+              position={'absolute'}
+              right={['12px', '20px']}
+              bottom={3}
+              onClick={sendPrompt}
+            >
               {isChatting ? (
                 <Image
                   style={{ transform: 'translateY(4px)' }}
@@ -527,7 +531,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
                 </Box>
               )}
             </Flex>
-          </Flex>
+          </Box>
         </Box>
       </Flex>
     </Flex>
