@@ -4,7 +4,8 @@ import type { RedisModelDataItemType } from '@/types/redis';
 export enum ChatModelNameEnum {
   GPT35 = 'gpt-3.5-turbo',
   VECTOR_GPT = 'VECTOR_GPT',
-  GPT3 = 'text-davinci-003'
+  GPT3 = 'text-davinci-003',
+  VECTOR = 'text-embedding-ada-002'
 }
 
 export const ChatModelNameMap = {

@@ -4,6 +4,7 @@ import { connectRedis } from '../redis';
 import { VecModelDataIdx } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
 import { ModelDataStatusEnum } from '@/constants/redis';
+import { openaiCreateEmbedding, getOpenApiKey } from '../utils/openai';
 
 export async function generateVector(next = false): Promise<any> {
   if (global.generatingVector && !next) return;
@@ -17,7 +18,7 @@ export async function generateVector(next = false): Promise<any> {
       VecModelDataIdx,
       `@status:{${ModelDataStatusEnum.waiting}}`,
       {
-        RETURN: ['q'],
+        RETURN: ['q', 'userId'],
         LIMIT: {
           from: 0,
           size: 1
@@ -31,30 +32,22 @@ export async function generateVector(next = false): Promise<any> {
       return;
     }
 
-    const dataItem: { id: string; q: string } = {
+    const dataItem: { id: string; q: string; userId: string } = {
       id: searchRes.documents[0].id,
-      q: String(searchRes.documents[0]?.value?.q || '')
+      q: String(searchRes.documents[0]?.value?.q || ''),
+      userId: String(searchRes.documents[0]?.value?.userId || '')
     };
 
     // 获取 openapi Key
-    const openAiKey = process.env.OPENAIKEY as string;
-
-    // 获取 openai 请求实例
-    const chatAPI = getOpenAIApi(openAiKey);
+    const { userApiKey, systemKey } = await getOpenApiKey(dataItem.userId);
 
     // 生成词向量
-    const vector = await chatAPI
-      .createEmbedding(
-        {
-          model: 'text-embedding-ada-002',
-          input: dataItem.q
-        },
-        {
-          timeout: 120000,
-          httpsAgent
-        }
-      )
-      .then((res) => res?.data?.data?.[0]?.embedding || []);
+    const { vector } = await openaiCreateEmbedding({
+      text: dataItem.q,
+      userId: dataItem.userId,
+      isPay: !userApiKey,
+      apiKey: userApiKey || systemKey
+    });
 
     // 更新 redis 向量和状态数据
     await redis.sendCommand([

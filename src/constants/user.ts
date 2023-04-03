@@ -3,6 +3,7 @@ export enum BillTypeEnum {
   splitData = 'splitData',
   QA = 'QA',
   abstract = 'abstract',
+  vector = 'vector',
   return = 'return'
 }
 export enum PageTypeEnum {
@@ -16,5 +17,6 @@ export const BillTypeMap: Record<`${BillTypeEnum}`, string> = {
   [BillTypeEnum.splitData]: 'QA拆分',
   [BillTypeEnum.QA]: 'QA拆分',
   [BillTypeEnum.abstract]: '摘要总结',
+  [BillTypeEnum.vector]: '索引生成',
   [BillTypeEnum.return]: '退款'
 };

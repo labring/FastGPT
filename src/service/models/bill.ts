@@ -16,7 +16,7 @@ const BillSchema = new Schema({
   },
   modelName: {
     type: String,
-    enum: modelList.map((item) => item.model),
+    enum: [...modelList.map((item) => item.model), 'text-embedding-ada-002'],
     required: true
   },
   chatId: {

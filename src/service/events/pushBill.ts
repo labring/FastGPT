@@ -2,6 +2,7 @@ import { connectToDatabase, Bill, User } from '../mongo';
 import { modelList, ChatModelNameEnum } from '@/constants/model';
 import { encode } from 'gpt-token-utils';
 import { formatPrice } from '@/utils/user';
+import { BillTypeEnum } from '@/constants/user';
 import type { DataType } from '@/types/data';
 
 export const pushChatBill = async ({
@@ -23,8 +24,7 @@ export const pushChatBill = async ({
     // 计算 token 数量
     const tokens = encode(text);
 
-    console.log('text len: ', text.length);
-    console.log('token len:', tokens.length);
+    console.log(`chat generate success. text len: ${text.length}. token len: ${tokens.length}`);
 
     if (isPay) {
       await connectToDatabase();
@@ -34,7 +34,7 @@ export const pushChatBill = async ({
       // 计算价格
       const unitPrice = modelItem?.price || 5;
       const price = unitPrice * tokens.length;
-      console.log(`chat bill, unit price: ${unitPrice}, price: ${formatPrice(price)}元`);
+      console.log(`unit price: ${unitPrice}, price: ${formatPrice(price)}元`);
 
       try {
         // 插入 Bill 记录
@@ -82,8 +82,9 @@ export const pushSplitDataBill = async ({
     // 计算 token 数量
     const tokens = encode(text);
 
-    console.log('text len: ', text.length);
-    console.log('token len:', tokens.length);
+    console.log(
+      `splitData generate success. text len: ${text.length}. token len: ${tokens.length}`
+    );
 
     if (isPay) {
       try {
@@ -93,7 +94,7 @@ export const pushSplitDataBill = async ({
         // 计算价格
         const price = unitPrice * tokens.length;
 
-        console.log(`splitData bill, price: ${formatPrice(price)}元`);
+        console.log(`price: ${formatPrice(price)}元`);
 
         // 插入 Bill 记录
         const res = await Bill.create({
@@ -123,13 +124,11 @@ export const pushSplitDataBill = async ({
 export const pushGenerateVectorBill = async ({
   isPay,
   userId,
-  text,
-  type
+  text
 }: {
   isPay: boolean;
   userId: string;
   text: string;
-  type: DataType;
 }) => {
   await connectToDatabase();
 
@@ -139,24 +138,21 @@ export const pushGenerateVectorBill = async ({
     // 计算 token 数量
     const tokens = encode(text);
 
-    console.log('text len: ', text.length);
-    console.log('token len:', tokens.length);
+    console.log(`vector generate success. text len: ${text.length}. token len: ${tokens.length}`);
 
     if (isPay) {
       try {
-        // 获取模型单价格, 都是用 gpt35 拆分
-        const modelItem = modelList.find((item) => item.model === ChatModelNameEnum.GPT35);
-        const unitPrice = modelItem?.price || 5;
+        const unitPrice = 1;
         // 计算价格
         const price = unitPrice * tokens.length;
 
-        console.log(`splitData bill, price: ${formatPrice(price)}元`);
+        console.log(`price: ${formatPrice(price)}元`);
 
         // 插入 Bill 记录
         const res = await Bill.create({
           userId,
-          type,
-          modelName: ChatModelNameEnum.GPT35,
+          type: BillTypeEnum.vector,
+          modelName: ChatModelNameEnum.VECTOR,
           textLen: text.length,
           tokenLen: tokens.length,
           price
