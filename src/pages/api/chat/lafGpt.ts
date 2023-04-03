@@ -53,17 +53,77 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!modelConstantsData) {
       throw new Error('模型加载异常');
     }
+    // 获取 chatAPI
+    const chatAPI = getOpenAIApi(userApiKey || systemKey);
 
-    // 读取对话内容
-    const prompts = [...chat.content, prompt];
+    // 请求一次 chatgpt 拆解需求
+    const promptResponse = await chatAPI.createChatCompletion(
+      {
+        model: model.service.chatModel,
+        temperature: 0,
+        // max_tokens: modelConstantsData.maxToken,
+        messages: [
+          {
+            role: 'system',
+            content: `服务端逻辑生成器。根据用户输入的需求，拆解成代码实现的步骤，并按下面格式返回：
+          1. 
+          2. 
+          3. 
+          ....
+          
+          下面是一些例子：
+          实现一个手机号注册账号的方法
+          发送手机验证码函数： 
+          1. 从 query 中获取 phone 
+          2. 校验手机号格式是否正确，不正确返回{error: "手机号格式错误"} 
+          3. 给 phone 发送一个短信验证码，验证码长度为6位字符串，内容为：你正在注册laf, 验证码为：code 
+          4. 数据库添加数据，表为"codes"，内容为 {phone, code} 
+          注册函数 
+          1. 从 body 中获取 phone 和 code 
+          2. 校验手机号格式是否正确，不正确返回{error: "手机号格式错误"} 
+          2. 获取数据库数据，表为"codes"，查找是否有符合 phone, code 等于body参数的记录，没有的话返回 {error:"验证码不正确"} 
+          4. 添加数据库数据，表为"users" ，内容为{phone, code, createTime}
+          5. 删除数据库数据，删除 code 记录
+          ---------------
+          更新播客记录。传入blogId，blogText，tags，还需要记录更新的时间
+          1. 从 body 中获取 blogId，blogText 和 tags
+          2. 校验 blogId 是否为空，为空则返回 {error: "博客ID不能为空"}
+          3. 校验 blogText 是否为空，为空则返回 {error: "博客内容不能为空"}
+          4. 校验 tags 是否为数组，不是则返回 {error: "标签必须为数组"}
+          5. 获取当前时间，记录为 updateTime
+          6. 更新数据库数据，表为"blogs"，更新符合 blogId 的记录的内容为{blogText, tags, updateTime}
+          7. 返回结果 {message: "更新博客记录成功"}`
+          },
+          {
+            role: 'user',
+            content: prompt.value
+          }
+        ]
+      },
+      {
+        timeout: 40000,
+        httpsAgent
+      }
+    );
+
+    const promptResolve = promptResponse.data.choices?.[0]?.message?.content || '';
+    if (!promptResolve) {
+      throw new Error('gpt 异常');
+    }
+
+    prompt.value += `\n${promptResolve}`;
+    console.log('prompt resolve success, time:', `${(Date.now() - startTime) / 1000}s`);
 
     // 获取提示词的向量
-    const { vector: promptVector, chatAPI } = await openaiCreateEmbedding({
+    const { vector: promptVector } = await openaiCreateEmbedding({
       isPay: !userApiKey,
       apiKey: userApiKey || systemKey,
       userId,
       text: prompt.value
     });
+
+    // 读取对话内容
+    const prompts = [...chat.content, prompt];
 
     // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
     const redisData: any[] = await redis.sendCommand([
@@ -128,7 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         content: item.value
       })
     );
-    // console.log(formatPrompts);
+    console.log(formatPrompts);
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 
@@ -205,7 +265,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatId,
       text: promptsContent + responseContent
     });
-    // jsonRes(res);
   } catch (err: any) {
     if (step === 1) {
       // 直接结束流
