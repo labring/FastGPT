@@ -13,6 +13,7 @@ import { pushChatBill } from '@/service/events/pushBill';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
+import { openaiCreateEmbedding } from '@/service/utils/openai';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -57,21 +58,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const prompts = [...chat.content, prompt];
 
     // 获取 chatAPI
-    const chatAPI = getOpenAIApi(userApiKey || systemKey);
-
-    // 把输入的内容转成向量
-    const promptVector = await chatAPI
-      .createEmbedding(
-        {
-          model: 'text-embedding-ada-002',
-          input: prompt.value
-        },
-        {
-          timeout: 120000,
-          httpsAgent
-        }
-      )
-      .then((res) => res?.data?.data?.[0]?.embedding || []);
+    const { vector: promptVector, chatAPI } = await openaiCreateEmbedding({
+      isPay: !userApiKey,
+      apiKey: userApiKey || systemKey,
+      userId,
+      text: prompt.value
+    });
 
     // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
     const redisData: any[] = await redis.sendCommand([
@@ -79,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `idx:${VecModelDataPrefix}:hash`,
       `@modelId:{${String(
         chat.modelId._id
-      )}} @vector:[VECTOR_RANGE 0.15 $blob]=>{$YIELD_DISTANCE_AS: score}`,
+      )}} @vector:[VECTOR_RANGE 0.2 $blob]=>{$YIELD_DISTANCE_AS: score}`,
       // `@modelId:{${String(chat.modelId._id)}}=>[KNN 10 @vector $blob AS score]`,
       'RETURN',
       '1',

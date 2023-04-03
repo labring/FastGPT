@@ -84,36 +84,6 @@ export async function generateAbstract(next = false): Promise<any> {
     const rawContent: string = abstractResponse?.data.choices[0].message?.content || '';
     // 从 content 中提取摘要内容
     const splitContents = splitText(rawContent);
-    // console.log(rawContent);
-    // 生成词向量
-    // const vectorResponse = await Promise.allSettled(
-    //   splitContents.map((item) =>
-    //     chatAPI.createEmbedding(
-    //       {
-    //         model: 'text-embedding-ada-002',
-    //         input: item.abstract
-    //       },
-    //       {
-    //         timeout: 120000,
-    //         httpsAgent
-    //       }
-    //     )
-    //   )
-    // );
-    // 筛选成功的向量请求
-    // const vectorSuccessResponse = vectorResponse
-    //   .map((item: any, i) => {
-    //     if (item.status !== 'fulfilled') {
-    //       // 没有词向量的【摘要】不要
-    //       console.log('获取词向量错误: ', item);
-    //       return '';
-    //     }
-    //     return {
-    //       abstract: splitContents[i].abstract,
-    //       abstractVector: item?.value?.data?.data?.[0]?.embedding
-    //     };
-    //   })
-    //   .filter((item) => item);
 
     // 插入数据库，并修改状态
     await DataItem.findByIdAndUpdate(dataItem._id, {

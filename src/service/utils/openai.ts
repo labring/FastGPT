@@ -3,6 +3,8 @@ import { getOpenAIApi } from '@/service/utils/chat';
 import { httpsAgent } from './tools';
 import { User } from '../models/user';
 import { formatPrice } from '@/utils/user';
+import { ChatModelNameEnum } from '@/constants/model';
+import { pushGenerateVectorBill } from '../events/pushBill';
 
 /* 判断 apikey 是否还有余额 */
 export const checkKeyGrant = async (apiKey: string) => {
@@ -85,5 +87,46 @@ export const getOpenApiKey = async (userId: string, checkGrant = false) => {
     user,
     userApiKey: '',
     systemKey: process.env.OPENAIKEY as string
+  };
+};
+
+/* 获取向量 */
+export const openaiCreateEmbedding = async ({
+  isPay,
+  userId,
+  apiKey,
+  text
+}: {
+  isPay: boolean;
+  userId: string;
+  apiKey: string;
+  text: string;
+}) => {
+  // 获取 chatAPI
+  const chatAPI = getOpenAIApi(apiKey);
+
+  // 把输入的内容转成向量
+  const vector = await chatAPI
+    .createEmbedding(
+      {
+        model: ChatModelNameEnum.VECTOR,
+        input: text
+      },
+      {
+        timeout: 60000,
+        httpsAgent
+      }
+    )
+    .then((res) => res?.data?.data?.[0]?.embedding || []);
+
+  pushGenerateVectorBill({
+    isPay,
+    userId,
+    text
+  });
+
+  return {
+    vector,
+    chatAPI
   };
 };
