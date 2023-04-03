@@ -1,7 +1,8 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { Chat } from '../mongo';
 import type { ChatPopulate } from '@/types/mongoSchema';
-import { authToken, getOpenApiKey } from './tools';
+import { authToken } from './tools';
+import { getOpenApiKey } from './openai';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({

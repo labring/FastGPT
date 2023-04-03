@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
-import { httpsAgent } from '@/service/utils/tools';
+import { httpsAgent, openaiChatFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
@@ -10,7 +10,6 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
-import { openaiChatFilter } from '@/service/utils/tools';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
