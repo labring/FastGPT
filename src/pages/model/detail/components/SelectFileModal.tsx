@@ -9,7 +9,8 @@ import {
   ModalHeader,
   ModalCloseButton,
   ModalBody,
-  Input
+  Input,
+  Textarea
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -66,8 +67,8 @@ const SelectFileModal = ({
             })
           )
         )
-          .join('\n')
-          .replace(/\n+/g, '\n');
+          .join(' ')
+          .replace(/(\\n|\n)+/g, '\n');
         setFileText(fileTexts);
         console.log(encode(fileTexts));
       } catch (error: any) {
@@ -142,18 +143,18 @@ const SelectFileModal = ({
               size={'sm'}
             />
           </Flex>
-          <Box
+          <Textarea
             flex={'1 0 0'}
             h={0}
             w={'100%'}
-            overflowY={'auto'}
-            p={2}
-            backgroundColor={'blackAlpha.50'}
-            whiteSpace={'pre-wrap'}
+            placeholder="文件内容"
+            maxLength={-1}
+            resize={'none'}
             fontSize={'xs'}
-          >
-            {fileText}
-          </Box>
+            whiteSpace={'pre-wrap'}
+            value={fileText}
+            onChange={(e) => setFileText(e.target.value)}
+          />
         </ModalBody>
 
         <Flex px={6} pt={2} pb={4}>

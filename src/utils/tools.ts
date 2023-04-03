@@ -76,7 +76,7 @@ export const readPdfContent = (file: File) =>
       const page = await doc.getPage(pageNo);
       const tokenizedText = await page.getTextContent();
       const pageText = tokenizedText.items.map((token: any) => token.str).join('');
-      return pageText.replaceAll(/\s+/g, '\n');
+      return pageText;
     };
 
     let reader = new FileReader();

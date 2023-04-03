@@ -85,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           4. 添加数据库数据，表为"users" ，内容为{phone, code, createTime}
           5. 删除数据库数据，删除 code 记录
           ---------------
-          更新播客记录。传入blogId，blogText，tags，还需要记录更新的时间
+          更新博客记录。传入blogId，blogText，tags，还需要记录更新的时间
           1. 从 body 中获取 blogId，blogText 和 tags
           2. 校验 blogId 是否为空，为空则返回 {error: "博客ID不能为空"}
           3. 校验 blogText 是否为空，为空则返回 {error: "博客内容不能为空"}
