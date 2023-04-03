@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { Chat, Model, Training, connectToDatabase } from '@/service/mongo';
-import { authToken, getUserApiOpenai } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/tools';
+import { getUserApiOpenai } from '@/service/utils/openai';
 import { TrainingStatusEnum } from '@/constants/model';
 import { TrainingItemType } from '@/types/training';
 import { httpsAgent } from '@/service/utils/tools';

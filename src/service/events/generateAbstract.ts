@@ -1,6 +1,7 @@
 import { DataItem } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/chat';
-import { httpsAgent, getOpenApiKey } from '@/service/utils/tools';
+import { httpsAgent } from '@/service/utils/tools';
+import { getOpenApiKey } from '../utils/openai';
 import type { ChatCompletionRequestMessage } from 'openai';
 import { DataItemSchema } from '@/types/mongoSchema';
 import { ChatModelNameEnum } from '@/constants/model';
