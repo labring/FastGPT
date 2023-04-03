@@ -192,11 +192,18 @@ const Chat = ({ chatId }: { chatId: string }) => {
    * 发送一个内容
    */
   const sendPrompt = useCallback(async () => {
+    if (isChatting) {
+      toast({
+        title: '正在聊天中...请等待结束',
+        status: 'warning'
+      });
+      return;
+    }
     const storeInput = inputVal;
     // 去除空行
     const val = inputVal.trim().replace(/\n\s*/g, '\n');
 
-    if (!chatData?.modelId || !val || isChatting) {
+    if (!chatData?.modelId || !val) {
       toast({
         title: '内容为空',
         status: 'warning'
@@ -455,7 +462,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         {/* 发送区 */}
         <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
           <Box
-            py={5}
+            py={'18px'}
             position={'relative'}
             boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
             border={media('1px solid', '0')}
@@ -474,7 +481,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               }}
               placeholder="提问"
               resize={'none'}
-              defaultValue={inputVal}
+              value={inputVal}
               rows={1}
               height={'22px'}
               lineHeight={'22px'}
@@ -509,26 +516,24 @@ const Chat = ({ chatId }: { chatId: string }) => {
               w={'30px'}
               position={'absolute'}
               right={['12px', '20px']}
-              bottom={3}
+              bottom={'15px'}
               onClick={sendPrompt}
             >
               {isChatting ? (
                 <Image
                   style={{ transform: 'translateY(4px)' }}
                   src={'/icon/chatting.svg'}
-                  width={30}
-                  height={30}
+                  fill
                   alt={''}
                 />
               ) : (
-                <Box cursor={'pointer'}>
-                  <Icon
-                    name={'chatSend'}
-                    width={'20px'}
-                    height={'20px'}
-                    fill={useColorModeValue('#718096', 'white')}
-                  ></Icon>
-                </Box>
+                <Icon
+                  name={'chatSend'}
+                  width={['18px', '20px']}
+                  height={['18px', '20px']}
+                  cursor={'pointer'}
+                  fill={useColorModeValue('#718096', 'white')}
+                ></Icon>
               )}
             </Flex>
           </Box>

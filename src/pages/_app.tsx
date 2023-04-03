@@ -1,4 +1,5 @@
-import type { AppProps, NextWebVitalsMetric } from 'next/app';
+import { useEffect } from 'react';
+import type { AppProps } from 'next/app';
 import Script from 'next/script';
 import Head from 'next/head';
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
@@ -9,6 +10,7 @@ import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import 'nprogress/nprogress.css';
 import '../styles/reset.scss';
+import { useToast } from '@/hooks/useToast';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());
@@ -27,6 +29,17 @@ const queryClient = new QueryClient({
 });
 
 export default function App({ Component, pageProps }: AppProps) {
+  const { toast } = useToast();
+  // 校验是否支持 click 事件
+  useEffect(() => {
+    if (typeof document.createElement('div').click !== 'function') {
+      toast({
+        title: '你的浏览器版本过低',
+        status: 'warning'
+      });
+    }
+  }, [toast]);
+
   return (
     <>
       <Head>
