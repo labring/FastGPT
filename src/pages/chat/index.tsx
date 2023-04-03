@@ -120,6 +120,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
       const urlMap: Record<string, string> = {
         [ChatModelNameEnum.GPT35]: '/api/chat/chatGpt',
         [ChatModelNameEnum.VECTOR_GPT]: '/api/chat/vectorGpt',
+        // [ChatModelNameEnum.VECTOR_GPT]: '/api/chat/lafGpt',
         [ChatModelNameEnum.GPT3]: '/api/chat/gpt3'
       };
 
@@ -198,7 +199,12 @@ const Chat = ({ chatId }: { chatId: string }) => {
       .split('\n')
       .filter((val) => val)
       .join('\n');
-    if (!chatData?.modelId || !val || !ChatBox.current || isChatting) {
+
+    if (!chatData?.modelId || !val || isChatting) {
+      toast({
+        title: '内容为空',
+        status: 'warning'
+      });
       return;
     }
 
@@ -453,7 +459,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         {/* 发送区 */}
         <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
           <Flex
-            alignItems={'flex-end'}
+            alignItems={'center'}
             py={5}
             position={'relative'}
             boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
@@ -501,7 +507,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               }}
             />
             {/* 发送和等待按键 */}
-            <Box px={4} onClick={sendPrompt}>
+            <Flex px={4} h={'30px'} alignItems={'flex-end'} onClick={sendPrompt}>
               {isChatting ? (
                 <Image
                   style={{ transform: 'translateY(4px)' }}
@@ -520,7 +526,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
                   ></Icon>
                 </Box>
               )}
-            </Box>
+            </Flex>
           </Flex>
         </Box>
       </Flex>
