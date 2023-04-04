@@ -2,13 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authToken } from '@/service/utils/tools';
 import { connectRedis } from '@/service/redis';
+import { ModelDataStatusEnum } from '@/constants/redis';
+import { generateVector } from '@/service/events/generateVector';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    let { dataId, text } = req.body as {
-      dataId: string;
-      text: string;
-    };
+    const { dataId, text, q } = req.body as { dataId: string; text: string; q?: string };
     const { authorization } = req.headers;
 
     if (!authorization) {
@@ -31,7 +30,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 更新
-    await redis.hSet(dataId, 'text', text);
+    await redis.sendCommand([
+      'HMSET',
+      dataId,
+      ...(q ? ['q', q, 'status', ModelDataStatusEnum.waiting] : []),
+      'text',
+      text
+    ]);
+
+    if (q) {
+      generateVector();
+    }
 
     jsonRes(res);
   } catch (err) {
