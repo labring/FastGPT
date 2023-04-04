@@ -11,9 +11,17 @@ import { VecModelDataPrefix } from '@/constants/redis';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-export async function generateQA(next = false): Promise<any> {
-  if (global.generatingQA && !next) return;
-  global.generatingQA = true;
+export async function generateQA(): Promise<any> {
+  // 最多 5 个进程
+  if (global.generatingQA >= 5) {
+    console.log('QA 最多5个进程');
+    return;
+  }
+  global.generatingQA += 1;
+
+  setTimeout(() => {
+    generateQA();
+  }, 3000);
 
   try {
     const redis = await connectRedis();
@@ -24,7 +32,7 @@ export async function generateQA(next = false): Promise<any> {
 
     if (!dataItem) {
       console.log('没有需要生成 QA 的数据');
-      global.generatingQA = false;
+      global.generatingQA = 0;
       return;
     }
 
@@ -128,16 +136,17 @@ export async function generateQA(next = false): Promise<any> {
       text: systemPrompt.content + text + response.rawContent
     });
 
-    generateQA(true);
+    generateQA();
     generateVector(true);
   } catch (error: any) {
     console.log(error);
     console.log('生成QA错误:', error?.response);
 
     setTimeout(() => {
-      generateQA(true);
+      generateQA();
     }, 5000);
   }
+  global.generatingQA--;
 }
 
 /**
