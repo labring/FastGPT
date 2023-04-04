@@ -34,7 +34,7 @@ export const sendCode = (email: string, code: string, type: `${EmailTypeEnum}`) 
     };
     mailTransport.sendMail(options, function (err, msg) {
       if (err) {
-        console.log('error->', err);
+        console.log('send email error->', err);
         reject('邮箱异常');
       } else {
         resolve('');
@@ -53,7 +53,7 @@ export const sendTrainSucceed = (email: string, modelName: string) => {
     };
     mailTransport.sendMail(options, function (err, msg) {
       if (err) {
-        console.log('error->', err);
+        console.log('send email  error->', err);
         reject('邮箱异常');
       } else {
         resolve('');
