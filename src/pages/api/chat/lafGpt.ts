@@ -65,27 +65,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: [
           {
             role: 'system',
-            content: `服务端逻辑生成器。根据用户输入的需求，拆解成代码实现的步骤，并按下面格式返回：
-          1. 
-          2. 
-          3. 
-          ....
+            content: `服务端逻辑生成器。根据用户输入的需求，拆解成代码实现的步骤，并按格式返回： 1.\n2.\n3.\n ......
           
           下面是一些例子：
-          实现一个手机号注册账号的方法
-          发送手机验证码函数： 
+          实现一个手机号注册账号的方法，包含两个函数
+          * 发送手机验证码函数： 
           1. 从 query 中获取 phone 
           2. 校验手机号格式是否正确，不正确返回{error: "手机号格式错误"} 
           3. 给 phone 发送一个短信验证码，验证码长度为6位字符串，内容为：你正在注册laf, 验证码为：code 
           4. 数据库添加数据，表为"codes"，内容为 {phone, code} 
-          注册函数 
+          * 注册函数 
           1. 从 body 中获取 phone 和 code 
           2. 校验手机号格式是否正确，不正确返回{error: "手机号格式错误"} 
           2. 获取数据库数据，表为"codes"，查找是否有符合 phone, code 等于body参数的记录，没有的话返回 {error:"验证码不正确"} 
           4. 添加数据库数据，表为"users" ，内容为{phone, code, createTime}
           5. 删除数据库数据，删除 code 记录
           ---------------
-          更新播客记录。传入blogId，blogText，tags，还需要记录更新的时间
+          更新博客记录。传入blogId，blogText，tags，还需要记录更新的时间
           1. 从 body 中获取 blogId，blogText 和 tags
           2. 校验 blogId 是否为空，为空则返回 {error: "博客ID不能为空"}
           3. 校验 blogText 是否为空，为空则返回 {error: "博客内容不能为空"}
