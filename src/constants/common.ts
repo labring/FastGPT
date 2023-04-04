@@ -11,8 +11,8 @@ export const introPage = `
 [Git 仓库](https://github.com/c121914yu/FastGPT)
 
 ### 交流群/问题反馈
-wx: YNyiqi
-![](/imgs/wxcode300.jpg)
+wx号: YNyiqi
+![](/imgs/wxerweima300.jpg)
 
 
 ### 快速开始

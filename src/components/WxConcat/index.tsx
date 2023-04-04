@@ -23,13 +23,13 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
         <ModalBody textAlign={'center'}>
           <Image
             style={{ margin: 'auto' }}
-            src={'/imgs/wxcode300.jpg'}
+            src={'/imgs/wxerweima300.jpg'}
             width={200}
             height={200}
             alt=""
           />
           <Box mt={2}>
-            微信号:{' '}
+            微信号:
             <Box as={'span'} userSelect={'all'}>
               YNyiqi
             </Box>
