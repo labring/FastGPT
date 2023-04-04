@@ -23,7 +23,6 @@ export type ModelConstantsData = {
   maxToken: number;
   contextMaxToken: number;
   maxTemperature: number;
-  trainedMaxToken: number; // 训练后最大多少tokens
   price: number; // 多少钱 / 1token，单位: 0.00001元
 };
 
@@ -34,8 +33,7 @@ export const modelList: ModelConstantsData[] = [
     model: ChatModelNameEnum.GPT35,
     trainName: '',
     maxToken: 4000,
-    contextMaxToken: 7000,
-    trainedMaxToken: 2000,
+    contextMaxToken: 7500,
     maxTemperature: 2,
     price: 3
   },
@@ -46,7 +44,6 @@ export const modelList: ModelConstantsData[] = [
     trainName: 'vector',
     maxToken: 4000,
     contextMaxToken: 7000,
-    trainedMaxToken: 2000,
     maxTemperature: 1,
     price: 3
   }
@@ -57,7 +54,6 @@ export const modelList: ModelConstantsData[] = [
   //   trainName: 'davinci',
   //   maxToken: 4000,
   //   contextMaxToken: 7500,
-  //   trainedMaxToken: 2000,
   //   maxTemperature: 2,
   //   price: 30
   // }

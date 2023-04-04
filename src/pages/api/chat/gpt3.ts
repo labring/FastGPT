@@ -87,10 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         temperature: temperature,
         prompt: promptText,
         stream: true,
-        max_tokens:
-          model.trainingTimes > 0
-            ? modelConstantsData.trainedMaxToken
-            : modelConstantsData.maxToken,
+        max_tokens: modelConstantsData.maxToken,
         presence_penalty: -0.5, // 越大，越容易出现新内容
         frequency_penalty: 0.5, // 越大，重复内容越少
         stop: [`###`, '。！？.!.']
