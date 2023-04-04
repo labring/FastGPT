@@ -30,7 +30,7 @@ export async function connectToDatabase(): Promise<void> {
   global.generatingQA = 0;
   generateQA();
   // generateAbstract();
-  generateVector();
+  generateVector(true);
 }
 
 export * from './models/authCode';
