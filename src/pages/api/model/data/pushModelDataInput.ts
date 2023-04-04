@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       })
     );
 
-    generateVector(true);
+    generateVector();
 
     jsonRes(res, {
       data: insertRes.filter((item) => item.status === 'rejected').length

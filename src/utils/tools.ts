@@ -75,7 +75,7 @@ export const readPdfContent = (file: File) =>
     const readPDFPage = async (doc: any, pageNo: number) => {
       const page = await doc.getPage(pageNo);
       const tokenizedText = await page.getTextContent();
-      const pageText = tokenizedText.items.map((token: any) => token.str).join('');
+      const pageText = tokenizedText.items.map((token: any) => token.str).join(' ');
       return pageText;
     };
 

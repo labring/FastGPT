@@ -1,5 +1,3 @@
-import { getOpenAIApi } from '@/service/utils/chat';
-import { httpsAgent } from '@/service/utils/tools';
 import { connectRedis } from '../redis';
 import { VecModelDataIdx } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
@@ -88,6 +86,7 @@ export async function generateVector(next = false): Promise<any> {
       setTimeout(() => {
         generateVector(true);
       }, 60000);
+      return;
     }
 
     setTimeout(() => {

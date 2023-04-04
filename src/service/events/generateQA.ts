@@ -17,11 +17,7 @@ export async function generateQA(): Promise<any> {
     console.log('QA 最多5个进程');
     return;
   }
-  global.generatingQA += 1;
-
-  setTimeout(() => {
-    generateQA();
-  }, 3000);
+  global.generatingQA++;
 
   try {
     const redis = await connectRedis();
@@ -136,17 +132,19 @@ export async function generateQA(): Promise<any> {
       text: systemPrompt.content + text + response.rawContent
     });
 
+    global.generatingQA--;
+
     generateQA();
-    generateVector(true);
+    generateVector();
   } catch (error: any) {
     console.log(error);
     console.log('生成QA错误:', error?.response);
 
     setTimeout(() => {
+      global.generatingQA--;
       generateQA();
     }, 5000);
   }
-  global.generatingQA--;
 }
 
 /**
