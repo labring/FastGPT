@@ -7,7 +7,7 @@ import { openaiCreateEmbedding, getOpenApiKey } from '../utils/openai';
 export async function generateVector(next = false): Promise<any> {
   if (global.generatingVector && !next) return;
   global.generatingVector = true;
-
+  let dataId = null;
   try {
     const redis = await connectRedis();
 
@@ -35,6 +35,8 @@ export async function generateVector(next = false): Promise<any> {
       q: String(searchRes.documents[0]?.value?.q || ''),
       userId: String(searchRes.documents[0]?.value?.userId || '')
     };
+
+    dataId = dataItem.id;
 
     // 获取 openapi Key
     let userApiKey, systemKey;
@@ -75,11 +77,23 @@ export async function generateVector(next = false): Promise<any> {
 
     setTimeout(() => {
       generateVector(true);
-    }, 2000);
+    }, 4000);
   } catch (error: any) {
-    console.log('error: 生成向量错误', error?.response?.statusText);
-    !error?.response && console.log(error);
+    // log
+    if (error?.response) {
+      console.log('openai error: 生成向量错误');
+      console.log(error.response?.status, error.response?.statusText, error.response?.data);
+    } else {
+      console.log('生成向量错误:', error);
+    }
 
+    if (dataId && error?.response?.data?.error?.type === 'insufficient_quota') {
+      console.log('api 余额不足');
+      const redis = await connectRedis();
+      redis.del(dataId);
+      generateVector(true);
+      return;
+    }
     if (error?.response?.statusText === 'Too Many Requests') {
       console.log('生成向量次数限制，1分钟后尝试');
       // 限制次数，1分钟后再试
@@ -88,9 +102,8 @@ export async function generateVector(next = false): Promise<any> {
       }, 60000);
       return;
     }
-
     setTimeout(() => {
       generateVector(true);
-    }, 3000);
+    }, 4000);
   }
 }

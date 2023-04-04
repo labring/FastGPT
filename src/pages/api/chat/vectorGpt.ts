@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `idx:${VecModelDataPrefix}:hash`,
       `@modelId:{${String(
         chat.modelId._id
-      )}} @vector:[VECTOR_RANGE 0.25 $blob]=>{$YIELD_DISTANCE_AS: score}`,
+      )}} @vector:[VECTOR_RANGE 0.22 $blob]=>{$YIELD_DISTANCE_AS: score}`,
       // `@modelId:{${String(chat.modelId._id)}}=>[KNN 10 @vector $blob AS score]`,
       'RETURN',
       '1',
