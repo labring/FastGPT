@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
   Box,
-  IconButton,
   Flex,
   Button,
   Modal,
@@ -9,37 +8,40 @@ import {
   ModalContent,
   ModalHeader,
   ModalCloseButton,
-  Input,
   Textarea
 } from '@chakra-ui/react';
-import { useForm, useFieldArray } from 'react-hook-form';
-import { postModelDataInput } from '@/api/model';
+import { useForm } from 'react-hook-form';
+import { postModelDataInput, putModelDataById } from '@/api/model';
 import { useToast } from '@/hooks/useToast';
-import { DeleteIcon } from '@chakra-ui/icons';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-type FormData = { text: string; q: string };
+export type FormData = { dataId?: string; text: string; q: string };
 
 const InputDataModal = ({
   onClose,
   onSuccess,
-  modelId
+  modelId,
+  defaultValues = {
+    text: '',
+    q: ''
+  }
 }: {
   onClose: () => void;
   onSuccess: () => void;
   modelId: string;
+  defaultValues?: FormData;
 }) => {
   const [importing, setImporting] = useState(false);
   const { toast } = useToast();
 
-  const { register, handleSubmit, control } = useForm<FormData>({
-    defaultValues: {
-      text: '',
-      q: ''
-    }
+  const { register, handleSubmit } = useForm<FormData>({
+    defaultValues
   });
 
+  /**
+   * 确认导入新数据
+   */
   const sureImportData = useCallback(
     async (e: FormData) => {
       setImporting(true);
@@ -70,6 +72,26 @@ const InputDataModal = ({
       setImporting(false);
     },
     [modelId, onClose, onSuccess, toast]
+  );
+
+  const updateData = useCallback(
+    async (e: FormData) => {
+      if (!e.dataId) return;
+      if (e.text === defaultValues.text && e.q === defaultValues.q) return;
+
+      await putModelDataById({
+        dataId: e.dataId,
+        text: e.text,
+        q: e.q === defaultValues.q ? '' : e.q
+      });
+      toast({
+        title: '修改回答成功',
+        status: 'success'
+      });
+      onClose();
+      onSuccess();
+    },
+    [defaultValues.q, onClose, onSuccess, toast]
   );
 
   return (
@@ -125,7 +147,10 @@ const InputDataModal = ({
           <Button variant={'outline'} mr={3} onClick={onClose}>
             取消
           </Button>
-          <Button isLoading={importing} onClick={handleSubmit(sureImportData)}>
+          <Button
+            isLoading={importing}
+            onClick={handleSubmit(defaultValues.dataId ? updateData : sureImportData)}
+          >
             确认导入
           </Button>
         </Flex>

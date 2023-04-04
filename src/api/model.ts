@@ -57,7 +57,7 @@ export const postModelDataJsonData = (
   jsonData: { prompt: string; completion: string; vector?: number[] }[]
 ) => POST(`/model/data/pushModelDataJson`, { modelId, data: jsonData });
 
-export const putModelDataById = (data: { dataId: string; text: string }) =>
+export const putModelDataById = (data: { dataId: string; text: string; q?: string }) =>
   PUT('/model/data/putModelData', data);
 export const delOneModelData = (dataId: string) =>
   DELETE(`/model/data/delModelDataById?dataId=${dataId}`);

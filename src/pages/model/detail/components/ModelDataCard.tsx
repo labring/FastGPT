@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Box,
   TableContainer,
@@ -12,7 +12,6 @@ import {
   Flex,
   Button,
   useDisclosure,
-  Textarea,
   Menu,
   MenuButton,
   MenuList,
@@ -25,22 +24,21 @@ import { usePagination } from '@/hooks/usePagination';
 import {
   getModelDataList,
   delOneModelData,
-  putModelDataById,
   getModelSplitDataList,
   getExportDataList
 } from '@/api/model';
-import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
+import { DeleteIcon, RepeatIcon, EditIcon } from '@chakra-ui/icons';
 import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import dynamic from 'next/dynamic';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import type { FormData as InputDataType } from './InputDataModal';
 
 const InputModel = dynamic(() => import('./InputDataModal'));
 const SelectFileModel = dynamic(() => import('./SelectFileModal'));
 const SelectJsonModel = dynamic(() => import('./SelectJsonModal'));
 
 const ModelDataCard = ({ model }: { model: ModelSchema }) => {
-  const { toast } = useToast();
   const { Loading } = useLoading();
 
   const {
@@ -58,25 +56,8 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     }
   });
 
-  const updateAnswer = useCallback(
-    async (dataId: string, text: string) => {
-      await putModelDataById({
-        dataId,
-        text
-      });
-      toast({
-        title: '修改回答成功',
-        status: 'success'
-      });
-    },
-    [toast]
-  );
+  const [editInputData, setEditInputData] = useState<InputDataType>();
 
-  const {
-    isOpen: isOpenInputModal,
-    onOpen: onOpenInputModal,
-    onClose: onCloseInputModal
-  } = useDisclosure();
   const {
     isOpen: isOpenSelectFileModal,
     onOpen: onOpenSelectFileModal,
@@ -151,7 +132,16 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             导入
           </MenuButton>
           <MenuList>
-            <MenuItem onClick={onOpenInputModal}>手动输入</MenuItem>
+            <MenuItem
+              onClick={() =>
+                setEditInputData({
+                  text: '',
+                  q: ''
+                })
+              }
+            >
+              手动输入
+            </MenuItem>
             <MenuItem onClick={onOpenSelectFileModal}>文件导入</MenuItem>
             <MenuItem onClick={onOpenSelectJsonModal}>JSON导入</MenuItem>
           </MenuList>
@@ -170,34 +160,38 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                 <Th>Question</Th>
                 <Th>Text</Th>
                 <Th>Status</Th>
-                <Th></Th>
+                <Th>操作</Th>
               </Tr>
             </Thead>
             <Tbody>
               {modelDataList.map((item) => (
                 <Tr key={item.id}>
-                  <Td w={'350px'}>
-                    <Box fontSize={'xs'} w={'100%'} whiteSpace={'pre-wrap'} _notLast={{ mb: 1 }}>
+                  <Td>
+                    <Box fontSize={'xs'} w={'100%'} whiteSpace={'pre-wrap'}>
                       {item.q}
                     </Box>
                   </Td>
                   <Td minW={'200px'}>
-                    <Textarea
-                      w={'100%'}
-                      h={'100%'}
-                      defaultValue={item.text}
-                      fontSize={'xs'}
-                      resize={'both'}
-                      onBlur={(e) => {
-                        const oldVal = modelDataList.find((data) => item.id === data.id)?.text;
-                        if (oldVal !== e.target.value) {
-                          updateAnswer(item.id, e.target.value);
-                        }
-                      }}
-                    ></Textarea>
+                    <Box w={'100%'} fontSize={'xs'} whiteSpace={'pre-wrap'}>
+                      {item.text}
+                    </Box>
                   </Td>
-                  <Td w={'100px'}>{ModelDataStatusMap[item.status]}</Td>
+                  <Td>{ModelDataStatusMap[item.status]}</Td>
                   <Td>
+                    <IconButton
+                      mr={5}
+                      icon={<EditIcon />}
+                      variant={'outline'}
+                      aria-label={'delete'}
+                      size={'sm'}
+                      onClick={() =>
+                        setEditInputData({
+                          dataId: item.id,
+                          q: item.q,
+                          text: item.text
+                        })
+                      }
+                    />
                     <IconButton
                       icon={<DeleteIcon />}
                       variant={'outline'}
@@ -221,8 +215,13 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
       </Box>
 
       <Loading loading={isLoading} fixed={false} />
-      {isOpenInputModal && (
-        <InputModel modelId={model._id} onClose={onCloseInputModal} onSuccess={refetchData} />
+      {editInputData !== undefined && (
+        <InputModel
+          modelId={model._id}
+          defaultValues={editInputData}
+          onClose={() => setEditInputData(undefined)}
+          onSuccess={refetchData}
+        />
       )}
       {isOpenSelectFileModal && (
         <SelectFileModel
