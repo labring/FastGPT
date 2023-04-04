@@ -90,7 +90,7 @@ export const pushSplitDataBill = async ({
       try {
         // 获取模型单价格, 都是用 gpt35 拆分
         const modelItem = modelList.find((item) => item.model === ChatModelNameEnum.GPT35);
-        const unitPrice = modelItem?.price || 5;
+        const unitPrice = modelItem?.price || 3;
         // 计算价格
         const price = unitPrice * tokens.length;
 

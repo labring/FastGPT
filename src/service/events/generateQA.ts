@@ -38,7 +38,7 @@ export async function generateQA(next = false): Promise<any> {
     // 获取 openapi Key
     let userApiKey, systemKey;
     try {
-      const key = await getOpenApiKey(dataItem.userId, true);
+      const key = await getOpenApiKey(dataItem.userId);
       userApiKey = key.userApiKey;
       systemKey = key.systemKey;
     } catch (error: any) {
@@ -48,7 +48,7 @@ export async function generateQA(next = false): Promise<any> {
           textList: [],
           errorText: error.message
         });
-        throw new Error('账号余额不足');
+        throw new Error(error?.message);
       }
 
       throw new Error('获取 openai key 失败');

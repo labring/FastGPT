@@ -6,20 +6,6 @@ import { formatPrice } from '@/utils/user';
 import { ChatModelNameEnum } from '@/constants/model';
 import { pushGenerateVectorBill } from '../events/pushBill';
 
-/* 判断 apikey 是否还有余额 */
-export const checkKeyGrant = async (apiKey: string) => {
-  const grant = await axios.get('https://api.openai.com/dashboard/billing/credit_grants', {
-    headers: {
-      Authorization: `Bearer ${apiKey}`
-    },
-    httpsAgent
-  });
-  if (grant.data?.total_available <= 0.2) {
-    return false;
-  }
-  return true;
-};
-
 /* 获取用户 api 的 openai 信息 */
 export const getUserApiOpenai = async (userId: string) => {
   const user = await User.findById(userId);
@@ -30,15 +16,6 @@ export const getUserApiOpenai = async (userId: string) => {
     return Promise.reject('缺少ApiKey, 无法请求');
   }
 
-  // 余额校验
-  const hasGrant = await checkKeyGrant(userApiKey);
-  if (!hasGrant) {
-    return Promise.reject({
-      code: 501,
-      message: 'API 余额不足'
-    });
-  }
-
   return {
     user,
     openai: getOpenAIApi(userApiKey),
@@ -47,27 +24,19 @@ export const getUserApiOpenai = async (userId: string) => {
 };
 
 /* 获取 open api key，如果用户没有自己的key，就用平台的，用平台记得加账单 */
-export const getOpenApiKey = async (userId: string, checkGrant = false) => {
+export const getOpenApiKey = async (userId: string) => {
   const user = await User.findById(userId);
   if (!user) {
-    return Promise.reject('找不到用户');
+    return Promise.reject({
+      code: 501,
+      message: '找不到用户'
+    });
   }
 
   const userApiKey = user?.accounts?.find((item: any) => item.type === 'openai')?.value;
 
   // 有自己的key
   if (userApiKey) {
-    // api 余额校验
-    if (checkGrant) {
-      const hasGrant = await checkKeyGrant(userApiKey);
-      if (!hasGrant) {
-        return Promise.reject({
-          code: 501,
-          message: 'API 余额不足'
-        });
-      }
-    }
-
     return {
       user,
       userApiKey,

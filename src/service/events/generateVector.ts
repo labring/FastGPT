@@ -39,7 +39,19 @@ export async function generateVector(next = false): Promise<any> {
     };
 
     // 获取 openapi Key
-    const { userApiKey, systemKey } = await getOpenApiKey(dataItem.userId);
+    let userApiKey, systemKey;
+    try {
+      const res = await getOpenApiKey(dataItem.userId);
+      userApiKey = res.userApiKey;
+      systemKey = res.systemKey;
+    } catch (error: any) {
+      if (error?.code === 501) {
+        await redis.del(dataItem.id);
+        throw new Error(error?.message);
+      }
+
+      throw new Error('获取 openai key 失败');
+    }
 
     // 生成词向量
     const { vector } = await openaiCreateEmbedding({
