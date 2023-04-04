@@ -166,13 +166,19 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             <Tbody>
               {modelDataList.map((item) => (
                 <Tr key={item.id}>
-                  <Td>
-                    <Box fontSize={'xs'} w={'100%'} whiteSpace={'pre-wrap'}>
+                  <Td minW={'200px'}>
+                    <Box fontSize={'xs'} whiteSpace={'pre-wrap'}>
                       {item.q}
                     </Box>
                   </Td>
                   <Td minW={'200px'}>
-                    <Box w={'100%'} fontSize={'xs'} whiteSpace={'pre-wrap'}>
+                    <Box
+                      w={'100%'}
+                      fontSize={'xs'}
+                      whiteSpace={'pre-wrap'}
+                      maxH={'250px'}
+                      overflowY={'auto'}
+                    >
                       {item.text}
                     </Box>
                   </Td>
