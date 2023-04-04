@@ -19,6 +19,8 @@ export async function generateQA(): Promise<any> {
   }
   global.generatingQA++;
 
+  let dataId = null;
+
   try {
     const redis = await connectRedis();
     // 找出一个需要生成的 dataItem
@@ -31,6 +33,8 @@ export async function generateQA(): Promise<any> {
       global.generatingQA = 0;
       return;
     }
+
+    dataId = dataItem._id;
 
     // 源文本
     const text = dataItem.textList[dataItem.textList.length - 1];
@@ -137,8 +141,25 @@ export async function generateQA(): Promise<any> {
     generateQA();
     generateVector();
   } catch (error: any) {
-    console.log(error);
-    console.log('生成QA错误:', error?.response);
+    // log
+    if (error?.response) {
+      console.log('openai error: 生成QA错误');
+      console.log(error.response?.status, error.response?.statusText, error.response?.data);
+    } else {
+      console.log('生成QA错误:', error);
+    }
+
+    if (dataId && error?.response?.data?.error?.type === 'insufficient_quota') {
+      console.log('api 余额不足');
+
+      await SplitData.findByIdAndUpdate(dataId, {
+        textList: [],
+        errorText: 'api 余额不足'
+      });
+
+      generateQA();
+      return;
+    }
 
     setTimeout(() => {
       global.generatingQA--;
