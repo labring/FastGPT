@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { getOpenAIApi } from '@/service/utils/chat';
 import { httpsAgent } from './tools';
 import { User } from '../models/user';
@@ -75,7 +74,7 @@ export const openaiCreateEmbedding = async ({
   const chatAPI = getOpenAIApi(apiKey);
 
   // 把输入的内容转成向量
-  const vector = await chatAPI
+  const res = await chatAPI
     .createEmbedding(
       {
         model: ChatModelNameEnum.VECTOR,
@@ -86,16 +85,20 @@ export const openaiCreateEmbedding = async ({
         httpsAgent
       }
     )
-    .then((res) => res?.data?.data?.[0]?.embedding || []);
+    .then((res) => ({
+      tokenLen: res.data.usage.total_tokens || 0,
+      vector: res?.data?.data?.[0]?.embedding || []
+    }));
 
   pushGenerateVectorBill({
     isPay,
     userId,
-    text
+    text,
+    tokenLen: res.tokenLen
   });
 
   return {
-    vector,
+    vector: res.vector,
     chatAPI
   };
 };
