@@ -5,15 +5,30 @@ import { TrainingItemType } from '../types/training';
 import { RequestPaging } from '../types/index';
 import { Obj2Query } from '@/utils/tools';
 
+/**
+ * 获取模型列表
+ */
 export const getMyModels = () => GET<ModelSchema[]>('/model/list');
 
+/**
+ * 创建一个模型
+ */
 export const postCreateModel = (data: { name: string; serviceModelName: string }) =>
   POST<ModelSchema>('/model/create', data);
 
+/**
+ * 根据 ID 删除模型
+ */
 export const delModelById = (id: string) => DELETE(`/model/del?modelId=${id}`);
 
+/**
+ * 根据 ID 获取模型
+ */
 export const getModelById = (id: string) => GET<ModelSchema>(`/model/detail?modelId=${id}`);
 
+/**
+ * 根据 ID 更新模型
+ */
 export const putModelById = (id: string, data: ModelUpdateParams) =>
   PUT(`/model/update?modelId=${id}`, data);
 
@@ -35,29 +50,58 @@ export const getModelTrainings = (id: string) =>
 type GetModelDataListProps = RequestPaging & {
   modelId: string;
 };
+/**
+ * 获取模型的知识库数据
+ */
 export const getModelDataList = (props: GetModelDataListProps) =>
   GET(`/model/data/getModelData?${Obj2Query(props)}`);
 
+/**
+ * 获取导出数据（不分页）
+ */
 export const getExportDataList = (modelId: string) =>
   GET<string>(`/model/data/exportModelData?modelId=${modelId}`);
 
-export const getModelSplitDataList = (modelId: string) =>
-  GET<ModelSplitDataSchema[]>(`/model/data/getSplitData?modelId=${modelId}`);
+/**
+ * 获取模型正在拆分数据的数量
+ */
+export const getModelSplitDataListLen = (modelId: string) =>
+  GET<number>(`/model/data/getSplitData?modelId=${modelId}`);
 
+/**
+ * 获取 web 页面内容
+ */
+export const getWebContent = (url: string) => POST<string>(`/model/data/fetchingUrlData`, { url });
+
+/**
+ * 手动输入数据
+ */
 export const postModelDataInput = (data: {
   modelId: string;
   data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
 }) => POST<number>(`/model/data/pushModelDataInput`, data);
 
-export const postModelDataFileText = (data: { modelId: string; text: string; prompt: string }) =>
+/**
+ * 拆分数据
+ */
+export const postModelDataSplitData = (data: { modelId: string; text: string; prompt: string }) =>
   POST(`/model/data/splitData`, data);
 
+/**
+ * json导入数据
+ */
 export const postModelDataJsonData = (
   modelId: string,
   jsonData: { prompt: string; completion: string; vector?: number[] }[]
 ) => POST(`/model/data/pushModelDataJson`, { modelId, data: jsonData });
 
+/**
+ * 更新模型数据
+ */
 export const putModelDataById = (data: { dataId: string; text: string; q?: string }) =>
   PUT('/model/data/putModelData', data);
+/**
+ * 删除一条模型数据
+ */
 export const delOneModelData = (dataId: string) =>
   DELETE(`/model/data/delModelDataById?dataId=${dataId}`);

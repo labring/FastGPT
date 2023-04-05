@@ -19,7 +19,8 @@ import { encode } from 'gpt-token-utils';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/tools';
 import { useMutation } from '@tanstack/react-query';
-import { postModelDataFileText } from '@/api/model';
+import { postModelDataSplitData } from '@/api/model';
+import { formatPrice } from '@/utils/user';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
@@ -85,7 +86,7 @@ const SelectFileModal = ({
   const { mutate, isLoading } = useMutation({
     mutationFn: async () => {
       if (!fileText) return;
-      await postModelDataFileText({
+      await postModelDataSplitData({
         modelId,
         text: fileText,
         prompt: `下面是${prompt || '一段长文本'}`
@@ -126,10 +127,11 @@ const SelectFileModal = ({
           </Button>
           <Box mt={2} maxW={['100%', '70%']}>
             支持 {fileExtension} 文件。模型会自动对文本进行 QA 拆分，需要较长训练时间，拆分需要消耗
-            tokens，大约0.04元/1k tokens，请确保账号余额充足。
+            tokens，账号余额不足时，未拆分的数据会被删除。
           </Box>
           <Box mt={2}>
-            一共 {fileText.length} 个字，{encode(fileText).length} 个tokens
+            一共 {encode(fileText).length} 个tokens，大约 {formatPrice(encode(fileText).length * 4)}
+            元
           </Box>
           <Flex w={'100%'} alignItems={'center'} my={4}>
             <Box flex={'0 0 auto'} mr={2}>

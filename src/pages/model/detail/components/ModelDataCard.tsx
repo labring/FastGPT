@@ -24,7 +24,7 @@ import { usePagination } from '@/hooks/usePagination';
 import {
   getModelDataList,
   delOneModelData,
-  getModelSplitDataList,
+  getModelSplitDataListLen,
   getExportDataList
 } from '@/api/model';
 import { DeleteIcon, RepeatIcon, EditIcon } from '@chakra-ui/icons';
@@ -36,6 +36,7 @@ import type { FormData as InputDataType } from './InputDataModal';
 
 const InputModel = dynamic(() => import('./InputDataModal'));
 const SelectFileModel = dynamic(() => import('./SelectFileModal'));
+const SelectUrlModel = dynamic(() => import('./SelectUrlModal'));
 const SelectJsonModel = dynamic(() => import('./SelectJsonModal'));
 
 const ModelDataCard = ({ model }: { model: ModelSchema }) => {
@@ -64,13 +65,18 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     onClose: onCloseSelectFileModal
   } = useDisclosure();
   const {
+    isOpen: isOpenSelectUrlModal,
+    onOpen: onOpenSelectUrlModal,
+    onClose: onCloseSelectUrlModal
+  } = useDisclosure();
+  const {
     isOpen: isOpenSelectJsonModal,
     onOpen: onOpenSelectJsonModal,
     onClose: onCloseSelectJsonModal
   } = useDisclosure();
 
-  const { data: splitDataList, refetch } = useQuery(['getModelSplitDataList'], () =>
-    getModelSplitDataList(model._id)
+  const { data: splitDataLen, refetch } = useQuery(['getModelSplitDataList'], () =>
+    getModelSplitDataListLen(model._id)
   );
 
   const refetchData = useCallback(
@@ -143,14 +149,13 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
               手动输入
             </MenuItem>
             <MenuItem onClick={onOpenSelectFileModal}>文件导入</MenuItem>
+            <MenuItem onClick={onOpenSelectUrlModal}>网站地址导入</MenuItem>
             <MenuItem onClick={onOpenSelectJsonModal}>JSON导入</MenuItem>
           </MenuList>
         </Menu>
       </Flex>
-      {splitDataList && splitDataList.length > 0 && (
-        <Box fontSize={'xs'}>
-          {splitDataList.map((item) => item.textList).flat().length}条数据正在拆分...
-        </Box>
+      {!!(splitDataLen && splitDataLen > 0) && (
+        <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分...</Box>
       )}
       <Box mt={4}>
         <TableContainer minH={'500px'}>
@@ -233,6 +238,13 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
         <SelectFileModel
           modelId={model._id}
           onClose={onCloseSelectFileModal}
+          onSuccess={refetchData}
+        />
+      )}
+      {isOpenSelectUrlModal && (
+        <SelectUrlModel
+          modelId={model._id}
+          onClose={onCloseSelectUrlModal}
           onSuccess={refetchData}
         />
       )}
