@@ -95,7 +95,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
             {!payId && (
               <>
                 {/* 价格表 */}
-                <TableContainer mb={4}>
+                {/* <TableContainer mb={4}>
                   <Table>
                     <Thead>
                       <Tr>
@@ -112,7 +112,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                       ))}
                     </Tbody>
                   </Table>
-                </TableContainer>
+                </TableContainer> */}
                 <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4}>
                   {[5, 10, 20, 50].map((item) => (
                     <Button
