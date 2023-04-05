@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, DataItem, Data } from '@/service/mongo';
+import { connectToDatabase, SplitData } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -10,20 +10,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    // await DataItem.updateMany(
-    //   {},
-    //   {
-    //     type: 'QA'
-    //     // times: 2
-    //   }
-    // );
+    const data = await SplitData.aggregate([
+      { $match: { textList: { $exists: true, $ne: [] } } },
+      { $sample: { size: 1 } }
+    ]);
 
-    await Data.updateMany(
-      {},
-      {
-        type: 'QA'
-      }
-    );
+    const dataItem: any = data[0];
+    const textList: string[] = dataItem.textList.slice(-5);
+    console.log(textList);
+    console.log(dataItem.textList.slice(0, -5));
+    await SplitData.findByIdAndUpdate(dataItem._id, {
+      textList: dataItem.textList.slice(0, -5)
+    });
 
     jsonRes(res, {
       data: {}

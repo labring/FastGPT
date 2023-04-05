@@ -6,6 +6,9 @@ export const openaiError: Record<string, string> = {
   'Too Many Requests': '请求次数太多了，请慢点~',
   'Bad Gateway': '网关异常，请重试'
 };
+export const openaiError2: Record<string, string> = {
+  insufficient_quota: 'API 余额不足'
+};
 export const proxyError: Record<string, boolean> = {
   ECONNABORTED: true,
   ECONNRESET: true
