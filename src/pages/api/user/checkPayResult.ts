@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: '订单已过期'
       });
     } else {
-      throw new Error(payRes.trade_state_desc);
+      throw new Error(payRes?.trade_state_desc || '订单无效');
     }
   } catch (err) {
     // console.log(err);
