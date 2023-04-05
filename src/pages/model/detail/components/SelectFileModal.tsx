@@ -70,7 +70,6 @@ const SelectFileModal = ({
           .join(' ')
           .replace(/(\\n|\n)+/g, '\n');
         setFileText(fileTexts);
-        console.log(encode(fileTexts));
       } catch (error: any) {
         console.log(error);
         toast({
