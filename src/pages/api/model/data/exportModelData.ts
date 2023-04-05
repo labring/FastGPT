@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataIdx } from '@/constants/redis';
-import { BufferToVector } from '@/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

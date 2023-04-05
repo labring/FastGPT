@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     jsonRes(res, {
-      data
+      data: data.map((item) => item.textList).flat().length
     });
   } catch (err) {
     jsonRes(res, {

@@ -134,15 +134,7 @@ export const vectorToBuffer = (vector: number[]) => {
 
   return buffer;
 };
-export const BufferToVector = (bufferStr: string) => {
-  let buffer = Buffer.from(`bufferStr`, 'binary'); // 将字符串转换成 Buffer 对象
-  const npVector = new Float32Array(
-    buffer,
-    buffer.byteOffset,
-    buffer.byteLength / Float32Array.BYTES_PER_ELEMENT
-  );
-  return Array.from(npVector);
-};
+
 export function formatVector(vector: number[]) {
   let formattedVector = vector.slice(0, 1536); // 截取前1536个元素
   if (vector.length > 1536) {
