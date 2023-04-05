@@ -109,11 +109,16 @@ export const readDocContent = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
-    reader.onload = ({ target }) => {
+    reader.onload = async ({ target }) => {
       if (!target?.result) return reject('读取 doc 文件失败');
-      return mammoth.extractRawText({ arrayBuffer: target.result as ArrayBuffer }).then((res) => {
-        resolve(res.value);
-      });
+      try {
+        const res = await mammoth.extractRawText({
+          arrayBuffer: target.result as ArrayBuffer
+        });
+        resolve(res?.value);
+      } catch (error) {
+        reject('读取 doc 文件失败, 请转换成 PDF');
+      }
     };
     reader.onerror = (err) => {
       console.log('error doc read:', err);
