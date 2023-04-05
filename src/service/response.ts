@@ -1,5 +1,5 @@
 import { NextApiResponse } from 'next';
-import { openaiError, proxyError } from './errorCode';
+import { openaiError, openaiError2, proxyError } from './errorCode';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -25,13 +25,19 @@ export const jsonRes = <T = any>(
       msg = error;
     } else if (proxyError[error?.code]) {
       msg = '服务器代理出错';
+    } else if (openaiError2[error?.response?.data?.error?.type]) {
+      msg = openaiError2[error?.response?.data?.error?.type];
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }
     console.log('error->');
     console.log('code:', error.code);
-    console.log('statusText:', error?.response?.statusText);
     console.log('msg:', msg);
+    // request 时候报错
+    if (error?.response) {
+      console.log('statusText:', error?.response?.statusText);
+      console.log('type:', error?.response?.data?.error?.type);
+    }
   }
 
   res.json({

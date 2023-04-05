@@ -75,9 +75,7 @@ export async function generateVector(next = false): Promise<any> {
 
     console.log(`生成向量成功: ${dataItem.id}`);
 
-    setTimeout(() => {
-      generateVector(true);
-    }, 4000);
+    generateVector(true);
   } catch (error: any) {
     // log
     if (error?.response) {
@@ -88,7 +86,7 @@ export async function generateVector(next = false): Promise<any> {
     }
 
     if (dataId && error?.response?.data?.error?.type === 'insufficient_quota') {
-      console.log('api 余额不足');
+      console.log('api 余额不足,删除 redis 模型数据');
       const redis = await connectRedis();
       redis.del(dataId);
       generateVector(true);

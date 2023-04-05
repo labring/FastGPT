@@ -9,39 +9,35 @@ import { generateVector } from './generateVector';
 import { connectRedis } from '../redis';
 import { VecModelDataPrefix } from '@/constants/redis';
 import { customAlphabet } from 'nanoid';
+import { ModelSplitDataSchema } from '@/types/mongoSchema';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-export async function generateQA(): Promise<any> {
-  // 最多 5 个进程
-  if (global.generatingQA >= 5) {
-    console.log('QA 最多5个进程');
-    return;
-  }
-  global.generatingQA++;
+export async function generateQA(next = false): Promise<any> {
+  if (global.generatingQA === true && !next) return;
+  global.generatingQA = true;
 
   let dataId = null;
 
   try {
     const redis = await connectRedis();
     // 找出一个需要生成的 dataItem
-    const dataItem = await SplitData.findOne({
-      textList: { $exists: true, $ne: [] }
-    });
+    const data = await SplitData.aggregate([
+      { $match: { textList: { $exists: true, $ne: [] } } },
+      { $sample: { size: 1 } }
+    ]);
+
+    const dataItem: ModelSplitDataSchema = data[0];
 
     if (!dataItem) {
       console.log('没有需要生成 QA 的数据');
-      global.generatingQA = 0;
+      global.generatingQA = false;
       return;
     }
 
     dataId = dataItem._id;
 
-    // 源文本
-    const text = dataItem.textList[dataItem.textList.length - 1];
-    if (!text) {
-      await SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } }); // 弹出无效文本
-      throw new Error('无文本');
-    }
+    // 获取 5 个源文本
+    const textList: string[] = dataItem.textList.slice(-5);
 
     // 获取 openapi Key
     let userApiKey, systemKey;
@@ -62,7 +58,7 @@ export async function generateQA(): Promise<any> {
       throw new Error('获取 openai key 失败');
     }
 
-    console.log('正在生成一组QA, ID:', dataItem._id);
+    console.log(`正在生成一组QA, 包含 ${textList.length} 组文本。ID: ${dataItem._id}`);
 
     const startTime = Date.now();
 
@@ -76,33 +72,50 @@ export async function generateQA(): Promise<any> {
     };
 
     // 请求 chatgpt 获取回答
-    const response = await chatAPI
-      .createChatCompletion(
-        {
-          model: ChatModelNameEnum.GPT35,
-          temperature: 0.8,
-          n: 1,
-          messages: [
-            systemPrompt,
+    const response = await Promise.allSettled(
+      textList.map((text) =>
+        chatAPI
+          .createChatCompletion(
             {
-              role: 'user',
-              content: text
+              model: ChatModelNameEnum.GPT35,
+              temperature: 0.8,
+              n: 1,
+              messages: [
+                systemPrompt,
+                {
+                  role: 'user',
+                  content: text
+                }
+              ]
+            },
+            {
+              timeout: 180000,
+              httpsAgent
             }
-          ]
-        },
-        {
-          timeout: 180000,
-          httpsAgent
-        }
+          )
+          .then((res) => ({
+            rawContent: res?.data.choices[0].message?.content || '', // chatgpt原本的回复
+            result: splitText(res?.data.choices[0].message?.content || '') // 格式化后的QA对
+          }))
       )
-      .then((res) => ({
-        rawContent: res?.data.choices[0].message?.content || '', // chatgpt原本的回复
-        result: splitText(res?.data.choices[0].message?.content || '') // 格式化后的QA对
-      }));
+    );
+
+    // 获取成功的回答
+    const successResponse: {
+      rawContent: string;
+      result: {
+        q: string;
+        a: string;
+      }[];
+    }[] = response.filter((item) => item.status === 'fulfilled').map((item: any) => item.value);
+
+    const resultList = successResponse.map((item) => item.result).flat();
 
     await Promise.allSettled([
-      SplitData.findByIdAndUpdate(dataItem._id, { $pop: { textList: 1 } }), // 弹出已经拆分的文本
-      ...response.result.map((item) => {
+      SplitData.findByIdAndUpdate(dataItem._id, {
+        textList: dataItem.textList.slice(0, -5)
+      }), // 删掉后5个数据
+      ...resultList.map((item) => {
         // 插入 redis
         return redis.sendCommand([
           'HMSET',
@@ -125,20 +138,21 @@ export async function generateQA(): Promise<any> {
       '生成QA成功，time:',
       `${(Date.now() - startTime) / 1000}s`,
       'QA数量：',
-      response.result.length
+      resultList.length
     );
 
     // 计费
     pushSplitDataBill({
-      isPay: !userApiKey && response.result.length > 0,
+      isPay: !userApiKey && resultList.length > 0,
       userId: dataItem.userId,
       type: 'QA',
-      text: systemPrompt.content + text + response.rawContent
+      text:
+        systemPrompt.content +
+        textList.join('') +
+        successResponse.map((item) => item.rawContent).join('')
     });
 
-    global.generatingQA--;
-
-    generateQA();
+    generateQA(true);
     generateVector();
   } catch (error: any) {
     // log
@@ -157,14 +171,13 @@ export async function generateQA(): Promise<any> {
         errorText: 'api 余额不足'
       });
 
-      generateQA();
+      generateQA(true);
       return;
     }
 
     setTimeout(() => {
-      global.generatingQA--;
-      generateQA();
-    }, 5000);
+      generateQA(true);
+    }, 4000);
   }
 }
 

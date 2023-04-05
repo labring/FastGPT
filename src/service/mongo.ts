@@ -27,7 +27,6 @@ export async function connectToDatabase(): Promise<void> {
     global.mongodb = null;
   }
 
-  global.generatingQA = 0;
   generateQA();
   // generateAbstract();
   generateVector(true);
