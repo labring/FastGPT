@@ -1,14 +1,14 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import axios from 'axios';
 import { authToken } from '@/service/utils/tools';
 import { customAlphabet } from 'nanoid';
 import { connectToDatabase, Pay } from '@/service/mongo';
 import { PRICE_SCALE } from '@/constants/common';
+import { nativePay } from '@/service/utils/wxpay';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 20);
 
+/* 获取支付二维码 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { authorization } = req.headers;
@@ -23,15 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const id = nanoid();
     await connectToDatabase();
 
-    const response = await axios({
-      url: 'https://sif268.laf.dev/wechat-pay',
-      method: 'POST',
-      data: {
-        trade_order_number: id,
-        amount: amount * 100,
-        api_key: process.env.WXPAYCODE
-      }
-    });
+    const code_url = await nativePay(amount * 100, id);
 
     // 充值记录 + 1
     const payOrder = await Pay.create({
@@ -43,11 +35,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     jsonRes(res, {
       data: {
         payId: payOrder._id,
-        codeUrl: response.data?.code_url
+        codeUrl: code_url
       }
     });
   } catch (err) {
-    console.log(err);
+    console.log(err, '==');
     jsonRes(res, {
       code: 500,
       error: err

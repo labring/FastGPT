@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import axios from 'axios';
 import { connectToDatabase, User, Pay } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
+import { getPayResult } from '@/service/utils/wxpay';
 
+/* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { authorization } = req.headers;
@@ -25,18 +26,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('订单已结算');
     }
 
-    const { data } = await axios.get(
-      `https://sif268.laf.dev/wechat-order-query?order_number=${payOrder.orderId}&api_key=${process.env.WXPAYCODE}`
-    );
+    const payRes = await getPayResult(payOrder.orderId);
 
     // 校验下是否超过一天
     const orderTime = dayjs(payOrder.createTime);
     const diffInHours = dayjs().diff(orderTime, 'hours');
 
-    if (data.trade_state === 'SUCCESS') {
+    if (payRes.trade_state === 'SUCCESS') {
       // 订单已支付
       try {
-        // 更新订单状态
+        // 更新订单状态. 如果没有合适的订单，说明订单重复了
         const updateRes = await Pay.updateOne(
           {
             _id: payId,
@@ -61,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         console.log(error);
       }
-    } else if (data.trade_state === 'CLOSED' || diffInHours > 24) {
+    } else if (payRes.trade_state === 'CLOSED' || diffInHours > 24) {
       // 订单已关闭
       await Pay.findByIdAndUpdate(payId, {
         status: 'CLOSED'
@@ -70,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: '订单已过期'
       });
     } else {
-      throw new Error(data.trade_state_desc);
+      throw new Error(payRes.trade_state_desc);
     }
   } catch (err) {
     // console.log(err);
