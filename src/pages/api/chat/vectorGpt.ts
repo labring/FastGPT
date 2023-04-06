@@ -105,8 +105,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('对不起，我没有找到你的问题');
     }
 
-    // textArr 筛选，最多 3000 tokens
-    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3400);
+    // textArr 筛选，最多 3200 tokens
+    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3200);
 
     prompts.unshift({
       obj: 'SYSTEM',

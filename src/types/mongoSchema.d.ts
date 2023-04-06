@@ -125,7 +125,7 @@ export interface DataSchema {
   _id: string;
   userId: string;
   name: string;
-  createTime: string;
+  createTime: Date;
   type: DataType;
 }
 
@@ -147,4 +147,11 @@ export interface DataItemSchema {
 
 export interface DataItemPopulate extends DataItemSchema {
   userId: UserModelSchema;
+}
+
+export interface OpenApiSchema {
+  _id: string;
+  userId: string;
+  createTime: Date;
+  lastUsedTime: Date;
 }

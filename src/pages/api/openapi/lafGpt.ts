@@ -1,20 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { connectToDatabase } from '@/service/mongo';
-import { getOpenAIApi, authChat } from '@/service/utils/chat';
+import { connectToDatabase, Model } from '@/service/mongo';
+import { getOpenAIApi } from '@/service/utils/chat';
+import { authToken } from '@/service/utils/tools';
 import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
-import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
-import { modelList } from '@/constants/model';
+import { ChatModelNameEnum, modelList, ChatModelNameMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
-import { openaiCreateEmbedding } from '@/service/utils/openai';
-import { gpt35StreamResponse } from '@/service/utils/openai';
+import { openaiCreateEmbedding, getOpenApiKey, gpt35StreamResponse } from '@/service/utils/openai';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -33,13 +31,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   try {
-    const { chatId, prompt } = req.body as {
+    const { prompt, modelId } = req.body as {
       prompt: ChatItemType;
-      chatId: string;
+      modelId: string;
     };
 
     const { authorization } = req.headers;
-    if (!chatId || !prompt) {
+    if (!prompt) {
       throw new Error('缺少参数');
     }
 
@@ -47,49 +45,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const redis = await connectRedis();
     let startTime = Date.now();
 
-    const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
+    /* 凭证校验 */
+    const userId = await authToken(authorization);
+    const { userApiKey, systemKey } = await getOpenApiKey(userId);
 
-    const model: ModelSchema = chat.modelId;
-    const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
-    if (!modelConstantsData) {
-      throw new Error('模型加载异常');
+    /* 查找数据库里的模型信息 */
+    const model = await Model.findById(modelId);
+    if (!model) {
+      throw new Error('找不到模型');
     }
+
+    const modelConstantsData = modelList.find(
+      (item) => item.model === ChatModelNameEnum.VECTOR_GPT
+    );
+    if (!modelConstantsData) {
+      throw new Error('模型已下架');
+    }
+
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
 
     // 请求一次 chatgpt 拆解需求
     const promptResponse = await chatAPI.createChatCompletion(
       {
-        model: model.service.chatModel,
+        model: ChatModelNameMap[ChatModelNameEnum.GPT35],
         temperature: 0,
-        // max_tokens: modelConstantsData.maxToken,
         messages: [
           {
             role: 'system',
-            content: `服务端逻辑生成器。根据用户输入的需求，拆解成代码实现的步骤，并按格式返回： 1.\n2.\n3.\n ......
-          
-          下面是一些例子：
-          实现一个手机号注册账号的方法，包含两个函数
-          * 发送手机验证码函数： 
-          1. 从 query 中获取 phone 
-          2. 校验手机号格式是否正确，不正确返回{error: "手机号格式错误"} 
-          3. 给 phone 发送一个短信验证码，验证码长度为6位字符串，内容为：你正在注册laf, 验证码为：code 
-          4. 数据库添加数据，表为"codes"，内容为 {phone, code} 
-          * 注册函数 
-          1. 从 body 中获取 phone 和 code 
-          2. 校验手机号格式是否正确，不正确返回{error: "手机号格式错误"} 
-          2. 获取数据库数据，表为"codes"，查找是否有符合 phone, code 等于body参数的记录，没有的话返回 {error:"验证码不正确"} 
-          4. 添加数据库数据，表为"users" ，内容为{phone, code, createTime}
-          5. 删除数据库数据，删除 code 记录
-          ---------------
-          更新博客记录。传入blogId，blogText，tags，还需要记录更新的时间
-          1. 从 body 中获取 blogId，blogText 和 tags
-          2. 校验 blogId 是否为空，为空则返回 {error: "博客ID不能为空"}
-          3. 校验 blogText 是否为空，为空则返回 {error: "博客内容不能为空"}
-          4. 校验 tags 是否为数组，不是则返回 {error: "标签必须为数组"}
-          5. 获取当前时间，记录为 updateTime
-          6. 更新数据库数据，表为"blogs"，更新符合 blogId 的记录的内容为{blogText, tags, updateTime}
-          7. 返回结果 {message: "更新博客记录成功"}`
+            content: `服务端逻辑生成器.根据用户输入的需求,拆解成代码实现的步骤,并按格式返回: 1.\n2.\n3.\n ......
+下面是一些例子:
+实现一个手机号发生注册验证码方法.
+1. 从 query 中获取 phone.
+2. 校验手机号格式是否正确,不正确返回{error: "手机号格式错误"}.
+3. 给 phone 发送一个短信验证码,验证码长度为6位字符串,内容为:你正在注册laf,验证码为:code.
+4. 数据库添加数据,表为"codes",内容为 {phone, code}.
+
+实现根据手机号注册账号,需要验证手机验证码.
+1. 从 body 中获取 phone 和 code.
+2. 校验手机号格式是否正确,不正确返回{error: "手机号格式错误"}.
+2. 获取数据库数据,表为"codes",查找是否有符合 phone, code 等于body参数的记录,没有的话返回 {error:"验证码不正确"}.
+4. 添加数据库数据,表为"users" ,内容为{phone, code, createTime}.
+5. 删除数据库数据,删除 code 记录.
+
+更新博客记录。传入blogId,blogText,tags,还需要记录更新的时间.
+1. 从 body 中获取 blogId,blogText 和 tags.
+2. 校验 blogId 是否为空,为空则返回 {error: "博客ID不能为空"}.
+3. 校验 blogText 是否为空,为空则返回 {error: "博客内容不能为空"}.
+4. 校验 tags 是否为数组,不是则返回 {error: "标签必须为数组"}.
+5. 获取当前时间,记录为 updateTime.
+6. 更新数据库数据,表为"blogs",更新符合 blogId 的记录的内容为{blogText, tags, updateTime}.
+7. 返回结果 {message: "更新博客记录成功"}.`
           },
           {
             role: 'user',
@@ -120,16 +126,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // 读取对话内容
-    const prompts = [...chat.content, prompt];
+    const prompts = [prompt];
 
     // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
       `idx:${VecModelDataPrefix}:hash`,
       `@modelId:{${String(
-        chat.modelId._id
+        model._id
       )}} @vector:[VECTOR_RANGE 0.25 $blob]=>{$YIELD_DISTANCE_AS: score}`,
-      // `@modelId:{${String(chat.modelId._id)}}=>[KNN 10 @vector $blob AS score]`,
       'RETURN',
       '1',
       'text',
@@ -162,8 +167,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('对不起，我没有找到你的问题');
     }
 
-    // textArr 筛选，最多 3000 tokens
-    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3400);
+    // textArr 筛选，最多 3200 tokens
+    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3200);
 
     prompts.unshift({
       obj: 'SYSTEM',
@@ -185,7 +190,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         content: item.value
       })
     );
-    console.log(formatPrompts);
+    // console.log(formatPrompts);
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 
@@ -207,7 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
+    console.log('api response. time:', `${(Date.now() - startTime) / 1000}s`);
 
     step = 1;
     const { responseContent } = await gpt35StreamResponse({
@@ -215,6 +220,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stream,
       chatResponse
     });
+    console.log('response done. time:', `${(Date.now() - startTime) / 1000}s`);
 
     const promptsContent = formatPrompts.map((item) => item.content).join('');
     // 只有使用平台的 key 才计费
@@ -222,7 +228,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       isPay: !userApiKey,
       modelName: model.service.modelName,
       userId,
-      chatId,
       text: promptsContent + responseContent
     });
   } catch (err: any) {
