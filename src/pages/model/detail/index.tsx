@@ -37,7 +37,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     setLoading(true);
     try {
       const res = await getModelById(modelId);
-      console.log(res);
+      // console.log(res);
       res.security.expiredTime /= 60 * 60 * 1000;
       setModel(res);
       formHooks.reset(res);

@@ -105,7 +105,8 @@ export async function generateAbstract(next = false): Promise<any> {
       isPay: !userApiKey && splitContents.length > 0,
       userId: dataItem.userId,
       type: 'abstract',
-      text: systemPrompt.content + dataItem.text + rawContent
+      text: systemPrompt.content + dataItem.text + rawContent,
+      tokenLen: 0
     });
   } catch (error: any) {
     console.log('error: 生成摘要错误', dataItem?._id);

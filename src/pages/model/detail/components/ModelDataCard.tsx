@@ -148,8 +148,8 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             >
               手动输入
             </MenuItem>
-            <MenuItem onClick={onOpenSelectFileModal}>文件导入</MenuItem>
-            <MenuItem onClick={onOpenSelectUrlModal}>网站地址导入</MenuItem>
+            <MenuItem onClick={onOpenSelectFileModal}>文件QA拆分</MenuItem>
+            <MenuItem onClick={onOpenSelectUrlModal}>网站内容QA拆分</MenuItem>
             <MenuItem onClick={onOpenSelectJsonModal}>JSON导入</MenuItem>
           </MenuList>
         </Menu>

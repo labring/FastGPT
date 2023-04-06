@@ -119,6 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const json = JSON.parse(data);
         const content: string = json?.choices?.[0].delta.content || '';
+        // 空内容不要。首行换行符不要
         if (!content || (responseContent === '' && content === '\n')) return;
 
         responseContent += content;

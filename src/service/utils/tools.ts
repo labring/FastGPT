@@ -93,5 +93,5 @@ export const systemPromptFilter = (prompts: string[], maxTokens: number) => {
     }
   }
 
-  return splitText;
+  return splitText.slice(0, splitText.length - 1);
 };
