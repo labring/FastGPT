@@ -10,21 +10,12 @@ import {
   Button,
   Input,
   Box,
-  Grid,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer
+  Grid
 } from '@chakra-ui/react';
 import { getPayCode, checkPayResult } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import { modelList } from '@/constants/model';
-import { formatPrice } from '../../../utils/user';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();

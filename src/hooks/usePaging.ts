@@ -1,6 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { PagingData } from '../types/index';
-import { useQuery } from '@tanstack/react-query';
 import { useToast } from './useToast';
 
 export const usePaging = <T = any>({
@@ -64,7 +63,9 @@ export const usePaging = <T = any>({
     getData(pageNum + 1);
   }, [getData, isLoadAll, pageNum, requesting]);
 
-  useQuery(['init'], () => getData(1, true));
+  useEffect(() => {
+    getData(1, true);
+  }, []);
 
   return {
     pageNum,
