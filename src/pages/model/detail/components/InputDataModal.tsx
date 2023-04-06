@@ -80,19 +80,21 @@ const InputDataModal = ({
   const updateData = useCallback(
     async (e: FormData) => {
       if (!e.dataId) return;
-      if (e.text === defaultValues.text && e.q === defaultValues.q) return;
 
-      await putModelDataById({
-        dataId: e.dataId,
-        text: e.text,
-        q: e.q === defaultValues.q ? '' : e.q
-      });
+      if (e.text !== defaultValues.text || e.q !== defaultValues.q) {
+        await putModelDataById({
+          dataId: e.dataId,
+          text: e.text,
+          q: e.q === defaultValues.q ? '' : e.q
+        });
+        onSuccess();
+      }
+
       toast({
         title: '修改回答成功',
         status: 'success'
       });
       onClose();
-      onSuccess();
     },
     [defaultValues, onClose, onSuccess, toast]
   );
