@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/chat';
 import { httpsAgent, openaiChatFilter } from '@/service/utils/tools';
@@ -10,6 +9,7 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
+import { gpt35StreamResponse } from '@/service/utils/openai';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -102,52 +102,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
 
-    // 创建响应流
-    res.setHeader('Content-Type', 'text/event-stream;charset-utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
     step = 1;
 
-    let responseContent = '';
-    stream.pipe(res);
-
-    const onParse = async (event: ParsedEvent | ReconnectInterval) => {
-      if (event.type !== 'event') return;
-      const data = event.data;
-      if (data === '[DONE]') return;
-      try {
-        const json = JSON.parse(data);
-        const content: string = json?.choices?.[0].delta.content || '';
-        // 空内容不要。首行换行符不要
-        if (!content || (responseContent === '' && content === '\n')) return;
-
-        responseContent += content;
-        // console.log('content:', content)
-        !stream.destroyed && stream.push(content.replace(/\n/g, '<br/>'));
-      } catch (error) {
-        error;
-      }
-    };
-
-    const decoder = new TextDecoder();
-    try {
-      for await (const chunk of chatResponse.data as any) {
-        if (stream.destroyed) {
-          // 流被中断了，直接忽略后面的内容
-          break;
-        }
-        const parser = createParser(onParse);
-        parser.feed(decoder.decode(chunk));
-      }
-    } catch (error) {
-      console.log('pipe error', error);
-    }
-    // close stream
-    !stream.destroyed && stream.push(null);
-    stream.destroy();
-
+    const { responseContent } = await gpt35StreamResponse({
+      res,
+      stream,
+      chatResponse
+    });
     const promptsContent = formatPrompts.map((item) => item.content).join('');
+
     // 只有使用平台的 key 才计费
     pushChatBill({
       isPay: !userApiKey,
