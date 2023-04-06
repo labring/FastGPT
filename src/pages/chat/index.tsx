@@ -120,7 +120,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
       const urlMap: Record<string, string> = {
         [ChatModelNameEnum.GPT35]: '/api/chat/chatGpt',
         [ChatModelNameEnum.VECTOR_GPT]: '/api/chat/vectorGpt',
-        // [ChatModelNameEnum.VECTOR_GPT]: '/api/chat/lafGpt',
         [ChatModelNameEnum.GPT3]: '/api/chat/gpt3'
       };
 
