@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 import { connectToDatabase } from '@/service/mongo';
-import { getOpenAIApi, authChat } from '@/service/utils/chat';
+import { authChat } from '@/service/utils/chat';
 import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
@@ -13,8 +12,7 @@ import { pushChatBill } from '@/service/events/pushBill';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
-import { openaiCreateEmbedding } from '@/service/utils/openai';
-import { gpt35StreamResponse } from '@/service/utils/openai';
+import { openaiCreateEmbedding, gpt35StreamResponse } from '@/service/utils/openai';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -73,7 +71,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `@modelId:{${String(
         chat.modelId._id
       )}} @vector:[VECTOR_RANGE 0.24 $blob]=>{$YIELD_DISTANCE_AS: score}`,
-      // `@modelId:{${String(chat.modelId._id)}}=>[KNN 10 @vector $blob AS score]`,
       'RETURN',
       '1',
       'text',
@@ -90,17 +87,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       '2'
     ]);
 
+    const formatRedisPrompt: string[] = [];
     // 格式化响应值，获取 qa
-    const formatRedisPrompt = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
-      .map((i) => {
-        if (!redisData[i]) return '';
-        const text = (redisData[i][1] as string) || '';
-
-        if (!text) return '';
-
-        return text;
-      })
-      .filter((item) => item);
+    for (let i = 2; i < 42; i += 2) {
+      const text = redisData[i]?.[1];
+      if (text) {
+        formatRedisPrompt.push(text);
+      }
+    }
 
     if (formatRedisPrompt.length === 0) {
       throw new Error('对不起，我没有找到你的问题');
