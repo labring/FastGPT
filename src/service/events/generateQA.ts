@@ -79,10 +79,8 @@ export async function generateQA(next = false): Promise<any> {
           .createChatCompletion(
             {
               model: ChatModelNameEnum.GPT35,
-              temperature: 0.7,
+              temperature: 0.8,
               n: 1,
-              frequency_penalty: 1, // 越大，重复内容越少
-              presence_penalty: -1, // 越大，越容易出现新内容
               messages: [
                 systemPrompt,
                 {

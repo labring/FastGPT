@@ -47,7 +47,8 @@ export async function generateVector(next = false): Promise<any> {
     } catch (error: any) {
       if (error?.code === 501) {
         await redis.del(dataItem.id);
-        throw new Error(error?.message);
+        generateVector(true);
+        return;
       }
 
       throw new Error('获取 openai key 失败');
@@ -102,6 +103,6 @@ export async function generateVector(next = false): Promise<any> {
     }
     setTimeout(() => {
       generateVector(true);
-    }, 4000);
+    }, 2000);
   }
 }
