@@ -132,9 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
       `idx:${VecModelDataPrefix}:hash`,
-      `@modelId:{${String(
-        model._id
-      )}} @vector:[VECTOR_RANGE 0.25 $blob]=>{$YIELD_DISTANCE_AS: score}`,
+      `@modelId:{${String(model._id)}}=>[KNN 20 @vector $blob AS score]`,
       'RETURN',
       '1',
       'text',
@@ -144,27 +142,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       '2',
       'blob',
       vectorToBuffer(promptVector),
-      'LIMIT',
-      '0',
-      '20',
       'DIALECT',
       '2'
     ]);
 
     // 格式化响应值，获取 qa
-    const formatRedisPrompt = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
-      .map((i) => {
-        if (!redisData[i]) return '';
-        const text = (redisData[i][1] as string) || '';
-
-        if (!text) return '';
-
-        return text;
-      })
-      .filter((item) => item);
-
-    if (formatRedisPrompt.length === 0) {
-      throw new Error('对不起，我没有找到你的问题');
+    const formatRedisPrompt: string[] = [];
+    for (let i = 2; i < 42; i += 2) {
+      const text = redisData[i]?.[1];
+      if (text) {
+        formatRedisPrompt.push(text);
+      }
     }
 
     // textArr 筛选，最多 3200 tokens
