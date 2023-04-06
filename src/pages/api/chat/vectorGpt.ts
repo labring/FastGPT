@@ -110,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     prompts.unshift({
       obj: 'SYSTEM',
-      value: `${model.systemPrompt} 知识库内容是最新的，知识库内容为: "${systemPrompt}"`
+      value: `${model.systemPrompt} 知识库内容是最新的,知识库内容为: "${systemPrompt}"`
     });
 
     // 控制在 tokens 数量，防止超出
