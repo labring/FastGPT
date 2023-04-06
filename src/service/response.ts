@@ -30,13 +30,11 @@ export const jsonRes = <T = any>(
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }
-    console.log('error->');
-    console.log('code:', error.code);
-    console.log('msg:', msg);
+    console.log(`error-> msg:${msg}`);
     // request 时候报错
     if (error?.response) {
       console.log('statusText:', error?.response?.statusText);
-      console.log('type:', error?.response?.data?.error?.type);
+      console.log('error data:', error?.response?.data);
     }
   }
 
