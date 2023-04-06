@@ -35,7 +35,7 @@ const InputDataModal = ({
   const [importing, setImporting] = useState(false);
   const { toast } = useToast();
 
-  const { register, handleSubmit } = useForm<FormData>({
+  const { register, handleSubmit, reset } = useForm<FormData>({
     defaultValues
   });
 
@@ -64,14 +64,17 @@ const InputDataModal = ({
           title: res === 0 ? '导入数据成功,需要一段时间训练' : '数据导入异常',
           status: res === 0 ? 'success' : 'warning'
         });
-        onClose();
+        reset({
+          text: '',
+          q: ''
+        });
         onSuccess();
       } catch (err) {
         console.log(err);
       }
       setImporting(false);
     },
-    [modelId, onClose, onSuccess, toast]
+    [modelId, onSuccess, reset, toast]
   );
 
   const updateData = useCallback(
@@ -91,7 +94,7 @@ const InputDataModal = ({
       onClose();
       onSuccess();
     },
-    [defaultValues.q, onClose, onSuccess, toast]
+    [defaultValues, onClose, onSuccess, toast]
   );
 
   return (

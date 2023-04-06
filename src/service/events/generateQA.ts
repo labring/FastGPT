@@ -97,18 +97,19 @@ export async function generateQA(next = false): Promise<any> {
             }
           )
           .then((res) => {
-            const rawContent = res?.data.choices[0].message?.content || '';
+            const rawContent = res?.data.choices[0].message?.content || ''; // chatgpt 原本的回复
+            const result = splitText(res?.data.choices[0].message?.content || ''); // 格式化后的QA对
             // 计费
             pushSplitDataBill({
-              isPay: !userApiKey,
+              isPay: !userApiKey && result.length > 0,
               userId: dataItem.userId,
               type: 'QA',
               text: systemPrompt.content + text + rawContent,
               tokenLen: res.data.usage?.total_tokens || 0
             });
             return {
-              rawContent, // chatgpt 原本的回复
-              result: splitText(res?.data.choices[0].message?.content || '') // 格式化后的QA对
+              rawContent,
+              result
             };
           })
       )
