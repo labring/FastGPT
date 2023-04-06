@@ -54,21 +54,30 @@ export const httpsAgent =
 
 /* tokens 截断 */
 export const openaiChatFilter = (prompts: ChatItemType[], maxTokens: number) => {
+  const formatPrompts = prompts.map((item) => ({
+    obj: item.obj,
+    value: item.value
+      .replace(/[\u3000\u3001\uff01-\uff5e\u3002]/g, ' ') // 中文标点改空格
+      .replace(/\n+/g, '\n') // 连续空行
+      .replace(/[^\S\r\n]+/g, ' ') // 连续空白内容
+      .trim()
+  }));
+
   let res: ChatItemType[] = [];
 
   let systemPrompt: ChatItemType | null = null;
 
   //  System 词保留
-  if (prompts[0]?.obj === 'SYSTEM') {
-    systemPrompt = prompts.shift() as ChatItemType;
-    maxTokens -= encode(prompts[0].value).length;
+  if (formatPrompts[0]?.obj === 'SYSTEM') {
+    systemPrompt = formatPrompts.shift() as ChatItemType;
+    maxTokens -= encode(formatPrompts[0].value).length;
   }
 
   // 从后往前截取
-  for (let i = prompts.length - 1; i >= 0; i--) {
-    const tokens = encode(prompts[i].value).length;
+  for (let i = formatPrompts.length - 1; i >= 0; i--) {
+    const tokens = encode(formatPrompts[i].value).length;
     if (maxTokens >= tokens) {
-      res.unshift(prompts[i]);
+      res.unshift(formatPrompts[i]);
       maxTokens -= tokens;
     } else {
       break;

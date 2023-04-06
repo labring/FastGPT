@@ -60,10 +60,9 @@ export const chatProblem = `
 `;
 
 export const versionIntro = `
-## Fast GPT V2.4
-* 优化文件拆分功能，可自定义提示词。
-* 优化文件拆分和索引生成的速度。
-* 定制知识库：创建模型时可以选择【知识库】模型, 可以手动导入知识点或者直接导入一个文件自动学习。
+## Fast GPT V2.5
+* 内容压缩，替换中文标点符号和多余符号，减少一些上下文tokens。
+* 优化 QA 拆分记账。
 `;
 
 export const shareHint = `
