@@ -34,7 +34,6 @@ export const pushChatBill = async ({
       // 计算价格
       const unitPrice = modelItem?.price || 5;
       const price = unitPrice * tokens;
-      console.log(`unit price: ${unitPrice}, price: ${formatPrice(price)}元`);
 
       try {
         // 插入 Bill 记录
@@ -91,8 +90,6 @@ export const pushSplitDataBill = async ({
         // 计算价格
         const price = unitPrice * tokenLen;
 
-        console.log(`price: ${formatPrice(price)}元`);
-
         // 插入 Bill 记录
         const res = await Bill.create({
           userId,
@@ -142,8 +139,6 @@ export const pushGenerateVectorBill = async ({
         // 计算价格. 至少为1
         let price = unitPrice * tokenLen;
         price = price > 1 ? price : 1;
-
-        console.log(`price: ${formatPrice(price)}元`);
 
         // 插入 Bill 记录
         const res = await Bill.create({

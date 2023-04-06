@@ -14,15 +14,12 @@ import {
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
-import { customAlphabet } from 'nanoid';
 import { encode } from 'gpt-token-utils';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/tools';
 import { useMutation } from '@tanstack/react-query';
 import { postModelDataSplitData } from '@/api/model';
 import { formatPrice } from '@/utils/user';
-
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
