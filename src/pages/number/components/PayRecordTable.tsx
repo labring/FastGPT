@@ -70,7 +70,7 @@ const PayRecordTable = () => {
             异常问题，wx联系
           </Button>
         </Flex>
-        <TableContainer maxH={'400px'} overflowY={'auto'} px={6}>
+        <TableContainer px={6}>
           <Table>
             <Thead>
               <Tr>

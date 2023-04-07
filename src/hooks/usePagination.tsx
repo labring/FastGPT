@@ -1,8 +1,8 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { PagingData } from '../types/index';
-import { IconButton, Flex, Box } from '@chakra-ui/react';
+import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useToast } from './useToast';
 
 export const usePagination = <T = any,>({
@@ -40,10 +40,10 @@ export const usePagination = <T = any,>({
       }
     }
   });
-  useQuery(['init'], () => {
+
+  useEffect(() => {
     mutate(1);
-    return null;
-  });
+  }, []);
 
   const Pagination = useCallback(() => {
     return (
@@ -53,16 +53,40 @@ export const usePagination = <T = any,>({
           icon={<ArrowBackIcon />}
           aria-label={'left'}
           size={'sm'}
+          w={'28px'}
+          h={'28px'}
           onClick={() => mutate(pageNum - 1)}
         />
-        <Box mx={2}>
-          {pageNum}/{maxPage}
-        </Box>
+        <Flex mx={2} alignItems={'center'}>
+          <Input
+            defaultValue={pageNum}
+            w={'50px'}
+            size={'xs'}
+            type={'number'}
+            min={1}
+            max={maxPage}
+            onBlur={(e) => {
+              const val = +e.target.value;
+              if (val === pageNum) return;
+              if (val >= maxPage) {
+                mutate(maxPage);
+              } else if (val < 1) {
+                mutate(1);
+              } else {
+                mutate(+e.target.value);
+              }
+            }}
+          />
+          <Box mx={2}>/</Box>
+          {maxPage}
+        </Flex>
         <IconButton
           isDisabled={pageNum === maxPage}
           icon={<ArrowForwardIcon />}
           aria-label={'left'}
           size={'sm'}
+          w={'28px'}
+          h={'28px'}
           onClick={() => mutate(pageNum + 1)}
         />
       </Flex>

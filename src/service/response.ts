@@ -34,7 +34,7 @@ export const jsonRes = <T = any>(
     // request 时候报错
     if (error?.response) {
       console.log('statusText:', error?.response?.statusText);
-      console.log('error data:', error?.response?.data);
+      console.log('openai error:', error?.response?.data?.error);
     }
   }
 
