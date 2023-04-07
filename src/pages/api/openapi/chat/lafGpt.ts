@@ -12,7 +12,7 @@ import { pushChatBill } from '@/service/events/pushBill';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
-import { openaiCreateEmbedding, getOpenApiKey, gpt35StreamResponse } from '@/service/utils/openai';
+import { openaiCreateEmbedding, gpt35StreamResponse } from '@/service/utils/openai';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -31,12 +31,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   try {
-    const { prompt, modelId } = req.body as {
+    const {
+      prompt,
+      modelId,
+      isStream = true
+    } = req.body as {
       prompt: ChatItemType;
       modelId: string;
+      isStream: boolean;
     };
 
-    if (!prompt) {
+    if (!prompt || !modelId) {
       throw new Error('缺少参数');
     }
 
@@ -45,9 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let startTime = Date.now();
 
     /* 凭证校验 */
-    const userId = await authOpenApiKey(req);
-
-    const { userApiKey, systemKey } = await getOpenApiKey(userId);
+    const { apiKey, userId } = await authOpenApiKey(req);
 
     /* 查找数据库里的模型信息 */
     const model = await Model.findById(modelId);
@@ -61,15 +64,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!modelConstantsData) {
       throw new Error('模型已下架');
     }
+    console.log('laf gpt start');
 
     // 获取 chatAPI
-    const chatAPI = getOpenAIApi(userApiKey || systemKey);
+    const chatAPI = getOpenAIApi(apiKey);
 
     // 请求一次 chatgpt 拆解需求
     const promptResponse = await chatAPI.createChatCompletion(
       {
         model: ChatModelNameMap[ChatModelNameEnum.GPT35],
         temperature: 0,
+        frequency_penalty: 0.5, // 越大，重复内容越少
+        presence_penalty: -0.5, // 越大，越容易出现新内容
         messages: [
           {
             role: 'system',
@@ -104,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ]
       },
       {
-        timeout: 40000,
+        timeout: 120000,
         httpsAgent
       }
     );
@@ -114,13 +120,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('gpt 异常');
     }
 
-    prompt.value += `\n${promptResolve}`;
+    prompt.value += ` ${promptResolve}`;
     console.log('prompt resolve success, time:', `${(Date.now() - startTime) / 1000}s`);
 
     // 获取提示词的向量
     const { vector: promptVector } = await openaiCreateEmbedding({
-      isPay: !userApiKey,
-      apiKey: userApiKey || systemKey,
+      isPay: true,
+      apiKey: apiKey,
       userId,
       text: prompt.value
     });
@@ -186,34 +192,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const chatResponse = await chatAPI.createChatCompletion(
       {
         model: model.service.chatModel,
-        temperature: temperature,
-        // max_tokens: modelConstantsData.maxToken,
+        temperature,
         messages: formatPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: true
+        stream: isStream
       },
       {
-        timeout: 40000,
-        responseType: 'stream',
+        timeout: 120000,
+        responseType: isStream ? 'stream' : 'json',
         httpsAgent
       }
     );
 
-    console.log('api response. time:', `${(Date.now() - startTime) / 1000}s`);
+    console.log('code response. time:', `${(Date.now() - startTime) / 1000}s`);
 
     step = 1;
-    const { responseContent } = await gpt35StreamResponse({
-      res,
-      stream,
-      chatResponse
-    });
-    console.log('response done. time:', `${(Date.now() - startTime) / 1000}s`);
+    let responseContent = '';
+
+    if (isStream) {
+      const streamResponse = await gpt35StreamResponse({
+        res,
+        stream,
+        chatResponse
+      });
+      responseContent = streamResponse.responseContent;
+    } else {
+      responseContent = chatResponse.data.choices?.[0]?.message?.content || '';
+      jsonRes(res, {
+        data: responseContent
+      });
+    }
+
+    console.log('laf gpt done. time:', `${(Date.now() - startTime) / 1000}s`);
 
     const promptsContent = formatPrompts.map((item) => item.content).join('');
-    // 只有使用平台的 key 才计费
+
     pushChatBill({
-      isPay: !userApiKey,
+      isPay: true,
       modelName: model.service.modelName,
       userId,
       text: promptsContent + responseContent

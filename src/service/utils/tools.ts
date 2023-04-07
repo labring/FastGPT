@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import tunnel from 'tunnel';
 import { ChatItemType } from '@/types/chat';
 import { encode } from 'gpt-token-utils';
-import { OpenApi } from '../mongo';
+import { OpenApi, User } from '../mongo';
+import { formatPrice } from '@/utils/user';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -44,27 +45,41 @@ export const authToken = (token?: string): Promise<string> => {
 };
 
 /* 校验 open api key */
-export const authOpenApiKey = (req: NextApiRequest) => {
-  return new Promise<string>(async (resolve, reject) => {
-    const { apikey: apiKey } = req.headers;
+export const authOpenApiKey = async (req: NextApiRequest) => {
+  const { apikey: apiKey } = req.headers;
 
-    if (!apiKey) {
-      reject('api key is empty');
-      return;
+  if (!apiKey) {
+    return Promise.reject('api key is empty');
+  }
+
+  try {
+    const openApi = await OpenApi.findOne({ apiKey });
+    if (!openApi) {
+      return Promise.reject('api key is error');
     }
-    try {
-      const openApi = await OpenApi.findOne({ apiKey });
-      if (!openApi) {
-        return reject('api key is error');
-      }
-      await OpenApi.findByIdAndUpdate(openApi._id, {
-        lastUsedTime: new Date()
-      });
-      resolve(String(openApi.userId));
-    } catch (error) {
-      reject(error);
+    const userId = String(openApi.userId);
+
+    // 余额校验
+    const user = await User.findById(userId);
+    if (!user) {
+      return Promise.reject('user is empty');
     }
-  });
+    if (formatPrice(user.balance) <= 0) {
+      return Promise.reject('Insufficient account balance');
+    }
+
+    // 更新使用的时间
+    await OpenApi.findByIdAndUpdate(openApi._id, {
+      lastUsedTime: new Date()
+    });
+
+    return {
+      apiKey: process.env.OPENAIKEY as string,
+      userId
+    };
+  } catch (error) {
+    return Promise.reject(error);
+  }
 };
 
 /* 代理 */
