@@ -1,7 +1,6 @@
 import { connectToDatabase, Bill, User } from '../mongo';
 import { modelList, ChatModelNameEnum } from '@/constants/model';
 import { encode } from 'gpt-token-utils';
-import { formatPrice } from '@/utils/user';
 import { BillTypeEnum } from '@/constants/user';
 import type { DataType } from '@/types/data';
 
@@ -22,7 +21,7 @@ export const pushChatBill = async ({
 
   try {
     // 计算 token 数量
-    const tokens = encode(text).length;
+    const tokens = Math.floor(encode(text).length * 0.7);
 
     console.log(`chat generate success. text len: ${text.length}. token len: ${tokens}`);
 
