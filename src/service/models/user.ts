@@ -19,6 +19,10 @@ const UserSchema = new Schema({
     type: Number,
     default: 0.5 * PRICE_SCALE
   },
+  openaiKey: {
+    type: String,
+    default: ''
+  },
   accounts: [
     {
       type: {
