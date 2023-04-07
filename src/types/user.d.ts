@@ -6,19 +6,13 @@ export enum UserNumberEnum {
 export interface UserType {
   _id: string;
   email: string;
-  accounts: {
-    type: string;
-    value: string;
-  }[];
+  openaiKey: string;
   balance: number;
 }
 
 export interface UserUpdateParams {
   balance?: number;
-  accounts?: {
-    type: string;
-    value: string;
-  }[];
+  openaiKey: string;
 }
 
 export interface UserBillType {

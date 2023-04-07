@@ -9,7 +9,7 @@ export interface UserModelSchema {
   email: string;
   password: string;
   balance: number;
-  accounts: { type: 'openai'; value: string }[];
+  openaiKey: string;
   createTime: number;
 }
 

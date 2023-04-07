@@ -9,7 +9,7 @@ import { UserUpdateParams } from '@/types/user';
 /* 更新一些基本信息 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { accounts } = req.body as UserUpdateParams;
+    const { openaiKey } = req.body as UserUpdateParams;
     const { authorization } = req.headers;
 
     if (!authorization) {
@@ -26,8 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         _id: userId
       },
       {
-        // 限定字段
-        ...(accounts ? { accounts } : {})
+        openaiKey
       }
     );
 

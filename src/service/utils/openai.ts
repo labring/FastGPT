@@ -12,7 +12,7 @@ import { pushGenerateVectorBill } from '../events/pushBill';
 export const getUserApiOpenai = async (userId: string) => {
   const user = await User.findById(userId);
 
-  const userApiKey = user?.accounts?.find((item: any) => item.type === 'openai')?.value;
+  const userApiKey = user?.openaiKey;
 
   if (!userApiKey) {
     return Promise.reject('缺少ApiKey, 无法请求');
@@ -35,7 +35,7 @@ export const getOpenApiKey = async (userId: string) => {
     });
   }
 
-  const userApiKey = user?.accounts?.find((item: any) => item.type === 'openai')?.value;
+  const userApiKey = user?.openaiKey;
 
   // 有自己的key
   if (userApiKey) {
