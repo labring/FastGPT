@@ -37,3 +37,4 @@ next-env.d.ts
 /public/trainData/
 /.vscode/
 platform.json
+testApi/
