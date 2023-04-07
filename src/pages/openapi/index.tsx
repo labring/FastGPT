@@ -1,11 +1,120 @@
-import React from 'react';
-import { Card, Box, Flex, Button, Input } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import {
+  Card,
+  Box,
+  Button,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  IconButton,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody
+} from '@chakra-ui/react';
+import { getOpenApiKeys, createAOpenApiKey, delOpenApiById } from '@/api/openapi';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useLoading } from '@/hooks/useLoading';
+import dayjs from 'dayjs';
+import { DeleteIcon } from '@chakra-ui/icons';
+import { useCopyData } from '@/utils/tools';
 
 const OpenApi = () => {
+  const { Loading } = useLoading();
+  const {
+    data: apiKeys = [],
+    isLoading: isGetting,
+    refetch
+  } = useQuery([getOpenApiKeys], getOpenApiKeys);
+  const [apiKey, setApiKey] = useState('');
+  const { copyData } = useCopyData();
+
+  const { mutate: onclickCreateApiKey, isLoading: isCreating } = useMutation({
+    mutationFn: () => createAOpenApiKey(),
+    onSuccess(res) {
+      setApiKey(res);
+      refetch();
+    }
+  });
+
+  const { mutate: onclickRemove, isLoading: isDeleting } = useMutation({
+    mutationFn: async (id: string) => delOpenApiById(id),
+    onSuccess() {
+      refetch();
+    }
+  });
+
   return (
-    <Card px={6} py={4}>
-      ss
-    </Card>
+    <>
+      <Card px={6} py={4} position={'relative'}>
+        <Box fontSize={'xl'} fontWeight={'bold'}>
+          Open Api Key
+        </Box>
+        <Box fontSize={'sm'} mt={2}>
+          请注意保管你的 key，不要泄露！
+        </Box>
+        <TableContainer mt={2} position={'relative'}>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Api Key</Th>
+                <Th>创建时间</Th>
+                <Th>最后一次使用时间</Th>
+                <Th />
+              </Tr>
+            </Thead>
+            <Tbody fontSize={'sm'}>
+              {apiKeys.map(({ id, apiKey, createTime, lastUsedTime }) => (
+                <Tr key={id}>
+                  <Td>{apiKey}</Td>
+                  <Td>{dayjs(createTime).format('YYYY/MM/DD HH:mm:ss')}</Td>
+                  <Td>{dayjs(lastUsedTime).format('YYYY/MM/DD HH:mm:ss')}</Td>
+                  <Td>
+                    <IconButton
+                      icon={<DeleteIcon />}
+                      size={'xs'}
+                      aria-label={'delete'}
+                      variant={'outline'}
+                      colorScheme={'gray'}
+                      onClick={() => onclickRemove(id)}
+                    />
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <Button
+            mt={5}
+            isLoading={isCreating}
+            isDisabled={apiKeys.length >= 5}
+            title={apiKeys.length >= 5 ? '最多五组 Api Key' : ''}
+            onClick={() => onclickCreateApiKey()}
+          >
+            添加新的 Api Key
+          </Button>
+        </TableContainer>
+        <Loading loading={isGetting || isDeleting} fixed={false} />
+      </Card>
+      <Modal isOpen={!!apiKey} onClose={() => setApiKey('')}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Api Key</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody mb={5}>
+            请保管好你的Api Key
+            <Box userSelect={'all'} onClick={() => copyData(apiKey)}>
+              {apiKey}
+            </Box>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
