@@ -17,16 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    const findResponse = await OpenApi.find({ userId });
+    const findResponse = await OpenApi.find({ userId }).sort({ _id: -1 });
 
     // jus save four data
-    const apiKeys = findResponse.map<UserOpenApiKey>((item) => {
-      const key = item.apiKey;
-      return {
-        id: item._id,
-        apiKey: `${key.substring(0, 2)}******${key.substring(key.length - 2)}`
-      };
-    });
+    const apiKeys = findResponse.map<UserOpenApiKey>(
+      ({ _id, apiKey, createTime, lastUsedTime }) => {
+        return {
+          id: _id,
+          apiKey: `${apiKey.substring(0, 2)}******${apiKey.substring(apiKey.length - 2)}`,
+          createTime,
+          lastUsedTime
+        };
+      }
+    );
 
     jsonRes(res, {
       data: apiKeys
