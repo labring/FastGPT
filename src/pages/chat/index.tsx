@@ -519,11 +519,11 @@ const Chat = ({ chatId }: { chatId: string }) => {
               onClick={sendPrompt}
             >
               {isChatting ? (
-                <Image
+                <Icon
                   style={{ transform: 'translateY(4px)' }}
-                  src={'/icon/chatting.svg'}
-                  fill
-                  alt={''}
+                  h={'30px'}
+                  w={'30px'}
+                  name={'chatting'}
                 />
               ) : (
                 <Icon

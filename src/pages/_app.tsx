@@ -51,7 +51,6 @@ export default function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Script src="/js/iconfont.js" strategy="afterInteractive"></Script>
       <Script src="/js/qrcode.min.js" strategy="afterInteractive"></Script>
       <Script src="/js/pdf.js" strategy="afterInteractive"></Script>
       <QueryClientProvider client={queryClient}>

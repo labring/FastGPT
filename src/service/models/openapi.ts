@@ -7,6 +7,10 @@ const OpenApiSchema = new Schema({
     ref: 'user',
     required: true
   },
+  apiKey: {
+    type: String,
+    required: true
+  },
   createTime: {
     type: Date,
     default: () => new Date()

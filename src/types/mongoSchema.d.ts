@@ -154,4 +154,5 @@ export interface OpenApiSchema {
   userId: string;
   createTime: Date;
   lastUsedTime: Date;
+  apiKey: String;
 }

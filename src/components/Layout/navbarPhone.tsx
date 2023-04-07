@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import Icon from '../Iconfont';
+import MyIcon from '../Icon';
 import {
   Flex,
   Drawer,
@@ -39,9 +39,8 @@ const NavbarPhone = ({
         px={7}
       >
         <Box onClick={onOpen}>
-          <Icon name="icon-caidan" width={20} height={20}></Icon>
+          <MyIcon name="menu" width={'20px'} height={'20px'} color={'blackAlpha.600'}></MyIcon>
         </Box>
-        {/* <Icon name="icon-tongzhi" width={20} height={20}></Icon> */}
       </Flex>
       <Drawer isOpen={isOpen} placement="left" size={'xs'} onClose={onClose}>
         <DrawerOverlay />
@@ -74,11 +73,11 @@ const NavbarPhone = ({
                       backgroundColor: 'transparent'
                     })}
               >
-                <Icon
-                  name={item.icon}
-                  width={24}
-                  height={24}
-                  color={item.activeLink.includes(router.pathname) ? '#2B6CB0' : '#4A5568'}
+                <MyIcon
+                  name={item.icon as any}
+                  width={'24px'}
+                  height={'24px'}
+                  fill={item.activeLink.includes(router.pathname) ? '#2B6CB0' : '#4A5568'}
                 />
                 <Box ml={5}>{item.label}</Box>
               </Flex>

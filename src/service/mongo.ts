@@ -42,3 +42,4 @@ export * from './models/pay';
 export * from './models/data';
 export * from './models/dataItem';
 export * from './models/splitData';
+export * from './models/openapi';
