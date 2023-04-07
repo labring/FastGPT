@@ -153,6 +153,6 @@ export interface OpenApiSchema {
   _id: string;
   userId: string;
   createTime: Date;
-  lastUsedTime: Date;
+  lastUsedTime?: Date;
   apiKey: String;
 }

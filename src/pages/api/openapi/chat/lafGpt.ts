@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/chat';
-import { authToken } from '@/service/utils/tools';
+import { authOpenApiKey } from '@/service/utils/tools';
 import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
@@ -36,7 +36,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       modelId: string;
     };
 
-    const { authorization } = req.headers;
     if (!prompt) {
       throw new Error('缺少参数');
     }
@@ -46,7 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let startTime = Date.now();
 
     /* 凭证校验 */
-    const userId = await authToken(authorization);
+    const userId = await authOpenApiKey(req);
+
     const { userApiKey, systemKey } = await getOpenApiKey(userId);
 
     /* 查找数据库里的模型信息 */

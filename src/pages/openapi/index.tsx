@@ -74,7 +74,11 @@ const OpenApi = () => {
                 <Tr key={id}>
                   <Td>{apiKey}</Td>
                   <Td>{dayjs(createTime).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                  <Td>{dayjs(lastUsedTime).format('YYYY/MM/DD HH:mm:ss')}</Td>
+                  <Td>
+                    {lastUsedTime
+                      ? dayjs(lastUsedTime).format('YYYY/MM/DD HH:mm:ss')
+                      : '没有使用过'}
+                  </Td>
                   <Td>
                     <IconButton
                       icon={<DeleteIcon />}
