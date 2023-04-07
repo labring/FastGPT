@@ -16,8 +16,7 @@ const OpenApiSchema = new Schema({
     default: () => new Date()
   },
   lastUsedTime: {
-    type: Date,
-    default: () => new Date()
+    type: Date
   }
 });
 

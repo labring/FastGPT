@@ -1,8 +1,10 @@
+import type { NextApiRequest } from 'next';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import tunnel from 'tunnel';
 import { ChatItemType } from '@/types/chat';
 import { encode } from 'gpt-token-utils';
+import { OpenApi } from '../mongo';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -38,6 +40,30 @@ export const authToken = (token?: string): Promise<string> => {
       }
       resolve(decoded.userId);
     });
+  });
+};
+
+/* 校验 open api key */
+export const authOpenApiKey = (req: NextApiRequest) => {
+  return new Promise<string>(async (resolve, reject) => {
+    const { apikey: apiKey } = req.headers;
+
+    if (!apiKey) {
+      reject('api key is empty');
+      return;
+    }
+    try {
+      const openApi = await OpenApi.findOne({ apiKey });
+      if (!openApi) {
+        return reject('api key is error');
+      }
+      await OpenApi.findByIdAndUpdate(openApi._id, {
+        lastUsedTime: new Date()
+      });
+      resolve(String(openApi.userId));
+    } catch (error) {
+      reject(error);
+    }
   });
 };
 
