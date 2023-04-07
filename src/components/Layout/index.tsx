@@ -16,27 +16,27 @@ const unShowLayoutRoute: { [key: string]: boolean } = {
 const navbarList = [
   {
     label: '介绍',
-    icon: 'icon-gongzuotai-01',
+    icon: 'board',
     link: '/',
     activeLink: ['/']
   },
   {
     label: '模型',
-    icon: 'icon-moxing',
+    icon: 'model',
     link: '/model/list',
     activeLink: ['/model/list', '/model/detail']
   },
-  // {
-  //   label: '数据',
-  //   icon: 'icon-datafull',
-  //   link: '/data/list',
-  //   activeLink: ['/data/list', '/data/detail']
-  // },
   {
     label: '账号',
-    icon: 'icon-yonghu-yuan',
+    icon: 'user',
     link: '/number/setting',
     activeLink: ['/number/setting']
+  },
+  {
+    label: '开发',
+    icon: 'develop',
+    link: '/openapi',
+    activeLink: ['/openapi']
   }
 ];
 

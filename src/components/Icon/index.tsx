@@ -1,7 +1,6 @@
 import React from 'react';
 import type { IconProps } from '@chakra-ui/react';
 import { Icon } from '@chakra-ui/react';
-import dynamic from 'next/dynamic';
 
 const map = {
   model: require('./icons/model.svg').default,
@@ -10,7 +9,11 @@ const map = {
   menu: require('./icons/menu.svg').default,
   pay: require('./icons/pay.svg').default,
   copy: require('./icons/copy.svg').default,
-  chatSend: require('./icons/chatSend.svg').default
+  chatSend: require('./icons/chatSend.svg').default,
+  board: require('./icons/board.svg').default,
+  develop: require('./icons/develop.svg').default,
+  user: require('./icons/user.svg').default,
+  chatting: require('./icons/chatting.svg').default
 };
 
 export type IconName = keyof typeof map;

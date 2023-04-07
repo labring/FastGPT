@@ -2,8 +2,7 @@ import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import Icon from '../Iconfont';
-
+import MyIcon from '../Icon';
 export enum NavbarTypeEnum {
   normal = 'normal',
   small = 'small'
@@ -66,20 +65,16 @@ const Navbar = ({
                   backgroundColor: 'transparent'
                 })}
           >
-            <Icon
-              name={item.icon}
-              width={24}
-              height={24}
-              color={item.activeLink.includes(router.pathname) ? '#2B6CB0' : '#4A5568'}
+            <MyIcon
+              name={item.icon as any}
+              width={'24px'}
+              height={'24px'}
+              fill={item.activeLink.includes(router.pathname) ? '#2B6CB0' : '#4A5568'}
             />
             <Box mt={1}>{item.label}</Box>
           </Flex>
         ))}
       </Box>
-      {/* 通知 icon */}
-      {/* <Flex className={styles.informIcon} mb={5} justifyContent={'center'}>
-        <Icon name={'icon-tongzhi'} width={28} height={28} color={'#718096'}></Icon>
-      </Flex> */}
     </Flex>
   );
 };
