@@ -31,13 +31,13 @@ const navbarList = [
     icon: 'user',
     link: '/number/setting',
     activeLink: ['/number/setting']
+  },
+  {
+    label: '开发',
+    icon: 'develop',
+    link: '/openapi',
+    activeLink: ['/openapi']
   }
-  // {
-  //   label: '开发',
-  //   icon: 'develop',
-  //   link: '/openapi',
-  //   activeLink: ['/openapi']
-  // }
 ];
 
 const Layout = ({ children }: { children: JSX.Element }) => {

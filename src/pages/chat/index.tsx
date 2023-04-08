@@ -300,10 +300,9 @@ const Chat = ({ chatId }: { chatId: string }) => {
 
   // 复制内容
   const onclickCopy = useCallback(
-    (chatId: string) => {
-      const dom = document.getElementById(chatId);
-      const innerText = dom?.innerText;
-      innerText && copyData(innerText);
+    (value: string) => {
+      const val = value.replace(/\n+/g, '\n');
+      copyData(val);
     },
     [copyData]
   );
@@ -434,7 +433,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
                     />
                   </MenuButton>
                   <MenuList fontSize={'sm'}>
-                    <MenuItem onClick={() => onclickCopy(`chat${index}`)}>复制</MenuItem>
+                    <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>
                     <MenuItem onClick={() => delChatRecord(index)}>删除该行</MenuItem>
                   </MenuList>
                 </Menu>
