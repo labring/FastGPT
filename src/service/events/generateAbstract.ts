@@ -76,7 +76,7 @@ export async function generateAbstract(next = false): Promise<any> {
       },
       {
         timeout: 120000,
-        httpsAgent
+        httpsAgent: httpsAgent(!userApiKey)
       }
     );
 

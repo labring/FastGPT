@@ -1,5 +1,6 @@
 import type { Mongoose } from 'mongoose';
 import type { RedisClientType } from 'redis';
+import type { Agent } from 'http';
 
 declare global {
   var mongodb: Mongoose | string | null;
@@ -8,6 +9,9 @@ declare global {
   var generatingAbstract: boolean;
   var generatingVector: boolean;
   var QRCode: any;
+  var httpsAgentFast: Agent;
+  var httpsAgentNormal: Agent;
+
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
   }

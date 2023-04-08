@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { generateQA } from './events/generateQA';
-import { generateAbstract } from './events/generateAbstract';
 import { generateVector } from './events/generateVector';
+import tunnel from 'tunnel';
 
 /**
  * 连接 MongoDB 数据库
@@ -28,8 +28,27 @@ export async function connectToDatabase(): Promise<void> {
   }
 
   generateQA();
-  // generateAbstract();
   generateVector(true);
+
+  // 创建代理对象
+  if (
+    process.env.AXIOS_PROXY_HOST &&
+    process.env.AXIOS_PROXY_PORT_FAST &&
+    process.env.AXIOS_PROXY_PORT_NORMAL
+  ) {
+    global.httpsAgentFast = tunnel.httpsOverHttp({
+      proxy: {
+        host: process.env.AXIOS_PROXY_HOST,
+        port: +process.env.AXIOS_PROXY_PORT_FAST
+      }
+    });
+    global.httpsAgentNormal = tunnel.httpsOverHttp({
+      proxy: {
+        host: process.env.AXIOS_PROXY_HOST,
+        port: +process.env.AXIOS_PROXY_PORT_NORMAL
+      }
+    });
+  }
 }
 
 export * from './models/authCode';

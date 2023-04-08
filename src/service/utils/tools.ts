@@ -83,15 +83,8 @@ export const authOpenApiKey = async (req: NextApiRequest) => {
 };
 
 /* 代理 */
-export const httpsAgent =
-  process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT
-    ? tunnel.httpsOverHttp({
-        proxy: {
-          host: process.env.AXIOS_PROXY_HOST,
-          port: +process.env.AXIOS_PROXY_PORT
-        }
-      })
-    : undefined;
+export const httpsAgent = (fast: boolean) =>
+  fast ? global.httpsAgentFast : global.httpsAgentNormal;
 
 /* tokens 截断 */
 export const openaiChatFilter = (prompts: ChatItemType[], maxTokens: number) => {

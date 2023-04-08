@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // @ts-ignore
       fs.createReadStream(file.filepath),
       'fine-tune',
-      { httpsAgent }
+      { httpsAgent: httpsAgent(false) }
     );
     uploadFileId = uploadRes.data.id; // 记录上传文件的 ID
 
@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         suffix: model.name,
         n_epochs: 4
       },
-      { httpsAgent }
+      { httpsAgent: httpsAgent(false) }
     );
 
     trainId = trainRes.data.id; // 记录训练 ID
@@ -117,9 +117,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // @ts-ignore
     if (openai) {
       // @ts-ignore
-      uploadFileId && openai.deleteFile(uploadFileId, { httpsAgent });
+      uploadFileId && openai.deleteFile(uploadFileId, { httpsAgent: httpsAgent(false) });
       // @ts-ignore
-      trainId && openai.cancelFineTune(trainId, { httpsAgent });
+      trainId && openai.cancelFineTune(trainId, { httpsAgent: httpsAgent(false) });
     }
 
     jsonRes(res, {

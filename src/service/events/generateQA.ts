@@ -91,7 +91,7 @@ export async function generateQA(next = false): Promise<any> {
             },
             {
               timeout: 180000,
-              httpsAgent
+              httpsAgent: httpsAgent(!userApiKey)
             }
           )
           .then((res) => {

@@ -46,11 +46,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { openai } = await getUserApiOpenai(userId);
 
     // 获取 openai 的训练情况
-    const { data } = await openai.retrieveFineTune(training.tuneId, { httpsAgent });
+    const { data } = await openai.retrieveFineTune(training.tuneId, {
+      httpsAgent: httpsAgent(false)
+    });
     // console.log(data);
     if (data.status === OpenAiTuneStatusEnum.succeeded) {
       // 删除训练文件
-      openai.deleteFile(data.training_files[0].id, { httpsAgent });
+      openai.deleteFile(data.training_files[0].id, { httpsAgent: httpsAgent(false) });
 
       // 更新模型状态和模型内容
       await Model.findByIdAndUpdate(modelId, {
@@ -75,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     /* 取消微调 */
     if (data.status === OpenAiTuneStatusEnum.cancelled) {
       // 删除训练文件
-      openai.deleteFile(data.training_files[0].id, { httpsAgent });
+      openai.deleteFile(data.training_files[0].id, { httpsAgent: httpsAgent(false) });
 
       // 更新模型
       await Model.findByIdAndUpdate(modelId, {

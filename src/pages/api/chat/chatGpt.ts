@@ -96,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         timeout: 40000,
         responseType: 'stream',
-        httpsAgent
+        httpsAgent: httpsAgent(!userApiKey)
       }
     );
 
