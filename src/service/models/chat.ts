@@ -15,7 +15,7 @@ const ChatSchema = new Schema({
   expiredTime: {
     // 过期时间
     type: Number,
-    default: Date.now()
+    default: () => new Date()
   },
   loadAmount: {
     // 剩余加载次数
