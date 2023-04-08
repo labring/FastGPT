@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Chat } from '@/service/mongo';
+import { connectToDatabase, Model, Chat } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
+import type { ModelSchema } from '@/types/mongoSchema';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -23,6 +24,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(authorization);
 
     await connectToDatabase();
+
+    // 校验是否为用户的模型
+    const model = await Model.findOne<ModelSchema>({
+      _id: modelId,
+      userId
+    });
+
+    if (!model) {
+      throw new Error('无权使用该模型');
+    }
 
     // 创建 chat 数据
     const response = await Chat.create({
