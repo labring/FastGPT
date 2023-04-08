@@ -93,7 +93,6 @@ export interface ChatSchema {
   expiredTime: number;
   loadAmount: number;
   updateTime: Date;
-  isShare: boolean;
   content: ChatItemType[];
 }
 export interface ChatPopulate extends ChatSchema {

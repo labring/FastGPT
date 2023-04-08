@@ -351,6 +351,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
           isClosable: true,
           duration: 5000
         });
+        router.push('/model/list');
       },
       onSettled() {
         setLoading(false);

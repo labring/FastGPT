@@ -15,20 +15,16 @@ const ChatSchema = new Schema({
   expiredTime: {
     // 过期时间
     type: Number,
-    required: true
+    default: Date.now()
   },
   loadAmount: {
     // 剩余加载次数
     type: Number,
-    required: true
+    default: -1
   },
   updateTime: {
     type: Date,
     default: () => new Date()
-  },
-  isShare: {
-    type: Boolean,
-    default: false
   },
   content: {
     type: [
