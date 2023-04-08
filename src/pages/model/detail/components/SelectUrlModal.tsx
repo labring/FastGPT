@@ -106,7 +106,7 @@ const SelectUrlModal = ({
             QA 拆分，需要较长训练时间，拆分需要消耗 tokens，账号余额不足时，未拆分的数据会被删除。
           </Box>
           <Box mt={2}>
-            一共 {encode(webText).length} 个tokens，大约 {formatPrice(encode(webText).length * 4)}元
+            一共 {encode(webText).length} 个tokens，大约 {formatPrice(encode(webText).length * 3)}元
           </Box>
           <Flex w={'100%'} alignItems={'center'} my={4}>
             <Box flex={'0 0 70px'}>网站地址</Box>
