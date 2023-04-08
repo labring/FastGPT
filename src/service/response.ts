@@ -25,8 +25,11 @@ export const jsonRes = <T = any>(
       msg = error;
     } else if (proxyError[error?.code]) {
       msg = '服务器代理出错';
-    } else if (openaiError2[error?.response?.data?.error?.type]) {
-      msg = openaiError2[error?.response?.data?.error?.type];
+    } else if (error?.response?.data?.error) {
+      msg =
+        openaiError2[error?.response?.data?.error?.type] ||
+        error?.response?.data?.error?.message ||
+        'openai 错误';
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }

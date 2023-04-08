@@ -1,11 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase } from '@/service/mongo';
-import { authChat } from '@/service/utils/chat';
-import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
+import { connectToDatabase, Model } from '@/service/mongo';
+import {
+  httpsAgent,
+  openaiChatFilter,
+  systemPromptFilter,
+  authOpenApiKey
+} from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
-import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
@@ -31,46 +34,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   try {
-    const { chatId, prompt } = req.body as {
-      prompt: ChatItemType;
-      chatId: string;
+    const {
+      prompts,
+      modelId,
+      isStream = true
+    } = req.body as {
+      prompts: ChatItemType[];
+      modelId: string;
+      isStream: boolean;
     };
 
-    const { authorization } = req.headers;
-    if (!chatId || !prompt) {
+    if (!prompts || !modelId) {
       throw new Error('缺少参数');
+    }
+    if (!Array.isArray(prompts)) {
+      throw new Error('prompts is not array');
+    }
+    if (prompts.length > 30 || prompts.length === 0) {
+      throw new Error('prompts length range 1-30');
     }
 
     await connectToDatabase();
     const redis = await connectRedis();
     let startTime = Date.now();
 
-    const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
+    /* 凭证校验 */
+    const { apiKey, userId } = await authOpenApiKey(req);
 
-    const model: ModelSchema = chat.modelId;
-    const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
-    if (!modelConstantsData) {
-      throw new Error('模型加载异常');
+    const model = await Model.findOne({
+      _id: modelId,
+      userId
+    });
+
+    if (!model) {
+      throw new Error('无权使用该模型');
     }
 
-    // 读取对话内容
-    const prompts = [...chat.content, prompt];
+    const modelConstantsData = modelList.find((item) => item.model === model?.service?.modelName);
+    if (!modelConstantsData) {
+      throw new Error('模型初始化异常');
+    }
 
     // 获取提示词的向量
     const { vector: promptVector, chatAPI } = await openaiCreateEmbedding({
-      isPay: !userApiKey,
-      apiKey: userApiKey || systemKey,
+      isPay: true,
+      apiKey,
       userId,
-      text: prompt.value
+      text: prompts[prompts.length - 1].value // 取最后一个
     });
 
     // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
       `idx:${VecModelDataPrefix}:hash`,
-      `@modelId:{${String(
-        chat.modelId._id
-      )}} @vector:[VECTOR_RANGE 0.24 $blob]=>{$YIELD_DISTANCE_AS: score}`,
+      `@modelId:{${modelId}} @vector:[VECTOR_RANGE 0.24 $blob]=>{$YIELD_DISTANCE_AS: score}`,
       'RETURN',
       '1',
       'text',
@@ -88,6 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     const formatRedisPrompt: string[] = [];
+
     // 格式化响应值，获取 qa
     for (let i = 2; i < 61; i += 2) {
       const text = redisData[i]?.[1];
@@ -98,6 +116,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (formatRedisPrompt.length === 0) {
       throw new Error('对不起，我没有找到你的问题');
+    }
+
+    // system 合并
+    if (prompts[0].obj === 'SYSTEM') {
+      formatRedisPrompt.unshift(prompts.shift()?.value || '');
     }
 
     // textArr 筛选，最多 2800 tokens
@@ -132,15 +155,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         model: model.service.chatModel,
         temperature: temperature,
-        // max_tokens: modelConstantsData.maxToken,
         messages: formatPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: true
+        stream: isStream
       },
       {
-        timeout: 40000,
-        responseType: 'stream',
+        timeout: 120000,
+        responseType: isStream ? 'stream' : 'json',
         httpsAgent
       }
     );
@@ -148,20 +170,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
 
     step = 1;
+    let responseContent = '';
 
-    const { responseContent } = await gpt35StreamResponse({
-      res,
-      stream,
-      chatResponse
-    });
+    if (isStream) {
+      const streamResponse = await gpt35StreamResponse({
+        res,
+        stream,
+        chatResponse
+      });
+      responseContent = streamResponse.responseContent;
+    } else {
+      responseContent = chatResponse.data.choices?.[0]?.message?.content || '';
+      jsonRes(res, {
+        data: responseContent
+      });
+    }
 
     const promptsContent = formatPrompts.map((item) => item.content).join('');
-    // 只有使用平台的 key 才计费
     pushChatBill({
-      isPay: !userApiKey,
+      isPay: true,
       modelName: model.service.modelName,
       userId,
-      chatId,
       text: promptsContent + responseContent
     });
     // jsonRes(res);

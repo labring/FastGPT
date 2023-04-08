@@ -7,7 +7,8 @@ export const openaiError: Record<string, string> = {
   'Bad Gateway': '网关异常，请重试'
 };
 export const openaiError2: Record<string, string> = {
-  insufficient_quota: 'API 余额不足'
+  insufficient_quota: 'API 余额不足',
+  invalid_request_error: '输入参数异常'
 };
 export const proxyError: Record<string, boolean> = {
   ECONNABORTED: true,

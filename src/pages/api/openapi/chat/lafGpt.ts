@@ -126,7 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 获取提示词的向量
     const { vector: promptVector } = await openaiCreateEmbedding({
       isPay: true,
-      apiKey: apiKey,
+      apiKey,
       userId,
       text: prompt.value
     });
