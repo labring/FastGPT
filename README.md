@@ -2,7 +2,7 @@
 
 Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接口，包括 GPT3 及其微调方法，以及最新的 gpt3.5 接口。
 
-## 初始化
+## 开发
 复制 .env.template 成 .env.local ，填写核心参数  
 
 ```
@@ -15,7 +15,6 @@ TOKEN_KEY=随便填一个，用于生成和校验 token
 OPENAIKEY=openai的key
 REDIS_URL=redis的地址
 ```
-
 ```bash
 pnpm dev
 ```
@@ -32,48 +31,6 @@ docker push imageName:tag
 # 或者直接拉镜像，见下方
 ```
 
-#### 服务器拉取镜像和运行
-```yml
-# docker-compose
-version: "3.3"
-services:
-  fast-gpt:
-    image: c121914yu/fast-gpt:latest
-    environment:
-      AXIOS_PROXY_HOST: 127.0.0.1
-      AXIOS_PROXY_PORT: 7890
-      MY_MAIL: 
-      MAILE_CODE: 
-      TOKEN_KEY: 
-      MONGODB_URI: 
-      OPENAIKEY: 
-      REDIS_URL: 
-    network_mode: host
-    restart: always
-    container_name: fast-gpt
-```
-```bash
-#!/bin/bash
-# 拉取最新镜像
-docker-compose pull
-docker-compose up -d
-
-echo "Docker Compose 重新拉取镜像完成！"
-
-# 删除本地旧镜像
-images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fast-gpt)
-
-# 将镜像 ID 和名称放入数组中
-IFS=$'\n' read -rd '' -a image_array <<<"$images"
-
-# 遍历数组并删除所有旧的镜像
-for ((i=1; i<${#image_array[@]}; i++))
-do
-    image=${image_array[$i]}
-    image_id=${image%% *}
-    docker rmi $image_id
-done
-```
 
 #### 软件教程：docker 安装
 ```bash
@@ -162,4 +119,46 @@ appendfsync everysec
 ```bash
 # 添加索引
 FT.CREATE idx:model:data:hash ON HASH PREFIX 1 model:data: SCHEMA modelId TAG userId TAG status TAG q TEXT text TEXT vector VECTOR FLAT 6 DIM 1536 DISTANCE_METRIC COSINE TYPE FLOAT32
+```
+#### 服务器拉取镜像和运行
+```yml
+# docker-compose
+version: "3.3"
+services:
+  fast-gpt:
+    image: c121914yu/fast-gpt:latest
+    environment:
+      AXIOS_PROXY_HOST: 127.0.0.1
+      AXIOS_PROXY_PORT: 7890
+      MY_MAIL: 
+      MAILE_CODE: 
+      TOKEN_KEY: 
+      MONGODB_URI: 
+      OPENAIKEY: 
+      REDIS_URL: 
+    network_mode: host
+    restart: always
+    container_name: fast-gpt
+```
+```bash
+#!/bin/bash
+# 拉取最新镜像
+docker-compose pull
+docker-compose up -d
+
+echo "Docker Compose 重新拉取镜像完成！"
+
+# 删除本地旧镜像
+images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fast-gpt)
+
+# 将镜像 ID 和名称放入数组中
+IFS=$'\n' read -rd '' -a image_array <<<"$images"
+
+# 遍历数组并删除所有旧的镜像
+for ((i=1; i<${#image_array[@]}; i++))
+do
+    image=${image_array[$i]}
+    image_id=${image%% *}
+    docker rmi $image_id
+done
 ```

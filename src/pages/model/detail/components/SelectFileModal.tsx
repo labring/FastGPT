@@ -127,7 +127,7 @@ const SelectFileModal = ({
             tokens，账号余额不足时，未拆分的数据会被删除。
           </Box>
           <Box mt={2}>
-            一共 {encode(fileText).length} 个tokens，大约 {formatPrice(encode(fileText).length * 4)}
+            一共 {encode(fileText).length} 个tokens，大约 {formatPrice(encode(fileText).length * 3)}
             元
           </Box>
           <Flex w={'100%'} alignItems={'center'} my={4}>
