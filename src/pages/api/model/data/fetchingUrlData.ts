@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const data = await axios
       .get(url, {
-        httpsAgent
+        httpsAgent: httpsAgent(false)
       })
       .then((res) => res.data as string);
 

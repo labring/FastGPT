@@ -111,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       {
         timeout: 120000,
-        httpsAgent
+        httpsAgent: httpsAgent(true)
       }
     );
 
@@ -201,7 +201,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         timeout: 120000,
         responseType: isStream ? 'stream' : 'json',
-        httpsAgent
+        httpsAgent: httpsAgent(true)
       }
     );
 

@@ -68,12 +68,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (training) {
       const { openai } = await getUserApiOpenai(userId);
       // 获取训练记录
-      const tuneRecord = await openai.retrieveFineTune(training.tuneId, { httpsAgent });
+      const tuneRecord = await openai.retrieveFineTune(training.tuneId, {
+        httpsAgent: httpsAgent(false)
+      });
 
       // 删除训练文件
-      openai.deleteFile(tuneRecord.data.training_files[0].id, { httpsAgent });
+      openai.deleteFile(tuneRecord.data.training_files[0].id, { httpsAgent: httpsAgent(false) });
       // 取消训练
-      openai.cancelFineTune(training.tuneId, { httpsAgent });
+      openai.cancelFineTune(training.tuneId, { httpsAgent: httpsAgent(false) });
     }
 
     // 删除对应训练记录
