@@ -16,15 +16,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    // 注册人数限流
-    if (type === EmailTypeEnum.register) {
-      const maxCount = process.env.MAX_USER ? +process.env.MAX_USER : Infinity;
-      const userCount = await User.count();
-      if (userCount >= maxCount) {
-        throw new Error('当前注册用户已满，请等待名额~');
-      }
-    }
-
     let code = '';
     for (let i = 0; i < 6; i++) {
       code += Math.floor(Math.random() * 10);

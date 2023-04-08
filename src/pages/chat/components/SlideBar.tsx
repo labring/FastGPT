@@ -281,7 +281,7 @@ const SlideBar = ({
                 mr={3}
                 onClick={async () => {
                   copyData(
-                    `${location.origin}/chat?chatId=${await getChatSiteId(modelId, true)}`,
+                    `${location.origin}/chat?chatId=${await getChatSiteId(modelId)}`,
                     '已复制分享链接'
                   );
                   onCloseShare();
