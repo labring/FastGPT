@@ -88,7 +88,7 @@ echo "Restart clash"
 #### 软件教程：Nginx
 ...没写，这个百度吧。
 
-#### redis
+#### redis-stack
 
 安装
 ```bash
