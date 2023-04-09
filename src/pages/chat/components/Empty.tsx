@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Box, Mark } from '@chakra-ui/react';
-import { versionIntro, chatProblem } from '@/constants/common';
+import { Card, Box } from '@chakra-ui/react';
+import { useMarkdown } from '@/hooks/useMarkdown';
 import Markdown from '@/components/Markdown';
 
 const Empty = ({ intro }: { intro: string }) => {
@@ -9,6 +9,9 @@ const Empty = ({ intro }: { intro: string }) => {
       {children}
     </Box>
   );
+  const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
+  const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
+
   return (
     <Box
       minH={'100%'}
