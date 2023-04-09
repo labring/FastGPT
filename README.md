@@ -7,7 +7,8 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 
 ```
 AXIOS_PROXY_HOST=axios代理地址，目前 openai 接口都需要走代理，本机的话就填 127.0.0.1
-AXIOS_PROXY_PORT=代理端口
+AXIOS_PROXY_PORT_FAST=代理端口1,clash默认为7890
+AXIOS_PROXY_PORT_NORMAL=代理端口2
 MONGODB_URI=mongo数据库地址
 MY_MAIL=发送验证码邮箱
 MAILE_CODE=邮箱秘钥（代理里设置的是QQ邮箱，不知道怎么找这个 code 的，可以百度搜"nodemailer发送邮件"）
