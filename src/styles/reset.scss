@@ -1,0 +1,72 @@
+body,
+h1,
+h2,
+h3,
+h4,
+hr,
+p,
+blockquote,
+dl,
+dt,
+dd,
+ul,
+ol,
+li,
+pre,
+form,
+fieldset,
+legend,
+button,
+input,
+textarea,
+th,
+td,
+svg {
+  margin: 0;
+}
+
+#__next {
+  height: 100%;
+}
+
+::-webkit-scrollbar,
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+@media (max-width: 900px) {
+  html {
+    font-size: 14px;
+  }
+  ::-webkit-scrollbar,
+  ::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+}
+.textEllipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-focus-ring-color: rgba(0, 0, 0, 0);
+  outline: none;
+}
