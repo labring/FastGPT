@@ -30,9 +30,9 @@ import { getToken } from '@/utils/user';
 import MyIcon from '@/components/Icon';
 import { useCopyData } from '@/utils/tools';
 import Markdown from '@/components/Markdown';
-import { shareHint } from '@/constants/common';
 import { getChatSiteId } from '@/api/chat';
 import WxConcat from '@/components/WxConcat';
+import { useMarkdown } from '@/hooks/useMarkdown';
 
 const SlideBar = ({
   name,
@@ -55,6 +55,7 @@ const SlideBar = ({
   const [hasReady, setHasReady] = useState(false);
   const { isOpen: isOpenShare, onOpen: onOpenShare, onClose: onCloseShare } = useDisclosure();
   const { isOpen: isOpenWx, onOpen: onOpenWx, onClose: onCloseWx } = useDisclosure();
+  const { data: shareHint } = useMarkdown({ url: '/chatProblem.md' });
 
   const { isSuccess } = useQuery(['init'], getMyModels, {
     cacheTime: 5 * 60 * 1000

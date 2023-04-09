@@ -61,11 +61,6 @@ const ModelTable = ({
       )
     },
     {
-      title: '训练次数',
-      key: 'trainingTimes',
-      dataIndex: 'trainingTimes'
-    },
-    {
       title: '操作',
       key: 'control',
       render: (item: ModelSchema) => (

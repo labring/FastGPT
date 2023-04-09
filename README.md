@@ -31,7 +31,6 @@ docker push imageName:tag
 # 或者直接拉镜像，见下方
 ```
 
-
 #### 软件教程：docker 安装
 ```bash
 # 安装docker
@@ -39,20 +38,6 @@ curl -sSL https://get.daocloud.io/docker | sh
 sudo systemctl start docker
 ```
 
-#### 软件教程：mongo 安装
-```bash
-docker pull mongo:6.0.4
-docker stop mongo
-docker rm mongo
-docker run -d --name mongo \
-    -e MONGO_INITDB_ROOT_USERNAME= \
-    -e MONGO_INITDB_ROOT_PASSWORD= \
-    -v /root/service/mongo:/data/db \
-    mongo:6.0.4
-
-# 检查 mongo 运行情况, 有成功的 logs 代表访问成功
-docker logs mongo
-```
 #### 软件教程: clash 代理
 ```bash
 # 下载包
@@ -70,8 +55,7 @@ export https_proxy=http://127.0.0.1:7890
 export HTTP_PROXY=http://127.0.0.1:7890
 export HTTPS_PROXY=http://127.0.0.1:7890
 
-# 运行脚本: 删除clash - 到 clash 目录 - 删除缓存 - 执行运行
-# 会生成一个 nohup.out 文件，可以看到 clash 的 logs
+# 运行脚本: 删除clash - 到 clash 目录 - 删除缓存 - 执行运行. 会生成一个 nohup.out 文件，可以看到 clash 的 logs
 OLD_PROCESS=$(pgrep clash)
 if [ ! -z "$OLD_PROCESS" ]; then
   echo "Killing old process: $OLD_PROCESS"
@@ -85,44 +69,9 @@ nohup ./clash-linux-amd64-v1.10.0  -d ./ &
 echo "Restart clash"
 ```
 
-#### 软件教程：Nginx
-...没写，这个百度吧。
-
-#### redis-stack
-
-安装
-```bash
-#!/bin/bash
-docker pull redis/redis-stack:6.2.6-v6
-docker stop fast-gpt-redis-stack
-docker rm fast-gpt-redis-stack
-
-docker run -d --name fast-gpt-redis-stack \
-    -v /redis/data:/data \
-    -v /etc/localtime:/etc/localtime:ro \
-    -v /redis.conf:/redis-stack.conf \
-    -e REDIS_ARGS="--requirepass 1111111"\
-    -p 8102:6379 \
-    -p 8103:8001 \
-    --restart unless-stopped \
-    redis/redis-stack:6.2.6-v6
-```
-```bash
-# /redis.conf
-# 开启aop持久化
-appendonly yes
-#default: 持久化文件
-appendfilename "appendonly.aof"
-#default: 每秒同步一次
-appendfsync everysec
-```
-```bash
-# 添加索引
-FT.CREATE idx:model:data:hash ON HASH PREFIX 1 model:data: SCHEMA modelId TAG userId TAG status TAG q TEXT text TEXT vector VECTOR FLAT 6 DIM 1536 DISTANCE_METRIC COSINE TYPE FLOAT32
-```
-#### 服务器拉取镜像和运行
+#### 文件创建
+**yml文件**
 ```yml
-# docker-compose
 version: "3.3"
 services:
   fast-gpt:
@@ -130,20 +79,108 @@ services:
     environment:
       AXIOS_PROXY_HOST: 127.0.0.1
       AXIOS_PROXY_PORT: 7890
-      MY_MAIL: 
-      MAILE_CODE: 
-      TOKEN_KEY: 
-      MONGODB_URI: 
-      OPENAIKEY: 
-      REDIS_URL: 
+      MY_MAIL: 11111111@qq.com
+      MAILE_CODE: sdasadasfasfad
+      TOKEN_KEY: sssssssss
+      MONGODB_URI: mongodb://username:password@0.0.0.0:27017/?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false
+      OPENAIKEY: sk-afadfadfadfsd
+      REDIS_URL: redis://default:password@0.0.0.0:8100
     network_mode: host
     restart: always
     container_name: fast-gpt
+  mongodb:
+    image: mongo:6.0.4
+    container_name: mongo
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=ROOT_1234
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/data/logs
+    volumes:
+      - /root/fastgpt/mongo/data:/data/db
+      - /root/fastgpt/mongo/logs:/data/logs
+    ports:
+      - 27017:27017
+  nginx: 
+    image: nginx:alpine3.17
+    container_name: nginx
+    restart: always
+    network_mode: host
+    ports:
+      - "80:80"
+    volumes:
+      - /root/fastgpt/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  redis-stack:
+    image: redis/redis-stack:6.2.6-v6
+    container_name: redis-stack
+    restart: unless-stopped
+    ports:
+      - "8100:6379"
+      - "8101:8001"
+    environment:
+      - REDIS_ARGS=--requirepass psw1234
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /root/fastgpt/redis/redis.conf:/redis.conf
+      - /root/fastgpt/redis/data:/data
 ```
+**redis.conf**
+```
+## 开启aop持久化
+appendonly yes
+#default: 持久化文件
+appendfilename "appendonly.aof"
+#default: 每秒同步一次
+appendfsync everysec
+```
+**nginx.conf**
+```
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+    include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen 80;
+        server_name test.com;
+        
+        gzip  on;
+        gzip_min_length   1k;
+        gzip_buffers  4 8k;
+        gzip_http_version 1.1;
+        gzip_comp_level 6;
+        gzip_vary on;
+        gzip_types  text/plain application/x-javascript text/css application/javascript application/json application/xml;
+        gzip_disable "MSIE [1-6]\.";
+
+        location / {
+            proxy_pass http://localhost:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;        
+        }
+    }
+}
+```
+
+#### 运行脚本
+**redis创建索引**
+```bash
+FT.CREATE idx:model:data:hash ON HASH PREFIX 1 model:data: SCHEMA modelId TAG userId TAG status TAG q TEXT text TEXT vector VECTOR FLAT 6 DIM 1536 DISTANCE_METRIC COSINE TYPE FLOAT32
+```
+**run.sh 运行文件**
 ```bash
 #!/bin/bash
-# 拉取最新镜像
-docker-compose pull
 docker-compose up -d
 
 echo "Docker Compose 重新拉取镜像完成！"

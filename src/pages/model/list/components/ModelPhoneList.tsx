@@ -49,10 +49,6 @@ const ModelPhoneList = ({
             <Box flex={'0 0 100px'}>AI模型: </Box>
             <Box color={'blackAlpha.500'}>{model.service.modelName}</Box>
           </Flex>
-          <Flex mt={5}>
-            <Box flex={'0 0 100px'}>训练次数: </Box>
-            <Box color={'blackAlpha.500'}>{model.trainingTimes}次</Box>
-          </Flex>
           <Flex mt={5} justifyContent={'flex-end'}>
             <Button
               mr={3}
