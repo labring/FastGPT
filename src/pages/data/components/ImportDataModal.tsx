@@ -15,7 +15,7 @@ import {
 import { useTabs } from '@/hooks/useTabs';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useSelectFile } from '@/hooks/useSelectFile';
-import { readTxtContent, readPdfContent, readDocContent } from '@/utils/tools';
+import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { postSplitData } from '@/api/data';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
