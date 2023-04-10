@@ -15,7 +15,7 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readCsvContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
-import { postModelDataJsonData } from '@/api/model';
+import { postModelDataCsvData } from '@/api/model';
 import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { fileDownload } from '@/utils/file';
@@ -33,20 +33,22 @@ const SelectJsonModal = ({
 }) => {
   const [selecting, setSelecting] = useState(false);
   const { toast } = useToast();
-  const { File, onOpen } = useSelectFile({ fileType: '.csv', multiple: true });
-  const [fileData, setFileData] = useState<
-    { prompt: string; completion: string; vector?: number[] }[]
-  >([]);
+  const { File, onOpen } = useSelectFile({ fileType: '.csv', multiple: false });
+  const [fileData, setFileData] = useState<string[][]>([]);
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认导入该数据集?'
   });
 
   const onSelectFile = useCallback(
     async (e: File[]) => {
+      const file = e[0];
       setSelecting(true);
       try {
-        const data = await Promise.all(e.map((item) => readCsvContent(item)));
-        console.log(data);
+        const { header, data } = await readCsvContent(file);
+        if (header[0] !== 'question' || header[1] !== 'answer') {
+          throw new Error('csv 文件格式有误');
+        }
+        setFileData(data);
       } catch (error: any) {
         console.log(error);
         toast({
@@ -62,8 +64,7 @@ const SelectJsonModal = ({
   const { mutate, isLoading } = useMutation({
     mutationFn: async () => {
       if (!fileData) return;
-      const res = await postModelDataJsonData(modelId, fileData);
-      console.log(res);
+      await postModelDataCsvData(modelId, fileData);
       toast({
         title: '导入数据成功,需要一段时间训练',
         status: 'success'
@@ -115,7 +116,16 @@ const SelectJsonModal = ({
             </Flex>
           </Box>
           <Box flex={'2 0 0'} h={'100%'} overflow={'auto'} p={2} backgroundColor={'blackAlpha.50'}>
-            {JSON.stringify(fileData)}
+            {fileData.map((item, index) => (
+              <Box key={index}>
+                <Box>
+                  Q{index + 1}. {item[0]}
+                </Box>
+                <Box>
+                  A{index + 1}. {item[1]}
+                </Box>
+              </Box>
+            ))}
           </Box>
         </ModalBody>
 

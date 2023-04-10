@@ -14,6 +14,7 @@ specifiers:
   '@types/node': 18.14.0
   '@types/nodemailer': ^6.4.7
   '@types/nprogress': ^0.2.0
+  '@types/papaparse': ^5.3.7
   '@types/react': 18.0.28
   '@types/react-dom': 18.0.11
   '@types/react-syntax-highlighter': ^15.5.6
@@ -41,6 +42,7 @@ specifiers:
   nodemailer: ^6.9.1
   nprogress: ^0.2.0
   openai: ^3.2.1
+  papaparse: ^5.4.1
   prettier: ^2.8.4
   react: 18.2.0
   react-dom: 18.2.0
@@ -84,6 +86,7 @@ dependencies:
   nodemailer: registry.npmmirror.com/nodemailer/6.9.1
   nprogress: registry.npmmirror.com/nprogress/0.2.0
   openai: registry.npmmirror.com/openai/3.2.1
+  papaparse: registry.npmmirror.com/papaparse/5.4.1
   react: registry.npmmirror.com/react/18.2.0
   react-dom: registry.npmmirror.com/react-dom/18.2.0_react@18.2.0
   react-hook-form: registry.npmmirror.com/react-hook-form/7.43.1_react@18.2.0
@@ -106,6 +109,7 @@ devDependencies:
   '@types/lodash': registry.npmmirror.com/@types/lodash/4.14.191
   '@types/node': registry.npmmirror.com/@types/node/18.14.0
   '@types/nodemailer': registry.npmmirror.com/@types/nodemailer/6.4.7
+  '@types/papaparse': registry.npmmirror.com/@types/papaparse/5.3.7
   '@types/react': registry.npmmirror.com/@types/react/18.0.28
   '@types/react-dom': registry.npmmirror.com/@types/react-dom/18.0.11
   '@types/react-syntax-highlighter': registry.npmmirror.com/@types/react-syntax-highlighter/15.5.6
@@ -5046,6 +5050,14 @@ packages:
     version: 0.2.0
     dev: false
 
+  registry.npmmirror.com/@types/papaparse/5.3.7:
+    resolution: {integrity: sha512-f2HKmlnPdCvS0WI33WtCs5GD7X1cxzzS/aduaxSu3I7TbhWlENjSPs6z5TaB9K0J+BH1jbmqTaM+ja5puis4wg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/papaparse/-/papaparse-5.3.7.tgz}
+    name: '@types/papaparse'
+    version: 5.3.7
+    dependencies:
+      '@types/node': registry.npmmirror.com/@types/node/18.14.0
+    dev: true
+
   registry.npmmirror.com/@types/parse-json/4.0.0:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/parse-json/-/parse-json-4.0.0.tgz}
     name: '@types/parse-json'
@@ -9569,6 +9581,12 @@ packages:
     resolution: {integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pako/-/pako-1.0.11.tgz}
     name: pako
     version: 1.0.11
+    dev: false
+
+  registry.npmmirror.com/papaparse/5.4.1:
+    resolution: {integrity: sha512-HipMsgJkZu8br23pW15uvo6sib6wne/4woLZPlFf3rpDyMe9ywEXUsuD7+6K9PRkJlVT51j/sCOYDKGGS3ZJrw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/papaparse/-/papaparse-5.4.1.tgz}
+    name: papaparse
+    version: 5.4.1
     dev: false
 
   registry.npmmirror.com/parent-module/1.0.1:
