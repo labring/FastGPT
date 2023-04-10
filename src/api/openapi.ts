@@ -13,4 +13,4 @@ export const getOpenApiKeys = () => GET<UserOpenApiKey[]>('/openapi/getKeys');
 /**
  * delete api by id
  */
-export const delOpenApiById = (id: string) => DELETE(`/openapi/delKet?id=${id}`);
+export const delOpenApiById = (id: string) => DELETE(`/openapi/delKey?id=${id}`);
