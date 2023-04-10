@@ -91,7 +91,7 @@ export const postModelDataSplitData = (data: { modelId: string; text: string; pr
  * json导入数据
  */
 export const postModelDataCsvData = (modelId: string, data: string[][]) =>
-  POST(`/model/data/pushModelDataCsv`, { modelId, data: data });
+  POST<number>(`/model/data/pushModelDataCsv`, { modelId, data: data });
 
 /**
  * 更新模型数据

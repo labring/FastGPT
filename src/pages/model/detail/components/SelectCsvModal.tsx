@@ -64,10 +64,11 @@ const SelectJsonModal = ({
   const { mutate, isLoading } = useMutation({
     mutationFn: async () => {
       if (!fileData) return;
-      await postModelDataCsvData(modelId, fileData);
+      const res = await postModelDataCsvData(modelId, fileData);
       toast({
-        title: '导入数据成功,需要一段时间训练',
-        status: 'success'
+        title: `导入数据成功，最终导入: ${res || 0} 条数据。需要一段时间训练`,
+        status: 'success',
+        duration: 4000
       });
       onClose();
       onSuccess();
@@ -90,7 +91,7 @@ const SelectJsonModal = ({
         <ModalCloseButton />
 
         <ModalBody h={'100%'} display={['block', 'flex']} fontSize={'sm'} overflowY={'auto'}>
-          <Box flex={'1 0 0'} w={['100%', 0]} mr={[0, 4]} mb={[4, 0]}>
+          <Box flex={'2 0 0'} w={['100%', 0]} mr={[0, 4]} mb={[4, 0]}>
             <Markdown source={intro} />
             <Box
               my={3}
@@ -115,7 +116,7 @@ const SelectJsonModal = ({
               <Box ml={4}>一共 {fileData.length} 组数据</Box>
             </Flex>
           </Box>
-          <Box flex={'2 0 0'} h={'100%'} overflow={'auto'} p={2} backgroundColor={'blackAlpha.50'}>
+          <Box flex={'3 0 0'} h={'100%'} overflow={'auto'} p={2} backgroundColor={'blackAlpha.50'}>
             {fileData.map((item, index) => (
               <Box key={index}>
                 <Box>
