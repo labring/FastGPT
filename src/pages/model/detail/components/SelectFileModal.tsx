@@ -21,7 +21,7 @@ import { useMutation } from '@tanstack/react-query';
 import { postModelDataSplitData } from '@/api/model';
 import { formatPrice } from '@/utils/user';
 
-const fileExtension = '.txt,.doc,.docx,.pdf,.md,.csv';
+const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
 const SelectFileModal = ({
   onClose,
@@ -59,8 +59,6 @@ const SelectFileModal = ({
                 case 'doc':
                 case 'docx':
                   return readDocContent(file);
-                case 'csv':
-                  return readCsvContent(file);
                 default:
                   return '';
               }
