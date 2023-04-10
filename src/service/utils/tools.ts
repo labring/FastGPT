@@ -1,11 +1,11 @@
 import type { NextApiRequest } from 'next';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import tunnel from 'tunnel';
 import { ChatItemType } from '@/types/chat';
 import { encode } from 'gpt-token-utils';
 import { OpenApi, User } from '../mongo';
 import { formatPrice } from '@/utils/user';
+import { ERROR_ENUM } from '../errorCode';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -49,20 +49,20 @@ export const authOpenApiKey = async (req: NextApiRequest) => {
   const { apikey: apiKey } = req.headers;
 
   if (!apiKey) {
-    return Promise.reject('api key is empty');
+    return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
   try {
     const openApi = await OpenApi.findOne({ apiKey });
     if (!openApi) {
-      return Promise.reject('api key is error');
+      return Promise.reject(ERROR_ENUM.unAuthorization);
     }
     const userId = String(openApi.userId);
 
     // 余额校验
     const user = await User.findById(userId);
     if (!user) {
-      return Promise.reject('user is empty');
+      return Promise.reject(ERROR_ENUM.unAuthorization);
     }
     if (formatPrice(user.balance) <= 0) {
       return Promise.reject('Insufficient account balance');

@@ -123,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       formatRedisPrompt.unshift(prompts.shift()?.value || '');
     }
 
-    // textArr 筛选，最多 2800 tokens
+    // 系统提示词筛选，最多 2800 tokens
     const systemPrompt = systemPromptFilter(formatRedisPrompt, 2800);
 
     prompts.unshift({
