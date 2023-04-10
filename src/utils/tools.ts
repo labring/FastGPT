@@ -76,5 +76,5 @@ export const formatVector = (vector: number[]) => {
  * 字符串清理，替换换行符号
  */
 export const clearStrLineBreak = (str: string) => {
-  return str.replace(/\n/g, '\n').replace(/\n/g, '\\n').trim();
+  return str.replace(/\n+/g, '\n').replace(/\n/g, '\\n').trim();
 };

@@ -60,7 +60,7 @@ export const getModelDataList = (props: GetModelDataListProps) =>
  * 获取导出数据（不分页）
  */
 export const getExportDataList = (modelId: string) =>
-  GET<string>(`/model/data/exportModelData?modelId=${modelId}`);
+  GET<[string, string][]>(`/model/data/exportModelData?modelId=${modelId}`);
 
 /**
  * 获取模型正在拆分数据的数量
@@ -90,10 +90,8 @@ export const postModelDataSplitData = (data: { modelId: string; text: string; pr
 /**
  * json导入数据
  */
-export const postModelDataJsonData = (
-  modelId: string,
-  jsonData: { prompt: string; completion: string; vector?: number[] }[]
-) => POST(`/model/data/pushModelDataJson`, { modelId, data: jsonData });
+export const postModelDataCsvData = (modelId: string, data: string[][]) =>
+  POST(`/model/data/pushModelDataCsv`, { modelId, data: data });
 
 /**
  * 更新模型数据

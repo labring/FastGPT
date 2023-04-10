@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const { modelId, data } = req.body as {
       modelId: string;
-      data: { prompt: string; completion: string; vector?: number[] }[];
+      data: string[][];
     };
     const { authorization } = req.headers;
 
@@ -44,8 +44,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 插入 redis
     const insertRedisRes = await Promise.allSettled(
       data.map((item) => {
-        const vector = item.vector;
-
         return redis.sendCommand([
           'HMSET',
           `${VecModelDataPrefix}:${nanoid()}`,
@@ -53,13 +51,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           userId,
           'modelId',
           String(modelId),
-          ...(vector ? ['vector', vectorToBuffer(formatVector(vector))] : []),
           'q',
-          item.prompt,
+          item[0],
           'text',
-          item.completion,
+          item[1],
           'status',
-          vector ? ModelDataStatusEnum.ready : ModelDataStatusEnum.waiting
+          ModelDataStatusEnum.waiting
         ]);
       })
     );

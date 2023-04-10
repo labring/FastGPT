@@ -41,16 +41,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     );
 
-    let str = `question,answer\n`;
+    const data: [string, string][] = [];
 
     searchRes.documents.forEach((item: any) => {
       if (item.value.q && item.value.text) {
-        str += `"${clearStrLineBreak(item.value.q)}","${clearStrLineBreak(item.value.text)}"\n`;
+        data.push([clearStrLineBreak(item.value.q), clearStrLineBreak(item.value.text)]);
       }
     });
 
     jsonRes(res, {
-      data: str.slice(0, str.length - 1)
+      data
     });
   } catch (err) {
     jsonRes(res, {

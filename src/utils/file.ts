@@ -1,4 +1,5 @@
 import mammoth from 'mammoth';
+import Papa from 'papaparse';
 
 /**
  * 读取 txt 文件内容
@@ -97,13 +98,15 @@ export const readDocContent = (file: File) =>
  */
 export const readCsvContent = async (file: File) => {
   try {
-    const textArr = (await readTxtContent(file)).split('\n');
-    const header = textArr.shift()?.split(',');
-    if (!header) {
-      throw new Error('csv 格式错误');
+    const textArr = await readTxtContent(file);
+    const json = Papa.parse(textArr).data as string[][];
+    if (json.length === 0) {
+      throw new Error('csv 解析失败');
     }
-    // 拆分每一行数据
-    const data = [];
+    return {
+      header: json.shift()?.filter((item) => item) as string[],
+      data: json.map((item) => item?.filter((item) => item))
+    };
   } catch (error) {
     return Promise.reject('解析 csv 文件失败');
   }

@@ -33,6 +33,7 @@ import { fileDownload } from '@/utils/file';
 import dynamic from 'next/dynamic';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { FormData as InputDataType } from './InputDataModal';
+import Papa from 'papaparse';
 
 const InputModel = dynamic(() => import('./InputDataModal'));
 const SelectFileModel = dynamic(() => import('./SelectFileModal'));
@@ -92,10 +93,13 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     mutationFn: () => getExportDataList(model._id),
     onSuccess(res) {
       try {
-        console.log(res);
         setIsLoading(true);
+        const text = Papa.unparse({
+          fields: ['question', 'answer'],
+          data: res
+        });
         fileDownload({
-          text: res,
+          text,
           type: 'text/csv',
           filename: 'data.csv'
         });
