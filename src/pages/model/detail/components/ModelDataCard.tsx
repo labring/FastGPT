@@ -28,8 +28,8 @@ import {
   getExportDataList
 } from '@/api/model';
 import { DeleteIcon, RepeatIcon, EditIcon } from '@chakra-ui/icons';
-import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
+import { fileDownload } from '@/utils/file';
 import dynamic from 'next/dynamic';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { FormData as InputDataType } from './InputDataModal';
@@ -37,10 +37,10 @@ import type { FormData as InputDataType } from './InputDataModal';
 const InputModel = dynamic(() => import('./InputDataModal'));
 const SelectFileModel = dynamic(() => import('./SelectFileModal'));
 const SelectUrlModel = dynamic(() => import('./SelectUrlModal'));
-const SelectJsonModel = dynamic(() => import('./SelectJsonModal'));
+const SelectCsvModal = dynamic(() => import('./SelectCsvModal'));
 
 const ModelDataCard = ({ model }: { model: ModelSchema }) => {
-  const { Loading } = useLoading();
+  const { Loading, setIsLoading } = useLoading();
 
   const {
     data: modelDataList,
@@ -70,9 +70,9 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     onClose: onCloseSelectUrlModal
   } = useDisclosure();
   const {
-    isOpen: isOpenSelectJsonModal,
-    onOpen: onOpenSelectJsonModal,
-    onClose: onCloseSelectJsonModal
+    isOpen: isOpenSelectCsvModal,
+    onOpen: onOpenSelectCsvModal,
+    onClose: onCloseSelectCsvModal
   } = useDisclosure();
 
   const { data: splitDataLen, refetch } = useQuery(['getModelSplitDataList'], () =>
@@ -91,18 +91,18 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
   const { mutate: onclickExport, isLoading: isLoadingExport } = useMutation({
     mutationFn: () => getExportDataList(model._id),
     onSuccess(res) {
-      // 导出为文件
-      const blob = new Blob([res], { type: 'application/json;charset=utf-8' });
-
-      // 创建下载链接
-      const downloadLink = document.createElement('a');
-      downloadLink.href = window.URL.createObjectURL(blob);
-      downloadLink.download = `data.json`;
-
-      // 添加链接到页面并触发下载
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+      try {
+        console.log(res);
+        setIsLoading(true);
+        fileDownload({
+          text: res,
+          type: 'text/csv',
+          filename: 'data.csv'
+        });
+      } catch (error) {
+        error;
+      }
+      setIsLoading(false);
     }
   });
 
@@ -110,7 +110,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     <>
       <Flex>
         <Box fontWeight={'bold'} fontSize={'lg'} flex={1} mr={2}>
-          模型数据: {total}组{' '}
+          模型数据: {total}组
           <Box as={'span'} fontSize={'sm'}>
             （测试版本）
           </Box>
@@ -128,7 +128,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           mr={2}
           size={'sm'}
           isLoading={isLoadingExport}
-          title={'v2.3之前版本的数据无法导出'}
+          title={'换行数据导出时，会进行格式转换'}
           onClick={() => onclickExport()}
         >
           导出
@@ -148,9 +148,9 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             >
               手动输入
             </MenuItem>
-            <MenuItem onClick={onOpenSelectFileModal}>文件QA拆分</MenuItem>
-            <MenuItem onClick={onOpenSelectUrlModal}>网站内容QA拆分</MenuItem>
-            <MenuItem onClick={onOpenSelectJsonModal}>JSON导入</MenuItem>
+            <MenuItem onClick={onOpenSelectFileModal}>文本内容 QA 拆分</MenuItem>
+            <MenuItem onClick={onOpenSelectUrlModal}>网站内容 QA 拆分</MenuItem>
+            <MenuItem onClick={onOpenSelectCsvModal}>csv 问答对导入</MenuItem>
           </MenuList>
         </Menu>
       </Flex>
@@ -248,10 +248,10 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           onSuccess={refetchData}
         />
       )}
-      {isOpenSelectJsonModal && (
-        <SelectJsonModel
+      {isOpenSelectCsvModal && (
+        <SelectCsvModal
           modelId={model._id}
-          onClose={onCloseSelectJsonModal}
+          onClose={onCloseSelectCsvModal}
           onSuccess={refetchData}
         />
       )}
