@@ -49,6 +49,6 @@ export const jsonRes = <T = any>(
     code,
     statusText: '',
     message: msg,
-    data: data || error || null
+    data: data || null
   });
 };

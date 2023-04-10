@@ -168,6 +168,9 @@ export const readDocContent = (file: File) =>
     };
   });
 
+/**
+ * 向量转成 float32 buffer 格式
+ */
 export const vectorToBuffer = (vector: number[]) => {
   const npVector = new Float32Array(vector);
 
