@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataIdx } from '@/constants/redis';
-import { clearStrLineBreak } from '@/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -45,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     searchRes.documents.forEach((item: any) => {
       if (item.value.q && item.value.text) {
-        data.push([clearStrLineBreak(item.value.q), clearStrLineBreak(item.value.text)]);
+        data.push([item.value.q.replace(/\n/g, '\\n'), item.value.text.replace(/\n/g, '\\n')]);
       }
     });
 
