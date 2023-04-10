@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { encode } from 'gpt-token-utils';
 import { useConfirm } from '@/hooks/useConfirm';
-import { readTxtContent, readPdfContent, readDocContent } from '@/utils/tools';
+import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
 import { postModelDataSplitData } from '@/api/model';
 import { formatPrice } from '@/utils/user';
