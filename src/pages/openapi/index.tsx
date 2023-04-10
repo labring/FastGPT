@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Card,
   Box,
@@ -54,10 +55,21 @@ const OpenApi = () => {
     <>
       <Card px={6} py={4} position={'relative'}>
         <Box fontSize={'xl'} fontWeight={'bold'}>
-          Open Api Key
+          Open Api
         </Box>
         <Box fontSize={'sm'} mt={2}>
-          请注意保管你的 key，不要泄露！
+          Open Api 允许你将 Fast Gpt 的部分功能通过 api 的形式接入到自己的应用中。请注意保管你的 Api
+          Key，不要泄露！
+        </Box>
+        <Box
+          my={1}
+          as="a"
+          href="https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh"
+          color={'blue.800'}
+          textDecoration={'underline'}
+          target={'_blank'}
+        >
+          点击查看文档
         </Box>
         <TableContainer mt={2} position={'relative'}>
           <Table>
@@ -93,16 +105,17 @@ const OpenApi = () => {
               ))}
             </Tbody>
           </Table>
-          <Button
-            mt={5}
-            isLoading={isCreating}
-            isDisabled={apiKeys.length >= 5}
-            title={apiKeys.length >= 5 ? '最多五组 Api Key' : ''}
-            onClick={() => onclickCreateApiKey()}
-          >
-            添加新的 Api Key
-          </Button>
         </TableContainer>
+        <Button
+          maxW={'200px'}
+          mt={5}
+          isLoading={isCreating}
+          isDisabled={apiKeys.length >= 5}
+          title={apiKeys.length >= 5 ? '最多五组 Api Key' : ''}
+          onClick={() => onclickCreateApiKey()}
+        >
+          添加新的 Api Key
+        </Button>
         <Loading loading={isGetting || isDeleting} fixed={false} />
       </Card>
       <Modal isOpen={!!apiKey} onClose={() => setApiKey('')}>

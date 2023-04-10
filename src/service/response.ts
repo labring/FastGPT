@@ -1,5 +1,5 @@
 import { NextApiResponse } from 'next';
-import { openaiError, openaiError2, proxyError } from './errorCode';
+import { openaiError, openaiError2, proxyError, ERROR_RESPONSE } from './errorCode';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -18,7 +18,14 @@ export const jsonRes = <T = any>(
 ) => {
   const { code = 200, message = '', data = null, error } = props || {};
 
-  let msg = message;
+  const errResponseKey = typeof error === 'string' ? error : error?.message;
+  // Specified error
+  if (ERROR_RESPONSE[errResponseKey]) {
+    return res.json(ERROR_RESPONSE[errResponseKey]);
+  }
+
+  // another error
+  let msg = message || error?.message;
   if ((code < 200 || code >= 400) && !message) {
     msg = error?.message || '请求错误';
     if (typeof error === 'string') {
@@ -40,7 +47,8 @@ export const jsonRes = <T = any>(
 
   res.json({
     code,
+    statusText: '',
     message: msg,
-    data
+    data: data || error || null
   });
 };

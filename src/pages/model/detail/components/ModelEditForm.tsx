@@ -53,6 +53,12 @@ const ModelEditForm = ({
               })}
             ></Input>
           </Flex>
+          <Flex alignItems={'center'} mt={4}>
+            <Box flex={'0 0 80px'} w={0}>
+              modelId:
+            </Box>
+            <Box>{getValues('_id')}</Box>
+          </Flex>
         </FormControl>
         <Flex alignItems={'center'} mt={4}>
           <Box flex={'0 0 80px'} w={0}>
