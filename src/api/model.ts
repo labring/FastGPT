@@ -92,8 +92,8 @@ export const postModelDataSplitData = (data: { modelId: string; text: string; pr
  */
 export const postModelDataObjectData = (
   modelId: string,
-  jsonData: { prompt: string; completion: string; vector?: number[] }[]
-) => POST(`/model/data/pushModelDataJson`, { modelId, data: jsonData }, { timeout: 300000 });
+  csvData: { prompt: string; completion: string; vector?: number[] }[]
+) => POST(`/model/data/pushModelDataCsv`, { modelId, data: csvData }, { timeout: 300000 });
 
 /**
  * 更新模型数据

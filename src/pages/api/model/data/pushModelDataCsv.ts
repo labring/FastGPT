@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { generateVector } from '@/service/events/generateVector';
-import { vectorToBuffer, formatVector } from '@/utils/tools';
+import { vectorToBuffer, formatVector, asyncFilter } from '@/utils/tools';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix, ModelDataStatusEnum, VecModelDataIdx } from '@/constants/redis';
 import { customAlphabet } from 'nanoid';
@@ -40,12 +40,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!model) {
       throw new Error('无权操作该模型');
     }
-    // 支持异步的filter
-    const asyncFilter = async (arr, predicate) => {
-      const results = await Promise.all(arr.map(predicate));
-
-      return arr.filter((_v, index) => results[index]);
-    };
     let filterData = await asyncFilter(data, async (item) => {
       // 从 redis 中获取数据
       const searchRes = await redis.ft.search(
@@ -98,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '8mb'
+      sizeLimit: '20mb'
     }
   }
 };

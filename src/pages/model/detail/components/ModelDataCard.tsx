@@ -43,9 +43,10 @@ const SelectCsvModel = dynamic(() => import('./SelectCsvModal'));
 
 const ModelDataCard = ({ model }: { model: ModelSchema }) => {
   const { Loading } = useLoading();
-  const { DownloadButton } = useDownloadFile({
+  const DownloadButton = useDownloadFile({
     fileSuffix: 'csv',
     fetchDataList: () => getExportDataList(model._id),
+    Component: Button,
     progressData: objectToCsv
   });
   const {
@@ -129,7 +130,10 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           size={'sm'}
           onClick={() => refetchData(pageNum)}
         />
-        <DownloadButton text="导出" />
+
+        <DownloadButton variant={'outline'} mr={2} size={'sm'} title={'v2.3之前版本的数据无法导出'}>
+          导出
+        </DownloadButton>
         <Menu>
           <MenuButton as={Button} size={'sm'}>
             导入

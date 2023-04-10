@@ -1,25 +1,27 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, ComponentType } from 'react';
 import { Box, Button } from '@chakra-ui/react';
 import { getExportDataList } from '@/api/model';
 import { useMutation } from '@tanstack/react-query';
-type FileSuffix = 'csv' | 'json';
+type FileSuffix = 'csv';
+type HOCProps = {
+  isLoading: boolean;
+  onClick: () => any;
+};
 const fileMap = {
   csv: {
     suffix: 'csv',
     fileType: 'text/csv'
-  },
-  json: {
-    suffix: 'json',
-    fileType: 'application/json'
   }
 };
 export const useDownloadFile = ({
   fileSuffix,
   fetchDataList,
+  Component,
   progressData = undefined
 }: {
   fileSuffix: FileSuffix;
   fetchDataList: () => any;
+  Component: React.FC;
   progressData?: undefined | (() => any);
 }) => {
   // 导出为文件
@@ -53,23 +55,23 @@ export const useDownloadFile = ({
       exportFile(data);
     }
   });
-  const DownloadButton = useCallback(
-    ({ text }: { text: string }) => (
-      <Button
-        variant={'outline'}
-        mr={2}
-        size={'sm'}
-        isLoading={isLoadingExport}
-        title={'v2.3之前版本的数据无法导出'}
-        onClick={() => onclickExport()}
-      >
-        {text}
-      </Button>
-    ),
+  // 高阶函数，为组件添加下载功能
+  //@ts-ignore
+  const withDownLoad = useCallback(
+    (WrappedComponent: ComponentType) => {
+      const WithDownLoad = (props) => {
+        return (
+          <WrappedComponent
+            {...props}
+            isLoading={isLoadingExport}
+            onClick={() => onclickExport()}
+          />
+        );
+      };
+      return WithDownLoad;
+    },
     [isLoadingExport, onclickExport]
   );
 
-  return {
-    DownloadButton
-  };
+  return withDownLoad(Component);
 };

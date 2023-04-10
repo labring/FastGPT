@@ -40,13 +40,14 @@ const SelectCsvModal = ({
   const [selecting, setSelecting] = useState<boolean>(false);
   const { toast } = useToast();
   const { File, onOpen } = useSelectFile({ fileType: '.csv', multiple: true });
-  const { DownloadButton } = useDownloadFile({
+  const DownloadButton = useDownloadFile({
     fileSuffix: 'csv',
     fetchDataList: () => {
-      return `prompt,completion
-    郑成涛你好,你也好
-    我的名字是什么,我的名字是郑成涛`;
-    }
+      return JSON.stringify(`prompt,completion
+sealos是什么?,sealos是xxxxxx
+laf是什么?,laf是xxxxxx`);
+    },
+    Component: Button
   });
   const [fileData, setFileData] = useState<
     { prompt: string; completion: string; vector?: number[] }[]
@@ -75,7 +76,7 @@ const SelectCsvModal = ({
       } catch (error: any) {
         console.log(error);
         toast({
-          title: error?.message || 'Csv文件格式有误',
+          title: error?.message || 'csv文件格式有误',
           status: 'error'
         });
       }
@@ -107,7 +108,7 @@ const SelectCsvModal = ({
     <Modal isOpen={true} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent maxW={'90vw'} position={'relative'} m={0} h={'90vh'}>
-        <ModalHeader>Csv数据集</ModalHeader>
+        <ModalHeader>csv数据集</ModalHeader>
         <ModalCloseButton />
         <ModalBody h={'100%'} display={['block', 'flex']} fontSize={'sm'} overflowY={'auto'}>
           <Box flex={'2 0 0'} w={['100%', 0]} mr={[0, 4]} mb={[4, 0]}>
@@ -119,7 +120,14 @@ const SelectCsvModal = ({
             >
               <Table size="lg">
                 <TableCaption>
-                  <DownloadButton text="下载模板" />
+                  <DownloadButton
+                    variant={'outline'}
+                    mr={2}
+                    size={'sm'}
+                    title={'v2.3之前版本的数据无法导出'}
+                  >
+                    下载模板
+                  </DownloadButton>
                 </TableCaption>
                 <Thead style={{ backgroundColor: 'rgba(0, 0, 0, 0.06)' }}>
                   <Tr>

@@ -81,6 +81,7 @@ export const readCsvContent = (file: File) => {
       }
       let pageData: CsvData[] = [];
       for (let i = 1; i < rows.length; i++) {
+        let hasData = true;
         const csvData = rows[i].split(',');
         const _data: CsvData = {
           prompt: '',
@@ -89,8 +90,11 @@ export const readCsvContent = (file: File) => {
         header.forEach((item, index) => {
           // @ts-ignore
           _data[item] = csvData[index];
+          if (!csvData[index]) {
+            hasData = false;
+          }
         });
-        pageData.push(_data);
+        hasData && pageData.push(_data);
       }
       resolve(JSON.stringify(pageData));
     };
@@ -171,15 +175,12 @@ export const vectorToBuffer = (vector: number[]) => {
 
   return buffer;
 };
-
+// 将js对象转换成csv文本
 export const objectToCsv = (data: CsvData[]) => {
   console.log(data, 'data');
   const header = Object.keys(data[0]).join(',');
   const rows = data.map(function (obj) {
-    const values = Object.keys(obj).map(function (key) {
-      return obj[key];
-    });
-    return values.join(',');
+    return Object.values(obj).join(',');
   });
   return [header, ...rows].join('\n');
 };
@@ -192,3 +193,9 @@ export function formatVector(vector: number[]) {
 
   return formattedVector;
 }
+// 支持异步的filter函数
+export const asyncFilter = async (arr, predicate) => {
+  const results = await Promise.all(arr.map(predicate));
+
+  return arr.filter((_v, index) => results[index]);
+};
