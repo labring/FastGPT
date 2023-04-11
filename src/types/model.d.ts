@@ -5,8 +5,9 @@ export interface ModelUpdateParams {
   systemPrompt: string;
   intro: string;
   temperature: number;
-  service: ModelSchema.service;
-  security: ModelSchema.security;
+  search: ModelSchema['search'];
+  service: ModelSchema['service'];
+  security: ModelSchema['security'];
 }
 
 export interface ModelDataItemType {

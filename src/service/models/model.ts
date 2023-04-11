@@ -1,5 +1,7 @@
 import { Schema, model, models, Model as MongoModel } from 'mongoose';
 import { ModelSchema as ModelType } from '@/types/mongoSchema';
+import { ModelVectorSearchModeMap, ModelVectorSearchModeEnum } from '@/constants/model';
+
 const ModelSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
@@ -42,6 +44,13 @@ const ModelSchema = new Schema({
     min: 0,
     max: 10,
     default: 4
+  },
+  search: {
+    mode: {
+      type: String,
+      enum: Object.keys(ModelVectorSearchModeMap),
+      default: ModelVectorSearchModeEnum.hightSimilarity
+    }
   },
   service: {
     company: {

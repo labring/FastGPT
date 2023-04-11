@@ -1,5 +1,10 @@
 import type { ChatItemType } from './chat';
-import { ModelStatusEnum, TrainingStatusEnum, ChatModelNameEnum } from '@/constants/model';
+import {
+  ModelStatusEnum,
+  TrainingStatusEnum,
+  ChatModelNameEnum,
+  ModelVectorSearchModeEnum
+} from '@/constants/model';
 import type { DataType } from './data';
 
 export type ServiceName = 'openai';
@@ -32,6 +37,9 @@ export interface ModelSchema {
   updateTime: number;
   trainingTimes: number;
   temperature: number;
+  search: {
+    mode: `${ModelVectorSearchModeEnum}`;
+  };
   service: {
     company: ServiceName;
     trainId: string; // 训练的模型，训练后就是训练的模型id

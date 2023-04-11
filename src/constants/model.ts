@@ -4,14 +4,12 @@ import type { RedisModelDataItemType } from '@/types/redis';
 export enum ChatModelNameEnum {
   GPT35 = 'gpt-3.5-turbo',
   VECTOR_GPT = 'VECTOR_GPT',
-  GPT3 = 'text-davinci-003',
   VECTOR = 'text-embedding-ada-002'
 }
 
 export const ChatModelNameMap = {
   [ChatModelNameEnum.GPT35]: 'gpt-3.5-turbo',
   [ChatModelNameEnum.VECTOR_GPT]: 'gpt-3.5-turbo',
-  [ChatModelNameEnum.GPT3]: 'text-davinci-003',
   [ChatModelNameEnum.VECTOR]: 'text-embedding-ada-002'
 };
 
@@ -34,7 +32,7 @@ export const modelList: ModelConstantsData[] = [
     trainName: '',
     maxToken: 4000,
     contextMaxToken: 7500,
-    maxTemperature: 2,
+    maxTemperature: 1.5,
     price: 3
   },
   {
@@ -47,16 +45,6 @@ export const modelList: ModelConstantsData[] = [
     maxTemperature: 1,
     price: 3
   }
-  // {
-  //   serviceCompany: 'openai',
-  //   name: 'GPT3',
-  //   model: ChatModelNameEnum.GPT3,
-  //   trainName: 'davinci',
-  //   maxToken: 4000,
-  //   contextMaxToken: 7500,
-  //   maxTemperature: 2,
-  //   price: 30
-  // }
 ];
 
 export enum TrainingStatusEnum {
@@ -97,6 +85,34 @@ export const ModelDataStatusMap: Record<RedisModelDataItemType['status'], string
   waiting: '训练中'
 };
 
+/* 知识库搜索时的配置 */
+// 搜索方式
+export enum ModelVectorSearchModeEnum {
+  hightSimilarity = 'hightSimilarity', // 高相似度+禁止回复
+  lowSimilarity = 'lowSimilarity', // 低相似度
+  noContext = 'noContex' // 高相似度+无上下文回复
+}
+export const ModelVectorSearchModeMap: Record<
+  `${ModelVectorSearchModeEnum}`,
+  {
+    text: string;
+    similarity: number;
+  }
+> = {
+  [ModelVectorSearchModeEnum.hightSimilarity]: {
+    text: '高相似度, 无匹配时拒绝回复',
+    similarity: 0.2
+  },
+  [ModelVectorSearchModeEnum.noContext]: {
+    text: '高相似度，无匹配时直接回复',
+    similarity: 0.2
+  },
+  [ModelVectorSearchModeEnum.lowSimilarity]: {
+    text: '低相似度匹配',
+    similarity: 0.8
+  }
+};
+
 export const defaultModel: ModelSchema = {
   _id: '',
   userId: '',
@@ -108,6 +124,9 @@ export const defaultModel: ModelSchema = {
   systemPrompt: '',
   intro: '',
   temperature: 5,
+  search: {
+    mode: ModelVectorSearchModeEnum.hightSimilarity
+  },
   service: {
     company: 'openai',
     trainId: '',
