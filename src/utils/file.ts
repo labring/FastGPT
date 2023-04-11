@@ -125,7 +125,7 @@ export const fileDownload = ({
   filename: string;
 }) => {
   // 导出为文件
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
+  const blob = new Blob([`\uFEFF${text}`], { type: `${type};charset=utf-8;` });
 
   // 创建下载链接
   const downloadLink = document.createElement('a');

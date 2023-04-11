@@ -49,6 +49,11 @@ svg {
   background: #999;
 }
 
+input::placeholder,
+textarea::placeholder {
+  font-size: 0.85em;
+}
+
 @media (max-width: 900px) {
   html {
     font-size: 14px;
