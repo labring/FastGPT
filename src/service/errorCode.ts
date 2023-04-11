@@ -8,7 +8,7 @@ export const openaiError: Record<string, string> = {
 };
 export const openaiError2: Record<string, string> = {
   insufficient_quota: 'API 余额不足',
-  invalid_request_error: '输入参数异常'
+  invalid_request_error: 'openai 接口异常'
 };
 export const proxyError: Record<string, boolean> = {
   ECONNABORTED: true,
