@@ -91,7 +91,7 @@ export const openaiChatFilter = (prompts: ChatItemType[], maxTokens: number) => 
   const formatPrompts = prompts.map((item) => ({
     obj: item.obj,
     value: item.value
-      .replace(/[\u3000\u3001\uff01-\uff5e\u3002]/g, ' ') // 中文标点改空格
+      // .replace(/[\u3000\u3001\uff01-\uff5e\u3002]/g, ' ') // 中文标点改空格
       .replace(/\n+/g, '\n') // 连续空行
       .replace(/[^\S\r\n]+/g, ' ') // 连续空白内容
       .trim()

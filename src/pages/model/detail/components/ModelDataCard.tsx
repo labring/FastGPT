@@ -152,7 +152,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             >
               手动输入
             </MenuItem>
-            <MenuItem onClick={onOpenSelectFileModal}>文本内容 QA 拆分</MenuItem>
+            <MenuItem onClick={onOpenSelectFileModal}>文本/文件 QA 拆分</MenuItem>
             <MenuItem onClick={onOpenSelectUrlModal}>网站内容 QA 拆分</MenuItem>
             <MenuItem onClick={onOpenSelectCsvModal}>csv 问答对导入</MenuItem>
           </MenuList>

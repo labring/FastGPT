@@ -16,6 +16,7 @@ import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
 import { openaiCreateEmbedding, gpt35StreamResponse } from '@/service/utils/openai';
+import dayjs from 'dayjs';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -87,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
       `idx:${VecModelDataPrefix}:hash`,
-      `@modelId:{${modelId}} @vector:[VECTOR_RANGE 0.24 $blob]=>{$YIELD_DISTANCE_AS: score}`,
+      `@modelId:{${modelId}} @vector:[VECTOR_RANGE 0.22 $blob]=>{$YIELD_DISTANCE_AS: score}`,
       'RETURN',
       '1',
       'text',
@@ -114,22 +115,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    if (formatRedisPrompt.length === 0) {
-      throw new Error('对不起，我没有找到你的问题');
-    }
-
     // system 合并
     if (prompts[0].obj === 'SYSTEM') {
       formatRedisPrompt.unshift(prompts.shift()?.value || '');
     }
 
-    // 系统提示词筛选，最多 2800 tokens
-    const systemPrompt = systemPromptFilter(formatRedisPrompt, 2800);
+    if (formatRedisPrompt.length > 0) {
+      // 系统提示词过滤，最多 2800 tokens
+      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2800);
 
-    prompts.unshift({
-      obj: 'SYSTEM',
-      value: `${model.systemPrompt} 知识库内容是最新的,知识库内容为: "${systemPrompt}"`
-    });
+      prompts.unshift({
+        obj: 'SYSTEM',
+        value: `${model.systemPrompt} 用知识库内容回答，知识库内容为: "当前时间:${dayjs().format(
+          'YYYY/MM/DD HH:mm:ss'
+        )} ${systemPrompt}"`
+      });
+    } else {
+      return res.send('对不起，你的问题不在知识库中。');
+    }
 
     // 控制在 tokens 数量，防止超出
     const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
