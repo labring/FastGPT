@@ -96,17 +96,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    if (formatRedisPrompt.length === 0) {
-      throw new Error('对不起，我没有找到你的问题');
+    if (formatRedisPrompt.length > 0) {
+      // textArr 筛选，最多 2800 tokens
+      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2800);
+
+      prompts.unshift({
+        obj: 'SYSTEM',
+        value: `${model.systemPrompt} 知识库内容是最新的，知识库内容为: "${systemPrompt}"`
+      });
+    } else {
+      return res.send('对不起，你的问题不在知识库中。');
     }
-
-    // textArr 筛选，最多 2800 tokens
-    const systemPrompt = systemPromptFilter(formatRedisPrompt, 2800);
-
-    prompts.unshift({
-      obj: 'SYSTEM',
-      value: `${model.systemPrompt} 知识库内容是最新的,知识库内容为: "${systemPrompt}"`
-    });
 
     // 控制在 tokens 数量，防止超出
     const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
