@@ -143,6 +143,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           systemPrompt: data.systemPrompt,
           intro: data.intro,
           temperature: data.temperature,
+          search: data.search,
           service: data.service,
           security: data.security
         });

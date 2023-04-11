@@ -114,8 +114,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
     async (prompts: ChatSiteItemType) => {
       const urlMap: Record<string, string> = {
         [ChatModelNameEnum.GPT35]: '/api/chat/chatGpt',
-        [ChatModelNameEnum.VECTOR_GPT]: '/api/chat/vectorGpt',
-        [ChatModelNameEnum.GPT3]: '/api/chat/gpt3'
+        [ChatModelNameEnum.VECTOR_GPT]: '/api/chat/vectorGpt'
       };
 
       if (!urlMap[chatData.modelName]) return Promise.reject('找不到模型');
