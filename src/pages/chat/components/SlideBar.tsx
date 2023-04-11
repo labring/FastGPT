@@ -35,13 +35,11 @@ import WxConcat from '@/components/WxConcat';
 import { useMarkdown } from '@/hooks/useMarkdown';
 
 const SlideBar = ({
-  name,
   chatId,
   modelId,
   resetChat,
   onClose
 }: {
-  name?: string;
   chatId: string;
   modelId: string;
   resetChat: () => void;
@@ -188,14 +186,14 @@ const SlideBar = ({
                     }}
                     fontSize={'xs'}
                     border={'1px solid transparent'}
-                    {...(item.name === name
+                    {...(item._id === modelId
                       ? {
                           borderColor: 'rgba(255,255,255,0.5)',
                           backgroundColor: 'rgba(255,255,255,0.1)'
                         }
                       : {})}
                     onClick={async () => {
-                      if (item.name === name) return;
+                      if (item._id === modelId) return;
                       router.replace(`/chat?chatId=${await getChatSiteId(item._id)}`);
                       onClose();
                     }}

@@ -362,7 +362,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
         <Box flex={'0 0 250px'} w={0} h={'100%'}>
           <SlideBar
             resetChat={resetChat}
-            name={chatData?.name}
             chatId={chatId}
             modelId={chatData.modelId}
             onClose={onCloseSlider}
@@ -394,7 +393,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
             <DrawerContent maxWidth={'250px'}>
               <SlideBar
                 resetChat={resetChat}
-                name={chatData?.name}
                 chatId={chatId}
                 modelId={chatData.modelId}
                 onClose={onCloseSlider}
