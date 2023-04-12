@@ -34,7 +34,7 @@ run: ## Run a dev service from host.
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the desktop-frontend.
-	docker build -t c121914yu/fast-gpt:latest .
+	docker build -t c121914yu/fast-gpt:latest . --network host  --build-arg HTTP_PROXY=http://127.0.0.1:7890 --build-arg HTTPS_PROXY=http://127.0.0.1:7890
 
 ##@ Deployment
 

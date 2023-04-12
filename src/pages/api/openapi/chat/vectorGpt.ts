@@ -10,7 +10,7 @@ import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } fr
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import { modelList } from '@/constants/model';
+import { modelList, ModelVectorSearchModeMap, ModelVectorSearchModeEnum } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataPrefix } from '@/constants/redis';
@@ -85,10 +85,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
+    const similarity = ModelVectorSearchModeMap[model.search.mode]?.similarity || 0.22;
+    // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
     const redisData: any[] = await redis.sendCommand([
       'FT.SEARCH',
       `idx:${VecModelDataPrefix}:hash`,
-      `@modelId:{${modelId}} @vector:[VECTOR_RANGE 0.22 $blob]=>{$YIELD_DISTANCE_AS: score}`,
+      `@modelId:{${modelId}} @vector:[VECTOR_RANGE ${similarity} $blob]=>{$YIELD_DISTANCE_AS: score}`,
       'RETURN',
       '1',
       'text',
@@ -120,7 +122,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       formatRedisPrompt.unshift(prompts.shift()?.value || '');
     }
 
-    if (formatRedisPrompt.length > 0) {
+    /* 高相似度+退出，无法匹配时直接退出 */
+    if (
+      formatRedisPrompt.length === 0 &&
+      model.search.mode === ModelVectorSearchModeEnum.hightSimilarity
+    ) {
+      return res.send('对不起，你的问题不在知识库中。');
+    }
+    /* 高相似度+无上下文，不添加额外知识 */
+    if (
+      formatRedisPrompt.length === 0 &&
+      model.search.mode === ModelVectorSearchModeEnum.noContext
+    ) {
+      prompts.unshift({
+        obj: 'SYSTEM',
+        value: model.systemPrompt
+      });
+    } else {
+      // 有匹配或者低匹配度模式情况下，添加知识库内容。
       // 系统提示词过滤，最多 2800 tokens
       const systemPrompt = systemPromptFilter(formatRedisPrompt, 2800);
 
@@ -130,8 +149,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'YYYY/MM/DD HH:mm:ss'
         )} ${systemPrompt}"`
       });
-    } else {
-      return res.send('对不起，你的问题不在知识库中。');
     }
 
     // 控制在 tokens 数量，防止超出
