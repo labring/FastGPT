@@ -83,25 +83,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 下面是一些例子:
 实现一个手机号发生注册验证码方法.
 1. 从 query 中获取 phone.
-2. 校验手机号格式是否正确,不正确则返回错误响应,消息为:手机号格式错误.
+2. 校验手机号格式是否正确,不正确则返回错误码501,原因为:手机号格式错误.
 3. 给 phone 发送一个短信验证码,验证码长度为6位字符串,内容为:你正在注册laf,验证码为:code.
 4. 数据库添加数据,表为"codes",内容为 {phone, code}.
 
 实现根据手机号注册账号,需要验证手机验证码.
 1. 从 body 中获取 phone 和 code.
-2. 校验手机号格式是否正确,不正确返回错误响应,消息为:手机号格式错误.
-2. 获取数据库数据,表为"codes",查找是否有符合 phone, code 等于body参数的记录,没有的话错误响应,消息为:验证码不正确.
+2. 校验手机号格式是否正确,不正确则返回错误码501,原因为:手机号格式错误.
+2. 获取数据库数据,表为"codes",查找是否有符合 phone, code 等于body参数的记录,没有的话返回错误码500,原因为:验证码不正确.
 4. 添加数据库数据,表为"users" ,内容为{phone, code, createTime}.
 5. 删除数据库数据,删除 code 记录.
+6. 返回新建用户的Id: return {userId}
 
 更新博客记录。传入blogId,blogText,tags,还需要记录更新的时间.
 1. 从 body 中获取 blogId,blogText 和 tags.
-2. 校验 blogId 是否为空,为空则错误响应,消息为:博客ID不能为空.
-3. 校验 blogText 是否为空,为空则错误响应,消息为:博客内容不能为空.
-4. 校验 tags 是否为数组,不是则错误响应,消息为:标签必须为数组.
+2. 校验 blogId 是否为空,为空则返回错误码500,原因为:博客ID不能为空.
+3. 校验 blogText 是否为空,为空则返回错误码500,原因为:博客内容不能为空.
+4. 校验 tags 是否为数组,不是则返回错误码500,原因为:标签必须为数组.
 5. 获取当前时间,记录为 updateTime.
 6. 更新数据库数据,表为"blogs",更新符合 blogId 的记录的内容为{blogText, tags, updateTime}.
-7. 返回结果 {message: "更新博客记录成功"}.`
+7. 返回结果 "更新博客记录成功"`
           },
           {
             role: 'user',
@@ -161,8 +162,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // textArr 筛选，最多 3200 tokens
-    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3200);
+    // textArr 筛选，最多 3000 tokens
+    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3000);
 
     prompts.unshift({
       obj: 'SYSTEM',
