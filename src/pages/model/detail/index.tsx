@@ -21,7 +21,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
   const { isPc, media } = useScreen();
   const { setLoading } = useGlobalStore();
 
-  // const SelectFileDom = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState<ModelSchema>(defaultModel);
   const formHooks = useForm<ModelSchema>({
     defaultValues: model
@@ -243,11 +242,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
       <Grid mt={5} gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
         <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} canTrain={canTrain} />
 
-        {/* {canTrain && (
-          <Card p={4}>
-            <Training model={model} />
-          </Card>
-        )} */}
         {canTrain && model._id && (
           <Card
             p={4}
@@ -263,11 +257,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           </Card>
         )}
       </Grid>
-
-      {/* 文件选择 */}
-      {/* <Box position={'absolute'} w={0} h={0} overflow={'hidden'}>
-        <input ref={SelectFileDom} type="file" accept=".jsonl" onChange={startTraining} />
-      </Box> */}
     </>
   );
 };

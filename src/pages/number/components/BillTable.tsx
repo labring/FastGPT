@@ -30,7 +30,7 @@ const BillTable = () => {
               <Th>类型</Th>
               <Th>内容长度</Th>
               <Th>Tokens 长度</Th>
-              <Th>消费</Th>
+              <Th>金额</Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>

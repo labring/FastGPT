@@ -49,6 +49,7 @@ export const getModelTrainings = (id: string) =>
 
 type GetModelDataListProps = RequestPaging & {
   modelId: string;
+  searchText: string;
 };
 /**
  * 获取模型的知识库数据

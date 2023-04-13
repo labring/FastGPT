@@ -54,20 +54,20 @@ const ModelEditForm = ({
               })}
             ></Input>
           </Flex>
-          <Flex alignItems={'center'} mt={4}>
+          <Flex alignItems={'center'} mt={5}>
             <Box flex={'0 0 80px'} w={0}>
               modelId:
             </Box>
             <Box>{getValues('_id')}</Box>
           </Flex>
         </FormControl>
-        <Flex alignItems={'center'} mt={4}>
+        <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
-            底层模型:
+            模型类型:
           </Box>
-          <Box>{getValues('service.modelName')}</Box>
+          <Box>{modelList.find((item) => item.model === getValues('service.modelName'))?.name}</Box>
         </Flex>
-        <Flex alignItems={'center'} mt={4}>
+        <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
             价格:
           </Box>
@@ -80,7 +80,7 @@ const ModelEditForm = ({
           </Box>
         </Flex>
         <Flex mt={5} alignItems={'center'}>
-          <Box flex={'0 0 80px'}>删除:</Box>
+          <Box flex={'0 0 150px'}>删除模型和数据集</Box>
           <Button
             colorScheme={'gray'}
             variant={'outline'}
