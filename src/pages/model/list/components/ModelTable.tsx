@@ -67,14 +67,15 @@ const ModelTable = ({
       key: 'control',
       render: (item: ModelSchema) => (
         <>
+          <Button mr={3} onClick={() => handlePreviewChat(item._id)}>
+            对话
+          </Button>
           <Button
-            mr={3}
             variant={'outline'}
             onClick={() => router.push(`/model/detail?modelId=${item._id}`)}
           >
             编辑
           </Button>
-          <Button onClick={() => handlePreviewChat(item._id)}>对话</Button>
         </>
       )
     }
