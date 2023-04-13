@@ -15,7 +15,8 @@ import {
   Menu,
   MenuButton,
   MenuList,
-  MenuItem
+  MenuItem,
+  Input
 } from '@chakra-ui/react';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { RedisModelDataItemType } from '@/types/redis';
@@ -40,9 +41,11 @@ const SelectFileModel = dynamic(() => import('./SelectFileModal'));
 const SelectUrlModel = dynamic(() => import('./SelectUrlModal'));
 const SelectCsvModal = dynamic(() => import('./SelectCsvModal'));
 
+let lastSearch = '';
+
 const ModelDataCard = ({ model }: { model: ModelSchema }) => {
   const { Loading, setIsLoading } = useLoading();
-
+  const [searchText, setSearchText] = useState('');
   const {
     data: modelDataList,
     isLoading,
@@ -54,7 +57,8 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     api: getModelDataList,
     pageSize: 8,
     params: {
-      modelId: model._id
+      modelId: model._id,
+      searchText
     }
   });
 
@@ -158,9 +162,33 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           </MenuList>
         </Menu>
       </Flex>
-      {!!(splitDataLen && splitDataLen > 0) && (
-        <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分...</Box>
-      )}
+      <Flex mt={4}>
+        {/* 拆分数据提示 */}
+        {!!(splitDataLen && splitDataLen > 0) && (
+          <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分...</Box>
+        )}
+        <Box flex={1}></Box>
+        <Input
+          maxW={'240px'}
+          size={'sm'}
+          value={searchText}
+          placeholder="搜索相关问题和答案，回车确认"
+          onChange={(e) => setSearchText(e.target.value)}
+          onBlur={() => {
+            if (searchText === lastSearch) return;
+            getData(1);
+            lastSearch = searchText;
+          }}
+          onKeyDown={(e) => {
+            if (searchText === lastSearch) return;
+            if (e.key === 'Enter') {
+              getData(1);
+              lastSearch = searchText;
+            }
+          }}
+        />
+      </Flex>
+
       <Box mt={4}>
         <TableContainer minH={'500px'}>
           <Table variant={'simple'}>

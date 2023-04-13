@@ -21,7 +21,7 @@ export const pushChatBill = async ({
 
   try {
     // 计算 token 数量
-    const tokens = Math.floor(encode(text).length * 0.7);
+    const tokens = Math.floor(encode(text).length * 0.75);
 
     console.log(`chat generate success. text len: ${text.length}. token len: ${tokens}`);
 

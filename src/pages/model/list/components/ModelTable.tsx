@@ -16,6 +16,7 @@ import { formatModelStatus } from '@/constants/model';
 import dayjs from 'dayjs';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { useRouter } from 'next/router';
+import { modelList } from '@/constants/model';
 
 const ModelTable = ({
   models = [],
@@ -30,6 +31,15 @@ const ModelTable = ({
       title: '模型名',
       key: 'name',
       dataIndex: 'name'
+    },
+    {
+      title: '模型类型',
+      key: 'service',
+      render: (model: ModelSchema) => (
+        <Box fontWeight={'bold'} whiteSpace={'pre-wrap'} maxW={'200px'}>
+          {modelList.find((item) => item.model === model.service.modelName)?.name}
+        </Box>
+      )
     },
     {
       title: '最后更新时间',
@@ -51,29 +61,20 @@ const ModelTable = ({
         </Tag>
       )
     },
-    {
-      title: 'AI模型',
-      key: 'service',
-      render: (item: ModelSchema) => (
-        <Box wordBreak={'break-all'} whiteSpace={'pre-wrap'} maxW={'200px'}>
-          {item.service.modelName}
-        </Box>
-      )
-    },
+
     {
       title: '操作',
       key: 'control',
       render: (item: ModelSchema) => (
         <>
-          <Button mr={3} onClick={() => handlePreviewChat(item._id)}>
-            对话
-          </Button>
           <Button
-            colorScheme={'gray'}
+            mr={3}
+            variant={'outline'}
             onClick={() => router.push(`/model/detail?modelId=${item._id}`)}
           >
             编辑
           </Button>
+          <Button onClick={() => handlePreviewChat(item._id)}>对话</Button>
         </>
       )
     }

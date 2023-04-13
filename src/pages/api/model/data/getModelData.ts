@@ -4,20 +4,20 @@ import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { connectRedis } from '@/service/redis';
 import { VecModelDataIdx } from '@/constants/redis';
-import { SearchOptions } from 'redis';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     let {
       modelId,
       pageNum = 1,
-      pageSize = 10
+      pageSize = 10,
+      searchText = ''
     } = req.query as {
       modelId: string;
       pageNum: string;
       pageSize: string;
+      searchText: string;
     };
-
     const { authorization } = req.headers;
 
     pageNum = +pageNum;
@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 从 redis 中获取数据
     const searchRes = await redis.ft.search(
       VecModelDataIdx,
-      `@modelId:{${modelId}} @userId:{${userId}}`,
+      `@modelId:{${modelId}} @userId:{${userId}} ${searchText ? `*${searchText}*` : ''}`,
       {
         RETURN: ['q', 'text', 'status'],
         LIMIT: {
