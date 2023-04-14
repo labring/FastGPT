@@ -29,7 +29,6 @@ export const connectRedis = async () => {
 
     await global.redisClient.connect();
 
-    // 1 - 测试库，0 - 正式
     await global.redisClient.SELECT(0);
 
     return global.redisClient;
