@@ -37,6 +37,7 @@ docker push imageName:tag
 # 安装docker
 curl -sSL https://get.daocloud.io/docker | sh
 sudo systemctl start docker
+# 安装 docker-compose
 ```
 
 #### 软件教程: clash 代理
@@ -136,33 +137,42 @@ appendfilename "appendonly.aof"
 appendfsync everysec
 ```
 **nginx.conf**
-```
+```conf
 user nginx;
 worker_processes auto;
-error_log /var/log/nginx/error.log;
-pid /run/nginx.pid;
+worker_rlimit_nofile 51200;
 
 events {
     worker_connections 1024;
 }
 
 http {
-    include             /etc/nginx/mime.types;
-    default_type        application/octet-stream;
-    include /etc/nginx/conf.d/*.conf;
+    access_log off;
+    server_names_hash_bucket_size 512;
+    client_header_buffer_size 32k;
+    large_client_header_buffers 4 32k;
+    client_max_body_size 50M;
+ 
+    gzip  on;
+    gzip_min_length   1k;
+    gzip_buffers  4 8k;
+    gzip_http_version 1.1;
+    gzip_comp_level 6;
+    gzip_vary on;
+    gzip_types  text/plain application/x-javascript text/css application/javascript application/json application/xml;
+    gzip_disable "MSIE [1-6]\.";
+
+    open_file_cache max=1000 inactive=1d;
+    open_file_cache_valid 30s;
+    open_file_cache_min_uses 8;
+    open_file_cache_errors off;
 
     server {
-        listen 80;
-        server_name test.com;
-        
-        gzip  on;
-        gzip_min_length   1k;
-        gzip_buffers  4 8k;
-        gzip_http_version 1.1;
-        gzip_comp_level 6;
-        gzip_vary on;
-        gzip_types  text/plain application/x-javascript text/css application/javascript application/json application/xml;
-        gzip_disable "MSIE [1-6]\.";
+        listen 443 ssl;
+        server_name fastgpt.ahapocket.cn;
+        ssl_certificate /ssl/fastgpt.pem;
+        ssl_certificate_key /ssl/fastgpt.key;
+        ssl_session_timeout 5m;
 
         location / {
             proxy_pass http://localhost:3000;
@@ -171,12 +181,22 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;        
         }
     }
+    server {
+        listen 80;
+        server_name fastgpt.ahapocket.cn;
+        rewrite ^(.*) https://$server_name$1 permanent;
+    }
 }
 ```
 
 #### 运行脚本
-**redis创建索引**
+**redis 初始化**
 ```bash
+# 进入容器
+docker exec -it  容器ID  bash
+redis-cli -p 6379
+auth psw1234
+# 添加索引
 FT.CREATE idx:model:data:hash ON HASH PREFIX 1 model:data: SCHEMA modelId TAG userId TAG status TAG q TEXT text TEXT vector VECTOR FLAT 6 DIM 1536 DISTANCE_METRIC COSINE TYPE FLOAT32
 ```
 **run.sh 运行文件**
