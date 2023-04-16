@@ -48,6 +48,25 @@ export const sendEmailCode = (email: string, code: string, type: `${UserAuthType
   });
 };
 
+export const sendTrainSucceed = (email: string, modelName: string) => {
+  return new Promise((resolve, reject) => {
+    const options = {
+      from: `"FastGPT" ${myEmail}`,
+      to: email,
+      subject: '模型训练完成通知',
+      html: `你的模型 ${modelName} 已于 ${dayjs().format('YYYY-MM-DD HH:mm')} 训练完成！`
+    };
+    mailTransport.sendMail(options, function (err, msg) {
+      if (err) {
+        console.log('send email  error->', err);
+        reject('邮箱异常');
+      } else {
+        resolve('');
+      }
+    });
+  });
+};
+
 export const sendPhoneCode = async (phone: string, code: string) => {
   const accessKeyId = process.env.aliAccessKeyId;
   const accessKeySecret = process.env.aliAccessKeySecret;
