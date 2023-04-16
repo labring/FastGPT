@@ -9,7 +9,7 @@ import { UserAuthTypeEnum } from '@/constants/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { phone, code, password } = req.body;
+    const { phone, code, password, inviterId } = req.body;
 
     if (!phone || !code || !password) {
       throw new Error('缺少参数');
@@ -46,7 +46,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const response = await User.create({
       username: phone,
-      password
+      password,
+      inviterId
     });
 
     // 根据 id 获取用户信息

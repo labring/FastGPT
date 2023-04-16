@@ -7,6 +7,7 @@ import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
 import { useScreen } from '@/hooks/useScreen';
 import { useToast } from '@/hooks/useToast';
+import { useRouter } from 'next/router';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -21,6 +22,7 @@ interface RegisterType {
 }
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
+  const { inviterId = '' } = useRouter().query as { inviterId: string };
   const { toast } = useToast();
   const { mediaLgMd } = useScreen();
   const {
@@ -54,7 +56,8 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           await postRegister({
             phone,
             code,
-            password
+            password,
+            inviterId
           })
         );
         toast({
@@ -69,7 +72,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       }
       setRequesting(false);
     },
-    [loginSuccess, toast]
+    [inviterId, loginSuccess, toast]
   );
 
   return (
