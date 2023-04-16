@@ -13,7 +13,7 @@ interface Props {
 }
 
 interface LoginFormType {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -29,12 +29,12 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const [requesting, setRequesting] = useState(false);
 
   const onclickLogin = useCallback(
-    async ({ email, password }: LoginFormType) => {
+    async ({ username, password }: LoginFormType) => {
       setRequesting(true);
       try {
         loginSuccess(
           await postLogin({
-            email,
+            username,
             password
           })
         );
@@ -59,20 +59,21 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         登录 FastGPT
       </Box>
       <form onSubmit={handleSubmit(onclickLogin)}>
-        <FormControl mt={8} isInvalid={!!errors.email}>
+        <FormControl mt={8} isInvalid={!!errors.username}>
           <Input
-            placeholder="邮箱"
+            placeholder="邮箱/手机号"
             size={mediaLgMd}
-            {...register('email', {
-              required: '邮箱不能为空',
+            {...register('username', {
+              required: '邮箱/手机号不能为空',
               pattern: {
-                value: /^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$/,
-                message: '邮箱错误'
+                value:
+                  /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
+                message: '邮箱/手机号格式错误'
               }
             })}
           ></Input>
           <FormErrorMessage position={'absolute'} fontSize="xs">
-            {!!errors.email && errors.email.message}
+            {!!errors.username && errors.username.message}
           </FormErrorMessage>
         </FormControl>
         <FormControl mt={8} isInvalid={!!errors.password}>

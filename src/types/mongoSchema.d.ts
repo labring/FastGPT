@@ -11,7 +11,7 @@ export type ServiceName = 'openai';
 
 export interface UserModelSchema {
   _id: string;
-  email: string;
+  username: string;
   password: string;
   balance: number;
   openaiKey: string;
@@ -20,7 +20,7 @@ export interface UserModelSchema {
 
 export interface AuthCodeSchema {
   _id: string;
-  email: string;
+  username: string;
   code: string;
   type: 'register' | 'findPassword';
   expiredTime: number;

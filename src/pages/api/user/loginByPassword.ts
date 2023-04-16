@@ -7,24 +7,24 @@ import { generateToken } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    if (!email || !password) {
+    if (!username || !password) {
       throw new Error('缺少参数');
     }
 
     await connectToDatabase();
 
-    // 检测邮箱是否存在
-    const authEmail = await User.findOne({
-      email
+    // 检测用户是否存在
+    const authUser = await User.findOne({
+      username
     });
-    if (!authEmail) {
-      throw new Error('邮箱未注册');
+    if (!authUser) {
+      throw new Error('用户未注册');
     }
 
     const user = await User.findOne({
-      email,
+      username,
       password
     });
 

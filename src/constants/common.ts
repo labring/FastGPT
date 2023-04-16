@@ -1,4 +1,4 @@
-export enum EmailTypeEnum {
+export enum UserAuthTypeEnum {
   register = 'register',
   findPassword = 'findPassword'
 }

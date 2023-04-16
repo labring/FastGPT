@@ -5,13 +5,13 @@ import { User } from '@/service/models/user';
 import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
 import { generateToken } from '@/service/utils/tools';
-import { EmailTypeEnum } from '@/constants/common';
+import { UserAuthTypeEnum } from '@/constants/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { email, code, password } = req.body;
+    const { username, code, password } = req.body;
 
-    if (!email || !code || !password) {
+    if (!username || !code || !password) {
       throw new Error('缺少参数');
     }
 
@@ -19,9 +19,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 验证码校验
     const authCode = await AuthCode.findOne({
-      email,
+      username,
       code,
-      type: EmailTypeEnum.findPassword,
+      type: UserAuthTypeEnum.findPassword,
       expiredTime: { $gte: Date.now() }
     });
 
@@ -32,16 +32,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 更新对应的记录
     await User.updateOne(
       {
-        email
+        username
       },
       {
         password
       }
     );
 
-    // 根据 email 获取用户信息
+    // 根据 username 获取用户信息
     const user = await User.findOne({
-      email
+      username
     });
 
     if (!user) {

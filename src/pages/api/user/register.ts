@@ -5,23 +5,29 @@ import { User } from '@/service/models/user';
 import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
 import { generateToken } from '@/service/utils/tools';
-import { EmailTypeEnum } from '@/constants/common';
+import { UserAuthTypeEnum } from '@/constants/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { email, code, password } = req.body;
+    const { phone, code, password } = req.body;
 
-    if (!email || !code || !password) {
+    if (!phone || !code || !password) {
       throw new Error('缺少参数');
+    }
+
+    const reg = /^1[3456789]\d{9}$/;
+
+    if (!reg.test(phone)) {
+      throw new Error('手机号格式错误');
     }
 
     await connectToDatabase();
 
-    // 验证码校验
+    // 验证码校验. 注册只接收手机号
     const authCode = await AuthCode.findOne({
-      email,
+      username: phone,
       code,
-      type: EmailTypeEnum.register,
+      type: UserAuthTypeEnum.register,
       expiredTime: { $gte: Date.now() }
     });
 
@@ -31,15 +37,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 重名校验
     const authRepeat = await User.findOne({
-      email
+      username: phone
     });
 
     if (authRepeat) {
-      throw new Error('邮箱已被注册');
+      throw new Error('手机号已被注册');
     }
 
     const response = await User.create({
-      email,
+      username: phone,
       password
     });
 
@@ -49,6 +55,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!user) {
       throw new Error('获取用户信息异常');
     }
+
+    // 删除验证码记录
+    await AuthCode.deleteMany({
+      username: phone
+    });
 
     jsonRes(res, {
       data: {
