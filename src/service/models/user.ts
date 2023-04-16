@@ -3,9 +3,6 @@ import { hashPassword } from '@/service/utils/tools';
 import { PRICE_SCALE } from '@/constants/common';
 import { UserModelSchema } from '@/types/mongoSchema';
 const UserSchema = new Schema({
-  email: {
-    type: String
-  },
   username: {
     // 可以是手机/邮箱，新的验证都只用手机
     type: String,
@@ -45,19 +42,6 @@ const UserSchema = new Schema({
     type: String,
     default: ''
   },
-  accounts: [
-    {
-      type: {
-        type: String,
-        required: true,
-        enum: ['openai'] // 定义允许的type
-      },
-      value: {
-        type: String,
-        required: true
-      }
-    }
-  ],
   createTime: {
     type: Date,
     default: () => new Date()

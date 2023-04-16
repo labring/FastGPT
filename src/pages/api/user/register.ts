@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const response = await User.create({
       username: phone,
       password,
-      inviterId
+      inviterId: inviterId ? inviterId : undefined
     });
 
     // 根据 id 获取用户信息
