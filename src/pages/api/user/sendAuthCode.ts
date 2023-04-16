@@ -2,28 +2,27 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { AuthCode } from '@/service/models/authCode';
-import { connectToDatabase, User } from '@/service/mongo';
-import { sendCode } from '@/service/utils/sendEmail';
-import { EmailTypeEnum } from '@/constants/common';
+import { connectToDatabase } from '@/service/mongo';
+import { sendPhoneCode, sendEmailCode } from '@/service/utils/sendNote';
+import { UserAuthTypeEnum } from '@/constants/common';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('1234567890', 6);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { email, type } = req.query as { email: string; type: `${EmailTypeEnum}` };
+    const { username, type } = req.query as { username: string; type: `${UserAuthTypeEnum}` };
 
-    if (!email || !type) {
+    if (!username || !type) {
       throw new Error('缺少参数');
     }
 
     await connectToDatabase();
 
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-      code += Math.floor(Math.random() * 10);
-    }
+    let code = nanoid();
 
     // 判断 1 分钟内是否有重复数据
     const authCode = await AuthCode.findOne({
-      email,
+      username,
       type,
       expiredTime: { $gte: Date.now() + 4 * 60 * 1000 } // 如果有一个记录的过期时间，大于当前+4分钟，说明距离上次发送还没到1分钟。（因为默认创建时，过期时间是未来5分钟）
     });
@@ -34,13 +33,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 创建 auth 记录
     await AuthCode.create({
-      email,
+      username,
       type,
       code
     });
 
-    // 发送验证码
-    await sendCode(email as string, code, type as `${EmailTypeEnum}`);
+    if (username.includes('@')) {
+      await sendEmailCode(username, code, type);
+    } else {
+      // 发送验证码
+      await sendPhoneCode(username, code);
+    }
 
     jsonRes(res, {
       message: '发送验证码成功'

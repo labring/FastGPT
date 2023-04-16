@@ -11,6 +11,9 @@
     "format": "prettier --config \"./.prettierrc.js\" --write \"./src/**/*.{ts,tsx,scss}\""
   },
   "dependencies": {
+    "@alicloud/dysmsapi20170525": "^2.0.23",
+    "@alicloud/openapi-client": "^0.4.5",
+    "@alicloud/tea-util": "^1.4.5",
     "@chakra-ui/icons": "^2.0.17",
     "@chakra-ui/react": "^2.5.1",
     "@emotion/react": "^11.10.6",

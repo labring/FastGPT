@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { sendCodeToEmail } from '@/api/user';
-import { EmailTypeEnum } from '@/constants/common';
+import { sendAuthCode } from '@/api/user';
+import { UserAuthTypeEnum } from '@/constants/common';
 let timer: any;
 import { useToast } from './useToast';
 
@@ -19,11 +19,11 @@ export const useSendCode = () => {
   }, [codeCountDown]);
 
   const sendCode = useCallback(
-    async ({ email, type }: { email: string; type: `${EmailTypeEnum}` }) => {
+    async ({ username, type }: { username: string; type: `${UserAuthTypeEnum}` }) => {
       setCodeSending(true);
       try {
-        await sendCodeToEmail({
-          email,
+        await sendAuthCode({
+          username,
           type
         });
         setCodeCountDown(60);

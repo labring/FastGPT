@@ -14,7 +14,7 @@ interface Props {
 }
 
 interface RegisterType {
-  email: string;
+  username: string;
   code: string;
   password: string;
   password2: string;
@@ -36,10 +36,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { codeSending, sendCodeText, sendCode, codeCountDown } = useSendCode();
 
   const onclickSendCode = useCallback(async () => {
-    const check = await trigger('email');
+    const check = await trigger('username');
     if (!check) return;
     sendCode({
-      email: getValues('email'),
+      username: getValues('username'),
       type: 'findPassword'
     });
   }, [getValues, sendCode, trigger]);
@@ -47,12 +47,12 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const [requesting, setRequesting] = useState(false);
 
   const onclickFindPassword = useCallback(
-    async ({ email, code, password }: RegisterType) => {
+    async ({ username, code, password }: RegisterType) => {
       setRequesting(true);
       try {
         loginSuccess(
           await postFindPassword({
-            email,
+            username,
             code,
             password
           })
@@ -78,23 +78,24 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         找回 FastGPT 账号
       </Box>
       <form onSubmit={handleSubmit(onclickFindPassword)}>
-        <FormControl mt={8} isInvalid={!!errors.email}>
+        <FormControl mt={8} isInvalid={!!errors.username}>
           <Input
-            placeholder="邮箱"
+            placeholder="邮箱/手机号"
             size={mediaLgMd}
-            {...register('email', {
-              required: '邮箱不能为空',
+            {...register('username', {
+              required: '邮箱/手机号不能为空',
               pattern: {
-                value: /^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$/,
-                message: '邮箱错误'
+                value:
+                  /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
+                message: '邮箱/手机号格式错误'
               }
             })}
           ></Input>
           <FormErrorMessage position={'absolute'} fontSize="xs">
-            {!!errors.email && errors.email.message}
+            {!!errors.username && errors.username.message}
           </FormErrorMessage>
         </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.email}>
+        <FormControl mt={8} isInvalid={!!errors.username}>
           <Flex>
             <Input
               flex={1}

@@ -51,8 +51,8 @@ const NumberSetting = () => {
           账号信息
         </Box>
         <Flex mt={6} alignItems={'center'}>
-          <Box flex={'0 0 60px'}>邮箱:</Box>
-          <Box>{userInfo?.email}</Box>
+          <Box flex={'0 0 60px'}>用户账号:</Box>
+          <Box>{userInfo?.username}</Box>
         </Flex>
         <Box mt={6}>
           <Flex alignItems={'center'}>

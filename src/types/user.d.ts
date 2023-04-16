@@ -1,11 +1,6 @@
-export enum UserNumberEnum {
-  phone = 'phone',
-  wx = 'wx'
-}
-
 export interface UserType {
   _id: string;
-  email: string;
+  username: string;
   openaiKey: string;
   balance: number;
 }

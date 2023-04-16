@@ -2,7 +2,7 @@ import { Schema, model, models, Model } from 'mongoose';
 import { AuthCodeSchema as AuthCodeType } from '@/types/mongoSchema';
 
 const AuthCodeSchema = new Schema({
-  email: {
+  username: {
     type: String,
     required: true
   },
