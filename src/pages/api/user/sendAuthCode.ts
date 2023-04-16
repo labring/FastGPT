@@ -5,8 +5,6 @@ import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
 import { sendPhoneCode, sendEmailCode } from '@/service/utils/sendNote';
 import { UserAuthTypeEnum } from '@/constants/common';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('1234567890', 6);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -18,7 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    let code = nanoid();
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += Math.floor(Math.random() * 10);
+    }
 
     // 判断 1 分钟内是否有重复数据
     const authCode = await AuthCode.findOne({
