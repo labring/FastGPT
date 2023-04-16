@@ -14,6 +14,8 @@ export interface UserModelSchema {
   username: string;
   password: string;
   balance: number;
+  inviterId?: string;
+  promotionAmount: number;
   openaiKey: string;
   createTime: number;
 }
