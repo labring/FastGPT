@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: [
           {
             role: 'system',
-            content: `服务端逻辑生成器.根据用户输入的需求,拆解成 laf 云函数实现的步骤,按格式返回: 1.\n2.\n3.\n ......
+            content: `服务端逻辑生成器.根据用户输入的需求,拆解成 laf 云函数实现的步骤,只返回步骤,按格式返回步骤: 1.\n2.\n3.\n ......
 下面是一些例子:
 一个 hello world 例子
 1. 返回字符串: "hello world"
