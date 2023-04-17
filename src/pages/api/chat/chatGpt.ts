@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 控制在 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
+    // const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
 
     // 格式化文本内容成 chatgpt 格式
     const map = {
@@ -69,12 +69,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       AI: ChatCompletionRequestMessageRoleEnum.Assistant,
       SYSTEM: ChatCompletionRequestMessageRoleEnum.System
     };
-    const formatPrompts: ChatCompletionRequestMessage[] = filterPrompts.map(
-      (item: ChatItemType) => ({
-        role: map[item.obj],
-        content: item.value
-      })
-    );
+    const formatPrompts: ChatCompletionRequestMessage[] = prompts.map((item: ChatItemType) => ({
+      role: map[item.obj],
+      content: item.value
+    }));
     // console.log(formatPrompts);
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
