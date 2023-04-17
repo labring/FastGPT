@@ -5,7 +5,13 @@ import { ModelDataStatusEnum } from '@/constants/redis';
 import { openaiCreateEmbedding, getOpenApiKey } from '../utils/openai';
 
 export async function generateVector(next = false): Promise<any> {
+  if (process.env.queueTask !== '1') {
+    fetch(process.env.parentUrl || '');
+    return;
+  }
+
   if (global.generatingVector && !next) return;
+
   global.generatingVector = true;
   let dataId = null;
   try {
@@ -84,8 +90,13 @@ export async function generateVector(next = false): Promise<any> {
       console.log('生成向量错误:', error);
     }
 
-    if (dataId && error?.response?.data?.error?.type === 'insufficient_quota') {
-      console.log('api 余额不足,删除 redis 模型数据');
+    // 没有余额或者凭证错误时，拒绝任务
+    if (
+      dataId &&
+      (+error.response?.status === 401 ||
+        error?.response?.data?.error?.type === 'insufficient_quota')
+    ) {
+      console.log('删除向量生成任务记录');
       const redis = await connectRedis();
       redis.del(dataId);
       generateVector(true);
