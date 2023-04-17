@@ -15,7 +15,7 @@ interface Props {
 }
 
 interface RegisterType {
-  phone: string;
+  username: string;
   password: string;
   password2: string;
   code: string;
@@ -38,10 +38,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { codeSending, sendCodeText, sendCode, codeCountDown } = useSendCode();
 
   const onclickSendCode = useCallback(async () => {
-    const check = await trigger('phone');
+    const check = await trigger('username');
     if (!check) return;
     sendCode({
-      username: getValues('phone'),
+      username: getValues('username'),
       type: 'register'
     });
   }, [getValues, sendCode, trigger]);
@@ -49,12 +49,12 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const [requesting, setRequesting] = useState(false);
 
   const onclickRegister = useCallback(
-    async ({ phone, password, code }: RegisterType) => {
+    async ({ username, password, code }: RegisterType) => {
       setRequesting(true);
       try {
         loginSuccess(
           await postRegister({
-            phone,
+            username,
             code,
             password,
             inviterId
@@ -81,23 +81,24 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         注册 FastGPT 账号
       </Box>
       <form onSubmit={handleSubmit(onclickRegister)}>
-        <FormControl mt={8} isInvalid={!!errors.phone}>
+        <FormControl mt={8} isInvalid={!!errors.username}>
           <Input
-            placeholder="手机号"
+            placeholder="邮箱/手机号"
             size={mediaLgMd}
-            {...register('phone', {
-              required: '手机号不能为空',
+            {...register('username', {
+              required: '邮箱/手机号不能为空',
               pattern: {
-                value: /^1[3456789]\d{9}$/,
-                message: '手机号格式错误'
+                value:
+                  /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
+                message: '邮箱/手机号格式错误'
               }
             })}
           ></Input>
           <FormErrorMessage position={'absolute'} fontSize="xs">
-            {!!errors.phone && errors.phone.message}
+            {!!errors.username && errors.username.message}
           </FormErrorMessage>
         </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.phone}>
+        <FormControl mt={8} isInvalid={!!errors.username}>
           <Flex>
             <Input
               flex={1}

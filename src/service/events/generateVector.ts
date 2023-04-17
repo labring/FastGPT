@@ -3,6 +3,7 @@ import { VecModelDataIdx } from '@/constants/redis';
 import { vectorToBuffer } from '@/utils/tools';
 import { ModelDataStatusEnum } from '@/constants/redis';
 import { openaiCreateEmbedding, getOpenApiKey } from '../utils/openai';
+import { openaiError2 } from '../errorCode';
 
 export async function generateVector(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -91,11 +92,7 @@ export async function generateVector(next = false): Promise<any> {
     }
 
     // 没有余额或者凭证错误时，拒绝任务
-    if (
-      dataId &&
-      (+error.response?.status === 401 ||
-        error?.response?.data?.error?.type === 'insufficient_quota')
-    ) {
+    if (dataId && openaiError2[error?.response?.data?.error?.type]) {
       console.log('删除向量生成任务记录');
       const redis = await connectRedis();
       redis.del(dataId);

@@ -18,18 +18,18 @@ export const sendAuthCode = ({
 export const getTokenLogin = () => GET<UserType>('/user/tokenLogin');
 
 export const postRegister = ({
-  phone,
+  username,
   password,
   code,
   inviterId
 }: {
-  phone: string;
+  username: string;
   code: string;
   password: string;
   inviterId: string;
 }) =>
   POST<ResLogin>('/user/register', {
-    phone,
+    username,
     code,
     inviterId,
     password: createHashPassword(password)

@@ -79,15 +79,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: [
           {
             role: 'system',
-            content: `服务端逻辑生成器.根据用户输入的需求,拆解成代码实现的步骤,并按格式返回: 1.\n2.\n3.\n ......
+            content: `服务端逻辑生成器.根据用户输入的需求,拆解成 laf 云函数实现的步骤,按格式返回: 1.\n2.\n3.\n ......
 下面是一些例子:
+一个 hello world 例子
+1. 返回字符串: "hello world"
+
+计算圆的面积
+1. 从 body 中获取半径 radius.
+2. 校验 radius 是否为有效的数字.
+3. 计算圆的面积.
+4. 返回圆的面积: {area} 
+
 实现一个手机号发生注册验证码方法.
 1. 从 query 中获取 phone.
 2. 校验手机号格式是否正确,不正确则返回错误原因:手机号格式错误.
 3. 给 phone 发送一个短信验证码,验证码长度为6位字符串,内容为:你正在注册laf,验证码为:code.
 4. 数据库添加数据,表为"codes",内容为 {phone, code}.
 
-实现根据手机号注册账号,需要验证手机验证码.
+实现一个云函数，使用手机号注册账号,需要验证手机验证码.
 1. 从 body 中获取 phone 和 code.
 2. 校验手机号格式是否正确,不正确则返回错误原因:手机号格式错误.
 2. 获取数据库数据,表为"codes",查找是否有符合 phone, code 等于body参数的记录,没有的话返回错误原因:验证码不正确.
