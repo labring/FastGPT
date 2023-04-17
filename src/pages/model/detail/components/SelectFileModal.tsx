@@ -85,7 +85,7 @@ const SelectFileModal = ({
       if (!fileText) return;
       await postModelDataSplitData({
         modelId,
-        text: fileText,
+        text: fileText.replace(/\\n/g, '\n').replace(/\n+/g, '\n'),
         prompt: `下面是${prompt || '一段长文本'}`
       });
       toast({

@@ -110,12 +110,13 @@ export const openaiChatFilter = (prompts: ChatItemType[], maxTokens: number) => 
   // 从后往前截取
   for (let i = formatPrompts.length - 1; i >= 0; i--) {
     const tokens = encode(formatPrompts[i].value).length;
-    if (maxTokens >= tokens) {
-      res.unshift(formatPrompts[i]);
-      maxTokens -= tokens;
-    } else {
+    res.unshift(formatPrompts[i]);
+    /* 整体 tokens 超出范围 */
+    if (tokens >= maxTokens) {
       break;
     }
+
+    maxTokens -= tokens;
   }
 
   return systemPrompt ? [systemPrompt, ...res] : res;

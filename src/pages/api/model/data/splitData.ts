@@ -28,10 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('无权操作该模型');
     }
 
-    const replaceText = text.replace(/(\\n|\n)+/g, ' ');
+    const replaceText = text.replace(/\\n/g, '\n');
 
     // 文本拆分成 chunk
-    const chunks = replaceText.match(/[^!?.。]+[!?.。]/g) || [];
+    const chunks = replaceText.split('\n').filter((item) => item.trim());
 
     const textList: string[] = [];
     let splitText = '';

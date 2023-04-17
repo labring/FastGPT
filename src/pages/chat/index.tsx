@@ -204,17 +204,6 @@ const Chat = ({ chatId }: { chatId: string }) => {
       return;
     }
 
-    // 长度校验
-    const model = modelList.find((item) => item.model === chatData.modelName);
-
-    if (model && val.length >= model.maxToken) {
-      toast({
-        title: '单次输入超出 4000 字符',
-        status: 'warning'
-      });
-      return;
-    }
-
     const newChatList: ChatSiteItemType[] = [
       ...chatData.history,
       {
