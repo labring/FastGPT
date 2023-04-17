@@ -116,8 +116,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } else {
       // 有匹配情况下，添加知识库内容。
-      // 系统提示词过滤，最多 2800 tokens
-      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2800);
+      // 系统提示词过滤，最多 2000 tokens
+      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2000);
 
       prompts.unshift({
         obj: 'SYSTEM',
