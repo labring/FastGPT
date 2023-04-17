@@ -8,7 +8,12 @@ import { ChatModelNameEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 
 export async function generateAbstract(next = false): Promise<any> {
+  if (process.env.queueTask !== '1') {
+    fetch(process.env.parentUrl || '');
+    return;
+  }
   if (global.generatingAbstract && !next) return;
+
   global.generatingAbstract = true;
 
   const systemPrompt: ChatCompletionRequestMessage = {

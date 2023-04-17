@@ -13,7 +13,12 @@ import { ModelSplitDataSchema } from '@/types/mongoSchema';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export async function generateQA(next = false): Promise<any> {
+  if (process.env.queueTask !== '1') {
+    fetch(process.env.parentUrl || '');
+    return;
+  }
   if (global.generatingQA === true && !next) return;
+
   global.generatingQA = true;
 
   let dataId = null;
@@ -165,8 +170,13 @@ export async function generateQA(next = false): Promise<any> {
       console.log('生成QA错误:', error);
     }
 
-    if (dataId && error?.response?.data?.error?.type === 'insufficient_quota') {
-      console.log('api 余额不足');
+    // 没有余额或者凭证错误时，拒绝任务
+    if (
+      dataId &&
+      (+error.response?.status === 401 ||
+        error?.response?.data?.error?.type === 'insufficient_quota')
+    ) {
+      console.log('api 异常，删除QA任务');
 
       await SplitData.findByIdAndUpdate(dataId, {
         textList: [],
