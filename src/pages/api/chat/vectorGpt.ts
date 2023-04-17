@@ -116,8 +116,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } else {
       // 有匹配情况下，添加知识库内容。
-      // 系统提示词过滤，最多 2000 tokens
-      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2000);
+      // 系统提示词过滤，最多 2500 tokens
+      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2500);
 
       prompts.unshift({
         obj: 'SYSTEM',
@@ -128,7 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 控制在 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
+    // const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
 
     // 格式化文本内容成 chatgpt 格式
     const map = {
@@ -136,12 +136,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       AI: ChatCompletionRequestMessageRoleEnum.Assistant,
       SYSTEM: ChatCompletionRequestMessageRoleEnum.System
     };
-    const formatPrompts: ChatCompletionRequestMessage[] = filterPrompts.map(
-      (item: ChatItemType) => ({
-        role: map[item.obj],
-        content: item.value
-      })
-    );
+    const formatPrompts: ChatCompletionRequestMessage[] = prompts.map((item: ChatItemType) => ({
+      role: map[item.obj],
+      content: item.value
+    }));
     // console.log(formatPrompts);
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
