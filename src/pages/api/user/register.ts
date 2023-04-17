@@ -9,23 +9,17 @@ import { UserAuthTypeEnum } from '@/constants/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { phone, code, password, inviterId } = req.body;
+    const { username, code, password, inviterId } = req.body;
 
-    if (!phone || !code || !password) {
+    if (!username || !code || !password) {
       throw new Error('缺少参数');
-    }
-
-    const reg = /^1[3456789]\d{9}$/;
-
-    if (!reg.test(phone)) {
-      throw new Error('手机号格式错误');
     }
 
     await connectToDatabase();
 
-    // 验证码校验. 注册只接收手机号
+    // 验证码校验
     const authCode = await AuthCode.findOne({
-      username: phone,
+      username,
       code,
       type: UserAuthTypeEnum.register,
       expiredTime: { $gte: Date.now() }
@@ -37,15 +31,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 重名校验
     const authRepeat = await User.findOne({
-      username: phone
+      username
     });
 
     if (authRepeat) {
-      throw new Error('手机号已被注册');
+      throw new Error('该用户已被注册');
     }
 
     const response = await User.create({
-      username: phone,
+      username,
       password,
       inviterId: inviterId ? inviterId : undefined
     });
@@ -59,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 删除验证码记录
     await AuthCode.deleteMany({
-      username: phone
+      username
     });
 
     jsonRes(res, {

@@ -9,6 +9,7 @@ import { generateVector } from './generateVector';
 import { connectRedis } from '../redis';
 import { VecModelDataPrefix } from '@/constants/redis';
 import { customAlphabet } from 'nanoid';
+import { openaiError2 } from '../errorCode';
 import { ModelSplitDataSchema } from '@/types/mongoSchema';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
@@ -102,6 +103,7 @@ export async function generateQA(next = false): Promise<any> {
           .then((res) => {
             const rawContent = res?.data.choices[0].message?.content || ''; // chatgpt 原本的回复
             const result = splitText(res?.data.choices[0].message?.content || ''); // 格式化后的QA对
+            console.log(`split result length: `, result.length);
             // 计费
             pushSplitDataBill({
               isPay: !userApiKey && result.length > 0,
@@ -114,6 +116,10 @@ export async function generateQA(next = false): Promise<any> {
               rawContent,
               result
             };
+          })
+          .catch((err) => {
+            console.log('QA 拆分错误');
+            return Promise.reject(err);
           })
       )
     );
@@ -152,12 +158,7 @@ export async function generateQA(next = false): Promise<any> {
       })
     ]);
 
-    console.log(
-      '生成QA成功，time:',
-      `${(Date.now() - startTime) / 1000}s`,
-      'QA数量：',
-      resultList.length
-    );
+    console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
 
     generateQA(true);
     generateVector();
@@ -171,12 +172,8 @@ export async function generateQA(next = false): Promise<any> {
     }
 
     // 没有余额或者凭证错误时，拒绝任务
-    if (
-      dataId &&
-      (+error.response?.status === 401 ||
-        error?.response?.data?.error?.type === 'insufficient_quota')
-    ) {
-      console.log('api 异常，删除QA任务');
+    if (dataId && openaiError2[error?.response?.data?.error?.type]) {
+      console.log(openaiError2[error?.response?.data?.error?.type], '删除QA任务');
 
       await SplitData.findByIdAndUpdate(dataId, {
         textList: [],
