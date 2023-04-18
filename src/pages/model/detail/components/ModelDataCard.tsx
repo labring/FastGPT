@@ -19,7 +19,7 @@ import {
   Input
 } from '@chakra-ui/react';
 import type { ModelSchema } from '@/types/mongoSchema';
-import type { RedisModelDataItemType } from '@/types/redis';
+import type { ModelDataItemType } from '@/types/model';
 import { ModelDataStatusMap } from '@/constants/model';
 import { usePagination } from '@/hooks/usePagination';
 import {
@@ -53,9 +53,9 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     total,
     getData,
     pageNum
-  } = usePagination<RedisModelDataItemType>({
+  } = usePagination<ModelDataItemType>({
     api: getModelDataList,
-    pageSize: 8,
+    pageSize: 10,
     params: {
       modelId: model._id,
       searchText
@@ -149,7 +149,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             <MenuItem
               onClick={() =>
                 setEditInputData({
-                  text: '',
+                  a: '',
                   q: ''
                 })
               }
@@ -216,7 +216,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                       maxH={'250px'}
                       overflowY={'auto'}
                     >
-                      {item.text}
+                      {item.a}
                     </Box>
                   </Td>
                   <Td>{ModelDataStatusMap[item.status]}</Td>
@@ -231,7 +231,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
                         setEditInputData({
                           dataId: item.id,
                           q: item.q,
-                          text: item.text
+                          a: item.a
                         })
                       }
                     />

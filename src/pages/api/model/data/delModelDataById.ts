@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authToken } from '@/service/utils/tools';
-import { connectRedis } from '@/service/redis';
+import { connectPg } from '@/service/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,15 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const userId = await authToken(authorization);
 
-    const redis = await connectRedis();
+    const pg = await connectPg();
+    await pg.query(`DELETE FROM modelData WHERE user_id = '${userId}' AND id = '${dataId}'`);
 
-    // 校验是否为该用户的数据
-    const dataItemUserId = await redis.hGet(dataId, 'userId');
-    if (dataItemUserId !== userId) {
-      throw new Error('无权操作');
-    }
-    // 删除
-    await redis.del(dataId);
     jsonRes(res);
   } catch (err) {
     console.log(err);

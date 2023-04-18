@@ -66,11 +66,8 @@ export interface ModelDataSchema {
   _id: string;
   modelId: string;
   userId: string;
-  text: string;
-  q: {
-    id: string;
-    text: string;
-  };
+  a: string;
+  q: string;
   status: ModelDataType;
 }
 
