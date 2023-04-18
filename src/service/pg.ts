@@ -16,9 +16,6 @@ export const connectPg = async () => {
     connectionTimeoutMillis: 2000
   });
 
-  global.pgClient.on('connect', () => {
-    console.log('pg connected');
-  });
   global.pgClient.on('error', (err) => {
     console.log(err);
     global.pgClient = null;
@@ -26,6 +23,7 @@ export const connectPg = async () => {
 
   try {
     await global.pgClient.connect();
+    console.log('pg connected');
     return global.pgClient;
   } catch (error) {
     global.pgClient = null;

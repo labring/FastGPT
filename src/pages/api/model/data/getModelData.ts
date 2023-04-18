@@ -40,6 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const searchRes = await pg.query<PgModelDataItemType>(`SELECT id, q, a, status
               FROM modelData
               WHERE user_id='${userId}' AND model_id='${modelId}'
+              ORDER BY id DESC
               LIMIT ${pageSize} OFFSET ${pageSize * (pageNum - 1)}
             `);
 
