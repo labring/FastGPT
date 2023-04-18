@@ -79,7 +79,7 @@ export const getWebContent = (url: string) => POST<string>(`/model/data/fetching
  */
 export const postModelDataInput = (data: {
   modelId: string;
-  data: { text: ModelDataSchema['text']; q: ModelDataSchema['q'] }[];
+  data: { a: ModelDataSchema['a']; q: ModelDataSchema['q'] }[];
 }) => POST<number>(`/model/data/pushModelDataInput`, data);
 
 /**
@@ -97,7 +97,7 @@ export const postModelDataCsvData = (modelId: string, data: string[][]) =>
 /**
  * 更新模型数据
  */
-export const putModelDataById = (data: { dataId: string; text: string; q?: string }) =>
+export const putModelDataById = (data: { dataId: string; a: string; q?: string }) =>
   PUT('/model/data/putModelData', data);
 /**
  * 删除一条模型数据

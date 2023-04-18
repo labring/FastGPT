@@ -16,14 +16,14 @@ import { useToast } from '@/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-export type FormData = { dataId?: string; text: string; q: string };
+export type FormData = { dataId?: string; a: string; q: string };
 
 const InputDataModal = ({
   onClose,
   onSuccess,
   modelId,
   defaultValues = {
-    text: '',
+    a: '',
     q: ''
   }
 }: {
@@ -51,11 +51,8 @@ const InputDataModal = ({
           modelId: modelId,
           data: [
             {
-              text: e.text,
-              q: {
-                id: nanoid(),
-                text: e.q
-              }
+              a: e.a,
+              q: e.q
             }
           ]
         });
@@ -65,7 +62,7 @@ const InputDataModal = ({
           status: res === 0 ? 'success' : 'warning'
         });
         reset({
-          text: '',
+          a: '',
           q: ''
         });
         onSuccess();
@@ -81,10 +78,10 @@ const InputDataModal = ({
     async (e: FormData) => {
       if (!e.dataId) return;
 
-      if (e.text !== defaultValues.text || e.q !== defaultValues.q) {
+      if (e.a !== defaultValues.a || e.q !== defaultValues.q) {
         await putModelDataById({
           dataId: e.dataId,
-          text: e.text,
+          a: e.a,
           q: e.q === defaultValues.q ? '' : e.q
         });
         onSuccess();
@@ -144,7 +141,7 @@ const InputDataModal = ({
               maxLength={1000}
               resize={'none'}
               h={'calc(100% - 30px)'}
-              {...register(`text`, {
+              {...register(`a`, {
                 required: '知识点'
               })}
             />

@@ -6,12 +6,9 @@ import type { ChatCompletionRequestMessage } from 'openai';
 import { ChatModelNameEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 import { generateVector } from './generateVector';
-import { connectRedis } from '../redis';
-import { VecModelDataPrefix } from '@/constants/redis';
-import { customAlphabet } from 'nanoid';
 import { openaiError2 } from '../errorCode';
+import { connectPg } from '@/service/pg';
 import { ModelSplitDataSchema } from '@/types/mongoSchema';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export async function generateQA(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -25,7 +22,7 @@ export async function generateQA(next = false): Promise<any> {
   let dataId = null;
 
   try {
-    const redis = await connectRedis();
+    const pg = await connectPg();
     // 找出一个需要生成的 dataItem
     const data = await SplitData.aggregate([
       { $match: { textList: { $exists: true, $ne: [] } } },
@@ -139,23 +136,17 @@ export async function generateQA(next = false): Promise<any> {
       SplitData.findByIdAndUpdate(dataItem._id, {
         textList: dataItem.textList.slice(0, -5)
       }), // 删掉后5个数据
-      ...resultList.map((item) => {
-        // 插入 redis
-        return redis.sendCommand([
-          'HMSET',
-          `${VecModelDataPrefix}:${nanoid()}`,
-          'userId',
-          String(dataItem.userId),
-          'modelId',
-          String(dataItem.modelId),
-          'q',
-          item.q,
-          'text',
-          item.a,
-          'status',
-          'waiting'
-        ]);
-      })
+      // 生成的内容插入 pg
+      pg.query(`INSERT INTO modelData (user_id, model_id, q, a, status) VALUES ${resultList
+        .map(
+          (item) =>
+            `('${String(dataItem.userId)}', '${String(dataItem.modelId)}', '${item.q.replace(
+              /\'/g,
+              '"'
+            )}', '${item.a.replace(/\'/g, '"')}', 'waiting')`
+        )
+        .join(',')}
+            `)
     ]);
 
     console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
