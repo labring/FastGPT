@@ -80,14 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const similarity = ModelVectorSearchModeMap[model.search.mode]?.similarity || 0.22;
     const vectorSearch = await PgClient.select<{ id: string; q: string; a: string }>('modelData', {
       fields: ['id', 'q', 'a'],
+      where: [['model_id', model._id], 'AND', `vector <=> '[${promptVector}]' < ${similarity}`],
       order: [{ field: 'vector', mode: `<=> '[${promptVector}]'` }],
-      where: [
-        ['model_id', model._id],
-        'AND',
-        ['user_id', userId],
-        'AND',
-        `vector <=> '[${promptVector}]' < ${similarity}`
-      ],
       limit: 30
     });
 
@@ -116,8 +110,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } else {
       // 有匹配或者低匹配度模式情况下，添加知识库内容。
-      // 系统提示词过滤，最多 2500 tokens
-      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2500);
+      // 系统提示词过滤，最多 2000 tokens
+      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2000);
 
       prompts.unshift({
         obj: 'SYSTEM',
