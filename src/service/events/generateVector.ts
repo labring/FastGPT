@@ -1,7 +1,6 @@
-import { connectRedis } from '../redis';
 import { openaiCreateEmbedding, getOpenApiKey } from '../utils/openai';
 import { openaiError2 } from '../errorCode';
-import { connectPg, PgClient } from '@/service/pg';
+import { PgClient } from '@/service/pg';
 
 export async function generateVector(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -86,8 +85,9 @@ export async function generateVector(next = false): Promise<any> {
     // 没有余额或者凭证错误时，拒绝任务
     if (dataId && openaiError2[error?.response?.data?.error?.type]) {
       console.log('删除向量生成任务记录');
-      const redis = await connectRedis();
-      redis.del(dataId);
+      await PgClient.delete('modelData', {
+        where: [['id', dataId]]
+      });
       generateVector(true);
       return;
     }
