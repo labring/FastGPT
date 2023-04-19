@@ -51,23 +51,3 @@ export const Obj2Query = (obj: Record<string, string | number>) => {
   }
   return queryParams.toString();
 };
-
-/**
- * 向量转成 float32 buffer 格式
- */
-export const vectorToBuffer = (vector: number[]) => {
-  const npVector = new Float32Array(vector);
-
-  const buffer = Buffer.from(npVector.buffer);
-
-  return buffer;
-};
-
-export const formatVector = (vector: number[]) => {
-  let formattedVector = vector.slice(0, 1536); // 截取前1536个元素
-  if (vector.length > 1536) {
-    formattedVector = formattedVector.concat(Array(1536 - formattedVector.length).fill(0)); // 在后面添加0
-  }
-
-  return formattedVector;
-};

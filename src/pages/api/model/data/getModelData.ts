@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     const searchRes = await PgClient.select<PgModelDataItemType>('modelData', {
-      field: ['id', 'q', 'a', 'status'],
+      fields: ['id', 'q', 'a', 'status'],
       where: [['user_id', userId], 'AND', ['model_id', modelId]],
       order: [{ field: 'id', mode: 'DESC' }],
       limit: pageSize,

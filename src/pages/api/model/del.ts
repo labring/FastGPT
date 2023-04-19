@@ -6,13 +6,12 @@ import { getUserApiOpenai } from '@/service/utils/openai';
 import { TrainingStatusEnum } from '@/constants/model';
 import { TrainingItemType } from '@/types/training';
 import { httpsAgent } from '@/service/utils/tools';
-import { connectRedis } from '@/service/redis';
-import { VecModelDataIdx } from '@/constants/redis';
+import { PgClient } from '@/service/pg';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { modelId } = req.query;
+    const { modelId } = req.query as { modelId: string };
     const { authorization } = req.headers;
 
     if (!authorization) {
@@ -37,21 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     await connectToDatabase();
-    const redis = await connectRedis();
 
-    // 获取 redis 中模型关联的所有数据
-    const searchRes = await redis.ft.search(
-      VecModelDataIdx,
-      `@modelId:{${modelId}} @userId:{${userId}}`,
-      {
-        LIMIT: {
-          from: 0,
-          size: 10000
-        }
-      }
-    );
-    // 删除 redis 内容
-    await Promise.all(searchRes.documents.map((item) => redis.del(item.id)));
+    // 删除 pg 中所有该模型的数据
+    await PgClient.delete('modelData', {
+      where: [['user_id', userId], 'AND', ['model_id', modelId]]
+    });
 
     // 删除对应的聊天
     await Chat.deleteMany({
