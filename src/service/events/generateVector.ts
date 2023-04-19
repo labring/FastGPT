@@ -16,7 +16,7 @@ export async function generateVector(next = false): Promise<any> {
   try {
     // 从找出一个 status = waiting 的数据
     const searchRes = await PgClient.select('modelData', {
-      field: ['id', 'q', 'user_id'],
+      fields: ['id', 'q', 'user_id'],
       where: [['status', 'waiting']],
       limit: 1
     });

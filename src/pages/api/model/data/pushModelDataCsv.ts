@@ -3,11 +3,8 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { generateVector } from '@/service/events/generateVector';
-import { connectRedis } from '@/service/redis';
-import { VecModelDataPrefix, ModelDataStatusEnum } from '@/constants/redis';
-import { VecModelDataIdx } from '@/constants/redis';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+import { ModelDataStatusEnum } from '@/constants/model';
+import { PgClient } from '@/service/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -29,7 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(authorization);
 
     await connectToDatabase();
-    const redis = await connectRedis();
 
     // 验证是否是该用户的 model
     const model = await Model.findOne({
@@ -47,10 +43,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         try {
           q = q.replace(/\\n/g, '\n');
           a = a.replace(/\\n/g, '\n');
-          const redisSearch = await redis.ft.search(VecModelDataIdx, `@q:${q} @text:${a}`, {
-            RETURN: ['q', 'text']
+          const count = await PgClient.count('modelData', {
+            where: [
+              ['user_id', userId],
+              'AND',
+              ['model_id', modelId],
+              'AND',
+              ['q', q],
+              'AND',
+              ['a', a]
+            ]
           });
-          if (redisSearch.total > 0) {
+          if (count > 0) {
             return Promise.reject('已经存在');
           }
         } catch (error) {
@@ -62,35 +66,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
       })
     );
-
+    // 过滤重复的内容
     const filterData = searchRes
       .filter((item) => item.status === 'fulfilled')
       .map<{ q: string; a: string }>((item: any) => item.value);
 
-    // 插入 redis
-    const insertRedisRes = await Promise.allSettled(
-      filterData.map((item) => {
-        return redis.sendCommand([
-          'HMSET',
-          `${VecModelDataPrefix}:${nanoid()}`,
-          'userId',
-          userId,
-          'modelId',
-          String(modelId),
-          'q',
-          item.q,
-          'text',
-          item.a,
-          'status',
-          ModelDataStatusEnum.waiting
-        ]);
-      })
-    );
+    // 插入 pg
+    const insertRes = await PgClient.insert('modelData', {
+      values: filterData.map((item) => [
+        { key: 'user_id', value: userId },
+        { key: 'model_id', value: modelId },
+        { key: 'q', value: item.q },
+        { key: 'a', value: item.a },
+        { key: 'status', value: ModelDataStatusEnum.waiting }
+      ])
+    });
 
     generateVector();
 
     jsonRes(res, {
-      data: insertRedisRes.filter((item) => item.status === 'fulfilled').length
+      data: insertRes.rowCount
     });
   } catch (err) {
     jsonRes(res, {

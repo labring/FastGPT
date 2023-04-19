@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { connectRedis } from '@/service/redis';
-import { VecModelDataIdx } from '@/constants/redis';
+import { PgClient } from '@/service/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,28 +24,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(authorization);
 
     await connectToDatabase();
-    const redis = await connectRedis();
 
-    // 从 redis 中获取数据
-    const searchRes = await redis.ft.search(
-      VecModelDataIdx,
-      `@modelId:{${modelId}} @userId:{${userId}}`,
-      {
-        RETURN: ['q', 'text'],
-        LIMIT: {
-          from: 0,
-          size: 10000
-        }
-      }
-    );
-
-    const data: [string, string][] = [];
-
-    searchRes.documents.forEach((item: any) => {
-      if (item.value.q && item.value.text) {
-        data.push([item.value.q.replace(/\n/g, '\\n'), item.value.text.replace(/\n/g, '\\n')]);
-      }
+    // 统计数据
+    const count = await PgClient.count('modelData', {
+      where: [['model_id', modelId], 'AND', ['user_id', userId]]
     });
+    // 从 pg 中获取所有数据
+    const pgData = await PgClient.select<{ q: string; a: string }>('modelData', {
+      where: [['model_id', modelId], 'AND', ['user_id', userId]],
+      fields: ['q', 'a'],
+      order: [{ field: 'id', mode: 'DESC' }],
+      limit: count
+    });
+
+    const data: [string, string][] = pgData.rows.map((item) => [
+      item.q.replace(/\n/g, '\\n'),
+      item.a.replace(/\n/g, '\\n')
+    ]);
 
     jsonRes(res, {
       data

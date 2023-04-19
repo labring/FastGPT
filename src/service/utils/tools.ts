@@ -137,5 +137,5 @@ export const systemPromptFilter = (prompts: string[], maxTokens: number) => {
     }
   }
 
-  return splitText.slice(0, splitText.length - 1);
+  return splitText.slice(0, splitText.length - 1).replace(/\n+/g, '\n');
 };

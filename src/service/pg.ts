@@ -34,9 +34,9 @@ export const connectPg = async () => {
 
 type WhereProps = (string | [string, string | number])[];
 type GetProps = {
-  field?: string[];
+  fields?: string[];
   where?: WhereProps;
-  order?: { field: string; mode: 'DESC' | 'ASC' }[];
+  order?: { field: string; mode: 'DESC' | 'ASC' | string }[];
   limit?: number;
   offset?: number;
 };
@@ -62,7 +62,7 @@ class Pg {
             if (typeof item === 'string') {
               return item;
             }
-            const val = typeof item[1] === 'string' ? `'${item[1]}'` : item[1];
+            const val = typeof item[1] === 'number' ? item[1] : `'${String(item[1])}'`;
             return `${item[0]}=${val}`;
           })
           .join(' ')}`
@@ -95,7 +95,9 @@ class Pg {
       .join(',');
   }
   async select<T extends QueryResultRow = any>(table: string, props: GetProps) {
-    const sql = `SELECT ${!props.field || props.field?.length === 0 ? '*' : props.field?.join(',')}
+    const sql = `SELECT ${
+      !props.fields || props.fields?.length === 0 ? '*' : props.fields?.join(',')
+    }
       FROM ${table}
       ${this.getWhereStr(props.where)}
       ${
@@ -123,18 +125,33 @@ class Pg {
     return pg.query(sql);
   }
   async update(table: string, props: UpdateProps) {
+    if (props.values.length === 0) {
+      return {
+        rowCount: 0
+      };
+    }
+
     const sql = `UPDATE ${table} SET ${this.getUpdateValStr(props.values)} ${this.getWhereStr(
       props.where
     )}`;
-
     const pg = await connectPg();
     return pg.query(sql);
   }
   async insert(table: string, props: InsertProps) {
+    if (props.values.length === 0) {
+      return {
+        rowCount: 0
+      };
+    }
+
     const fields = props.values[0].map((item) => item.key).join(',');
     const sql = `INSERT INTO ${table} (${fields}) VALUES ${this.getInsertValStr(props.values)} `;
     const pg = await connectPg();
     return pg.query(sql);
+  }
+  async query<T extends QueryResultRow = any>(sql: string) {
+    const pg = await connectPg();
+    return pg.query<T>(sql);
   }
 }
 

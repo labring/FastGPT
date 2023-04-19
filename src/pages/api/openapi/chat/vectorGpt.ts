@@ -1,22 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
-import {
-  httpsAgent,
-  openaiChatFilter,
-  systemPromptFilter,
-  authOpenApiKey
-} from '@/service/utils/tools';
+import { httpsAgent, systemPromptFilter, authOpenApiKey } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
 import { modelList, ModelVectorSearchModeMap, ModelVectorSearchModeEnum } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
-import { connectRedis } from '@/service/redis';
-import { VecModelDataPrefix } from '@/constants/redis';
-import { vectorToBuffer } from '@/utils/tools';
 import { openaiCreateEmbedding, gpt35StreamResponse } from '@/service/utils/openai';
 import dayjs from 'dayjs';
+import { PgClient } from '@/service/pg';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -56,7 +49,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     await connectToDatabase();
-    const redis = await connectRedis();
     let startTime = Date.now();
 
     /* 凭证校验 */
@@ -84,38 +76,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       text: prompts[prompts.length - 1].value // 取最后一个
     });
 
-    // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
+    // 相似度搜素
     const similarity = ModelVectorSearchModeMap[model.search.mode]?.similarity || 0.22;
-    // 搜索系统提示词, 按相似度从 redis 中搜出相关的 q 和 text
-    const redisData: any[] = await redis.sendCommand([
-      'FT.SEARCH',
-      `idx:${VecModelDataPrefix}:hash`,
-      `@modelId:{${modelId}} @vector:[VECTOR_RANGE ${similarity} $blob]=>{$YIELD_DISTANCE_AS: score}`,
-      'RETURN',
-      '1',
-      'text',
-      'SORTBY',
-      'score',
-      'PARAMS',
-      '2',
-      'blob',
-      vectorToBuffer(promptVector),
-      'LIMIT',
-      '0',
-      '30',
-      'DIALECT',
-      '2'
-    ]);
+    const vectorSearch = await PgClient.select<{ id: string; q: string; a: string }>('modelData', {
+      fields: ['id', 'q', 'a'],
+      order: [{ field: 'vector', mode: `<=> '[${promptVector}]'` }],
+      where: [
+        ['model_id', model._id],
+        'AND',
+        ['user_id', userId],
+        'AND',
+        `vector <=> '[${promptVector}]' < ${similarity}`
+      ],
+      limit: 30
+    });
 
-    const formatRedisPrompt: string[] = [];
-
-    // 格式化响应值，获取 qa
-    for (let i = 2; i < 61; i += 2) {
-      const text = redisData[i]?.[1];
-      if (text) {
-        formatRedisPrompt.push(text);
-      }
-    }
+    const formatRedisPrompt: string[] = vectorSearch.rows.map((item) => `${item.q}\n${item.a}`);
 
     // system 合并
     if (prompts[0].obj === 'SYSTEM') {
@@ -145,9 +121,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       prompts.unshift({
         obj: 'SYSTEM',
-        value: `${model.systemPrompt} 用知识库内容回答，知识库内容为: "当前时间:${dayjs().format(
+        value: `${model.systemPrompt} 知识库是最新的,下面是知识库内容:当前时间为${dayjs().format(
           'YYYY/MM/DD HH:mm:ss'
-        )} ${systemPrompt}"`
+        )}\n${systemPrompt}`
       });
     }
 
