@@ -7,7 +7,12 @@ import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { PassThrough } from 'stream';
-import { modelList, ModelVectorSearchModeMap, ModelVectorSearchModeEnum } from '@/constants/model';
+import {
+  modelList,
+  ModelVectorSearchModeMap,
+  ModelVectorSearchModeEnum,
+  ModelDataStatusEnum
+} from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { openaiCreateEmbedding, gpt35StreamResponse } from '@/service/utils/openai';
 import dayjs from 'dayjs';
@@ -66,7 +71,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const similarity = ModelVectorSearchModeMap[model.search.mode]?.similarity || 0.22;
     const vectorSearch = await PgClient.select<{ id: string; q: string; a: string }>('modelData', {
       fields: ['id', 'q', 'a'],
-      where: [['model_id', model._id], 'AND', `vector <=> '[${promptVector}]' < ${similarity}`],
+      where: [
+        ['status', ModelDataStatusEnum.ready],
+        'AND',
+        ['model_id', model._id],
+        'AND',
+        `vector <=> '[${promptVector}]' < ${similarity}`
+      ],
       order: [{ field: 'vector', mode: `<=> '[${promptVector}]'` }],
       limit: 30
     });
