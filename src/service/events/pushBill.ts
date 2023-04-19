@@ -23,7 +23,9 @@ export const pushChatBill = async ({
     // 计算 token 数量
     const tokens = Math.floor(encode(text).length * 0.75);
 
-    console.log(`chat generate success. text len: ${text.length}. token len: ${tokens}`);
+    console.log(
+      `chat generate success. text len: ${text.length}. token len: ${tokens}. pay:${isPay}`
+    );
 
     if (isPay) {
       await connectToDatabase();
@@ -79,7 +81,9 @@ export const pushSplitDataBill = async ({
   let billId;
 
   try {
-    console.log(`splitData generate success. text len: ${text.length}. token len: ${tokenLen}`);
+    console.log(
+      `splitData generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
+    );
 
     if (isPay) {
       try {
@@ -130,7 +134,9 @@ export const pushGenerateVectorBill = async ({
   let billId;
 
   try {
-    console.log(`vector generate success. text len: ${text.length}. token len: ${tokenLen}`);
+    console.log(
+      `vector generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
+    );
 
     if (isPay) {
       try {

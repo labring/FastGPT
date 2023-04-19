@@ -163,8 +163,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const formatRedisPrompt: string[] = vectorSearch.rows.map((item) => `${item.q}\n${item.a}`);
 
-    // textArr 筛选，最多 3000 tokens
-    const systemPrompt = systemPromptFilter(formatRedisPrompt, 3000);
+    // textArr 筛选，最多 2500 tokens
+    const systemPrompt = systemPromptFilter(formatRedisPrompt, 2500);
 
     prompts.unshift({
       obj: 'SYSTEM',
