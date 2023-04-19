@@ -1,8 +1,7 @@
 import { connectRedis } from '../redis';
 import { openaiCreateEmbedding, getOpenApiKey } from '../utils/openai';
 import { openaiError2 } from '../errorCode';
-import { connectPg } from '@/service/pg';
-import type { PgModelDataItemType } from '@/types/pg';
+import { connectPg, PgClient } from '@/service/pg';
 
 export async function generateVector(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -16,14 +15,12 @@ export async function generateVector(next = false): Promise<any> {
   let dataId = null;
 
   try {
-    const pg = await connectPg();
-
     // 从找出一个 status = waiting 的数据
-    const searchRes = await pg.query<PgModelDataItemType>(`SELECT id, q, user_id
-                        FROM modelData
-                        WHERE status='waiting'
-                        LIMIT 1
-                      `);
+    const searchRes = await PgClient.select('modelData', {
+      field: ['id', 'q', 'user_id'],
+      where: [['status', 'waiting']],
+      limit: 1
+    });
 
     if (searchRes.rowCount === 0) {
       console.log('没有需要生成 【向量】 的数据');
@@ -47,7 +44,9 @@ export async function generateVector(next = false): Promise<any> {
       systemKey = res.systemKey;
     } catch (error: any) {
       if (error?.code === 501) {
-        await pg.query(`DELETE FROM modelData WHERE id = '${dataId}'`);
+        await PgClient.delete('modelData', {
+          where: [['id', dataId]]
+        });
         generateVector(true);
         return;
       }
@@ -64,9 +63,13 @@ export async function generateVector(next = false): Promise<any> {
     });
 
     // 更新 pg 向量和状态数据
-    await pg.query(
-      `UPDATE modelData SET vector = '[${vector}]', status = 'ready' WHERE id = ${dataId}`
-    );
+    await PgClient.update('modelData', {
+      values: [
+        { key: 'vector', value: `[${vector}]` },
+        { key: 'status', value: `ready` }
+      ],
+      where: [['id', dataId]]
+    });
 
     console.log(`生成向量成功: ${dataItem.id}`);
 

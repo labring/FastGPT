@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { connectPg } from '@/service/pg';
+import { PgClient } from '@/service/pg';
 import type { PgModelDataItemType } from '@/types/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -35,21 +35,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(authorization);
 
     await connectToDatabase();
-    const pg = await connectPg();
 
-    const searchRes = await pg.query<PgModelDataItemType>(`SELECT id, q, a, status
-              FROM modelData
-              WHERE user_id='${userId}' AND model_id='${modelId}'
-              ORDER BY id DESC
-              LIMIT ${pageSize} OFFSET ${pageSize * (pageNum - 1)}
-            `);
+    const searchRes = await PgClient.select<PgModelDataItemType>('modelData', {
+      field: ['id', 'q', 'a', 'status'],
+      where: [['user_id', userId], 'AND', ['model_id', modelId]],
+      order: [{ field: 'id', mode: 'DESC' }],
+      limit: pageSize,
+      offset: pageSize * (pageNum - 1)
+    });
 
     jsonRes(res, {
       data: {
         pageNum,
         pageSize,
         data: searchRes.rows,
-        total: searchRes.rowCount
+        total: await PgClient.count('modelData', {
+          where: [['user_id', userId], 'AND', ['model_id', modelId]]
+        })
       }
     });
   } catch (err) {
