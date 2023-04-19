@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authToken } from '@/service/utils/tools';
-import { connectPg } from '@/service/pg';
+import { PgClient } from '@/service/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,8 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const userId = await authToken(authorization);
 
-    const pg = await connectPg();
-    await pg.query(`DELETE FROM modelData WHERE user_id = '${userId}' AND id = '${dataId}'`);
+    await PgClient.delete('modelData', {
+      where: [['user_id', userId], 'AND', ['id', dataId]]
+    });
 
     jsonRes(res);
   } catch (err) {

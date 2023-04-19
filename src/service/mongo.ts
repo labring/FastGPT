@@ -12,7 +12,6 @@ export async function connectToDatabase(): Promise<void> {
   }
 
   global.mongodb = 'connecting';
-  console.log('connect mongo');
   try {
     mongoose.set('strictQuery', true);
     global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
@@ -22,6 +21,7 @@ export async function connectToDatabase(): Promise<void> {
       minPoolSize: 1,
       maxConnecting: 5
     });
+    console.log('mongo connected');
   } catch (error) {
     console.log('error->', 'mongo connect error');
     global.mongodb = null;

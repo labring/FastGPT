@@ -4,7 +4,7 @@ import { connectToDatabase, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { ModelDataSchema } from '@/types/mongoSchema';
 import { generateVector } from '@/service/events/generateVector';
-import { connectPg } from '@/service/pg';
+import { connectPg, PgClient } from '@/service/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -39,17 +39,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 插入记录
-    await pg.query(
-      `INSERT INTO modelData (user_id, model_id, q, a, status) VALUES ${data
-        .map(
-          (item) =>
-            `('${userId}', '${modelId}', '${item.q.replace(/\'/g, '"')}', '${item.a.replace(
-              /\'/g,
-              '"'
-            )}', 'waiting')`
-        )
-        .join(',')}`
-    );
+    await PgClient.insert('modelData', {
+      values: data.map((item) => [
+        { key: 'user_id', value: userId },
+        { key: 'model_id', value: modelId },
+        { key: 'q', value: item.q },
+        { key: 'a', value: item.a },
+        { key: 'status', value: 'waiting' }
+      ])
+    });
 
     generateVector();
 
