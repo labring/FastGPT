@@ -28,7 +28,8 @@ import { useChatStore } from '@/store/chat';
 import { useCopyData } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import Icon from '@/components/Icon';
-import { modelList } from '@/constants/model';
+import MyIcon from '@/components/Icon';
+import { throttle } from 'lodash';
 
 const SlideBar = dynamic(() => import('./components/SlideBar'));
 const Empty = dynamic(() => import('./components/Empty'));
@@ -73,15 +74,27 @@ const Chat = ({ chatId }: { chatId: string }) => {
   const { pushChatHistory } = useChatStore();
 
   // 滚动到底部
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      ChatBox.current &&
-        ChatBox.current.scrollTo({
-          top: ChatBox.current.scrollHeight,
-          behavior: 'smooth'
-        });
-    }, 100);
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (!ChatBox.current) return;
+    ChatBox.current.scrollTo({
+      top: ChatBox.current.scrollHeight,
+      behavior
+    });
   }, []);
+
+  // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const generatingMessage = useCallback(
+    throttle(() => {
+      if (!ChatBox.current) return;
+      const isBottom =
+        ChatBox.current.scrollTop + ChatBox.current.clientHeight + 50 >=
+        ChatBox.current.scrollHeight;
+
+      isBottom && scrollToBottom('auto');
+    }, 100),
+    []
+  );
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {
@@ -141,6 +154,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               };
             })
           }));
+          generatingMessage();
         },
         abortSignal: controller.current
       });
@@ -178,7 +192,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         })
       }));
     },
-    [chatData.modelName, chatId, toast]
+    [chatData.modelName, chatId, generatingMessage, toast]
   );
 
   /**
@@ -226,7 +240,9 @@ const Chat = ({ chatId }: { chatId: string }) => {
 
     // 清空输入内容
     resetInputVal('');
-    scrollToBottom();
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
 
     try {
       await gptChatPrompt(newChatList[newChatList.length - 2]);
@@ -313,8 +329,8 @@ const Chat = ({ chatId }: { chatId: string }) => {
         });
         if (res.history.length > 0) {
           setTimeout(() => {
-            scrollToBottom();
-          }, 500);
+            scrollToBottom('auto');
+          }, 2000);
         }
       },
       onError(e: any) {
@@ -340,6 +356,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
       controller.current?.abort();
     };
   }, [chatId]);
+
   return (
     <Flex
       h={'100%'}
@@ -433,6 +450,29 @@ const Chat = ({ chatId }: { chatId: string }) => {
                     <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
                   )}
                 </Box>
+                {isPc && (
+                  <Flex h={'100%'} flexDirection={'column'} ml={2} w={'14px'} height={'100%'}>
+                    <Box minH={'40px'} flex={1}>
+                      <MyIcon
+                        name="copy"
+                        w={'14px'}
+                        cursor={'pointer'}
+                        color={'alphaBlack.400'}
+                        onClick={() => onclickCopy(item.value)}
+                      />
+                    </Box>
+                    <MyIcon
+                      name="delete"
+                      w={'14px'}
+                      cursor={'pointer'}
+                      color={'alphaBlack.400'}
+                      _hover={{
+                        color: 'red.600'
+                      }}
+                      onClick={() => delChatRecord(index)}
+                    />
+                  </Flex>
+                )}
               </Flex>
             </Box>
           ))}
