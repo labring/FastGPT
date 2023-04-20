@@ -36,9 +36,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
+    const where: any = [
+      ['user_id', userId],
+      'AND',
+      ['model_id', modelId],
+      ...(searchText ? ['AND', `(q LIKE '%${searchText}%' OR a LIKE '%${searchText}%')`] : [])
+    ];
+
     const searchRes = await PgClient.select<PgModelDataItemType>('modelData', {
       fields: ['id', 'q', 'a', 'status'],
-      where: [['user_id', userId], 'AND', ['model_id', modelId]],
+      where,
       order: [{ field: 'id', mode: 'DESC' }],
       limit: pageSize,
       offset: pageSize * (pageNum - 1)
@@ -50,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         pageSize,
         data: searchRes.rows,
         total: await PgClient.count('modelData', {
-          where: [['user_id', userId], 'AND', ['model_id', modelId]]
+          where
         })
       }
     });
