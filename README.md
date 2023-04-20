@@ -1,20 +1,40 @@
 # Fast GPT 
 
-Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接口，包括 GPT3 及其微调方法，以及最新的 gpt3.5 接口。
+Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接口，目前集成了 gpt35 和 embedding. 可构建自己的知识库。
+
+## 知识库原理
+![KBProcess](docs/imgs/KBProcess.jpg?raw=true "KBProcess")
 
 ## 开发
 复制 .env.template 成 .env.local ，填写核心参数  
 
-```
-AXIOS_PROXY_HOST=axios代理地址，目前 openai 接口都需要走代理，本机的话就填 127.0.0.1
-AXIOS_PROXY_PORT_FAST=代理端口1,clash默认为7890
-AXIOS_PROXY_PORT_NORMAL=代理端口2
-MONGODB_URI=mongo数据库地址
-MY_MAIL=发送验证码邮箱
-MAILE_CODE=邮箱秘钥（代理里设置的是QQ邮箱，不知道怎么找这个 code 的，可以百度搜"nodemailer发送邮件"）
-TOKEN_KEY=随便填一个，用于生成和校验 token
-OPENAIKEY=openai的key
-REDIS_URL=redis的地址
+```bash
+# proxy（不需要代理可忽略）
+AXIOS_PROXY_HOST=127.0.0.1
+AXIOS_PROXY_PORT_FAST=7890
+AXIOS_PROXY_PORT_NORMAL=7890
+queueTask=1
+# email，参考 nodeMail 获取参数
+MY_MAIL=xxx@qq.com
+MAILE_CODE=xxx
+# 阿里短信服务
+aliAccessKeyId=xxx
+aliAccessKeySecret=xxx
+aliSignName=xxx
+aliTemplateCode=SMS_xxx
+# token（随便填，登录凭证）
+TOKEN_KEY=xxx
+# openai key
+OPENAIKEY=sk-xxx
+# mongo连接地址
+MONGODB_URI=mongodb://username:password@0.0.0.0:27017/test?authSource=admin
+MONGODB_NAME=xxx # mongo数据库名称
+# pg 数据库相关内容，和 docker-compose 对上
+PG_HOST=0.0.0.0 
+PG_PORT=8102
+PG_USER=xxx
+PG_PASSWORD=xxx
+PG_DB_NAME=xxx
 ```
 ```bash
 pnpm dev
@@ -22,25 +42,21 @@ pnpm dev
 
 ## 部署
 
-### docker 模式
-请准备好 docker， mongo，代理, 和 nginx。 镜像走本机的代理，所以用 network=host，port 改成代理的端口，clash 一般都是 7890。
-
-#### docker 打包
-```bash
-docker build -t imageName:tag .
-docker push imageName:tag
-# 或者直接拉镜像，见下方
-```
-
-#### 软件教程：docker 安装
+### 安装 docker 和 docker-compose
+这个不同系统略有区别，百度安装下。验证安装成功后进行下一步。下面给出一个例子：
 ```bash
 # 安装docker
-curl -sSL https://get.daocloud.io/docker | sh
+curl -L https://get.daocloud.io/docker | sh
 sudo systemctl start docker
 # 安装 docker-compose
+curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+# 验证安装
+docker -v
+docker-compose -v
 ```
 
-#### 软件教程: clash 代理
+### 安装 clash 代理（选）
 ```bash
 # 下载包
 curl https://glados.rocks/tools/clash-linux.zip -o clash.zip 
@@ -71,72 +87,38 @@ nohup ./clash-linux-amd64-v1.10.0  -d ./ &
 echo "Restart clash"
 ```
 
-#### 文件创建
-**yml文件**
-```yml
-version: "3.3"
-services:
-  fast-gpt:
-    image: c121914yu/fast-gpt:latest
-    environment:
-      AXIOS_PROXY_HOST: 127.0.0.1
-      AXIOS_PROXY_PORT: 7890
-      MY_MAIL: 11111111@qq.com
-      MAILE_CODE: sdasadasfasfad
-      TOKEN_KEY: sssssssss
-      MONGODB_URI: mongodb://username:password@0.0.0.0:27017/?authSource=admin&readPreference=primary&appname=MongoDB%20Compass&ssl=false
-      OPENAIKEY: sk-afadfadfadfsd
-      REDIS_URL: redis://default:password@0.0.0.0:8100
-    network_mode: host
-    restart: always
-    container_name: fast-gpt
-  mongodb:
-    image: mongo:6.0.4
-    container_name: mongo
-    restart: always
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=ROOT_1234
-      - MONGO_DATA_DIR=/data/db
-      - MONGO_LOG_DIR=/data/logs
-    volumes:
-      - /root/fastgpt/mongo/data:/data/db
-      - /root/fastgpt/mongo/logs:/data/logs
-    ports:
-      - 27017:27017
-  nginx: 
-    image: nginx:alpine3.17
-    container_name: nginx
-    restart: always
-    network_mode: host
-    ports:
-      - "80:80"
-    volumes:
-      - /root/fastgpt/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  redis-stack:
-    image: redis/redis-stack:6.2.6-v6
-    container_name: redis-stack
-    restart: unless-stopped
-    ports:
-      - "8100:6379"
-      - "8101:8001"
-    environment:
-      - REDIS_ARGS=--requirepass psw1234
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /root/fastgpt/redis/redis.conf:/redis.conf
-      - /root/fastgpt/redis/data:/data
+### 本地 docker 打包
+```bash
+docker build -t imageName:tag .
+docker push imageName:tag
+# 或者直接拉镜像，见下方
 ```
-**redis.conf**
+
+### 准备初始化文件
+**/root/fast-gpt/pg/init.sql**
+```sql
+#!/bin/bash
+set -e
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+
+CREATE EXTENSION vector;
+-- init table
+CREATE TABLE modelData (
+    id BIGSERIAL PRIMARY KEY,
+    vector VECTOR(1536),
+    status VARCHAR(50) NOT NULL,
+    user_id VARCHAR(50) NOT NULL,
+    model_id VARCHAR(50) NOT NULL,
+    q TEXT NOT NULL,
+    a TEXT NOT NULL
+);
+-- create index
+CREATE INDEX modelData_status_index ON modelData (status);
+CREATE INDEX modelData_modelId_index ON modelData (modelId);
+CREATE INDEX modelData_userId_index ON modelData (userId);
+EOSQL
 ```
-## 开启aop持久化
-appendonly yes
-#default: 持久化文件
-appendfilename "appendonly.aof"
-#default: 每秒同步一次
-appendfsync everysec
-```
-**nginx.conf**
+**/root/fast-gpt/nginx/nginx.conf**
 ```conf
 user nginx;
 worker_processes auto;
@@ -169,9 +151,9 @@ http {
 
     server {
         listen 443 ssl;
-        server_name fastgpt.ahapocket.cn;
-        ssl_certificate /ssl/fastgpt.pem;
-        ssl_certificate_key /ssl/fastgpt.key;
+        server_name docgpt.ahapocket.cn;
+        ssl_certificate /ssl/docgpt.pem;
+        ssl_certificate_key /ssl/docgpt.key;
         ssl_session_timeout 5m;
 
         location / {
@@ -183,25 +165,91 @@ http {
     }
     server {
         listen 80;
-        server_name fastgpt.ahapocket.cn;
+        server_name docgpt.ahapocket.cn;
         rewrite ^(.*) https://$server_name$1 permanent;
     }
 }
 ```
-
-#### 运行脚本
-**redis 初始化**
-```bash
-# 进入容器
-docker exec -it  容器ID  bash
-redis-cli -p 6379
-auth psw1234
-# 添加索引
-FT.CREATE idx:model:data:hash ON HASH PREFIX 1 model:data: SCHEMA modelId TAG userId TAG status TAG q TEXT text TEXT vector VECTOR FLAT 6 DIM 1536 DISTANCE_METRIC COSINE TYPE FLOAT32
+**/root/fast-gpt/docker-compose.yml**
+```yml
+version: "3.3"
+services:
+  fast-gpt:
+    image: c121914yu/fast-gpt:latest
+    network_mode: host
+    restart: always
+    container_name: fast-gpt
+    environment:
+      # 代理（不需要代理，可去掉下面三个参数）
+      - AXIOS_PROXY_HOST=127.0.0.1
+      - AXIOS_PROXY_PORT_FAST=7890
+      - AXIOS_PROXY_PORT_NORMAL=7890
+      # 邮箱
+      - MY_MAIL=xxxx@qq.com  
+      - MAILE_CODE=xxxx
+      # 阿里云短信
+      - aliAccessKeyId=xxxx 
+      - aliAccessKeySecret=xxxx
+      - aliSignName=xxxxx
+      - aliTemplateCode=SMS_xxxx
+      # 登录 key
+      - TOKEN_KEY=xxxx 
+      # 是否开启队列任务。 1-开启，0-关闭（请求parentUrl去执行任务,单机时直接填1）
+      - queueTask=1
+      - parentUrl=https://fastgpt.run/api/openapi/startEvents
+      # db
+      - MONGODB_URI=mongodb://username:passsword@0.0.0.0:27017/?authSource=admin
+      - MONGODB_NAME=xxx
+      - PG_HOST=0.0.0.0
+      - PG_PORT=8100
+      - PG_USER=xxx
+      - PG_PASSWORD=xxx
+      - PG_DB_NAME=xxx
+      # openai 账号
+      - OPENAIKEY=sk-xxxxx
+  nginx: 
+    image: nginx:alpine3.17
+    container_name: nginx
+    restart: always
+    network_mode: host
+    volumes:
+      - /root/fast-gpt/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /root/fast-gpt/nginx/logs:/var/log/nginx
+      - /root/fast-gpt/nginx/ssl/docgpt.key:/ssl/docgpt.key
+      - /root/fast-gpt/nginx/ssl/docgpt.pem:/ssl/docgpt.pem
+  pg:
+    image: ankane/pgvector
+    container_name: pg
+    restart: always
+    ports:
+      - 8100:5432
+    environment:
+      - POSTGRES_USER=xxx
+      - POSTGRES_PASSWORD=xxx
+      - POSTGRES_DB=xxx
+    volumes:
+      - /root/fast-gpt/pg/data:/var/lib/postgresql/data
+      - /root/fast-gpt/pg/init.sql:/docker-entrypoint-initdb.d/init.sh
+      - /etc/localtime:/etc/localtime:ro
+  mongodb:
+    image: mongo:4.0.1
+    container_name: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=username
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - /root/fast-gpt/mongo/data:/data/db
+      - /root/fast-gpt/mongo/logs:/var/log/mongodb
+      - /etc/localtime:/etc/localtime:ro
 ```
+### 辅助运行脚本
 **run.sh 运行文件**
 ```bash
 #!/bin/bash
+docker-compose pull
 docker-compose up -d
 
 echo "Docker Compose 重新拉取镜像完成！"

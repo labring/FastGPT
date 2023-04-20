@@ -107,7 +107,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       prompts.unshift({
         obj: 'SYSTEM',
-        value: `${model.systemPrompt} 知识库是最新的,下面是知识库内容:当前时间为${dayjs().format(
+        value: `${
+          model.systemPrompt || '根据知识库内容回答'
+        } 知识库是最新的,下面是知识库内容:当前时间为${dayjs().format(
           'YYYY/MM/DD HH:mm:ss'
         )}\n${systemPrompt}`
       });
