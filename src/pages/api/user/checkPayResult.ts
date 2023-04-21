@@ -2,9 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, User, Pay } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { PaySchema } from '@/types/mongoSchema';
+import { PaySchema, UserModelSchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { getPayResult } from '@/service/utils/wxpay';
+import { pushPromotionRecord } from '@/service/utils/promotion';
+import { PRICE_SCALE } from '@/constants/common';
 
 /* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,6 +26,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (payOrder.status !== 'NOTPAY') {
       throw new Error('订单已结算');
+    }
+
+    // 获取当前用户
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('找不到用户');
+    }
+    // 获取邀请者
+    let inviter: UserModelSchema | null = null;
+    if (user.inviterId) {
+      inviter = await User.findById(user.inviterId);
     }
 
     const payRes = await getPayResult(payOrder.orderId);
@@ -50,6 +63,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await User.findByIdAndUpdate(userId, {
             $inc: { balance: payOrder.price }
           });
+          // 推广佣金发放
+          if (inviter) {
+            pushPromotionRecord({
+              userId: inviter._id,
+              objUId: userId,
+              type: 'invite',
+              // amount 单位为元，需要除以缩放比例，最后乘比例
+              amount: (payOrder.price / PRICE_SCALE) * inviter.promotion.rate * 0.01
+            });
+          }
           jsonRes(res, {
             data: '支付成功'
           });

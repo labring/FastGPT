@@ -31,11 +31,6 @@ const UserSchema = new Schema({
       // 返现比例
       type: Number,
       default: 15
-    },
-    amount: {
-      // 推广金额
-      type: Number,
-      default: 0
     }
   },
   openaiKey: {

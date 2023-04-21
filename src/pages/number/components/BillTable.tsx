@@ -45,11 +45,12 @@ const BillTable = () => {
             ))}
           </Tbody>
         </Table>
-        <Box mt={4} mr={4} textAlign={'end'}>
-          <Pagination />
-        </Box>
+
         <Loading loading={isLoading} fixed={false} />
       </TableContainer>
+      <Box mt={4} mr={4} textAlign={'end'}>
+        <Pagination />
+      </Box>
     </Card>
   );
 };

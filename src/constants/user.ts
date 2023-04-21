@@ -20,3 +20,15 @@ export const BillTypeMap: Record<`${BillTypeEnum}`, string> = {
   [BillTypeEnum.vector]: '索引生成',
   [BillTypeEnum.return]: '退款'
 };
+
+export enum PromotionEnum {
+  invite = 'invite',
+  shareModel = 'shareModel',
+  withdraw = 'withdraw'
+}
+
+export const PromotionTypeMap = {
+  [PromotionEnum.invite]: '好友充值',
+  [PromotionEnum.shareModel]: '模型分享',
+  [PromotionEnum.withdraw]: '提现'
+};

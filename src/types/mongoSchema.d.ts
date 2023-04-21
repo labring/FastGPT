@@ -18,6 +18,9 @@ export interface UserModelSchema {
   promotionAmount: number;
   openaiKey: string;
   createTime: number;
+  promotion: {
+    rate: number;
+  };
 }
 
 export interface AuthCodeSchema {
@@ -161,4 +164,13 @@ export interface OpenApiSchema {
   createTime: Date;
   lastUsedTime?: Date;
   apiKey: String;
+}
+
+export interface PromotionRecordSchema {
+  _id: string;
+  userId: string; // 收益人
+  objUId?: string; // 目标对象（如果是withdraw则为空）
+  type: 'invite' | 'shareModel' | 'withdraw';
+  createTime: Date; // 记录时间
+  amount: number;
 }
