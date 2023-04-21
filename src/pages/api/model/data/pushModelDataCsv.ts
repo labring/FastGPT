@@ -40,6 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 去重
     const searchRes = await Promise.allSettled(
       data.map(async ([q, a]) => {
+        if (!q || !a) {
+          return Promise.reject('q/a为空');
+        }
         try {
           q = q.replace(/\\n/g, '\n');
           a = a.replace(/\\n/g, '\n');

@@ -11,4 +11,5 @@ export type ChatSiteItemType = {
 export type HistoryItem = {
   chatId: string;
   title: string;
+  history?: ChatSiteItemType[];
 };
