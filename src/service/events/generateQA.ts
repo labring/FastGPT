@@ -69,9 +69,9 @@ export async function generateQA(next = false): Promise<any> {
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
     const systemPrompt: ChatCompletionRequestMessage = {
       role: 'system',
-      content: `${
-        dataItem.prompt || '下面是一段长文本'
-      },请从中提取出5至30个问题和答案,并按以下格式返回: Q1:\nA1:\nQ2:\nA2:\n`
+      content: `你是出题官.${
+        dataItem.prompt || '下面是"一段长文本"'
+      },从中选出5至20个题目和答案,题目包含问答题,计算题,代码题等.答案要详细.按格式返回: Q1:\nA1:\nQ2:\nA2:\n`
     };
 
     // 请求 chatgpt 获取回答
@@ -114,7 +114,8 @@ export async function generateQA(next = false): Promise<any> {
             };
           })
           .catch((err) => {
-            console.log('QA 拆分错误', err);
+            console.log('QA拆分错误');
+            console.log(err.response?.status, err.response?.statusText, err.response?.data);
             return Promise.reject(err);
           })
       )

@@ -41,11 +41,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const tokens = encode(splitText + chunk).length;
       if (tokens >= 4000) {
         // 超过 4000，不要这块内容
-        textList.push(splitText);
+        splitText && textList.push(splitText);
         splitText = chunk;
       } else if (tokens >= 3000) {
         // 超过 3000，取内容
-        textList.push(splitText + chunk);
+        splitText && textList.push(splitText + chunk);
         splitText = '';
       } else {
         //没超过 3000，继续添加

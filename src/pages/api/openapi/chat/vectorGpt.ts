@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
-import { httpsAgent, systemPromptFilter, authOpenApiKey } from '@/service/utils/tools';
+import {
+  httpsAgent,
+  systemPromptFilter,
+  authOpenApiKey,
+  openaiChatFilter
+} from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
@@ -93,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `vector <=> '[${promptVector}]' < ${similarity}`
       ],
       order: [{ field: 'vector', mode: `<=> '[${promptVector}]'` }],
-      limit: 30
+      limit: 20
     });
 
     const formatRedisPrompt: string[] = vectorSearch.rows.map((item) => `${item.q}\n${item.a}`);
@@ -134,16 +139,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // 控制在 tokens 数量，防止超出
+    const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
+
     // 格式化文本内容成 chatgpt 格式
     const map = {
       Human: ChatCompletionRequestMessageRoleEnum.User,
       AI: ChatCompletionRequestMessageRoleEnum.Assistant,
       SYSTEM: ChatCompletionRequestMessageRoleEnum.System
     };
-    const formatPrompts: ChatCompletionRequestMessage[] = prompts.map((item: ChatItemType) => ({
-      role: map[item.obj],
-      content: item.value
-    }));
+    const formatPrompts: ChatCompletionRequestMessage[] = filterPrompts.map(
+      (item: ChatItemType) => ({
+        role: map[item.obj],
+        content: item.value
+      })
+    );
     // console.log(formatPrompts);
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);

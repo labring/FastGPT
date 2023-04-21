@@ -45,7 +45,7 @@ const SelectUrlModal = ({
       await postModelDataSplitData({
         modelId,
         text: webText,
-        prompt: `下面是${prompt || '一段长文本'}`
+        prompt: `下面是"${prompt || '一段长文本'}"`
       });
       toast({
         title: '导入数据成功,需要一段拆解和训练',
