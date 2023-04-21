@@ -18,7 +18,7 @@ export const usePagination = <T = any,>({
   const [pageNum, setPageNum] = useState(1);
   const [total, setTotal] = useState(0);
   const [data, setData] = useState<T[]>([]);
-  const maxPage = useMemo(() => Math.ceil(total / pageSize), [pageSize, total]);
+  const maxPage = useMemo(() => Math.ceil(total / pageSize) || 1, [pageSize, total]);
 
   const { mutate, isLoading } = useMutation({
     mutationFn: async (num: number = pageNum) => {

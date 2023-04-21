@@ -7,7 +7,8 @@ import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
 import { UserType } from '@/types/user';
-
+import { clearToken } from '@/utils/user';
+import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
@@ -16,6 +17,7 @@ const BilTable = dynamic(() => import('./components/BillTable'));
 const PayModal = dynamic(() => import('./components/PayModal'));
 
 const NumberSetting = () => {
+  const router = useRouter();
   const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
   const { setLoading } = useGlobalStore();
   const { register, handleSubmit } = useForm<UserUpdateParams>({
@@ -43,13 +45,23 @@ const NumberSetting = () => {
 
   useQuery(['init'], initUserInfo);
 
+  const onclickLogOut = useCallback(() => {
+    clearToken();
+    router.replace('/login');
+  }, [router]);
+
   return (
     <>
       {/* 核心信息 */}
       <Card px={6} py={4}>
-        <Box fontSize={'xl'} fontWeight={'bold'}>
-          账号信息
-        </Box>
+        <Flex justifyContent={'space-between'}>
+          <Box fontSize={'xl'} fontWeight={'bold'}>
+            账号信息
+          </Box>
+          <Button variant={'outline'} size={'xs'} onClick={onclickLogOut}>
+            退出登录
+          </Button>
+        </Flex>
         <Flex mt={6} alignItems={'center'}>
           <Box flex={'0 0 60px'}>账号:</Box>
           <Box>{userInfo?.username}</Box>

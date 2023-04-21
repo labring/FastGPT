@@ -3,6 +3,9 @@ export interface UserType {
   username: string;
   openaiKey: string;
   balance: number;
+  promotion: {
+    rate: number;
+  };
 }
 
 export interface UserUpdateParams {
