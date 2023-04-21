@@ -35,7 +35,7 @@ export const modelList: ModelConstantsData[] = [
     model: ChatModelNameEnum.GPT35,
     trainName: '',
     maxToken: 4000,
-    contextMaxToken: 7500,
+    contextMaxToken: 7000,
     maxTemperature: 1.5,
     price: 3
   },

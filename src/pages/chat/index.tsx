@@ -88,7 +88,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
     throttle(() => {
       if (!ChatBox.current) return;
       const isBottom =
-        ChatBox.current.scrollTop + ChatBox.current.clientHeight + 80 >=
+        ChatBox.current.scrollTop + ChatBox.current.clientHeight + 150 >=
         ChatBox.current.scrollHeight;
 
       isBottom && scrollToBottom('auto');
