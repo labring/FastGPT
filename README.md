@@ -115,9 +115,9 @@ CREATE TABLE modelData (
     a TEXT NOT NULL
 );
 -- create index
-CREATE INDEX modelData_status_index ON modelData (status);
-CREATE INDEX modelData_userId_index ON modelData (user_id);
-CREATE INDEX modelData_modelId_index ON modelData (model_id);
+CREATE INDEX modelData_status_index ON modelData USING HASH (status);
+CREATE INDEX modelData_userId_index ON modelData USING HASH (user_id);
+CREATE INDEX modelData_modelId_index ON modelData USING HASH (model_id);
 EOSQL
 ```
 **/root/fast-gpt/nginx/nginx.conf**
