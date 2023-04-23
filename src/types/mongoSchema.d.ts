@@ -7,8 +7,6 @@ import {
 } from '@/constants/model';
 import type { DataType } from './data';
 
-export type ServiceName = 'openai';
-
 export interface UserModelSchema {
   _id: string;
   username: string;
@@ -46,7 +44,6 @@ export interface ModelSchema {
     mode: `${ModelVectorSearchModeEnum}`;
   };
   service: {
-    company: ServiceName;
     trainId: string; // 训练的模型，训练后就是训练的模型id
     chatModel: string; // 聊天时用的模型，训练后就是训练的模型
     modelName: `${ChatModelNameEnum}`; // 底层模型名称，不会变
@@ -86,7 +83,6 @@ export interface ModelSplitDataSchema {
 
 export interface TrainingSchema {
   _id: string;
-  serviceName: ServiceName;
   tuneId: string;
   modelId: string;
   status: `${TrainingStatusEnum}`;

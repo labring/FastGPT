@@ -11,13 +11,6 @@ import {
   Flex,
   Divider,
   IconButton,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
   useDisclosure,
   useColorMode,
   useColorModeValue
@@ -29,8 +22,6 @@ import { useRouter } from 'next/router';
 import { getToken } from '@/utils/user';
 import MyIcon from '@/components/Icon';
 import { useCopyData } from '@/utils/tools';
-import Markdown from '@/components/Markdown';
-import { getChatSiteId } from '@/api/chat';
 import WxConcat from '@/components/WxConcat';
 import { useMarkdown } from '@/hooks/useMarkdown';
 
@@ -42,7 +33,7 @@ const SlideBar = ({
 }: {
   chatId: string;
   modelId: string;
-  resetChat: () => void;
+  resetChat: (modelId?: string, chatId?: string) => void;
   onClose: () => void;
 }) => {
   const router = useRouter();
@@ -86,7 +77,7 @@ const SlideBar = ({
             : {})}
           onClick={() => {
             if (item.chatId === chatId) return;
-            router.replace(`/chat?chatId=${item.chatId}`);
+            resetChat(modelId, item.chatId);
             onClose();
           }}
         >
@@ -155,7 +146,7 @@ const SlideBar = ({
           mb={4}
           mx={'auto'}
           leftIcon={<AddIcon />}
-          onClick={resetChat}
+          onClick={() => resetChat()}
         >
           新对话
         </Button>
@@ -194,7 +185,7 @@ const SlideBar = ({
                       : {})}
                     onClick={async () => {
                       if (item._id === modelId) return;
-                      router.replace(`/chat?chatId=${await getChatSiteId(item._id)}`);
+                      resetChat(item._id);
                       onClose();
                     }}
                   >
@@ -260,49 +251,6 @@ const SlideBar = ({
         />
       </Flex>
 
-      {/* 分享提示modal */}
-      <Modal isOpen={isOpenShare} onClose={onCloseShare}>
-        <ModalOverlay />
-        <ModalContent color={useColorModeValue('blackAlpha.700', 'white')}>
-          <ModalHeader>分享对话</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Markdown source={shareHint} />
-          </ModalBody>
-
-          <ModalFooter>
-            <Button colorScheme="gray" variant={'outline'} mr={3} onClick={onCloseShare}>
-              取消
-            </Button>
-            {getToken() && (
-              <Button
-                variant="outline"
-                mr={3}
-                onClick={async () => {
-                  copyData(
-                    `${location.origin}/chat?chatId=${await getChatSiteId(modelId)}`,
-                    '已复制分享链接'
-                  );
-                  onCloseShare();
-                  onClose();
-                }}
-              >
-                分享空白对话
-              </Button>
-            )}
-
-            <Button
-              onClick={() => {
-                copyData(`${location.origin}/chat?chatId=${chatId}`, '已复制分享链接');
-                onCloseShare();
-                onClose();
-              }}
-            >
-              分享聊天记录
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
       {/* wx 联系 */}
       {isOpenWx && <WxConcat onClose={onCloseWx} />}
     </Flex>

@@ -53,11 +53,6 @@ const ModelSchema = new Schema({
     }
   },
   service: {
-    company: {
-      type: String,
-      required: true,
-      enum: ['openai']
-    },
     trainId: {
       // 训练时需要的 ID， 不能训练的模型没有这个值。
       type: String,

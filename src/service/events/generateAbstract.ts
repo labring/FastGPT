@@ -1,5 +1,5 @@
 import { DataItem } from '@/service/mongo';
-import { getOpenAIApi } from '@/service/utils/chat';
+import { getOpenAIApi } from '@/service/utils/auth';
 import { httpsAgent } from '@/service/utils/tools';
 import { getOpenApiKey } from '../utils/openai';
 import type { ChatCompletionRequestMessage } from 'openai';

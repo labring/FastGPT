@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Button, Flex, Card } from '@chakra-ui/react';
-import { getChatSiteId } from '@/api/chat';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { useRouter } from 'next/router';
 import ModelTable from './components/ModelTable';

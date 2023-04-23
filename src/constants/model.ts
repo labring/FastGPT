@@ -1,4 +1,4 @@
-import type { ServiceName, ModelDataType, ModelSchema } from '@/types/mongoSchema';
+import type { ModelDataType, ModelSchema } from '@/types/mongoSchema';
 
 export enum ModelDataStatusEnum {
   ready = 'ready',
@@ -18,7 +18,6 @@ export const ChatModelNameMap = {
 };
 
 export type ModelConstantsData = {
-  serviceCompany: `${ServiceName}`;
   name: string;
   model: `${ChatModelNameEnum}`;
   trainName: string; // 空字符串代表不能训练
@@ -30,7 +29,6 @@ export type ModelConstantsData = {
 
 export const modelList: ModelConstantsData[] = [
   {
-    serviceCompany: 'openai',
     name: 'chatGPT',
     model: ChatModelNameEnum.GPT35,
     trainName: '',
@@ -40,7 +38,6 @@ export const modelList: ModelConstantsData[] = [
     price: 3
   },
   {
-    serviceCompany: 'openai',
     name: '知识库',
     model: ChatModelNameEnum.VECTOR_GPT,
     trainName: 'vector',
@@ -132,7 +129,6 @@ export const defaultModel: ModelSchema = {
     mode: ModelVectorSearchModeEnum.hightSimilarity
   },
   service: {
-    company: 'openai',
     trainId: '',
     chatModel: ChatModelNameEnum.GPT35,
     modelName: ChatModelNameEnum.GPT35
