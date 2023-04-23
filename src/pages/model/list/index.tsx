@@ -38,9 +38,7 @@ const modelList = () => {
     async (modelId: string) => {
       setIsLoading(true);
       try {
-        const chatId = await getChatSiteId(modelId);
-
-        router.push(`/chat?chatId=${chatId}`, undefined, {
+        router.push(`/chat?modelId=${modelId}`, undefined, {
           shallow: true
         });
       } catch (err: any) {

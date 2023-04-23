@@ -11,7 +11,7 @@ import { getTokenLogin } from '@/api/user';
 type State = {
   userInfo: UserType | null;
   initUserInfo: () => Promise<null>;
-  setUserInfo: (user: UserType, token?: string) => void;
+  setUserInfo: (user: UserType | null, token?: string) => void;
   updateUserInfo: (user: UserUpdateParams) => void;
   myModels: ModelSchema[];
   getMyModels: () => void;
@@ -27,12 +27,14 @@ export const useUserStore = create<State>()(
         get().setUserInfo(res);
         return null;
       },
-      setUserInfo(user: UserType, token?: string) {
+      setUserInfo(user: UserType | null, token?: string) {
         set((state) => {
-          state.userInfo = {
-            ...user,
-            balance: formatPrice(user.balance)
-          };
+          state.userInfo = user
+            ? {
+                ...user,
+                balance: formatPrice(user.balance)
+              }
+            : null;
         });
         token && setToken(token);
       },

@@ -33,7 +33,7 @@ const Auth = ({ children }: { children: JSX.Element }) => {
     {
       onError(error) {
         console.log('error->', error);
-        router.push('/login');
+        router.replace('/login');
         toast();
       },
       onSettled() {
