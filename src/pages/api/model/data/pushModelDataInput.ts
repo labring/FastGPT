@@ -4,7 +4,7 @@ import { connectToDatabase, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { ModelDataSchema } from '@/types/mongoSchema';
 import { generateVector } from '@/service/events/generateVector';
-import { connectPg, PgClient } from '@/service/pg';
+import { PgClient } from '@/service/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -26,7 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(authorization);
 
     await connectToDatabase();
-    const pg = await connectPg();
 
     // 验证是否是该用户的 model
     const model = await Model.findOne({

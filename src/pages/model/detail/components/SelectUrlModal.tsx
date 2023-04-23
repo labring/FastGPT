@@ -44,8 +44,9 @@ const SelectUrlModal = ({
       if (!webText) return;
       await postModelDataSplitData({
         modelId,
-        text: webText,
-        prompt: `下面是"${prompt || '一段长文本'}"`
+        chunks: [],
+        prompt: `下面是"${prompt || '一段长文本'}"`,
+        mode: 'qa'
       });
       toast({
         title: '导入数据成功,需要一段拆解和训练',
@@ -89,7 +90,7 @@ const SelectUrlModal = ({
     <Modal isOpen={true} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent maxW={'min(900px, 90vw)'} m={0} position={'relative'} h={'90vh'}>
-        <ModalHeader>网站地址导入</ModalHeader>
+        <ModalHeader>静态网站内容导入</ModalHeader>
         <ModalCloseButton />
 
         <ModalBody
@@ -102,7 +103,7 @@ const SelectUrlModal = ({
           fontSize={'sm'}
         >
           <Box mt={2} maxW={['100%', '70%']}>
-            根据网站地址，获取网站文本内容（请注意获取后的内容，不是每个网站内容都能获取到的）。模型会对文本进行
+            根据网站地址，获取网站文本内容（请注意仅能获取静态网站文本，注意看下获取后的内容是否正确）。模型会对文本进行
             QA 拆分，需要较长训练时间，拆分需要消耗 tokens，账号余额不足时，未拆分的数据会被删除。
           </Box>
           <Box mt={2}>

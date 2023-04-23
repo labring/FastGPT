@@ -18,10 +18,6 @@ const SplitDataSchema = new Schema({
     ref: 'model',
     required: true
   },
-  rawText: {
-    type: String,
-    required: true
-  },
   textList: {
     type: [String],
     default: []

@@ -2,14 +2,20 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, SplitData, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
+import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
-import { encode } from 'gpt-token-utils';
+import { PgClient } from '@/service/pg';
 
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { text, modelId, prompt } = req.body as { text: string; modelId: string; prompt: string };
-    if (!text || !modelId || !prompt) {
+    const { chunks, modelId, prompt, mode } = req.body as {
+      modelId: string;
+      chunks: string[];
+      prompt: string;
+      mode: 'qa' | 'subsection';
+    };
+    if (!chunks || !modelId || !prompt) {
       throw new Error('参数错误');
     }
     await connectToDatabase();
@@ -28,45 +34,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('无权操作该模型');
     }
 
-    const replaceText = text.replace(/\\n/g, '\n');
+    if (mode === 'qa') {
+      // 批量QA拆分插入数据
+      await SplitData.create({
+        userId,
+        modelId,
+        textList: chunks,
+        prompt
+      });
 
-    // 文本拆分成 chunk
-    const chunks = replaceText.split('\n').filter((item) => item.trim());
+      generateQA();
+    } else if (mode === 'subsection') {
+      // 插入记录
+      await PgClient.insert('modelData', {
+        values: chunks.map((item) => [
+          { key: 'user_id', value: userId },
+          { key: 'model_id', value: modelId },
+          { key: 'q', value: item },
+          { key: 'a', value: '' },
+          { key: 'status', value: 'waiting' }
+        ])
+      });
 
-    const textList: string[] = [];
-    let splitText = '';
-
-    /* 取 2.5k ~ 3.5K tokens 内容 */
-    chunks.forEach((chunk) => {
-      const tokens = encode(splitText + chunk).length;
-      if (tokens >= 3500) {
-        // 超过 3500，不要这块内容
-        splitText && textList.push(splitText);
-        splitText = chunk;
-      } else if (tokens >= 2500) {
-        // 超过 3000，取内容
-        splitText && textList.push(splitText + chunk);
-        splitText = '';
-      } else {
-        //没超过 3000，继续添加
-        splitText += chunk;
-      }
-    });
-
-    if (splitText) {
-      textList.push(splitText);
+      generateVector();
     }
-
-    // 批量插入数据
-    await SplitData.create({
-      userId,
-      modelId,
-      rawText: text,
-      textList,
-      prompt
-    });
-
-    generateQA();
 
     jsonRes(res);
   } catch (err) {

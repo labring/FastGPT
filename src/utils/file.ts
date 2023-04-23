@@ -1,5 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
+import { encode } from 'gpt-token-utils';
 
 /**
  * 读取 txt 文件内容
@@ -136,4 +137,55 @@ export const fileDownload = ({
   document.body.appendChild(downloadLink);
   downloadLink.click();
   document.body.removeChild(downloadLink);
+};
+
+/**
+ * text split into chunks
+ * maxLen - one chunk len. max: 3500
+ * slideLen - The size of the before and after Text
+ * maxLen > slideLen
+ */
+export const splitText = ({
+  text,
+  maxLen,
+  slideLen
+}: {
+  text: string;
+  maxLen: number;
+  slideLen: number;
+}) => {
+  const textArr =
+    text.match(/[！？。\n.]+|[^\s]+/g)?.filter((item) => {
+      const text = item.replace(/(\\n)/g, '\n').trim();
+      if (text && text !== '\n') return true;
+      return false;
+    }) || [];
+
+  const chunks: { sum: number; arr: string[] }[] = [{ sum: 0, arr: [] }];
+
+  for (let i = 0; i < textArr.length; i++) {
+    const tokenLen = encode(textArr[i]).length;
+    chunks[chunks.length - 1].sum += tokenLen;
+    chunks[chunks.length - 1].arr.push(textArr[i]);
+
+    //  current length is over maxLen. create new chunk
+    if (chunks[chunks.length - 1].sum + tokenLen >= maxLen) {
+      // get slide len text as the initial value
+      const chunk: { sum: number; arr: string[] } = { sum: 0, arr: [] };
+      for (let j = chunks[chunks.length - 1].arr.length - 1; j >= 0; j--) {
+        const chunkText = chunks[chunks.length - 1].arr[j];
+        const tokenLen = encode(chunkText).length;
+        chunk.sum += tokenLen;
+        chunk.arr.unshift(chunkText);
+
+        if (chunk.sum >= slideLen) {
+          break;
+        }
+      }
+      chunks.push(chunk);
+    }
+  }
+
+  const result = chunks.map((item) => item.arr.join(''));
+  return result;
 };

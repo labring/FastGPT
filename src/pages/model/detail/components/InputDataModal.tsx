@@ -122,9 +122,9 @@ const InputDataModal = ({
             <Box h={'30px'}>问题</Box>
             <Textarea
               placeholder={
-                '相关问题，可以输入多个问法, 最多500字。例如：\n1. laf 是什么？\n2. laf 可以做什么？\n3. laf怎么用'
+                '相关问题，可以输入多个问法, 最多 1000 字。例如：\n1. laf 是什么？\n2. laf 可以做什么？\n3. laf怎么用'
               }
-              maxLength={500}
+              maxLength={1000}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register(`q`, {
@@ -136,9 +136,9 @@ const InputDataModal = ({
             <Box h={'30px'}>知识点</Box>
             <Textarea
               placeholder={
-                '知识点，最多1000字。请保持主语的完整性，缺少主语会导致效果不佳。例如：\n1. laf是一个云函数开发平台。\n2. laf 什么都能做。\n3. 下面是使用 laf 的例子: ……'
+                '知识点，最多 2000 字。例如：\n1. laf是一个云函数开发平台。\n2. laf 什么都能做。\n3. 下面是使用 laf 的例子: ……'
               }
-              maxLength={1000}
+              maxLength={2000}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register(`a`, {
