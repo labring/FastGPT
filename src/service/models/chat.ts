@@ -26,6 +26,10 @@ const ChatSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  title: {
+    type: String,
+    default: '历史记录'
+  },
   content: {
     type: [
       {

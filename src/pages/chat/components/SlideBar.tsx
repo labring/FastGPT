@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { AddIcon, ChatIcon, DeleteIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -16,14 +16,13 @@ import {
   useColorModeValue
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
-import { useChatStore } from '@/store/chat';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { getToken } from '@/utils/user';
 import MyIcon from '@/components/Icon';
-import { useCopyData } from '@/utils/tools';
 import WxConcat from '@/components/WxConcat';
-import { useMarkdown } from '@/hooks/useMarkdown';
+import { getChatHistory, delChatHistoryById } from '@/api/chat';
+import { modelList } from '@/constants/model';
 
 const SlideBar = ({
   chatId,
@@ -38,27 +37,34 @@ const SlideBar = ({
 }) => {
   const router = useRouter();
   const { colorMode, toggleColorMode } = useColorMode();
-  const { copyData } = useCopyData();
   const { myModels, getMyModels } = useUserStore();
-  const { chatHistory, removeChatHistoryByWindowId } = useChatStore();
-  const [hasReady, setHasReady] = useState(false);
-  const { isOpen: isOpenShare, onOpen: onOpenShare, onClose: onCloseShare } = useDisclosure();
   const { isOpen: isOpenWx, onOpen: onOpenWx, onClose: onCloseWx } = useDisclosure();
-  const { data: shareHint } = useMarkdown({ url: '/chatProblem.md' });
+  const preChatId = useRef('chatId'); // 用于校验上一次chatId的情况,判断是否需要刷新历史记录
 
-  const { isSuccess } = useQuery(['init'], getMyModels, {
+  const { isSuccess } = useQuery(['getMyModels'], getMyModels, {
     cacheTime: 5 * 60 * 1000
   });
 
+  const { data: chatHistory = [], mutate: loadChatHistory } = useMutation({
+    mutationFn: getChatHistory
+  });
+
   useEffect(() => {
-    setHasReady(true);
-  }, []);
+    if (chatId && preChatId.current === '') {
+      loadChatHistory();
+    }
+    preChatId.current = chatId;
+  }, [chatId, loadChatHistory]);
+
+  useEffect(() => {
+    loadChatHistory();
+  }, [loadChatHistory]);
 
   const RenderHistory = () => (
     <>
       {chatHistory.map((item) => (
         <Flex
-          key={item.chatId}
+          key={item._id}
           alignItems={'center'}
           p={3}
           borderRadius={'md'}
@@ -69,15 +75,16 @@ const SlideBar = ({
           }}
           fontSize={'xs'}
           border={'1px solid transparent'}
-          {...(item.chatId === chatId
+          {...(item._id === chatId
             ? {
                 borderColor: 'rgba(255,255,255,0.5)',
                 backgroundColor: 'rgba(255,255,255,0.1)'
               }
             : {})}
           onClick={() => {
-            if (item.chatId === chatId) return;
-            resetChat(modelId, item.chatId);
+            if (item._id === chatId) return;
+            preChatId.current = 'chatId';
+            resetChat(item.modelId, item._id);
             onClose();
           }}
         >
@@ -91,12 +98,14 @@ const SlideBar = ({
               variant={'unstyled'}
               aria-label={'edit'}
               size={'xs'}
-              onClick={(e) => {
-                removeChatHistoryByWindowId(item.chatId);
-                if (item.chatId === chatId) {
+              onClick={async (e) => {
+                e.stopPropagation();
+
+                await delChatHistoryById(item._id);
+                loadChatHistory();
+                if (item._id === chatId) {
                   resetChat();
                 }
-                e.stopPropagation();
               }}
             />
           </Box>
@@ -151,53 +160,55 @@ const SlideBar = ({
           新对话
         </Button>
       )}
-
       {/* 我的模型 & 历史记录 折叠框*/}
       <Box flex={'1 0 0'} px={3} h={0} overflowY={'auto'}>
-        <Accordion defaultIndex={[0]} allowMultiple>
-          {isSuccess && (
-            <AccordionItem borderTop={0} borderBottom={0}>
-              <AccordionButton borderRadius={'md'} pl={1}>
-                <Box as="span" flex="1" textAlign="left">
-                  其他模型
-                </Box>
-                <AccordionIcon />
-              </AccordionButton>
-              <AccordionPanel pb={4} px={0}>
-                {myModels.map((item) => (
-                  <Flex
-                    key={item._id}
-                    alignItems={'center'}
-                    p={3}
-                    borderRadius={'md'}
-                    mb={2}
-                    cursor={'pointer'}
-                    _hover={{
-                      backgroundColor: 'rgba(255,255,255,0.1)'
-                    }}
-                    fontSize={'xs'}
-                    border={'1px solid transparent'}
-                    {...(item._id === modelId
-                      ? {
-                          borderColor: 'rgba(255,255,255,0.5)',
-                          backgroundColor: 'rgba(255,255,255,0.1)'
-                        }
-                      : {})}
-                    onClick={async () => {
-                      if (item._id === modelId) return;
-                      resetChat(item._id);
-                      onClose();
-                    }}
-                  >
-                    <MyIcon name="model" mr={2} fill={'white'} w={'16px'} h={'16px'} />
-                    <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
-                      {item.name}
-                    </Box>
-                  </Flex>
-                ))}
-              </AccordionPanel>
-            </AccordionItem>
-          )}
+        {isSuccess && (
+          <>
+            <Box>
+              {myModels.map((item) => (
+                <Flex
+                  key={item._id}
+                  alignItems={'center'}
+                  p={3}
+                  borderRadius={'md'}
+                  mb={2}
+                  cursor={'pointer'}
+                  _hover={{
+                    backgroundColor: 'rgba(255,255,255,0.1)'
+                  }}
+                  fontSize={'xs'}
+                  border={'1px solid transparent'}
+                  {...(item._id === modelId
+                    ? {
+                        borderColor: 'rgba(255,255,255,0.5)',
+                        backgroundColor: 'rgba(255,255,255,0.1)'
+                      }
+                    : {})}
+                  onClick={async () => {
+                    if (item._id === modelId) return;
+                    resetChat(item._id);
+                    onClose();
+                  }}
+                >
+                  <MyIcon
+                    name={
+                      modelList.find((model) => model.model === item.service.modelName)?.icon ||
+                      'model'
+                    }
+                    mr={2}
+                    color={'white'}
+                    w={'16px'}
+                    h={'16px'}
+                  />
+                  <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
+                    {item.name}
+                  </Box>
+                </Flex>
+              ))}
+            </Box>
+          </>
+        )}
+        <Accordion allowToggle>
           <AccordionItem borderTop={0} borderBottom={0}>
             <AccordionButton borderRadius={'md'} pl={1}>
               <Box as="span" flex="1" textAlign="left">
@@ -206,7 +217,7 @@ const SlideBar = ({
               <AccordionIcon />
             </AccordionButton>
             <AccordionPanel pb={0} px={0}>
-              {hasReady && <RenderHistory />}
+              <RenderHistory />
             </AccordionPanel>
           </AccordionItem>
         </Accordion>
@@ -221,12 +232,6 @@ const SlideBar = ({
         </>
       </RenderButton>
 
-      {/* <RenderButton onClick={onOpenShare}>
-        <>
-          <MyIcon name="share" fill={'white'} w={'16px'} h={'16px'} mr={4} />
-          分享
-        </>
-      </RenderButton> */}
       <RenderButton onClick={() => router.push('/number/setting')}>
         <>
           <MyIcon name="pay" fill={'white'} w={'16px'} h={'16px'} mr={4} />

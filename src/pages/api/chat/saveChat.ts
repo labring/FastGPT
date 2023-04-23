@@ -33,7 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { _id } = await Chat.create({
         userId,
         modelId,
-        content
+        content,
+        title: content[0].value.slice(0, 20)
       });
       return jsonRes(res, {
         data: _id

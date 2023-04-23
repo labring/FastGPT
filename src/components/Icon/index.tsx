@@ -16,7 +16,9 @@ const map = {
   chatting: require('./icons/chatting.svg').default,
   promotion: require('./icons/promotion.svg').default,
   delete: require('./icons/delete.svg').default,
-  withdraw: require('./icons/withdraw.svg').default
+  withdraw: require('./icons/withdraw.svg').default,
+  dbModel: require('./icons/dbModel.svg').default,
+  history: require('./icons/history.svg').default
 };
 
 export type IconName = keyof typeof map;
