@@ -14,7 +14,7 @@ export const pushChatBill = async ({
   isPay: boolean;
   modelName: string;
   userId: string;
-  chatId?: string;
+  chatId?: '' | string;
   text: string;
 }) => {
   let billId;
@@ -42,7 +42,7 @@ export const pushChatBill = async ({
           userId,
           type: 'chat',
           modelName,
-          chatId,
+          chatId: chatId ? chatId : undefined,
           textLen: text.length,
           tokenLen: tokens,
           price

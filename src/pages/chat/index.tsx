@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
-import { getInitChatSiteInfo, getChatSiteId, delChatRecordByIndex, postSaveChat } from '@/api/chat';
+import { getInitChatSiteInfo, delChatRecordByIndex, postSaveChat } from '@/api/chat';
 import type { InitChatResponse } from '@/api/response/chat';
 import { ChatSiteItemType } from '@/types/chat';
 import {
@@ -41,18 +41,17 @@ interface ChatType extends InitChatResponse {
   history: ChatSiteItemType[];
 }
 
-const Chat = ({ chatId }: { chatId: string }) => {
+const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
+  const router = useRouter();
+
   const ChatBox = useRef<HTMLDivElement>(null);
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
-
-  const { toast } = useToast();
-  const router = useRouter();
 
   // 中断请求
   const controller = useRef(new AbortController());
   const [chatData, setChatData] = useState<ChatType>({
-    chatId: '',
-    modelId: '',
+    chatId,
+    modelId,
     name: '',
     avatar: '',
     intro: '',
@@ -60,6 +59,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
     modelName: '',
     history: []
   }); // 聊天框整体数据
+
   const [inputVal, setInputVal] = useState(''); // 输入的内容
 
   const isChatting = useMemo(
@@ -68,6 +68,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
   );
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
+  const { toast } = useToast();
   const { copyData } = useCopyData();
   const { isPc, media } = useScreen();
   const { setLoading } = useGlobalStore();
@@ -108,19 +109,72 @@ const Chat = ({ chatId }: { chatId: string }) => {
     }, 100);
   }, []);
 
-  // 重载对话
-  const resetChat = useCallback(async () => {
-    if (!chatData) return;
-    try {
-      router.replace(`/chat?chatId=${await getChatSiteId(chatData.modelId)}`);
-    } catch (error: any) {
-      toast({
-        title: error?.message || '生成新对话失败',
-        status: 'warning'
-      });
-    }
-    onCloseSlider();
-  }, [chatData, onCloseSlider, router, toast]);
+  // 获取对话信息
+  const loadChatInfo = useCallback(
+    async ({
+      modelId,
+      chatId,
+      isLoading = false,
+      isScroll = false
+    }: {
+      modelId: string;
+      chatId: string;
+      isLoading?: boolean;
+      isScroll?: boolean;
+    }) => {
+      isLoading && setLoading(true);
+      try {
+        const res = await getInitChatSiteInfo(modelId, chatId);
+        setChatData({
+          ...res,
+          history: res.history.map((item) => ({
+            ...item,
+            status: 'finish'
+          }))
+        });
+        if (isScroll && res.history.length > 0) {
+          setTimeout(() => {
+            scrollToBottom('auto');
+          }, 2000);
+        }
+      } catch (e: any) {
+        toast({
+          title: e?.message || '获取对话信息异常,请检查地址',
+          status: 'error',
+          isClosable: true,
+          duration: 5000
+        });
+        router.replace('/model/list');
+      }
+      setLoading(false);
+      return null;
+    },
+    [router, scrollToBottom, setLoading, toast]
+  );
+
+  // 重载新的对话
+  const resetChat = useCallback(
+    async (modelId = chatData.modelId, chatId = '') => {
+      // 强制中断流
+      controller.current?.abort();
+      try {
+        router.replace(`/chat?modelId=${modelId}&chatId=${chatId}`);
+        loadChatInfo({
+          modelId,
+          chatId,
+          isLoading: true,
+          isScroll: true
+        });
+      } catch (error: any) {
+        toast({
+          title: error?.message || '生成新对话失败',
+          status: 'warning'
+        });
+      }
+      onCloseSlider();
+    },
+    [chatData.modelId, loadChatInfo, onCloseSlider, router, toast]
+  );
 
   // gpt 对话
   const gptChatPrompt = useCallback(
@@ -132,6 +186,10 @@ const Chat = ({ chatId }: { chatId: string }) => {
 
       if (!urlMap[chatData.modelName]) return Promise.reject('找不到模型');
 
+      // create abort obj
+      const abortSignal = new AbortController();
+      controller.current = abortSignal;
+
       const prompt = {
         obj: prompts.obj,
         value: prompts.value
@@ -141,7 +199,8 @@ const Chat = ({ chatId }: { chatId: string }) => {
         url: urlMap[chatData.modelName],
         data: {
           prompt,
-          chatId
+          chatId,
+          modelId
         },
         onMessage: (text: string) => {
           setChatData((state) => ({
@@ -156,12 +215,14 @@ const Chat = ({ chatId }: { chatId: string }) => {
           }));
           generatingMessage();
         },
-        abortSignal: controller.current
+        abortSignal
       });
 
+      let id = '';
       // 保存对话信息
       try {
-        await postSaveChat({
+        id = await postSaveChat({
+          modelId,
           chatId,
           prompts: [
             prompt,
@@ -171,6 +232,9 @@ const Chat = ({ chatId }: { chatId: string }) => {
             }
           ]
         });
+        if (id) {
+          router.replace(`/chat?modelId=${modelId}&chatId=${id}`);
+        }
       } catch (err) {
         toast({
           title: '对话出现异常, 继续对话会导致上下文丢失，请刷新页面',
@@ -183,6 +247,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
       // 设置完成状态
       setChatData((state) => ({
         ...state,
+        chatId: id || state.chatId, // 如果有 Id，说明是新创建的对话
         history: state.history.map((item, index) => {
           if (index !== state.history.length - 1) return item;
           return {
@@ -192,7 +257,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
         })
       }));
     },
-    [chatData.modelName, chatId, generatingMessage, toast]
+    [chatData.modelName, chatId, generatingMessage, modelId, router, toast]
   );
 
   /**
@@ -210,7 +275,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
     // 去除空行
     const val = inputVal.trim().replace(/\n\s*/g, '\n');
 
-    if (!chatData?.modelId || !val) {
+    if (!val) {
       toast({
         title: '内容为空',
         status: 'warning'
@@ -271,12 +336,12 @@ const Chat = ({ chatId }: { chatId: string }) => {
       }));
     }
   }, [
-    inputVal,
-    chatData,
     isChatting,
+    inputVal,
+    chatData.history,
     resetInputVal,
-    scrollToBottom,
     toast,
+    scrollToBottom,
     gptChatPrompt,
     pushChatHistory,
     chatId
@@ -312,50 +377,22 @@ const Chat = ({ chatId }: { chatId: string }) => {
   );
 
   // 初始化聊天框
-  useQuery(
-    ['init', chatId],
-    () => {
-      setLoading(true);
-      return getInitChatSiteInfo(chatId);
-    },
-    {
-      onSuccess(res) {
-        setChatData({
-          ...res,
-          history: res.history.map((item) => ({
-            ...item,
-            status: 'finish'
-          }))
-        });
-        if (res.history.length > 0) {
-          setTimeout(() => {
-            scrollToBottom('auto');
-          }, 2000);
-        }
-      },
-      onError(e: any) {
-        toast({
-          title: e?.message || '初始化异常,请检查地址',
-          status: 'error',
-          isClosable: true,
-          duration: 5000
-        });
-        router.push('/model/list');
-      },
-      onSettled() {
-        setLoading(false);
-      }
-    }
+  useQuery(['init'], () =>
+    loadChatInfo({
+      modelId,
+      chatId,
+      isLoading: true,
+      isScroll: true
+    })
   );
 
   // 更新流中断对象
   useEffect(() => {
-    controller.current = new AbortController();
     return () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       controller.current?.abort();
     };
-  }, [chatId]);
+  }, []);
 
   return (
     <Flex
@@ -368,7 +405,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
           <SlideBar
             resetChat={resetChat}
             chatId={chatId}
-            modelId={chatData.modelId}
+            modelId={modelId}
             onClose={onCloseSlider}
           />
         </Box>
@@ -399,7 +436,7 @@ const Chat = ({ chatId }: { chatId: string }) => {
               <SlideBar
                 resetChat={resetChat}
                 chatId={chatId}
-                modelId={chatData.modelId}
+                modelId={modelId}
                 onClose={onCloseSlider}
               />
             </DrawerContent>
@@ -565,9 +602,10 @@ const Chat = ({ chatId }: { chatId: string }) => {
 export default Chat;
 
 export async function getServerSideProps(context: any) {
-  const chatId = context?.query?.chatId || 'noid';
+  const modelId = context?.query?.modelId || '';
+  const chatId = context?.query?.chatId || '';
 
   return {
-    props: { chatId }
+    props: { modelId, chatId }
   };
 }

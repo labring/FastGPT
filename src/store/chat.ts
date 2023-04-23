@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { HistoryItem } from '@/types/chat';
-import { getChatSiteId } from '@/api/chat';
 
 type Props = {
   chatHistory: HistoryItem[];
@@ -10,7 +9,6 @@ type Props = {
   updateChatHistory: (chatId: string, title: string) => void;
   removeChatHistoryByWindowId: (chatId: string) => void;
   clearHistory: () => void;
-  generateChatWindow: (modelId: string) => Promise<string>;
 };
 export const useChatStore = create<Props>()(
   devtools(
@@ -40,9 +38,6 @@ export const useChatStore = create<Props>()(
           set((state) => {
             state.chatHistory = [];
           });
-        },
-        generateChatWindow(modelId: string) {
-          return getChatSiteId(modelId);
         }
       })),
       {

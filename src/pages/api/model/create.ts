@@ -47,7 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userId,
       status: ModelStatusEnum.running,
       service: {
-        company: modelItem.serviceCompany,
         trainId: '',
         chatModel: ChatModelNameMap[modelItem.model], // 聊天时用的模型
         modelName: modelItem.model // 最底层的模型，不会变，用于计费等核心操作

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
-import { getOpenAIApi } from '@/service/utils/chat';
+import { getOpenAIApi } from '@/service/utils/auth';
 import { authOpenApiKey } from '@/service/utils/tools';
 import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';

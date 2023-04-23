@@ -1,7 +1,6 @@
 import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getModelById, delModelById, putModelTrainingStatus, putModelById } from '@/api/model';
-import { getChatSiteId } from '@/api/chat';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
@@ -70,14 +69,12 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
   const handlePreviewChat = useCallback(async () => {
     setLoading(true);
     try {
-      const chatId = await getChatSiteId(model._id);
-
-      router.push(`/chat?chatId=${chatId}`);
+      router.push(`/chat?modelId=${modelId}`);
     } catch (err) {
       console.log('error->', err);
     }
     setLoading(false);
-  }, [setLoading, model, router]);
+  }, [setLoading, router, modelId]);
 
   /* 上传数据集,触发微调 */
   // const startTraining = useCallback(

@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import type { PassThrough } from 'stream';
 import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
-import { getOpenAIApi } from '@/service/utils/chat';
+import { getOpenAIApi } from '@/service/utils/auth';
 import { httpsAgent } from './tools';
 import { User } from '../models/user';
 import { formatPrice } from '@/utils/user';

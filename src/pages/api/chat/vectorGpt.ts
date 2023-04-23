@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authChat } from '@/service/utils/chat';
+import { authChat } from '@/service/utils/auth';
 import { httpsAgent, systemPromptFilter, openaiChatFilter } from '@/service/utils/tools';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
@@ -35,29 +35,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   try {
-    const { chatId, prompt } = req.body as {
+    const { modelId, chatId, prompt } = req.body as {
+      modelId: string;
+      chatId: '' | string;
       prompt: ChatItemType;
-      chatId: string;
     };
 
     const { authorization } = req.headers;
-    if (!chatId || !prompt) {
+    if (!modelId || !prompt) {
       throw new Error('缺少参数');
     }
 
     await connectToDatabase();
     let startTime = Date.now();
 
-    const { chat, userApiKey, systemKey, userId } = await authChat(chatId, authorization);
+    const { model, content, userApiKey, systemKey, userId } = await authChat({
+      modelId,
+      chatId,
+      authorization
+    });
 
-    const model: ModelSchema = chat.modelId;
     const modelConstantsData = modelList.find((item) => item.model === model.service.modelName);
     if (!modelConstantsData) {
       throw new Error('模型加载异常');
     }
 
     // 读取对话内容
-    const prompts = [...chat.content, prompt];
+    const prompts = [...content, prompt];
 
     // 获取提示词的向量
     const { vector: promptVector, chatAPI } = await openaiCreateEmbedding({
