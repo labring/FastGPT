@@ -126,16 +126,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } else {
       // 有匹配或者低匹配度模式情况下，添加知识库内容。
-      // 系统提示词过滤，最多 2000 tokens
-      const systemPrompt = systemPromptFilter(formatRedisPrompt, 2000);
+      // 系统提示词过滤，最多 3000 tokens
+      const systemPrompt = systemPromptFilter(formatRedisPrompt, 3000);
 
       prompts.unshift({
         obj: 'SYSTEM',
-        value: `${
-          model.systemPrompt || '根据知识库内容回答'
-        } 知识库是最新的,下面是知识库内容:当前时间为${dayjs().format(
-          'YYYY/MM/DD HH:mm:ss'
-        )}\n${systemPrompt}`
+        value: `
+${model.systemPrompt}
+${
+  model.search.mode === ModelVectorSearchModeEnum.hightSimilarity
+    ? `你只能从知识库选择内容回答.不在知识库内容拒绝回复`
+    : ''
+}
+知识库内容为: 当前时间为${dayjs().format('YYYY/MM/DD HH:mm:ss')}\n${systemPrompt}'
+`
       });
     }
 

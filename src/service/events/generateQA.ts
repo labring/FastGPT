@@ -69,9 +69,13 @@ export async function generateQA(next = false): Promise<any> {
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
     const systemPrompt: ChatCompletionRequestMessage = {
       role: 'system',
-      content: `你是出题官.${
-        dataItem.prompt || '下面是"一段长文本"'
-      },从中选出5至20个题目和答案,题目包含问答题,计算题,代码题等.答案要详细.按格式返回: Q1:\nA1:\nQ2:\nA2:\n`
+      content: `你是出题人
+${dataItem.prompt || '下面是"一段长文本"'}
+从中选出5至20个题目和答案,题目包含问答题,计算题,代码题等.答案要详细.按格式返回: Q1:
+A1:
+Q2:
+A2:
+...`
     };
 
     // 请求 chatgpt 获取回答

@@ -85,8 +85,12 @@ export const postModelDataInput = (data: {
 /**
  * 拆分数据
  */
-export const postModelDataSplitData = (data: { modelId: string; text: string; prompt: string }) =>
-  POST(`/model/data/splitData`, data);
+export const postModelDataSplitData = (data: {
+  modelId: string;
+  chunks: string[];
+  prompt: string;
+  mode: 'qa' | 'subsection';
+}) => POST(`/model/data/splitData`, data);
 
 /**
  * json导入数据

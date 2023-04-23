@@ -18,6 +18,7 @@ import {
   MenuItem,
   Input
 } from '@chakra-ui/react';
+import type { BoxProps } from '@chakra-ui/react';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ModelDataItemType } from '@/types/model';
 import { ModelDataStatusMap } from '@/constants/model';
@@ -114,6 +115,14 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     }
   });
 
+  const tdStyles: BoxProps = {
+    fontSize: 'xs',
+    maxW: '500px',
+    whiteSpace: 'pre-wrap',
+    maxH: '250px',
+    overflowY: 'auto'
+  };
+
   return (
     <>
       <Flex>
@@ -156,8 +165,8 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
             >
               手动输入
             </MenuItem>
-            <MenuItem onClick={onOpenSelectFileModal}>文本/文件 QA 拆分</MenuItem>
-            <MenuItem onClick={onOpenSelectUrlModal}>网站内容 QA 拆分</MenuItem>
+            <MenuItem onClick={onOpenSelectFileModal}>文本/文件拆分</MenuItem>
+            {/* <MenuItem onClick={onOpenSelectUrlModal}>网站内容拆分</MenuItem> */}
             <MenuItem onClick={onOpenSelectCsvModal}>csv 问答对导入</MenuItem>
           </MenuList>
         </Menu>
@@ -191,33 +200,23 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
 
       <Box mt={4}>
         <TableContainer minH={'500px'}>
-          <Table variant={'simple'}>
+          <Table variant={'simple'} w={'100%'}>
             <Thead>
               <Tr>
-                <Th>Question</Th>
-                <Th>Text</Th>
-                <Th>Status</Th>
+                <Th>匹配内容(问题)</Th>
+                <Th>对应答案</Th>
+                <Th>状态</Th>
                 <Th>操作</Th>
               </Tr>
             </Thead>
             <Tbody>
               {modelDataList.map((item) => (
                 <Tr key={item.id}>
-                  <Td minW={'200px'}>
-                    <Box fontSize={'xs'} whiteSpace={'pre-wrap'}>
-                      {item.q}
-                    </Box>
+                  <Td>
+                    <Box {...tdStyles}>{item.q}</Box>
                   </Td>
-                  <Td minW={'200px'}>
-                    <Box
-                      w={'100%'}
-                      fontSize={'xs'}
-                      whiteSpace={'pre-wrap'}
-                      maxH={'250px'}
-                      overflowY={'auto'}
-                    >
-                      {item.a}
-                    </Box>
+                  <Td>
+                    <Box {...tdStyles}>{item.a || '-'}</Box>
                   </Td>
                   <Td>{ModelDataStatusMap[item.status]}</Td>
                   <Td>

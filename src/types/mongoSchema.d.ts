@@ -75,7 +75,6 @@ export interface ModelSplitDataSchema {
   _id: string;
   userId: string;
   modelId: string;
-  rawText: string;
   prompt: string;
   errorText: string;
   textList: string[];

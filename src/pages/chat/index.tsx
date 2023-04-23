@@ -133,7 +133,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         if (isScroll && res.history.length > 0) {
           setTimeout(() => {
             scrollToBottom('auto');
-          }, 2000);
+          }, 1200);
         }
       } catch (e: any) {
         toast({
