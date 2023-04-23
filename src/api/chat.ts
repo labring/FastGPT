@@ -27,6 +27,17 @@ export const postGPT3SendPrompt = ({
   });
 
 /**
+ * 获取历史记录
+ */
+export const getChatHistory = () =>
+  GET<{ _id: string; title: string; modelId: string }[]>('/chat/getHistory');
+
+/**
+ * 删除一条历史记录
+ */
+export const delChatHistoryById = (id: string) => GET(`/chat/removeHistory?id=${id}`);
+
+/**
  * 存储一轮对话
  */
 export const postSaveChat = (data: {

@@ -24,7 +24,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ChatModelNameEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
-import { useChatStore } from '@/store/chat';
 import { useCopyData } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import Icon from '@/components/Icon';
@@ -72,7 +71,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const { copyData } = useCopyData();
   const { isPc, media } = useScreen();
   const { setLoading } = useGlobalStore();
-  const { pushChatHistory } = useChatStore();
 
   // 滚动到底部
   const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -311,15 +309,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
     try {
       await gptChatPrompt(newChatList[newChatList.length - 2]);
-
-      // 如果是 Human 第一次发送，插入历史记录
-      const humanChat = newChatList.filter((item) => item.obj === 'Human');
-      if (humanChat.length === 1) {
-        pushChatHistory({
-          chatId,
-          title: humanChat[0].value
-        });
-      }
     } catch (err: any) {
       toast({
         title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
@@ -335,17 +324,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         history: newChatList.slice(0, newChatList.length - 2)
       }));
     }
-  }, [
-    isChatting,
-    inputVal,
-    chatData.history,
-    resetInputVal,
-    toast,
-    scrollToBottom,
-    gptChatPrompt,
-    pushChatHistory,
-    chatId
-  ]);
+  }, [isChatting, inputVal, chatData.history, resetInputVal, toast, scrollToBottom, gptChatPrompt]);
 
   // 删除一句话
   const delChatRecord = useCallback(

@@ -18,6 +18,7 @@ export const ChatModelNameMap = {
 };
 
 export type ModelConstantsData = {
+  icon: 'model' | 'dbModel';
   name: string;
   model: `${ChatModelNameEnum}`;
   trainName: string; // 空字符串代表不能训练
@@ -29,6 +30,7 @@ export type ModelConstantsData = {
 
 export const modelList: ModelConstantsData[] = [
   {
+    icon: 'model',
     name: 'chatGPT',
     model: ChatModelNameEnum.GPT35,
     trainName: '',
@@ -38,6 +40,7 @@ export const modelList: ModelConstantsData[] = [
     price: 3
   },
   {
+    icon: 'dbModel',
     name: '知识库',
     model: ChatModelNameEnum.VECTOR_GPT,
     trainName: 'vector',
