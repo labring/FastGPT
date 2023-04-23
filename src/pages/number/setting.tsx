@@ -18,7 +18,7 @@ const PayModal = dynamic(() => import('./components/PayModal'));
 
 const NumberSetting = () => {
   const router = useRouter();
-  const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
+  const { userInfo, updateUserInfo, initUserInfo, setUserInfo } = useUserStore();
   const { setLoading } = useGlobalStore();
   const { register, handleSubmit } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
@@ -47,8 +47,9 @@ const NumberSetting = () => {
 
   const onclickLogOut = useCallback(() => {
     clearToken();
+    setUserInfo(null);
     router.replace('/login');
-  }, [router]);
+  }, [router, setUserInfo]);
 
   return (
     <>
