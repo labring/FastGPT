@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { getModelById, delModelById, putModelTrainingStatus, putModelById } from '@/api/model';
 import type { ModelSchema } from '@/types/mongoSchema';
@@ -8,16 +8,16 @@ import { useForm } from 'react-hook-form';
 import { formatModelStatus, ModelStatusEnum, modelList, defaultModel } from '@/constants/model';
 import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
-import ModelEditForm from './components/ModelEditForm';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
+const ModelEditForm = dynamic(() => import('./components/ModelEditForm'));
 const ModelDataCard = dynamic(() => import('./components/ModelDataCard'));
 
 const ModelDetail = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc, media } = useScreen();
+  const { isPc } = useScreen();
   const { setLoading } = useGlobalStore();
 
   const [model, setModel] = useState<ModelSchema>(defaultModel);
@@ -75,36 +75,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     }
     setLoading(false);
   }, [setLoading, router, modelId]);
-
-  /* 上传数据集,触发微调 */
-  // const startTraining = useCallback(
-  //   async (e: React.ChangeEvent<HTMLInputElement>) => {
-  //     if (!modelId || !e.target.files || e.target.files?.length === 0) return;
-  //     setLoading(true);
-  //     try {
-  //       const file = e.target.files[0];
-  //       const formData = new FormData();
-  //       formData.append('file', file);
-  //       await postTrainModel(modelId, formData);
-
-  //       toast({
-  //         title: '开始训练...',
-  //         status: 'success'
-  //       });
-
-  //       // 重新获取模型
-  //       loadModel();
-  //     } catch (err: any) {
-  //       toast({
-  //         title: err?.message || '上传文件失败',
-  //         status: 'error'
-  //       });
-  //       console.log('error->', err);
-  //     }
-  //     setLoading(false);
-  //   },
-  //   [setLoading, loadModel, modelId, toast]
-  // );
 
   /* 点击更新模型状态 */
   const handleClickUpdateStatus = useCallback(async () => {
@@ -236,21 +206,12 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           </>
         )}
       </Card>
-      <Grid mt={5} gridTemplateColumns={media('1fr 1fr', '1fr')} gridGap={5}>
+      <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={5}>
         <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} canTrain={canTrain} />
 
-        {canTrain && model._id && (
-          <Card
-            p={4}
-            {...media(
-              {
-                gridColumnStart: 1,
-                gridColumnEnd: 3
-              },
-              {}
-            )}
-          >
-            <ModelDataCard model={model} />
+        {canTrain && !!model._id && (
+          <Card p={4} gridColumnStart={[1, 1]} gridColumnEnd={[2, 3]}>
+            <ModelDataCard modelId={model._id} />
           </Card>
         )}
       </Grid>
