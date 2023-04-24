@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   Box,
   TableContainer,
@@ -19,7 +19,6 @@ import {
   Input
 } from '@chakra-ui/react';
 import type { BoxProps } from '@chakra-ui/react';
-import type { ModelSchema } from '@/types/mongoSchema';
 import type { ModelDataItemType } from '@/types/model';
 import { ModelDataStatusMap } from '@/constants/model';
 import { usePagination } from '@/hooks/usePagination';
@@ -34,19 +33,23 @@ import { useLoading } from '@/hooks/useLoading';
 import { fileDownload } from '@/utils/file';
 import dynamic from 'next/dynamic';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { FormData as InputDataType } from './InputDataModal';
 import Papa from 'papaparse';
+import InputModal, { FormData as InputDataType } from './InputDataModal';
 
-const InputModel = dynamic(() => import('./InputDataModal'));
-const SelectFileModel = dynamic(() => import('./SelectFileModal'));
-const SelectUrlModel = dynamic(() => import('./SelectUrlModal'));
+const SelectFileModal = dynamic(() => import('./SelectFileModal'));
 const SelectCsvModal = dynamic(() => import('./SelectCsvModal'));
 
-let lastSearch = '';
-
-const ModelDataCard = ({ model }: { model: ModelSchema }) => {
+const ModelDataCard = ({ modelId }: { modelId: string }) => {
   const { Loading, setIsLoading } = useLoading();
+  const lastSearch = useRef('');
   const [searchText, setSearchText] = useState('');
+  const tdStyles = useRef<BoxProps>({
+    fontSize: 'xs',
+    maxW: '500px',
+    whiteSpace: 'pre-wrap',
+    maxH: '250px',
+    overflowY: 'auto'
+  });
   const {
     data: modelDataList,
     isLoading,
@@ -58,7 +61,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     api: getModelDataList,
     pageSize: 10,
     params: {
-      modelId: model._id,
+      modelId,
       searchText
     }
   });
@@ -71,18 +74,19 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
     onClose: onCloseSelectFileModal
   } = useDisclosure();
   const {
-    isOpen: isOpenSelectUrlModal,
-    onOpen: onOpenSelectUrlModal,
-    onClose: onCloseSelectUrlModal
-  } = useDisclosure();
-  const {
     isOpen: isOpenSelectCsvModal,
     onOpen: onOpenSelectCsvModal,
     onClose: onCloseSelectCsvModal
   } = useDisclosure();
 
-  const { data: splitDataLen, refetch } = useQuery(['getModelSplitDataList'], () =>
-    getModelSplitDataListLen(model._id)
+  const { data: splitDataLen = 0, refetch } = useQuery(
+    ['getModelSplitDataList'],
+    () => getModelSplitDataListLen(modelId),
+    {
+      onError(err) {
+        console.log(err);
+      }
+    }
   );
 
   const refetchData = useCallback(
@@ -94,8 +98,8 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
   );
 
   // 获取所有的数据，并导出 json
-  const { mutate: onclickExport, isLoading: isLoadingExport } = useMutation({
-    mutationFn: () => getExportDataList(model._id),
+  const { mutate: onclickExport, isLoading: isLoadingExport = false } = useMutation({
+    mutationFn: () => getExportDataList(modelId),
     onSuccess(res) {
       try {
         setIsLoading(true);
@@ -112,16 +116,11 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
         error;
       }
       setIsLoading(false);
+    },
+    onError(err) {
+      console.log(err);
     }
   });
-
-  const tdStyles: BoxProps = {
-    fontSize: 'xs',
-    maxW: '500px',
-    whiteSpace: 'pre-wrap',
-    maxH: '250px',
-    overflowY: 'auto'
-  };
 
   return (
     <>
@@ -150,7 +149,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
         >
           导出
         </Button>
-        <Menu>
+        <Menu autoSelect={false}>
           <MenuButton as={Button} size={'sm'}>
             导入
           </MenuButton>
@@ -166,17 +165,13 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
               手动输入
             </MenuItem>
             <MenuItem onClick={onOpenSelectFileModal}>文本/文件拆分</MenuItem>
-            {/* <MenuItem onClick={onOpenSelectUrlModal}>网站内容拆分</MenuItem> */}
             <MenuItem onClick={onOpenSelectCsvModal}>csv 问答对导入</MenuItem>
           </MenuList>
         </Menu>
       </Flex>
       <Flex mt={4}>
-        {/* 拆分数据提示 */}
-        {!!(splitDataLen && splitDataLen > 0) && (
-          <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分...</Box>
-        )}
-        <Box flex={1}></Box>
+        {splitDataLen > 0 && <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分...</Box>}
+        <Box flex={1} />
         <Input
           maxW={'240px'}
           size={'sm'}
@@ -184,15 +179,15 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           placeholder="搜索相关问题和答案，回车确认"
           onChange={(e) => setSearchText(e.target.value)}
           onBlur={() => {
-            if (searchText === lastSearch) return;
+            if (searchText === lastSearch.current) return;
             getData(1);
-            lastSearch = searchText;
+            lastSearch.current = searchText;
           }}
           onKeyDown={(e) => {
-            if (searchText === lastSearch) return;
+            if (searchText === lastSearch.current) return;
             if (e.key === 'Enter') {
               getData(1);
-              lastSearch = searchText;
+              lastSearch.current = searchText;
             }
           }}
         />
@@ -203,7 +198,7 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
           <Table variant={'simple'} w={'100%'}>
             <Thead>
               <Tr>
-                <Th>匹配内容(问题)</Th>
+                <Th>{'匹配内容(问题)'}</Th>
                 <Th>对应答案</Th>
                 <Th>状态</Th>
                 <Th>操作</Th>
@@ -213,10 +208,10 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
               {modelDataList.map((item) => (
                 <Tr key={item.id}>
                   <Td>
-                    <Box {...tdStyles}>{item.q}</Box>
+                    <Box {...tdStyles.current}>{item.q}</Box>
                   </Td>
                   <Td>
-                    <Box {...tdStyles}>{item.a || '-'}</Box>
+                    <Box {...tdStyles.current}>{item.a || '-'}</Box>
                   </Td>
                   <Td>{ModelDataStatusMap[item.status]}</Td>
                   <Td>
@@ -258,33 +253,22 @@ const ModelDataCard = ({ model }: { model: ModelSchema }) => {
 
       <Loading loading={isLoading} fixed={false} />
       {editInputData !== undefined && (
-        <InputModel
-          modelId={model._id}
+        <InputModal
+          modelId={modelId}
           defaultValues={editInputData}
           onClose={() => setEditInputData(undefined)}
           onSuccess={refetchData}
         />
       )}
       {isOpenSelectFileModal && (
-        <SelectFileModel
-          modelId={model._id}
+        <SelectFileModal
+          modelId={modelId}
           onClose={onCloseSelectFileModal}
           onSuccess={refetchData}
         />
       )}
-      {isOpenSelectUrlModal && (
-        <SelectUrlModel
-          modelId={model._id}
-          onClose={onCloseSelectUrlModal}
-          onSuccess={refetchData}
-        />
-      )}
       {isOpenSelectCsvModal && (
-        <SelectCsvModal
-          modelId={model._id}
-          onClose={onCloseSelectCsvModal}
-          onSuccess={refetchData}
-        />
+        <SelectCsvModal modelId={modelId} onClose={onCloseSelectCsvModal} onSuccess={refetchData} />
       )}
     </>
   );

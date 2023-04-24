@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from './request';
-import type { ModelSchema, ModelDataSchema, ModelSplitDataSchema } from '@/types/mongoSchema';
+import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
 import { ModelUpdateParams } from '@/types/model';
 import { TrainingItemType } from '../types/training';
 import { RequestPaging } from '../types/index';

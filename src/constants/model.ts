@@ -1,4 +1,4 @@
-import type { ModelDataType, ModelSchema } from '@/types/mongoSchema';
+import type { ModelSchema } from '@/types/mongoSchema';
 
 export enum ModelDataStatusEnum {
   ready = 'ready',
@@ -120,7 +120,7 @@ export const ModelVectorSearchModeMap: Record<
 export const defaultModel: ModelSchema = {
   _id: '',
   userId: '',
-  name: '',
+  name: 'modelName',
   avatar: '',
   status: ModelStatusEnum.pending,
   updateTime: Date.now(),
