@@ -3,15 +3,14 @@ import { connectToDatabase, Model } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/auth';
 import { authOpenApiKey } from '@/service/utils/tools';
 import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
 import {
-  ChatModelNameEnum,
+  ModelNameEnum,
   modelList,
-  ChatModelNameMap,
-  ModelVectorSearchModeMap
+  ModelVectorSearchModeMap,
+  ChatModelEnum
 } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { openaiCreateEmbedding, gpt35StreamResponse } from '@/service/utils/openai';
@@ -60,9 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('找不到模型');
     }
 
-    const modelConstantsData = modelList.find(
-      (item) => item.model === ChatModelNameEnum.VECTOR_GPT
-    );
+    const modelConstantsData = modelList.find((item) => item.model === ModelNameEnum.VECTOR_GPT);
     if (!modelConstantsData) {
       throw new Error('模型已下架');
     }
@@ -74,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 请求一次 chatgpt 拆解需求
     const promptResponse = await chatAPI.createChatCompletion(
       {
-        model: ChatModelNameMap[ChatModelNameEnum.GPT35],
+        model: ChatModelEnum.GPT35,
         temperature: 0,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
@@ -122,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ]
       },
       {
-        timeout: 120000,
+        timeout: 180000,
         httpsAgent: httpsAgent(true)
       }
     );
@@ -163,30 +160,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const formatRedisPrompt: string[] = vectorSearch.rows.map((item) => `${item.q}\n${item.a}`);
 
-    // textArr 筛选，最多 2500 tokens
-    const systemPrompt = systemPromptFilter(formatRedisPrompt, 2500);
+    // system 筛选，最多 2500 tokens
+    const systemPrompt = systemPromptFilter({
+      model: model.service.chatModel,
+      prompts: formatRedisPrompt,
+      maxTokens: 2500
+    });
 
     prompts.unshift({
       obj: 'SYSTEM',
       value: `${model.systemPrompt} 知识库是最新的,下面是知识库内容:${systemPrompt}`
     });
 
-    // 控制在 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
+    // 控制上下文 tokens 数量，防止超出
+    const filterPrompts = openaiChatFilter({
+      model: model.service.chatModel,
+      prompts,
+      maxTokens: modelConstantsData.contextMaxToken - 500
+    });
 
-    // 格式化文本内容成 chatgpt 格式
-    const map = {
-      Human: ChatCompletionRequestMessageRoleEnum.User,
-      AI: ChatCompletionRequestMessageRoleEnum.Assistant,
-      SYSTEM: ChatCompletionRequestMessageRoleEnum.System
-    };
-    const formatPrompts: ChatCompletionRequestMessage[] = filterPrompts.map(
-      (item: ChatItemType) => ({
-        role: map[item.obj],
-        content: item.value
-      })
-    );
-    // console.log(formatPrompts);
+    // console.log(filterPrompts);
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
 
@@ -195,13 +188,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         model: model.service.chatModel,
         temperature,
-        messages: formatPrompts,
+        messages: filterPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
         stream: isStream
       },
       {
-        timeout: 120000,
+        timeout: 180000,
         responseType: isStream ? 'stream' : 'json',
         httpsAgent: httpsAgent(true)
       }
@@ -228,13 +221,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('laf gpt done. time:', `${(Date.now() - startTime) / 1000}s`);
 
-    const promptsContent = formatPrompts.map((item) => item.content).join('');
-
     pushChatBill({
       isPay: true,
       modelName: model.service.modelName,
       userId,
-      text: promptsContent + responseContent
+      messages: filterPrompts.concat({ role: 'assistant', content: responseContent })
     });
   } catch (err: any) {
     if (step === 1) {

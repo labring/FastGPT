@@ -3,14 +3,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { ModelStatusEnum, modelList, ChatModelNameEnum, ChatModelNameMap } from '@/constants/model';
+import { ModelStatusEnum, modelList, ModelNameEnum, Model2ChatModelMap } from '@/constants/model';
 import { Model } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { name, serviceModelName } = req.body as {
       name: string;
-      serviceModelName: `${ChatModelNameEnum}`;
+      serviceModelName: `${ModelNameEnum}`;
     };
     const { authorization } = req.headers;
 
@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       status: ModelStatusEnum.running,
       service: {
         trainId: '',
-        chatModel: ChatModelNameMap[modelItem.model], // 聊天时用的模型
+        chatModel: Model2ChatModelMap[modelItem.model], // 聊天时用的模型
         modelName: modelItem.model // 最底层的模型，不会变，用于计费等核心操作
       }
     });

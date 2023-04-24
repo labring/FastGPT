@@ -33,7 +33,6 @@ specifiers:
   eventsource-parser: ^0.1.0
   formidable: ^2.1.1
   framer-motion: ^9.0.6
-  gpt-token-utils: ^1.2.0
   graphemer: ^1.4.0
   husky: ^8.0.3
   hyperdown: ^2.4.29
@@ -86,7 +85,6 @@ dependencies:
   eventsource-parser: registry.npmmirror.com/eventsource-parser/0.1.0
   formidable: registry.npmmirror.com/formidable/2.1.1
   framer-motion: registry.npmmirror.com/framer-motion/9.0.6_biqbaboplfbrettd7655fr4n2y
-  gpt-token-utils: registry.npmmirror.com/gpt-token-utils/1.2.0
   graphemer: registry.npmmirror.com/graphemer/1.4.0
   hyperdown: registry.npmmirror.com/hyperdown/2.4.29
   immer: registry.npmmirror.com/immer/9.0.19
@@ -7667,12 +7665,6 @@ packages:
     dependencies:
       get-intrinsic: registry.npmmirror.com/get-intrinsic/1.2.0
     dev: true
-
-  registry.npmmirror.com/gpt-token-utils/1.2.0:
-    resolution: {integrity: sha512-s8twaU38UE2Vp65JhQEjz8qvWhWY8KZYvmvYHapxlPT03Ok35Clq+gm9eE27wQILdFisseMVRSiC5lJR9GBklA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/gpt-token-utils/-/gpt-token-utils-1.2.0.tgz}
-    name: gpt-token-utils
-    version: 1.2.0
-    dev: false
 
   registry.npmmirror.com/graceful-fs/4.2.10:
     resolution: {integrity: sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/graceful-fs/-/graceful-fs-4.2.10.tgz}

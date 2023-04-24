@@ -2,8 +2,9 @@ import type { ChatItemType } from './chat';
 import {
   ModelStatusEnum,
   TrainingStatusEnum,
-  ChatModelNameEnum,
-  ModelVectorSearchModeEnum
+  ModelNameEnum,
+  ModelVectorSearchModeEnum,
+  ChatModelEnum
 } from '@/constants/model';
 import type { DataType } from './data';
 
@@ -45,8 +46,8 @@ export interface ModelSchema {
   };
   service: {
     trainId: string; // 训练的模型，训练后就是训练的模型id
-    chatModel: string; // 聊天时用的模型，训练后就是训练的模型
-    modelName: `${ChatModelNameEnum}`; // 底层模型名称，不会变
+    chatModel: `${ChatModelEnum}`; // 聊天时用的模型，训练后就是训练的模型
+    modelName: `${ModelNameEnum}`; // 底层模型名称，不会变
   };
   security: {
     domain: string[];

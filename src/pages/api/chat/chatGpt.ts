@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/auth';
 import { httpsAgent, openaiChatFilter } from '@/service/utils/tools';
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
@@ -64,42 +63,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 控制在 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter(prompts, modelConstantsData.contextMaxToken);
-
-    // 格式化文本内容成 chatgpt 格式
-    const map = {
-      Human: ChatCompletionRequestMessageRoleEnum.User,
-      AI: ChatCompletionRequestMessageRoleEnum.Assistant,
-      SYSTEM: ChatCompletionRequestMessageRoleEnum.System
-    };
-    const formatPrompts: ChatCompletionRequestMessage[] = filterPrompts.map(
-      (item: ChatItemType) => ({
-        role: map[item.obj],
-        content: item.value
-      })
-    );
+    const filterPrompts = openaiChatFilter({
+      model: model.service.chatModel,
+      prompts,
+      maxTokens: modelConstantsData.contextMaxToken - 500
+    });
 
     // 计算温度
     const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
-    // console.log({
-    //   model: model.service.chatModel,
-    //   temperature: temperature,
-    //   // max_tokens: modelConstantsData.maxToken,
-    //   messages: formatPrompts,
-    //   frequency_penalty: 0.5, // 越大，重复内容越少
-    //   presence_penalty: -0.5, // 越大，越容易出现新内容
-    //   stream: true,
-    //   stop: ['.!?。']
-    // });
+    // console.log(filterPrompts);
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(userApiKey || systemKey);
     // 发出请求
     const chatResponse = await chatAPI.createChatCompletion(
       {
         model: model.service.chatModel,
-        temperature: temperature,
-        // max_tokens: modelConstantsData.maxToken,
-        messages: formatPrompts,
+        temperature,
+        messages: filterPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
         stream: true,
@@ -121,7 +101,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stream,
       chatResponse
     });
-    const promptsContent = formatPrompts.map((item) => item.content).join('');
 
     // 只有使用平台的 key 才计费
     pushChatBill({
@@ -129,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       modelName: model.service.modelName,
       userId,
       chatId,
-      text: promptsContent + responseContent
+      messages: filterPrompts.concat({ role: 'assistant', content: responseContent })
     });
   } catch (err: any) {
     if (step === 1) {

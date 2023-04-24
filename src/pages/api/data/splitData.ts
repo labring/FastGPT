@@ -4,7 +4,7 @@ import { connectToDatabase, DataItem, Data } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { generateQA } from '@/service/events/generateQA';
 import { generateAbstract } from '@/service/events/generateAbstract';
-import { encode } from 'gpt-token-utils';
+import { countChatTokens } from '@/utils/tools';
 
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     chunks.forEach((chunk) => {
       splitText += chunk;
-      const tokens = encode(splitText).length;
+      const tokens = countChatTokens({ messages: [{ role: 'system', content: splitText }] });
       if (tokens >= 780) {
         dataItems.push({
           userId,
