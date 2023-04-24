@@ -144,7 +144,8 @@ ${
         messages: filterPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: true
+        stream: true,
+        stop: ['.!?。']
       },
       {
         timeout: 40000,

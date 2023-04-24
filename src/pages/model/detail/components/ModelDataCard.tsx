@@ -93,9 +93,15 @@ const ModelDataCard = ({ modelId }: { modelId: string }) => {
     (num = 1) => {
       getData(num);
       refetch();
+      return null;
     },
     [getData, refetch]
   );
+
+  useQuery(['refetchData'], () => refetchData(pageNum), {
+    refetchInterval: 5000,
+    enabled: splitDataLen > 0
+  });
 
   // 获取所有的数据，并导出 json
   const { mutate: onclickExport, isLoading: isLoadingExport = false } = useMutation({
@@ -170,7 +176,7 @@ const ModelDataCard = ({ modelId }: { modelId: string }) => {
         </Menu>
       </Flex>
       <Flex mt={4}>
-        {splitDataLen > 0 && <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分...</Box>}
+        {splitDataLen > 0 && <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分，请耐心等待...</Box>}
         <Box flex={1} />
         <Input
           maxW={'240px'}
