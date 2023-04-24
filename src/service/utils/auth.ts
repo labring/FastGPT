@@ -4,6 +4,7 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { authToken } from './tools';
 import { getOpenApiKey } from './openai';
 import type { ChatItemType } from '@/types/chat';
+import mongoose from 'mongoose';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({
@@ -47,14 +48,17 @@ export const authChat = async ({
 
   if (chatId) {
     // 获取 chat 数据
-    const chat = await Chat.findById(chatId);
-
-    if (!chat) {
-      return Promise.reject('对话不存在');
-    }
-
-    // filter 掉被 deleted 的内容
-    content = chat.content.filter((item) => item.deleted !== true);
+    content = await Chat.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(chatId) } },
+      { $unwind: '$content' },
+      { $match: { 'content.deleted': false } },
+      {
+        $project: {
+          obj: '$content.obj',
+          value: '$content.value'
+        }
+      }
+    ]);
   }
 
   // 获取 user 的 apiKey

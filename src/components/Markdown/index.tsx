@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
@@ -14,7 +14,6 @@ import { codeLight } from './codeLight';
 
 const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
   const { copyData } = useCopyData();
-  const formatSource = useMemo(() => source, [source]);
 
   return (
     <ReactMarkdown
@@ -63,7 +62,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
       }}
       linkTarget="_blank"
     >
-      {formatSource}
+      {source}
     </ReactMarkdown>
   );
 };

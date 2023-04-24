@@ -1,5 +1,5 @@
 import { GET, POST, DELETE } from './request';
-import type { ChatItemType, ChatSiteItemType } from '@/types/chat';
+import type { ChatItemType } from '@/types/chat';
 import type { InitChatResponse } from './response/chat';
 
 /**
@@ -7,24 +7,6 @@ import type { InitChatResponse } from './response/chat';
  */
 export const getInitChatSiteInfo = (modelId: string, chatId: '' | string) =>
   GET<InitChatResponse>(`/chat/init?modelId=${modelId}&chatId=${chatId}`);
-
-/**
- * 发送 GPT3 prompt
- */
-export const postGPT3SendPrompt = ({
-  chatId,
-  prompt
-}: {
-  prompt: ChatSiteItemType[];
-  chatId: string;
-}) =>
-  POST<string>(`/chat/gpt3`, {
-    chatId,
-    prompt: prompt.map((item) => ({
-      obj: item.obj,
-      value: item.value
-    }))
-  });
 
 /**
  * 获取历史记录
