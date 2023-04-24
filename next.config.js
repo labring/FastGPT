@@ -2,7 +2,7 @@
 
 const nextConfig = {
   output: 'standalone',
-  reactStrictMode: true,
+  reactStrictMode: false,
   compress: true,
 
   webpack(config) {

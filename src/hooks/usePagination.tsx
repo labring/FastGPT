@@ -41,10 +41,6 @@ export const usePagination = <T = any,>({
     }
   });
 
-  useEffect(() => {
-    mutate(1);
-  }, []);
-
   const Pagination = useCallback(() => {
     return (
       <Flex alignItems={'center'} justifyContent={'end'}>
@@ -92,6 +88,10 @@ export const usePagination = <T = any,>({
       </Flex>
     );
   }, [maxPage, mutate, pageNum]);
+
+  useEffect(() => {
+    mutate(1);
+  }, [mutate]);
 
   return {
     pageNum,
