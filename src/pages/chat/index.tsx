@@ -21,7 +21,7 @@ import {
 import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
-import { ChatModelNameEnum } from '@/constants/model';
+import { ModelNameEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { useCopyData } from '@/utils/tools';
@@ -178,8 +178,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const gptChatPrompt = useCallback(
     async (prompts: ChatSiteItemType) => {
       const urlMap: Record<string, string> = {
-        [ChatModelNameEnum.GPT35]: '/api/chat/chatGpt',
-        [ChatModelNameEnum.VECTOR_GPT]: '/api/chat/vectorGpt'
+        [ModelNameEnum.GPT35]: '/api/chat/chatGpt',
+        [ModelNameEnum.VECTOR_GPT]: '/api/chat/vectorGpt'
       };
 
       if (!urlMap[chatData.modelName]) return Promise.reject('找不到模型');

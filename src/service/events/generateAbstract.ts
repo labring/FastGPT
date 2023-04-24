@@ -4,7 +4,7 @@ import { httpsAgent } from '@/service/utils/tools';
 import { getOpenApiKey } from '../utils/openai';
 import type { ChatCompletionRequestMessage } from 'openai';
 import { DataItemSchema } from '@/types/mongoSchema';
-import { ChatModelNameEnum } from '@/constants/model';
+import { ChatModelEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 
 export async function generateAbstract(next = false): Promise<any> {
@@ -68,7 +68,7 @@ export async function generateAbstract(next = false): Promise<any> {
     // 请求 chatgpt 获取摘要
     const abstractResponse = await chatAPI.createChatCompletion(
       {
-        model: ChatModelNameEnum.GPT35,
+        model: ChatModelEnum.GPT35,
         temperature: 0.8,
         n: 1,
         messages: [

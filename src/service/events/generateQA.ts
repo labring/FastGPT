@@ -3,7 +3,7 @@ import { getOpenAIApi } from '@/service/utils/auth';
 import { httpsAgent } from '@/service/utils/tools';
 import { getOpenApiKey } from '../utils/openai';
 import type { ChatCompletionRequestMessage } from 'openai';
-import { ChatModelNameEnum } from '@/constants/model';
+import { ChatModelEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 import { generateVector } from './generateVector';
 import { openaiError2 } from '../errorCode';
@@ -84,7 +84,7 @@ A2:
         chatAPI
           .createChatCompletion(
             {
-              model: ChatModelNameEnum.GPT35,
+              model: ChatModelEnum.GPT35,
               temperature: 0.8,
               n: 1,
               messages: [

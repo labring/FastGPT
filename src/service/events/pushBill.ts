@@ -1,27 +1,34 @@
 import { connectToDatabase, Bill, User } from '../mongo';
-import { modelList, ChatModelNameEnum } from '@/constants/model';
-import { encode } from 'gpt-token-utils';
+import {
+  modelList,
+  ChatModelEnum,
+  ModelNameEnum,
+  Model2ChatModelMap,
+  embeddingModel
+} from '@/constants/model';
 import { BillTypeEnum } from '@/constants/user';
 import type { DataType } from '@/types/data';
+import { countChatTokens } from '@/utils/tools';
 
 export const pushChatBill = async ({
   isPay,
   modelName,
   userId,
   chatId,
-  text
+  messages
 }: {
   isPay: boolean;
-  modelName: string;
+  modelName: `${ModelNameEnum}`;
   userId: string;
   chatId?: '' | string;
-  text: string;
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
 }) => {
-  let billId;
+  let billId = '';
 
   try {
     // 计算 token 数量
-    const tokens = Math.floor(encode(text).length * 0.75);
+    const tokens = countChatTokens({ model: Model2ChatModelMap[modelName] as any, messages });
+    const text = messages.map((item) => item.content).join('');
 
     console.log(
       `chat generate success. text len: ${text.length}. token len: ${tokens}. pay:${isPay}`
@@ -88,7 +95,7 @@ export const pushSplitDataBill = async ({
     if (isPay) {
       try {
         // 获取模型单价格, 都是用 gpt35 拆分
-        const modelItem = modelList.find((item) => item.model === ChatModelNameEnum.GPT35);
+        const modelItem = modelList.find((item) => item.model === ChatModelEnum.GPT35);
         const unitPrice = modelItem?.price || 3;
         // 计算价格
         const price = unitPrice * tokenLen;
@@ -97,7 +104,7 @@ export const pushSplitDataBill = async ({
         const res = await Bill.create({
           userId,
           type,
-          modelName: ChatModelNameEnum.GPT35,
+          modelName: ChatModelEnum.GPT35,
           textLen: text.length,
           tokenLen,
           price
@@ -149,7 +156,7 @@ export const pushGenerateVectorBill = async ({
         const res = await Bill.create({
           userId,
           type: BillTypeEnum.vector,
-          modelName: ChatModelNameEnum.VECTOR,
+          modelName: embeddingModel,
           textLen: text.length,
           tokenLen,
           price
