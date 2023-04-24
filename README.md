@@ -14,6 +14,7 @@ AXIOS_PROXY_HOST=127.0.0.1
 AXIOS_PROXY_PORT_FAST=7890
 AXIOS_PROXY_PORT_NORMAL=7890
 queueTask=1
+parentUrl=https://hostname/api/openapi/startEvents
 # email，参考 nodeMail 获取参数
 MY_MAIL=xxx@qq.com
 MAILE_CODE=xxx
@@ -196,7 +197,7 @@ services:
       - TOKEN_KEY=xxxx 
       # 是否开启队列任务。 1-开启，0-关闭（请求parentUrl去执行任务,单机时直接填1）
       - queueTask=1
-      - parentUrl=https://fastgpt.run/api/openapi/startEvents
+      - parentUrl=https://hostname/api/openapi/startEvents
       # db
       - MONGODB_URI=mongodb://username:passsword@0.0.0.0:27017/?authSource=admin
       - MONGODB_NAME=xxx

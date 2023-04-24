@@ -14,7 +14,6 @@ import {
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
-import { encode } from 'gpt-token-utils';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
@@ -22,6 +21,7 @@ import { postModelDataSplitData } from '@/api/model';
 import { formatPrice } from '@/utils/user';
 import Radio from '@/components/Radio';
 import { splitText } from '@/utils/file';
+import { countChatTokens } from '@/utils/tools';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
@@ -29,11 +29,11 @@ const modeMap = {
   qa: {
     maxLen: 2800,
     slideLen: 800,
-    price: 3,
+    price: 4,
     isPrompt: true
   },
   subsection: {
-    maxLen: 1000,
+    maxLen: 800,
     slideLen: 300,
     price: 0.4,
     isPrompt: false
@@ -55,19 +55,19 @@ const SelectFileModal = ({
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
   const [mode, setMode] = useState<'qa' | 'subsection'>('qa');
   const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
+  const [splitRes, setSplitRes] = useState<{ tokens: number; chunks: string[] }>({
+    tokens: 0,
+    chunks: []
+  });
   const { openConfirm, ConfirmChild } = useConfirm({
-    content: '确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，任务讲被终止。'
+    content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被直接清除。一共 ${
+      splitRes.chunks.length
+    } 组，大约 ${splitRes.tokens} 个tokens, 约 ${formatPrice(
+      splitRes.tokens * modeMap[mode].price
+    )} 元`
   });
 
-  const fileText = useMemo(() => {
-    const chunks = fileTextArr.map((item) =>
-      splitText({
-        text: item,
-        ...modeMap[mode]
-      })
-    );
-    return chunks.join('');
-  }, [fileTextArr, mode]);
+  const fileText = useMemo(() => fileTextArr.join(''), [fileTextArr]);
 
   const onSelectFile = useCallback(
     async (e: File[]) => {
@@ -106,18 +106,11 @@ const SelectFileModal = ({
 
   const { mutate, isLoading } = useMutation({
     mutationFn: async () => {
-      if (!fileText) return;
-      const chunks = fileTextArr
-        .map((item) =>
-          splitText({
-            text: item,
-            ...modeMap[mode]
-          })
-        )
-        .flat();
+      if (splitRes.chunks.length === 0) return;
+
       await postModelDataSplitData({
         modelId,
-        chunks,
+        chunks: splitRes.chunks,
         prompt: `下面是"${prompt || '一段长文本'}"`,
         mode
       });
@@ -136,6 +129,28 @@ const SelectFileModal = ({
     }
   });
 
+  const onclickImport = useCallback(() => {
+    const chunks = fileTextArr
+      .map((item) =>
+        splitText({
+          text: item,
+          ...modeMap[mode]
+        })
+      )
+      .flat();
+    // count tokens
+    const tokens = chunks.map((item) =>
+      countChatTokens({ messages: [{ role: 'system', content: item }] })
+    );
+
+    setSplitRes({
+      tokens: tokens.reduce((sum, item) => sum + item, 0),
+      chunks
+    });
+
+    openConfirm(mutate)();
+  }, [fileTextArr, mode, mutate, openConfirm]);
+
   return (
     <Modal isOpen={true} onClose={onClose} isCentered>
       <ModalOverlay />
@@ -152,10 +167,9 @@ const SelectFileModal = ({
           justifyContent={'center'}
           fontSize={'sm'}
         >
-          <Box mt={2} px={4} maxW={['100%']} textAlign={'justify'} color={'blackAlpha.600'}>
+          <Box mt={2} px={5} maxW={['100%', '70%']} textAlign={'justify'} color={'blackAlpha.600'}>
             支持 {fileExtension} 文件。模型会自动对文本进行 QA 拆分，需要较长训练时间，拆分需要消耗
-            tokens，账号余额不足时，未拆分的数据会被删除。当前一共 {encode(fileText).length}{' '}
-            个tokens，大约 {formatPrice(encode(fileText).length * modeMap[mode].price)}元
+            tokens，账号余额不足时，未拆分的数据会被删除。
           </Box>
           {/* 拆分模式 */}
           <Flex w={'100%'} px={5} alignItems={'center'} mt={4}>
@@ -217,7 +231,7 @@ const SelectFileModal = ({
           <Button variant={'outline'} colorScheme={'gray'} mr={3} onClick={onClose}>
             取消
           </Button>
-          <Button isLoading={isLoading} isDisabled={fileText === ''} onClick={openConfirm(mutate)}>
+          <Button isLoading={isLoading} isDisabled={fileText === ''} onClick={onclickImport}>
             确认导入
           </Button>
         </Flex>
