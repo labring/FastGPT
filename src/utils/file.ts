@@ -1,6 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { encode } from 'gpt-token-utils';
+import { countChatTokens } from './tools';
 
 /**
  * 读取 txt 文件内容
@@ -164,7 +164,7 @@ export const splitText = ({
   const chunks: { sum: number; arr: string[] }[] = [{ sum: 0, arr: [] }];
 
   for (let i = 0; i < textArr.length; i++) {
-    const tokenLen = encode(textArr[i]).length;
+    const tokenLen = countChatTokens({ messages: [{ role: 'system', content: textArr[i] }] });
     chunks[chunks.length - 1].sum += tokenLen;
     chunks[chunks.length - 1].arr.push(textArr[i]);
 
@@ -174,7 +174,7 @@ export const splitText = ({
       const chunk: { sum: number; arr: string[] } = { sum: 0, arr: [] };
       for (let j = chunks[chunks.length - 1].arr.length - 1; j >= 0; j--) {
         const chunkText = chunks[chunks.length - 1].arr[j];
-        const tokenLen = encode(chunkText).length;
+        const tokenLen = countChatTokens({ messages: [{ role: 'system', content: chunkText }] });
         chunk.sum += tokenLen;
         chunk.arr.unshift(chunkText);
 
@@ -185,7 +185,6 @@ export const splitText = ({
       chunks.push(chunk);
     }
   }
-
   const result = chunks.map((item) => item.arr.join(''));
   return result;
 };

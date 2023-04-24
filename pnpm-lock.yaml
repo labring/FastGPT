@@ -7,6 +7,7 @@ specifiers:
   '@chakra-ui/icons': ^2.0.17
   '@chakra-ui/react': ^2.5.1
   '@chakra-ui/system': ^2.5.5
+  '@dqbd/tiktoken': ^1.0.6
   '@emotion/react': ^11.10.6
   '@emotion/styled': ^11.10.6
   '@next/font': 13.1.6
@@ -33,6 +34,7 @@ specifiers:
   formidable: ^2.1.1
   framer-motion: ^9.0.6
   gpt-token-utils: ^1.2.0
+  graphemer: ^1.4.0
   husky: ^8.0.3
   hyperdown: ^2.4.29
   immer: ^9.0.19
@@ -72,6 +74,7 @@ dependencies:
   '@chakra-ui/icons': registry.npmmirror.com/@chakra-ui/icons/2.0.17_lze4h7kxffpjhokvtqbtrlfkmq
   '@chakra-ui/react': registry.npmmirror.com/@chakra-ui/react/2.5.1_e6pzu3hsaqmql4fl7jx73ckiym
   '@chakra-ui/system': registry.npmmirror.com/@chakra-ui/system/2.5.5_xqp3pgpqjlfxxa3zxu4zoc4fba
+  '@dqbd/tiktoken': registry.npmmirror.com/@dqbd/tiktoken/1.0.6
   '@emotion/react': registry.npmmirror.com/@emotion/react/11.10.6_pmekkgnqduwlme35zpnqhenc34
   '@emotion/styled': registry.npmmirror.com/@emotion/styled/11.10.6_oouaibmszuch5k64ms7uxp2aia
   '@next/font': registry.npmmirror.com/@next/font/13.1.6
@@ -84,6 +87,7 @@ dependencies:
   formidable: registry.npmmirror.com/formidable/2.1.1
   framer-motion: registry.npmmirror.com/framer-motion/9.0.6_biqbaboplfbrettd7655fr4n2y
   gpt-token-utils: registry.npmmirror.com/gpt-token-utils/1.2.0
+  graphemer: registry.npmmirror.com/graphemer/1.4.0
   hyperdown: registry.npmmirror.com/hyperdown/2.4.29
   immer: registry.npmmirror.com/immer/9.0.19
   jsonwebtoken: registry.npmmirror.com/jsonwebtoken/9.0.0
@@ -4176,6 +4180,12 @@ packages:
       react: registry.npmmirror.com/react/18.2.0
     dev: false
 
+  registry.npmmirror.com/@dqbd/tiktoken/1.0.6:
+    resolution: {integrity: sha512-umSdeZTy/SbPPKVuZKV/XKyFPmXSN145CcM3iHjBbmhlohBJg7vaDp4cPCW+xNlWL6L2U1sp7T2BD+di2sUKdA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@dqbd/tiktoken/-/tiktoken-1.0.6.tgz}
+    name: '@dqbd/tiktoken'
+    version: 1.0.6
+    dev: false
+
   registry.npmmirror.com/@emotion/babel-plugin/11.10.6:
     resolution: {integrity: sha512-p2dAqtVrkhSa7xz1u/m9eHYdLi+en8NowrmXeF/dKtJpU8lCWli8RUAati7NcSl0afsBott48pdnANuD0wh9QQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@emotion/babel-plugin/-/babel-plugin-11.10.6.tgz}
     name: '@emotion/babel-plugin'
@@ -7674,6 +7684,12 @@ packages:
     name: grapheme-splitter
     version: 1.0.4
     dev: true
+
+  registry.npmmirror.com/graphemer/1.4.0:
+    resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/graphemer/-/graphemer-1.4.0.tgz}
+    name: graphemer
+    version: 1.4.0
+    dev: false
 
   registry.npmmirror.com/has-bigints/1.0.2:
     resolution: {integrity: sha512-tSvCKtBr9lkF0Ex0aQiP9N+OpV4zi2r/Nee5VkRDbaqv35RLYMzbwQfFSZZH0kR+Rd6302UJZ2p/bJCEoR3VoQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/has-bigints/-/has-bigints-1.0.2.tgz}

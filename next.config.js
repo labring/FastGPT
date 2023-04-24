@@ -4,7 +4,12 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   compress: true,
+
   webpack(config) {
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true
+    };
     config.module.rules = config.module.rules.concat([
       {
         test: /\.svg$/i,
