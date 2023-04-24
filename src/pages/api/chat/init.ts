@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Chat, Model } from '@/service/mongo';
+import { connectToDatabase, Chat } from '@/service/mongo';
 import type { InitChatResponse } from '@/api/response/chat';
 import { authToken } from '@/service/utils/tools';
 import { ChatItemType } from '@/types/chat';
 import { authModel } from '@/service/utils/auth';
+import mongoose from 'mongoose';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,19 +28,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let history: ChatItemType[] = [];
 
     if (chatId) {
-      // 获取 chat 数据
-      const chat = await Chat.findOne({
-        _id: chatId,
-        userId,
-        modelId
-      });
+      // 获取 chat.content 数据
+      history = await Chat.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(chatId) } },
+        { $unwind: '$content' },
+        { $match: { 'content.deleted': false } },
+        { $sort: { 'content._id': -1 } },
+        { $limit: 50 },
+        {
+          $project: {
+            id: '$content._id',
+            obj: '$content.obj',
+            value: '$content.value'
+          }
+        }
+      ]);
 
-      if (!chat) {
-        throw new Error('聊天框不存在');
-      }
-
-      // filter 被 deleted 的内容
-      history = chat.content.filter((item) => item.deleted !== true);
+      history.reverse();
     }
 
     jsonRes<InitChatResponse>(res, {

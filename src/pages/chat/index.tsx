@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { getInitChatSiteInfo, delChatRecordByIndex, postSaveChat } from '@/api/chat';
 import type { InitChatResponse } from '@/api/response/chat';
-import { ChatSiteItemType } from '@/types/chat';
+import type { ChatItemType } from '@/types/chat';
 import {
   Textarea,
   Box,
@@ -29,12 +29,19 @@ import { streamFetch } from '@/api/fetch';
 import Icon from '@/components/Icon';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 5);
 
 const SlideBar = dynamic(() => import('./components/SlideBar'));
 const Empty = dynamic(() => import('./components/Empty'));
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
 const textareaMinH = '22px';
+
+export type ChatSiteItemType = {
+  id: string;
+  status: 'loading' | 'finish';
+} & ChatItemType;
 
 interface ChatType extends InitChatResponse {
   history: ChatSiteItemType[];
@@ -123,10 +130,13 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       isLoading && setLoading(true);
       try {
         const res = await getInitChatSiteInfo(modelId, chatId);
+
         setChatData({
           ...res,
-          history: res.history.map((item) => ({
-            ...item,
+          history: res.history.map((item: any, i) => ({
+            obj: item.obj,
+            value: item.value,
+            id: item.id || `${nanoid()}-${i}`,
             status: 'finish'
           }))
         });
@@ -284,11 +294,13 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     const newChatList: ChatSiteItemType[] = [
       ...chatData.history,
       {
+        id: nanoid(),
         obj: 'Human',
         value: val,
         status: 'finish'
       },
       {
+        id: nanoid(),
         obj: 'AI',
         value: '',
         status: 'loading'
@@ -432,7 +444,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         <Box ref={ChatBox} pb={[4, 0]} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
           {chatData.history.map((item, index) => (
             <Box
-              key={index}
+              key={item.id}
               py={media(9, 6)}
               px={media(4, 2)}
               backgroundColor={
