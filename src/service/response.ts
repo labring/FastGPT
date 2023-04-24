@@ -32,6 +32,8 @@ export const jsonRes = <T = any>(
       msg = error;
     } else if (proxyError[error?.code]) {
       msg = '服务器代理出错';
+    } else if (error?.response?.data?.error?.message) {
+      msg = error?.response?.data?.error?.message;
     } else if (openaiError2[error?.response?.data?.error?.type]) {
       msg = openaiError2[error?.response?.data?.error?.type];
     } else if (openaiError[error?.response?.statusText]) {
