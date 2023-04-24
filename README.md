@@ -41,7 +41,7 @@ PG_DB_NAME=xxx
 pnpm dev
 ```
 
-## 部署
+## docker 部署
 
 ### 安装 docker 和 docker-compose
 这个不同系统略有区别，百度安装下。验证安装成功后进行下一步。下面给出一个例子：
@@ -272,3 +272,8 @@ done
 
 ## Mac 可能的问题
 > 因为教程有部分镜像不兼容arm64，所以写个文档指导新手如何快速在mac上面搭建fast-gpt[如何在mac上面部署fastgpt](./docs/mac.md)
+
+## Git Action 配置
+1. 创建账号 session: 头像 -> settings -> 最底部 Developer settings ->  Personal access tokens -> tokens(classic) -> 创建新 session，把一些看起来需要的权限勾上。
+2. 添加 session 到仓库: 仓库 -> settings -> Secrets and variables -> Actions -> 创建secret
+3. 填写 secret: Name-GH_PAT, Secret-第一步的tokens 
