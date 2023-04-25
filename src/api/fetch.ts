@@ -6,7 +6,7 @@ interface StreamFetchProps {
   abortSignal: AbortController;
 }
 export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchProps) =>
-  new Promise(async (resolve, reject) => {
+  new Promise<string>(async (resolve, reject) => {
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -23,26 +23,30 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
       let responseText = '';
 
       const read = async () => {
-        const { done, value } = await reader?.read();
-        if (done) {
-          if (res.status === 200) {
-            resolve(responseText);
-          } else {
-            try {
+        try {
+          const { done, value } = await reader?.read();
+          if (done) {
+            if (res.status === 200) {
+              resolve(responseText);
+            } else {
               const parseError = JSON.parse(responseText);
               reject(parseError?.message || '请求异常');
-            } catch (err) {
-              reject('请求异常');
             }
-          }
 
-          return;
+            return;
+          }
+          const text = decoder.decode(value).replace(/<br\/>/g, '\n');
+          res.status === 200 && onMessage(text);
+          responseText += text;
+          read();
+        } catch (err: any) {
+          if (err?.message === 'The user aborted a request.') {
+            return resolve(responseText);
+          }
+          reject(typeof err === 'string' ? err : err?.message || '请求异常');
         }
-        const text = decoder.decode(value).replace(/<br\/>/g, '\n');
-        res.status === 200 && onMessage(text);
-        responseText += text;
-        read();
       };
+
       read();
     } catch (err: any) {
       console.log(err, '====');
