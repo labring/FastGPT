@@ -31,21 +31,11 @@ export async function connectToDatabase(): Promise<void> {
   generateVector(true);
 
   // 创建代理对象
-  if (
-    process.env.AXIOS_PROXY_HOST &&
-    process.env.AXIOS_PROXY_PORT_FAST &&
-    process.env.AXIOS_PROXY_PORT_NORMAL
-  ) {
-    global.httpsAgentFast = tunnel.httpsOverHttp({
+  if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {
+    global.httpsAgent = tunnel.httpsOverHttp({
       proxy: {
         host: process.env.AXIOS_PROXY_HOST,
-        port: +process.env.AXIOS_PROXY_PORT_FAST
-      }
-    });
-    global.httpsAgentNormal = tunnel.httpsOverHttp({
-      proxy: {
-        host: process.env.AXIOS_PROXY_HOST,
-        port: +process.env.AXIOS_PROXY_PORT_NORMAL
+        port: +process.env.AXIOS_PROXY_PORT
       }
     });
   }

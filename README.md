@@ -11,8 +11,10 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 ```bash
 # proxy（不需要代理可忽略）
 AXIOS_PROXY_HOST=127.0.0.1
-AXIOS_PROXY_PORT_FAST=7890
-AXIOS_PROXY_PORT_NORMAL=7890
+AXIOS_PROXY_PORT=7890
+# 中转方案，修改 openai 的 base url
+OPENAI_BASE_URL=https://api.openai.com/v1
+# 是否开启队列任务。 1-开启，0-关闭（请求parentUrl去执行任务,单机时直接填1）
 queueTask=1
 parentUrl=https://hostname/api/openapi/startEvents
 # email，参考 nodeMail 获取参数
@@ -181,24 +183,17 @@ services:
     restart: always
     container_name: fast-gpt
     environment:
-      # 代理（不需要代理，可去掉下面三个参数）
       - AXIOS_PROXY_HOST=127.0.0.1
-      - AXIOS_PROXY_PORT_FAST=7890
-      - AXIOS_PROXY_PORT_NORMAL=7890
-      # 邮箱
+      - AXIOS_PROXY_PORT=7890
       - MY_MAIL=xxxx@qq.com  
       - MAILE_CODE=xxxx
-      # 阿里云短信
       - aliAccessKeyId=xxxx 
       - aliAccessKeySecret=xxxx
       - aliSignName=xxxxx
       - aliTemplateCode=SMS_xxxx
-      # 登录 key
       - TOKEN_KEY=xxxx 
-      # 是否开启队列任务。 1-开启，0-关闭（请求parentUrl去执行任务,单机时直接填1）
       - queueTask=1
       - parentUrl=https://hostname/api/openapi/startEvents
-      # db
       - MONGODB_URI=mongodb://username:passsword@0.0.0.0:27017/?authSource=admin
       - MONGODB_NAME=xxx
       - PG_HOST=0.0.0.0
@@ -206,7 +201,6 @@ services:
       - PG_USER=xxx
       - PG_PASSWORD=xxx
       - PG_DB_NAME=xxx
-      # openai 账号
       - OPENAIKEY=sk-xxxxx
   nginx: 
     image: nginx:alpine3.17

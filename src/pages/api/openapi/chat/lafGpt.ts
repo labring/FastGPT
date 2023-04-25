@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/auth';
 import { authOpenApiKey } from '@/service/utils/tools';
-import { httpsAgent, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
+import { axiosConfig, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
@@ -120,7 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       {
         timeout: 180000,
-        httpsAgent: httpsAgent(true)
+        ...axiosConfig
       }
     );
 
@@ -196,7 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         timeout: 180000,
         responseType: isStream ? 'stream' : 'json',
-        httpsAgent: httpsAgent(true)
+        ...axiosConfig
       }
     );
 

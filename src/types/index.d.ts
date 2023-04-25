@@ -11,8 +11,7 @@ declare global {
   var generatingAbstract: boolean;
   var generatingVector: boolean;
   var QRCode: any;
-  var httpsAgentFast: Agent;
-  var httpsAgentNormal: Agent;
+  var httpsAgent: Agent;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

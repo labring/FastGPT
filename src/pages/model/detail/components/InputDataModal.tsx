@@ -119,31 +119,27 @@ const InputDataModal = ({
           pb={2}
         >
           <Box flex={2} mr={[0, 4]} mb={[4, 0]} h={['230px', '100%']}>
-            <Box h={'30px'}>问题</Box>
+            <Box h={'30px'}>{'匹配的知识点'}</Box>
             <Textarea
-              placeholder={
-                '相关问题，可以输入多个问法, 最多 1000 字。例如：\n1. laf 是什么？\n2. laf 可以做什么？\n3. laf怎么用'
-              }
-              maxLength={1000}
+              placeholder={'匹配的知识点。这部分内容会被搜索，请把控内容的质量。最多 1000 字。'}
+              maxLength={2000}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register(`q`, {
-                required: '相关问题，可以回车输入多个问法'
+                required: true
               })}
             />
           </Box>
           <Box flex={3} h={['330px', '100%']}>
-            <Box h={'30px'}>知识点</Box>
+            <Box h={'30px'}>补充知识</Box>
             <Textarea
               placeholder={
-                '知识点，最多 2000 字。例如：\n1. laf是一个云函数开发平台。\n2. laf 什么都能做。\n3. 下面是使用 laf 的例子: ……'
+                '补充知识。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，你可以讲一些细节的内容填写在这里。最多 2000 字。'
               }
               maxLength={2000}
               resize={'none'}
               h={'calc(100% - 30px)'}
-              {...register(`a`, {
-                required: '知识点'
-              })}
+              {...register('a')}
             />
           </Box>
         </Box>

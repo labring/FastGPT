@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import axios from 'axios';
-import { httpsAgent } from '@/service/utils/tools';
+import { axiosConfig } from '@/service/utils/tools';
 
 /**
  * 读取网站的内容
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const data = await axios
       .get(url, {
-        httpsAgent: httpsAgent(false)
+        httpsAgent: axiosConfig.httpsAgent
       })
       .then((res) => res.data as string);
 
