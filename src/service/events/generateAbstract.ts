@@ -1,6 +1,6 @@
 import { DataItem } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/auth';
-import { httpsAgent } from '@/service/utils/tools';
+import { axiosConfig } from '@/service/utils/tools';
 import { getOpenApiKey } from '../utils/openai';
 import type { ChatCompletionRequestMessage } from 'openai';
 import { DataItemSchema } from '@/types/mongoSchema';
@@ -80,8 +80,8 @@ export async function generateAbstract(next = false): Promise<any> {
         ]
       },
       {
-        timeout: 120000,
-        httpsAgent: httpsAgent(!userApiKey)
+        timeout: 180000,
+        ...axiosConfig
       }
     );
 

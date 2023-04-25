@@ -204,8 +204,8 @@ const ModelDataCard = ({ modelId }: { modelId: string }) => {
           <Table variant={'simple'} w={'100%'}>
             <Thead>
               <Tr>
-                <Th>{'匹配内容(问题)'}</Th>
-                <Th>对应答案</Th>
+                <Th>{'匹配的知识点'}</Th>
+                <Th>补充知识</Th>
                 <Th>状态</Th>
                 <Th>操作</Th>
               </Tr>

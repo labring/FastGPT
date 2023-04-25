@@ -8,7 +8,8 @@ import mongoose from 'mongoose';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({
-    apiKey
+    apiKey,
+    basePath: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
   });
 
   return new OpenAIApi(configuration, undefined);

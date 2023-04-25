@@ -84,9 +84,10 @@ export const authOpenApiKey = async (req: NextApiRequest) => {
   }
 };
 
-/* 代理 */
-export const httpsAgent = (fast: boolean) =>
-  fast ? global.httpsAgentFast : global.httpsAgentNormal;
+/* openai axios config */
+export const axiosConfig = {
+  httpsAgent: global.httpsAgent
+};
 
 /* delete invalid symbol */
 const simplifyStr = (str: string) =>

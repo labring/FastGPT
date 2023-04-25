@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/auth';
-import { httpsAgent, openaiChatFilter } from '@/service/utils/tools';
+import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
@@ -88,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         timeout: 40000,
         responseType: 'stream',
-        httpsAgent: httpsAgent(!userApiKey)
+        ...axiosConfig
       }
     );
 

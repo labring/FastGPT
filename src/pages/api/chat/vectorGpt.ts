@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authChat } from '@/service/utils/auth';
-import { httpsAgent, systemPromptFilter, openaiChatFilter } from '@/service/utils/tools';
+import { axiosConfig, systemPromptFilter, openaiChatFilter } from '@/service/utils/tools';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
@@ -150,7 +150,7 @@ ${
       {
         timeout: 40000,
         responseType: 'stream',
-        httpsAgent: httpsAgent(!userApiKey)
+        ...axiosConfig
       }
     );
 

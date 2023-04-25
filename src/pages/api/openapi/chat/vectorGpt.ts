@@ -1,12 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
 import {
-  httpsAgent,
+  axiosConfig,
   systemPromptFilter,
   authOpenApiKey,
   openaiChatFilter
 } from '@/service/utils/tools';
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
@@ -172,7 +171,7 @@ ${
       {
         timeout: 180000,
         responseType: isStream ? 'stream' : 'json',
-        httpsAgent: httpsAgent(true)
+        ...axiosConfig
       }
     );
 

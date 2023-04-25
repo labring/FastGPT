@@ -1,6 +1,6 @@
 import { SplitData } from '@/service/mongo';
 import { getOpenAIApi } from '@/service/utils/auth';
-import { httpsAgent } from '@/service/utils/tools';
+import { axiosConfig } from '@/service/utils/tools';
 import { getOpenApiKey } from '../utils/openai';
 import type { ChatCompletionRequestMessage } from 'openai';
 import { ChatModelEnum } from '@/constants/model';
@@ -97,7 +97,7 @@ A2:
             },
             {
               timeout: 180000,
-              httpsAgent: httpsAgent(!userApiKey)
+              ...axiosConfig
             }
           )
           .then((res) => {
