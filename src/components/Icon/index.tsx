@@ -13,12 +13,12 @@ const map = {
   board: require('./icons/board.svg').default,
   develop: require('./icons/develop.svg').default,
   user: require('./icons/user.svg').default,
-  chatting: require('./icons/chatting.svg').default,
   promotion: require('./icons/promotion.svg').default,
   delete: require('./icons/delete.svg').default,
   withdraw: require('./icons/withdraw.svg').default,
   dbModel: require('./icons/dbModel.svg').default,
-  history: require('./icons/history.svg').default
+  history: require('./icons/history.svg').default,
+  stop: require('./icons/stop.svg').default
 };
 
 export type IconName = keyof typeof map;

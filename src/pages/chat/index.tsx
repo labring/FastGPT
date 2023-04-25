@@ -36,6 +36,8 @@ const SlideBar = dynamic(() => import('./components/SlideBar'));
 const Empty = dynamic(() => import('./components/Empty'));
 const Markdown = dynamic(() => import('@/components/Markdown'));
 
+import styles from './index.module.scss';
+
 const textareaMinH = '22px';
 
 export type ChatSiteItemType = {
@@ -202,8 +204,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         obj: prompts.obj,
         value: prompts.value
       };
+
       // 流请求，获取数据
-      const res = await streamFetch({
+      const responseText = await streamFetch({
         url: urlMap[chatData.modelName],
         data: {
           prompt,
@@ -226,22 +229,22 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         abortSignal
       });
 
-      let id = '';
+      let newChatId = '';
       // 保存对话信息
       try {
-        id = await postSaveChat({
+        newChatId = await postSaveChat({
           modelId,
           chatId,
           prompts: [
             prompt,
             {
               obj: 'AI',
-              value: res as string
+              value: responseText
             }
           ]
         });
-        if (id) {
-          router.replace(`/chat?modelId=${modelId}&chatId=${id}`);
+        if (newChatId) {
+          router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
         }
       } catch (err) {
         toast({
@@ -252,10 +255,10 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         });
       }
 
-      // 设置完成状态
+      // 设置聊天内容为完成状态
       setChatData((state) => ({
         ...state,
-        chatId: id || state.chatId, // 如果有 Id，说明是新创建的对话
+        chatId: newChatId || state.chatId, // 如果有 Id，说明是新创建的对话
         history: state.history.map((item, index) => {
           if (index !== state.history.length - 1) return item;
           return {
@@ -559,19 +562,23 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             <Flex
               alignItems={'center'}
               justifyContent={'center'}
-              h={'30px'}
-              w={'30px'}
+              h={'25px'}
+              w={'25px'}
               position={'absolute'}
               right={['12px', '20px']}
               bottom={'15px'}
-              onClick={sendPrompt}
             >
               {isChatting ? (
                 <Icon
-                  style={{ transform: 'translateY(4px)' }}
-                  h={'30px'}
-                  w={'30px'}
-                  name={'chatting'}
+                  className={styles.stopIcon}
+                  width={['22px', '25px']}
+                  height={['22px', '25px']}
+                  cursor={'pointer'}
+                  name={'stop'}
+                  color={useColorModeValue('gray.500', 'white')}
+                  onClick={() => {
+                    controller.current?.abort();
+                  }}
                 />
               ) : (
                 <Icon
@@ -579,8 +586,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   width={['18px', '20px']}
                   height={['18px', '20px']}
                   cursor={'pointer'}
-                  fill={useColorModeValue('#718096', 'white')}
-                ></Icon>
+                  color={useColorModeValue('gray.500', 'white')}
+                  onClick={sendPrompt}
+                />
               )}
             </Flex>
           </Box>
