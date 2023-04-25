@@ -123,9 +123,9 @@ export const gpt35StreamResponse = ({
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('X-Accel-Buffering', 'no');
       res.setHeader('Cache-Control', 'no-cache, no-transform');
+      stream.pipe(res);
 
       let responseContent = '';
-      stream.pipe(res);
 
       const onParse = async (event: ParsedEvent | ReconnectInterval) => {
         if (event.type !== 'event') return;

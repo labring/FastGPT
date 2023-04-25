@@ -12,7 +12,7 @@ export const getOpenAIApi = (apiKey: string) => {
     basePath: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
   });
 
-  return new OpenAIApi(configuration, undefined);
+  return new OpenAIApi(configuration);
 };
 
 // 模型使用权校验
