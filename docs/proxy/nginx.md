@@ -1,4 +1,5 @@
 # nginx 反向代理 openai 接口
+如果你有国外的服务器，可以通过配置 nginx 反向代理，转发 openai 相关的请求，从而让国内的服务器可以通过访问该 nginx 去访问 openai 接口。
 
 ```conf
 user nginx;
