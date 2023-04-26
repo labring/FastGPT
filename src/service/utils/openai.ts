@@ -146,13 +146,13 @@ export const gpt35StreamResponse = ({
 
       const decoder = new TextDecoder();
       try {
+        const parser = createParser(onParse);
         for await (const chunk of chatResponse.data as any) {
           if (stream.destroyed) {
             // 流被中断了，直接忽略后面的内容
             break;
           }
-          const parser = createParser(onParse);
-          parser.feed(decoder.decode(chunk));
+          parser.feed(decoder.decode(chunk, { stream: true }));
         }
       } catch (error) {
         console.log('pipe error', error);
