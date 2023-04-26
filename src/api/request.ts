@@ -1,6 +1,6 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { getToken, clearToken } from '@/utils/user';
-import { TOKEN_ERROR_CODE } from '@/constants/responseCode';
+import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 
 interface ConfigType {
   headers?: { [key: string]: string };

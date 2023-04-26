@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getModelById, delModelById, putModelTrainingStatus, putModelById } from '@/api/model';
+import { getModelById, delModelById, putModelById } from '@/api/model';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
@@ -76,29 +76,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     setLoading(false);
   }, [setLoading, router, modelId]);
 
-  /* 点击更新模型状态 */
-  const handleClickUpdateStatus = useCallback(async () => {
-    if (!model || model.status !== ModelStatusEnum.training) return;
-    setLoading(true);
-
-    try {
-      const res = await putModelTrainingStatus(model._id);
-      typeof res === 'string' &&
-        toast({
-          title: res,
-          status: 'info'
-        });
-      loadModel();
-    } catch (error: any) {
-      console.log('error->', error);
-      toast({
-        title: error.message || '更新失败',
-        status: 'error'
-      });
-    }
-    setLoading(false);
-  }, [model, setLoading, loadModel, toast]);
-
   // 提交保存模型修改
   const saveSubmitSuccess = useCallback(
     async (data: ModelSchema) => {
@@ -107,7 +84,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         await putModelById(data._id, {
           name: data.name,
           systemPrompt: data.systemPrompt,
-          intro: data.intro,
           temperature: data.temperature,
           search: data.search,
           service: data.service,
@@ -168,13 +144,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
             <Box fontSize={'xl'} fontWeight={'bold'}>
               {model.name}
             </Box>
-            <Tag
-              ml={2}
-              variant="solid"
-              colorScheme={formatModelStatus[model.status].colorTheme}
-              cursor={model.status === ModelStatusEnum.training ? 'pointer' : 'default'}
-              onClick={handleClickUpdateStatus}
-            >
+            <Tag ml={2} variant="solid" colorScheme={formatModelStatus[model.status].colorTheme}>
               {formatModelStatus[model.status].text}
             </Tag>
             <Box flex={1} />

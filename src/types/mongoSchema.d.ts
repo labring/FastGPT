@@ -1,7 +1,6 @@
 import type { ChatItemType } from './chat';
 import {
   ModelStatusEnum,
-  TrainingStatusEnum,
   ModelNameEnum,
   ModelVectorSearchModeEnum,
   ChatModelEnum
@@ -35,17 +34,14 @@ export interface ModelSchema {
   name: string;
   avatar: string;
   systemPrompt: string;
-  intro: string;
   userId: string;
   status: `${ModelStatusEnum}`;
   updateTime: number;
-  trainingTimes: number;
   temperature: number;
   search: {
     mode: `${ModelVectorSearchModeEnum}`;
   };
   service: {
-    trainId: string; // 训练的模型，训练后就是训练的模型id
     chatModel: `${ChatModelEnum}`; // 聊天时用的模型，训练后就是训练的模型
     modelName: `${ModelNameEnum}`; // 底层模型名称，不会变
   };
@@ -81,17 +77,6 @@ export interface ModelSplitDataSchema {
   textList: string[];
 }
 
-export interface TrainingSchema {
-  _id: string;
-  tuneId: string;
-  modelId: string;
-  status: `${TrainingStatusEnum}`;
-}
-
-export interface TrainingPopulate extends TrainingSchema {
-  modelId: ModelSchema;
-}
-
 export interface ChatSchema {
   _id: string;
   userId: string;
@@ -124,34 +109,6 @@ export interface PaySchema {
   price: number;
   orderId: string;
   status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
-}
-
-export interface DataSchema {
-  _id: string;
-  userId: string;
-  name: string;
-  createTime: Date;
-  type: DataType;
-}
-
-export interface DataItemSchema {
-  _id: string;
-  userId: string;
-  dataId: string;
-  type: DataType;
-  times: number;
-  text: string;
-  rawResponse: string[];
-  result: {
-    q?: string;
-    a?: string;
-    abstract?: string;
-  }[];
-  status: 0 | 1 | 2;
-}
-
-export interface DataItemPopulate extends DataItemSchema {
-  userId: UserModelSchema;
 }
 
 export interface OpenApiSchema {

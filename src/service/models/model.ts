@@ -21,11 +21,6 @@ const ModelSchema = new Schema({
     type: String,
     default: ''
   },
-  intro: {
-    // 模型介绍
-    type: String,
-    default: ''
-  },
   status: {
     type: String,
     required: true,
@@ -34,10 +29,6 @@ const ModelSchema = new Schema({
   updateTime: {
     type: Date,
     default: () => new Date()
-  },
-  trainingTimes: {
-    type: Number,
-    default: 0
   },
   temperature: {
     type: Number,
@@ -53,11 +44,6 @@ const ModelSchema = new Schema({
     }
   },
   service: {
-    trainId: {
-      // 训练时需要的 ID， 不能训练的模型没有这个值。
-      type: String,
-      required: false
-    },
     chatModel: {
       // 聊天时使用的模型
       type: String,

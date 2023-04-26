@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authToken } from '@/service/utils/tools';
-import { ModelDataStatusEnum } from '@/constants/redis';
+import { ModelDataStatusEnum } from '@/constants/model';
 import { generateVector } from '@/service/events/generateVector';
 import { PgClient } from '@/service/pg';
 
