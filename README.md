@@ -6,14 +6,15 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 ![KBProcess](docs/imgs/KBProcess.jpg?raw=true "KBProcess")
 
 ## 开发
-复制 .env.template 成 .env.local ，填写核心参数  
+复制 .env.template 成 .env.local ，填写核心参数。可选内容不需要可留空或去掉。
 
 ```bash
-# proxy（不需要代理可忽略）
+# proxy（可选）
 AXIOS_PROXY_HOST=127.0.0.1
 AXIOS_PROXY_PORT=7890
-# 中转方案，修改 openai 的 base url
+# openai 中转连接（可选）
 OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_BASE_URL_AUTH=可选的安全凭证
 # 是否开启队列任务。 1-开启，0-关闭（请求parentUrl去执行任务,单机时直接填1）
 queueTask=1
 parentUrl=https://hostname/api/openapi/startEvents
@@ -90,17 +91,10 @@ nohup ./clash-linux-amd64-v1.10.0  -d ./ &
 echo "Restart clash"
 ```
 
-### 本地 docker 打包
-```bash
-docker build -t imageName:tag .
-docker push imageName:tag
-# 或者直接拉镜像，见下方
-```
-
-### 准备初始化文件
+### 准备初始化文件，需要自己创建
+可以直接把 deploy 里内容复制过去
 **/root/fast-gpt/pg/init.sql**
 ```sql
-#!/bin/bash
 set -e
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
 
@@ -183,8 +177,10 @@ services:
     restart: always
     container_name: fast-gpt
     environment:
-      - AXIOS_PROXY_HOST=127.0.0.1
-      - AXIOS_PROXY_PORT=7890
+      # - AXIOS_PROXY_HOST=127.0.0.1
+      # - AXIOS_PROXY_PORT=7890
+      # - OPENAI_BASE_URL=https://api.openai.com/v1
+      # - OPENAI_BASE_URL_AUTH=可选的安全凭证
       - MY_MAIL=xxxx@qq.com  
       - MAILE_CODE=xxxx
       - aliAccessKeyId=xxxx 
