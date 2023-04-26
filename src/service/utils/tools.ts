@@ -86,7 +86,12 @@ export const authOpenApiKey = async (req: NextApiRequest) => {
 
 /* openai axios config */
 export const axiosConfig = {
-  httpsAgent: global.httpsAgent
+  httpsAgent: global.httpsAgent,
+  headers: process.env.OPENAI_BASE_URL_AUTH
+    ? {
+        auth: process.env.OPENAI_BASE_URL_AUTH
+      }
+    : {}
 };
 
 /* delete invalid symbol */
