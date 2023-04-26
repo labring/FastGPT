@@ -3,7 +3,6 @@ import type { ModelSchema } from './mongoSchema';
 export interface ModelUpdateParams {
   name: string;
   systemPrompt: string;
-  intro: string;
   temperature: number;
   search: ModelSchema['search'];
   service: ModelSchema['service'];

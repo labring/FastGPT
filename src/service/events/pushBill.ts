@@ -7,7 +7,6 @@ import {
   embeddingModel
 } from '@/constants/model';
 import { BillTypeEnum } from '@/constants/user';
-import type { DataType } from '@/types/data';
 import { countChatTokens } from '@/utils/tools';
 
 export const pushChatBill = async ({
@@ -81,7 +80,7 @@ export const pushSplitDataBill = async ({
   userId: string;
   tokenLen: number;
   text: string;
-  type: DataType;
+  type: `${BillTypeEnum}`;
 }) => {
   await connectToDatabase();
 

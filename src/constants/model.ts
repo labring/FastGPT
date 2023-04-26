@@ -1,10 +1,5 @@
 import type { ModelSchema } from '@/types/mongoSchema';
 
-export enum ModelDataStatusEnum {
-  ready = 'ready',
-  waiting = 'waiting'
-}
-
 export const embeddingModel = 'text-embedding-ada-002';
 export enum ChatModelEnum {
   'GPT35' = 'gpt-3.5-turbo',
@@ -53,13 +48,6 @@ export const modelList: ModelConstantsData[] = [
   }
 ];
 
-export enum TrainingStatusEnum {
-  pending = 'pending',
-  succeed = 'succeed',
-  errored = 'errored',
-  canceled = 'canceled'
-}
-
 export enum ModelStatusEnum {
   running = 'running',
   training = 'training',
@@ -85,6 +73,11 @@ export const formatModelStatus = {
     text: '已关闭'
   }
 };
+
+export enum ModelDataStatusEnum {
+  ready = 'ready',
+  waiting = 'waiting'
+}
 
 export const ModelDataStatusMap: Record<`${ModelDataStatusEnum}`, string> = {
   ready: '训练完成',
@@ -126,15 +119,12 @@ export const defaultModel: ModelSchema = {
   avatar: '',
   status: ModelStatusEnum.pending,
   updateTime: Date.now(),
-  trainingTimes: 0,
   systemPrompt: '',
-  intro: '',
   temperature: 5,
   search: {
     mode: ModelVectorSearchModeEnum.hightSimilarity
   },
   service: {
-    trainId: '',
     chatModel: ModelNameEnum.GPT35,
     modelName: ModelNameEnum.GPT35
   },

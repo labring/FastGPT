@@ -1,7 +1,6 @@
 import { GET, POST, DELETE, PUT } from './request';
 import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
 import { ModelUpdateParams } from '@/types/model';
-import { TrainingItemType } from '../types/training';
 import { RequestPaging } from '../types/index';
 import { Obj2Query } from '@/utils/tools';
 
@@ -32,21 +31,7 @@ export const getModelById = (id: string) => GET<ModelSchema>(`/model/detail?mode
 export const putModelById = (id: string, data: ModelUpdateParams) =>
   PUT(`/model/update?modelId=${id}`, data);
 
-export const postTrainModel = (id: string, form: FormData) =>
-  POST(`/model/train/train?modelId=${id}`, form, {
-    headers: {
-      'content-type': 'multipart/form-data'
-    }
-  });
-
-export const putModelTrainingStatus = (id: string) =>
-  PUT(`/model/train/putTrainStatus?modelId=${id}`);
-
-export const getModelTrainings = (id: string) =>
-  GET<TrainingItemType[]>(`/model/train/getTrainings?modelId=${id}`);
-
 /* 模型 data */
-
 type GetModelDataListProps = RequestPaging & {
   modelId: string;
   searchText: string;

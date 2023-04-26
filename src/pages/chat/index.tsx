@@ -64,7 +64,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     modelId,
     name: '',
     avatar: '',
-    intro: '',
     chatModel: '',
     modelName: '',
     history: []
@@ -517,7 +516,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
               </Flex>
             </Box>
           ))}
-          {chatData.history.length === 0 && <Empty intro={chatData.intro} />}
+          {chatData.history.length === 0 && <Empty intro={''} />}
         </Box>
         {/* 发送区 */}
         <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
