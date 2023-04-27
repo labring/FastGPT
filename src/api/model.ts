@@ -1,7 +1,7 @@
 import { GET, POST, DELETE, PUT } from './request';
 import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
 import { ModelUpdateParams } from '@/types/model';
-import { RequestPaging } from '../types/index';
+import { PagingData, RequestPaging } from '../types/index';
 import { Obj2Query } from '@/utils/tools';
 
 /**
@@ -93,3 +93,10 @@ export const putModelDataById = (data: { dataId: string; a: string; q?: string }
  */
 export const delOneModelData = (dataId: string) =>
   DELETE(`/model/data/delModelDataById?dataId=${dataId}`);
+
+/* 共享市场 */
+/**
+ * 获取共享市场模型
+ */
+export const getShareModelList = (data: { searchText?: string } & RequestPaging) =>
+  POST<number>(`/model/share/getModels`, data);

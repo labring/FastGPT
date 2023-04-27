@@ -6,22 +6,27 @@ import { ChatModelEnum } from '@/constants/model';
 
 const textDecoder = new TextDecoder();
 const graphemer = new Graphemer();
-const encMap = {
-  'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
-    '<|im_start|>': 100264,
-    '<|im_end|>': 100265,
-    '<|im_sep|>': 100266
-  }),
-  'gpt-4': encoding_for_model('gpt-4', {
-    '<|im_start|>': 100264,
-    '<|im_end|>': 100265,
-    '<|im_sep|>': 100266
-  }),
-  'gpt-4-32k': encoding_for_model('gpt-4-32k', {
-    '<|im_start|>': 100264,
-    '<|im_end|>': 100265,
-    '<|im_sep|>': 100266
-  })
+let encMap: Record<string, Tiktoken>;
+const getEncMap = () => {
+  if (encMap) return encMap;
+  encMap = {
+    'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
+      '<|im_start|>': 100264,
+      '<|im_end|>': 100265,
+      '<|im_sep|>': 100266
+    }),
+    'gpt-4': encoding_for_model('gpt-4', {
+      '<|im_start|>': 100264,
+      '<|im_end|>': 100265,
+      '<|im_sep|>': 100266
+    }),
+    'gpt-4-32k': encoding_for_model('gpt-4-32k', {
+      '<|im_start|>': 100264,
+      '<|im_end|>': 100265,
+      '<|im_sep|>': 100266
+    })
+  };
+  return encMap;
 };
 
 /**
@@ -129,5 +134,5 @@ export const countChatTokens = ({
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
 }) => {
   const text = getChatGPTEncodingText(messages, model);
-  return text2TokensLen(encMap[model], text);
+  return text2TokensLen(getEncMap()[model], text);
 };

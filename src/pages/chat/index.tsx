@@ -63,7 +63,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     chatId,
     modelId,
     name: '',
-    avatar: '',
+    avatar: '/icon/logo.png',
+    intro: '',
     chatModel: '',
     modelName: '',
     history: []
@@ -155,7 +156,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           isClosable: true,
           duration: 5000
         });
-        router.replace('/model/list');
+        router.back();
       }
       setLoading(false);
       return null;
@@ -469,7 +470,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 <Menu>
                   <MenuButton as={Box} mr={media(4, 1)} cursor={'pointer'}>
                     <Image
-                      src={item.obj === 'Human' ? '/icon/human.png' : '/icon/logo.png'}
+                      src={item.obj === 'Human' ? '/icon/human.png' : chatData.avatar}
                       alt="/icon/logo.png"
                       width={media(30, 20)}
                       height={media(30, 20)}
@@ -516,7 +517,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
               </Flex>
             </Box>
           ))}
-          {chatData.history.length === 0 && <Empty intro={''} />}
+          {chatData.history.length === 0 && (
+            <Empty modelName={chatData.name} intro={chatData.intro} />
+          )}
         </Box>
         {/* 发送区 */}
         <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>

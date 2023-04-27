@@ -27,6 +27,12 @@ const navbarList = [
     activeLink: ['/model/list', '/model/detail']
   },
   {
+    label: '共享',
+    icon: 'shareMarket',
+    link: '/model/share',
+    activeLink: ['/model/share']
+  },
+  {
     label: '账号',
     icon: 'user',
     link: '/number/setting',

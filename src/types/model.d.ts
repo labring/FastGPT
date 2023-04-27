@@ -5,6 +5,7 @@ export interface ModelUpdateParams {
   systemPrompt: string;
   temperature: number;
   search: ModelSchema['search'];
+  share: ModelSchema['share'];
   service: ModelSchema['service'];
   security: ModelSchema['security'];
 }
@@ -16,4 +17,12 @@ export interface ModelDataItemType {
   a: string; // 原文
   modelId: string;
   userId: string;
+}
+
+export interface ShareModelItem {
+  _id: string;
+  avatar: string;
+  name: string;
+  userId: string;
+  share: ModelSchema['share'];
 }

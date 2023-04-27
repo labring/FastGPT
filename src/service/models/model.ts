@@ -14,7 +14,7 @@ const ModelSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: '/imgs/modelAvatar.png'
+    default: '/icon/logo.png'
   },
   systemPrompt: {
     // 系统提示词
@@ -41,6 +41,26 @@ const ModelSchema = new Schema({
       type: String,
       enum: Object.keys(ModelVectorSearchModeMap),
       default: ModelVectorSearchModeEnum.hightSimilarity
+    }
+  },
+  share: {
+    isShare: {
+      type: Boolean,
+      default: false
+    },
+    isShareDetail: {
+      // share model detail info. false: just show name and intro
+      type: Boolean,
+      default: false
+    },
+    intro: {
+      type: String,
+      default: '',
+      maxlength: 150
+    },
+    collection: {
+      type: Number,
+      default: 0
     }
   },
   service: {

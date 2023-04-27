@@ -113,16 +113,22 @@ export const ModelVectorSearchModeMap: Record<
 };
 
 export const defaultModel: ModelSchema = {
-  _id: '',
-  userId: '',
+  _id: 'modelId',
+  userId: 'userId',
   name: 'modelName',
-  avatar: '',
+  avatar: '/icon/logo.png',
   status: ModelStatusEnum.pending,
   updateTime: Date.now(),
   systemPrompt: '',
   temperature: 5,
   search: {
     mode: ModelVectorSearchModeEnum.hightSimilarity
+  },
+  share: {
+    isShare: false,
+    isShareDetail: false,
+    intro: '',
+    collection: 0
   },
   service: {
     chatModel: ModelNameEnum.GPT35,

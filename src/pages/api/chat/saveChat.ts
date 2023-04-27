@@ -27,9 +27,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       value: item.value
     }));
 
+    await authModel({ modelId, userId, authOwner: false });
+
     // 没有 chatId, 创建一个对话
     if (!chatId) {
-      await authModel(modelId, userId);
       const { _id } = await Chat.create({
         userId,
         modelId,

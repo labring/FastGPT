@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { Model } from '@/service/models/model';
-import type { ModelSchema } from '@/types/mongoSchema';
+import { authModel } from '@/service/utils/auth';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -14,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('无权操作');
     }
 
-    const { modelId } = req.query;
+    const { modelId } = req.query as { modelId: string };
 
     if (!modelId) {
       throw new Error('参数错误');
@@ -25,15 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    // 根据 userId 获取模型信息
-    const model = await Model.findOne<ModelSchema>({
+    const { model } = await authModel({
+      modelId,
       userId,
-      _id: modelId
+      authOwner: false
     });
-
-    if (!model) {
-      throw new Error('模型不存在');
-    }
 
     jsonRes(res, {
       data: model

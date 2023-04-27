@@ -3,6 +3,7 @@ import { jsonRes } from '@/service/response';
 import { Chat, Model, connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
+import { authModel } from '@/service/utils/auth';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -21,17 +22,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const userId = await authToken(authorization);
 
+    await connectToDatabase();
+
     // 验证是否是该用户的 model
-    const model = await Model.findOne({
-      _id: modelId,
+    await authModel({
+      modelId,
       userId
     });
-
-    if (!model) {
-      throw new Error('无权操作该模型');
-    }
-
-    await connectToDatabase();
 
     // 删除 pg 中所有该模型的数据
     await PgClient.delete('modelData', {
