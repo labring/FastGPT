@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
 import type { PgModelDataItemType } from '@/types/pg';
+import { authModel } from '@/service/utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -36,9 +37,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
+    const { model } = await authModel({
+      userId,
+      modelId,
+      authOwner: false
+    });
+
     const where: any = [
-      ['user_id', userId],
-      'AND',
+      ...(model.share.isShareDetail ? [] : [['user_id', userId], 'AND']),
       ['model_id', modelId],
       ...(searchText ? ['AND', `(q LIKE '%${searchText}%' OR a LIKE '%${searchText}%')`] : [])
     ];

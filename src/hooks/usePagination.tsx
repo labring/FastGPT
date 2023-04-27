@@ -91,7 +91,7 @@ export const usePagination = <T = any,>({
 
   useEffect(() => {
     mutate(1);
-  }, [mutate]);
+  }, []);
 
   return {
     pageNum,

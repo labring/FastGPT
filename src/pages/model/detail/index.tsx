@@ -5,11 +5,12 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useForm } from 'react-hook-form';
-import { formatModelStatus, ModelStatusEnum, modelList, defaultModel } from '@/constants/model';
+import { formatModelStatus, modelList, defaultModel } from '@/constants/model';
 import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
+import { useUserStore } from '@/store/user';
 
 const ModelEditForm = dynamic(() => import('./components/ModelEditForm'));
 const ModelDataCard = dynamic(() => import('./components/ModelDataCard'));
@@ -18,6 +19,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useScreen();
+  const { userInfo } = useUserStore();
   const { setLoading } = useGlobalStore();
 
   const [model, setModel] = useState<ModelSchema>(defaultModel);
@@ -30,21 +32,24 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     return !!(openai && openai.trainName);
   }, [model]);
 
+  const isOwner = useMemo(() => model.userId === userInfo?._id, [model.userId, userInfo?._id]);
+
   /* 加载模型数据 */
   const loadModel = useCallback(async () => {
     setLoading(true);
     try {
       const res = await getModelById(modelId);
-      // console.log(res);
-      res.security.expiredTime /= 60 * 60 * 1000;
       setModel(res);
       formHooks.reset(res);
-    } catch (err) {
-      console.log('error->', err);
+    } catch (err: any) {
+      toast({
+        title: err?.message || '获取模型异常',
+        status: 'error'
+      });
     }
     setLoading(false);
     return null;
-  }, [formHooks, modelId, setLoading]);
+  }, [formHooks, modelId, setLoading, toast]);
 
   useQuery([modelId], loadModel);
 
@@ -59,22 +64,19 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         status: 'success'
       });
       router.replace('/model/list');
-    } catch (err) {
-      console.log('error->', err);
+    } catch (err: any) {
+      toast({
+        title: err?.message || '删除失败',
+        status: 'error'
+      });
     }
     setLoading(false);
   }, [setLoading, model, router, toast]);
 
   /* 点前往聊天预览页 */
   const handlePreviewChat = useCallback(async () => {
-    setLoading(true);
-    try {
-      router.push(`/chat?modelId=${modelId}`);
-    } catch (err) {
-      console.log('error->', err);
-    }
-    setLoading(false);
-  }, [setLoading, router, modelId]);
+    router.push(`/chat?modelId=${modelId}`);
+  }, [router, modelId]);
 
   // 提交保存模型修改
   const saveSubmitSuccess = useCallback(
@@ -86,6 +88,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           systemPrompt: data.systemPrompt,
           temperature: data.temperature,
           search: data.search,
+          share: data.share,
           service: data.service,
           security: data.security
         });
@@ -93,11 +96,10 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           title: '更新成功',
           status: 'success'
         });
-      } catch (err) {
-        console.log('error->', err);
+      } catch (err: any) {
         toast({
-          title: err as string,
-          status: 'success'
+          title: err?.message || '更新失败',
+          status: 'error'
         });
       }
       setLoading(false);
@@ -151,9 +153,11 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
             <Button variant={'outline'} onClick={handlePreviewChat}>
               对话体验
             </Button>
-            <Button ml={4} onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}>
-              保存修改
-            </Button>
+            {isOwner && (
+              <Button ml={4} onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}>
+                保存修改
+              </Button>
+            )}
           </Flex>
         ) : (
           <>
@@ -169,19 +173,26 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
               <Button variant={'outline'} onClick={handlePreviewChat}>
                 对话体验
               </Button>
-              <Button ml={4} onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}>
-                保存修改
-              </Button>
+              {isOwner && (
+                <Button ml={4} onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}>
+                  保存修改
+                </Button>
+              )}
             </Box>
           </>
         )}
       </Card>
       <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={5}>
-        <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} canTrain={canTrain} />
+        <ModelEditForm
+          formHooks={formHooks}
+          handleDelModel={handleDelModel}
+          canTrain={canTrain}
+          isOwner={isOwner}
+        />
 
         {canTrain && !!model._id && (
           <Card p={4} gridColumnStart={[1, 1]} gridColumnEnd={[2, 3]}>
-            <ModelDataCard modelId={model._id} />
+            <ModelDataCard modelId={model._id} isOwner={isOwner} />
           </Card>
         )}
       </Grid>

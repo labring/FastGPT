@@ -16,16 +16,34 @@ export const getOpenAIApi = (apiKey: string) => {
 };
 
 // 模型使用权校验
-export const authModel = async (modelId: string, userId: string) => {
+export const authModel = async ({
+  modelId,
+  userId,
+  authUser = true,
+  authOwner = true
+}: {
+  modelId: string;
+  userId: string;
+  authUser?: boolean;
+  authOwner?: boolean;
+}) => {
   // 获取 model 数据
   const model = await Model.findById<ModelSchema>(modelId);
   if (!model) {
     return Promise.reject('模型不存在');
   }
-  // 凭证校验
-  if (userId !== String(model.userId)) {
-    return Promise.reject('无权使用该模型');
+
+  // 使用权限校验
+  if ((authOwner || (authUser && !model.share.isShare)) && userId !== String(model.userId)) {
+    return Promise.reject('无权操作该模型');
   }
+
+  // detail 内容去除
+  if (!model.share.isShareDetail) {
+    model.systemPrompt = '';
+    model.temperature = 0;
+  }
+
   return { model };
 };
 
@@ -42,7 +60,7 @@ export const authChat = async ({
   const userId = await authToken(authorization);
 
   // 获取 model 数据
-  const { model } = await authModel(modelId, userId);
+  const { model } = await authModel({ modelId, userId, authOwner: false });
 
   // 聊天内容
   let content: ChatItemType[] = [];

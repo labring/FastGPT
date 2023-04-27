@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 获取 model 数据
-    const { model } = await authModel(modelId, userId);
+    const { model } = await authModel({ modelId, userId, authUser: false, authOwner: false });
 
     // 历史记录
     let history: ChatItemType[] = [];
@@ -53,6 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         modelId: modelId,
         name: model.name,
         avatar: model.avatar,
+        intro: model.share.intro,
         modelName: model.service.modelName,
         chatModel: model.service.chatModel,
         history

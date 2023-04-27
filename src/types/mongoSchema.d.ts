@@ -41,6 +41,12 @@ export interface ModelSchema {
   search: {
     mode: `${ModelVectorSearchModeEnum}`;
   };
+  share: {
+    isShare: boolean;
+    isShareDetail: boolean;
+    intro: string;
+    collection: number;
+  };
   service: {
     chatModel: `${ChatModelEnum}`; // 聊天时用的模型，训练后就是训练的模型
     modelName: `${ModelNameEnum}`; // 底层模型名称，不会变

@@ -3,12 +3,7 @@ import { Card, Box } from '@chakra-ui/react';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import Markdown from '@/components/Markdown';
 
-const Empty = ({ intro }: { intro: string }) => {
-  const Header = ({ children }: { children: string }) => (
-    <Box fontSize={'lg'} fontWeight={'bold'} textAlign={'center'} pb={2}>
-      {children}
-    </Box>
-  );
+const Empty = ({ modelName, intro }: { modelName: string; intro: string }) => {
   const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
   const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
 
@@ -24,7 +19,9 @@ const Empty = ({ intro }: { intro: string }) => {
     >
       {!!intro && (
         <Card p={4} mb={10}>
-          <Header>模型介绍</Header>
+          <Box fontSize={'xl'} fontWeight={'600'} textAlign={'center'} pb={2}>
+            {modelName} 介绍
+          </Box>
           <Box whiteSpace={'pre-line'}>{intro}</Box>
         </Card>
       )}

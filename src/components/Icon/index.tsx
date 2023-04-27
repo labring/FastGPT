@@ -18,7 +18,10 @@ const map = {
   withdraw: require('./icons/withdraw.svg').default,
   dbModel: require('./icons/dbModel.svg').default,
   history: require('./icons/history.svg').default,
-  stop: require('./icons/stop.svg').default
+  stop: require('./icons/stop.svg').default,
+  shareMarket: require('./icons/shareMarket.svg').default,
+  collectionLight: require('./icons/collectionLight.svg').default,
+  collectionSolid: require('./icons/collectionSolid.svg').default
 };
 
 export type IconName = keyof typeof map;
