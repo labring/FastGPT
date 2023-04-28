@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -15,7 +15,8 @@ import {
   Button,
   Select,
   Grid,
-  Switch
+  Switch,
+  Image
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { ModelSchema } from '@/types/mongoSchema';
@@ -23,6 +24,9 @@ import { UseFormReturn } from 'react-hook-form';
 import { modelList, ModelVectorSearchModeMap } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { useConfirm } from '@/hooks/useConfirm';
+import { useSelectFile } from '@/hooks/useSelectFile';
+import { useToast } from '@/hooks/useToast';
+import { fileToBase64 } from '@/utils/file';
 
 const ModelEditForm = ({
   formHooks,
@@ -40,11 +44,50 @@ const ModelEditForm = ({
   });
   const { register, setValue, getValues } = formHooks;
   const [refresh, setRefresh] = useState(false);
+  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+    fileType: '.jpg,.png',
+    multiple: false
+  });
+  const { toast } = useToast();
+
+  const onSelectFile = useCallback(
+    async (e: File[]) => {
+      const file = e[0];
+      if (!file) return;
+
+      if (file.size > 100 * 1024) {
+        return toast({
+          title: '头像需小于 100kb',
+          status: 'warning'
+        });
+      }
+
+      const base64 = (await fileToBase64(file)) as string;
+      setValue('avatar', base64);
+      setRefresh((state) => !state);
+    },
+    [setValue, toast]
+  );
 
   return (
     <>
       <Card p={4}>
         <Box fontWeight={'bold'}>基本信息</Box>
+        <Flex mt={4} alignItems={'center'}>
+          <Box flex={'0 0 80px'} w={0}>
+            头像:
+          </Box>
+          <Image
+            src={getValues('avatar')}
+            alt={'avatar'}
+            w={'36px'}
+            h={'36px'}
+            objectFit={'contain'}
+            cursor={'pointer'}
+            title={'点击切换头像'}
+            onClick={onOpenSelectFile}
+          />
+        </Flex>
         <FormControl mt={4}>
           <Flex alignItems={'center'}>
             <Box flex={'0 0 80px'} w={0}>
@@ -167,7 +210,7 @@ const ModelEditForm = ({
         <Box mt={4}>
           <Box mb={1}>系统提示词</Box>
           <Textarea
-            rows={6}
+            rows={8}
             maxLength={-1}
             isDisabled={!isOwner}
             placeholder={
@@ -235,6 +278,7 @@ const ModelEditForm = ({
           </Grid>
         </Card>
       )}
+      <File onSelect={onSelectFile} />
 
       {/* <Card p={4}>
         <Box fontWeight={'bold'}>安全策略</Box>

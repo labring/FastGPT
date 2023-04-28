@@ -85,6 +85,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
       try {
         await putModelById(data._id, {
           name: data.name,
+          avatar: data.avatar,
           systemPrompt: data.systemPrompt,
           temperature: data.temperature,
           search: data.search,

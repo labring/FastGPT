@@ -155,7 +155,7 @@ export const splitText = ({
   slideLen: number;
 }) => {
   const textArr =
-    text.match(/[！？。\n.]+|[^\s]+/g)?.filter((item) => {
+    text.split(/(?<=[。！？\.!\?\n])/g)?.filter((item) => {
       const text = item.replace(/(\\n)/g, '\n').trim();
       if (text && text !== '\n') return true;
       return false;
@@ -187,4 +187,13 @@ export const splitText = ({
   }
   const result = chunks.map((item) => item.arr.join(''));
   return result;
+};
+
+export const fileToBase64 = (file: File) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
 };
