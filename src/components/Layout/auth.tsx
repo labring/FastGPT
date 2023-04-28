@@ -7,7 +7,8 @@ import { useQuery } from '@tanstack/react-query';
 
 const unAuthPage: { [key: string]: boolean } = {
   '/': true,
-  '/login': true
+  '/login': true,
+  '/model/share': true
 };
 
 const Auth = ({ children }: { children: JSX.Element }) => {

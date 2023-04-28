@@ -8,9 +8,6 @@ import type { ShareModelItem } from '@/types/model';
 /* 获取模型列表 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    // 凭证校验
-    await authToken(req.headers.authorization);
-
     const {
       searchText = '',
       pageNum = 1,
@@ -28,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ]
     };
 
-    // 根据分享的模型
+    // 获取被分享的模型
     const [models, total] = await Promise.all([
       Model.find(where, '_id avatar name userId share')
         .sort({
@@ -45,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         pageSize,
         data: models.map((item) => ({
           _id: item._id,
-          avatar: item.avatar,
+          avatar: item.avatar || '/icon/logo.png',
           name: item.name,
           userId: item.userId,
           share: item.share,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Box, Flex, Image, Button } from '@chakra-ui/react';
+import { Box, Flex, Image, Button } from '@chakra-ui/react';
 import type { ShareModelItem } from '@/types/model';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
