@@ -34,7 +34,9 @@ const Auth = ({ children }: { children: JSX.Element }) => {
     {
       onError(error) {
         console.log('error->', error);
-        router.replace('/login');
+        router.replace(
+          `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
+        );
         toast();
       },
       onSettled() {
