@@ -30,7 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (chatId) {
       // 获取 chat.content 数据
       history = await Chat.aggregate([
-        { $match: { _id: new mongoose.Types.ObjectId(chatId) } },
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(chatId),
+            userId: new mongoose.Types.ObjectId(userId)
+          }
+        },
         { $unwind: '$content' },
         { $match: { 'content.deleted': false } },
         { $sort: { 'content._id': -1 } },
