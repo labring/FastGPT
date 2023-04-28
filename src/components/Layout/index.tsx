@@ -21,17 +21,18 @@ const navbarList = [
     activeLink: ['/']
   },
   {
-    label: '模型',
-    icon: 'model',
-    link: '/model/list',
-    activeLink: ['/model/list', '/model/detail']
-  },
-  {
     label: '共享',
     icon: 'shareMarket',
     link: '/model/share',
     activeLink: ['/model/share']
   },
+  {
+    label: '模型',
+    icon: 'model',
+    link: '/model/list',
+    activeLink: ['/model/list', '/model/detail']
+  },
+
   {
     label: '账号',
     icon: 'user',

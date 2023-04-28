@@ -78,14 +78,14 @@ const ModelEditForm = ({
             头像:
           </Box>
           <Image
-            src={getValues('avatar')}
+            src={getValues('avatar') || '/icon/logo.png'}
             alt={'avatar'}
             w={['28px', '36px']}
             h={['28px', '36px']}
             objectFit={'cover'}
-            cursor={'pointer'}
+            cursor={isOwner ? 'pointer' : 'default'}
             title={'点击切换头像'}
-            onClick={onOpenSelectFile}
+            onClick={() => isOwner && onOpenSelectFile()}
           />
         </Flex>
         <FormControl mt={4}>

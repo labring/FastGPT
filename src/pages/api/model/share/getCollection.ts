@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       data: collections
         .map((item: any) => ({
           _id: item.modelId?._id,
-          avatar: item.modelId?.avatar || '',
+          avatar: item.modelId?.avatar || '/icon/logo.png',
           name: item.modelId?.name || '',
           userId: item.modelId?.userId || '',
           share: item.modelId?.share || {},
@@ -31,8 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
   } catch (err) {
     jsonRes(res, {
-      code: 500,
-      error: err
+      data: []
     });
   }
 }

@@ -470,8 +470,12 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 <Menu autoSelect={false}>
                   <MenuButton as={Box} mr={media(4, 1)} cursor={'pointer'}>
                     <Image
-                      src={item.obj === 'Human' ? '/icon/human.png' : chatData.avatar}
-                      alt="/icon/logo.png"
+                      src={
+                        item.obj === 'Human'
+                          ? '/icon/human.png'
+                          : chatData.avatar || '/icon/logo.png'
+                      }
+                      alt="avatar"
                       width={media(30, 20)}
                       height={media(30, 20)}
                     />
