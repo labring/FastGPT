@@ -13,6 +13,7 @@ const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm
 
 const Login = () => {
   const router = useRouter();
+  const { lastRoute = '' } = router.query as { lastRoute: string };
   const { isPc } = useScreen();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo } = useUserStore();
@@ -20,9 +21,11 @@ const Login = () => {
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       setUserInfo(res.user, res.token);
-      router.push('/model/list');
+      setTimeout(() => {
+        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/model/list');
+      }, 100);
     },
-    [router, setUserInfo]
+    [lastRoute, router, setUserInfo]
   );
 
   function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {
