@@ -39,7 +39,7 @@ export const authModel = async ({
   }
 
   // detail 内容去除
-  if (!model.share.isShareDetail) {
+  if (!model.share.isShareDetail && userId !== String(model.userId)) {
     model.systemPrompt = '';
     model.temperature = 0;
   }
