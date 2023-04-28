@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase } from '@/service/mongo';
+import { connectToDatabase, Collection, Model } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { Model } from '@/service/models/model';
 import type { PagingData } from '@/types';
 import type { ShareModelItem } from '@/types/model';
 
@@ -30,19 +29,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     // 根据分享的模型
-    const models = await Model.find(where, '_id avatar name userId share')
-      .sort({
-        'share.collection': -1
-      })
-      .limit(pageSize)
-      .skip((pageNum - 1) * pageSize);
+    const [models, total] = await Promise.all([
+      Model.find(where, '_id avatar name userId share')
+        .sort({
+          'share.collection': -1
+        })
+        .limit(pageSize)
+        .skip((pageNum - 1) * pageSize),
+      Model.countDocuments(where)
+    ]);
 
     jsonRes<PagingData<ShareModelItem>>(res, {
       data: {
         pageNum,
         pageSize,
-        data: models,
-        total: await Model.countDocuments(where)
+        data: models.map((item) => ({
+          _id: item._id,
+          avatar: item.avatar,
+          name: item.name,
+          userId: item.userId,
+          share: item.share,
+          isCollection: false
+        })),
+        total
       }
     });
   } catch (err) {

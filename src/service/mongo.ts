@@ -50,3 +50,4 @@ export * from './models/pay';
 export * from './models/splitData';
 export * from './models/openapi';
 export * from './models/promotionRecord';
+export * from './models/collection';

@@ -80,9 +80,9 @@ const ModelEditForm = ({
           <Image
             src={getValues('avatar')}
             alt={'avatar'}
-            w={'36px'}
-            h={'36px'}
-            objectFit={'contain'}
+            w={['28px', '36px']}
+            h={['28px', '36px']}
+            objectFit={'cover'}
             cursor={'pointer'}
             title={'点击切换头像'}
             onClick={onOpenSelectFile}

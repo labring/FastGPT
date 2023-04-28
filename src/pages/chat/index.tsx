@@ -467,7 +467,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
               borderBottom={'1px solid rgba(0,0,0,0.1)'}
             >
               <Flex maxW={'750px'} m={'auto'} alignItems={'flex-start'}>
-                <Menu>
+                <Menu autoSelect={false}>
                   <MenuButton as={Box} mr={media(4, 1)} cursor={'pointer'}>
                     <Image
                       src={item.obj === 'Human' ? '/icon/human.png' : chatData.avatar}
