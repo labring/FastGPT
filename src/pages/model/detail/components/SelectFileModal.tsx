@@ -62,36 +62,38 @@ const SelectFileModal = ({
   const { openConfirm, ConfirmChild } = useConfirm({
     content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被直接清除。一共 ${
       splitRes.chunks.length
-    } 组，大约 ${splitRes.tokens} 个tokens, 约 ${formatPrice(
+    } 组，大约 ${splitRes.tokens || '数量太多,未计算'} 个tokens, 约 ${formatPrice(
       splitRes.tokens * modeMap[mode].price
     )} 元`
   });
-
-  const fileText = useMemo(() => fileTextArr.join(''), [fileTextArr]);
 
   const onSelectFile = useCallback(
     async (e: File[]) => {
       setSelecting(true);
       try {
-        const fileTexts = await Promise.all(
-          e.map((file) => {
-            // @ts-ignore
-            const extension = file?.name?.split('.').pop().toLowerCase();
+        let promise = Promise.resolve();
+        e.map((file) => {
+          promise = promise.then(async () => {
+            const extension = file?.name?.split('.')?.pop()?.toLowerCase();
+            let text = '';
             switch (extension) {
               case 'txt':
               case 'md':
-                return readTxtContent(file);
+                text = await readTxtContent(file);
+                break;
               case 'pdf':
-                return readPdfContent(file);
+                text = await readPdfContent(file);
+                break;
               case 'doc':
               case 'docx':
-                return readDocContent(file);
-              default:
-                return '';
+                text = await readDocContent(file);
+                break;
             }
-          })
-        );
-        setFileTextArr(fileTexts);
+            text && setFileTextArr((state) => [text].concat(state));
+            return;
+          });
+        });
+        await promise;
       } catch (error: any) {
         console.log(error);
         toast({
@@ -131,6 +133,7 @@ const SelectFileModal = ({
 
   const onclickImport = useCallback(() => {
     const chunks = fileTextArr
+      .filter((item) => item)
       .map((item) =>
         splitText({
           text: item,
@@ -138,10 +141,15 @@ const SelectFileModal = ({
         })
       )
       .flat();
-    // count tokens
-    const tokens = chunks.map((item) =>
-      countChatTokens({ messages: [{ role: 'system', content: item }] })
-    );
+
+    let tokens: number[] = [];
+
+    // just count 100 sets of tokens
+    if (chunks.length < 100) {
+      tokens = chunks.map((item) =>
+        countChatTokens({ messages: [{ role: 'system', content: item }] })
+      );
+    }
 
     setSplitRes({
       tokens: tokens.reduce((sum, item) => sum + item, 0),
@@ -169,7 +177,7 @@ const SelectFileModal = ({
         >
           <Box mt={2} px={5} maxW={['100%', '70%']} textAlign={'justify'} color={'blackAlpha.600'}>
             支持 {fileExtension} 文件。模型会自动对文本进行 QA 拆分，需要较长训练时间，拆分需要消耗
-            tokens，账号余额不足时，未拆分的数据会被删除。
+            tokens，账号余额不足时，未拆分的数据会被删除。一个{fileTextArr.length}个文本。
           </Box>
           {/* 拆分模式 */}
           <Flex w={'100%'} px={5} alignItems={'center'} mt={4}>
@@ -200,11 +208,11 @@ const SelectFileModal = ({
           )}
           {/* 文本内容 */}
           <Box flex={'1 0 0'} px={5} h={0} w={'100%'} overflowY={'auto'} mt={4}>
-            {fileTextArr.map((item, i) => (
+            {fileTextArr.slice(0, 100).map((item, i) => (
               <Box key={i} mb={5}>
                 <Box mb={1}>文本{i + 1}</Box>
                 <Textarea
-                  placeholder="文件内容"
+                  placeholder="文件内容,空内容会自动忽略"
                   maxLength={-1}
                   rows={10}
                   fontSize={'xs'}
@@ -231,7 +239,11 @@ const SelectFileModal = ({
           <Button variant={'outline'} colorScheme={'gray'} mr={3} onClick={onClose}>
             取消
           </Button>
-          <Button isLoading={isLoading} isDisabled={fileText === ''} onClick={onclickImport}>
+          <Button
+            isLoading={isLoading}
+            isDisabled={selecting || fileTextArr[0] === ''}
+            onClick={onclickImport}
+          >
             确认导入
           </Button>
         </Flex>
