@@ -4,7 +4,11 @@ import { PgClient } from '@/service/pg';
 
 export async function generateVector(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
-    fetch(process.env.parentUrl || '');
+    try {
+      fetch(process.env.parentUrl || '');
+    } catch (error) {
+      console.log('parentUrl fetch error', error);
+    }
     return;
   }
 

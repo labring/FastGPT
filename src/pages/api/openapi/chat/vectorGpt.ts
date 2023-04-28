@@ -171,7 +171,7 @@ ${
       {
         timeout: 180000,
         responseType: isStream ? 'stream' : 'json',
-        ...axiosConfig
+        ...axiosConfig()
       }
     );
 

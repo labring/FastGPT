@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         timeout: 40000,
         responseType: isStream ? 'stream' : 'json',
-        ...axiosConfig
+        ...axiosConfig()
       }
     );
 

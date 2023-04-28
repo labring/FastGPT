@@ -12,7 +12,11 @@ import { ModelSplitDataSchema } from '@/types/mongoSchema';
 
 export async function generateQA(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
-    fetch(process.env.parentUrl || '');
+    try {
+      fetch(process.env.parentUrl || '');
+    } catch (error) {
+      console.log('parentUrl fetch error', error);
+    }
     return;
   }
   if (global.generatingQA === true && !next) return;
@@ -97,7 +101,7 @@ A2:
             },
             {
               timeout: 180000,
-              ...axiosConfig
+              ...axiosConfig()
             }
           )
           .then((res) => {
