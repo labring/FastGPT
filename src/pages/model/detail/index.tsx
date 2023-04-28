@@ -39,6 +39,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     setLoading(true);
     try {
       const res = await getModelById(modelId);
+      console.log(res);
       setModel(res);
       formHooks.reset(res);
     } catch (err: any) {
