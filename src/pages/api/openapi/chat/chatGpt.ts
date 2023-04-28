@@ -106,10 +106,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
 
-    step = 1;
     let responseContent = '';
 
     if (isStream) {
+      step = 1;
       const streamResponse = await gpt35StreamResponse({
         res,
         stream,
