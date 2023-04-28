@@ -85,7 +85,7 @@ export const openaiCreateEmbedding = async ({
       },
       {
         timeout: 60000,
-        ...axiosConfig
+        ...axiosConfig()
       }
     )
     .then((res) => ({

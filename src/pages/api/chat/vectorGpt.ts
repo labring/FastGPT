@@ -150,7 +150,7 @@ ${
       {
         timeout: 40000,
         responseType: 'stream',
-        ...axiosConfig
+        ...axiosConfig()
       }
     );
 
