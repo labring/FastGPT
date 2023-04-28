@@ -26,4 +26,5 @@ export interface ShareModelItem {
   name: string;
   userId: string;
   share: ModelSchema['share'];
+  isCollection: boolean;
 }

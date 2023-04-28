@@ -1,35 +1,56 @@
-import React, { Dispatch, useCallback } from 'react';
+import React from 'react';
 import { Card, Box, Flex, Image, Button } from '@chakra-ui/react';
 import type { ShareModelItem } from '@/types/model';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import styles from '../index.module.scss';
 
-const ShareModelList = ({ models }: { models: ShareModelItem[] }) => {
+const ShareModelList = ({
+  models = [],
+  onclickCollection
+}: {
+  models: ShareModelItem[];
+  onclickCollection: (modelId: string) => void;
+}) => {
   const router = useRouter();
 
   return (
     <>
       {models.map((model) => (
-        <Card key={model._id} p={4}>
+        <Box
+          key={model._id}
+          p={4}
+          border={'1px solid'}
+          borderColor={'gray.200'}
+          borderRadius={'md'}
+        >
           <Flex alignItems={'center'}>
             <Image
               src={model.avatar}
               alt={'avatar'}
-              width={'36px'}
-              height={'36px'}
-              objectFit={'contain'}
+              w={['28px', '36px']}
+              h={['28px', '36px']}
+              objectFit={'cover'}
             />
             <Box fontWeight={'bold'} fontSize={'lg'} ml={5}>
               {model.name}
             </Box>
           </Flex>
-          <Box className={styles.intro} my={4} fontSize={'sm'}>
+          <Box className={styles.intro} my={4} fontSize={'sm'} color={'blackAlpha.600'}>
             {model.share.intro || '这个模型没有介绍~'}
           </Box>
           <Flex justifyContent={'space-between'}>
-            <Flex alignItems={'center'} cursor={'pointer'}>
-              <MyIcon mr={1} name={'collectionLight'} w={'16px'} />
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              color={model.isCollection ? 'blue.600' : 'alphaBlack.700'}
+              onClick={() => onclickCollection(model._id)}
+            >
+              <MyIcon
+                mr={1}
+                name={model.isCollection ? 'collectionSolid' : 'collectionLight'}
+                w={'16px'}
+              />
               {model.share.collection}
             </Flex>
             <Box>
@@ -53,7 +74,7 @@ const ShareModelList = ({ models }: { models: ShareModelItem[] }) => {
               )}
             </Box>
           </Flex>
-        </Card>
+        </Box>
       ))}
     </>
   );

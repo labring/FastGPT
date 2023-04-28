@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { AddIcon, ChatIcon, DeleteIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -22,6 +22,7 @@ import { getToken } from '@/utils/user';
 import MyIcon from '@/components/Icon';
 import WxConcat from '@/components/WxConcat';
 import { getChatHistory, delChatHistoryById } from '@/api/chat';
+import { getCollectionModels } from '@/api/model';
 import { modelList } from '@/constants/model';
 
 const SlideBar = ({
@@ -45,10 +46,30 @@ const SlideBar = ({
     cacheTime: 5 * 60 * 1000
   });
 
+  const { data: collectionModels = [] } = useQuery([getCollectionModels], getCollectionModels);
+
+  const models = useMemo(() => {
+    const myModelList = myModels.map((item) => ({
+      id: item._id,
+      name: item.name,
+      icon: modelList.find((model) => model.model === item?.service?.modelName)?.icon || 'model'
+    }));
+    const collectionList = collectionModels
+      .map((item) => ({
+        id: item._id,
+        name: item.name,
+        icon: 'collectionSolid' as any
+      }))
+      .filter((model) => !myModelList.find((item) => item.id === model.id));
+
+    return myModelList.concat(collectionList);
+  }, [collectionModels, myModels]);
+
   const { data: chatHistory = [], mutate: loadChatHistory } = useMutation({
     mutationFn: getChatHistory
   });
 
+  // update history
   useEffect(() => {
     if (chatId && preChatId.current === '') {
       loadChatHistory();
@@ -56,8 +77,11 @@ const SlideBar = ({
     preChatId.current = chatId;
   }, [chatId, loadChatHistory]);
 
+  // init history
   useEffect(() => {
-    loadChatHistory();
+    setTimeout(() => {
+      loadChatHistory();
+    }, 1000);
   }, [loadChatHistory]);
 
   const RenderHistory = () => (
@@ -165,9 +189,9 @@ const SlideBar = ({
         {isSuccess && (
           <>
             <Box>
-              {myModels.map((item) => (
+              {models.map((item) => (
                 <Flex
-                  key={item._id}
+                  key={item.id}
                   alignItems={'center'}
                   p={3}
                   borderRadius={'md'}
@@ -178,28 +202,19 @@ const SlideBar = ({
                   }}
                   fontSize={'xs'}
                   border={'1px solid transparent'}
-                  {...(item._id === modelId
+                  {...(item.id === modelId
                     ? {
                         borderColor: 'rgba(255,255,255,0.5)',
                         backgroundColor: 'rgba(255,255,255,0.1)'
                       }
                     : {})}
                   onClick={async () => {
-                    if (item._id === modelId) return;
-                    resetChat(item._id);
+                    if (item.id === modelId) return;
+                    resetChat(item.id);
                     onClose();
                   }}
                 >
-                  <MyIcon
-                    name={
-                      modelList.find((model) => model.model === item.service.modelName)?.icon ||
-                      'model'
-                    }
-                    mr={2}
-                    color={'white'}
-                    w={'16px'}
-                    h={'16px'}
-                  />
+                  <MyIcon name={item.icon} mr={2} color={'white'} w={'16px'} h={'16px'} />
                   <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
                     {item.name}
                   </Box>

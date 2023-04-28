@@ -1,7 +1,7 @@
 import { GET, POST, DELETE, PUT } from './request';
 import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
-import { ModelUpdateParams } from '@/types/model';
-import { PagingData, RequestPaging } from '../types/index';
+import { ModelUpdateParams, ShareModelItem } from '@/types/model';
+import { RequestPaging } from '../types/index';
 import { Obj2Query } from '@/utils/tools';
 
 /**
@@ -99,4 +99,13 @@ export const delOneModelData = (dataId: string) =>
  * 获取共享市场模型
  */
 export const getShareModelList = (data: { searchText?: string } & RequestPaging) =>
-  POST<number>(`/model/share/getModels`, data);
+  POST(`/model/share/getModels`, data);
+/**
+ * 获取收藏的模型
+ */
+export const getCollectionModels = () => GET<ShareModelItem[]>(`/model/share/getCollection`);
+/**
+ * 收藏/取消收藏模型
+ */
+export const triggerModelCollection = (modelId: string) =>
+  POST<number>(`/model/share/collection?modelId=${modelId}`);

@@ -64,6 +64,11 @@ export interface ModelPopulate extends ModelSchema {
   userId: UserModelSchema;
 }
 
+export interface CollectionSchema {
+  modelId: string;
+  userId: string;
+}
+
 export type ModelDataType = 0 | 1;
 export interface ModelDataSchema {
   _id: string;
