@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import { connectToDatabase, Pay } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
