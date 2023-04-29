@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Box, Button, Flex, Card } from '@chakra-ui/react';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { useRouter } from 'next/router';
@@ -7,30 +7,37 @@ import ModelPhoneList from './components/ModelPhoneList';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@/hooks/useLoading';
-import dynamic from 'next/dynamic';
 import { useToast } from '@/hooks/useToast';
 import { useUserStore } from '@/store/user';
-
-const CreateModel = dynamic(() => import('./components/CreateModel'));
+import { postCreateModel } from '@/api/model';
 
 const modelList = () => {
   const { toast } = useToast();
   const { isPc } = useScreen();
   const router = useRouter();
-  const { myModels, setMyModels, getMyModels } = useUserStore();
-  const [openCreateModel, setOpenCreateModel] = useState(false);
+  const { myModels, getMyModels } = useUserStore();
   const { Loading, setIsLoading } = useLoading();
 
   /* 加载模型 */
   const { isLoading } = useQuery(['loadModels'], getMyModels);
 
-  /* 创建成功回调 */
-  const createModelSuccess = useCallback(
-    (data: ModelSchema) => {
-      setMyModels([data, ...myModels]);
-    },
-    [myModels, setMyModels]
-  );
+  const handleCreateModel = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const id = await postCreateModel({ name: `模型${myModels.length}` });
+      toast({
+        title: '创建成功',
+        status: 'success'
+      });
+      router.push(`/model/detail?modelId=${id}`);
+    } catch (err: any) {
+      toast({
+        title: typeof err === 'string' ? err : err.message || '出现了意外',
+        status: 'error'
+      });
+    }
+    setIsLoading(false);
+  }, [myModels.length, router, setIsLoading, toast]);
 
   /* 点前往聊天预览页 */
   const handlePreviewChat = useCallback(
@@ -61,7 +68,7 @@ const modelList = () => {
             模型列表
           </Box>
 
-          <Button flex={'0 0 145px'} variant={'outline'} onClick={() => setOpenCreateModel(true)}>
+          <Button flex={'0 0 145px'} variant={'outline'} onClick={handleCreateModel}>
             新建模型
           </Button>
         </Flex>
@@ -74,10 +81,6 @@ const modelList = () => {
           <ModelPhoneList models={myModels} handlePreviewChat={handlePreviewChat} />
         )}
       </Box>
-      {/* 创建弹窗 */}
-      {openCreateModel && (
-        <CreateModel setCreateModelOpen={setOpenCreateModel} onSuccess={createModelSuccess} />
-      )}
 
       <Loading loading={isLoading} />
     </Box>

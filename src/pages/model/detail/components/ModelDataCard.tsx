@@ -45,9 +45,10 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
   const [searchText, setSearchText] = useState('');
   const tdStyles = useRef<BoxProps>({
     fontSize: 'xs',
+    minW: '150px',
     maxW: '500px',
-    whiteSpace: 'pre-wrap',
     maxH: '250px',
+    whiteSpace: 'pre-wrap',
     overflowY: 'auto'
   });
   const {
@@ -132,7 +133,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
     <>
       <Flex>
         <Box fontWeight={'bold'} fontSize={'lg'} flex={1} mr={2}>
-          模型数据: {total}组
+          知识库数据: {total}组
         </Box>
         {isOwner && (
           <>

@@ -13,10 +13,9 @@ import {
   Box
 } from '@chakra-ui/react';
 import { formatModelStatus } from '@/constants/model';
-import dayjs from 'dayjs';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { useRouter } from 'next/router';
-import { modelList } from '@/constants/model';
+import { ChatModelMap } from '@/constants/model';
 
 const ModelTable = ({
   models = [],
@@ -33,18 +32,18 @@ const ModelTable = ({
       dataIndex: 'name'
     },
     {
-      title: '模型类型',
+      title: '对话模型',
       key: 'service',
       render: (model: ModelSchema) => (
         <Box fontWeight={'bold'} whiteSpace={'pre-wrap'} maxW={'200px'}>
-          {modelList.find((item) => item.model === model.service.modelName)?.name}
+          {ChatModelMap[model.chat.chatModel]}
         </Box>
       )
     },
     {
-      title: '最后更新时间',
-      key: 'updateTime',
-      render: (item: ModelSchema) => dayjs(item.updateTime).format('YYYY-MM-DD HH:mm')
+      title: '温度',
+      key: 'temperature',
+      render: (model: ModelSchema) => <>{model.chat.temperature}</>
     },
     {
       title: '状态',

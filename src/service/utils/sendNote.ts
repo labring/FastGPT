@@ -1,6 +1,5 @@
 import * as nodemailer from 'nodemailer';
 import { UserAuthTypeEnum } from '@/constants/common';
-import dayjs from 'dayjs';
 import Dysmsapi, * as dysmsapi from '@alicloud/dysmsapi20170525';
 // @ts-ignore
 import * as OpenApi from '@alicloud/openapi-client';
@@ -41,25 +40,6 @@ export const sendEmailCode = (email: string, code: string, type: `${UserAuthType
       if (err) {
         console.log('send email error->', err);
         reject('发生邮件异常');
-      } else {
-        resolve('');
-      }
-    });
-  });
-};
-
-export const sendTrainSucceed = (email: string, modelName: string) => {
-  return new Promise((resolve, reject) => {
-    const options = {
-      from: `"FastGPT" ${myEmail}`,
-      to: email,
-      subject: '模型训练完成通知',
-      html: `你的模型 ${modelName} 已于 ${dayjs().format('YYYY-MM-DD HH:mm')} 训练完成！`
-    };
-    mailTransport.sendMail(options, function (err, msg) {
-      if (err) {
-        console.log('send email  error->', err);
-        reject('邮箱异常');
       } else {
         resolve('');
       }

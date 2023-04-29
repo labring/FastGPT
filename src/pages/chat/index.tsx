@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Image from 'next/image';
 import { getInitChatSiteInfo, delChatRecordByIndex, postSaveChat } from '@/api/chat';
 import type { InitChatResponse } from '@/api/response/chat';
 import type { ChatItemType } from '@/types/chat';
@@ -16,12 +15,13 @@ import {
   Menu,
   MenuButton,
   MenuList,
-  MenuItem
+  MenuItem,
+  Image
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
-import { ModelNameEnum } from '@/constants/model';
+import { ChatModelEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { useCopyData } from '@/utils/tools';
@@ -65,8 +65,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     name: '',
     avatar: '/icon/logo.png',
     intro: '',
-    chatModel: '',
-    modelName: '',
+    chatModel: ChatModelEnum.GPT35,
     history: []
   }); // 聊天框整体数据
 
@@ -193,13 +192,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   // gpt 对话
   const gptChatPrompt = useCallback(
     async (prompts: ChatSiteItemType) => {
-      const urlMap: Record<string, string> = {
-        [ModelNameEnum.GPT35]: '/api/chat/chatGpt',
-        [ModelNameEnum.VECTOR_GPT]: '/api/chat/vectorGpt'
-      };
-
-      if (!urlMap[chatData.modelName]) return Promise.reject('找不到模型');
-
       // create abort obj
       const abortSignal = new AbortController();
       controller.current = abortSignal;
@@ -212,7 +204,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
       // 流请求，获取数据
       const responseText = await streamFetch({
-        url: urlMap[chatData.modelName],
+        url: '/api/chat/chat',
         data: {
           prompt,
           chatId,
@@ -278,7 +270,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         })
       }));
     },
-    [chatData.modelName, chatId, generatingMessage, modelId, router, toast]
+    [chatId, generatingMessage, modelId, router, toast]
   );
 
   /**
@@ -393,7 +385,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   // 更新流中断对象
   useEffect(() => {
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      isResetPage.current = true;
       controller.current?.abort();
     };
   }, []);
@@ -476,8 +468,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                           : chatData.avatar || '/icon/logo.png'
                       }
                       alt="avatar"
-                      width={media(30, 20)}
-                      height={media(30, 20)}
+                      w={['20px', '30px']}
+                      maxH={'50px'}
+                      objectFit={'contain'}
                     />
                   </MenuButton>
                   <MenuList fontSize={'sm'}>

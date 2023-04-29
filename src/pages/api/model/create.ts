@@ -3,14 +3,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/tools';
-import { ModelStatusEnum, modelList, ModelNameEnum, Model2ChatModelMap } from '@/constants/model';
+import { ModelStatusEnum } from '@/constants/model';
 import { Model } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, serviceModelName } = req.body as {
+    const { name } = req.body as {
       name: string;
-      serviceModelName: `${ModelNameEnum}`;
     };
     const { authorization } = req.headers;
 
@@ -18,18 +17,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('无权操作');
     }
 
-    if (!name || !serviceModelName) {
+    if (!name) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
     const userId = await authToken(authorization);
-
-    const modelItem = modelList.find((item) => item.model === serviceModelName);
-
-    if (!modelItem) {
-      throw new Error('模型不存在');
-    }
 
     await connectToDatabase();
 
@@ -37,26 +30,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const authCount = await Model.countDocuments({
       userId
     });
-    if (authCount >= 20) {
-      throw new Error('上限 20 个模型');
+    if (authCount >= 30) {
+      throw new Error('上限 30 个模型');
     }
 
     // 创建模型
     const response = await Model.create({
       name,
       userId,
-      status: ModelStatusEnum.running,
-      service: {
-        chatModel: Model2ChatModelMap[modelItem.model], // 聊天时用的模型
-        modelName: modelItem.model // 最底层的模型，不会变，用于计费等核心操作
-      }
+      status: ModelStatusEnum.running
     });
 
-    // 根据 id 获取模型信息
-    const model = await Model.findById(response._id);
-
     jsonRes(res, {
-      data: model
+      data: response._id
     });
   } catch (err) {
     jsonRes(res, {

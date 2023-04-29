@@ -7,7 +7,6 @@ export type InitChatResponse = {
   name: string;
   avatar: string;
   intro: string;
-  chatModel: ModelSchema.service.chatModel; // 对话模型名
-  modelName: ModelSchema.service.modelName; // 底层模型
+  chatModel: ModelSchema['chat']['chatModel']; // 对话模型名
   history: ChatItemType[];
 };

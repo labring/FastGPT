@@ -1,20 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
-import { getOpenAIApi } from '@/service/utils/auth';
-import { authOpenApiKey } from '@/service/utils/tools';
+import { getOpenAIApi, authOpenApiKey } from '@/service/utils/auth';
 import { axiosConfig, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import {
-  ModelNameEnum,
-  modelList,
-  ModelVectorSearchModeMap,
-  ChatModelEnum
-} from '@/constants/model';
+import { modelList, ModelVectorSearchModeMap, ChatModelEnum } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
-import { openaiCreateEmbedding, gpt35StreamResponse } from '@/service/utils/openai';
-import { PgClient } from '@/service/pg';
+import { gpt35StreamResponse } from '@/service/utils/openai';
+import { searchKb_openai } from '@/service/tools/searchKb';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -59,10 +53,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('找不到模型');
     }
 
-    const modelConstantsData = modelList.find((item) => item.model === ModelNameEnum.VECTOR_GPT);
+    const modelConstantsData = modelList.find((item) => item.chatModel === model.chat.chatModel);
     if (!modelConstantsData) {
-      throw new Error('模型已下架');
+      throw new Error('model is undefined');
     }
+
     console.log('laf gpt start');
 
     // 获取 chatAPI
@@ -132,62 +127,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     prompt.value += ` ${promptResolve}`;
     console.log('prompt resolve success, time:', `${(Date.now() - startTime) / 1000}s`);
 
-    // 获取提示词的向量
-    const { vector: promptVector } = await openaiCreateEmbedding({
-      isPay: true,
-      apiKey,
-      userId,
-      text: prompt.value
-    });
-
     // 读取对话内容
     const prompts = [prompt];
 
-    // 相似度搜索
-    const similarity = ModelVectorSearchModeMap[model.search.mode]?.similarity || 0.22;
-    const vectorSearch = await PgClient.select<{ id: string; q: string; a: string }>('modelData', {
-      fields: ['id', 'q', 'a'],
-      order: [{ field: 'vector', mode: `<=> '[${promptVector}]'` }],
-      where: [
-        ['model_id', model._id],
-        'AND',
-        ['user_id', userId],
-        'AND',
-        `vector <=> '[${promptVector}]' < ${similarity}`
-      ],
-      limit: 30
+    // 获取向量匹配到的提示词
+    const { systemPrompts } = await searchKb_openai({
+      isPay: true,
+      apiKey,
+      similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22,
+      text: prompt.value,
+      modelId,
+      userId
     });
 
-    const formatRedisPrompt: string[] = vectorSearch.rows.map((item) => `${item.q}\n${item.a}`);
-
     // system 筛选，最多 2500 tokens
-    const systemPrompt = systemPromptFilter({
-      model: model.service.chatModel,
-      prompts: formatRedisPrompt,
+    const filterSystemPrompt = systemPromptFilter({
+      model: model.chat.chatModel,
+      prompts: systemPrompts,
       maxTokens: 2500
     });
 
     prompts.unshift({
       obj: 'SYSTEM',
-      value: `${model.systemPrompt} 知识库是最新的,下面是知识库内容:${systemPrompt}`
+      value: `${model.chat.systemPrompt} 知识库是最新的,下面是知识库内容:${filterSystemPrompt}`
     });
 
     // 控制上下文 tokens 数量，防止超出
     const filterPrompts = openaiChatFilter({
-      model: model.service.chatModel,
+      model: model.chat.chatModel,
       prompts,
       maxTokens: modelConstantsData.contextMaxToken - 500
     });
 
     // console.log(filterPrompts);
     // 计算温度
-    const temperature = modelConstantsData.maxTemperature * (model.temperature / 10);
-
+    const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
+      2
+    );
     // 发出请求
     const chatResponse = await chatAPI.createChatCompletion(
       {
-        model: model.service.chatModel,
-        temperature,
+        model: model.chat.chatModel,
+        temperature: Number(temperature) || 0,
         messages: filterPrompts,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容
@@ -223,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     pushChatBill({
       isPay: true,
-      modelName: model.service.modelName,
+      chatModel: model.chat.chatModel,
       userId,
       messages: filterPrompts.concat({ role: 'assistant', content: responseContent })
     });

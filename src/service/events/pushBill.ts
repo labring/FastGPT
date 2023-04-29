@@ -1,23 +1,17 @@
 import { connectToDatabase, Bill, User } from '../mongo';
-import {
-  modelList,
-  ChatModelEnum,
-  ModelNameEnum,
-  Model2ChatModelMap,
-  embeddingModel
-} from '@/constants/model';
+import { modelList, ChatModelEnum, embeddingModel } from '@/constants/model';
 import { BillTypeEnum } from '@/constants/user';
 import { countChatTokens } from '@/utils/tools';
 
 export const pushChatBill = async ({
   isPay,
-  modelName,
+  chatModel,
   userId,
   chatId,
   messages
 }: {
   isPay: boolean;
-  modelName: `${ModelNameEnum}`;
+  chatModel: `${ChatModelEnum}`;
   userId: string;
   chatId?: '' | string;
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
@@ -26,7 +20,7 @@ export const pushChatBill = async ({
 
   try {
     // 计算 token 数量
-    const tokens = countChatTokens({ model: Model2ChatModelMap[modelName] as any, messages });
+    const tokens = countChatTokens({ model: chatModel, messages });
     const text = messages.map((item) => item.content).join('');
 
     console.log(
@@ -37,7 +31,7 @@ export const pushChatBill = async ({
       await connectToDatabase();
 
       // 获取模型单价格
-      const modelItem = modelList.find((item) => item.model === modelName);
+      const modelItem = modelList.find((item) => item.chatModel === chatModel);
       // 计算价格
       const unitPrice = modelItem?.price || 5;
       const price = unitPrice * tokens;
@@ -47,7 +41,7 @@ export const pushChatBill = async ({
         const res = await Bill.create({
           userId,
           type: 'chat',
-          modelName,
+          modelName: chatModel,
           chatId: chatId ? chatId : undefined,
           textLen: text.length,
           tokenLen: tokens,
@@ -94,7 +88,7 @@ export const pushSplitDataBill = async ({
     if (isPay) {
       try {
         // 获取模型单价格, 都是用 gpt35 拆分
-        const modelItem = modelList.find((item) => item.model === ChatModelEnum.GPT35);
+        const modelItem = modelList.find((item) => item.chatModel === ChatModelEnum.GPT35);
         const unitPrice = modelItem?.price || 3;
         // 计算价格
         const price = unitPrice * tokenLen;

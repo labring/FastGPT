@@ -1,49 +1,31 @@
 import type { ModelSchema } from '@/types/mongoSchema';
 
 export const embeddingModel = 'text-embedding-ada-002';
+
 export enum ChatModelEnum {
   'GPT35' = 'gpt-3.5-turbo',
   'GPT4' = 'gpt-4',
   'GPT432k' = 'gpt-4-32k'
 }
-
-export enum ModelNameEnum {
-  GPT35 = 'gpt-3.5-turbo',
-  VECTOR_GPT = 'VECTOR_GPT'
-}
-
-export const Model2ChatModelMap: Record<`${ModelNameEnum}`, `${ChatModelEnum}`> = {
-  [ModelNameEnum.GPT35]: 'gpt-3.5-turbo',
-  [ModelNameEnum.VECTOR_GPT]: 'gpt-3.5-turbo'
+export const ChatModelMap = {
+  // ui name
+  [ChatModelEnum.GPT35]: 'ChatGpt',
+  [ChatModelEnum.GPT4]: 'Gpt4',
+  [ChatModelEnum.GPT432k]: 'Gpt4-32k'
 };
 
-export type ModelConstantsData = {
-  icon: 'model' | 'dbModel';
-  name: string;
-  model: `${ModelNameEnum}`;
-  trainName: string; // 空字符串代表不能训练
+export type ChatModelConstantType = {
+  chatModel: `${ChatModelEnum}`;
   contextMaxToken: number;
   maxTemperature: number;
   price: number; // 多少钱 / 1token，单位: 0.00001元
 };
 
-export const modelList: ModelConstantsData[] = [
+export const modelList: ChatModelConstantType[] = [
   {
-    icon: 'model',
-    name: 'chatGPT',
-    model: ModelNameEnum.GPT35,
-    trainName: '',
+    chatModel: ChatModelEnum.GPT35,
     contextMaxToken: 4096,
     maxTemperature: 1.5,
-    price: 3
-  },
-  {
-    icon: 'dbModel',
-    name: '知识库',
-    model: ModelNameEnum.VECTOR_GPT,
-    trainName: 'vector',
-    contextMaxToken: 4096,
-    maxTemperature: 1,
     price: 3
   }
 ];
@@ -115,24 +97,22 @@ export const ModelVectorSearchModeMap: Record<
 export const defaultModel: ModelSchema = {
   _id: 'modelId',
   userId: 'userId',
-  name: 'modelName',
+  name: '模型名称',
   avatar: '/icon/logo.png',
   status: ModelStatusEnum.pending,
   updateTime: Date.now(),
-  systemPrompt: '',
-  temperature: 5,
-  search: {
-    mode: ModelVectorSearchModeEnum.hightSimilarity
+  chat: {
+    useKb: false,
+    searchMode: ModelVectorSearchModeEnum.hightSimilarity,
+    systemPrompt: '',
+    temperature: 0,
+    chatModel: ChatModelEnum.GPT35
   },
   share: {
     isShare: false,
     isShareDetail: false,
     intro: '',
     collection: 0
-  },
-  service: {
-    chatModel: ModelNameEnum.GPT35,
-    modelName: ModelNameEnum.GPT35
   },
   security: {
     domain: ['*'],

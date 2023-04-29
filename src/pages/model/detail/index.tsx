@@ -27,11 +27,6 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
     defaultValues: model
   });
 
-  const canTrain = useMemo(() => {
-    const openai = modelList.find((item) => item.model === model?.service.modelName);
-    return !!(openai && openai.trainName);
-  }, [model]);
-
   const isOwner = useMemo(() => model.userId === userInfo?._id, [model.userId, userInfo?._id]);
 
   /* 加载模型数据 */
@@ -86,11 +81,8 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         await putModelById(data._id, {
           name: data.name,
           avatar: data.avatar || '/icon/logo.png',
-          systemPrompt: data.systemPrompt,
-          temperature: data.temperature,
-          search: data.search,
+          chat: data.chat,
           share: data.share,
-          service: data.service,
           security: data.security
         });
         toast({
@@ -171,11 +163,15 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
               </Tag>
             </Flex>
             <Box mt={4} textAlign={'right'}>
-              <Button variant={'outline'} onClick={handlePreviewChat}>
+              <Button variant={'outline'} size={'sm'} onClick={handlePreviewChat}>
                 对话体验
               </Button>
               {isOwner && (
-                <Button ml={4} onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}>
+                <Button
+                  ml={4}
+                  size={'sm'}
+                  onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}
+                >
                   保存修改
                 </Button>
               )}
@@ -184,16 +180,11 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
         )}
       </Card>
       <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={5}>
-        <ModelEditForm
-          formHooks={formHooks}
-          handleDelModel={handleDelModel}
-          canTrain={canTrain}
-          isOwner={isOwner}
-        />
+        <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} isOwner={isOwner} />
 
-        {canTrain && !!model._id && (
+        {modelId && (
           <Card p={4} gridColumnStart={[1, 1]} gridColumnEnd={[2, 3]}>
-            <ModelDataCard modelId={model._id} isOwner={isOwner} />
+            <ModelDataCard modelId={modelId} isOwner={isOwner} />
           </Card>
         )}
       </Grid>

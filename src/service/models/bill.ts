@@ -1,5 +1,5 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { modelList } from '@/constants/model';
+import { ChatModelMap } from '@/constants/model';
 import { BillSchema as BillType } from '@/types/mongoSchema';
 import { BillTypeMap } from '@/constants/user';
 
@@ -16,7 +16,7 @@ const BillSchema = new Schema({
   },
   modelName: {
     type: String,
-    enum: [...modelList.map((item) => item.model), 'text-embedding-ada-002'],
+    enum: [...Object.keys(ChatModelMap), 'text-embedding-ada-002'],
     required: true
   },
   chatId: {
