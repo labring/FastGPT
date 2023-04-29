@@ -9,8 +9,7 @@ import { authModel } from '@/service/utils/auth';
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, avatar, search, share, service, security, systemPrompt, temperature } =
-      req.body as ModelUpdateParams;
+    const { name, avatar, chat, share, security } = req.body as ModelUpdateParams;
     const { modelId } = req.query as { modelId: string };
     const { authorization } = req.headers;
 
@@ -18,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('无权操作');
     }
 
-    if (!name || !service || !security || !modelId) {
+    if (!name || !chat || !security || !modelId) {
       throw new Error('参数错误');
     }
 
@@ -41,12 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       {
         name,
         avatar,
-        systemPrompt,
-        temperature,
+        chat,
         'share.isShare': share.isShare,
         'share.isShareDetail': share.isShareDetail,
         'share.intro': share.intro,
-        search,
         security
       }
     );

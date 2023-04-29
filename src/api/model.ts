@@ -12,8 +12,7 @@ export const getMyModels = () => GET<ModelSchema[]>('/model/list');
 /**
  * 创建一个模型
  */
-export const postCreateModel = (data: { name: string; serviceModelName: string }) =>
-  POST<ModelSchema>('/model/create', data);
+export const postCreateModel = (data: { name: string }) => POST<string>('/model/create', data);
 
 /**
  * 根据 ID 删除模型

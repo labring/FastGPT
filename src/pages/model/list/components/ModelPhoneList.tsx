@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { Box, Button, Flex, Tag } from '@chakra-ui/react';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { formatModelStatus } from '@/constants/model';
-import dayjs from 'dayjs';
 import { useRouter } from 'next/router';
+import { ChatModelMap } from '@/constants/model';
 
 const ModelPhoneList = ({
   models,
@@ -42,12 +42,12 @@ const ModelPhoneList = ({
             </Tag>
           </Flex>
           <Flex mt={5}>
-            <Box flex={'0 0 100px'}>最后更新时间: </Box>
-            <Box color={'blackAlpha.500'}>{dayjs(model.updateTime).format('YYYY-MM-DD HH:mm')}</Box>
+            <Box flex={'0 0 100px'}>对话模型: </Box>
+            <Box color={'blackAlpha.500'}>{ChatModelMap[model.chat.chatModel]}</Box>
           </Flex>
           <Flex mt={5}>
-            <Box flex={'0 0 100px'}>AI模型: </Box>
-            <Box color={'blackAlpha.500'}>{model.service.modelName}</Box>
+            <Box flex={'0 0 100px'}>模型温度: </Box>
+            <Box color={'blackAlpha.500'}>{model.chat.temperature}</Box>
           </Flex>
           <Flex mt={5} justifyContent={'flex-end'}>
             <Button

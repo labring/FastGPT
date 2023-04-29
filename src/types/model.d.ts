@@ -1,13 +1,11 @@
 import { ModelStatusEnum } from '@/constants/model';
 import type { ModelSchema } from './mongoSchema';
+
 export interface ModelUpdateParams {
   name: string;
   avatar: string;
-  systemPrompt: string;
-  temperature: number;
-  search: ModelSchema['search'];
+  chat: ModelSchema['chat'];
   share: ModelSchema['share'];
-  service: ModelSchema['service'];
   security: ModelSchema['security'];
 }
 

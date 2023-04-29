@@ -1,13 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase, Model } from '@/service/mongo';
-import { getOpenAIApi, authOpenApiKey } from '@/service/utils/auth';
-import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
+import { connectToDatabase } from '@/service/mongo';
+import { getOpenAIApi, authOpenApiKey, authModel } from '@/service/utils/auth';
+import { axiosConfig, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import { modelList } from '@/constants/model';
+import { modelList, ModelVectorSearchModeMap, ModelVectorSearchModeEnum } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { gpt35StreamResponse } from '@/service/utils/openai';
+import { searchKb_openai } from '@/service/tools/searchKb';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -49,42 +50,96 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     let startTime = Date.now();
 
+    /* 凭证校验 */
     const { apiKey, userId } = await authOpenApiKey(req);
 
-    const model = await Model.findOne({
-      _id: modelId,
-      userId
+    const { model } = await authModel({
+      userId,
+      modelId
     });
-
-    if (!model) {
-      throw new Error('无权使用该模型');
-    }
 
     const modelConstantsData = modelList.find((item) => item.chatModel === model.chat.chatModel);
     if (!modelConstantsData) {
       throw new Error('模型加载异常');
     }
 
-    // 如果有系统提示词，自动插入
-    if (model.chat.systemPrompt) {
-      prompts.unshift({
-        obj: 'SYSTEM',
-        value: model.chat.systemPrompt
+    // 使用了知识库搜索
+    if (model.chat.useKb) {
+      const similarity = ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22;
+
+      const { systemPrompts } = await searchKb_openai({
+        apiKey,
+        isPay: true,
+        text: prompts[prompts.length - 1].value,
+        similarity,
+        modelId,
+        userId
       });
+
+      // filter system prompt
+      if (
+        systemPrompts.length === 0 &&
+        model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity
+      ) {
+        return jsonRes(res, {
+          code: 500,
+          message: '对不起，你的问题不在知识库中。',
+          data: '对不起，你的问题不在知识库中。'
+        });
+      }
+      /* 高相似度+无上下文，不添加额外知识,仅用系统提示词 */
+      if (
+        systemPrompts.length === 0 &&
+        model.chat.searchMode === ModelVectorSearchModeEnum.noContext
+      ) {
+        prompts.unshift({
+          obj: 'SYSTEM',
+          value: model.chat.systemPrompt
+        });
+      } else {
+        // 有匹配情况下，system 添加知识库内容。
+        // 系统提示词过滤，最多 2500 tokens
+        const filterSystemPrompt = systemPromptFilter({
+          model: model.chat.chatModel,
+          prompts: systemPrompts,
+          maxTokens: 2500
+        });
+
+        prompts.unshift({
+          obj: 'SYSTEM',
+          value: `
+  ${model.chat.systemPrompt}
+  ${
+    model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity
+      ? `不回答知识库外的内容.`
+      : ''
+  }
+  知识库内容为: ${filterSystemPrompt}'
+  `
+        });
+      }
+    } else {
+      // 没有用知识库搜索，仅用系统提示词
+      if (model.chat.systemPrompt) {
+        prompts.unshift({
+          obj: 'SYSTEM',
+          value: model.chat.systemPrompt
+        });
+      }
     }
 
-    // 控制在 tokens 数量，防止超出
+    // 控制总 tokens 数量，防止超出
     const filterPrompts = openaiChatFilter({
       model: model.chat.chatModel,
       prompts,
       maxTokens: modelConstantsData.contextMaxToken - 500
     });
 
-    // console.log(filterPrompts);
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
       2
     );
+    // console.log(filterPrompts);
     // 获取 chatAPI
     const chatAPI = getOpenAIApi(apiKey);
     // 发出请求
@@ -99,7 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stop: ['.!?。']
       },
       {
-        timeout: 40000,
+        timeout: 180000,
         responseType: isStream ? 'stream' : 'json',
         ...axiosConfig()
       }

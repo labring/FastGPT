@@ -1,10 +1,6 @@
-import type { NextApiRequest } from 'next';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { ChatItemType } from '@/types/chat';
-import { OpenApi, User } from '../mongo';
-import { formatPrice } from '@/utils/user';
-import { ERROR_ENUM } from '../errorCode';
 import { countChatTokens } from '@/utils/tools';
 import { ChatCompletionRequestMessageRoleEnum, ChatCompletionRequestMessage } from 'openai';
 import { ChatModelEnum } from '@/constants/model';
@@ -44,44 +40,6 @@ export const authToken = (token?: string): Promise<string> => {
       resolve(decoded.userId);
     });
   });
-};
-
-/* 校验 open api key */
-export const authOpenApiKey = async (req: NextApiRequest) => {
-  const { apikey: apiKey } = req.headers;
-
-  if (!apiKey) {
-    return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
-
-  try {
-    const openApi = await OpenApi.findOne({ apiKey });
-    if (!openApi) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-    const userId = String(openApi.userId);
-
-    // 余额校验
-    const user = await User.findById(userId);
-    if (!user) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-    if (formatPrice(user.balance) <= 0) {
-      return Promise.reject('Insufficient account balance');
-    }
-
-    // 更新使用的时间
-    await OpenApi.findByIdAndUpdate(openApi._id, {
-      lastUsedTime: new Date()
-    });
-
-    return {
-      apiKey: process.env.OPENAIKEY as string,
-      userId
-    };
-  } catch (error) {
-    return Promise.reject(error);
-  }
 };
 
 /* openai axios config */

@@ -52,7 +52,7 @@ const SlideBar = ({
     const myModelList = myModels.map((item) => ({
       id: item._id,
       name: item.name,
-      icon: modelList.find((model) => model.model === item?.service?.modelName)?.icon || 'model'
+      icon: 'model' as any
     }));
     const collectionList = collectionModels
       .map((item) => ({

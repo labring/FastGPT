@@ -59,8 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         name: model.name,
         avatar: model.avatar,
         intro: model.share.intro,
-        modelName: model.service.modelName,
-        chatModel: model.service.chatModel,
+        chatModel: model.chat.chatModel,
         history
       }
     });

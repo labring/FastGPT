@@ -21,7 +21,7 @@ import {
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { UseFormReturn } from 'react-hook-form';
-import { modelList, ModelVectorSearchModeMap } from '@/constants/model';
+import { ChatModelMap, modelList, ModelVectorSearchModeMap } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -30,12 +30,10 @@ import { fileToBase64 } from '@/utils/file';
 
 const ModelEditForm = ({
   formHooks,
-  canTrain,
   isOwner,
   handleDelModel
 }: {
   formHooks: UseFormReturn<ModelSchema>;
-  canTrain: boolean;
   isOwner: boolean;
   handleDelModel: () => void;
 }) => {
@@ -73,6 +71,12 @@ const ModelEditForm = ({
     <>
       <Card p={4}>
         <Box fontWeight={'bold'}>基本信息</Box>
+        <Flex alignItems={'center'} mt={4}>
+          <Box flex={'0 0 80px'} w={0}>
+            modelId:
+          </Box>
+          <Box>{getValues('_id')}</Box>
+        </Flex>
         <Flex mt={4} alignItems={'center'}>
           <Box flex={'0 0 80px'} w={0}>
             头像:
@@ -101,17 +105,12 @@ const ModelEditForm = ({
             ></Input>
           </Flex>
         </FormControl>
+
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
-            modelId:
+            对话模型:
           </Box>
-          <Box>{getValues('_id')}</Box>
-        </Flex>
-        <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 80px'} w={0}>
-            模型类型:
-          </Box>
-          <Box>{modelList.find((item) => item.model === getValues('service.modelName'))?.name}</Box>
+          <Box>{ChatModelMap[getValues('chat.chatModel')]}</Box>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
@@ -119,7 +118,7 @@ const ModelEditForm = ({
           </Box>
           <Box>
             {formatPrice(
-              modelList.find((item) => item.model === getValues('service.modelName'))?.price || 0,
+              modelList.find((item) => item.chatModel === getValues('chat.chatModel'))?.price || 0,
               1000
             )}
             元/1K tokens(包括上下文和回答)
@@ -163,15 +162,15 @@ const ModelEditForm = ({
               min={0}
               max={10}
               step={1}
-              value={getValues('temperature')}
+              value={getValues('chat.temperature')}
               isDisabled={!isOwner}
               onChange={(e) => {
-                setValue('temperature', e);
+                setValue('chat.temperature', e);
                 setRefresh(!refresh);
               }}
             >
               <SliderMark
-                value={getValues('temperature')}
+                value={getValues('chat.temperature')}
                 textAlign="center"
                 bg="blue.500"
                 color="white"
@@ -181,7 +180,7 @@ const ModelEditForm = ({
                 fontSize={'xs'}
                 transform={'translate(-50%, -200%)'}
               >
-                {getValues('temperature')}
+                {getValues('chat.temperature')}
               </SliderMark>
               <SliderTrack>
                 <SliderFilledTrack />
@@ -190,35 +189,42 @@ const ModelEditForm = ({
             </Slider>
           </Flex>
         </FormControl>
-        {canTrain && (
-          <FormControl mt={4}>
-            <Flex alignItems={'center'}>
-              <Box flex={'0 0 70px'}>搜索模式</Box>
-              <Select
-                isDisabled={!isOwner}
-                {...register('search.mode', { required: '搜索模式不能为空' })}
-              >
-                {Object.entries(ModelVectorSearchModeMap).map(([key, { text }]) => (
-                  <option key={key} value={key}>
-                    {text}
-                  </option>
-                ))}
-              </Select>
-            </Flex>
-          </FormControl>
+        <Flex mt={4} alignItems={'center'}>
+          <Box mr={4}>知识库搜索</Box>
+          <Switch
+            isChecked={getValues('chat.useKb')}
+            onChange={() => {
+              setValue('chat.useKb', !getValues('chat.useKb'));
+              setRefresh(!refresh);
+            }}
+          />
+        </Flex>
+        {getValues('chat.useKb') && (
+          <Flex mt={4} alignItems={'center'}>
+            <Box mr={4} whiteSpace={'nowrap'}>
+              搜索模式&emsp;
+            </Box>
+            <Select
+              isDisabled={!isOwner}
+              {...register('chat.searchMode', { required: '搜索模式不能为空' })}
+            >
+              {Object.entries(ModelVectorSearchModeMap).map(([key, { text }]) => (
+                <option key={key} value={key}>
+                  {text}
+                </option>
+              ))}
+            </Select>
+          </Flex>
         )}
+
         <Box mt={4}>
           <Box mb={1}>系统提示词</Box>
           <Textarea
             rows={8}
             maxLength={-1}
             isDisabled={!isOwner}
-            placeholder={
-              canTrain
-                ? '训练的模型会根据知识库内容，生成一部分系统提示词，因此在对话时需要消耗更多的 tokens。你可以增加提示词，让效果更符合预期。例如: \n1. 请根据知识库内容回答用户问题。\n2. 知识库是电影《铃芽之旅》的内容，根据知识库内容回答。无关问题，拒绝回复！'
-                : '模型默认的 prompt 词，通过调整该内容，可以生成一个限定范围的模型。\n注意，改功能会影响对话的整体朝向！'
-            }
-            {...register('systemPrompt')}
+            placeholder={'模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。'}
+            {...register('chat.systemPrompt')}
           />
         </Box>
       </Card>
