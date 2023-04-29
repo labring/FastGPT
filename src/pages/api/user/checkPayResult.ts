@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, User, Pay } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import { PaySchema, UserModelSchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { getPayResult } from '@/service/utils/wxpay';

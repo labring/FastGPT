@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, OpenApi } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890');
 

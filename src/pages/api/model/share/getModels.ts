@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Collection, Model } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import type { PagingData } from '@/types';
 import type { ShareModelItem } from '@/types/model';
 

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

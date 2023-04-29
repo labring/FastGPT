@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { User } from '@/service/models/user';
 import { connectToDatabase } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import { UserUpdateParams } from '@/types/user';
 
 /* 更新一些基本信息 */

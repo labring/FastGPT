@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { User } from '@/service/models/user';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

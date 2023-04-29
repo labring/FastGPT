@@ -23,25 +23,6 @@ export const generateToken = (userId: string) => {
   return token;
 };
 
-/* 校验 token */
-export const authToken = (token?: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    if (!token) {
-      reject('缺少登录凭证');
-      return;
-    }
-    const key = process.env.TOKEN_KEY as string;
-
-    jwt.verify(token, key, function (err, decoded: any) {
-      if (err || !decoded?.userId) {
-        reject('凭证无效');
-        return;
-      }
-      resolve(decoded.userId);
-    });
-  });
-};
-
 /* openai axios config */
 export const axiosConfig = () => ({
   httpsAgent: global.httpsAgent,

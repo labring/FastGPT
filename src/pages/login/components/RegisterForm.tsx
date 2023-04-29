@@ -8,6 +8,7 @@ import type { ResLogin } from '@/api/response/user';
 import { useScreen } from '@/hooks/useScreen';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
+import { postCreateModel } from '@/api/model';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -63,6 +64,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         toast({
           title: `注册成功`,
           status: 'success'
+        });
+        // aut register a model
+        postCreateModel({
+          name: '模型1'
         });
       } catch (error: any) {
         toast({

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, SplitData, Model } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
 import { PgClient } from '@/service/pg';

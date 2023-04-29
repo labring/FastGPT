@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authToken } from '@/service/utils/tools';
+import { authToken } from '@/service/utils/auth';
 import { ModelStatusEnum } from '@/constants/model';
 import { Model } from '@/service/models/model';
 
