@@ -20,8 +20,7 @@ import { useMutation } from '@tanstack/react-query';
 import { postModelDataSplitData } from '@/api/model';
 import { formatPrice } from '@/utils/user';
 import Radio from '@/components/Radio';
-import { splitText } from '@/utils/file';
-import { countChatTokens } from '@/utils/tools';
+import { splitText_token } from '@/utils/file';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
@@ -49,7 +48,7 @@ const SelectFileModal = ({
   onSuccess: () => void;
   modelId: string;
 }) => {
-  const [selecting, setSelecting] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
@@ -62,17 +61,21 @@ const SelectFileModal = ({
   const { openConfirm, ConfirmChild } = useConfirm({
     content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被直接清除。一共 ${
       splitRes.chunks.length
-    } 组，大约 ${splitRes.tokens || '数量太多,未计算'} 个tokens, 约 ${formatPrice(
-      splitRes.tokens * modeMap[mode].price
-    )} 元`
+    } 组。${
+      splitRes.tokens
+        ? `大约 ${splitRes.tokens} 个tokens, 约 ${formatPrice(
+            splitRes.tokens * modeMap[mode].price
+          )} 元`
+        : ''
+    }`
   });
 
   const onSelectFile = useCallback(
-    async (e: File[]) => {
-      setSelecting(true);
+    async (files: File[]) => {
+      setBtnLoading(true);
       try {
         let promise = Promise.resolve();
-        e.map((file) => {
+        files.forEach((file) => {
           promise = promise.then(async () => {
             const extension = file?.name?.split('.')?.pop()?.toLowerCase();
             let text = '';
@@ -101,7 +104,7 @@ const SelectFileModal = ({
           status: 'error'
         });
       }
-      setSelecting(false);
+      setBtnLoading(false);
     },
     [toast]
   );
@@ -131,31 +134,27 @@ const SelectFileModal = ({
     }
   });
 
-  const onclickImport = useCallback(() => {
-    const chunks = fileTextArr
+  const onclickImport = useCallback(async () => {
+    setBtnLoading(true);
+    let promise = Promise.resolve();
+
+    const splitRes = fileTextArr
       .filter((item) => item)
       .map((item) =>
-        splitText({
+        splitText_token({
           text: item,
           ...modeMap[mode]
         })
-      )
-      .flat();
-
-    let tokens: number[] = [];
-
-    // just count 100 sets of tokens
-    if (chunks.length < 100) {
-      tokens = chunks.map((item) =>
-        countChatTokens({ messages: [{ role: 'system', content: item }] })
       );
-    }
 
     setSplitRes({
-      tokens: tokens.reduce((sum, item) => sum + item, 0),
-      chunks
+      tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
+      chunks: splitRes.map((item) => item.chunks).flat()
     });
 
+    setBtnLoading(false);
+
+    await promise;
     openConfirm(mutate)();
   }, [fileTextArr, mode, mutate, openConfirm]);
 
@@ -239,7 +238,7 @@ const SelectFileModal = ({
         </ModalBody>
 
         <Flex px={6} pt={2} pb={4}>
-          <Button isLoading={selecting} onClick={onOpen}>
+          <Button isLoading={btnLoading} onClick={onOpen}>
             选择文件
           </Button>
           <Box flex={1}></Box>
@@ -247,8 +246,8 @@ const SelectFileModal = ({
             取消
           </Button>
           <Button
-            isLoading={isLoading}
-            isDisabled={selecting || fileTextArr[0] === ''}
+            isLoading={isLoading || btnLoading}
+            isDisabled={isLoading || btnLoading || fileTextArr[0] === ''}
             onClick={onclickImport}
           >
             确认导入

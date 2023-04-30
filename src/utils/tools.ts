@@ -7,7 +7,7 @@ import { ChatModelEnum } from '@/constants/model';
 const textDecoder = new TextDecoder();
 const graphemer = new Graphemer();
 let encMap: Record<string, Tiktoken>;
-const getEncMap = () => {
+export const getEncMap = () => {
   if (encMap) return encMap;
   encMap = {
     'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
@@ -135,4 +135,19 @@ export const countChatTokens = ({
 }) => {
   const text = getChatGPTEncodingText(messages, model);
   return text2TokensLen(getEncMap()[model], text);
+};
+
+export const sliceTextByToken = ({
+  model = 'gpt-3.5-turbo',
+  text,
+  length
+}: {
+  model?: `${ChatModelEnum}`;
+  text: string;
+  length: number;
+}) => {
+  const enc = getEncMap()[model];
+  const encodeText = enc.encode(text);
+  const decoder = new TextDecoder();
+  return decoder.decode(enc.decode(encodeText.slice(0, length)));
 };

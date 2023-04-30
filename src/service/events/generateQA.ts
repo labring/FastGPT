@@ -106,7 +106,7 @@ A2:
           )
           .then((res) => {
             const rawContent = res?.data.choices[0].message?.content || ''; // chatgpt 原本的回复
-            const result = splitText(res?.data.choices[0].message?.content || ''); // 格式化后的QA对
+            const result = formatSplitText(res?.data.choices[0].message?.content || ''); // 格式化后的QA对
             console.log(`split result length: `, result.length);
             // 计费
             pushSplitDataBill({
@@ -190,7 +190,7 @@ A2:
 /**
  * 检查文本是否按格式返回
  */
-function splitText(text: string) {
+function formatSplitText(text: string) {
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q|$)/g; // 匹配Q和A的正则表达式
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 

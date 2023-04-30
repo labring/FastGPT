@@ -16,8 +16,10 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Input
+  Input,
+  Tooltip
 } from '@chakra-ui/react';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { BoxProps } from '@chakra-ui/react';
 import type { ModelDataItemType } from '@/types/model';
 import { ModelDataStatusMap } from '@/constants/model';
@@ -208,7 +210,16 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
           <Table variant={'simple'} w={'100%'}>
             <Thead>
               <Tr>
-                <Th>{'匹配的知识点'}</Th>
+                <Th>
+                  匹配的知识点
+                  <Tooltip
+                    label={
+                      '对话时，会将用户的问题和知识库的 "匹配知识点" 进行比较，找到最相似的前 n 条记录，将这些记录的 "匹配知识点"+"补充知识点" 作为 chatgpt 的系统提示词。'
+                    }
+                  >
+                    <QuestionOutlineIcon ml={1} />
+                  </Tooltip>
+                </Th>
                 <Th>补充知识</Th>
                 <Th>状态</Th>
                 {isOwner && <Th>操作</Th>}
