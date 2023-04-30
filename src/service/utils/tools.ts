@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { ChatItemType } from '@/types/chat';
+import { ChatItemSimpleType } from '@/types/chat';
 import { countChatTokens } from '@/utils/tools';
 import { ChatCompletionRequestMessageRoleEnum, ChatCompletionRequestMessage } from 'openai';
 import { ChatModelEnum } from '@/constants/model';
@@ -45,7 +45,7 @@ export const openaiChatFilter = ({
   maxTokens
 }: {
   model: `${ChatModelEnum}`;
-  prompts: ChatItemType[];
+  prompts: ChatItemSimpleType[];
   maxTokens: number;
 }) => {
   // role map
@@ -94,7 +94,7 @@ export const openaiChatFilter = ({
 
     /* 整体 tokens 超出范围 */
     if (tokens >= maxTokens) {
-      break;
+      return systemPrompt ? [systemPrompt, ...chats.slice(1)] : chats.slice(1);
     }
   }
 

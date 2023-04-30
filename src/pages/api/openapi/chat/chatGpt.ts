@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
 import { getOpenAIApi, authOpenApiKey } from '@/service/utils/auth';
 import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
-import { ChatItemType } from '@/types/chat';
+import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
 import { modelList } from '@/constants/model';
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       modelId,
       isStream = true
     } = req.body as {
-      prompts: ChatItemType[];
+      prompts: ChatItemSimpleType[];
       modelId: string;
       isStream: boolean;
     };
@@ -77,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const filterPrompts = openaiChatFilter({
       model: model.chat.chatModel,
       prompts,
-      maxTokens: modelConstantsData.contextMaxToken - 500
+      maxTokens: modelConstantsData.contextMaxToken - 300
     });
 
     // console.log(filterPrompts);

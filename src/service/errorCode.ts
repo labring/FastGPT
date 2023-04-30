@@ -23,7 +23,7 @@ export const openaiError: Record<string, string> = {
   context_length_exceeded: '内容超长了，请重置对话',
   Unauthorized: 'API-KEY 不合法',
   rate_limit_reached: 'API被限制，请稍后再试',
-  'Bad Request': 'Bad Request~ openai 异常',
+  'Bad Request': 'Bad Request~ 可能内容太多了',
   'Bad Gateway': '网关异常，请重试'
 };
 export const openaiError2: Record<string, string> = {

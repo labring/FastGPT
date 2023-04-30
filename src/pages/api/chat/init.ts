@@ -36,20 +36,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             userId: new mongoose.Types.ObjectId(userId)
           }
         },
-        { $unwind: '$content' },
-        { $match: { 'content.deleted': false } },
-        { $sort: { 'content._id': -1 } },
-        { $limit: 50 },
         {
           $project: {
-            id: '$content._id',
+            content: {
+              $slice: ['$content', -50] // 返回 content 数组的最后50个元素
+            }
+          }
+        },
+        { $unwind: '$content' },
+        {
+          $project: {
+            _id: '$content._id',
             obj: '$content.obj',
             value: '$content.value'
           }
         }
       ]);
-
-      history.reverse();
     }
 
     jsonRes<InitChatResponse>(res, {

@@ -29,8 +29,7 @@ import { streamFetch } from '@/api/fetch';
 import Icon from '@/components/Icon';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 5);
+import mongoose from 'mongoose';
 
 const SlideBar = dynamic(() => import('./components/SlideBar'));
 const Empty = dynamic(() => import('./components/Empty'));
@@ -41,7 +40,6 @@ import styles from './index.module.scss';
 const textareaMinH = '22px';
 
 export type ChatSiteItemType = {
-  id: string;
   status: 'loading' | 'finish';
 } & ChatItemType;
 
@@ -136,10 +134,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
         setChatData({
           ...res,
-          history: res.history.map((item: any, i) => ({
-            obj: item.obj,
-            value: item.value,
-            id: item.id || `${nanoid()}-${i}`,
+          history: res.history.map((item) => ({
+            ...item,
             status: 'finish'
           }))
         });
@@ -191,15 +187,15 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
   // gpt 对话
   const gptChatPrompt = useCallback(
-    async (prompts: ChatSiteItemType) => {
+    async (prompts: ChatSiteItemType[]) => {
       // create abort obj
       const abortSignal = new AbortController();
       controller.current = abortSignal;
       isResetPage.current = false;
 
       const prompt = {
-        obj: prompts.obj,
-        value: prompts.value
+        obj: prompts[0].obj,
+        value: prompts[0].value
       };
 
       // 流请求，获取数据
@@ -238,8 +234,13 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           modelId,
           chatId,
           prompts: [
-            prompt,
             {
+              _id: prompts[0]._id,
+              obj: 'Human',
+              value: prompt.value
+            },
+            {
+              _id: prompts[1]._id,
               obj: 'AI',
               value: responseText
             }
@@ -299,13 +300,13 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     const newChatList: ChatSiteItemType[] = [
       ...chatData.history,
       {
-        id: nanoid(),
+        _id: String(new mongoose.Types.ObjectId()),
         obj: 'Human',
         value: val,
         status: 'finish'
       },
       {
-        id: nanoid(),
+        _id: String(new mongoose.Types.ObjectId()),
         obj: 'AI',
         value: '',
         status: 'loading'
@@ -325,7 +326,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     }, 100);
 
     try {
-      await gptChatPrompt(newChatList[newChatList.length - 2]);
+      await gptChatPrompt(newChatList.slice(-2));
     } catch (err: any) {
       toast({
         title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
@@ -345,11 +346,11 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
   // 删除一句话
   const delChatRecord = useCallback(
-    async (index: number) => {
+    async (index: number, id: string) => {
       setLoading(true);
       try {
         // 删除数据库最后一句
-        await delChatRecordByIndex(chatId, index);
+        await delChatRecordByIndex(chatId, id);
 
         setChatData((state) => ({
           ...state,
@@ -449,7 +450,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         <Box ref={ChatBox} pb={[4, 0]} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
           {chatData.history.map((item, index) => (
             <Box
-              key={item.id}
+              key={item._id}
               py={media(9, 6)}
               px={media(4, 2)}
               backgroundColor={
@@ -475,7 +476,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   </MenuButton>
                   <MenuList fontSize={'sm'}>
                     <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>
-                    <MenuItem onClick={() => delChatRecord(index)}>删除该行</MenuItem>
+                    <MenuItem onClick={() => delChatRecord(index, item._id)}>删除该行</MenuItem>
                   </MenuList>
                 </Menu>
                 <Box flex={'1 0 0'} w={0} overflow={'hidden'} id={`chat${index}`}>
@@ -507,7 +508,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                       _hover={{
                         color: 'red.600'
                       }}
-                      onClick={() => delChatRecord(index)}
+                      onClick={() => delChatRecord(index, item._id)}
                     />
                   </Flex>
                 )}

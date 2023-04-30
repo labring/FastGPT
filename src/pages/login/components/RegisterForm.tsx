@@ -86,7 +86,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         注册 FastGPT 账号
       </Box>
       <form onSubmit={handleSubmit(onclickRegister)}>
-        <FormControl mt={8} isInvalid={!!errors.username}>
+        <FormControl mt={5} isInvalid={!!errors.username}>
           <Input
             placeholder="邮箱/手机号"
             size={mediaLgMd}
@@ -103,7 +103,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             {!!errors.username && errors.username.message}
           </FormErrorMessage>
         </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.username}>
+        <FormControl mt={5} isInvalid={!!errors.username}>
           <Flex>
             <Input
               flex={1}
@@ -129,7 +129,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             {!!errors.code && errors.code.message}
           </FormErrorMessage>
         </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.password}>
+        <FormControl mt={5} isInvalid={!!errors.password}>
           <Input
             type={'password'}
             placeholder="密码"
@@ -150,7 +150,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             {!!errors.password && errors.password.message}
           </FormErrorMessage>
         </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.password2}>
+        <FormControl mt={5} isInvalid={!!errors.password2}>
           <Input
             type={'password'}
             placeholder="确认密码"
@@ -176,7 +176,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         </Box>
         <Button
           type="submit"
-          mt={8}
+          mt={5}
           w={'100%'}
           size={mediaLgMd}
           colorScheme="blue"
