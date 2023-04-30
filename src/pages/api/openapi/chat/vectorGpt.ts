@@ -68,60 +68,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 获取向量匹配到的提示词
-    const { systemPrompts } = await searchKb_openai({
+    const { code, searchPrompt } = await searchKb_openai({
       isPay: true,
       apiKey,
       similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22,
       text: prompts[prompts.length - 1].value,
-      modelId,
+      model,
       userId
     });
 
-    // system 合并
-    if (prompts[0].obj === 'SYSTEM') {
-      systemPrompts.unshift(prompts.shift()?.value || '');
+    // search result is empty
+    if (code === 201) {
+      return res.send(searchPrompt?.value);
     }
 
-    /* 高相似度+退出，无法匹配时直接退出 */
-    if (
-      systemPrompts.length === 0 &&
-      model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity
-    ) {
-      return jsonRes(res, {
-        code: 500,
-        message: '对不起，你的问题不在知识库中。',
-        data: '对不起，你的问题不在知识库中。'
-      });
-    }
-    /* 高相似度+无上下文，不添加额外知识 */
-    if (
-      systemPrompts.length === 0 &&
-      model.chat.searchMode === ModelVectorSearchModeEnum.noContext
-    ) {
-      prompts.unshift({
-        obj: 'SYSTEM',
-        value: model.chat.systemPrompt
-      });
-    } else {
-      // 有匹配或者低匹配度模式情况下，添加知识库内容。
-      // 系统提示词过滤，最多 2500 tokens
-      const systemPrompt = systemPromptFilter({
-        model: model.chat.chatModel,
-        prompts: systemPrompts,
-        maxTokens: 2500
-      });
-
-      prompts.unshift({
-        obj: 'SYSTEM',
-        value: `
-${model.chat.systemPrompt}
-${
-  model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity ? `不回答知识库外的内容.` : ''
-}
-知识库内容为: ${systemPrompt}'
-`
-      });
-    }
+    searchPrompt && prompts.unshift(searchPrompt);
 
     // 控制在 tokens 数量，防止超出
     const filterPrompts = openaiChatFilter({

@@ -131,26 +131,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const prompts = [prompt];
 
     // 获取向量匹配到的提示词
-    const { systemPrompts } = await searchKb_openai({
+    const { searchPrompt } = await searchKb_openai({
       isPay: true,
       apiKey,
       similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22,
       text: prompt.value,
-      modelId,
+      model,
       userId
     });
 
-    // system 筛选，最多 2500 tokens
-    const filterSystemPrompt = systemPromptFilter({
-      model: model.chat.chatModel,
-      prompts: systemPrompts,
-      maxTokens: 2500
-    });
-
-    prompts.unshift({
-      obj: 'SYSTEM',
-      value: `${model.chat.systemPrompt} 知识库是最新的,下面是知识库内容:${filterSystemPrompt}`
-    });
+    searchPrompt && prompts.unshift(searchPrompt);
 
     // 控制上下文 tokens 数量，防止超出
     const filterPrompts = openaiChatFilter({
@@ -180,8 +170,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ...axiosConfig()
       }
     );
-
-    console.log('code response. time:', `${(Date.now() - startTime) / 1000}s`);
 
     let responseContent = '';
 

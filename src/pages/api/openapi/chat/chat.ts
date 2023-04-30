@@ -67,57 +67,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (model.chat.useKb) {
       const similarity = ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22;
 
-      const { systemPrompts } = await searchKb_openai({
+      const { code, searchPrompt } = await searchKb_openai({
         apiKey,
         isPay: true,
         text: prompts[prompts.length - 1].value,
         similarity,
-        modelId,
+        model,
         userId
       });
 
-      // filter system prompt
-      if (
-        systemPrompts.length === 0 &&
-        model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity
-      ) {
-        return jsonRes(res, {
-          code: 500,
-          message: '对不起，你的问题不在知识库中。',
-          data: '对不起，你的问题不在知识库中。'
-        });
+      // search result is empty
+      if (code === 201) {
+        return res.send(searchPrompt?.value);
       }
-      /* 高相似度+无上下文，不添加额外知识,仅用系统提示词 */
-      if (
-        systemPrompts.length === 0 &&
-        model.chat.searchMode === ModelVectorSearchModeEnum.noContext
-      ) {
-        prompts.unshift({
-          obj: 'SYSTEM',
-          value: model.chat.systemPrompt
-        });
-      } else {
-        // 有匹配情况下，system 添加知识库内容。
-        // 系统提示词过滤，最多 2500 tokens
-        const filterSystemPrompt = systemPromptFilter({
-          model: model.chat.chatModel,
-          prompts: systemPrompts,
-          maxTokens: 2500
-        });
 
-        prompts.unshift({
-          obj: 'SYSTEM',
-          value: `
-  ${model.chat.systemPrompt}
-  ${
-    model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity
-      ? `不回答知识库外的内容.`
-      : ''
-  }
-  知识库内容为: ${filterSystemPrompt}'
-  `
-        });
-      }
+      searchPrompt && prompts.unshift(searchPrompt);
     } else {
       // 没有用知识库搜索，仅用系统提示词
       if (model.chat.systemPrompt) {
