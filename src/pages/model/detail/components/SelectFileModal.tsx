@@ -162,15 +162,22 @@ const SelectFileModal = ({
   return (
     <Modal isOpen={true} onClose={onClose} isCentered>
       <ModalOverlay />
-      <ModalContent maxW={'min(1000px, 90vw)'} m={0} position={'relative'} h={'90vh'}>
+      <ModalContent
+        display={'flex'}
+        maxW={'min(1000px, 90vw)'}
+        m={0}
+        position={'relative'}
+        h={'90vh'}
+      >
         <ModalHeader>文件导入</ModalHeader>
         <ModalCloseButton />
 
         <ModalBody
+          flex={1}
+          h={0}
           display={'flex'}
           flexDirection={'column'}
           p={0}
-          h={'100%'}
           alignItems={'center'}
           justifyContent={'center'}
           fontSize={'sm'}

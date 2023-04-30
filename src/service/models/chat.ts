@@ -41,10 +41,6 @@ const ChatSchema = new Schema({
         value: {
           type: String,
           required: true
-        },
-        deleted: {
-          type: Boolean,
-          default: false
         }
       }
     ],

@@ -45,12 +45,19 @@ const Login = () => {
   }, [router]);
 
   return (
-    <Box className={styles.loginPage} h={'100%'} p={isPc ? '10vh 10vw' : 0}>
+    <Flex
+      alignItems={'center'}
+      justifyContent={'center'}
+      className={styles.loginPage}
+      h={'100%'}
+      px={[0, '10vw']}
+    >
       <Flex
-        maxW={'1240px'}
-        m={'auto'}
-        backgroundColor={'#fff'}
         height="100%"
+        w={'100%'}
+        maxW={'1240px'}
+        maxH={['auto', '660px']}
+        backgroundColor={'#fff'}
         alignItems={'center'}
         justifyContent={'center'}
         p={10}
@@ -83,7 +90,7 @@ const Login = () => {
           <DynamicComponent type={pageType} />
         </Box>
       </Flex>
-    </Box>
+    </Flex>
   );
 };
 

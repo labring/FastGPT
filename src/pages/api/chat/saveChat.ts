@@ -4,6 +4,7 @@ import { ChatItemType } from '@/types/chat';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { authModel } from '@/service/utils/auth';
 import { authToken } from '@/service/utils/auth';
+import mongoose from 'mongoose';
 
 /* 聊天内容存存储 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -23,6 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     const content = prompts.map((item) => ({
+      _id: new mongoose.Types.ObjectId(item._id),
       obj: item.obj,
       value: item.value
     }));

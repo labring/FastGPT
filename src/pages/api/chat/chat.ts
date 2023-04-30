@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { getOpenAIApi, authChat } from '@/service/utils/auth';
 import { axiosConfig, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
-import { ChatItemType } from '@/types/chat';
+import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
 import { modelList, ModelVectorSearchModeMap, ModelVectorSearchModeEnum } from '@/constants/model';
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { chatId, prompt, modelId } = req.body as {
-      prompt: ChatItemType;
+      prompt: ChatItemSimpleType;
       modelId: string;
       chatId: '' | string;
     };
@@ -118,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const filterPrompts = openaiChatFilter({
       model: model.chat.chatModel,
       prompts,
-      maxTokens: modelConstantsData.contextMaxToken - 500
+      maxTokens: modelConstantsData.contextMaxToken - 300
     });
 
     // 计算温度

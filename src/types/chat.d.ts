@@ -1,5 +1,7 @@
-export type ChatItemType = {
+export type ChatItemSimpleType = {
   obj: 'Human' | 'AI' | 'SYSTEM';
   value: string;
-  deleted?: boolean;
 };
+export type ChatItemType = {
+  _id: string;
+} & ChatItemSimpleType;
