@@ -118,11 +118,11 @@ const InputDataModal = ({
           px={6}
           pb={2}
         >
-          <Box flex={2} mr={[0, 4]} mb={[4, 0]} h={['230px', '100%']}>
+          <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['230px', '100%']}>
             <Box h={'30px'}>{'匹配的知识点'}</Box>
             <Textarea
-              placeholder={'匹配的知识点。这部分内容会被搜索，请把控内容的质量。最多 1000 字。'}
-              maxLength={2000}
+              placeholder={'匹配的知识点。这部分内容会被搜索，请把控内容的质量。最多 1500 字。'}
+              maxLength={1500}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register(`q`, {
@@ -130,13 +130,13 @@ const InputDataModal = ({
               })}
             />
           </Box>
-          <Box flex={3} h={['330px', '100%']}>
+          <Box flex={1} h={['330px', '100%']}>
             <Box h={'30px'}>补充知识</Box>
             <Textarea
               placeholder={
-                '补充知识。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，你可以讲一些细节的内容填写在这里。最多 2000 字。'
+                '补充知识。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，你可以讲一些细节的内容填写在这里。最多 1500 字。'
               }
-              maxLength={2000}
+              maxLength={1500}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register('a')}

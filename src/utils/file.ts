@@ -1,6 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { countChatTokens } from './tools';
+import { getEncMap } from './tools';
 
 /**
  * 读取 txt 文件内容
@@ -145,7 +145,7 @@ export const fileDownload = ({
  * slideLen - The size of the before and after Text
  * maxLen > slideLen
  */
-export const splitText = ({
+export const splitText_token = ({
   text,
   maxLen,
   slideLen
@@ -154,39 +154,32 @@ export const splitText = ({
   maxLen: number;
   slideLen: number;
 }) => {
-  const textArr =
-    text.split(/(?<=[。！？\.!\?\n])/g)?.filter((item) => {
-      const text = item.replace(/(\\n)/g, '\n').trim();
-      if (text && text !== '\n') return true;
-      return false;
-    }) || [];
+  const enc = getEncMap()['gpt-3.5-turbo'];
+  // filter empty text. encode sentence
+  const encodeText = enc.encode(text);
 
-  const chunks: { sum: number; arr: string[] }[] = [{ sum: 0, arr: [] }];
+  const chunks: string[] = [];
+  let tokens = 0;
 
-  for (let i = 0; i < textArr.length; i++) {
-    const tokenLen = countChatTokens({ messages: [{ role: 'system', content: textArr[i] }] });
-    chunks[chunks.length - 1].sum += tokenLen;
-    chunks[chunks.length - 1].arr.push(textArr[i]);
+  let startIndex = 0;
+  let endIndex = Math.min(startIndex + maxLen, encodeText.length);
+  let chunkEncodeArr = encodeText.slice(startIndex, endIndex);
 
-    //  current length is over maxLen. create new chunk
-    if (chunks[chunks.length - 1].sum + tokenLen >= maxLen) {
-      // get slide len text as the initial value
-      const chunk: { sum: number; arr: string[] } = { sum: 0, arr: [] };
-      for (let j = chunks[chunks.length - 1].arr.length - 1; j >= 0; j--) {
-        const chunkText = chunks[chunks.length - 1].arr[j];
-        const tokenLen = countChatTokens({ messages: [{ role: 'system', content: chunkText }] });
-        chunk.sum += tokenLen;
-        chunk.arr.unshift(chunkText);
+  const decoder = new TextDecoder();
 
-        if (chunk.sum >= slideLen) {
-          break;
-        }
-      }
-      chunks.push(chunk);
-    }
+  while (startIndex < encodeText.length) {
+    tokens += chunkEncodeArr.length;
+    chunks.push(decoder.decode(enc.decode(chunkEncodeArr)));
+
+    startIndex += maxLen - slideLen;
+    endIndex = Math.min(startIndex + maxLen, encodeText.length);
+    chunkEncodeArr = encodeText.slice(Math.min(encodeText.length - slideLen, startIndex), endIndex);
   }
-  const result = chunks.map((item) => item.arr.join(''));
-  return result;
+
+  return {
+    chunks,
+    tokens
+  };
 };
 
 export const fileToBase64 = (file: File) => {
