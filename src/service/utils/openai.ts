@@ -90,7 +90,7 @@ export const openaiCreateEmbedding = async ({
     )
     .then((res) => ({
       tokenLen: res.data.usage.total_tokens || 0,
-      vector: res?.data?.data?.[0]?.embedding || []
+      vector: res.data.data?.[0]?.embedding || []
     }));
 
   pushGenerateVectorBill({
