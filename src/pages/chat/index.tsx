@@ -16,7 +16,13 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Image
+  Image,
+  Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalBody,
+  ModalCloseButton
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
@@ -29,7 +35,7 @@ import { streamFetch } from '@/api/fetch';
 import Icon from '@/components/Icon';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
-import mongoose from 'mongoose';
+import { Types } from 'mongoose';
 
 const SlideBar = dynamic(() => import('./components/SlideBar'));
 const Empty = dynamic(() => import('./components/Empty'));
@@ -67,7 +73,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     history: []
   }); // 聊天框整体数据
 
-  const [inputVal, setInputVal] = useState(''); // 输入的内容
+  const [inputVal, setInputVal] = useState(''); // user input prompt
+  const [showSystemPrompt, setShowSystemPrompt] = useState('');
 
   const isChatting = useMemo(
     () => chatData.history[chatData.history.length - 1]?.status === 'loading',
@@ -199,7 +206,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       };
 
       // 流请求，获取数据
-      const responseText = await streamFetch({
+      const { responseText, systemPrompt } = await streamFetch({
         url: '/api/chat/chat',
         data: {
           prompt,
@@ -228,7 +235,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       }
 
       let newChatId = '';
-      // 保存对话信息
+      // save chat record
       try {
         newChatId = await postSaveChat({
           modelId,
@@ -242,7 +249,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             {
               _id: prompts[1]._id,
               obj: 'AI',
-              value: responseText
+              value: responseText,
+              systemPrompt
             }
           ]
         });
@@ -266,7 +274,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           if (index !== state.history.length - 1) return item;
           return {
             ...item,
-            status: 'finish'
+            status: 'finish',
+            systemPrompt
           };
         })
       }));
@@ -300,13 +309,13 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     const newChatList: ChatSiteItemType[] = [
       ...chatData.history,
       {
-        _id: String(new mongoose.Types.ObjectId()),
+        _id: String(new Types.ObjectId()),
         obj: 'Human',
         value: val,
         status: 'finish'
       },
       {
-        _id: String(new mongoose.Types.ObjectId()),
+        _id: String(new Types.ObjectId()),
         obj: 'AI',
         value: '',
         status: 'loading'
@@ -492,10 +501,24 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 </Menu>
                 <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
                   {item.obj === 'AI' ? (
-                    <Markdown
-                      source={item.value}
-                      isChatting={isChatting && index === chatData.history.length - 1}
-                    />
+                    <>
+                      <Markdown
+                        source={item.value}
+                        isChatting={isChatting && index === chatData.history.length - 1}
+                      />
+                      {item.systemPrompt && (
+                        <Button
+                          size={'xs'}
+                          mt={2}
+                          fontWeight={'normal'}
+                          colorScheme={'gray'}
+                          variant={'outline'}
+                          onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
+                        >
+                          查看提示词
+                        </Button>
+                      )}
+                    </>
                   ) : (
                     <Box className="markdown" whiteSpace={'pre-wrap'}>
                       <Box as={'p'}>{item.value}</Box>
@@ -617,6 +640,19 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           </Box>
         </Box>
       </Flex>
+
+      {/* system prompt show modal */}
+      {
+        <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
+          <ModalOverlay />
+          <ModalContent maxW={'min(90vw, 600px)'} pr={2} maxH={'80vh'} overflowY={'auto'}>
+            <ModalCloseButton />
+            <ModalBody pt={10} fontSize={'sm'} whiteSpace={'pre-wrap'} textAlign={'justify'}>
+              {showSystemPrompt}
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+      }
     </Flex>
   );
 };

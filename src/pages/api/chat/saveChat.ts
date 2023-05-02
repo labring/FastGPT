@@ -26,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const content = prompts.map((item) => ({
       _id: new mongoose.Types.ObjectId(item._id),
       obj: item.obj,
-      value: item.value
+      value: item.value,
+      systemPrompt: item.systemPrompt
     }));
 
     await authModel({ modelId, userId, authOwner: false });

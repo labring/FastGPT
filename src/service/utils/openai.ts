@@ -7,6 +7,7 @@ import { User } from '../models/user';
 import { formatPrice } from '@/utils/user';
 import { embeddingModel } from '@/constants/model';
 import { pushGenerateVectorBill } from '../events/pushBill';
+import { SYSTEM_PROMPT_PREFIX } from '@/constants/chat';
 
 /* 获取用户 api 的 openai 信息 */
 export const getUserApiOpenai = async (userId: string) => {
@@ -110,11 +111,13 @@ export const openaiCreateEmbedding = async ({
 export const gpt35StreamResponse = ({
   res,
   stream,
-  chatResponse
+  chatResponse,
+  systemPrompt = ''
 }: {
   res: NextApiResponse;
   stream: PassThrough;
   chatResponse: any;
+  systemPrompt?: string;
 }) =>
   new Promise<{ responseContent: string }>(async (resolve, reject) => {
     try {
@@ -144,8 +147,8 @@ export const gpt35StreamResponse = ({
         }
       };
 
-      const decoder = new TextDecoder();
       try {
+        const decoder = new TextDecoder();
         const parser = createParser(onParse);
         for await (const chunk of chatResponse.data as any) {
           if (stream.destroyed) {
@@ -157,6 +160,12 @@ export const gpt35StreamResponse = ({
       } catch (error) {
         console.log('pipe error', error);
       }
+
+      // push system prompt
+      !stream.destroyed &&
+        systemPrompt &&
+        stream.push(`${SYSTEM_PROMPT_PREFIX}${systemPrompt.replace(/\n/g, '<br/>')}`);
+
       // close stream
       !stream.destroyed && stream.push(null);
       stream.destroy();

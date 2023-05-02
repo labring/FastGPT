@@ -1,0 +1,1 @@
+export const SYSTEM_PROMPT_PREFIX = 'SYSTEM_PROMPT:';
