@@ -17,7 +17,8 @@ const ShareModelList = ({
   return (
     <>
       {models.map((model) => (
-        <Box
+        <Flex
+          flexDirection={'column'}
           key={model._id}
           p={4}
           border={'1px solid'}
@@ -36,7 +37,7 @@ const ShareModelList = ({
               {model.name}
             </Box>
           </Flex>
-          <Box className={styles.intro} my={4} fontSize={'sm'} color={'blackAlpha.600'}>
+          <Box flex={1} className={styles.intro} my={4} fontSize={'sm'} color={'blackAlpha.600'}>
             {model.share.intro || '这个模型没有介绍~'}
           </Box>
           <Flex justifyContent={'space-between'}>
@@ -74,7 +75,7 @@ const ShareModelList = ({
               )}
             </Box>
           </Flex>
-        </Box>
+        </Flex>
       ))}
     </>
   );

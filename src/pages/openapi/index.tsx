@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Link from 'next/link';
 import {
   Card,
   Box,
@@ -32,7 +31,7 @@ const OpenApi = () => {
     data: apiKeys = [],
     isLoading: isGetting,
     refetch
-  } = useQuery([getOpenApiKeys], getOpenApiKeys);
+  } = useQuery(['getOpenApiKeys'], getOpenApiKeys);
   const [apiKey, setApiKey] = useState('');
   const { copyData } = useCopyData();
 
