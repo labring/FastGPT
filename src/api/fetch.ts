@@ -23,8 +23,7 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
       if (!reader) return;
 
       if (res.status !== 200) {
-        console.log(res);
-        return reject('chat error');
+        throw new Error(res.statusText);
       }
 
       const decoder = new TextDecoder();
