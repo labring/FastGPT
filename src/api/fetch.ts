@@ -22,10 +22,6 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
       const reader = res.body?.getReader();
       if (!reader) return;
 
-      if (res.status !== 200) {
-        throw new Error(res.statusText);
-      }
-
       const decoder = new TextDecoder();
       let responseText = '';
       let systemPrompt = '';
