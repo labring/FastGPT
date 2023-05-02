@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     let startTime = Date.now();
 
-    const { model, content, userApiKey, systemKey, userId } = await authChat({
+    const { model, showModelDetail, content, userApiKey, systemKey, userId } = await authChat({
       modelId,
       chatId,
       authorization
@@ -120,7 +120,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { responseContent } = await gpt35StreamResponse({
       res,
       stream,
-      chatResponse
+      chatResponse,
+      systemPrompt:
+        showModelDetail && filterPrompts[0].role === 'system' ? filterPrompts[0].content : ''
     });
 
     // 只有使用平台的 key 才计费

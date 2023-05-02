@@ -75,7 +75,7 @@ export const authModel = async ({
     };
   }
 
-  return { model };
+  return { model, showModelDetail: model.share.isShareDetail || userId === String(model.userId) };
 };
 
 // 获取对话校验
@@ -91,7 +91,12 @@ export const authChat = async ({
   const userId = await authToken(authorization);
 
   // 获取 model 数据
-  const { model } = await authModel({ modelId, userId, authOwner: false, reserveDetail: true });
+  const { model, showModelDetail } = await authModel({
+    modelId,
+    userId,
+    authOwner: false,
+    reserveDetail: true
+  });
 
   // 聊天内容
   let content: ChatItemSimpleType[] = [];
@@ -124,7 +129,8 @@ export const authChat = async ({
     systemKey,
     content,
     userId,
-    model
+    model,
+    showModelDetail
   };
 };
 

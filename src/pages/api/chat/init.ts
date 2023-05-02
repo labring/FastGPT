@@ -48,7 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           $project: {
             _id: '$content._id',
             obj: '$content.obj',
-            value: '$content.value'
+            value: '$content.value',
+            systemPrompt: '$content.systemPrompt'
           }
         }
       ]);
