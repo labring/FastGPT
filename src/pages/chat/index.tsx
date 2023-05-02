@@ -32,14 +32,13 @@ import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { useCopyData } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
-import Icon from '@/components/Icon';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
+import Markdown from '@/components/Markdown';
 
 const SlideBar = dynamic(() => import('./components/SlideBar'));
 const Empty = dynamic(() => import('./components/Empty'));
-const Markdown = dynamic(() => import('@/components/Markdown'));
 
 import styles from './index.module.scss';
 
@@ -149,7 +148,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         if (isScroll && res.history.length > 0) {
           setTimeout(() => {
             scrollToBottom('auto');
-          }, 1200);
+          }, 1000);
         }
       } catch (e: any) {
         toast({
@@ -428,7 +427,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             px={7}
           >
             <Box onClick={onOpenSlider}>
-              <Icon
+              <MyIcon
                 name={'menu'}
                 w={'20px'}
                 h={'20px'}
@@ -615,7 +614,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
               bottom={'15px'}
             >
               {isChatting ? (
-                <Icon
+                <MyIcon
                   className={styles.stopIcon}
                   width={['22px', '25px']}
                   height={['22px', '25px']}
@@ -627,7 +626,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   }}
                 />
               ) : (
-                <Icon
+                <MyIcon
                   name={'chatSend'}
                   width={['18px', '20px']}
                   height={['18px', '20px']}

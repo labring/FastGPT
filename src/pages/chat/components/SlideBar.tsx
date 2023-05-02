@@ -50,11 +50,19 @@ const SlideBar = ({
   const { isOpen: isOpenWx, onOpen: onOpenWx, onClose: onCloseWx } = useDisclosure();
   const preChatId = useRef('chatId'); // 用于校验上一次chatId的情况,判断是否需要刷新历史记录
 
-  const { isSuccess } = useQuery(['getMyModels'], getMyModels, {
-    cacheTime: 5 * 60 * 1000
+  const { isSuccess, refetch: fetchMyModels } = useQuery(['getMyModels'], getMyModels, {
+    cacheTime: 5 * 60 * 1000,
+    enabled: false
   });
 
-  const { data: collectionModels = [] } = useQuery([getCollectionModels], getCollectionModels);
+  const { data: collectionModels = [], refetch: fetchCollectionModels } = useQuery(
+    [getCollectionModels],
+    getCollectionModels,
+    {
+      cacheTime: 5 * 60 * 1000,
+      enabled: false
+    }
+  );
 
   const models = useMemo(() => {
     const myModelList = myModels.map((item) => ({
@@ -88,9 +96,11 @@ const SlideBar = ({
   // init history
   useEffect(() => {
     setTimeout(() => {
+      fetchMyModels();
+      fetchCollectionModels();
       loadChatHistory();
-    }, 1000);
-  }, [loadChatHistory]);
+    }, 1500);
+  }, [fetchCollectionModels, fetchMyModels, loadChatHistory]);
 
   /**
    * export md
