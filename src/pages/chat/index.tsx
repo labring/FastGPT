@@ -36,6 +36,7 @@ import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
 import Markdown from '@/components/Markdown';
+import { HUMAN_ICON, LOGO_ICON } from '@/constants/chat';
 
 const SlideBar = dynamic(() => import('./components/SlideBar'));
 const Empty = dynamic(() => import('./components/Empty'));
@@ -482,11 +483,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   <MenuButton as={Box} mr={media(4, 1)} cursor={'pointer'}>
                     <Image
                       className="avatar"
-                      src={
-                        item.obj === 'Human'
-                          ? '/icon/human.png'
-                          : chatData.avatar || '/icon/logo.png'
-                      }
+                      src={item.obj === 'Human' ? HUMAN_ICON : chatData.avatar || LOGO_ICON}
                       alt="avatar"
                       w={['20px', '30px']}
                       maxH={'50px'}
