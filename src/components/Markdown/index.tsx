@@ -17,7 +17,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
 
   return (
     <ReactMarkdown
-      className={`${styles.markdown} ${
+      className={`markdown ${styles.markdown} ${
         isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''
       }`}
       remarkPlugins={[remarkMath]}
@@ -31,6 +31,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
           return !inline || match ? (
             <Box my={3} borderRadius={'md'} overflow={'hidden'} backgroundColor={'#222'}>
               <Flex
+                className="code-header"
                 py={2}
                 px={5}
                 backgroundColor={useColorModeValue('#323641', 'gray.600')}

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { AddIcon, ChatIcon, DeleteIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -13,7 +13,11 @@ import {
   IconButton,
   useDisclosure,
   useColorMode,
-  useColorModeValue
+  useColorModeValue,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -23,16 +27,20 @@ import MyIcon from '@/components/Icon';
 import WxConcat from '@/components/WxConcat';
 import { getChatHistory, delChatHistoryById } from '@/api/chat';
 import { getCollectionModels } from '@/api/model';
-import { modelList } from '@/constants/model';
+import type { ChatSiteItemType } from '../index';
+import { fileDownload } from '@/utils/file';
+import { htmlTemplate } from '@/constants/common';
 
 const SlideBar = ({
   chatId,
   modelId,
+  history,
   resetChat,
   onClose
 }: {
   chatId: string;
   modelId: string;
+  history: ChatSiteItemType[];
   resetChat: (modelId?: string, chatId?: string) => void;
   onClose: () => void;
 }) => {
@@ -83,6 +91,68 @@ const SlideBar = ({
       loadChatHistory();
     }, 1000);
   }, [loadChatHistory]);
+
+  /**
+   * export md
+   */
+  const onclickExportMd = useCallback(() => {
+    fileDownload({
+      text: history.map((item) => item.value).join('\n'),
+      type: 'text/markdown',
+      filename: 'chat.md'
+    });
+  }, [history]);
+
+  const getHistoryHtml = useCallback(() => {
+    const historyDom = document.getElementById('history');
+    if (!historyDom) return;
+    const dom = Array.from(historyDom.children).map((child, i) => {
+      const avatar = `<img src="${
+        child.querySelector<HTMLImageElement>('.avatar')?.src
+      }" alt="" />`;
+
+      const chatContent = child.querySelector<HTMLDivElement>('.markdown');
+
+      if (!chatContent) {
+        return '';
+      }
+
+      const chatContentClone = chatContent.cloneNode(true) as HTMLDivElement;
+
+      const codeHeader = chatContentClone.querySelectorAll('.code-header');
+      codeHeader.forEach((childElement: any) => {
+        childElement.remove();
+      });
+
+      return `<div class="chat-item">
+        ${avatar}
+        ${chatContentClone.outerHTML}
+      </div>`;
+    });
+    const html = htmlTemplate.replace('{{CHAT_CONTENT}}', dom.join('\n'));
+    return html;
+  }, []);
+
+  const onclickExportHtml = useCallback(() => {
+    const html = getHistoryHtml();
+    html &&
+      fileDownload({
+        text: html,
+        type: 'text/html',
+        filename: '聊天记录.html'
+      });
+  }, [getHistoryHtml]);
+
+  const onclickExportPdf = useCallback(() => {
+    const html = getHistoryHtml();
+
+    html &&
+      // @ts-ignore
+      html2pdf(html, {
+        margin: 0,
+        filename: `聊天记录.pdf`
+      });
+  }, [getHistoryHtml]);
 
   const RenderHistory = () => (
     <>
@@ -145,7 +215,7 @@ const SlideBar = ({
     onClick: () => void;
     children: JSX.Element | string;
   }) => (
-    <Box px={3} mb={3}>
+    <Box px={3} mb={2}>
       <Flex
         alignItems={'center'}
         p={2}
@@ -176,7 +246,7 @@ const SlideBar = ({
           w={'90%'}
           variant={'white'}
           h={'40px'}
-          mb={4}
+          mb={2}
           mx={'auto'}
           leftIcon={<AddIcon />}
           onClick={() => resetChat()}
@@ -238,7 +308,33 @@ const SlideBar = ({
         </Accordion>
       </Box>
 
-      <Divider my={4} colorScheme={useColorModeValue('gray', 'white')} />
+      <Divider my={3} colorScheme={useColorModeValue('gray', 'white')} />
+
+      {history.length > 0 && (
+        <Menu autoSelect={false}>
+          <MenuButton
+            mx={3}
+            mb={2}
+            p={2}
+            display={'flex'}
+            alignItems={'center'}
+            cursor={'pointer'}
+            borderRadius={'md'}
+            textAlign={'left'}
+            _hover={{
+              backgroundColor: 'rgba(255,255,255,0.2)'
+            }}
+          >
+            <MyIcon name="export" fill={'white'} w={'18px'} h={'18px'} mr={4} />
+            导出聊天
+          </MenuButton>
+          <MenuList fontSize={'sm'} color={'blackAlpha.800'}>
+            <MenuItem onClick={onclickExportHtml}>HTML格式</MenuItem>
+            <MenuItem onClick={onclickExportPdf}>PDF格式</MenuItem>
+            <MenuItem onClick={onclickExportMd}>Markdown格式</MenuItem>
+          </MenuList>
+        </Menu>
+      )}
 
       <RenderButton onClick={() => router.push('/')}>
         <>

@@ -75,7 +75,7 @@ export async function generateQA(next = false): Promise<any> {
       role: 'system',
       content: `你是出题人
 ${dataItem.prompt || '下面是"一段长文本"'}
-从中选出5至20个题目和答案,题目包含问答题,计算题,代码题等.答案要详细.按格式返回: Q1:
+从中选出5至20个题目和答案.答案详细.按格式返回: Q1:
 A1:
 Q2:
 A2:

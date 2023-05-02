@@ -403,6 +403,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             resetChat={resetChat}
             chatId={chatId}
             modelId={modelId}
+            history={chatData.history}
             onClose={onCloseSlider}
           />
         </Box>
@@ -434,6 +435,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 resetChat={resetChat}
                 chatId={chatId}
                 modelId={modelId}
+                history={chatData.history}
                 onClose={onCloseSlider}
               />
             </DrawerContent>
@@ -447,7 +449,15 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         flexDirection={'column'}
       >
         {/* 聊天内容 */}
-        <Box ref={ChatBox} pb={[4, 0]} flex={'1 0 0'} h={0} w={'100%'} overflowY={'auto'}>
+        <Box
+          id={'history'}
+          ref={ChatBox}
+          pb={[4, 0]}
+          flex={'1 0 0'}
+          h={0}
+          w={'100%'}
+          overflowY={'auto'}
+        >
           {chatData.history.map((item, index) => (
             <Box
               key={item._id}
@@ -463,6 +473,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 <Menu autoSelect={false}>
                   <MenuButton as={Box} mr={media(4, 1)} cursor={'pointer'}>
                     <Image
+                      className="avatar"
                       src={
                         item.obj === 'Human'
                           ? '/icon/human.png'
@@ -479,14 +490,16 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                     <MenuItem onClick={() => delChatRecord(index, item._id)}>删除该行</MenuItem>
                   </MenuList>
                 </Menu>
-                <Box flex={'1 0 0'} w={0} overflow={'hidden'} id={`chat${index}`}>
+                <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
                   {item.obj === 'AI' ? (
                     <Markdown
                       source={item.value}
                       isChatting={isChatting && index === chatData.history.length - 1}
                     />
                   ) : (
-                    <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                    <Box className="markdown" whiteSpace={'pre-wrap'}>
+                      <Box as={'p'}>{item.value}</Box>
+                    </Box>
                   )}
                 </Box>
                 {isPc && (
