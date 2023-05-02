@@ -23,7 +23,7 @@ const modelList = () => {
   });
 
   const { data: collectionModels = [], refetch: refetchCollection } = useQuery(
-    [getCollectionModels],
+    ['getCollectionModels'],
     getCollectionModels
   );
 

@@ -47,7 +47,7 @@ const OpenApi = () => {
 
   useQuery(['init'], initUserInfo);
   const { data: { invitedAmount = 0, historyAmount = 0, residueAmount = 0 } = {} } = useQuery(
-    ['getInvitedCountAmount'],
+    ['getPromotionInitData'],
     getPromotionInitData
   );
 
