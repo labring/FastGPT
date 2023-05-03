@@ -6,20 +6,39 @@ import { OpenAiChatEnum } from '@/constants/model';
 import { chatResponse, openAiStreamResponse } from './openai';
 import type { NextApiResponse } from 'next';
 import type { PassThrough } from 'stream';
+import delay from 'delay';
 
 export type ChatCompletionType = {
   apiKey: string;
   temperature: number;
   messages: ChatItemSimpleType[];
   stream: boolean;
+  params?: any;
+};
+export type ChatCompletionResponseType = {
+  streamResponse: any;
+  responseMessages: ChatItemSimpleType[];
+  responseText: string;
+  totalTokens: number;
 };
 export type StreamResponseType = {
   stream: PassThrough;
   chatResponse: any;
   prompts: ChatItemSimpleType[];
 };
+export type StreamResponseReturnType = {
+  responseContent: string;
+  totalTokens: number;
+  finishMessages: ChatItemSimpleType[];
+};
 
-export const modelServiceToolMap = {
+export const modelServiceToolMap: Record<
+  ChatModelType,
+  {
+    chatCompletion: (data: ChatCompletionType) => Promise<ChatCompletionResponseType>;
+    streamResponse: (data: StreamResponseType) => Promise<StreamResponseReturnType>;
+  }
+> = {
   [OpenAiChatEnum.GPT35]: {
     chatCompletion: (data: ChatCompletionType) =>
       chatResponse({ model: OpenAiChatEnum.GPT35, ...data }),
@@ -142,16 +161,16 @@ export const resStreamResponse = async ({
     prompts
   });
 
-  setTimeout(() => {
-    // push system prompt
-    !stream.destroyed &&
-      systemPrompt &&
-      stream.push(`${SYSTEM_PROMPT_PREFIX}${systemPrompt.replace(/\n/g, '<br/>')}`);
+  await delay(100);
 
-    // close stream
-    !stream.destroyed && stream.push(null);
-    stream.destroy();
-  }, 100);
+  // push system prompt
+  !stream.destroyed &&
+    systemPrompt &&
+    stream.push(`${SYSTEM_PROMPT_PREFIX}${systemPrompt.replace(/\n/g, '<br/>')}`);
+
+  // close stream
+  !stream.destroyed && stream.push(null);
+  stream.destroy();
 
   return { responseContent, totalTokens, finishMessages };
 };
