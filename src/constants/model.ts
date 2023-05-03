@@ -1,6 +1,7 @@
 import type { ModelSchema } from '@/types/mongoSchema';
 
 export const embeddingModel = 'text-embedding-ada-002';
+export type EmbeddingModelType = 'text-embedding-ada-002';
 
 export enum OpenAiChatEnum {
   'GPT35' = 'gpt-3.5-turbo',
@@ -25,7 +26,7 @@ export const ChatModelMap = {
   },
   [OpenAiChatEnum.GPT432k]: {
     name: 'Gpt4-32k',
-    contextMaxToken: 8000,
+    contextMaxToken: 32000,
     maxTemperature: 1.5,
     price: 30
   }

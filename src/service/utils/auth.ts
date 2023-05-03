@@ -1,14 +1,18 @@
-import { Configuration, OpenAIApi } from 'openai';
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import { Chat, Model, OpenApi, User } from '../mongo';
 import type { ModelSchema } from '@/types/mongoSchema';
-import { getOpenApiKey } from './openai';
 import type { ChatItemSimpleType } from '@/types/chat';
 import mongoose from 'mongoose';
 import { defaultModel } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
+import {
+  ChatModelType,
+  OpenAiChatEnum,
+  embeddingModel,
+  EmbeddingModelType
+} from '@/constants/model';
 
 /* 校验 token */
 export const authToken = (token?: string): Promise<string> => {
@@ -29,13 +33,63 @@ export const authToken = (token?: string): Promise<string> => {
   });
 };
 
-export const getOpenAIApi = (apiKey: string) => {
-  const configuration = new Configuration({
-    apiKey,
-    basePath: process.env.OPENAI_BASE_URL
-  });
+/* 获取 api 请求的 key */
+export const getApiKey = async ({
+  model,
+  userId
+}: {
+  model: ChatModelType | EmbeddingModelType;
+  userId: string;
+}) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    return Promise.reject({
+      code: 501,
+      message: '找不到用户'
+    });
+  }
 
-  return new OpenAIApi(configuration);
+  const keyMap = {
+    [OpenAiChatEnum.GPT35]: {
+      userApiKey: user.openaiKey || '',
+      systemApiKey: process.env.OPENAIKEY as string
+    },
+    [OpenAiChatEnum.GPT4]: {
+      userApiKey: user.openaiKey || '',
+      systemApiKey: process.env.OPENAIKEY as string
+    },
+    [OpenAiChatEnum.GPT432k]: {
+      userApiKey: user.openaiKey || '',
+      systemApiKey: process.env.OPENAIKEY as string
+    },
+    [embeddingModel]: {
+      userApiKey: user.openaiKey || '',
+      systemApiKey: process.env.OPENAIKEY as string
+    }
+  };
+
+  // 有自己的key
+  if (keyMap[model].userApiKey) {
+    return {
+      user,
+      userApiKey: keyMap[model].userApiKey,
+      systemApiKey: ''
+    };
+  }
+
+  // 平台账号余额校验
+  if (formatPrice(user.balance) <= 0) {
+    return Promise.reject({
+      code: 501,
+      message: '账号余额不足'
+    });
+  }
+
+  return {
+    user,
+    userApiKey: '',
+    systemApiKey: keyMap[model].systemApiKey
+  };
 };
 
 // 模型使用权校验
@@ -122,11 +176,11 @@ export const authChat = async ({
     ]);
   }
   // 获取 user 的 apiKey
-  const { userApiKey, systemKey } = await getOpenApiKey(userId);
+  const { userApiKey, systemApiKey } = await getApiKey({ model: model.chat.chatModel, userId });
 
   return {
     userApiKey,
-    systemKey,
+    systemApiKey,
     content,
     userId,
     model,

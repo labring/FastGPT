@@ -1,5 +1,7 @@
+import { ChatRoleEnum } from '@/constants/chat';
+
 export type ChatItemSimpleType = {
-  obj: 'Human' | 'AI' | 'SYSTEM';
+  obj: `${ChatRoleEnum}`;
   value: string;
   systemPrompt?: string;
 };

@@ -1,14 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { getOpenAIApi, authChat } from '@/service/utils/auth';
-import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
+import { authChat } from '@/service/utils/auth';
+import { modelServiceToolMap } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
 import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
-import { gpt35StreamResponse } from '@/service/utils/openai';
-import { searchKb_openai } from '@/service/tools/searchKb';
+import { resStreamResponse } from '@/service/utils/chat';
+import { searchKb } from '@/service/plugins/searchKb';
+import { ChatRoleEnum } from '@/constants/chat';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     let startTime = Date.now();
 
-    const { model, showModelDetail, content, userApiKey, systemKey, userId } = await authChat({
+    const { model, showModelDetail, content, userApiKey, systemApiKey, userId } = await authChat({
       modelId,
       chatId,
       authorization
@@ -54,9 +55,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 使用了知识库搜索
     if (model.chat.useKb) {
-      const { code, searchPrompt } = await searchKb_openai({
-        apiKey: userApiKey || systemKey,
-        isPay: !userApiKey,
+      const { code, searchPrompt } = await searchKb({
+        userApiKey,
+        systemApiKey,
         text: prompt.value,
         similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
         model,
@@ -73,53 +74,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 没有用知识库搜索，仅用系统提示词
       model.chat.systemPrompt &&
         prompts.unshift({
-          obj: 'SYSTEM',
+          obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
         });
     }
-
-    // 控制总 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter({
-      model: model.chat.chatModel,
-      prompts,
-      maxTokens: modelConstantsData.contextMaxToken - 300
-    });
 
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
       2
     );
     // console.log(filterPrompts);
-    // 获取 chatAPI
-    const chatAPI = getOpenAIApi(userApiKey || systemKey);
+
     // 发出请求
-    const chatResponse = await chatAPI.createChatCompletion(
-      {
-        model: model.chat.chatModel,
-        temperature: Number(temperature) || 0,
-        messages: filterPrompts,
-        frequency_penalty: 0.5, // 越大，重复内容越少
-        presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: true,
-        stop: ['.!?。']
-      },
-      {
-        timeout: 40000,
-        responseType: 'stream',
-        ...axiosConfig()
-      }
-    );
+    const { streamResponse } = await modelServiceToolMap[model.chat.chatModel].chatCompletion({
+      apiKey: userApiKey || systemApiKey,
+      temperature: +temperature,
+      messages: prompts,
+      stream: true
+    });
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
 
     step = 1;
 
-    const { responseContent } = await gpt35StreamResponse({
+    const { totalTokens, finishMessages } = await resStreamResponse({
+      model: model.chat.chatModel,
       res,
       stream,
-      chatResponse,
+      chatResponse: streamResponse,
+      prompts,
       systemPrompt:
-        showModelDetail && filterPrompts[0].role === 'system' ? filterPrompts[0].content : ''
+        showModelDetail && prompts[0].obj === ChatRoleEnum.System ? prompts[0].value : ''
     });
 
     // 只有使用平台的 key 才计费
@@ -128,7 +113,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatModel: model.chat.chatModel,
       userId,
       chatId,
-      messages: filterPrompts.concat({ role: 'assistant', content: responseContent })
+      textLen: finishMessages.map((item) => item.value).join('').length,
+      tokens: totalTokens
     });
   } catch (err: any) {
     if (step === 1) {

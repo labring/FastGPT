@@ -1,60 +1,54 @@
 import { connectToDatabase, Bill, User } from '../mongo';
 import { ChatModelMap, OpenAiChatEnum, ChatModelType, embeddingModel } from '@/constants/model';
 import { BillTypeEnum } from '@/constants/user';
-import { countChatTokens } from '@/utils/tools';
 
 export const pushChatBill = async ({
   isPay,
   chatModel,
   userId,
   chatId,
-  messages
+  textLen,
+  tokens
 }: {
   isPay: boolean;
   chatModel: ChatModelType;
   userId: string;
   chatId?: '' | string;
-  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  textLen: number;
+  tokens: number;
 }) => {
+  console.log(`chat generate success. text len: ${textLen}. token len: ${tokens}. pay:${isPay}`);
+  if (!isPay) return;
+
   let billId = '';
 
   try {
-    // 计算 token 数量
-    const tokens = countChatTokens({ model: chatModel, messages });
-    const text = messages.map((item) => item.content).join('');
+    await connectToDatabase();
 
-    console.log(
-      `chat generate success. text len: ${text.length}. token len: ${tokens}. pay:${isPay}`
-    );
+    // 计算价格
+    const unitPrice = ChatModelMap[chatModel]?.price || 5;
+    const price = unitPrice * tokens;
 
-    if (isPay) {
-      await connectToDatabase();
+    try {
+      // 插入 Bill 记录
+      const res = await Bill.create({
+        userId,
+        type: 'chat',
+        modelName: chatModel,
+        chatId: chatId ? chatId : undefined,
+        textLen,
+        tokenLen: tokens,
+        price
+      });
+      billId = res._id;
 
-      // 计算价格
-      const unitPrice = ChatModelMap[chatModel]?.price || 5;
-      const price = unitPrice * tokens;
-
-      try {
-        // 插入 Bill 记录
-        const res = await Bill.create({
-          userId,
-          type: 'chat',
-          modelName: chatModel,
-          chatId: chatId ? chatId : undefined,
-          textLen: text.length,
-          tokenLen: tokens,
-          price
-        });
-        billId = res._id;
-
-        // 账号扣费
-        await User.findByIdAndUpdate(userId, {
-          $inc: { balance: -price }
-        });
-      } catch (error) {
-        console.log('创建账单失败:', error);
-        billId && Bill.findByIdAndDelete(billId);
-      }
+      // 账号扣费
+      await User.findByIdAndUpdate(userId, {
+        $inc: { balance: -price }
+      });
+    } catch (error) {
+      console.log('创建账单失败:', error);
+      billId && Bill.findByIdAndDelete(billId);
     }
   } catch (error) {
     console.log(error);
@@ -64,54 +58,49 @@ export const pushChatBill = async ({
 export const pushSplitDataBill = async ({
   isPay,
   userId,
-  tokenLen,
-  text,
+  totalTokens,
+  textLen,
   type
 }: {
   isPay: boolean;
   userId: string;
-  tokenLen: number;
-  text: string;
+  totalTokens: number;
+  textLen: number;
   type: `${BillTypeEnum}`;
 }) => {
-  await connectToDatabase();
+  console.log(
+    `splitData generate success. text len: ${textLen}. token len: ${totalTokens}. pay:${isPay}`
+  );
+  if (!isPay) return;
 
   let billId;
 
   try {
-    console.log(
-      `splitData generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
-    );
+    await connectToDatabase();
 
-    if (isPay) {
-      try {
-        // 获取模型单价格, 都是用 gpt35 拆分
-        const unitPrice = ChatModelMap[OpenAiChatEnum.GPT35]?.price || 3;
-        // 计算价格
-        const price = unitPrice * tokenLen;
+    // 获取模型单价格, 都是用 gpt35 拆分
+    const unitPrice = ChatModelMap[OpenAiChatEnum.GPT35].price || 3;
+    // 计算价格
+    const price = unitPrice * totalTokens;
 
-        // 插入 Bill 记录
-        const res = await Bill.create({
-          userId,
-          type,
-          modelName: OpenAiChatEnum.GPT35,
-          textLen: text.length,
-          tokenLen,
-          price
-        });
-        billId = res._id;
+    // 插入 Bill 记录
+    const res = await Bill.create({
+      userId,
+      type,
+      modelName: OpenAiChatEnum.GPT35,
+      textLen,
+      tokenLen: totalTokens,
+      price
+    });
+    billId = res._id;
 
-        // 账号扣费
-        await User.findByIdAndUpdate(userId, {
-          $inc: { balance: -price }
-        });
-      } catch (error) {
-        console.log('创建账单失败:', error);
-        billId && Bill.findByIdAndDelete(billId);
-      }
-    }
+    // 账号扣费
+    await User.findByIdAndUpdate(userId, {
+      $inc: { balance: -price }
+    });
   } catch (error) {
-    console.log(error);
+    console.log('创建账单失败:', error);
+    billId && Bill.findByIdAndDelete(billId);
   }
 };
 
@@ -126,41 +115,40 @@ export const pushGenerateVectorBill = async ({
   text: string;
   tokenLen: number;
 }) => {
-  await connectToDatabase();
+  console.log(
+    `vector generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
+  );
+  if (!isPay) return;
 
   let billId;
 
   try {
-    console.log(
-      `vector generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
-    );
+    await connectToDatabase();
 
-    if (isPay) {
-      try {
-        const unitPrice = 0.4;
-        // 计算价格. 至少为1
-        let price = unitPrice * tokenLen;
-        price = price > 1 ? price : 1;
+    try {
+      const unitPrice = 0.4;
+      // 计算价格. 至少为1
+      let price = unitPrice * tokenLen;
+      price = price > 1 ? price : 1;
 
-        // 插入 Bill 记录
-        const res = await Bill.create({
-          userId,
-          type: BillTypeEnum.vector,
-          modelName: embeddingModel,
-          textLen: text.length,
-          tokenLen,
-          price
-        });
-        billId = res._id;
+      // 插入 Bill 记录
+      const res = await Bill.create({
+        userId,
+        type: BillTypeEnum.vector,
+        modelName: embeddingModel,
+        textLen: text.length,
+        tokenLen,
+        price
+      });
+      billId = res._id;
 
-        // 账号扣费
-        await User.findByIdAndUpdate(userId, {
-          $inc: { balance: -price }
-        });
-      } catch (error) {
-        console.log('创建账单失败:', error);
-        billId && Bill.findByIdAndDelete(billId);
-      }
+      // 账号扣费
+      await User.findByIdAndUpdate(userId, {
+        $inc: { balance: -price }
+      });
+    } catch (error) {
+      console.log('创建账单失败:', error);
+      billId && Bill.findByIdAndDelete(billId);
     }
   } catch (error) {
     console.log(error);

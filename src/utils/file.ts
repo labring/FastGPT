@@ -1,6 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { getEncMap } from './tools';
+import { getOpenAiEncMap } from './chat/openai';
 
 /**
  * 读取 txt 文件内容
@@ -154,7 +154,7 @@ export const splitText_token = ({
   maxLen: number;
   slideLen: number;
 }) => {
-  const enc = getEncMap()['gpt-3.5-turbo'];
+  const enc = getOpenAiEncMap()['gpt-3.5-turbo'];
   // filter empty text. encode sentence
   const encodeText = enc.encode(text);
 
