@@ -39,15 +39,16 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
 
             return;
           }
-          const text = decoder.decode(value).replace(/<br\/>/g, '\n');
-
+          let text = decoder.decode(value).replace(/<br\/>/g, '\n');
           // check system prompt
-          if (text.startsWith(SYSTEM_PROMPT_PREFIX)) {
-            systemPrompt = text.replace(SYSTEM_PROMPT_PREFIX, '');
-          } else {
-            responseText += text;
-            onMessage(text);
+          if (text.includes(SYSTEM_PROMPT_PREFIX)) {
+            const arr = text.split(SYSTEM_PROMPT_PREFIX);
+            systemPrompt = arr.pop() || '';
+
+            text = arr.join('');
           }
+          responseText += text;
+          onMessage(text);
 
           read();
         } catch (err: any) {
