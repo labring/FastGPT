@@ -36,7 +36,7 @@ const ModelTable = ({
       key: 'service',
       render: (model: ModelSchema) => (
         <Box fontWeight={'bold'} whiteSpace={'pre-wrap'} maxW={'200px'}>
-          {ChatModelMap[model.chat.chatModel]}
+          {ChatModelMap[model.chat.chatModel].name}
         </Box>
       )
     },

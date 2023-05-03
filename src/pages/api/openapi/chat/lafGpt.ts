@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
 import { getOpenAIApi, authOpenApiKey } from '@/service/utils/auth';
-import { axiosConfig, openaiChatFilter, systemPromptFilter } from '@/service/utils/tools';
+import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import { modelList, ModelVectorSearchModeMap, ChatModelEnum } from '@/constants/model';
+import { ChatModelMap, ModelVectorSearchModeMap, OpenAiChatEnum } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { gpt35StreamResponse } from '@/service/utils/openai';
 import { searchKb_openai } from '@/service/tools/searchKb';
@@ -53,10 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('找不到模型');
     }
 
-    const modelConstantsData = modelList.find((item) => item.chatModel === model.chat.chatModel);
-    if (!modelConstantsData) {
-      throw new Error('model is undefined');
-    }
+    const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
     console.log('laf gpt start');
 
@@ -66,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 请求一次 chatgpt 拆解需求
     const promptResponse = await chatAPI.createChatCompletion(
       {
-        model: ChatModelEnum.GPT35,
+        model: OpenAiChatEnum.GPT35,
         temperature: 0,
         frequency_penalty: 0.5, // 越大，重复内容越少
         presence_penalty: -0.5, // 越大，越容易出现新内容

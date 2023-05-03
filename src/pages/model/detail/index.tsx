@@ -5,7 +5,7 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useForm } from 'react-hook-form';
-import { formatModelStatus, modelList, defaultModel } from '@/constants/model';
+import { formatModelStatus, defaultModel } from '@/constants/model';
 import { useGlobalStore } from '@/store/global';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';

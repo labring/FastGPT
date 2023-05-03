@@ -43,7 +43,7 @@ const ModelPhoneList = ({
           </Flex>
           <Flex mt={5}>
             <Box flex={'0 0 100px'}>对话模型: </Box>
-            <Box color={'blackAlpha.500'}>{ChatModelMap[model.chat.chatModel]}</Box>
+            <Box color={'blackAlpha.500'}>{ChatModelMap[model.chat.chatModel].name}</Box>
           </Flex>
           <Flex mt={5}>
             <Box flex={'0 0 100px'}>模型温度: </Box>

@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
-import { axiosConfig, systemPromptFilter, openaiChatFilter } from '@/service/utils/tools';
+import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
 import { getOpenAIApi, authOpenApiKey } from '@/service/utils/auth';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import { modelList, ModelVectorSearchModeMap, ModelVectorSearchModeEnum } from '@/constants/model';
+import {
+  ChatModelMap,
+  ModelVectorSearchModeMap,
+  ModelVectorSearchModeEnum
+} from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { gpt35StreamResponse } from '@/service/utils/openai';
 import { searchKb_openai } from '@/service/tools/searchKb';
@@ -62,10 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('无权使用该模型');
     }
 
-    const modelConstantsData = modelList.find((item) => item.chatModel === model.chat.chatModel);
-    if (!modelConstantsData) {
-      throw new Error('模型初始化异常');
-    }
+    const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
     // 获取向量匹配到的提示词
     const { code, searchPrompt } = await searchKb_openai({
