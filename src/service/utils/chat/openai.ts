@@ -22,12 +22,12 @@ export const openaiCreateEmbedding = async ({
   userApiKey,
   systemApiKey,
   userId,
-  text
+  textArr
 }: {
   userApiKey?: string;
   systemApiKey: string;
   userId: string;
-  text: string;
+  textArr: string[];
 }) => {
   // 获取 chatAPI
   const chatAPI = getOpenAIApi(userApiKey || systemApiKey);
@@ -37,7 +37,7 @@ export const openaiCreateEmbedding = async ({
     .createEmbedding(
       {
         model: embeddingModel,
-        input: text
+        input: textArr
       },
       {
         timeout: 60000,
@@ -46,18 +46,18 @@ export const openaiCreateEmbedding = async ({
     )
     .then((res) => ({
       tokenLen: res.data.usage.total_tokens || 0,
-      vector: res.data.data?.[0]?.embedding || []
+      vectors: res.data.data.map((item) => item.embedding)
     }));
 
   pushGenerateVectorBill({
     isPay: !userApiKey,
     userId,
-    text,
+    text: textArr.join(''),
     tokenLen: res.tokenLen
   });
 
   return {
-    vector: res.vector,
+    vectors: res.vectors,
     chatAPI
   };
 };

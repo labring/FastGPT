@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { code, searchPrompt } = await searchKb({
         userApiKey,
         systemApiKey,
-        text: prompt.value,
+        prompts,
         similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
         model,
         userId
