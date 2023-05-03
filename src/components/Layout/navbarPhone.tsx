@@ -39,7 +39,7 @@ const NavbarPhone = ({
         px={7}
       >
         <Box onClick={onOpen}>
-          <MyIcon name="menu" width={'20px'} height={'20px'} color={'blackAlpha.600'}></MyIcon>
+          <MyIcon name="menu" width={'20px'} height={'20px'} color={'blackAlpha.700'}></MyIcon>
         </Box>
       </Flex>
       <Drawer isOpen={isOpen} placement="left" size={'xs'} onClose={onClose}>

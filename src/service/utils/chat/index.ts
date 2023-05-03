@@ -142,14 +142,16 @@ export const resStreamResponse = async ({
     prompts
   });
 
-  // push system prompt
-  !stream.destroyed &&
-    systemPrompt &&
-    stream.push(`${SYSTEM_PROMPT_PREFIX}${systemPrompt.replace(/\n/g, '<br/>')}`);
+  setTimeout(() => {
+    // push system prompt
+    !stream.destroyed &&
+      systemPrompt &&
+      stream.push(`${SYSTEM_PROMPT_PREFIX}${systemPrompt.replace(/\n/g, '<br/>')}`);
 
-  // close stream
-  !stream.destroyed && stream.push(null);
-  stream.destroy();
+    // close stream
+    !stream.destroyed && stream.push(null);
+    stream.destroy();
+  }, 100);
 
   return { responseContent, totalTokens, finishMessages };
 };

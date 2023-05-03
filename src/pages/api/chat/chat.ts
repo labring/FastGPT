@@ -83,7 +83,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
       2
     );
-    // console.log(filterPrompts);
 
     // 发出请求
     const { streamResponse } = await modelServiceToolMap[model.chat.chatModel].chatCompletion({
