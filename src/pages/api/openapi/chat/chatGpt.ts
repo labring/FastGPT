@@ -5,7 +5,7 @@ import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import { modelList } from '@/constants/model';
+import { ChatModelMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { gpt35StreamResponse } from '@/service/utils/openai';
 
@@ -60,10 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('无权使用该模型');
     }
 
-    const modelConstantsData = modelList.find((item) => item.chatModel === model.chat.chatModel);
-    if (!modelConstantsData) {
-      throw new Error('模型加载异常');
-    }
+    const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
     // 如果有系统提示词，自动插入
     if (model.chat.systemPrompt) {

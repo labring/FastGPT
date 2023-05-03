@@ -1,5 +1,5 @@
 import { connectToDatabase, Bill, User } from '../mongo';
-import { modelList, ChatModelEnum, embeddingModel } from '@/constants/model';
+import { ChatModelMap, OpenAiChatEnum, ChatModelType, embeddingModel } from '@/constants/model';
 import { BillTypeEnum } from '@/constants/user';
 import { countChatTokens } from '@/utils/tools';
 
@@ -11,7 +11,7 @@ export const pushChatBill = async ({
   messages
 }: {
   isPay: boolean;
-  chatModel: `${ChatModelEnum}`;
+  chatModel: ChatModelType;
   userId: string;
   chatId?: '' | string;
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
@@ -30,10 +30,8 @@ export const pushChatBill = async ({
     if (isPay) {
       await connectToDatabase();
 
-      // 获取模型单价格
-      const modelItem = modelList.find((item) => item.chatModel === chatModel);
       // 计算价格
-      const unitPrice = modelItem?.price || 5;
+      const unitPrice = ChatModelMap[chatModel]?.price || 5;
       const price = unitPrice * tokens;
 
       try {
@@ -88,8 +86,7 @@ export const pushSplitDataBill = async ({
     if (isPay) {
       try {
         // 获取模型单价格, 都是用 gpt35 拆分
-        const modelItem = modelList.find((item) => item.chatModel === ChatModelEnum.GPT35);
-        const unitPrice = modelItem?.price || 3;
+        const unitPrice = ChatModelMap[OpenAiChatEnum.GPT35]?.price || 3;
         // 计算价格
         const price = unitPrice * tokenLen;
 
@@ -97,7 +94,7 @@ export const pushSplitDataBill = async ({
         const res = await Bill.create({
           userId,
           type,
-          modelName: ChatModelEnum.GPT35,
+          modelName: OpenAiChatEnum.GPT35,
           textLen: text.length,
           tokenLen,
           price

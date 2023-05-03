@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { useToast } from '@/hooks/useToast';
 import { encoding_for_model, type Tiktoken } from '@dqbd/tiktoken';
 import Graphemer from 'graphemer';
-import { ChatModelEnum } from '@/constants/model';
+import type { ChatModelType } from '@/constants/model';
 
 const textDecoder = new TextDecoder();
 const graphemer = new Graphemer();
@@ -130,7 +130,7 @@ export const countChatTokens = ({
   model = 'gpt-3.5-turbo',
   messages
 }: {
-  model?: `${ChatModelEnum}`;
+  model?: ChatModelType;
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
 }) => {
   const text = getChatGPTEncodingText(messages, model);
@@ -142,7 +142,7 @@ export const sliceTextByToken = ({
   text,
   length
 }: {
-  model?: `${ChatModelEnum}`;
+  model?: ChatModelType;
   text: string;
   length: number;
 }) => {

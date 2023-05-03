@@ -1,6 +1,6 @@
 import { openaiCreateEmbedding } from '../utils/openai';
 import { PgClient } from '@/service/pg';
-import { ModelDataStatusEnum, ModelVectorSearchModeEnum } from '@/constants/model';
+import { ModelDataStatusEnum, ModelVectorSearchModeEnum, ChatModelMap } from '@/constants/model';
 import { ModelSchema } from '@/types/mongoSchema';
 import { systemPromptFilter } from '../utils/tools';
 
@@ -9,9 +9,9 @@ import { systemPromptFilter } from '../utils/tools';
  */
 export const searchKb_openai = async ({
   apiKey,
-  isPay,
+  isPay = true,
   text,
-  similarity,
+  similarity = 0.2,
   model,
   userId
 }: {
@@ -20,7 +20,7 @@ export const searchKb_openai = async ({
   text: string;
   model: ModelSchema;
   userId: string;
-  similarity: number;
+  similarity?: number;
 }): Promise<{
   code: 200 | 201;
   searchPrompt?: {
@@ -28,6 +28,8 @@ export const searchKb_openai = async ({
     value: string;
   };
 }> => {
+  const modelConstantsData = ChatModelMap[model.chat.chatModel];
+
   // 获取提示词的向量
   const { vector: promptVector } = await openaiCreateEmbedding({
     isPay,
@@ -78,11 +80,11 @@ export const searchKb_openai = async ({
   }
 
   // 有匹配情况下，system 添加知识库内容。
-  // 系统提示词过滤，最多 2500 tokens
+  // 系统提示词过滤，最多 65% tokens
   const filterSystemPrompt = systemPromptFilter({
     model: model.chat.chatModel,
     prompts: systemPrompts,
-    maxTokens: 2500
+    maxTokens: Math.floor(modelConstantsData.contextMaxToken * 0.65)
   });
 
   return {

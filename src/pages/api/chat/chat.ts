@@ -5,7 +5,7 @@ import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import { modelList, ModelVectorSearchModeMap } from '@/constants/model';
+import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { gpt35StreamResponse } from '@/service/utils/openai';
 import { searchKb_openai } from '@/service/tools/searchKb';
@@ -47,10 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       authorization
     });
 
-    const modelConstantsData = modelList.find((item) => item.chatModel === model.chat.chatModel);
-    if (!modelConstantsData) {
-      throw new Error('模型加载异常');
-    }
+    const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
     // 读取对话内容
     const prompts = [...content, prompt];
@@ -61,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         apiKey: userApiKey || systemKey,
         isPay: !userApiKey,
         text: prompt.value,
-        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22,
+        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
         model,
         userId
       });

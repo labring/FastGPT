@@ -85,25 +85,6 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
           <ModalBody py={0}>
             {!payId && (
               <>
-                {/* 价格表 */}
-                {/* <TableContainer mb={4}>
-                  <Table>
-                    <Thead>
-                      <Tr>
-                        <Th>模型类型</Th>
-                        <Th>价格(元/1K tokens，包含所有上下文)</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {modelList.map((item, i) => (
-                        <Tr key={item.model}>
-                          <Td>{item.name}</Td>
-                          <Td>{formatPrice(item.price, 1000)}</Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                </TableContainer> */}
                 <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4}>
                   {[5, 10, 20, 50].map((item) => (
                     <Button

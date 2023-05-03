@@ -4,7 +4,7 @@ import {
   ModelVectorSearchModeMap,
   ModelVectorSearchModeEnum,
   ChatModelMap,
-  ChatModelEnum
+  OpenAiChatEnum
 } from '@/constants/model';
 
 const ModelSchema = new Schema({
@@ -57,7 +57,7 @@ const ModelSchema = new Schema({
       // 聊天时使用的模型
       type: String,
       enum: Object.keys(ChatModelMap),
-      default: ChatModelEnum.GPT35
+      default: OpenAiChatEnum.GPT35
     }
   },
   share: {

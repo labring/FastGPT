@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { ChatItemSimpleType } from '@/types/chat';
 import { countChatTokens, sliceTextByToken } from '@/utils/tools';
 import { ChatCompletionRequestMessageRoleEnum, ChatCompletionRequestMessage } from 'openai';
-import { ChatModelEnum } from '@/constants/model';
+import type { ChatModelType } from '@/constants/model';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -44,7 +44,7 @@ export const openaiChatFilter = ({
   prompts,
   maxTokens
 }: {
-  model: `${ChatModelEnum}`;
+  model: ChatModelType;
   prompts: ChatItemSimpleType[];
   maxTokens: number;
 }) => {

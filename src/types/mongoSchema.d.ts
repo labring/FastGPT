@@ -3,7 +3,7 @@ import {
   ModelStatusEnum,
   ModelNameEnum,
   ModelVectorSearchModeEnum,
-  ChatModelEnum
+  ChatModelType
 } from '@/constants/model';
 import type { DataType } from './data';
 
@@ -41,7 +41,7 @@ export interface ModelSchema {
     searchMode: `${ModelVectorSearchModeEnum}`;
     systemPrompt: string;
     temperature: number;
-    chatModel: `${ChatModelEnum}`; // 聊天时用的模型，训练后就是训练的模型
+    chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
   };
   share: {
     isShare: boolean;
