@@ -26,7 +26,7 @@ import { formatPrice } from '@/utils/user';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
-import { fileToBase64 } from '@/utils/file';
+import { fileToBase64, compressImg } from '@/utils/file';
 
 const ModelEditForm = ({
   formHooks,
@@ -52,17 +52,19 @@ const ModelEditForm = ({
     async (e: File[]) => {
       const file = e[0];
       if (!file) return;
+      try {
+        const base64 = await compressImg({
+          file
+        });
 
-      if (file.size > 100 * 1024) {
-        return toast({
-          title: '头像需小于 100kb',
+        setValue('avatar', base64);
+        setRefresh((state) => !state);
+      } catch (err: any) {
+        toast({
+          title: typeof err === 'string' ? err : '头像选择异常',
           status: 'warning'
         });
       }
-
-      const base64 = (await fileToBase64(file)) as string;
-      setValue('avatar', base64);
-      setRefresh((state) => !state);
     },
     [setValue, toast]
   );
@@ -195,6 +197,7 @@ const ModelEditForm = ({
         <Flex mt={4} alignItems={'center'}>
           <Box mr={4}>知识库搜索</Box>
           <Switch
+            isDisabled={!isOwner}
             isChecked={getValues('chat.useKb')}
             onChange={() => {
               setValue('chat.useKb', !getValues('chat.useKb'));

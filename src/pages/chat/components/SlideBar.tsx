@@ -99,7 +99,7 @@ const SlideBar = ({
       fetchMyModels();
       fetchCollectionModels();
       loadChatHistory();
-    }, 1500);
+    }, 1000);
   }, [fetchCollectionModels, fetchMyModels, loadChatHistory]);
 
   /**

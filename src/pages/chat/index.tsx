@@ -432,7 +432,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 name={'menu'}
                 w={'20px'}
                 h={'20px'}
-                fill={useColorModeValue('blackAlpha.700', 'white')}
+                color={useColorModeValue('blackAlpha.700', 'white')}
               />
             </Box>
             <Box>{chatData?.name}</Box>
