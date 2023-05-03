@@ -21,7 +21,7 @@ import {
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { UseFormReturn } from 'react-hook-form';
-import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
+import { ChatModelMap, ModelVectorSearchModeMap, chatModelList } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -110,14 +110,20 @@ const ModelEditForm = ({
           <Box flex={'0 0 80px'} w={0}>
             对话模型:
           </Box>
-          <Box>{ChatModelMap[getValues('chat.chatModel')].name}</Box>
+          <Select isDisabled={!isOwner} {...register('chat.chatModel')}>
+            {chatModelList.map((item) => (
+              <option key={item.chatModel} value={item.chatModel}>
+                {item.name}
+              </option>
+            ))}
+          </Select>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
             价格:
           </Box>
           <Box>
-            {formatPrice(ChatModelMap[getValues('chat.chatModel')].price, 1000)}
+            {formatPrice(ChatModelMap[getValues('chat.chatModel')]?.price, 1000)}
             元/1K tokens(包括上下文和回答)
           </Box>
         </Flex>

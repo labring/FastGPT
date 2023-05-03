@@ -11,26 +11,39 @@ export enum OpenAiChatEnum {
 
 export type ChatModelType = `${OpenAiChatEnum}`;
 
+export type ChatModelItemType = {
+  chatModel: ChatModelType;
+  name: string;
+  contextMaxToken: number;
+  maxTemperature: number;
+  price: number;
+};
+
 export const ChatModelMap = {
   [OpenAiChatEnum.GPT35]: {
+    chatModel: OpenAiChatEnum.GPT35,
     name: 'ChatGpt',
     contextMaxToken: 4096,
     maxTemperature: 1.5,
     price: 3
   },
   [OpenAiChatEnum.GPT4]: {
+    chatModel: OpenAiChatEnum.GPT4,
     name: 'Gpt4',
     contextMaxToken: 8000,
     maxTemperature: 1.5,
     price: 30
   },
   [OpenAiChatEnum.GPT432k]: {
+    chatModel: OpenAiChatEnum.GPT432k,
     name: 'Gpt4-32k',
     contextMaxToken: 32000,
     maxTemperature: 1.5,
     price: 30
   }
 };
+
+export const chatModelList: ChatModelItemType[] = [ChatModelMap[OpenAiChatEnum.GPT35]];
 
 export enum ModelStatusEnum {
   running = 'running',
