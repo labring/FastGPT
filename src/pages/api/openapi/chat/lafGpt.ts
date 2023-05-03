@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase, Model } from '@/service/mongo';
-import { getOpenAIApi, authOpenApiKey } from '@/service/utils/auth';
-import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
+import { authOpenApiKey } from '@/service/utils/auth';
+import { resStreamResponse, modelServiceToolMap } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
-import { ChatModelMap, ModelVectorSearchModeMap, OpenAiChatEnum } from '@/constants/model';
+import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
-import { gpt35StreamResponse } from '@/service/utils/openai';
-import { searchKb_openai } from '@/service/tools/searchKb';
+import { searchKb } from '@/service/plugins/searchKb';
+import { ChatRoleEnum } from '@/constants/chat';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -57,20 +57,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('laf gpt start');
 
-    // 获取 chatAPI
-    const chatAPI = getOpenAIApi(apiKey);
-
     // 请求一次 chatgpt 拆解需求
-    const promptResponse = await chatAPI.createChatCompletion(
-      {
-        model: OpenAiChatEnum.GPT35,
-        temperature: 0,
-        frequency_penalty: 0.5, // 越大，重复内容越少
-        presence_penalty: -0.5, // 越大，越容易出现新内容
-        messages: [
-          {
-            role: 'system',
-            content: `服务端逻辑生成器.根据用户输入的需求,拆解成 laf 云函数实现的步骤,只返回步骤,按格式返回步骤: 1.\n2.\n3.\n ......
+    const { responseText: resolveText, totalTokens: resolveTokens } = await modelServiceToolMap[
+      model.chat.chatModel
+    ].chatCompletion({
+      apiKey,
+      temperature: 0,
+      messages: [
+        {
+          obj: ChatRoleEnum.System,
+          value: `服务端逻辑生成器.根据用户输入的需求,拆解成 laf 云函数实现的步骤,只返回步骤,按格式返回步骤: 1.\n2.\n3.\n ......
 下面是一些例子:
 一个 hello world 例子
 1. 返回字符串: "hello world"
@@ -103,35 +99,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 5. 获取当前时间,记录为 updateTime.
 6. 更新数据库数据,表为"blogs",更新符合 blogId 的记录的内容为{blogText, tags, updateTime}.
 7. 返回结果 "更新博客记录成功"`
-          },
-          {
-            role: 'user',
-            content: prompt.value
-          }
-        ]
-      },
-      {
-        timeout: 180000,
-        ...axiosConfig()
-      }
-    );
+        },
+        {
+          obj: ChatRoleEnum.Human,
+          value: prompt.value
+        }
+      ],
+      stream: false
+    });
 
-    const promptResolve = promptResponse.data.choices?.[0]?.message?.content || '';
-    if (!promptResolve) {
-      throw new Error('gpt 异常');
-    }
-
-    prompt.value += ` ${promptResolve}`;
+    prompt.value += ` ${resolveText}`;
     console.log('prompt resolve success, time:', `${(Date.now() - startTime) / 1000}s`);
 
     // 读取对话内容
     const prompts = [prompt];
 
     // 获取向量匹配到的提示词
-    const { searchPrompt } = await searchKb_openai({
-      isPay: true,
-      apiKey,
-      similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22,
+    const { searchPrompt } = await searchKb({
+      systemApiKey: apiKey,
+      similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
       text: prompt.value,
       model,
       userId
@@ -139,49 +125,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     searchPrompt && prompts.unshift(searchPrompt);
 
-    // 控制上下文 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter({
-      model: model.chat.chatModel,
-      prompts,
-      maxTokens: modelConstantsData.contextMaxToken - 300
-    });
-
-    // console.log(filterPrompts);
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
       2
     );
-    // 发出请求
-    const chatResponse = await chatAPI.createChatCompletion(
-      {
-        model: model.chat.chatModel,
-        temperature: Number(temperature) || 0,
-        messages: filterPrompts,
-        frequency_penalty: 0.5, // 越大，重复内容越少
-        presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: isStream
-      },
-      {
-        timeout: 180000,
-        responseType: isStream ? 'stream' : 'json',
-        ...axiosConfig()
-      }
-    );
 
-    let responseContent = '';
+    // 发出请求
+    const { streamResponse, responseMessages, responseText, totalTokens } =
+      await modelServiceToolMap[model.chat.chatModel].chatCompletion({
+        apiKey,
+        temperature: +temperature,
+        messages: prompts,
+        stream: isStream
+      });
+
+    console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
+
+    let textLen = resolveText.length;
+    let tokens = resolveTokens;
 
     if (isStream) {
       step = 1;
-      const streamResponse = await gpt35StreamResponse({
+      const { finishMessages, totalTokens } = await resStreamResponse({
+        model: model.chat.chatModel,
         res,
         stream,
-        chatResponse
+        chatResponse: streamResponse,
+        prompts
       });
-      responseContent = streamResponse.responseContent;
+      textLen += finishMessages.map((item) => item.value).join('').length;
+      tokens += totalTokens;
     } else {
-      responseContent = chatResponse.data.choices?.[0]?.message?.content || '';
+      textLen += responseMessages.map((item) => item.value).join('').length;
+      tokens += totalTokens;
       jsonRes(res, {
-        data: responseContent
+        data: responseText
       });
     }
 
@@ -191,7 +169,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       isPay: true,
       chatModel: model.chat.chatModel,
       userId,
-      messages: filterPrompts.concat({ role: 'assistant', content: responseContent })
+      textLen,
+      tokens
     });
   } catch (err: any) {
     if (step === 1) {

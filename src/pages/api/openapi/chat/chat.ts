@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { getOpenAIApi, authOpenApiKey, authModel } from '@/service/utils/auth';
-import { axiosConfig, openaiChatFilter } from '@/service/utils/tools';
+import { authOpenApiKey, authModel } from '@/service/utils/auth';
+import { modelServiceToolMap, resStreamResponse } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { PassThrough } from 'stream';
 import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
-import { gpt35StreamResponse } from '@/service/utils/openai';
-import { searchKb_openai } from '@/service/tools/searchKb';
+import { searchKb } from '@/service/plugins/searchKb';
+import { ChatRoleEnum } from '@/constants/chat';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -64,9 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (model.chat.useKb) {
       const similarity = ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22;
 
-      const { code, searchPrompt } = await searchKb_openai({
-        apiKey,
-        isPay: true,
+      const { code, searchPrompt } = await searchKb({
+        systemApiKey: apiKey,
         text: prompts[prompts.length - 1].value,
         similarity,
         model,
@@ -83,69 +82,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 没有用知识库搜索，仅用系统提示词
       if (model.chat.systemPrompt) {
         prompts.unshift({
-          obj: 'SYSTEM',
+          obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
         });
       }
     }
 
-    // 控制总 tokens 数量，防止超出
-    const filterPrompts = openaiChatFilter({
-      model: model.chat.chatModel,
-      prompts,
-      maxTokens: modelConstantsData.contextMaxToken - 300
-    });
-
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
       2
     );
-    // console.log(filterPrompts);
-    // 获取 chatAPI
-    const chatAPI = getOpenAIApi(apiKey);
+
     // 发出请求
-    const chatResponse = await chatAPI.createChatCompletion(
-      {
-        model: model.chat.chatModel,
-        temperature: Number(temperature) || 0,
-        messages: filterPrompts,
-        frequency_penalty: 0.5, // 越大，重复内容越少
-        presence_penalty: -0.5, // 越大，越容易出现新内容
-        stream: isStream,
-        stop: ['.!?。']
-      },
-      {
-        timeout: 180000,
-        responseType: isStream ? 'stream' : 'json',
-        ...axiosConfig()
-      }
-    );
+    const { streamResponse, responseMessages, responseText, totalTokens } =
+      await modelServiceToolMap[model.chat.chatModel].chatCompletion({
+        apiKey,
+        temperature: +temperature,
+        messages: prompts,
+        stream: isStream
+      });
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
 
-    let responseContent = '';
+    let textLen = 0;
+    let tokens = totalTokens;
 
     if (isStream) {
       step = 1;
-      const streamResponse = await gpt35StreamResponse({
+      const { finishMessages, totalTokens } = await resStreamResponse({
+        model: model.chat.chatModel,
         res,
         stream,
-        chatResponse
+        chatResponse: streamResponse,
+        prompts
       });
-      responseContent = streamResponse.responseContent;
+      textLen = finishMessages.map((item) => item.value).join('').length;
+      tokens = totalTokens;
     } else {
-      responseContent = chatResponse.data.choices?.[0]?.message?.content || '';
+      textLen = responseMessages.map((item) => item.value).join('').length;
       jsonRes(res, {
-        data: responseContent
+        data: responseText
       });
     }
 
-    // 只有使用平台的 key 才计费
     pushChatBill({
       isPay: true,
       chatModel: model.chat.chatModel,
       userId,
-      messages: filterPrompts.concat({ role: 'assistant', content: responseContent })
+      textLen,
+      tokens
     });
   } catch (err: any) {
     if (step === 1) {

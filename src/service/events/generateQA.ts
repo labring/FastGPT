@@ -1,14 +1,13 @@
 import { SplitData } from '@/service/mongo';
-import { getOpenAIApi } from '@/service/utils/auth';
-import { axiosConfig } from '@/service/utils/tools';
-import { getOpenApiKey } from '../utils/openai';
-import type { ChatCompletionRequestMessage } from 'openai';
+import { getApiKey } from '../utils/auth';
 import { OpenAiChatEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 import { generateVector } from './generateVector';
 import { openaiError2 } from '../errorCode';
 import { PgClient } from '@/service/pg';
 import { ModelSplitDataSchema } from '@/types/mongoSchema';
+import { modelServiceToolMap } from '../utils/chat';
+import { ChatRoleEnum } from '@/constants/chat';
 
 export async function generateQA(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -47,11 +46,11 @@ export async function generateQA(next = false): Promise<any> {
 
     // 获取 openapi Key
     let userApiKey = '',
-      systemKey = '';
+      systemApiKey = '';
     try {
-      const key = await getOpenApiKey(dataItem.userId);
+      const key = await getApiKey({ model: OpenAiChatEnum.GPT35, userId: dataItem.userId });
       userApiKey = key.userApiKey;
-      systemKey = key.systemKey;
+      systemApiKey = key.systemApiKey;
     } catch (error: any) {
       if (error?.code === 501) {
         // 余额不够了, 清空该记录
@@ -69,55 +68,44 @@ export async function generateQA(next = false): Promise<any> {
 
     const startTime = Date.now();
 
-    // 获取 openai 请求实例
-    const chatAPI = getOpenAIApi(userApiKey || systemKey);
-    const systemPrompt: ChatCompletionRequestMessage = {
-      role: 'system',
-      content: `你是出题人
-${dataItem.prompt || '下面是"一段长文本"'}
-从中选出5至20个题目和答案.答案详细.按格式返回: Q1:
-A1:
-Q2:
-A2:
-...`
-    };
-
     // 请求 chatgpt 获取回答
     const response = await Promise.allSettled(
       textList.map((text) =>
-        chatAPI
-          .createChatCompletion(
-            {
-              model: OpenAiChatEnum.GPT35,
-              temperature: 0.8,
-              n: 1,
-              messages: [
-                systemPrompt,
-                {
-                  role: 'user',
-                  content: text
-                }
-              ]
-            },
-            {
-              timeout: 180000,
-              ...axiosConfig()
-            }
-          )
-          .then((res) => {
-            const rawContent = res?.data.choices[0].message?.content || ''; // chatgpt 原本的回复
-            const result = formatSplitText(res?.data.choices[0].message?.content || ''); // 格式化后的QA对
+        modelServiceToolMap[OpenAiChatEnum.GPT35]
+          .chatCompletion({
+            apiKey: userApiKey || systemApiKey,
+            temperature: 0.8,
+            messages: [
+              {
+                obj: ChatRoleEnum.System,
+                value: `你是出题人
+          ${dataItem.prompt || '下面是"一段长文本"'}
+          从中选出5至20个题目和答案.答案详细.按格式返回: Q1:
+          A1:
+          Q2:
+          A2:
+          ...`
+              },
+              {
+                obj: 'Human',
+                value: text
+              }
+            ],
+            stream: false
+          })
+          .then(({ totalTokens, responseText, responseMessages }) => {
+            const result = formatSplitText(responseText); // 格式化后的QA对
             console.log(`split result length: `, result.length);
             // 计费
             pushSplitDataBill({
               isPay: !userApiKey && result.length > 0,
               userId: dataItem.userId,
               type: 'QA',
-              text: systemPrompt.content + text + rawContent,
-              tokenLen: res.data.usage?.total_tokens || 0
+              textLen: responseMessages.map((item) => item.value).join('').length,
+              totalTokens
             });
             return {
-              rawContent,
+              rawContent: responseText,
               result
             };
           })

@@ -1,22 +1,23 @@
-import { openaiCreateEmbedding } from '../utils/openai';
 import { PgClient } from '@/service/pg';
 import { ModelDataStatusEnum, ModelVectorSearchModeEnum, ChatModelMap } from '@/constants/model';
 import { ModelSchema } from '@/types/mongoSchema';
-import { systemPromptFilter } from '../utils/tools';
+import { openaiCreateEmbedding } from '../utils/chat/openai';
+import { ChatRoleEnum } from '@/constants/chat';
+import { sliceTextByToken } from '@/utils/chat';
 
 /**
  *  use openai embedding search kb
  */
-export const searchKb_openai = async ({
-  apiKey,
-  isPay = true,
+export const searchKb = async ({
+  userApiKey,
+  systemApiKey,
   text,
   similarity = 0.2,
   model,
   userId
 }: {
-  apiKey: string;
-  isPay: boolean;
+  userApiKey?: string;
+  systemApiKey: string;
   text: string;
   model: ModelSchema;
   userId: string;
@@ -24,7 +25,7 @@ export const searchKb_openai = async ({
 }): Promise<{
   code: 200 | 201;
   searchPrompt?: {
-    obj: 'Human' | 'AI' | 'SYSTEM';
+    obj: `${ChatRoleEnum}`;
     value: string;
   };
 }> => {
@@ -32,8 +33,8 @@ export const searchKb_openai = async ({
 
   // 获取提示词的向量
   const { vector: promptVector } = await openaiCreateEmbedding({
-    isPay,
-    apiKey,
+    userApiKey,
+    systemApiKey,
     userId,
     text
   });
@@ -61,7 +62,7 @@ export const searchKb_openai = async ({
     return {
       code: 201,
       searchPrompt: {
-        obj: 'AI',
+        obj: ChatRoleEnum.AI,
         value: '对不起，你的问题不在知识库中。'
       }
     };
@@ -72,7 +73,7 @@ export const searchKb_openai = async ({
       code: 200,
       searchPrompt: model.chat.systemPrompt
         ? {
-            obj: 'SYSTEM',
+            obj: ChatRoleEnum.System,
             value: model.chat.systemPrompt
           }
         : undefined
@@ -81,16 +82,16 @@ export const searchKb_openai = async ({
 
   // 有匹配情况下，system 添加知识库内容。
   // 系统提示词过滤，最多 65% tokens
-  const filterSystemPrompt = systemPromptFilter({
+  const filterSystemPrompt = sliceTextByToken({
     model: model.chat.chatModel,
-    prompts: systemPrompts,
-    maxTokens: Math.floor(modelConstantsData.contextMaxToken * 0.65)
+    text: systemPrompts.join('\n'),
+    length: Math.floor(modelConstantsData.contextMaxToken * 0.65)
   });
 
   return {
     code: 200,
     searchPrompt: {
-      obj: 'SYSTEM',
+      obj: ChatRoleEnum.System,
       value: `
 ${model.chat.systemPrompt}
 ${
