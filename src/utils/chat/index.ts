@@ -2,10 +2,17 @@ import { OpenAiChatEnum } from '@/constants/model';
 import type { ChatModelType } from '@/constants/model';
 import type { ChatItemSimpleType } from '@/types/chat';
 import { countOpenAIToken, getOpenAiEncMap, adaptChatItem_openAI } from './openai';
+import { ChatCompletionRequestMessage } from 'openai';
 
 export type CountTokenType = { messages: ChatItemSimpleType[] };
 
-export const modelToolMap = {
+export const modelToolMap: Record<
+  ChatModelType,
+  {
+    countTokens: (data: CountTokenType) => number;
+    adaptChatMessages: (data: CountTokenType) => ChatCompletionRequestMessage[];
+  }
+> = {
   [OpenAiChatEnum.GPT35]: {
     countTokens: ({ messages }: CountTokenType) =>
       countOpenAIToken({ model: OpenAiChatEnum.GPT35, messages }),
