@@ -60,8 +60,8 @@ export async function generateVector(next = false): Promise<any> {
     }
 
     // 生成词向量
-    const { vector } = await openaiCreateEmbedding({
-      text: dataItem.q,
+    const { vectors } = await openaiCreateEmbedding({
+      textArr: [dataItem.q],
       userId: dataItem.userId,
       userApiKey,
       systemApiKey
@@ -70,7 +70,7 @@ export async function generateVector(next = false): Promise<any> {
     // 更新 pg 向量和状态数据
     await PgClient.update('modelData', {
       values: [
-        { key: 'vector', value: `[${vector}]` },
+        { key: 'vector', value: `[${vectors[0]}]` },
         { key: 'status', value: `ready` }
       ],
       where: [['id', dataId]]

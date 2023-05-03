@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { code, searchPrompt } = await searchKb({
         systemApiKey: apiKey,
-        text: prompts[prompts.length - 1].value,
+        prompts,
         similarity,
         model,
         userId
