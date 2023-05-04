@@ -1,19 +1,19 @@
 import { ChatItemSimpleType } from '@/types/chat';
 import { modelToolMap } from '@/utils/chat';
 import type { ChatModelType } from '@/constants/model';
-import { ChatRoleEnum, SYSTEM_PROMPT_PREFIX } from '@/constants/chat';
-import { OpenAiChatEnum } from '@/constants/model';
+import { ChatRoleEnum, SYSTEM_PROMPT_HEADER } from '@/constants/chat';
+import { OpenAiChatEnum, ClaudeEnum } from '@/constants/model';
 import { chatResponse, openAiStreamResponse } from './openai';
+import { lafClaudChat, lafClaudStreamResponse } from './claude';
 import type { NextApiResponse } from 'next';
 import type { PassThrough } from 'stream';
-import delay from 'delay';
 
 export type ChatCompletionType = {
   apiKey: string;
   temperature: number;
   messages: ChatItemSimpleType[];
   stream: boolean;
-  params?: any;
+  [key: string]: any;
 };
 export type ChatCompletionResponseType = {
   streamResponse: any;
@@ -25,6 +25,9 @@ export type StreamResponseType = {
   stream: PassThrough;
   chatResponse: any;
   prompts: ChatItemSimpleType[];
+  res: NextApiResponse;
+  systemPrompt?: string;
+  [key: string]: any;
 };
 export type StreamResponseReturnType = {
   responseContent: string;
@@ -65,6 +68,10 @@ export const modelServiceToolMap: Record<
         model: OpenAiChatEnum.GPT432k,
         ...data
       })
+  },
+  [ClaudeEnum.Claude]: {
+    chatCompletion: lafClaudChat,
+    streamResponse: lafClaudStreamResponse
   }
 };
 
@@ -143,14 +150,13 @@ export const resStreamResponse = async ({
   prompts
 }: StreamResponseType & {
   model: ChatModelType;
-  res: NextApiResponse;
-  systemPrompt?: string;
 }) => {
   // 创建响应流
   res.setHeader('Content-Type', 'text/event-stream;charset-utf-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
+  systemPrompt && res.setHeader(SYSTEM_PROMPT_HEADER, encodeURIComponent(systemPrompt));
   stream.pipe(res);
 
   const { responseContent, totalTokens, finishMessages } = await modelServiceToolMap[
@@ -158,15 +164,10 @@ export const resStreamResponse = async ({
   ].streamResponse({
     chatResponse,
     stream,
-    prompts
+    prompts,
+    res,
+    systemPrompt
   });
-
-  await delay(100);
-
-  // push system prompt
-  !stream.destroyed &&
-    systemPrompt &&
-    stream.push(`${SYSTEM_PROMPT_PREFIX}${systemPrompt.replace(/\n/g, '<br/>')}`);
 
   // close stream
   !stream.destroyed && stream.push(null);

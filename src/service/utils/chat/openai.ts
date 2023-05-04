@@ -19,18 +19,18 @@ export const getOpenAIApi = (apiKey: string) => {
 
 /* 获取向量 */
 export const openaiCreateEmbedding = async ({
-  userApiKey,
-  systemApiKey,
+  userOpenAiKey,
   userId,
   textArr
 }: {
-  userApiKey?: string;
-  systemApiKey: string;
+  userOpenAiKey?: string;
   userId: string;
   textArr: string[];
 }) => {
+  const systemAuthKey = process.env.OPENAIKEY as string;
+
   // 获取 chatAPI
-  const chatAPI = getOpenAIApi(userApiKey || systemApiKey);
+  const chatAPI = getOpenAIApi(userOpenAiKey || systemAuthKey);
 
   // 把输入的内容转成向量
   const res = await chatAPI
@@ -50,7 +50,7 @@ export const openaiCreateEmbedding = async ({
     }));
 
   pushGenerateVectorBill({
-    isPay: !userApiKey,
+    isPay: !userOpenAiKey,
     userId,
     text: textArr.join(''),
     tokenLen: res.tokenLen

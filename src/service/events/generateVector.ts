@@ -2,7 +2,6 @@ import { openaiCreateEmbedding } from '../utils/chat/openai';
 import { getApiKey } from '../utils/auth';
 import { openaiError2 } from '../errorCode';
 import { PgClient } from '@/service/pg';
-import { embeddingModel } from '@/constants/model';
 
 export async function generateVector(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -42,11 +41,10 @@ export async function generateVector(next = false): Promise<any> {
     dataId = dataItem.id;
 
     // 获取 openapi Key
-    let userApiKey, systemApiKey;
+    let userOpenAiKey;
     try {
-      const res = await getApiKey({ model: embeddingModel, userId: dataItem.userId });
-      userApiKey = res.userApiKey;
-      systemApiKey = res.systemApiKey;
+      const res = await getApiKey({ model: 'gpt-3.5-turbo', userId: dataItem.userId });
+      userOpenAiKey = res.userOpenAiKey;
     } catch (error: any) {
       if (error?.code === 501) {
         await PgClient.delete('modelData', {
@@ -63,8 +61,7 @@ export async function generateVector(next = false): Promise<any> {
     const { vectors } = await openaiCreateEmbedding({
       textArr: [dataItem.q],
       userId: dataItem.userId,
-      userApiKey,
-      systemApiKey
+      userOpenAiKey
     });
 
     // 更新 pg 向量和状态数据

@@ -8,13 +8,17 @@ export enum OpenAiChatEnum {
   'GPT4' = 'gpt-4',
   'GPT432k' = 'gpt-4-32k'
 }
+export enum ClaudeEnum {
+  'Claude' = 'Claude'
+}
 
-export type ChatModelType = `${OpenAiChatEnum}`;
+export type ChatModelType = `${OpenAiChatEnum}` | `${ClaudeEnum}`;
 
 export type ChatModelItemType = {
   chatModel: ChatModelType;
   name: string;
   contextMaxToken: number;
+  systemMaxToken: number;
   maxTemperature: number;
   price: number;
 };
@@ -24,6 +28,7 @@ export const ChatModelMap = {
     chatModel: OpenAiChatEnum.GPT35,
     name: 'ChatGpt',
     contextMaxToken: 4096,
+    systemMaxToken: 3000,
     maxTemperature: 1.5,
     price: 3
   },
@@ -31,6 +36,7 @@ export const ChatModelMap = {
     chatModel: OpenAiChatEnum.GPT4,
     name: 'Gpt4',
     contextMaxToken: 8000,
+    systemMaxToken: 4000,
     maxTemperature: 1.5,
     price: 30
   },
@@ -38,12 +44,24 @@ export const ChatModelMap = {
     chatModel: OpenAiChatEnum.GPT432k,
     name: 'Gpt4-32k',
     contextMaxToken: 32000,
+    systemMaxToken: 4000,
     maxTemperature: 1.5,
     price: 30
+  },
+  [ClaudeEnum.Claude]: {
+    chatModel: ClaudeEnum.Claude,
+    name: 'Claude(免费体验)',
+    contextMaxToken: 9000,
+    systemMaxToken: 2500,
+    maxTemperature: 1,
+    price: 0
   }
 };
 
-export const chatModelList: ChatModelItemType[] = [ChatModelMap[OpenAiChatEnum.GPT35]];
+export const chatModelList: ChatModelItemType[] = [
+  ChatModelMap[OpenAiChatEnum.GPT35],
+  ChatModelMap[ClaudeEnum.Claude]
+];
 
 export enum ModelStatusEnum {
   running = 'running',

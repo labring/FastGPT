@@ -26,7 +26,6 @@
     "axios": "^1.3.3",
     "crypto": "^1.0.1",
     "dayjs": "^1.11.7",
-    "delay": "^5.0.0",
     "eventsource-parser": "^0.1.0",
     "formidable": "^2.1.1",
     "framer-motion": "^9.0.6",

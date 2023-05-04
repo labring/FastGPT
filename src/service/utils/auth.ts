@@ -4,15 +4,10 @@ import { Chat, Model, OpenApi, User } from '../mongo';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ChatItemSimpleType } from '@/types/chat';
 import mongoose from 'mongoose';
-import { defaultModel } from '@/constants/model';
+import { ClaudeEnum, defaultModel } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
-import {
-  ChatModelType,
-  OpenAiChatEnum,
-  embeddingModel,
-  EmbeddingModelType
-} from '@/constants/model';
+import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
 
 /* 校验 token */
 export const authToken = (token?: string): Promise<string> => {
@@ -34,13 +29,7 @@ export const authToken = (token?: string): Promise<string> => {
 };
 
 /* 获取 api 请求的 key */
-export const getApiKey = async ({
-  model,
-  userId
-}: {
-  model: ChatModelType | EmbeddingModelType;
-  userId: string;
-}) => {
+export const getApiKey = async ({ model, userId }: { model: ChatModelType; userId: string }) => {
   const user = await User.findById(userId);
   if (!user) {
     return Promise.reject({
@@ -51,29 +40,29 @@ export const getApiKey = async ({
 
   const keyMap = {
     [OpenAiChatEnum.GPT35]: {
-      userApiKey: user.openaiKey || '',
-      systemApiKey: process.env.OPENAIKEY as string
+      userOpenAiKey: user.openaiKey || '',
+      systemAuthKey: process.env.OPENAIKEY as string
     },
     [OpenAiChatEnum.GPT4]: {
-      userApiKey: user.openaiKey || '',
-      systemApiKey: process.env.OPENAIKEY as string
+      userOpenAiKey: user.openaiKey || '',
+      systemAuthKey: process.env.OPENAIKEY as string
     },
     [OpenAiChatEnum.GPT432k]: {
-      userApiKey: user.openaiKey || '',
-      systemApiKey: process.env.OPENAIKEY as string
+      userOpenAiKey: user.openaiKey || '',
+      systemAuthKey: process.env.OPENAIKEY as string
     },
-    [embeddingModel]: {
-      userApiKey: user.openaiKey || '',
-      systemApiKey: process.env.OPENAIKEY as string
+    [ClaudeEnum.Claude]: {
+      userOpenAiKey: '',
+      systemAuthKey: process.env.LAFKEY as string
     }
   };
 
   // 有自己的key
-  if (keyMap[model].userApiKey) {
+  if (keyMap[model].userOpenAiKey) {
     return {
       user,
-      userApiKey: keyMap[model].userApiKey,
-      systemApiKey: ''
+      userOpenAiKey: keyMap[model].userOpenAiKey,
+      systemAuthKey: ''
     };
   }
 
@@ -87,8 +76,8 @@ export const getApiKey = async ({
 
   return {
     user,
-    userApiKey: '',
-    systemApiKey: keyMap[model].systemApiKey
+    userOpenAiKey: '',
+    systemAuthKey: keyMap[model].systemAuthKey
   };
 };
 
@@ -176,11 +165,11 @@ export const authChat = async ({
     ]);
   }
   // 获取 user 的 apiKey
-  const { userApiKey, systemApiKey } = await getApiKey({ model: model.chat.chatModel, userId });
+  const { userOpenAiKey, systemAuthKey } = await getApiKey({ model: model.chat.chatModel, userId });
 
   return {
-    userApiKey,
-    systemApiKey,
+    userOpenAiKey,
+    systemAuthKey,
     content,
     userId,
     model,

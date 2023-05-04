@@ -45,12 +45,12 @@ export async function generateQA(next = false): Promise<any> {
     const textList: string[] = dataItem.textList.slice(-5);
 
     // 获取 openapi Key
-    let userApiKey = '',
-      systemApiKey = '';
+    let userOpenAiKey = '',
+      systemAuthKey = '';
     try {
       const key = await getApiKey({ model: OpenAiChatEnum.GPT35, userId: dataItem.userId });
-      userApiKey = key.userApiKey;
-      systemApiKey = key.systemApiKey;
+      userOpenAiKey = key.userOpenAiKey;
+      systemAuthKey = key.systemAuthKey;
     } catch (error: any) {
       if (error?.code === 501) {
         // 余额不够了, 清空该记录
@@ -73,18 +73,18 @@ export async function generateQA(next = false): Promise<any> {
       textList.map((text) =>
         modelServiceToolMap[OpenAiChatEnum.GPT35]
           .chatCompletion({
-            apiKey: userApiKey || systemApiKey,
+            apiKey: userOpenAiKey || systemAuthKey,
             temperature: 0.8,
             messages: [
               {
                 obj: ChatRoleEnum.System,
                 value: `你是出题人
-          ${dataItem.prompt || '下面是"一段长文本"'}
-          从中选出5至20个题目和答案.答案详细.按格式返回: Q1:
-          A1:
-          Q2:
-          A2:
-          ...`
+${dataItem.prompt || '下面是"一段长文本"'}
+从中选出5至20个题目和答案.答案详细.按格式返回: Q1:
+A1:
+Q2:
+A2:
+...`
               },
               {
                 obj: 'Human',
@@ -98,7 +98,7 @@ export async function generateQA(next = false): Promise<any> {
             console.log(`split result length: `, result.length);
             // 计费
             pushSplitDataBill({
-              isPay: !userApiKey && result.length > 0,
+              isPay: !userOpenAiKey && result.length > 0,
               userId: dataItem.userId,
               type: 'QA',
               textLen: responseMessages.map((item) => item.value).join('').length,

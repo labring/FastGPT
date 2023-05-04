@@ -42,11 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     let startTime = Date.now();
 
-    const { model, showModelDetail, content, userApiKey, systemApiKey, userId } = await authChat({
-      modelId,
-      chatId,
-      authorization
-    });
+    const { model, showModelDetail, content, userOpenAiKey, systemAuthKey, userId } =
+      await authChat({
+        modelId,
+        chatId,
+        authorization
+      });
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
@@ -56,8 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 使用了知识库搜索
     if (model.chat.useKb) {
       const { code, searchPrompt } = await searchKb({
-        userApiKey,
-        systemApiKey,
+        userOpenAiKey,
         prompts,
         similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
         model,
@@ -86,10 +86,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 发出请求
     const { streamResponse } = await modelServiceToolMap[model.chat.chatModel].chatCompletion({
-      apiKey: userApiKey || systemApiKey,
+      apiKey: userOpenAiKey || systemAuthKey,
       temperature: +temperature,
       messages: prompts,
-      stream: true
+      stream: true,
+      res,
+      chatId
     });
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
@@ -108,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 只有使用平台的 key 才计费
     pushChatBill({
-      isPay: !userApiKey,
+      isPay: !userOpenAiKey,
       chatModel: model.chat.chatModel,
       userId,
       chatId,

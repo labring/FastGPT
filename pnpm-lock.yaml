@@ -28,7 +28,6 @@ specifiers:
   axios: ^1.3.3
   crypto: ^1.0.1
   dayjs: ^1.11.7
-  delay: ^5.0.0
   eslint: 8.34.0
   eslint-config-next: 13.1.6
   eventsource-parser: ^0.1.0
@@ -83,7 +82,6 @@ dependencies:
   axios: registry.npmmirror.com/axios/1.3.3
   crypto: registry.npmmirror.com/crypto/1.0.1
   dayjs: registry.npmmirror.com/dayjs/1.11.7
-  delay: 5.0.0
   eventsource-parser: registry.npmmirror.com/eventsource-parser/0.1.0
   formidable: registry.npmmirror.com/formidable/2.1.1
   framer-motion: registry.npmmirror.com/framer-motion/9.0.6_biqbaboplfbrettd7655fr4n2y
@@ -287,11 +285,6 @@ packages:
     requiresBuild: true
     dev: false
     optional: true
-
-  /delay/5.0.0:
-    resolution: {integrity: sha512-ReEBKkIfe4ya47wlPYf/gu5ib6yUG0/Aez0JQZQz94kiWtRQvZIQbTiehsnwHvLSWJnQdhVeqYue7Id1dKr0qw==}
-    engines: {node: '>=10'}
-    dev: false
 
   /fsevents/2.3.2:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
