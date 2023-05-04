@@ -25,7 +25,7 @@ export const lafClaudChat = async ({
     .filter((item) => item.obj === 'System')
     .map((item) => item.value)
     .join('\n');
-  const systemPromptText = systemPrompt ? `这是我的知识:'${systemPrompt}'\n` : '';
+  const systemPromptText = systemPrompt ? `\n知识库内容:'${systemPrompt}'\n我的问题:` : '';
 
   const prompt = systemPromptText + messages[messages.length - 1].value;
 
