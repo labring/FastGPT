@@ -6,7 +6,7 @@ import { authToken } from '@/service/utils/auth';
 /* 获取历史记录 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const userId = await authToken(req.headers.authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         userId
       },
-      '_id title modelId'
+      '_id title modelId updateTime latestChat'
     )
       .sort({ updateTime: -1 })
       .limit(20);

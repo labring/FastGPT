@@ -13,10 +13,8 @@ export const ERROR_CODE: { [key: number]: string } = {
   504: '网关超时'
 };
 
-export const TOKEN_ERROR_CODE: { [key: number]: string } = {
-  506: '请先登录',
-  507: '请重新登录',
-  508: '登录已过期'
+export const TOKEN_ERROR_CODE: Record<number, string> = {
+  403: '登录状态无效,请重新登录'
 };
 
 export const openaiError: Record<string, string> = {

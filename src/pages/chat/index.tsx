@@ -1,16 +1,16 @@
 import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { getInitChatSiteInfo, delChatRecordByIndex, postSaveChat } from '@/api/chat';
-import type { InitChatResponse } from '@/api/response/chat';
-import type { ChatItemType } from '@/types/chat';
+import {
+  getInitChatSiteInfo,
+  delChatRecordByIndex,
+  postSaveChat,
+  delChatHistoryById
+} from '@/api/chat';
+import type { ChatSiteItemType, ExportChatType } from '@/types/chat';
 import {
   Textarea,
   Box,
   Flex,
-  useDisclosure,
-  Drawer,
-  DrawerOverlay,
-  DrawerContent,
   useColorModeValue,
   Menu,
   MenuButton,
@@ -22,38 +22,46 @@ import {
   ModalOverlay,
   ModalContent,
   ModalBody,
-  ModalCloseButton
+  ModalCloseButton,
+  useDisclosure,
+  Drawer,
+  DrawerOverlay,
+  DrawerContent
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
-import { OpenAiChatEnum } from '@/constants/model';
 import dynamic from 'next/dynamic';
-import { useGlobalStore } from '@/store/global';
 import { useCopyData } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
 import Markdown from '@/components/Markdown';
-import { HUMAN_ICON, LOGO_ICON } from '@/constants/chat';
+import { LOGO_ICON } from '@/constants/chat';
+import { useChatStore } from '@/store/chat';
+import { useLoading } from '@/hooks/useLoading';
+import { fileDownload } from '@/utils/file';
+import { htmlTemplate } from '@/constants/common';
+import { useUserStore } from '@/store/user';
 
-const SlideBar = dynamic(() => import('./components/SlideBar'));
+const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'));
+const History = dynamic(() => import('./components/History'));
 const Empty = dynamic(() => import('./components/Empty'));
 
 import styles from './index.module.scss';
 
 const textareaMinH = '22px';
 
-export type ChatSiteItemType = {
-  status: 'loading' | 'finish';
-} & ChatItemType;
-
-interface ChatType extends InitChatResponse {
-  history: ChatSiteItemType[];
-}
-
-const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
+const Chat = ({
+  modelId,
+  chatId,
+  isPcDevice
+}: {
+  modelId: string;
+  chatId: string;
+  isPcDevice: boolean;
+}) => {
   const router = useRouter();
 
   const ChatBox = useRef<HTMLDivElement>(null);
@@ -61,31 +69,34 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
   // 中断请求
   const controller = useRef(new AbortController());
-  const isResetPage = useRef(false);
-
-  const [chatData, setChatData] = useState<ChatType>({
-    chatId,
-    modelId,
-    name: '',
-    avatar: '/icon/logo.png',
-    intro: '',
-    chatModel: OpenAiChatEnum.GPT35,
-    history: []
-  }); // 聊天框整体数据
+  const isLeavePage = useRef(false);
 
   const [inputVal, setInputVal] = useState(''); // user input prompt
   const [showSystemPrompt, setShowSystemPrompt] = useState('');
+
+  const {
+    lastChatModelId,
+    setLastChatModelId,
+    lastChatId,
+    setLastChatId,
+    loadHistory,
+    chatData,
+    setChatData,
+    forbidLoadChatData,
+    setForbidLoadChatData
+  } = useChatStore();
 
   const isChatting = useMemo(
     () => chatData.history[chatData.history.length - 1]?.status === 'loading',
     [chatData.history]
   );
-  const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
   const { toast } = useToast();
   const { copyData } = useCopyData();
-  const { isPc, media } = useScreen();
-  const { setLoading } = useGlobalStore();
+  const { isPc } = useScreen({ defaultIsPc: isPcDevice });
+  const { Loading, setIsLoading } = useLoading();
+  const { userInfo } = useUserStore();
+  const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
   // 滚动到底部
   const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -122,83 +133,13 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     }, 100);
   }, []);
 
-  // 获取对话信息
-  const loadChatInfo = useCallback(
-    async ({
-      modelId,
-      chatId,
-      isLoading = false,
-      isScroll = false
-    }: {
-      modelId: string;
-      chatId: string;
-      isLoading?: boolean;
-      isScroll?: boolean;
-    }) => {
-      isLoading && setLoading(true);
-      try {
-        const res = await getInitChatSiteInfo(modelId, chatId);
-
-        setChatData({
-          ...res,
-          history: res.history.map((item) => ({
-            ...item,
-            status: 'finish'
-          }))
-        });
-        if (isScroll && res.history.length > 0) {
-          setTimeout(() => {
-            scrollToBottom('auto');
-          }, 1000);
-        }
-      } catch (e: any) {
-        toast({
-          title: e?.message || '获取对话信息异常,请检查地址',
-          status: 'error',
-          isClosable: true,
-          duration: 5000
-        });
-        router.back();
-      }
-      setLoading(false);
-      return null;
-    },
-    [router, scrollToBottom, setLoading, toast]
-  );
-
-  // 重载新的对话
-  const resetChat = useCallback(
-    async (modelId = chatData.modelId, chatId = '') => {
-      // 强制中断流
-      isResetPage.current = true;
-      controller.current?.abort();
-
-      try {
-        router.replace(`/chat?modelId=${modelId}&chatId=${chatId}`);
-        loadChatInfo({
-          modelId,
-          chatId,
-          isLoading: true,
-          isScroll: true
-        });
-      } catch (error: any) {
-        toast({
-          title: error?.message || '生成新对话失败',
-          status: 'warning'
-        });
-      }
-      onCloseSlider();
-    },
-    [chatData.modelId, loadChatInfo, onCloseSlider, router, toast]
-  );
-
   // gpt 对话
   const gptChatPrompt = useCallback(
     async (prompts: ChatSiteItemType[]) => {
       // create abort obj
       const abortSignal = new AbortController();
       controller.current = abortSignal;
-      isResetPage.current = false;
+      isLeavePage.current = false;
 
       const prompt = {
         obj: prompts[0].obj,
@@ -230,7 +171,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       });
 
       // 重置了页面，说明退出了当前聊天, 不缓存任何内容
-      if (isResetPage.current) {
+      if (isLeavePage.current) {
         return;
       }
 
@@ -255,7 +196,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           ]
         });
         if (newChatId) {
+          setForbidLoadChatData(true);
           router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
+          loadHistory({ pageNum: 1, init: true });
         }
       } catch (err) {
         toast({
@@ -280,7 +223,16 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         })
       }));
     },
-    [chatId, generatingMessage, modelId, router, toast]
+    [
+      chatId,
+      setForbidLoadChatData,
+      generatingMessage,
+      loadHistory,
+      modelId,
+      router,
+      setChatData,
+      toast
+    ]
   );
 
   /**
@@ -351,12 +303,21 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         history: newChatList.slice(0, newChatList.length - 2)
       }));
     }
-  }, [isChatting, inputVal, chatData.history, resetInputVal, toast, scrollToBottom, gptChatPrompt]);
+  }, [
+    isChatting,
+    inputVal,
+    chatData.history,
+    setChatData,
+    resetInputVal,
+    toast,
+    scrollToBottom,
+    gptChatPrompt
+  ]);
 
   // 删除一句话
   const delChatRecord = useCallback(
     async (index: number, id: string) => {
-      setLoading(true);
+      setIsLoading(true);
       try {
         // 删除数据库最后一句
         await delChatRecordByIndex(chatId, id);
@@ -368,9 +329,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       } catch (err) {
         console.log(err);
       }
-      setLoading(false);
+      setIsLoading(false);
     },
-    [chatId, setLoading]
+    [chatId, setChatData, setIsLoading]
   );
 
   // 复制内容
@@ -382,20 +343,172 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     [copyData]
   );
 
-  // 初始化聊天框
-  useQuery(['init'], () =>
-    loadChatInfo({
-      modelId,
-      chatId,
-      isLoading: true,
-      isScroll: true
-    })
+  // export chat data
+  const onclickExportChat = useCallback(
+    (type: ExportChatType) => {
+      const getHistoryHtml = () => {
+        const historyDom = document.getElementById('history');
+        if (!historyDom) return;
+
+        const dom = Array.from(historyDom.children).map((child, i) => {
+          const avatar = `<img src="${
+            child.querySelector<HTMLImageElement>('.avatar')?.src
+          }" alt="" />`;
+
+          const chatContent = child.querySelector<HTMLDivElement>('.markdown');
+
+          if (!chatContent) {
+            return '';
+          }
+
+          const chatContentClone = chatContent.cloneNode(true) as HTMLDivElement;
+
+          const codeHeader = chatContentClone.querySelectorAll('.code-header');
+          codeHeader.forEach((childElement: any) => {
+            childElement.remove();
+          });
+
+          return `<div class="chat-item">
+          ${avatar}
+          ${chatContentClone.outerHTML}
+        </div>`;
+        });
+
+        const html = htmlTemplate.replace('{{CHAT_CONTENT}}', dom.join('\n'));
+        return html;
+      };
+
+      const map: Record<ExportChatType, () => void> = {
+        md: () => {
+          fileDownload({
+            text: chatData.history.map((item) => item.value).join('\n\n'),
+            type: 'text/markdown',
+            filename: 'chat.md'
+          });
+        },
+        html: () => {
+          const html = getHistoryHtml();
+          html &&
+            fileDownload({
+              text: html,
+              type: 'text/html',
+              filename: '聊天记录.html'
+            });
+        },
+        pdf: () => {
+          const html = getHistoryHtml();
+
+          html &&
+            // @ts-ignore
+            html2pdf(html, {
+              margin: 0,
+              filename: `聊天记录.pdf`
+            });
+        }
+      };
+
+      map[type]();
+    },
+    [chatData.history]
   );
 
-  // 更新流中断对象
+  // delete history and reload history
+  const onclickDelHistory = useCallback(
+    async (historyId: string) => {
+      await delChatHistoryById(historyId);
+      loadHistory({ pageNum: 1, init: true });
+    },
+    [loadHistory]
+  );
+
+  // 获取对话信息
+  const loadChatInfo = useCallback(
+    async ({
+      modelId,
+      chatId,
+      isLoading = false
+    }: {
+      modelId: string;
+      chatId: string;
+      isLoading?: boolean;
+    }) => {
+      isLoading && setIsLoading(true);
+      try {
+        const res = await getInitChatSiteInfo(modelId, chatId);
+
+        setChatData({
+          ...res,
+          history: res.history.map((item) => ({
+            ...item,
+            status: 'finish'
+          }))
+        });
+        if (res.history.length > 0) {
+          setTimeout(() => {
+            scrollToBottom('auto');
+          }, 300);
+        }
+
+        // 空 modelId 请求, 重定向到新的 model 聊天
+        if (res.modelId !== modelId) {
+          setForbidLoadChatData(true);
+          router.replace(`/chat?modelId=${res.modelId}`);
+        }
+      } catch (e: any) {
+        // reset all chat tore
+        setLastChatModelId('');
+        setLastChatId('');
+        setChatData();
+        loadHistory({ pageNum: 1, init: true });
+        router.replace('/chat');
+      }
+      setIsLoading(false);
+      return null;
+    },
+    [
+      router,
+      loadHistory,
+      setForbidLoadChatData,
+      scrollToBottom,
+      setChatData,
+      setIsLoading,
+      setLastChatId,
+      setLastChatModelId
+    ]
+  );
+  // 初始化聊天框
+  const { isLoading } = useQuery(['init', modelId, chatId], () => {
+    // pc: redirect to latest model chat
+    if (!modelId && lastChatModelId) {
+      router.replace(`/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`);
+      return null;
+    }
+
+    // store id
+    modelId && setLastChatModelId(modelId);
+    setLastChatId(chatId);
+
+    // focus scroll bottom
+    chatId && scrollToBottom('auto');
+
+    /* get mode and chat into ↓ */
+
+    // phone: history page
+    if (!isPc && Object.keys(router.query).length === 0) return null;
+    if (forbidLoadChatData) {
+      setForbidLoadChatData(false);
+      return null;
+    }
+
+    return loadChatInfo({
+      modelId,
+      chatId
+    });
+  });
+
   useEffect(() => {
     return () => {
-      isResetPage.current = true;
+      isLeavePage.current = true;
       controller.current?.abort();
     };
   }, []);
@@ -403,239 +516,286 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   return (
     <Flex
       h={'100%'}
-      flexDirection={media('row', 'column')}
+      flexDirection={['column', 'row']}
       backgroundColor={useColorModeValue('white', '')}
     >
-      {isPc ? (
-        <Box flex={'0 0 250px'} w={0} h={'100%'}>
-          <SlideBar
-            resetChat={resetChat}
-            chatId={chatId}
-            modelId={modelId}
-            history={chatData.history}
-            onClose={onCloseSlider}
+      {/* pc always show history. phone is only show when modelId is present */}
+      {isPc || !modelId ? (
+        <Box flex={[1, '0 0 250px']} w={['100%', 0]} h={'100%'}>
+          <History
+            onclickDelHistory={onclickDelHistory}
+            onclickExportChat={onclickExportChat}
+            isPcDevice={isPcDevice}
           />
         </Box>
       ) : (
-        <Box h={'60px'} borderBottom={'1px solid rgba(0,0,0,0.1)'}>
+        <Box
+          h={'44px'}
+          borderBottom={'1px solid '}
+          borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
+        >
           <Flex
             alignItems={'center'}
             h={'100%'}
             justifyContent={'space-between'}
             backgroundColor={useColorModeValue('white', 'gray.700')}
             color={useColorModeValue('blackAlpha.700', 'white')}
-            position={'relative'}
-            px={7}
+            px={5}
           >
-            <Box onClick={onOpenSlider}>
-              <MyIcon
-                name={'menu'}
-                w={'20px'}
-                h={'20px'}
-                color={useColorModeValue('blackAlpha.700', 'white')}
-              />
-            </Box>
-            <Box>{chatData?.name}</Box>
+            <MyIcon
+              name={'tabbarMore'}
+              w={'14px'}
+              h={'14px'}
+              color={useColorModeValue('blackAlpha.700', 'white')}
+              onClick={onOpenSlider}
+            />
+            <Box>{chatData.model.name}</Box>
+            <Menu autoSelect={false}>
+              <MenuButton lineHeight={1}>
+                <MyIcon
+                  name={'more'}
+                  w={'16px'}
+                  h={'16px'}
+                  color={useColorModeValue('blackAlpha.700', 'white')}
+                />
+              </MenuButton>
+              <MenuList minW={`90px !important`}>
+                <MenuItem onClick={() => router.replace(`/chat?modelId=${modelId}`)}>
+                  新对话
+                </MenuItem>
+                <MenuItem
+                  onClick={async () => {
+                    try {
+                      setIsLoading(true);
+                      await onclickDelHistory(chatData.chatId);
+                      router.replace(`/chat`);
+                    } catch (err) {
+                      console.log(err);
+                    }
+                    setIsLoading(false);
+                  }}
+                >
+                  删除记录
+                </MenuItem>
+                <MenuItem onClick={() => onclickExportChat('html')}>导出HTML格式</MenuItem>
+                <MenuItem onClick={() => onclickExportChat('pdf')}>导出PDF格式</MenuItem>
+                <MenuItem onClick={() => onclickExportChat('md')}>导出Markdown格式</MenuItem>
+              </MenuList>
+            </Menu>
           </Flex>
           <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
             <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
             <DrawerContent maxWidth={'250px'}>
-              <SlideBar
-                resetChat={resetChat}
-                chatId={chatId}
-                modelId={modelId}
-                history={chatData.history}
-                onClose={onCloseSlider}
-              />
+              <PhoneSliderBar chatId={chatId} modelId={modelId} onClose={onCloseSlider} />
             </DrawerContent>
           </Drawer>
         </Box>
       )}
 
-      <Flex
-        {...media({ h: '100%', w: 0 }, { h: 0, w: '100%' })}
-        flex={'1 0 0'}
-        flexDirection={'column'}
-      >
-        {/* 聊天内容 */}
-        <Box
-          id={'history'}
-          ref={ChatBox}
-          pb={[4, 0]}
+      {/* 聊天内容 */}
+      {modelId && (
+        <Flex
+          position={'relative'}
+          h={[0, '100%']}
+          w={['100%', 0]}
           flex={'1 0 0'}
-          h={0}
-          w={'100%'}
-          overflowY={'auto'}
+          flexDirection={'column'}
         >
-          {chatData.history.map((item, index) => (
-            <Box
-              key={item._id}
-              py={media(9, 6)}
-              px={media(4, 2)}
-              backgroundColor={
-                index % 2 !== 0 ? useColorModeValue('blackAlpha.50', 'gray.700') : ''
-              }
-              color={useColorModeValue('blackAlpha.700', 'white')}
-              borderBottom={'1px solid rgba(0,0,0,0.1)'}
-            >
-              <Flex maxW={'750px'} m={'auto'} alignItems={'flex-start'}>
-                <Menu autoSelect={false}>
-                  <MenuButton as={Box} mr={media(4, 1)} cursor={'pointer'}>
-                    <Image
-                      className="avatar"
-                      src={item.obj === 'Human' ? HUMAN_ICON : chatData.avatar || LOGO_ICON}
-                      alt="avatar"
-                      w={['20px', '30px']}
-                      maxH={'50px'}
-                      objectFit={'contain'}
-                    />
-                  </MenuButton>
-                  <MenuList fontSize={'sm'}>
-                    <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>
-                    <MenuItem onClick={() => delChatRecord(index, item._id)}>删除该行</MenuItem>
-                  </MenuList>
-                </Menu>
-                <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
-                  {item.obj === 'AI' ? (
-                    <>
-                      <Markdown
-                        source={item.value}
-                        isChatting={isChatting && index === chatData.history.length - 1}
+          <Box
+            id={'history'}
+            ref={ChatBox}
+            pb={[4, 0]}
+            flex={'1 0 0'}
+            h={0}
+            w={'100%'}
+            overflow={'overlay'}
+          >
+            {chatData.history.map((item, index) => (
+              <Box
+                key={item._id}
+                py={[6, 9]}
+                px={[2, 4]}
+                backgroundColor={
+                  index % 2 !== 0 ? useColorModeValue('blackAlpha.50', 'gray.700') : ''
+                }
+                color={useColorModeValue('blackAlpha.700', 'white')}
+                borderBottom={'1px solid rgba(0,0,0,0.1)'}
+              >
+                <Flex maxW={'750px'} m={'auto'} alignItems={'flex-start'}>
+                  <Menu autoSelect={false}>
+                    <MenuButton as={Box} mr={[1, 4]} cursor={'pointer'}>
+                      <Image
+                        className="avatar"
+                        src={
+                          item.obj === 'Human'
+                            ? userInfo?.avatar
+                            : chatData.model.avatar || LOGO_ICON
+                        }
+                        alt="avatar"
+                        w={['20px', '30px']}
+                        maxH={'50px'}
+                        objectFit={'contain'}
                       />
-                      {item.systemPrompt && (
-                        <Button
-                          size={'xs'}
-                          mt={2}
-                          fontWeight={'normal'}
-                          colorScheme={'gray'}
-                          variant={'outline'}
-                          onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
-                        >
-                          查看提示词
-                        </Button>
+                    </MenuButton>
+                    <MenuList fontSize={'sm'}>
+                      {chatData.model.canUse && (
+                        <MenuItem onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}>
+                          模型详情
+                        </MenuItem>
                       )}
-                    </>
-                  ) : (
-                    <Box className="markdown" whiteSpace={'pre-wrap'}>
-                      <Box as={'p'}>{item.value}</Box>
-                    </Box>
-                  )}
-                </Box>
-                {isPc && (
-                  <Flex h={'100%'} flexDirection={'column'} ml={2} w={'14px'} height={'100%'}>
-                    <Box minH={'40px'} flex={1}>
+                      <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>
+                      <MenuItem onClick={() => delChatRecord(index, item._id)}>删除该行</MenuItem>
+                    </MenuList>
+                  </Menu>
+                  <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
+                    {item.obj === 'AI' ? (
+                      <>
+                        <Markdown
+                          source={item.value}
+                          isChatting={isChatting && index === chatData.history.length - 1}
+                        />
+                        {item.systemPrompt && (
+                          <Button
+                            size={'xs'}
+                            mt={2}
+                            fontWeight={'normal'}
+                            colorScheme={'gray'}
+                            variant={'outline'}
+                            onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
+                          >
+                            查看提示词
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <Box className="markdown" whiteSpace={'pre-wrap'}>
+                        <Box as={'p'}>{item.value}</Box>
+                      </Box>
+                    )}
+                  </Box>
+                  {isPc && (
+                    <Flex h={'100%'} flexDirection={'column'} ml={2} w={'14px'} height={'100%'}>
+                      <Box minH={'40px'} flex={1}>
+                        <MyIcon
+                          name="copy"
+                          w={'14px'}
+                          cursor={'pointer'}
+                          color={'blackAlpha.700'}
+                          onClick={() => onclickCopy(item.value)}
+                        />
+                      </Box>
                       <MyIcon
-                        name="copy"
+                        name="delete"
                         w={'14px'}
                         cursor={'pointer'}
-                        color={'alphaBlack.400'}
-                        onClick={() => onclickCopy(item.value)}
+                        color={'blackAlpha.700'}
+                        _hover={{
+                          color: 'red.600'
+                        }}
+                        onClick={() => delChatRecord(index, item._id)}
                       />
-                    </Box>
-                    <MyIcon
-                      name="delete"
-                      w={'14px'}
-                      cursor={'pointer'}
-                      color={'alphaBlack.400'}
-                      _hover={{
-                        color: 'red.600'
-                      }}
-                      onClick={() => delChatRecord(index, item._id)}
-                    />
-                  </Flex>
-                )}
-              </Flex>
-            </Box>
-          ))}
-          {chatData.history.length === 0 && (
-            <Empty modelName={chatData.name} intro={chatData.intro} />
-          )}
-        </Box>
-        {/* 发送区 */}
-        <Box m={media('20px auto', '0 auto')} w={'100%'} maxW={media('min(750px, 100%)', 'auto')}>
-          <Box
-            py={'18px'}
-            position={'relative'}
-            boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
-            border={media('1px solid', '0')}
-            borderColor={useColorModeValue('gray.200', 'gray.700')}
-            borderRadius={['none', 'md']}
-            backgroundColor={useColorModeValue('white', 'gray.700')}
-          >
-            {/* 输入框 */}
-            <Textarea
-              ref={TextareaDom}
-              py={0}
-              pr={['45px', '55px']}
-              border={'none'}
-              _focusVisible={{
-                border: 'none'
-              }}
-              placeholder="提问"
-              resize={'none'}
-              value={inputVal}
-              rows={1}
-              height={'22px'}
-              lineHeight={'22px'}
-              maxHeight={'150px'}
-              maxLength={-1}
-              overflowY={'auto'}
-              whiteSpace={'pre-wrap'}
-              wordBreak={'break-all'}
-              color={useColorModeValue('blackAlpha.700', 'white')}
-              onChange={(e) => {
-                const textarea = e.target;
-                setInputVal(textarea.value);
-                textarea.style.height = textareaMinH;
-                textarea.style.height = `${textarea.scrollHeight}px`;
-              }}
-              onKeyDown={(e) => {
-                // 触发快捷发送
-                if (isPc && e.keyCode === 13 && !e.shiftKey) {
-                  sendPrompt();
-                  e.preventDefault();
-                }
-                // 全选内容
-                // @ts-ignore
-                e.key === 'a' && e.ctrlKey && e.target?.select();
-              }}
-            />
-            {/* 发送和等待按键 */}
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              h={'25px'}
-              w={'25px'}
-              position={'absolute'}
-              right={['12px', '20px']}
-              bottom={'15px'}
-            >
-              {isChatting ? (
-                <MyIcon
-                  className={styles.stopIcon}
-                  width={['22px', '25px']}
-                  height={['22px', '25px']}
-                  cursor={'pointer'}
-                  name={'stop'}
-                  color={useColorModeValue('gray.500', 'white')}
-                  onClick={() => {
-                    controller.current?.abort();
+                    </Flex>
+                  )}
+                </Flex>
+              </Box>
+            ))}
+            {chatData.history.length === 0 && <Empty model={chatData.model} />}
+          </Box>
+          {/* 发送区 */}
+          {chatData.model.canUse ? (
+            <Box m={['0 auto', '20px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']}>
+              <Box
+                py={'18px'}
+                position={'relative'}
+                boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
+                borderTop={['1px solid', 0]}
+                borderTopColor={useColorModeValue('gray.200', 'gray.700')}
+                borderRadius={['none', 'md']}
+                backgroundColor={useColorModeValue('white', 'gray.700')}
+              >
+                {/* 输入框 */}
+                <Textarea
+                  ref={TextareaDom}
+                  py={0}
+                  pr={['45px', '55px']}
+                  border={'none'}
+                  _focusVisible={{
+                    border: 'none'
+                  }}
+                  placeholder="提问"
+                  resize={'none'}
+                  value={inputVal}
+                  rows={1}
+                  height={'22px'}
+                  lineHeight={'22px'}
+                  maxHeight={'150px'}
+                  maxLength={-1}
+                  overflowY={'auto'}
+                  whiteSpace={'pre-wrap'}
+                  wordBreak={'break-all'}
+                  boxShadow={'none !important'}
+                  color={useColorModeValue('blackAlpha.700', 'white')}
+                  onChange={(e) => {
+                    const textarea = e.target;
+                    setInputVal(textarea.value);
+                    textarea.style.height = textareaMinH;
+                    textarea.style.height = `${textarea.scrollHeight}px`;
+                  }}
+                  onKeyDown={(e) => {
+                    // 触发快捷发送
+                    if (isPc && e.keyCode === 13 && !e.shiftKey) {
+                      sendPrompt();
+                      e.preventDefault();
+                    }
+                    // 全选内容
+                    // @ts-ignore
+                    e.key === 'a' && e.ctrlKey && e.target?.select();
                   }}
                 />
-              ) : (
-                <MyIcon
-                  name={'chatSend'}
-                  width={['18px', '20px']}
-                  height={['18px', '20px']}
-                  cursor={'pointer'}
-                  color={useColorModeValue('gray.500', 'white')}
-                  onClick={sendPrompt}
-                />
-              )}
-            </Flex>
-          </Box>
-        </Box>
-      </Flex>
+                {/* 发送和等待按键 */}
+                <Flex
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  h={'25px'}
+                  w={'25px'}
+                  position={'absolute'}
+                  right={['12px', '20px']}
+                  bottom={'15px'}
+                >
+                  {isChatting ? (
+                    <MyIcon
+                      className={styles.stopIcon}
+                      width={['22px', '25px']}
+                      height={['22px', '25px']}
+                      cursor={'pointer'}
+                      name={'stop'}
+                      color={useColorModeValue('gray.500', 'white')}
+                      onClick={() => {
+                        controller.current?.abort();
+                      }}
+                    />
+                  ) : (
+                    <MyIcon
+                      name={'chatSend'}
+                      width={['18px', '20px']}
+                      height={['18px', '20px']}
+                      cursor={'pointer'}
+                      color={useColorModeValue('gray.500', 'white')}
+                      onClick={sendPrompt}
+                    />
+                  )}
+                </Flex>
+              </Box>
+            </Box>
+          ) : (
+            <Box m={['0 auto', '20px auto']} w={'100%'} textAlign={'center'} color={'myGray.500'}>
+              作者已关闭分享
+            </Box>
+          )}
+
+          <Loading loading={isLoading} fixed={false} />
+        </Flex>
+      )}
 
       {/* system prompt show modal */}
       {
@@ -655,11 +815,10 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
 export default Chat;
 
-export async function getServerSideProps(context: any) {
-  const modelId = context?.query?.modelId || '';
-  const chatId = context?.query?.chatId || '';
-
+Chat.getInitialProps = ({ query, req }: any) => {
   return {
-    props: { modelId, chatId }
+    modelId: query?.modelId || '',
+    chatId: query?.chatId || '',
+    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
   };
-}
+};

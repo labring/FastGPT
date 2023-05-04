@@ -57,6 +57,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
           <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+          {/* @ts-ignore */}
           <Layout>
             <Component {...pageProps} />
           </Layout>

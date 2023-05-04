@@ -13,18 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       modelId: string;
       data: { a: ModelDataSchema['a']; q: ModelDataSchema['q'] }[];
     };
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
 
     if (!modelId || !Array.isArray(data)) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

@@ -16,9 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    const { authorization } = req.headers;
-
-    await authToken(authorization);
+    await authToken(req);
 
     const data = await axios
       .get(url, {

@@ -97,7 +97,7 @@ const SelectJsonModal = ({
               my={3}
               cursor={'pointer'}
               textDecoration={'underline'}
-              color={'blue.600'}
+              color={'myBlue.600'}
               onClick={() =>
                 fileDownload({
                   text: csvTemplate,

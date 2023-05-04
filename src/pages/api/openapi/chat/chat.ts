@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('prompts is not array');
     }
     if (prompts.length > 30 || prompts.length === 0) {
-      throw new Error('prompts length range 1-30');
+      throw new Error('Prompts arr length range 1-30');
     }
 
     await connectToDatabase();

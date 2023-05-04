@@ -8,7 +8,7 @@ import type { ShareModelItem } from '@/types/model';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     // 凭证校验
-    const userId = await authToken(req.headers.authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

@@ -8,18 +8,13 @@ import { PgClient } from '@/service/pg';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { dataId, a, q } = req.body as { dataId: string; a: string; q?: string };
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
 
     if (!dataId) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     // 更新 pg 内容
     await PgClient.update('modelData', {

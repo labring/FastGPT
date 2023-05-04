@@ -16,6 +16,10 @@ const UserSchema = new Schema({
     get: (val: string) => hashPassword(val),
     select: false
   },
+  avatar: {
+    type: String,
+    default: '/icon/human.png'
+  },
   balance: {
     // 平台余额，不可提现
     type: Number,

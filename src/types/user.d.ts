@@ -1,6 +1,7 @@
 export interface UserType {
   _id: string;
   username: string;
+  avatar: string;
   openaiKey: string;
   balance: number;
   promotion: {
@@ -10,7 +11,8 @@ export interface UserType {
 
 export interface UserUpdateParams {
   balance?: number;
-  openaiKey: string;
+  avatar?: string;
+  openaiKey?: string;
 }
 
 export interface UserBillType {

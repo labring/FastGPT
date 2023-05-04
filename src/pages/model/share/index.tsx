@@ -4,7 +4,7 @@ import { useLoading } from '@/hooks/useLoading';
 import { getShareModelList, triggerModelCollection, getCollectionModels } from '@/api/model';
 import { usePagination } from '@/hooks/usePagination';
 import type { ShareModelItem } from '@/types/model';
-
+import { useUserStore } from '@/store/user';
 import ShareModelList from './components/list';
 import { useQuery } from '@tanstack/react-query';
 
@@ -12,6 +12,7 @@ const modelList = () => {
   const { Loading } = useLoading();
   const lastSearch = useRef('');
   const [searchText, setSearchText] = useState('');
+  const { refreshModel } = useUserStore();
 
   /* 加载模型 */
   const { data, isLoading, Pagination, getData, pageNum } = usePagination<ShareModelItem>({
@@ -41,15 +42,16 @@ const modelList = () => {
         await triggerModelCollection(modelId);
         getData(pageNum);
         refetchCollection();
+        refreshModel.removeModelDetail(modelId);
       } catch (error) {
         console.log(error);
       }
     },
-    [getData, pageNum, refetchCollection]
+    [getData, pageNum, refetchCollection, refreshModel]
   );
 
   return (
-    <>
+    <Box py={[5, 10]} px={'5vw'}>
       <Card px={6} py={3}>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Box fontWeight={'bold'} fontSize={'xl'}>
@@ -105,7 +107,7 @@ const modelList = () => {
       </Card>
 
       <Loading loading={isLoading} />
-    </>
+    </Box>
   );
 };
 

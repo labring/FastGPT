@@ -9,3 +9,18 @@
     transform: scale(1.2);
   }
 }
+
+.newChat {
+  .modelList {
+    height: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  &:hover {
+    .modelList {
+      height: 50vh;
+      box-shadow: 0 0 5px rgba($color: #000000, $alpha: 0.05);
+      border: 1px solid #dee0e2;
+    }
+  }
+}

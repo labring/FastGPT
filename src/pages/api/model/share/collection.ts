@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('缺少参数');
     }
     // 凭证校验
-    const userId = await authToken(req.headers.authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

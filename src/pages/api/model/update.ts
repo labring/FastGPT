@@ -11,18 +11,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const { name, avatar, chat, share, security } = req.body as ModelUpdateParams;
     const { modelId } = req.query as { modelId: string };
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
 
     if (!name || !chat || !security || !modelId) {
       throw new Error('参数错误');
     }
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

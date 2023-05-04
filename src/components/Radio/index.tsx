@@ -28,16 +28,16 @@ const Radio = ({ list, value, onChange, ...props }: Props) => {
             ...(value === item.value
               ? {
                   border: '5px solid',
-                  borderColor: 'blue.500'
+                  borderColor: 'myBlue.700'
                 }
               : {
                   border: '2px solid',
-                  borderColor: 'gray.200'
+                  borderColor: 'myGray.200'
                 })
           }}
           _hover={{
             _before: {
-              borderColor: 'blue.400'
+              borderColor: 'myBlue.600'
             }
           }}
           onClick={() => onChange(item.value)}

@@ -52,7 +52,7 @@ const MySlider = ({
           mt={3}
           fontSize={'sm'}
           transform={'translateX(-50%)'}
-          {...(activeVal === item.value ? { color: 'blue.500', fontWeight: 'bold' } : {})}
+          {...(activeVal === item.value ? { color: 'myBlue.500', fontWeight: 'bold' } : {})}
         >
           <Box px={3} cursor={'pointer'}>
             {item.label}
@@ -74,7 +74,7 @@ const MySlider = ({
       >
         <SliderFilledTrack />
       </SliderTrack>
-      <SliderThumb border={'2.5px solid'} borderColor={'blue.500'}></SliderThumb>
+      <SliderThumb border={'2.5px solid'} borderColor={'myBlue.500'}></SliderThumb>
     </Slider>
   );
 };

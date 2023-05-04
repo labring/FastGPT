@@ -2,7 +2,6 @@ import React from 'react';
 import { useRouter } from 'next/router';
 import { useToast } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
-import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
 
 const unAuthPage: { [key: string]: boolean } = {
@@ -19,15 +18,13 @@ const Auth = ({ children }: { children: JSX.Element }) => {
     status: 'warning'
   });
   const { userInfo, initUserInfo } = useUserStore();
-  const { setLoading } = useGlobalStore();
 
   useQuery(
-    [router.pathname, userInfo],
+    [router.pathname],
     () => {
       if (unAuthPage[router.pathname] === true || userInfo) {
-        return setLoading(false);
+        return null;
       } else {
-        setLoading(true);
         return initUserInfo();
       }
     },
@@ -38,9 +35,6 @@ const Auth = ({ children }: { children: JSX.Element }) => {
           `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
         );
         toast();
-      },
-      onSettled() {
-        setLoading(false);
       }
     }
   );

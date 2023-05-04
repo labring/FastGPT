@@ -1,6 +1,13 @@
 import { ModelStatusEnum } from '@/constants/model';
 import type { ModelSchema } from './mongoSchema';
 
+export type ModelListItemType = {
+  _id: string;
+  name: string;
+  avatar: string;
+  systemPrompt: string;
+};
+
 export interface ModelUpdateParams {
   name: string;
   avatar: string;

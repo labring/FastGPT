@@ -7,17 +7,12 @@ import { authToken } from '@/service/utils/auth';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { id } = req.query as { id: string };
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('缺少登录凭证');
-    }
 
     if (!id) {
       throw new Error('缺少参数');
     }
 
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

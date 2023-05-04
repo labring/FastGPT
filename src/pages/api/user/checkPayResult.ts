@@ -11,10 +11,9 @@ import { PRICE_SCALE } from '@/constants/common';
 /* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { authorization } = req.headers;
     let { payId } = req.query as { payId: string };
 
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

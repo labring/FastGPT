@@ -116,11 +116,19 @@ events {
 }
 
 http {
+    resolver 8.8.8.8;
+    proxy_ssl_server_name on;
+
     access_log off;
     server_names_hash_bucket_size 512;
-    client_header_buffer_size 32k;
-    large_client_header_buffers 4 32k;
+    client_header_buffer_size 64k;
+    large_client_header_buffers 4 64k;
     client_max_body_size 50M;
+
+    proxy_connect_timeout       240s;
+    proxy_read_timeout          240s;
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
 
     gzip  on;
     gzip_min_length   1k;
@@ -215,7 +223,7 @@ services:
       - /root/fast-gpt/pg/init.sql:/docker-entrypoint-initdb.d/init.sh
       - /etc/localtime:/etc/localtime:ro
   mongodb:
-    image: mongo:4.0.1
+    image: mongo:6.0.4
     container_name: mongo
     restart: always
     ports:

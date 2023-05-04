@@ -1,9 +1,18 @@
 import React from 'react';
-import { Card, Box } from '@chakra-ui/react';
+import { Card, Box, Image, Flex } from '@chakra-ui/react';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import Markdown from '@/components/Markdown';
+import { LOGO_ICON } from '@/constants/chat';
 
-const Empty = ({ modelName, intro }: { modelName: string; intro: string }) => {
+const Empty = ({
+  model: { name, intro, avatar }
+}: {
+  model: {
+    name: string;
+    intro: string;
+    avatar: string;
+  };
+}) => {
   const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
   const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
 
@@ -17,14 +26,15 @@ const Empty = ({ modelName, intro }: { modelName: string; intro: string }) => {
       alignItems={'center'}
       justifyContent={'center'}
     >
-      {!!intro && (
-        <Card p={4} mb={10}>
-          <Box fontSize={'xl'} fontWeight={'600'} textAlign={'center'} pb={2}>
-            {modelName} 介绍
+      <Card p={4} mb={10}>
+        <Flex mb={2} alignItems={'center'} justifyContent={'center'}>
+          <Image src={avatar || LOGO_ICON} w={'32px'} h={'32px'} alt={''} />
+          <Box ml={3} fontSize={'3xl'} fontWeight={'bold'}>
+            {name}
           </Box>
-          <Box whiteSpace={'pre-line'}>{intro}</Box>
-        </Card>
-      )}
+        </Flex>
+        <Box whiteSpace={'pre-line'}>{intro}</Box>
+      </Card>
       {/* version intro */}
       <Card p={4} mb={10}>
         <Markdown source={versionIntro} />
