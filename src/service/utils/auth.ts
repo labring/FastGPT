@@ -29,13 +29,18 @@ export const authToken = (token?: string): Promise<string> => {
 };
 
 /* 获取 api 请求的 key */
-export const getApiKey = async ({ model, userId }: { model: ChatModelType; userId: string }) => {
+export const getApiKey = async ({
+  model,
+  userId,
+  mustPay = false
+}: {
+  model: ChatModelType;
+  userId: string;
+  mustPay?: boolean;
+}) => {
   const user = await User.findById(userId);
   if (!user) {
-    return Promise.reject({
-      code: 501,
-      message: '找不到用户'
-    });
+    return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
   const keyMap = {
@@ -58,7 +63,7 @@ export const getApiKey = async ({ model, userId }: { model: ChatModelType; userI
   };
 
   // 有自己的key
-  if (keyMap[model].userOpenAiKey) {
+  if (!mustPay && keyMap[model].userOpenAiKey) {
     return {
       user,
       userOpenAiKey: keyMap[model].userOpenAiKey,
@@ -68,10 +73,7 @@ export const getApiKey = async ({ model, userId }: { model: ChatModelType; userI
 
   // 平台账号余额校验
   if (formatPrice(user.balance) <= 0) {
-    return Promise.reject({
-      code: 501,
-      message: '账号余额不足'
-    });
+    return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
   return {
@@ -192,22 +194,12 @@ export const authOpenApiKey = async (req: NextApiRequest) => {
     }
     const userId = String(openApi.userId);
 
-    // 余额校验
-    const user = await User.findById(userId);
-    if (!user) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-    if (formatPrice(user.balance) <= 0) {
-      return Promise.reject(ERROR_ENUM.insufficientQuota);
-    }
-
     // 更新使用的时间
     await OpenApi.findByIdAndUpdate(openApi._id, {
       lastUsedTime: new Date()
     });
 
     return {
-      apiKey: process.env.OPENAIKEY as string,
       userId
     };
   } catch (error) {

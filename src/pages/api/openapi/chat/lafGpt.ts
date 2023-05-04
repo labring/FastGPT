@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase, Model } from '@/service/mongo';
-import { authOpenApiKey } from '@/service/utils/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { authOpenApiKey, authModel, getApiKey } from '@/service/utils/auth';
 import { resStreamResponse, modelServiceToolMap } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
@@ -45,13 +45,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let startTime = Date.now();
 
     /* 凭证校验 */
-    const { apiKey, userId } = await authOpenApiKey(req);
+    const { userId } = await authOpenApiKey(req);
 
     /* 查找数据库里的模型信息 */
-    const model = await Model.findById(modelId);
-    if (!model) {
-      throw new Error('找不到模型');
-    }
+    const { model } = await authModel({
+      userId,
+      modelId
+    });
+
+    /* get api key */
+    const { systemAuthKey: apiKey } = await getApiKey({
+      model: model.chat.chatModel,
+      userId,
+      mustPay: true
+    });
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
 

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authOpenApiKey, authModel } from '@/service/utils/auth';
+import { authOpenApiKey, authModel, getApiKey } from '@/service/utils/auth';
 import { modelServiceToolMap, resStreamResponse } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
@@ -28,10 +28,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const {
+      chatId,
       prompts,
       modelId,
       isStream = true
     } = req.body as {
+      chatId?: string;
       prompts: ChatItemSimpleType[];
       modelId: string;
       isStream: boolean;
@@ -51,11 +53,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let startTime = Date.now();
 
     /* 凭证校验 */
-    const { apiKey, userId } = await authOpenApiKey(req);
+    const { userId } = await authOpenApiKey(req);
 
     const { model } = await authModel({
       userId,
       modelId
+    });
+
+    /* get api key */
+    const { systemAuthKey: apiKey } = await getApiKey({
+      model: model.chat.chatModel,
+      userId,
+      mustPay: true
     });
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
@@ -98,7 +107,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         apiKey,
         temperature: +temperature,
         messages: prompts,
-        stream: isStream
+        stream: isStream,
+        res,
+        chatId
       });
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
