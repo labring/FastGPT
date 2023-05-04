@@ -17,14 +17,14 @@ export const modelToolMap: Record<
   },
   [OpenAiChatEnum.GPT4]: {
     countTokens: ({ messages }) => countOpenAIToken({ model: OpenAiChatEnum.GPT4, messages }),
-    sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT35, ...data })
+    sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT4, ...data })
   },
   [OpenAiChatEnum.GPT432k]: {
     countTokens: ({ messages }) => countOpenAIToken({ model: OpenAiChatEnum.GPT432k, messages }),
-    sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT35, ...data })
+    sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT432k, ...data })
   },
   [ClaudeEnum.Claude]: {
-    countTokens: () => 0,
-    sliceText: ClaudeSliceTextByToken
+    countTokens: ({ messages }) => countOpenAIToken({ model: OpenAiChatEnum.GPT35, messages }),
+    sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT35, ...data })
   }
 };

@@ -45,18 +45,13 @@ export const lafClaudChat = async ({
     }
   );
 
-  let responseText = '';
-  let totalTokens = 0;
-
-  if (!stream) {
-    responseText = lafResponse.data?.text || '';
-  }
+  const responseText = stream ? '' : lafResponse.data?.text || '';
 
   return {
     streamResponse: lafResponse,
     responseMessages: messages.concat({ obj: ChatRoleEnum.AI, value: responseText }),
     responseText,
-    totalTokens
+    totalTokens: 0
   };
 };
 
@@ -83,18 +78,15 @@ export const lafClaudStreamResponse = async ({
     } catch (error) {
       console.log('pipe error', error);
     }
-    // count tokens
+
     const finishMessages = prompts.concat({
       obj: ChatRoleEnum.AI,
       value: responseContent
     });
-    const totalTokens = modelToolMap[ClaudeEnum.Claude].countTokens({
-      messages: finishMessages
-    });
 
     return {
       responseContent,
-      totalTokens,
+      totalTokens: 0,
       finishMessages
     };
   } catch (error) {

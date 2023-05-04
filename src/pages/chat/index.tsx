@@ -643,7 +643,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           <ModalOverlay />
           <ModalContent maxW={'min(90vw, 600px)'} pr={2} maxH={'80vh'} overflowY={'auto'}>
             <ModalCloseButton />
-            <ModalBody pt={10} fontSize={'sm'} whiteSpace={'pre-wrap'} textAlign={'justify'}>
+            <ModalBody pt={5} fontSize={'sm'} whiteSpace={'pre-wrap'} textAlign={'justify'}>
               {showSystemPrompt}
             </ModalBody>
           </ModalContent>

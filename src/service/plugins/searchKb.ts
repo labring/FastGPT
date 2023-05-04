@@ -85,11 +85,24 @@ export const searchKb = async ({
   };
   const filterRate = filterRateMap[systemPrompts.length] || filterRateMap[0];
 
+  // count fixed system prompt
+  const fixedSystemPrompt = `
+${model.chat.systemPrompt}
+${
+  model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity ? '不回答知识库外的内容.' : ''
+}
+知识库内容为:`;
+  const fixedSystemTokens = modelToolMap[model.chat.chatModel].countTokens({
+    messages: [{ obj: 'System', value: fixedSystemPrompt }]
+  });
+
+  const maxTokens = modelConstantsData.systemMaxToken - fixedSystemTokens;
+
   const filterSystemPrompt = filterRate
     .map((rate, i) =>
       modelToolMap[model.chat.chatModel].sliceText({
         text: systemPrompts[i],
-        length: Math.floor(modelConstantsData.systemMaxToken * rate)
+        length: Math.floor(maxTokens * rate)
       })
     )
     .join('\n');
@@ -122,13 +135,7 @@ export const searchKb = async ({
     code: 200,
     searchPrompt: {
       obj: ChatRoleEnum.System,
-      value: `
-${model.chat.systemPrompt}
-${
-  model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity ? '不回答知识库外的内容.' : ''
-}
-知识库内容为: '${filterSystemPrompt}'
-`
+      value: `${fixedSystemPrompt}'${filterSystemPrompt}'`
     }
   };
 };
