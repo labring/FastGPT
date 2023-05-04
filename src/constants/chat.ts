@@ -1,4 +1,5 @@
-export const SYSTEM_PROMPT_PREFIX = 'SYSTEM_PROMPT:';
+export const SYSTEM_PROMPT_HEADER = 'System-Prompt-Header';
+export const NEW_CHATID_HEADER = 'Chat-Id-Header';
 
 export enum ChatRoleEnum {
   System = 'System',

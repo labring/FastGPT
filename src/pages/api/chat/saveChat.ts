@@ -9,7 +9,8 @@ import mongoose from 'mongoose';
 /* 聊天内容存存储 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { chatId, modelId, prompts } = req.body as {
+    const { chatId, modelId, prompts, newChatId } = req.body as {
+      newChatId: '' | string;
       chatId: '' | string;
       modelId: string;
       prompts: ChatItemType[];
@@ -35,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 没有 chatId, 创建一个对话
     if (!chatId) {
       const { _id } = await Chat.create({
+        _id: newChatId ? new mongoose.Types.ObjectId(newChatId) : undefined,
         userId,
         modelId,
         content,

@@ -116,7 +116,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 获取向量匹配到的提示词
     const { searchPrompt } = await searchKb({
-      systemApiKey: apiKey,
       similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
       prompts,
       model,

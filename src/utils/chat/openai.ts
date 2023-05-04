@@ -2,7 +2,7 @@ import { encoding_for_model, type Tiktoken } from '@dqbd/tiktoken';
 import type { ChatItemSimpleType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
-
+import { OpenAiChatEnum } from '@/constants/model';
 import Graphemer from 'graphemer';
 
 const textDecoder = new TextDecoder();
@@ -52,7 +52,7 @@ export function countOpenAIToken({
   model
 }: {
   messages: ChatItemSimpleType[];
-  model: 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-32k';
+  model: `${OpenAiChatEnum}`;
 }) {
   function getChatGPTEncodingText(
     messages: { role: 'system' | 'user' | 'assistant'; content: string; name?: string }[],
@@ -104,3 +104,18 @@ export function countOpenAIToken({
 
   return text2TokensLen(getOpenAiEncMap()[model], getChatGPTEncodingText(adaptMessages, model));
 }
+
+export const openAiSliceTextByToken = ({
+  model = 'gpt-3.5-turbo',
+  text,
+  length
+}: {
+  model: `${OpenAiChatEnum}`;
+  text: string;
+  length: number;
+}) => {
+  const enc = getOpenAiEncMap()[model];
+  const encodeText = enc.encode(text);
+  const decoder = new TextDecoder();
+  return decoder.decode(enc.decode(encodeText.slice(0, length)));
+};

@@ -206,7 +206,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       };
 
       // 流请求，获取数据
-      const { responseText, systemPrompt } = await streamFetch({
+      let { responseText, systemPrompt, newChatId } = await streamFetch({
         url: '/api/chat/chat',
         data: {
           prompt,
@@ -234,10 +234,10 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         return;
       }
 
-      let newChatId = '';
       // save chat record
       try {
         newChatId = await postSaveChat({
+          newChatId, // 如果有newChatId，会自动以这个Id创建对话框
           modelId,
           chatId,
           prompts: [

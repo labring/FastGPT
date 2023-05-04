@@ -24,6 +24,7 @@ export const delChatHistoryById = (id: string) => GET(`/chat/removeHistory?id=${
  */
 export const postSaveChat = (data: {
   modelId: string;
+  newChatId: '' | string;
   chatId: '' | string;
   prompts: ChatItemType[];
 }) => POST<string>('/chat/saveChat', data);
