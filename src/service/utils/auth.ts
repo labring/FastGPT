@@ -73,7 +73,7 @@ export const getApiKey = async ({
 
   // 平台账号余额校验
   if (formatPrice(user.balance) <= 0) {
-    return Promise.reject(ERROR_ENUM.unAuthorization);
+    return Promise.reject(ERROR_ENUM.insufficientQuota);
   }
 
   return {
