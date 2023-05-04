@@ -1,4 +1,3 @@
-import { getToken } from '../utils/user';
 import { SYSTEM_PROMPT_HEADER, NEW_CHATID_HEADER } from '@/constants/chat';
 
 interface StreamFetchProps {
@@ -14,8 +13,7 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
         const res = await fetch(url, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: getToken() || ''
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(data),
           signal: abortSignal.signal

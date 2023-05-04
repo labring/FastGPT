@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('缺少参数');
     }
 
-    const userId = await authToken(req.headers.authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 
@@ -40,7 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userId,
         modelId,
         content,
-        title: content[0].value.slice(0, 20)
+        title: content[0].value.slice(0, 20),
+        latestChat: content[content.length - 1].value
       });
       return jsonRes(res, {
         data: _id
@@ -53,7 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             $each: content
           }
         },
-        updateTime: new Date()
+        updateTime: new Date(),
+        latestChat: content[content.length - 1].value
       });
     }
     jsonRes(res);

@@ -1,14 +1,8 @@
 import { PRICE_SCALE } from '@/constants/common';
 const tokenKey = 'fast-gpt-token';
 
-export const setToken = (val: string) => {
-  localStorage.setItem(tokenKey, val);
-};
-export const getToken = () => {
-  return localStorage.getItem(tokenKey);
-};
 export const clearToken = () => {
-  localStorage.removeItem(tokenKey);
+  document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 };
 
 /**

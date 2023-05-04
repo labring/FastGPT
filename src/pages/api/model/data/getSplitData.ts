@@ -12,9 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    const { authorization } = req.headers;
-
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     // 找到长度大于0的数据
     const data = await SplitData.find({

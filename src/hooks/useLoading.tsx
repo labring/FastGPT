@@ -18,7 +18,13 @@ export const useLoading = (props?: { defaultLoading: boolean }) => {
           alignItems={'center'}
           justifyContent={'center'}
         >
-          <Spinner thickness="4px" speed="0.65s" emptyColor="gray.200" color="blue.500" size="xl" />
+          <Spinner
+            thickness="4px"
+            speed="0.65s"
+            emptyColor="gray.200"
+            color="myBlue.500"
+            size="xl"
+          />
         </Flex>
       ) : null;
     },

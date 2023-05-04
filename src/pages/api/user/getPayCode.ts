@@ -11,14 +11,10 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 20);
 /* 获取支付二维码 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { authorization } = req.headers;
     let { amount = 0 } = req.query as { amount: string };
     amount = +amount;
 
-    if (!authorization) {
-      throw new Error('缺少登录凭证');
-    }
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     const id = nanoid();
     await connectToDatabase();

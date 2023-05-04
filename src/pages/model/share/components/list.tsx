@@ -44,7 +44,7 @@ const ShareModelList = ({
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
-              color={model.isCollection ? 'blue.600' : 'alphaBlack.700'}
+              color={model.isCollection ? 'myBlue.700' : 'blackAlpha.700'}
               onClick={() => onclickCollection(model._id)}
             >
               <MyIcon
@@ -58,7 +58,7 @@ const ShareModelList = ({
               <Button
                 size={'sm'}
                 variant={'outline'}
-                w={'80px'}
+                w={['60px', '80px']}
                 onClick={() => router.push(`/chat?modelId=${model._id}`)}
               >
                 体验
@@ -67,8 +67,8 @@ const ShareModelList = ({
                 <Button
                   ml={4}
                   size={'sm'}
-                  w={'80px'}
-                  onClick={() => router.push(`/model/detail?modelId=${model._id}`)}
+                  w={['60px', '80px']}
+                  onClick={() => router.push(`/model?modelId=${model._id}`)}
                 >
                   详情
                 </Button>

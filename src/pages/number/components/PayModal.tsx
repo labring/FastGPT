@@ -119,7 +119,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
           <ModalFooter>
             {!payId && (
               <>
-                <Button colorScheme={'gray'} onClick={onClose}>
+                <Button variant={'outline'} onClick={onClose}>
                   取消
                 </Button>
                 <Button

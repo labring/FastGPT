@@ -1,5 +1,5 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { getToken, clearToken } from '@/utils/user';
+import { clearToken } from '@/utils/user';
 import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 
 interface ConfigType {
@@ -17,7 +17,7 @@ interface ResponseDataType {
  */
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
-    config.headers.Authorization = getToken();
+    // config.headers.Authorization = getToken();
   }
 
   return config;

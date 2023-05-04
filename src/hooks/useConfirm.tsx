@@ -39,7 +39,7 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
 
               <AlertDialogFooter>
                 <Button
-                  colorScheme={'gray'}
+                  variant={'outline'}
                   onClick={() => {
                     onClose();
                     typeof cancelCb.current === 'function' && cancelCb.current();
@@ -48,7 +48,6 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
                   取消
                 </Button>
                 <Button
-                  colorScheme="blue"
                   ml={4}
                   onClick={() => {
                     onClose();

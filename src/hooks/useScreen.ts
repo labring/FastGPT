@@ -1,10 +1,15 @@
 import { useMemo } from 'react';
 import { useMediaQuery } from '@chakra-ui/react';
 
-export function useScreen() {
+interface Props {
+  defaultIsPc?: boolean;
+}
+
+export function useScreen(data?: Props) {
+  const { defaultIsPc = false } = data || {};
   const [isPc] = useMediaQuery('(min-width: 900px)', {
     ssr: true,
-    fallback: false
+    fallback: defaultIsPc
   });
 
   return {

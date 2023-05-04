@@ -11,18 +11,18 @@ import dynamic from 'next/dynamic';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
-const Login = () => {
+const Login = ({ isPcDevice }: { isPcDevice: boolean }) => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
-  const { isPc } = useScreen();
+  const { isPc } = useScreen({ defaultIsPc: isPcDevice });
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo } = useUserStore();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
-      setUserInfo(res.user, res.token);
+      setUserInfo(res.user);
       setTimeout(() => {
-        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/model/list');
+        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/model');
       }, 100);
     },
     [lastRoute, router, setUserInfo]
@@ -41,7 +41,7 @@ const Login = () => {
   }
 
   useEffect(() => {
-    router.prefetch('/model/list');
+    router.prefetch('/model');
   }, [router]);
 
   return (
@@ -60,7 +60,8 @@ const Login = () => {
         backgroundColor={'#fff'}
         alignItems={'center'}
         justifyContent={'center'}
-        p={10}
+        py={[5, 10]}
+        px={'5vw'}
         borderRadius={isPc ? 'md' : 'none'}
         gap={5}
       >
@@ -95,3 +96,9 @@ const Login = () => {
 };
 
 export default Login;
+
+Login.getInitialProps = ({ query, req }: any) => {
+  return {
+    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
+  };
+};

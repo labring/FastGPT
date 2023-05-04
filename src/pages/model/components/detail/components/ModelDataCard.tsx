@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   Box,
   TableContainer,
@@ -53,6 +53,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
     whiteSpace: 'pre-wrap',
     overflowY: 'auto'
   });
+
   const {
     data: modelDataList,
     isLoading,
@@ -66,8 +67,13 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
     params: {
       modelId,
       searchText
-    }
+    },
+    defaultRequest: false
   });
+
+  useEffect(() => {
+    getData(1);
+  }, [modelId, getData]);
 
   const [editInputData, setEditInputData] = useState<InputDataType>();
 

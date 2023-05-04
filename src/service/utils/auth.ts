@@ -1,5 +1,6 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
+import cookie from 'cookie';
 import { Chat, Model, OpenApi, User } from '../mongo';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ChatItemSimpleType } from '@/types/chat';
@@ -10,17 +11,21 @@ import { ERROR_ENUM } from '../errorCode';
 import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
 
 /* 校验 token */
-export const authToken = (token?: string): Promise<string> => {
+export const authToken = (req: NextApiRequest): Promise<string> => {
   return new Promise((resolve, reject) => {
+    // 获取 cookie
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const token = cookies.token;
+
     if (!token) {
-      reject('缺少登录凭证');
-      return;
+      return reject(ERROR_ENUM.unAuthorization);
     }
+
     const key = process.env.TOKEN_KEY as string;
 
     jwt.verify(token, key, function (err, decoded: any) {
       if (err || !decoded?.userId) {
-        reject('凭证无效');
+        reject(ERROR_ENUM.unAuthorization);
         return;
       }
       resolve(decoded.userId);
@@ -127,13 +132,13 @@ export const authModel = async ({
 export const authChat = async ({
   modelId,
   chatId,
-  authorization
+  req
 }: {
   modelId: string;
   chatId: '' | string;
-  authorization?: string;
+  req: NextApiRequest;
 }) => {
-  const userId = await authToken(authorization);
+  const userId = await authToken(req);
 
   // 获取 model 数据
   const { model, showModelDetail } = await authModel({

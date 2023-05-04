@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Card, Box, Flex, Button, Input } from '@chakra-ui/react';
+import { Card, Box, Flex, Button, Input, Image } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { putUserInfo } from '@/api/user';
@@ -11,6 +11,8 @@ import { clearToken } from '@/utils/user';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
+import { useSelectFile } from '@/hooks/useSelectFile';
+import { compressImg } from '@/utils/file';
 
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
 const BilTable = dynamic(() => import('./components/BillTable'));
@@ -25,6 +27,11 @@ const NumberSetting = () => {
   });
   const [showPay, setShowPay] = useState(false);
   const { toast } = useToast();
+
+  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+    fileType: '.jpg,.png',
+    multiple: false
+  });
 
   const onclickSave = useCallback(
     async (data: UserUpdateParams) => {
@@ -43,7 +50,28 @@ const NumberSetting = () => {
     [setLoading, toast, updateUserInfo, userInfo?.openaiKey]
   );
 
-  useQuery(['init'], initUserInfo);
+  const onSelectFile = useCallback(
+    async (e: File[]) => {
+      const file = e[0];
+      if (!file) return;
+      try {
+        const base64 = await compressImg({
+          file,
+          maxW: 40,
+          maxH: 60
+        });
+        onclickSave({
+          avatar: base64
+        });
+      } catch (err: any) {
+        toast({
+          title: typeof err === 'string' ? err : '头像选择异常',
+          status: 'warning'
+        });
+      }
+    },
+    [onclickSave, toast]
+  );
 
   const onclickLogOut = useCallback(() => {
     clearToken();
@@ -51,8 +79,10 @@ const NumberSetting = () => {
     router.replace('/login');
   }, [router, setUserInfo]);
 
+  useQuery(['init'], initUserInfo);
+
   return (
-    <>
+    <Box py={[5, 10]} px={'5vw'}>
       {/* 核心信息 */}
       <Card px={6} py={4}>
         <Flex justifyContent={'space-between'}>
@@ -64,16 +94,34 @@ const NumberSetting = () => {
           </Button>
         </Flex>
         <Flex mt={6} alignItems={'center'}>
-          <Box flex={'0 0 60px'}>账号:</Box>
+          <Box flex={'0 0 50px'}>头像:</Box>
+          <Image
+            src={userInfo?.avatar}
+            alt={'avatar'}
+            w={['28px', '36px']}
+            h={['28px', '36px']}
+            objectFit={'cover'}
+            cursor={'pointer'}
+            title={'点击切换头像'}
+            onClick={onOpenSelectFile}
+          />
+        </Flex>
+        <Flex mt={6} alignItems={'center'}>
+          <Box flex={'0 0 50px'}>账号:</Box>
           <Box>{userInfo?.username}</Box>
         </Flex>
         <Box mt={6}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 60px'}>余额:</Box>
+            <Box flex={'0 0 50px'}>余额:</Box>
             <Box>
               <strong>{userInfo?.balance}</strong> 元
             </Box>
-            <Button size={'sm'} w={'80px'} ml={5} onClick={() => setShowPay(true)}>
+            <Button
+              size={['xs', 'sm']}
+              w={['70px', '80px']}
+              ml={5}
+              onClick={() => setShowPay(true)}
+            >
               充值
             </Button>
           </Flex>
@@ -98,12 +146,13 @@ const NumberSetting = () => {
         </Flex>
       </Card>
 
+      <File onSelect={onSelectFile} />
       {/* 充值记录 */}
       <PayRecordTable />
       {/* 账单表 */}
       <BilTable />
       {showPay && <PayModal onClose={() => setShowPay(false)} />}
-    </>
+    </Box>
   );
 };
 

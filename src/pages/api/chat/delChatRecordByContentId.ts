@@ -6,11 +6,7 @@ import { authToken } from '@/service/utils/auth';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { chatId, contentId } = req.query as { chatId: string; contentId: string };
-    const { authorization } = req.headers;
 
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
     if (!chatId || !contentId) {
       throw new Error('缺少参数');
     }
@@ -18,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     const chatRecord = await Chat.findById(chatId);
 

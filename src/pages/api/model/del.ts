@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, Model, connectToDatabase } from '@/service/mongo';
+import { Chat, Model, connectToDatabase, Collection } from '@/service/mongo';
 import { authToken } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { authModel } from '@/service/utils/auth';
@@ -9,18 +9,13 @@ import { authModel } from '@/service/utils/auth';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { modelId } = req.query as { modelId: string };
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
 
     if (!modelId) {
       throw new Error('参数错误');
     }
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 
@@ -37,6 +32,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 删除对应的聊天
     await Chat.deleteMany({
+      modelId
+    });
+
+    // 删除收藏列表
+    await Collection.deleteMany({
       modelId
     });
 

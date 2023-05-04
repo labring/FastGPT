@@ -11,18 +11,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { name } = req.body as {
       name: string;
     };
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
 
     if (!name) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

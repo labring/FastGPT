@@ -29,24 +29,35 @@ svg {
   height: 100%;
 }
 
-::-webkit-scrollbar,
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
-::-webkit-scrollbar-track,
 ::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 2px;
 }
-::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb {
-  background: #bfbfbf;
-  border-radius: 10px;
+  background: rgba(189, 193, 197, 0.7);
+  border-radius: 2px;
 }
-::-webkit-scrollbar-thumb:hover,
 ::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: rgba(189, 193, 197, 1);
+}
+
+div {
+  &::-webkit-scrollbar-thumb {
+    background: transparent !important;
+    transition: 1s;
+  }
+  &:hover {
+    &::-webkit-scrollbar-thumb {
+      background: rgba(189, 193, 197, 0.7) !important;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: rgba(189, 193, 197, 1) !important;
+    }
+  }
 }
 
 input::placeholder,
@@ -54,16 +65,6 @@ textarea::placeholder {
   font-size: 0.85em;
 }
 
-@media (max-width: 900px) {
-  html {
-    font-size: 14px;
-  }
-  ::-webkit-scrollbar,
-  ::-webkit-scrollbar {
-    width: 2px;
-    height: 2px;
-  }
-}
 .textEllipsis {
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -74,4 +75,18 @@ textarea::placeholder {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   -webkit-focus-ring-color: rgba(0, 0, 0, 0);
   outline: none;
+}
+
+@media (max-width: 900px) {
+  html {
+    font-size: 14px;
+  }
+  ::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+}
+
+#nprogress .bar {
+  background: '#85b1ff' !important; //自定义颜色
 }

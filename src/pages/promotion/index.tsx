@@ -61,7 +61,7 @@ const OpenApi = () => {
   });
 
   return (
-    <>
+    <Box py={[5, 10]} px={'5vw'}>
       <Card px={6} py={4} position={'relative'}>
         <Box fontSize={'xl'} fontWeight={'bold'}>
           我的邀请
@@ -172,7 +172,7 @@ const OpenApi = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </>
+    </Box>
   );
 };
 

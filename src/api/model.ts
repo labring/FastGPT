@@ -1,13 +1,14 @@
 import { GET, POST, DELETE, PUT } from './request';
 import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
-import { ModelUpdateParams, ShareModelItem } from '@/types/model';
+import type { ModelUpdateParams, ShareModelItem } from '@/types/model';
 import { RequestPaging } from '../types/index';
 import { Obj2Query } from '@/utils/tools';
+import type { ModelListResponse } from './response/model';
 
 /**
  * 获取模型列表
  */
-export const getMyModels = () => GET<ModelSchema[]>('/model/list');
+export const getMyModels = () => GET<ModelListResponse>('/model/list');
 
 /**
  * 创建一个模型
@@ -100,7 +101,7 @@ export const delOneModelData = (dataId: string) =>
 export const getShareModelList = (data: { searchText?: string } & RequestPaging) =>
   POST(`/model/share/getModels`, data);
 /**
- * 获取收藏的模型
+ * 获取我收藏的模型
  */
 export const getCollectionModels = () => GET<ShareModelItem[]>(`/model/share/getCollection`);
 /**

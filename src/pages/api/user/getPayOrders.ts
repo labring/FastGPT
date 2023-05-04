@@ -5,12 +5,7 @@ import { connectToDatabase, Pay } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('缺少登录凭证');
-    }
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

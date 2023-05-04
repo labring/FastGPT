@@ -13,6 +13,7 @@ specifiers:
   '@next/font': 13.1.6
   '@svgr/webpack': ^6.5.1
   '@tanstack/react-query': ^4.24.10
+  '@types/cookie': ^0.5.1
   '@types/formidable': ^2.0.5
   '@types/jsonwebtoken': ^9.0.1
   '@types/lodash': ^4.14.191
@@ -26,6 +27,7 @@ specifiers:
   '@types/react-syntax-highlighter': ^15.5.6
   '@types/tunnel': ^0.0.3
   axios: ^1.3.3
+  cookie: ^0.5.0
   crypto: ^1.0.1
   dayjs: ^1.11.7
   eslint: 8.34.0
@@ -80,6 +82,7 @@ dependencies:
   '@tanstack/react-query': registry.npmmirror.com/@tanstack/react-query/4.24.10_biqbaboplfbrettd7655fr4n2y
   '@types/nprogress': registry.npmmirror.com/@types/nprogress/0.2.0
   axios: registry.npmmirror.com/axios/1.3.3
+  cookie: 0.5.0
   crypto: registry.npmmirror.com/crypto/1.0.1
   dayjs: registry.npmmirror.com/dayjs/1.11.7
   eventsource-parser: registry.npmmirror.com/eventsource-parser/0.1.0
@@ -116,6 +119,7 @@ dependencies:
 
 devDependencies:
   '@svgr/webpack': registry.npmmirror.com/@svgr/webpack/6.5.1
+  '@types/cookie': 0.5.1
   '@types/formidable': registry.npmmirror.com/@types/formidable/2.0.5
   '@types/jsonwebtoken': registry.npmmirror.com/@types/jsonwebtoken/9.0.1
   '@types/lodash': registry.npmmirror.com/@types/lodash/4.14.191
@@ -285,6 +289,15 @@ packages:
     requiresBuild: true
     dev: false
     optional: true
+
+  /@types/cookie/0.5.1:
+    resolution: {integrity: sha512-COUnqfB2+ckwXXSFInsFdOAWQzCCx+a5hq2ruyj+Vjund94RJQd4LG2u9hnvJrTgunKAaax7ancBYlDrNYxA0g==}
+    dev: true
+
+  /cookie/0.5.0:
+    resolution: {integrity: sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==}
+    engines: {node: '>= 0.6'}
+    dev: false
 
   /fsevents/2.3.2:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}

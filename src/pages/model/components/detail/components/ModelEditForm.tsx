@@ -54,9 +54,10 @@ const ModelEditForm = ({
       if (!file) return;
       try {
         const base64 = await compressImg({
-          file
+          file,
+          maxW: 40,
+          maxH: 60
         });
-
         setValue('avatar', base64);
         setRefresh((state) => !state);
       } catch (err: any) {
@@ -184,7 +185,7 @@ const ModelEditForm = ({
               <SliderMark
                 value={getValues('chat.temperature')}
                 textAlign="center"
-                bg="blue.500"
+                bg="myBlue.600"
                 color="white"
                 w={'18px'}
                 h={'18px'}
@@ -195,7 +196,7 @@ const ModelEditForm = ({
                 {getValues('chat.temperature')}
               </SliderMark>
               <SliderTrack>
-                <SliderFilledTrack />
+                <SliderFilledTrack bg={'myBlue.700'} />
               </SliderTrack>
               <SliderThumb />
             </Slider>

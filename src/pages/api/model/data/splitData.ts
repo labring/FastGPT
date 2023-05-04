@@ -20,9 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    const { authorization } = req.headers;
-
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     // 验证是否是该用户的 model
     const model = await Model.findOne({

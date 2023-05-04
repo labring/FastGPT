@@ -19,21 +19,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       pageSize: string;
       searchText: string;
     };
-    const { authorization } = req.headers;
 
     pageNum = +pageNum;
     pageSize = +pageSize;
-
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
 
     if (!modelId) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 

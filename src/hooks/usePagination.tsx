@@ -4,15 +4,18 @@ import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from './useToast';
+import { useQuery } from '@tanstack/react-query';
 
 export const usePagination = <T = any,>({
   api,
   pageSize = 10,
-  params = {}
+  params = {},
+  defaultRequest = true
 }: {
   api: (data: any) => any;
   pageSize?: number;
   params?: Record<string, any>;
+  defaultRequest?: boolean;
 }) => {
   const { toast } = useToast();
   const [pageNum, setPageNum] = useState(1);
@@ -90,7 +93,7 @@ export const usePagination = <T = any,>({
   }, [maxPage, mutate, pageNum]);
 
   useEffect(() => {
-    mutate(1);
+    defaultRequest && mutate(1);
   }, []);
 
   return {

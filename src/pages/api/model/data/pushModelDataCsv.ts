@@ -13,18 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       modelId: string;
       data: string[][];
     };
-    const { authorization } = req.headers;
-
-    if (!authorization) {
-      throw new Error('无权操作');
-    }
 
     if (!modelId || !Array.isArray(data)) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const userId = await authToken(authorization);
+    const userId = await authToken(req);
 
     await connectToDatabase();
 
@@ -36,9 +31,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 去重
     const searchRes = await Promise.allSettled(
-      data.map(async ([q, a]) => {
-        if (!q || !a) {
-          return Promise.reject('q/a为空');
+      data.map(async ([q, a = '']) => {
+        if (!q) {
+          return Promise.reject('q为空');
         }
         try {
           q = q.replace(/\\n/g, '\n');

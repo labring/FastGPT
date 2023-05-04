@@ -48,9 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('获取用户信息异常');
     }
 
+    res.setHeader('Set-Cookie', `token=${generateToken(user._id)}; Path=/; HttpOnly`);
+
     jsonRes(res, {
       data: {
-        token: generateToken(user._id),
         user
       }
     });

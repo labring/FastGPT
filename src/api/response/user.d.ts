@@ -1,7 +1,6 @@
 import type { UserType } from '@/types/user';
 import type { PromotionRecordSchema } from '@/types/mongoSchema';
 export interface ResLogin {
-  token: string;
   user: UserType;
 }
 

@@ -1,18 +1,19 @@
 import { GET, POST, DELETE } from './request';
-import type { ChatItemType } from '@/types/chat';
+import type { ChatItemType, HistoryItemType } from '@/types/chat';
 import type { InitChatResponse } from './response/chat';
+import { RequestPaging } from '../types/index';
 
 /**
  * 获取初始化聊天内容
  */
-export const getInitChatSiteInfo = (modelId: string, chatId: '' | string) =>
+export const getInitChatSiteInfo = (modelId: '' | string, chatId: '' | string) =>
   GET<InitChatResponse>(`/chat/init?modelId=${modelId}&chatId=${chatId}`);
 
 /**
  * 获取历史记录
  */
-export const getChatHistory = () =>
-  GET<{ _id: string; title: string; modelId: string }[]>('/chat/getHistory');
+export const getChatHistory = (data: RequestPaging) =>
+  POST<HistoryItemType[]>('/chat/getHistory', data);
 
 /**
  * 删除一条历史记录
