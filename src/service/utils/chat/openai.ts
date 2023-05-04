@@ -96,14 +96,8 @@ export const chatResponse = async ({
     }
   );
 
-  let responseText = '';
-  let totalTokens = 0;
-
-  // adapt data
-  if (!stream) {
-    responseText = response.data.choices[0].message?.content || '';
-    totalTokens = response.data.usage?.total_tokens || 0;
-  }
+  const responseText = stream ? '' : response.data.choices[0].message?.content || '';
+  const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
 
   return {
     streamResponse: response,

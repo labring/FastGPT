@@ -232,6 +232,7 @@ services:
 #### 3. 运行 docker-compose
 
 下面是一个辅助脚本，也可以直接 docker-compose up -d
+
 **run.sh 运行文件**
 
 ```bash

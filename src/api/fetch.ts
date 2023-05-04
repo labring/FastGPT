@@ -25,7 +25,7 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
 
         const decoder = new TextDecoder();
 
-        const systemPrompt = decodeURIComponent(res.headers.get(SYSTEM_PROMPT_HEADER) || '');
+        const systemPrompt = decodeURIComponent(res.headers.get(SYSTEM_PROMPT_HEADER) || '').trim();
         const newChatId = decodeURIComponent(res.headers.get(NEW_CHATID_HEADER) || '');
 
         let responseText = '';
