@@ -56,7 +56,7 @@ export const ERROR_RESPONSE: Record<
     data: null
   },
   [ERROR_ENUM.insufficientQuota]: {
-    code: 403,
+    code: 510,
     statusText: ERROR_ENUM.insufficientQuota,
     message: '账号余额不足',
     data: null
