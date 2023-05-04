@@ -26,7 +26,7 @@ import { formatPrice } from '@/utils/user';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
-import { fileToBase64, compressImg } from '@/utils/file';
+import { compressImg } from '@/utils/file';
 
 const ModelEditForm = ({
   formHooks,
@@ -112,7 +112,14 @@ const ModelEditForm = ({
           <Box flex={'0 0 80px'} w={0}>
             对话模型:
           </Box>
-          <Select isDisabled={!isOwner} {...register('chat.chatModel')}>
+          <Select
+            isDisabled={!isOwner}
+            {...register('chat.chatModel', {
+              onChange() {
+                setRefresh((state) => !state);
+              }
+            })}
+          >
             {chatModelList.map((item) => (
               <option key={item.chatModel} value={item.chatModel}>
                 {item.name}

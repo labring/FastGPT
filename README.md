@@ -1,12 +1,15 @@
-# Fast GPT 
+# Fast GPT
 
 Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接口，目前集成了 gpt35 和 embedding. 可构建自己的知识库。
 
 ## 知识库原理
-![KBProcess](docs/imgs/KBProcess.jpg?raw=true "KBProcess")
+
+![KBProcess](docs/imgs/KBProcess.jpg?raw=true 'KBProcess')
 
 ## 开发
+
 **配置环境变量**
+
 ```bash
 # proxy（可选）
 AXIOS_PROXY_HOST=127.0.0.1
@@ -32,15 +35,17 @@ OPENAIKEY=sk-xxx
 # mongo连接地址
 MONGODB_URI=mongodb://username:password@0.0.0.0:27017/test?authSource=admin
 # mongo数据库名称
-MONGODB_NAME=xxx 
-# pg 数据库相关内容，和 docker-compose 对上
-PG_HOST=0.0.0.0 
+MONGODB_NAME=xxx
+# pg 数据库相关内容，和 docker-compose pg 部分对上
+PG_HOST=0.0.0.0
 PG_PORT=8102
-PG_USER=xxx
-PG_PASSWORD=xxx
-PG_DB_NAME=xxx
+PG_USER=fastgpt
+PG_PASSWORD=1234
+PG_DB_NAME=fastgpt
 ```
+
 **运行**
+
 ```
 pnpm dev
 ```
@@ -48,13 +53,17 @@ pnpm dev
 ## 部署
 
 ### 代理环境（国外服务器可忽略）
+
 1. [clash 方案](./docs/proxy/clash.md) - 仅需一台服务器（需要有 clash）
 2. [nginx 方案](./docs/proxy/nginx.md) - 需要一台国外服务器
 3. [cloudflare 方案](./docs/proxy/cloudflare.md) - 需要有域名（每日免费 10w 次代理请求）
 
 ### docker 部署
+
 #### 1. 安装 docker 和 docker-compose
+
 这个不同系统略有区别，百度安装下。验证安装成功后进行下一步。下面给出一个例子：
+
 ```bash
 # 安装docker
 curl -L https://get.daocloud.io/docker | sh
@@ -67,11 +76,12 @@ docker -v
 docker-compose -v
 ```
 
+#### 2. 创建 3 个初始化文件
 
-#### 2. 创建3个初始化文件
 手动创建或者直接把 deploy 里内容复制过去
 
 **/root/fast-gpt/pg/init.sql**
+
 ```sql
 set -e
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
@@ -95,6 +105,7 @@ EOSQL
 ```
 
 **/root/fast-gpt/nginx/nginx.conf**
+
 ```conf
 user nginx;
 worker_processes auto;
@@ -110,7 +121,7 @@ http {
     client_header_buffer_size 32k;
     large_client_header_buffers 4 32k;
     client_max_body_size 50M;
- 
+
     gzip  on;
     gzip_min_length   1k;
     gzip_buffers  4 8k;
@@ -136,7 +147,7 @@ http {
             proxy_pass http://localhost:3000;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;        
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         }
     }
     server {
@@ -148,8 +159,9 @@ http {
 ```
 
 **/root/fast-gpt/docker-compose.yml**
+
 ```yml
-version: "3.3"
+version: '3.3'
 services:
   fast-gpt:
     image: c121914yu/fast-gpt:latest
@@ -161,24 +173,24 @@ services:
       # - AXIOS_PROXY_PORT=7890
       # - OPENAI_BASE_URL=https://api.openai.com/v1
       # - OPENAI_BASE_URL_AUTH=可选的安全凭证
-      - MY_MAIL=xxxx@qq.com  
+      - MY_MAIL=xxxx@qq.com
       - MAILE_CODE=xxxx
-      - aliAccessKeyId=xxxx 
+      - aliAccessKeyId=xxxx
       - aliAccessKeySecret=xxxx
       - aliSignName=xxxxx
       - aliTemplateCode=SMS_xxxx
-      - TOKEN_KEY=xxxx 
+      - TOKEN_KEY=xxxx
       - queueTask=1
       - parentUrl=https://hostname/api/openapi/startEvents
       - MONGODB_URI=mongodb://username:passsword@0.0.0.0:27017/?authSource=admin
       - MONGODB_NAME=xxx
       - PG_HOST=0.0.0.0
       - PG_PORT=8100
-      - PG_USER=xxx
-      - PG_PASSWORD=xxx
-      - PG_DB_NAME=xxx
+      - PG_USER=fastgpt
+      - PG_PASSWORD=1234
+      - PG_DB_NAME=fastgpt
       - OPENAIKEY=sk-xxxxx
-  nginx: 
+  nginx:
     image: nginx:alpine3.17
     container_name: nginx
     restart: always
@@ -195,9 +207,9 @@ services:
     ports:
       - 8100:5432
     environment:
-      - POSTGRES_USER=xxx
-      - POSTGRES_PASSWORD=xxx
-      - POSTGRES_DB=xxx
+      - POSTGRES_USER=fastgpt
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=fastgpt
     volumes:
       - /root/fast-gpt/pg/data:/var/lib/postgresql/data
       - /root/fast-gpt/pg/init.sql:/docker-entrypoint-initdb.d/init.sh
@@ -218,8 +230,10 @@ services:
 ```
 
 #### 3. 运行 docker-compose
+
 下面是一个辅助脚本，也可以直接 docker-compose up -d
 **run.sh 运行文件**
+
 ```bash
 #!/bin/bash
 docker-compose pull
@@ -242,15 +256,18 @@ do
 done
 ```
 
-
 ## 其他优化点
-### Git Action 自动打包镜像
-.github里拥有一个 git 提交到 main 分支时自动打包 amd64 和 arm64 镜像的 actions。你仅需要提前在 git 配置好 session。  
 
-1. 创建账号 session: 头像 -> settings -> 最底部 Developer settings ->  Personal access tokens -> tokens(classic) -> 创建新 session，把一些看起来需要的权限勾上。
-2. 添加 session 到仓库: 仓库 -> settings -> Secrets and variables -> Actions -> 创建secret
-3. 填写 secret: Name-GH_PAT, Secret-第一步的tokens 
+### Git Action 自动打包镜像
+
+.github 里拥有一个 git 提交到 main 分支时自动打包 amd64 和 arm64 镜像的 actions。你仅需要提前在 git 配置好 session。
+
+1. 创建账号 session: 头像 -> settings -> 最底部 Developer settings -> Personal access tokens -> tokens(classic) -> 创建新 session，把一些看起来需要的权限勾上。
+2. 添加 session 到仓库: 仓库 -> settings -> Secrets and variables -> Actions -> 创建 secret
+3. 填写 secret: Name-GH_PAT, Secret-第一步的 tokens
 
 ## 其他问题
+
 ### Mac 可能的问题
-> 因为教程有部分镜像不兼容arm64，所以写个文档指导新手如何快速在mac上面搭建fast-gpt[如何在mac上面部署fastgpt](./docs/mac.md)
+
+> 因为教程有部分镜像不兼容 arm64，所以写个文档指导新手如何快速在 mac 上面搭建 fast-gpt[如何在 mac 上面部署 fastgpt](./docs/mac.md)
