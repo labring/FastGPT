@@ -52,7 +52,7 @@ services:
       - /root/fast-gpt/pg/init.sql:/docker-entrypoint-initdb.d/init.sh
       - /etc/localtime:/etc/localtime:ro
   mongodb:
-    image: mongo:4.0.1
+    image: mongo:6.0.4
     container_name: mongo
     restart: always
     ports:
