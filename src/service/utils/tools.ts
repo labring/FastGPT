@@ -26,3 +26,12 @@ export const axiosConfig = () => ({
     auth: process.env.OPENAI_BASE_URL_AUTH || ''
   }
 });
+
+/**
+ * get error message
+ */
+export const getErrMessage = (err: any, defaultMsg = ''): string => {
+  const msg = typeof err === 'string' ? err : err?.message || defaultMsg || '';
+  msg && console.log('error =>', msg);
+  return msg;
+};

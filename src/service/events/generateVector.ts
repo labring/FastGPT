@@ -2,6 +2,7 @@ import { openaiCreateEmbedding } from '../utils/chat/openai';
 import { getApiKey } from '../utils/auth';
 import { openaiError2 } from '../errorCode';
 import { PgClient } from '@/service/pg';
+import { getErrMessage } from '../utils/tools';
 
 export async function generateVector(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -45,16 +46,13 @@ export async function generateVector(next = false): Promise<any> {
     try {
       const res = await getApiKey({ model: 'gpt-3.5-turbo', userId: dataItem.userId });
       userOpenAiKey = res.userOpenAiKey;
-    } catch (error: any) {
-      if (error?.code === 501) {
-        await PgClient.delete('modelData', {
-          where: [['id', dataId]]
-        });
-        generateVector(true);
-        return;
-      }
-
-      throw new Error('获取 openai key 失败');
+    } catch (err: any) {
+      await PgClient.delete('modelData', {
+        where: [['id', dataId]]
+      });
+      generateVector(true);
+      getErrMessage(err, '获取 OpenAi Key 失败');
+      return;
     }
 
     // 生成词向量
@@ -104,6 +102,6 @@ export async function generateVector(next = false): Promise<any> {
     }
     setTimeout(() => {
       generateVector(true);
-    }, 2000);
+    }, 1000);
   }
 }
