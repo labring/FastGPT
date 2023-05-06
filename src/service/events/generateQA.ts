@@ -8,6 +8,7 @@ import { PgClient } from '@/service/pg';
 import { ModelSplitDataSchema } from '@/types/mongoSchema';
 import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
+import { getErrMessage } from '../utils/tools';
 
 export async function generateQA(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -51,17 +52,14 @@ export async function generateQA(next = false): Promise<any> {
       const key = await getApiKey({ model: OpenAiChatEnum.GPT35, userId: dataItem.userId });
       userOpenAiKey = key.userOpenAiKey;
       systemAuthKey = key.systemAuthKey;
-    } catch (error: any) {
-      if (error?.code === 501) {
-        // 余额不够了, 清空该记录
-        await SplitData.findByIdAndUpdate(dataItem._id, {
-          textList: [],
-          errorText: error.message
-        });
-        throw new Error(error?.message);
-      }
-
-      throw new Error('获取 openai key 失败');
+    } catch (err: any) {
+      // 余额不够了, 清空该记录
+      await SplitData.findByIdAndUpdate(dataItem._id, {
+        textList: [],
+        errorText: getErrMessage(err, '获取 OpenAi Key 失败')
+      });
+      generateQA(true);
+      return;
     }
 
     console.log(`正在生成一组QA, 包含 ${textList.length} 组文本。ID: ${dataItem._id}`);
@@ -171,7 +169,7 @@ A2:
 
     setTimeout(() => {
       generateQA(true);
-    }, 4000);
+    }, 1000);
   }
 }
 
