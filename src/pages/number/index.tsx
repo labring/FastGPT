@@ -61,6 +61,7 @@ const NumberSetting = () => {
           maxH: 60
         });
         onclickSave({
+          ...userInfo,
           avatar: base64
         });
       } catch (err: any) {
@@ -70,7 +71,7 @@ const NumberSetting = () => {
         });
       }
     },
-    [onclickSave, toast]
+    [onclickSave, toast, userInfo]
   );
 
   const onclickLogOut = useCallback(() => {
