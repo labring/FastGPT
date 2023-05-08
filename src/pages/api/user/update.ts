@@ -14,7 +14,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const userId = await authToken(req);
 
     await connectToDatabase();
-
     // 更新对应的记录
     await User.updateOne(
       {
@@ -22,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       },
       {
         ...(avatar && { avatar }),
-        ...(openaiKey && { openaiKey })
+        ...(openaiKey !== undefined && { openaiKey })
       }
     );
 
