@@ -640,7 +640,7 @@ const Chat = ({
                     <MenuList fontSize={'sm'}>
                       {chatData.model.canUse && (
                         <MenuItem onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}>
-                          模型详情
+                          AI助手详情
                         </MenuItem>
                       )}
                       <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>

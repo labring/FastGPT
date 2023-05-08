@@ -55,12 +55,12 @@ const modelList = () => {
       <Card px={6} py={3}>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Box fontWeight={'bold'} fontSize={'xl'}>
-            我收藏的模型
+            我收藏的AI助手
           </Box>
         </Flex>
         {collectionModels.length == 0 && (
           <Box textAlign={'center'} pt={3}>
-            还没有收藏模型~
+            还没有收藏AI助手~
           </Box>
         )}
         <Grid templateColumns={['1fr', '1fr 1fr', '1fr 1fr 1fr']} gridGap={4} mt={4}>
@@ -71,7 +71,7 @@ const modelList = () => {
       <Card mt={5} px={6} py={3}>
         <Box display={['block', 'flex']} alignItems={'center'} justifyContent={'space-between'}>
           <Box fontWeight={'bold'} flex={1} fontSize={'xl'}>
-            模型共享市场{' '}
+            AI助手市场
             <Box as={'span'} fontWeight={'normal'} fontSize={'md'}>
               (Beta)
             </Box>
@@ -81,7 +81,7 @@ const modelList = () => {
               maxW={'240px'}
               size={'sm'}
               value={searchText}
-              placeholder="搜索模型，回车确认"
+              placeholder="搜索AI助手，回车确认"
               onChange={(e) => setSearchText(e.target.value)}
               onBlur={() => {
                 if (searchText === lastSearch.current) return;

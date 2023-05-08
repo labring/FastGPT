@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userId
     });
     if (authCount >= 30) {
-      throw new Error('上限 30 个模型');
+      throw new Error('上限 30 个助手');
     }
 
     // 创建模型

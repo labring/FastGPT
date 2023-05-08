@@ -17,7 +17,7 @@ const Navbar = () => {
   const navbarList = useMemo(
     () => [
       {
-        label: '模型',
+        label: 'AI助手',
         icon: 'model',
         link: `/model?modelId=${lastModelId}`,
         activeLink: ['/model']
