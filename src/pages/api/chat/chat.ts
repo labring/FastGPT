@@ -34,7 +34,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatId: '' | string;
     };
 
-    const { authorization } = req.headers;
     if (!modelId || !prompt) {
       throw new Error('缺少参数');
     }
@@ -46,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await authChat({
         modelId,
         chatId,
-        authorization
+        req
       });
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
