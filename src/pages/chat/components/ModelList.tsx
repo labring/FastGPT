@@ -29,7 +29,6 @@ const ModelList = ({ models, modelId }: { models: ModelListItemType[]; modelId: 
                 }
               : {})}
             onClick={() => {
-              if (item._id === modelId) return;
               router.replace(`/chat?modelId=${item._id}`);
             }}
           >

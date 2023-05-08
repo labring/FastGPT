@@ -22,7 +22,7 @@ const NumberSetting = () => {
   const router = useRouter();
   const { userInfo, updateUserInfo, initUserInfo, setUserInfo } = useUserStore();
   const { setLoading } = useGlobalStore();
-  const { register, handleSubmit } = useForm<UserUpdateParams>({
+  const { register, handleSubmit, reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
   const [showPay, setShowPay] = useState(false);
@@ -35,11 +35,11 @@ const NumberSetting = () => {
 
   const onclickSave = useCallback(
     async (data: UserUpdateParams) => {
-      if (data.openaiKey === userInfo?.openaiKey) return;
       setLoading(true);
       try {
         await putUserInfo(data);
         updateUserInfo(data);
+        reset(data);
         toast({
           title: '更新成功',
           status: 'success'
@@ -47,7 +47,7 @@ const NumberSetting = () => {
       } catch (error) {}
       setLoading(false);
     },
-    [setLoading, toast, updateUserInfo, userInfo?.openaiKey]
+    [reset, setLoading, toast, updateUserInfo]
   );
 
   const onSelectFile = useCallback(

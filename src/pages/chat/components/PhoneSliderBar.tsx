@@ -115,7 +115,7 @@ const PhoneSliderBar = ({
                 onClose();
               }}
             >
-              <Image src={item.avatar} mr={2} alt={''} w={'16px'} h={'16px'} />
+              <Image src={item.avatar || '/icon/logo.png'} mr={2} alt={''} w={'16px'} h={'16px'} />
               <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
                 {item.name}
               </Box>
