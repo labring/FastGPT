@@ -115,14 +115,22 @@ const PcSliderBar = ({
           </Button>
           {models.length > 1 && (
             <Box
-              className={styles.modelList}
+              className={styles.modelListContainer}
               position={'absolute'}
-              transition={'0.15s ease-out'}
               w={'110%'}
               left={0}
-              top={'45px'}
+              top={'40px'}
+              transition={'0.15s ease-out'}
+              bg={'white'}
             >
-              <ModelList models={models} modelId={modelId} />
+              <Box
+                className={styles.modelList}
+                mt={'6px'}
+                h={'calc(100% - 6px)'}
+                overflow={'overlay'}
+              >
+                <ModelList models={models} modelId={modelId} />
+              </Box>
             </Box>
           )}
         </Box>
