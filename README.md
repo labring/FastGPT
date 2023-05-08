@@ -22,6 +22,7 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_BASE_URL_AUTH=可选的安全凭证
 queueTask=1
 parentUrl=https://hostname/api/openapi/startEvents
+# 发送邮箱验证码配置。用的是QQ邮箱。参考 nodeMail 获取MAILE_CODE，自行百度。
 MY_MAIL=xxx@qq.com
 MAILE_CODE=xxx
 aliAccessKeyId=xxx
@@ -85,7 +86,7 @@ docker-compose -v
 
 手动创建或者直接把 deploy 里内容复制过去,然后把 deploy 文件夹改名为: fastgpt
 
-**/root/fastgpt/pg/init.sql PG 数据库初始化**
+**/root/fast-gpt/pg/init.sql PG 数据库初始化**
 
 ```sql
 set -e
@@ -109,7 +110,7 @@ CREATE INDEX modelData_modelId_index ON modelData USING HASH (model_id);
 EOSQL
 ```
 
-**/root/fastgpt/nginx/nginx.conf Nginx 配置**
+**/root/fast-gpt/nginx/nginx.conf Nginx 配置**
 
 ```conf
 user nginx;
@@ -172,7 +173,7 @@ http {
 }
 ```
 
-**/root/fastgpt/docker-compose.yml 核心部署文件**
+**/root/fast-gpt/docker-compose.yml 核心部署文件**
 
 ```yml
 version: '3.3'
@@ -202,6 +203,8 @@ services:
       - aliTemplateCode=SMS_xxxx
       # token加密凭证（随便填，作为登录凭证）
       - TOKEN_KEY=xxxx
+      - queueTask=1
+      - parentUrl=https://hostname/api/openapi/startEvents
       # 和下方mongo镜像的username,password对应
       - MONGODB_URI=mongodb://username:passsword@0.0.0.0:27017/?authSource=admin
       - MONGODB_NAME=xxx
@@ -211,7 +214,6 @@ services:
       - PG_USER=fastgpt # POSTGRES_USER
       - PG_PASSWORD=1234 # POSTGRES_PASSWORD
       - PG_DB_NAME=fastgpt # POSTGRES_DB
-      # openai api key
       - OPENAIKEY=sk-xxxxx
   nginx:
     image: nginx:alpine3.17
