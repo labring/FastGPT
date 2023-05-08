@@ -83,7 +83,7 @@ docker-compose -v
 
 #### 2. 创建 3 个初始化文件
 
-手动创建或者直接把 deploy 里内容复制过去
+手动创建或者直接把 deploy 里内容复制过去,然后把 deploy 文件夹改名为: fastgpt
 
 **/root/fastgpt/pg/init.sql PG 数据库初始化**
 
