@@ -146,7 +146,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
                     {item.name}
                   </Box>
                   <Box className="textEllipsis" color={'myGray.400'} fontSize={'sm'}>
-                    {item.systemPrompt || '这个模型没有提示词~'}
+                    {item.systemPrompt || '这个AI助手没有设置提示词~'}
                   </Box>
                 </Box>
               </Flex>

@@ -38,7 +38,7 @@ const ModelEditForm = ({
   handleDelModel: () => void;
 }) => {
   const { openConfirm, ConfirmChild } = useConfirm({
-    content: '确认删除该模型?'
+    content: '确认删除该AI助手?'
   });
   const { register, setValue, getValues } = formHooks;
   const [refresh, setRefresh] = useState(false);
@@ -145,14 +145,14 @@ const ModelEditForm = ({
         </Flex>
         {isOwner && (
           <Flex mt={5} alignItems={'center'}>
-            <Box flex={'0 0 150px'}>删除模型和知识库</Box>
+            <Box flex={'0 0 150px'}>删除AI和知识库</Box>
             <Button
               colorScheme={'gray'}
               variant={'outline'}
               size={'sm'}
               onClick={openConfirm(handleDelModel)}
             >
-              删除模型
+              删除AI助手
             </Button>
           </Flex>
         )}

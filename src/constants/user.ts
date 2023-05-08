@@ -29,6 +29,6 @@ export enum PromotionEnum {
 
 export const PromotionTypeMap = {
   [PromotionEnum.invite]: '好友充值',
-  [PromotionEnum.shareModel]: '模型分享',
+  [PromotionEnum.shareModel]: 'AI助手分享',
   [PromotionEnum.withdraw]: '提现'
 };

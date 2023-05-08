@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 const list = [
   {
     icon: 'shareMarket',
-    label: '模型共享市场',
+    label: 'AI助手市场',
     link: '/model/share'
   },
   {

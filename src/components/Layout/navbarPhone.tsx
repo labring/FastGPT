@@ -10,7 +10,7 @@ const NavbarPhone = () => {
   const navbarList = useMemo(
     () => [
       {
-        label: '模型',
+        label: 'AI助手',
         icon: 'tabbarModel',
         link: `/model`,
         activeLink: ['/model']
