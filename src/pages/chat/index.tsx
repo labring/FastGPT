@@ -563,20 +563,22 @@ const Chat = ({
                 <MenuItem onClick={() => router.replace(`/chat?modelId=${modelId}`)}>
                   新对话
                 </MenuItem>
-                <MenuItem
-                  onClick={async () => {
-                    try {
-                      setIsLoading(true);
-                      await onclickDelHistory(chatData.chatId);
-                      router.replace(`/chat`);
-                    } catch (err) {
-                      console.log(err);
-                    }
-                    setIsLoading(false);
-                  }}
-                >
-                  删除记录
-                </MenuItem>
+                {chatId && (
+                  <MenuItem
+                    onClick={async () => {
+                      try {
+                        setIsLoading(true);
+                        await onclickDelHistory(chatData.chatId);
+                        router.replace(`/chat`);
+                      } catch (err) {
+                        console.log(err);
+                      }
+                      setIsLoading(false);
+                    }}
+                  >
+                    删除记录
+                  </MenuItem>
+                )}
                 <MenuItem onClick={() => onclickExportChat('html')}>导出HTML格式</MenuItem>
                 <MenuItem onClick={() => onclickExportChat('pdf')}>导出PDF格式</MenuItem>
                 <MenuItem onClick={() => onclickExportChat('md')}>导出Markdown格式</MenuItem>
