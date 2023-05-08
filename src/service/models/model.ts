@@ -19,7 +19,7 @@ const ModelSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: ''
+    default: '/icon/logo.png'
   },
   status: {
     type: String,
