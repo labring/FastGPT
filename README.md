@@ -9,6 +9,7 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 ## 开发
 
 **配置环境变量**
+复制.env.template 文件，生成一个.env.local 环境变量文件夹，修改.env.local 内容，参考下方：
 
 ```bash
 # proxy（可选）
