@@ -35,7 +35,7 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
 
   return (
     <>
-      <Box h={'100%'} overflowY={'auto'} bg={'gray.100'}>
+      <Box h={'100%'} bg={'gray.100'}>
         {isPc ? (
           pcUnShowLayoutRoute[router.pathname] ? (
             <Auth>{children}</Auth>
