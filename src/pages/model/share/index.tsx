@@ -101,9 +101,9 @@ const modelList = () => {
         <Grid templateColumns={['1fr', '1fr 1fr', '1fr 1fr 1fr']} gridGap={4} mt={4}>
           <ShareModelList models={models} onclickCollection={onclickCollection} />
         </Grid>
-        <Box mt={4}>
+        <Flex mt={4} justifyContent={'flex-end'}>
           <Pagination />
-        </Box>
+        </Flex>
       </Card>
 
       <Loading loading={isLoading} />

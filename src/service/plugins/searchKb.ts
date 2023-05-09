@@ -85,7 +85,8 @@ export const searchKb = async ({
   };
   const filterRate = filterRateMap[systemPrompts.length] || filterRateMap[0];
 
-  const filterPrompts = [
+  // 计算固定提示词的 token 数量
+  const fixedPrompts = [
     ...(model.chat.systemPrompt
       ? [
           {
@@ -94,22 +95,26 @@ export const searchKb = async ({
           }
         ]
       : []),
-    ...(model.chat.searchMode !== ModelVectorSearchModeEnum.noContext
+    ...(model.chat.searchMode === ModelVectorSearchModeEnum.noContext
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: `我们来玩问答游戏,规则为:
-1.你完全忘记你已有的知识
-2.你只能回答关于"${model.name}"的问题
-3.你只能从知识库中选择内容进行回答
-4.如果问题不在知识库中,你会回答"我不知道。"
-务必遵守规则`
+            value: `知识库是关于"${model.name}"的内容,根据知识库内容回答问题.`
           }
         ]
-      : [])
+      : [
+          {
+            obj: ChatRoleEnum.System,
+            value: `我们来玩问答游戏,规则为:
+1.你只能回答关于"${model.name}"的问题
+2.你只能从知识库中选择内容进行回答
+3.如果问题不在知识库中,你会回答"我不知道。"
+务必遵守规则`
+          }
+        ])
   ];
   const fixedSystemTokens = modelToolMap[model.chat.chatModel].countTokens({
-    messages: filterPrompts
+    messages: fixedPrompts
   });
   const maxTokens = modelConstantsData.systemMaxToken - fixedSystemTokens;
 
@@ -157,7 +162,7 @@ export const searchKb = async ({
         obj: ChatRoleEnum.System,
         value: `知识库:'${filterSystemPrompt}'`
       },
-      ...filterPrompts
+      ...fixedPrompts
     ]
   };
 };

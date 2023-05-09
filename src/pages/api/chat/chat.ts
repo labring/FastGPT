@@ -103,8 +103,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stream,
       chatResponse: streamResponse,
       prompts,
-      systemPrompt:
-        showModelDetail && prompts[0].obj === ChatRoleEnum.System ? prompts[0].value : ''
+      systemPrompt: showModelDetail
+        ? prompts
+            .filter((item) => item.obj === ChatRoleEnum.System)
+            .map((item) => item.value)
+            .join('\n')
+        : ''
     });
 
     // 只有使用平台的 key 才计费
