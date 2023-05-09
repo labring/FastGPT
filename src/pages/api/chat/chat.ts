@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 使用了知识库搜索
     if (model.chat.useKb) {
-      const { code, searchPrompt } = await searchKb({
+      const { code, searchPrompt, aiPrompt } = await searchKb({
         userOpenAiKey,
         prompts,
         similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
@@ -68,6 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.send(searchPrompt?.value);
       }
 
+      if (aiPrompt) {
+        prompts.splice(prompts.length - 1, 0, aiPrompt);
+      }
       searchPrompt && prompts.unshift(searchPrompt);
     } else {
       // 没有用知识库搜索，仅用系统提示词

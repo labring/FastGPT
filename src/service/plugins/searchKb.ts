@@ -24,7 +24,11 @@ export const searchKb = async ({
 }): Promise<{
   code: 200 | 201;
   searchPrompt?: {
-    obj: `${ChatRoleEnum}`;
+    obj: `${ChatRoleEnum.System}`;
+    value: string;
+  };
+  aiPrompt?: {
+    obj: `${ChatRoleEnum.AI}`;
     value: string;
   };
 }> => {
@@ -85,24 +89,11 @@ export const searchKb = async ({
   };
   const filterRate = filterRateMap[systemPrompts.length] || filterRateMap[0];
 
-  // count fixed system prompt
-  const fixedSystemPrompt = `
-${model.chat.systemPrompt}
-${
-  model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity ? '不回答知识库外的内容.' : ''
-}
-知识库内容为:`;
-  const fixedSystemTokens = modelToolMap[model.chat.chatModel].countTokens({
-    messages: [{ obj: 'System', value: fixedSystemPrompt }]
-  });
-
-  const maxTokens = modelConstantsData.systemMaxToken - fixedSystemTokens;
-
   const filterSystemPrompt = filterRate
     .map((rate, i) =>
       modelToolMap[model.chat.chatModel].sliceText({
         text: systemPrompts[i],
-        length: Math.floor(maxTokens * rate)
+        length: Math.floor(modelConstantsData.systemMaxToken * rate)
       })
     )
     .join('\n');
@@ -112,7 +103,7 @@ ${
     return {
       code: 201,
       searchPrompt: {
-        obj: ChatRoleEnum.AI,
+        obj: ChatRoleEnum.System,
         value: '对不起，你的问题不在知识库中。'
       }
     };
@@ -135,7 +126,17 @@ ${
     code: 200,
     searchPrompt: {
       obj: ChatRoleEnum.System,
-      value: `${fixedSystemPrompt}'${filterSystemPrompt}'`
-    }
+      value: `知识库:'${filterSystemPrompt}'`
+    },
+    aiPrompt: ModelVectorSearchModeEnum.hightSimilarity
+      ? {
+          obj: 'AI',
+          value: `我来玩一个问答游戏,规则为:
+1.我完全忘记我已有的知识
+2.我只能回答关于"${model.chat.systemPrompt || model.name}"的问题
+3.我只能从知识库中选择内容进行回答
+4.如果问题不在知识库中,我会回答"我不知道。"`
+        }
+      : undefined
   };
 };
