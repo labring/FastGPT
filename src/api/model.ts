@@ -52,7 +52,10 @@ export const getExportDataList = (modelId: string) =>
  * 获取模型正在拆分数据的数量
  */
 export const getModelSplitDataListLen = (modelId: string) =>
-  GET<number>(`/model/data/getSplitData?modelId=${modelId}`);
+  GET<{
+    splitDataQueue: number;
+    embeddingQueue: number;
+  }>(`/model/data/getTrainingData?modelId=${modelId}`);
 
 /**
  * 获取 web 页面内容

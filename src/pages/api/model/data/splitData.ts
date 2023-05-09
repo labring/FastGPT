@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, SplitData, Model } from '@/service/mongo';
+import { connectToDatabase, SplitData } from '@/service/mongo';
 import { authModel, authToken } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '10mb'
+      sizeLimit: '100mb'
     }
   }
 };
