@@ -22,9 +22,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ).sort({
         _id: -1
       }),
-      Collection.find({
-        userId
-      }).populate('modelId', '_id avatar name chat.systemPrompt')
+      Collection.find({ userId })
+        .populate({
+          path: 'modelId',
+          select: '_id avatar name chat.systemPrompt',
+          match: { 'share.isShare': true }
+        })
+        .then((res) => res.filter((item) => item.modelId))
     ]);
 
     jsonRes<ModelListResponse>(res, {

@@ -6,6 +6,7 @@ import { useScreen } from '@/hooks/useScreen';
 import type { ResLogin } from '@/api/response/user';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
+import { useChatStore } from '@/store/chat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
@@ -16,16 +17,33 @@ const Login = ({ isPcDevice }: { isPcDevice: boolean }) => {
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { isPc } = useScreen({ defaultIsPc: isPcDevice });
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
-  const { setUserInfo } = useUserStore();
+  const { setUserInfo, setLastModelId, loadMyModels } = useUserStore();
+  const { setLastChatId, setLastChatModelId, loadHistory } = useChatStore();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
+      // init store
+      setLastChatId('');
+      setLastModelId('');
+      setLastChatModelId('');
+      loadMyModels(true);
+      loadHistory({ pageNum: 1, init: true });
+
       setUserInfo(res.user);
       setTimeout(() => {
         router.push(lastRoute ? decodeURIComponent(lastRoute) : '/model');
       }, 100);
     },
-    [lastRoute, router, setUserInfo]
+    [
+      lastRoute,
+      loadHistory,
+      loadMyModels,
+      router,
+      setLastChatId,
+      setLastChatModelId,
+      setLastModelId,
+      setUserInfo
+    ]
   );
 
   function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {
