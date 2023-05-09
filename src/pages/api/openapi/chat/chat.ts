@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (model.chat.useKb) {
       const similarity = ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22;
 
-      const { code, searchPrompt } = await searchKb({
+      const { code, searchPrompts } = await searchKb({
         prompts,
         similarity,
         model,
@@ -82,10 +82,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // search result is empty
       if (code === 201) {
-        return res.send(searchPrompt?.value);
+        return res.send(searchPrompts[0]?.value);
       }
-
-      searchPrompt && prompts.unshift(searchPrompt);
+      prompts.splice(prompts.length - 1, 0, ...searchPrompts);
     } else {
       // 没有用知识库搜索，仅用系统提示词
       if (model.chat.systemPrompt) {
