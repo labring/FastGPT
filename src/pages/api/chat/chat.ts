@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 使用了知识库搜索
     if (model.chat.useKb) {
-      const { code, searchPrompt, aiPrompt } = await searchKb({
+      const { code, searchPrompts } = await searchKb({
         userOpenAiKey,
         prompts,
         similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
@@ -65,13 +65,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // search result is empty
       if (code === 201) {
-        return res.send(searchPrompt?.value);
+        return res.send(searchPrompts[0]?.value);
       }
 
-      if (aiPrompt) {
-        prompts.splice(prompts.length - 1, 0, aiPrompt);
-      }
-      searchPrompt && prompts.unshift(searchPrompt);
+      prompts.splice(prompts.length - 1, 0, ...searchPrompts);
     } else {
       // 没有用知识库搜索，仅用系统提示词
       model.chat.systemPrompt &&
