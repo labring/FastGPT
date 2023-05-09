@@ -122,14 +122,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const prompts = [prompt];
 
     // 获取向量匹配到的提示词
-    const { searchPrompt } = await searchKb({
+    const { searchPrompts } = await searchKb({
       similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
       prompts,
       model,
       userId
     });
 
-    searchPrompt && prompts.unshift(searchPrompt);
+    prompts.splice(prompts.length - 1, 0, ...searchPrompts);
 
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(

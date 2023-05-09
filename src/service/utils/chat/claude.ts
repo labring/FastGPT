@@ -27,7 +27,7 @@ export const lafClaudChat = async ({
     .join('\n');
   const systemPromptText = systemPrompt ? `\n知识库内容:'${systemPrompt}'\n` : '';
 
-  const prompt = `${systemPromptText}我的问题:'${messages[messages.length - 1].value}'`;
+  const prompt = `${systemPromptText}\n我的问题是:'${messages[messages.length - 1].value}'`;
 
   const lafResponse = await axios.post(
     'https://hnvacz.laf.run/claude-gpt',

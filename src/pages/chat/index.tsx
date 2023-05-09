@@ -508,7 +508,7 @@ const Chat = ({
       isLeavePage.current = true;
       controller.current?.abort();
     };
-  }, []);
+  }, [modelId, chatId]);
 
   return (
     <Flex

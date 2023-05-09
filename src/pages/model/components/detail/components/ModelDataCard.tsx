@@ -279,9 +279,9 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
             </Tbody>
           </Table>
         </TableContainer>
-        <Box mt={2} textAlign={'end'}>
+        <Flex mt={2} justifyContent={'flex-end'}>
           <Pagination />
-        </Box>
+        </Flex>
       </Box>
 
       <Loading loading={isLoading} fixed={false} />

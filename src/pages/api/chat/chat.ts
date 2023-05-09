@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 使用了知识库搜索
     if (model.chat.useKb) {
-      const { code, searchPrompt } = await searchKb({
+      const { code, searchPrompts } = await searchKb({
         userOpenAiKey,
         prompts,
         similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
@@ -65,10 +65,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // search result is empty
       if (code === 201) {
-        return res.send(searchPrompt?.value);
+        return res.send(searchPrompts[0]?.value);
       }
 
-      searchPrompt && prompts.unshift(searchPrompt);
+      prompts.splice(prompts.length - 1, 0, ...searchPrompts);
     } else {
       // 没有用知识库搜索，仅用系统提示词
       model.chat.systemPrompt &&
@@ -103,8 +103,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stream,
       chatResponse: streamResponse,
       prompts,
-      systemPrompt:
-        showModelDetail && prompts[0].obj === ChatRoleEnum.System ? prompts[0].value : ''
+      systemPrompt: showModelDetail
+        ? prompts
+            .filter((item) => item.obj === ChatRoleEnum.System)
+            .map((item) => item.value)
+            .join('\n')
+        : ''
     });
 
     // 只有使用平台的 key 才计费

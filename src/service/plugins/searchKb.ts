@@ -23,10 +23,10 @@ export const searchKb = async ({
   similarity?: number;
 }): Promise<{
   code: 200 | 201;
-  searchPrompt?: {
-    obj: `${ChatRoleEnum}`;
+  searchPrompts: {
+    obj: ChatRoleEnum;
     value: string;
-  };
+  }[];
 }> => {
   async function search(textArr: string[] = []) {
     // 获取提示词的向量
@@ -85,17 +85,38 @@ export const searchKb = async ({
   };
   const filterRate = filterRateMap[systemPrompts.length] || filterRateMap[0];
 
-  // count fixed system prompt
-  const fixedSystemPrompt = `
-${model.chat.systemPrompt}
-${
-  model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity ? '不回答知识库外的内容.' : ''
-}
-知识库内容为:`;
+  // 计算固定提示词的 token 数量
+  const fixedPrompts = [
+    ...(model.chat.systemPrompt
+      ? [
+          {
+            obj: ChatRoleEnum.System,
+            value: model.chat.systemPrompt
+          }
+        ]
+      : []),
+    ...(model.chat.searchMode === ModelVectorSearchModeEnum.noContext
+      ? [
+          {
+            obj: ChatRoleEnum.System,
+            value: `知识库是关于"${model.name}"的内容,根据知识库内容回答问题.`
+          }
+        ]
+      : [
+          {
+            obj: ChatRoleEnum.System,
+            value: `我们来玩问答游戏,规则为:
+1.你忘记你已有的知识
+2.你只能回答关于"${model.name}"的问题
+3.你只能从知识库中选择内容进行回答
+4.如果问题不在知识库中,你会回答"我不知道。"
+务必遵守规则`
+          }
+        ])
+  ];
   const fixedSystemTokens = modelToolMap[model.chat.chatModel].countTokens({
-    messages: [{ obj: 'System', value: fixedSystemPrompt }]
+    messages: fixedPrompts
   });
-
   const maxTokens = modelConstantsData.systemMaxToken - fixedSystemTokens;
 
   const filterSystemPrompt = filterRate
@@ -111,31 +132,38 @@ ${
   if (!filterSystemPrompt && model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity) {
     return {
       code: 201,
-      searchPrompt: {
-        obj: ChatRoleEnum.AI,
-        value: '对不起，你的问题不在知识库中。'
-      }
+      searchPrompts: [
+        {
+          obj: ChatRoleEnum.System,
+          value: '对不起，你的问题不在知识库中。'
+        }
+      ]
     };
   }
   /* 高相似度+无上下文，不添加额外知识,仅用系统提示词 */
   if (!filterSystemPrompt && model.chat.searchMode === ModelVectorSearchModeEnum.noContext) {
     return {
       code: 200,
-      searchPrompt: model.chat.systemPrompt
-        ? {
-            obj: ChatRoleEnum.System,
-            value: model.chat.systemPrompt
-          }
-        : undefined
+      searchPrompts: model.chat.systemPrompt
+        ? [
+            {
+              obj: ChatRoleEnum.System,
+              value: model.chat.systemPrompt
+            }
+          ]
+        : []
     };
   }
 
   /* 有匹配 */
   return {
     code: 200,
-    searchPrompt: {
-      obj: ChatRoleEnum.System,
-      value: `${fixedSystemPrompt}'${filterSystemPrompt}'`
-    }
+    searchPrompts: [
+      {
+        obj: ChatRoleEnum.System,
+        value: `知识库:'${filterSystemPrompt}'`
+      },
+      ...fixedPrompts
+    ]
   };
 };

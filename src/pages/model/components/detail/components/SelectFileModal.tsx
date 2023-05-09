@@ -61,13 +61,7 @@ const SelectFileModal = ({
   const { openConfirm, ConfirmChild } = useConfirm({
     content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被直接清除。一共 ${
       splitRes.chunks.length
-    } 组。${
-      splitRes.tokens
-        ? `大约 ${splitRes.tokens} 个tokens, 约 ${formatPrice(
-            splitRes.tokens * modeMap[mode].price
-          )} 元`
-        : ''
-    }`
+    } 组。${splitRes.tokens ? `大约 ${splitRes.tokens} 个tokens。` : ''}`
   });
 
   const onSelectFile = useCallback(
