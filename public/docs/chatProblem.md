@@ -11,4 +11,5 @@ chatgpt 上下文最长 4096 tokens, 会自动截取上下文，超过 4096 部�
 服务器代理不稳定，可以过一会儿再尝试。 或者可以访问国外服务器: [FastGpt](https://fastgpt.run/)
 **其他问题**
 请 WX 联系: fastgpt123
-![FastGpt](/imgs/wx300.jpg)
+![](/imgs/wxqun300.jpg)
+![](/imgs/wx300.jpg)

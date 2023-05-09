@@ -128,8 +128,9 @@ export const pushGenerateVectorBill = async ({
     try {
       const unitPrice = 0.4;
       // 计算价格. 至少为1
-      let price = unitPrice * tokenLen;
-      price = price > 1 ? price : 1;
+      const price = 0;
+      // let price = unitPrice * tokenLen;
+      // price = price > 1 ? price : 1;
 
       // 插入 Bill 记录
       const res = await Bill.create({
