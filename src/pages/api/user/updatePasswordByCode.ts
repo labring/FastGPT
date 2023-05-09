@@ -4,8 +4,8 @@ import { jsonRes } from '@/service/response';
 import { User } from '@/service/models/user';
 import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
-import { generateToken } from '@/service/utils/tools';
 import { UserAuthTypeEnum } from '@/constants/common';
+import { setCookie } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('获取用户信息异常');
     }
 
-    res.setHeader('Set-Cookie', `token=${generateToken(user._id)}; Path=/; HttpOnly`);
+    setCookie(res, user._id);
 
     jsonRes(res, {
       data: {

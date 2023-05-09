@@ -4,7 +4,7 @@ import { jsonRes } from '@/service/response';
 import { User } from '@/service/models/user';
 import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
-import { generateToken } from '@/service/utils/tools';
+import { setCookie } from '@/service/utils/tools';
 import { UserAuthTypeEnum } from '@/constants/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       username
     });
 
-    res.setHeader('Set-Cookie', `token=${generateToken(user._id)}; Path=/; HttpOnly`);
+    setCookie(res, user._id);
 
     jsonRes(res, {
       data: {
