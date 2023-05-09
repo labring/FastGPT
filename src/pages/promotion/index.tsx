@@ -139,9 +139,9 @@ const OpenApi = () => {
 
           <Loading loading={isLoading} fixed={false} />
         </TableContainer>
-        <Box mt={4} mr={4} textAlign={'end'}>
+        <Flex mt={4} px={4} justifyContent={'flex-end'}>
           <Pagination />
-        </Box>
+        </Flex>
       </Card>
       <Modal isOpen={isOpenWithdraw} onClose={onCloseWithdraw}>
         <ModalOverlay />
