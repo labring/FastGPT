@@ -55,8 +55,8 @@ const ModelEditForm = ({
       try {
         const base64 = await compressImg({
           file,
-          maxW: 40,
-          maxH: 60
+          maxW: 100,
+          maxH: 100
         });
         setValue('avatar', base64);
         setRefresh((state) => !state);

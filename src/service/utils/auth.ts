@@ -114,7 +114,7 @@ export const authModel = async ({
     2. authUser = false and share, anyone can use
   */
   if ((authOwner || (authUser && !model.share.isShare)) && userId !== String(model.userId)) {
-    return Promise.reject('无权操作该模型');
+    return Promise.reject(ERROR_ENUM.unAuthModel);
   }
 
   // do not share detail info

@@ -57,8 +57,8 @@ const NumberSetting = () => {
       try {
         const base64 = await compressImg({
           file,
-          maxW: 40,
-          maxH: 60
+          maxW: 100,
+          maxH: 100
         });
         onclickSave({
           ...userInfo,
@@ -100,8 +100,8 @@ const NumberSetting = () => {
             src={userInfo?.avatar}
             alt={'avatar'}
             w={['28px', '36px']}
-            h={['28px', '36px']}
-            objectFit={'cover'}
+            maxH={'40px'}
+            objectFit={'contain'}
             cursor={'pointer'}
             title={'点击切换头像'}
             onClick={onOpenSelectFile}

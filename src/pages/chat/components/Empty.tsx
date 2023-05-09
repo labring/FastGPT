@@ -28,7 +28,13 @@ const Empty = ({
     >
       <Card p={4} mb={10}>
         <Flex mb={2} alignItems={'center'} justifyContent={'center'}>
-          <Image src={avatar || LOGO_ICON} w={'32px'} h={'32px'} alt={''} />
+          <Image
+            src={avatar || LOGO_ICON}
+            w={'32px'}
+            maxH={'40px'}
+            objectFit={'contain'}
+            alt={''}
+          />
           <Box ml={3} fontSize={'3xl'} fontWeight={'bold'}>
             {name}
           </Box>

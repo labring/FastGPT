@@ -488,9 +488,6 @@ const Chat = ({
     modelId && setLastChatModelId(modelId);
     setLastChatId(chatId);
 
-    // focus scroll bottom
-    chatId && scrollToBottom('auto');
-
     /* get mode and chat into ↓ */
 
     // phone: history page
@@ -640,7 +637,7 @@ const Chat = ({
                       />
                     </MenuButton>
                     <MenuList fontSize={'sm'}>
-                      {chatData.model.canUse && (
+                      {chatData.model.canUse && item.obj === 'AI' && (
                         <MenuItem onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}>
                           AI助手详情
                         </MenuItem>
@@ -675,6 +672,7 @@ const Chat = ({
                       </Box>
                     )}
                   </Box>
+                  {/* copy and clear icon */}
                   {isPc && (
                     <Flex h={'100%'} flexDirection={'column'} ml={2} w={'14px'} height={'100%'}>
                       <Box minH={'40px'} flex={1}>
@@ -815,8 +813,6 @@ const Chat = ({
   );
 };
 
-export default Chat;
-
 Chat.getInitialProps = ({ query, req }: any) => {
   return {
     modelId: query?.modelId || '',
@@ -824,3 +820,5 @@ Chat.getInitialProps = ({ query, req }: any) => {
     isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
   };
 };
+
+export default Chat;
