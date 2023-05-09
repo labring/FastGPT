@@ -88,7 +88,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
     onClose: onCloseSelectCsvModal
   } = useDisclosure();
 
-  const { data: splitDataLen = 0, refetch } = useQuery(
+  const { data: { splitDataQueue = 0, embeddingQueue = 0 } = {}, refetch } = useQuery(
     ['getModelSplitDataList'],
     () => getModelSplitDataListLen(modelId),
     {
@@ -109,7 +109,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
 
   useQuery(['refetchData'], () => refetchData(pageNum), {
     refetchInterval: 5000,
-    enabled: splitDataLen > 0
+    enabled: splitDataQueue > 0 || embeddingQueue > 0
   });
 
   // 获取所有的数据，并导出 json
@@ -186,8 +186,12 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
         )}
       </Flex>
       <Flex mt={4}>
-        {isOwner && splitDataLen > 0 && (
-          <Box fontSize={'xs'}>{splitDataLen}条数据正在拆分，请耐心等待...</Box>
+        {isOwner && (splitDataQueue > 0 || embeddingQueue > 0) && (
+          <Box fontSize={'xs'}>
+            {splitDataQueue > 0 ? `${splitDataQueue}条数据正在拆分，` : ''}
+            {embeddingQueue > 0 ? `${embeddingQueue}条数据正在生成索引，` : ''}
+            请耐心等待...
+          </Box>
         )}
         <Box flex={1} />
         <Input
