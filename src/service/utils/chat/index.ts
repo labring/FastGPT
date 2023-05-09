@@ -109,35 +109,22 @@ export const ChatContextFilter = ({
 
   // 根据 tokens 截断内容
   const chats: ChatItemSimpleType[] = [];
-  let systemPrompt: ChatItemSimpleType | null = null;
-
-  //  System 词保留
-  if (formatPrompts[0].obj === ChatRoleEnum.System) {
-    const prompt = formatPrompts.shift();
-    if (prompt) {
-      systemPrompt = prompt;
-    }
-  }
-
-  let messages: ChatItemSimpleType[] = [];
 
   // 从后往前截取对话内容
   for (let i = formatPrompts.length - 1; i >= 0; i--) {
     chats.unshift(formatPrompts[i]);
 
-    messages = systemPrompt ? [systemPrompt, ...chats] : chats;
-
     const tokens = modelToolMap[model].countTokens({
-      messages
+      messages: chats
     });
 
     /* 整体 tokens 超出范围 */
     if (tokens >= maxTokens) {
-      return systemPrompt ? [systemPrompt, ...chats.slice(1)] : chats.slice(1);
+      return chats.slice(1);
     }
   }
 
-  return messages;
+  return chats;
 };
 
 /* stream response */

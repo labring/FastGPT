@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else {
       // 没有用知识库搜索，仅用系统提示词
       model.chat.systemPrompt &&
-        prompts.unshift({
+        prompts.splice(prompts.length - 1, 0, {
           obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
         });
