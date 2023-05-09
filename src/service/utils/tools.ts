@@ -1,3 +1,4 @@
+import type { NextApiResponse } from 'next';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -17,6 +18,15 @@ export const generateToken = (userId: string) => {
     key
   );
   return token;
+};
+
+/* set cookie */
+export const setCookie = (res: NextApiResponse, userId: string) => {
+  res.setHeader('Set-Cookie', `token=${generateToken(userId)}; Path=/; HttpOnly; Max-Age=604800`);
+};
+/* clear cookie */
+export const clearCookie = (res: NextApiResponse) => {
+  res.setHeader('Set-Cookie', 'token=; Path=/; Max-Age=0');
 };
 
 /* openai axios config */

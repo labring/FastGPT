@@ -1,5 +1,6 @@
 import { NextApiResponse } from 'next';
 import { openaiError, openaiError2, proxyError, ERROR_RESPONSE, ERROR_ENUM } from './errorCode';
+import { clearCookie } from './utils/tools';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -23,7 +24,7 @@ export const jsonRes = <T = any>(
   if (ERROR_RESPONSE[errResponseKey]) {
     // login is expired
     if (errResponseKey === ERROR_ENUM.unAuthorization) {
-      res.setHeader('Set-Cookie', 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+      clearCookie(res);
     }
 
     return res.json(ERROR_RESPONSE[errResponseKey]);
