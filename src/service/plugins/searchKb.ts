@@ -126,7 +126,7 @@ export const searchKb = async ({
         length: Math.floor(maxTokens * rate)
       })
     )
-    .join('\n');
+    .join('\n').trim();
 
   /* 高相似度+不回复 */
   if (!filterSystemPrompt && model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity) {
