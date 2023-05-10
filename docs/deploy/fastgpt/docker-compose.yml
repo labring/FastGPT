@@ -49,7 +49,7 @@ services:
       - /root/fastgpt/nginx/ssl/docgpt.key:/ssl/docgpt.key
       - /root/fastgpt/nginx/ssl/docgpt.pem:/ssl/docgpt.pem
   pg:
-    image: ankane/pgvector
+    image: ankane/pgvector:v0.4.1
     container_name: pg
     restart: always
     ports:
