@@ -186,7 +186,7 @@ services:
       # token加密凭证（随便填，作为登录凭证）
       - TOKEN_KEY=xxxx
       # 和上方mongo镜像的username,password对应
-      - MONGODB_URI=mongodb://username:passsword@0.0.0.0:27017/?authSource=admin
+      - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
       - MONGODB_NAME=xxx
       - PG_HOST=0.0.0.0
       - PG_PORT=8100
