@@ -4,7 +4,7 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 
 ## 🛸 在线体验
 
-🎉 [fastgpt.run](https://fastgpt.run/) （国内版）
+🎉 [fastgpt.run](https://fastgpt.run/) （国内版）  
 🎉 [ai.fastgpt.run](https://ai.fastgpt.run/) （海外版）
 
 ![Demo](docs/imgs/demo.png?raw=true 'demo')
