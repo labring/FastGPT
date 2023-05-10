@@ -1,8 +1,12 @@
 import { PRICE_SCALE } from '@/constants/common';
-const tokenKey = 'fast-gpt-token';
+import { loginOut } from '@/api/user';
 
-export const clearToken = () => {
-  document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+export const clearCookie = () => {
+  try {
+    loginOut();
+  } catch (error) {
+    error;
+  }
 };
 
 /**

@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
 import { UserType } from '@/types/user';
-import { clearToken } from '@/utils/user';
+import { clearCookie } from '@/utils/user';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
@@ -75,7 +75,7 @@ const NumberSetting = () => {
   );
 
   const onclickLogOut = useCallback(() => {
-    clearToken();
+    clearCookie();
     setUserInfo(null);
     router.replace('/login');
   }, [router, setUserInfo]);

@@ -102,9 +102,7 @@ const Navbar = () => {
               justifyContent={'center'}
               onClick={() => {
                 if (item.link === router.asPath) return;
-                router.push(item.link, undefined, {
-                  shallow: true
-                });
+                router.push(item.link);
               }}
               cursor={'pointer'}
               w={'60px'}

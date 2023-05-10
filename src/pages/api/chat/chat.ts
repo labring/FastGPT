@@ -68,11 +68,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.send(searchPrompts[0]?.value);
       }
 
-      prompts.splice(prompts.length - 1, 0, ...searchPrompts);
+      prompts.splice(prompts.length - 3, 0, ...searchPrompts);
     } else {
       // 没有用知识库搜索，仅用系统提示词
       model.chat.systemPrompt &&
-        prompts.unshift({
+        prompts.splice(prompts.length - 3, 0, {
           obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
         });

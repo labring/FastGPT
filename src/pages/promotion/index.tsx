@@ -81,7 +81,7 @@ const OpenApi = () => {
             mr={4}
             variant={'outline'}
             onClick={() => {
-              copyData(`${location.origin}?inviterId=${userInfo?._id}`, '已复制邀请链接');
+              copyData(`${location.origin}/?inviterId=${userInfo?._id}`, '已复制邀请链接');
             }}
           >
             复制邀请链接

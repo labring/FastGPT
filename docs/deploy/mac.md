@@ -1,22 +1,22 @@
-## 怎么在mac上面部署fastgpt
+## Mac 上部署可能遇到的问题
 
 ### 前置条件
 
-1、可以 curl api.openai.com 
+1、可以 curl api.openai.com
 
-2、有openai key
+2、有 openai key
 
-3、有邮箱MAILE_CODE
+3、有邮箱 MAILE_CODE
 
-4、有docker 
+4、有 docker
 
 ```
 docker -v
 ```
 
-5、有pnpm ，可以使用`brew install pnpm`安装
+5、有 pnpm ，可以使用`brew install pnpm`安装
 
-6、需要创建一个放置pg和mongo数据的文件夹，这里创建在`~/fastgpt`目录中,里面有`pg` 和`mongo `两个文件夹
+6、需要创建一个放置 pg 和 mongo 数据的文件夹，这里创建在`~/fastgpt`目录中,里面有`pg` 和`mongo `两个文件夹
 
 ```
 ➜  fast-gpt pwd
@@ -25,11 +25,9 @@ docker -v
 mongo pg
 ```
 
+### docker 部署方式
 
-
-### docker部署方式
-
-这种方式主要是为了方便调试，可以使用`pnpm dev ` 运行fast-gpt项目
+这种方式主要是为了方便调试，可以使用`pnpm dev ` 运行 fast-gpt 项目
 
 **1、.env.local 文件**
 
@@ -60,19 +58,19 @@ PG_PASSWORD=xxx
 PG_DB_NAME=xxx
 ```
 
-**2、部署mongo**
+**2、部署 mongo**
 
 ```
 docker run --name mongo -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=username -e MONGO_INITDB_ROOT_PASSWORD=password -v ~/fast-gpt/mongo/data:/data/db -d mongo:4.0.1
 ```
 
-**3、部署pgsql**
+**3、部署 pgsql**
 
 ```
 docker run -it --name pg -e "POSTGRES_PASSWORD=xxx" -e POSTGRES_USER=xxx -p 8100:5432 -v ~/fast-gpt/pg/data:/var/lib/postgresql/data -d octoberlan/pgvector:v0.4.1
 ```
 
-进pgsql容器运行
+进 pgsql 容器运行
 
 ```
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
@@ -95,6 +93,4 @@ CREATE INDEX modelData_userId_index ON modelData (userId);
 EOSQL
 ```
 
-
-
-4、**最后在FASTGPT项目里面运行pnpm dev 运行项目，然后进入localhost:3000 看项目是否跑起来了**
+4、**最后在 FASTGPT 项目里面运行 pnpm dev 运行项目，然后进入 localhost:3000 看项目是否跑起来了**
