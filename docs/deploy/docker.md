@@ -187,7 +187,7 @@ services:
       - TOKEN_KEY=xxxx
       # 和上方mongo镜像的username,password对应
       - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
-      - MONGODB_NAME=xxx
+      - MONGODB_NAME=fastgpt
       - PG_HOST=0.0.0.0
       - PG_PORT=8100
       # 和上方PG镜像对应.
