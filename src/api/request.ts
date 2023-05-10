@@ -1,5 +1,5 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { clearToken } from '@/utils/user';
+import { clearCookie } from '@/utils/user';
 import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 
 interface ConfigType {
@@ -58,7 +58,7 @@ function responseError(err: any) {
     // 有报错响应
     const res = err.response;
     if (res.data.code in TOKEN_ERROR_CODE) {
-      clearToken();
+      clearCookie();
       return Promise.reject({ message: 'token过期，重新登录' });
     }
   }
