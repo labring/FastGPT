@@ -28,7 +28,7 @@ export const ChatModelMap = {
     chatModel: OpenAiChatEnum.GPT35,
     name: 'ChatGpt',
     contextMaxToken: 4096,
-    systemMaxToken: 2500,
+    systemMaxToken: 2400,
     maxTemperature: 1.2,
     price: 3
   },
@@ -36,7 +36,7 @@ export const ChatModelMap = {
     chatModel: OpenAiChatEnum.GPT4,
     name: 'Gpt4',
     contextMaxToken: 8000,
-    systemMaxToken: 3500,
+    systemMaxToken: 3000,
     maxTemperature: 1.2,
     price: 50
   },
@@ -44,7 +44,7 @@ export const ChatModelMap = {
     chatModel: OpenAiChatEnum.GPT432k,
     name: 'Gpt4-32k',
     contextMaxToken: 32000,
-    systemMaxToken: 6000,
+    systemMaxToken: 3000,
     maxTemperature: 1.2,
     price: 90
   },
@@ -52,7 +52,7 @@ export const ChatModelMap = {
     chatModel: ClaudeEnum.Claude,
     name: 'Claude(免费体验)',
     contextMaxToken: 9000,
-    systemMaxToken: 2500,
+    systemMaxToken: 2400,
     maxTemperature: 1,
     price: 0
   }
