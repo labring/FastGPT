@@ -198,7 +198,6 @@ const Chat = ({
         if (newChatId) {
           setForbidLoadChatData(true);
           router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
-          loadHistory({ pageNum: 1, init: true });
         }
       } catch (err) {
         toast({
@@ -222,6 +221,9 @@ const Chat = ({
           };
         })
       }));
+
+      // refresh history
+      loadHistory({ pageNum: 1, init: true });
     },
     [
       chatId,
@@ -488,10 +490,6 @@ const Chat = ({
     modelId && setLastChatModelId(modelId);
     setLastChatId(chatId);
 
-    /* get mode and chat into ↓ */
-
-    // phone: history page
-    if (!isPc && Object.keys(router.query).length === 0) return null;
     if (forbidLoadChatData) {
       setForbidLoadChatData(false);
       return null;
@@ -566,7 +564,7 @@ const Chat = ({
                       try {
                         setIsLoading(true);
                         await onclickDelHistory(chatData.chatId);
-                        router.replace(`/chat`);
+                        router.replace(`/chat?modelId=${modelId}`);
                       } catch (err) {
                         console.log(err);
                       }

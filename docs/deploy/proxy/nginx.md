@@ -1,4 +1,5 @@
 # nginx 反向代理 openai 接口
+
 如果你有国外的服务器，可以通过配置 nginx 反向代理，转发 openai 相关的请求，从而让国内的服务器可以通过访问该 nginx 去访问 openai 接口。
 
 ```conf
@@ -19,7 +20,7 @@ http {
     client_header_buffer_size 32k;
     large_client_header_buffers 4 32k;
     client_max_body_size 50M;
- 
+
     gzip  on;
     gzip_min_length   1k;
     gzip_buffers  4 8k;
@@ -43,10 +44,10 @@ http {
 
         location ~ /openai/(.*) {
             # auth check
-            if ($http_authkey != "xxxxxx") {
+            if ($auth != "xxxxxx") {
                 return 403;
             }
-            
+
             proxy_pass https://api.openai.com/$1$is_args$args;
             proxy_set_header Host api.openai.com;
             proxy_set_header X-Real-IP $remote_addr;

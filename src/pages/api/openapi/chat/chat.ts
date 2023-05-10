@@ -87,12 +87,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       prompts.splice(prompts.length - 1, 0, ...searchPrompts);
     } else {
       // 没有用知识库搜索，仅用系统提示词
-      if (model.chat.systemPrompt) {
-        prompts.unshift({
+      model.chat.systemPrompt &&
+        prompts.splice(prompts.length - 1, 0, {
           obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
         });
-      }
     }
 
     // 计算温度
