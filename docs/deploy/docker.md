@@ -4,9 +4,10 @@
 
 选择一个即可。
 
-1. [clash 方案](./proxy/clash.md) - 仅需一台服务器（需要有 clash）
-2. [nginx 方案](./proxy/nginx.md) - 需要一台国外服务器
-3. [cloudflare 方案](./proxy/cloudflare.md) - 需要有域名（每日免费 10w 次代理请求）
+1. [sealos nginx 方案](./proxy/sealos.md) - 推荐。约等于不用钱，不需要额外准备任何东西。
+2. [clash 方案](./proxy/clash.md) - 仅需一台服务器（需要有 clash）
+3. [nginx 方案](./proxy/nginx.md) - 需要一台国外服务器
+4. [cloudflare 方案](./proxy/cloudflare.md) - 需要有域名（每日免费 10w 次代理请求）
 
 ### 1. 准备一些内容
 
@@ -179,7 +180,7 @@ services:
       - /root/fastgpt/nginx/ssl/docgpt.key:/ssl/docgpt.key
       - /root/fastgpt/nginx/ssl/docgpt.pem:/ssl/docgpt.pem
   pg:
-    image: ankane/pgvector
+    image: ankane/pgvector:v0.4.1
     container_name: pg
     restart: always
     ports:
