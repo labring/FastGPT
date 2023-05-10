@@ -118,8 +118,8 @@ export const ChatContextFilter = ({
       messages: chats
     });
 
-    /* 整体 tokens 超出范围 */
-    if (tokens >= maxTokens) {
+    /* 整体 tokens 超出范围, system必须保留 */
+    if (tokens >= maxTokens && formatPrompts[i].obj !== ChatRoleEnum.System) {
       return chats.slice(1);
     }
   }

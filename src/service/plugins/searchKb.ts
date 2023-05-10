@@ -105,11 +105,11 @@ export const searchKb = async ({
       : [
           {
             obj: ChatRoleEnum.System,
-            value: `我们来玩问答游戏,规则为:
+            value: `我们在玩问答游戏,规则为:
 1.你完全忘记你已有的知识
 2.你只能回答关于"${model.name}"的问题
 3.你只能从知识库中选择内容进行回答
-4.如果问题不在知识库中,你会回答"我不知道。"
+4.如果问题不在知识库中,你必须回答:我不知道。
 务必遵守规则`
           }
         ])
@@ -161,7 +161,7 @@ export const searchKb = async ({
     searchPrompts: [
       {
         obj: ChatRoleEnum.System,
-        value: `知识库:'${filterSystemPrompt}'`
+        value: `知识库:${filterSystemPrompt}`
       },
       ...fixedPrompts
     ]

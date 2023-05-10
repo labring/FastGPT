@@ -55,11 +55,11 @@ export const getApiKey = async ({
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: process.env.OPENAIKEY as string
+      systemAuthKey: process.env.GPT4KEY as string
     },
     [OpenAiChatEnum.GPT432k]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: process.env.OPENAIKEY as string
+      systemAuthKey: process.env.GPT4KEY as string
     },
     [ClaudeEnum.Claude]: {
       userOpenAiKey: '',
