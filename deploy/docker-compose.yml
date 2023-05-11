@@ -1,0 +1,86 @@
+version: '3.3'
+services:
+  pg:
+    image: ankane/pgvector:v0.4.1
+    container_name: pg
+    restart: always
+    ports:
+      - 8100:5432
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - POSTGRES_USER=fastgpt
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=fastgpt
+    volumes:
+      # 刚创建的文件
+      - ./pg/init.sql:/docker-entrypoint-initdb.d/init.sh
+      - ./pg/data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+  mongodb:
+    image: mongo:6.0.4
+    container_name: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - MONGO_INITDB_ROOT_USERNAME=username
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - ./mongo/data:/data/db
+      - ./mongo/logs:/var/log/mongodb
+      - /etc/localtime:/etc/localtime:ro
+  fast-gpt:
+    image: c121914yu/fast-gpt:latest
+    #network_mode: host
+    ports:
+      - 3002:3000
+    restart: always
+    container_name: fast-gpt
+    environment:
+      # proxy（可选）
+      #- AXIOS_PROXY_HOST=127.0.0.1
+      #- AXIOS_PROXY_PORT=7890
+      # openai 中转连接（可选）
+      - OPENAI_BASE_URL=https://api.openai.com/v1
+      #- OPENAI_BASE_URL_AUTH=可选的安全凭证
+      # 是否开启队列任务。 1-开启，0-关闭（请求 parentUrl 去执行任务,单机时直接填1）
+      - queueTask=1
+      - parentUrl=https://hostname/api/openapi/startEvents
+      # 发送邮箱验证码配置。用的是QQ邮箱。参考 nodeMail 获取MAILE_CODE，自行百度。
+      - MY_MAIL=xxxx@qq.com
+      - MAILE_CODE=xxxx
+      # 阿里短信服务（邮箱和短信至少二选一）
+      - aliAccessKeyId=xxxx
+      - aliAccessKeySecret=xxxx
+      - aliSignName=xxxxx
+      - aliTemplateCode=SMS_xxxx
+      # token加密凭证（随便填，作为登录凭证）
+      - TOKEN_KEY=xxxx
+      # 和上方mongo镜像的username,password对应
+      - MONGODB_URI=mongodb://username:password@mongodb:27017/?authSource=admin
+      - MONGODB_NAME=fastgpt
+      - PG_HOST=pg
+      - PG_PORT=8100
+      # 和上方PG镜像对应.
+      - PG_USER=fastgpt # POSTGRES_USER
+      - PG_PASSWORD=1234 # POSTGRES_PASSWORD
+      - PG_DB_NAME=fastgpt # POSTGRES_DB
+      # openai api key
+      - OPENAIKEY=sk-xxxxx
+  nginx:
+    image: nginx:alpine3.17
+    container_name: nginx
+    restart: always
+    #network_mode: host
+    ports:
+      - 81:80
+      - 3001:3000
+    volumes:
+      # 刚创建的文件
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/logs:/var/log/nginx
+      # https证书，没有的话不填，对应的nginx.conf也要修改
+      - ./nginx/ssl/docgpt.key:/ssl/docgpt.key
+      - ./nginx/ssl/docgpt.pem:/ssl/docgpt.pem
+ 
