@@ -43,7 +43,7 @@ jobs:
           docker buildx build \
           --platform linux/amd64,linux/arm64 \
           --label "org.opencontainers.image.source=https://github.com/${{ secrets.repository_owner }}/FastGPT" \
-          --label "Maintainer: <muaimingjun && Paper-Dragon>"
+          --label "Maintainer: <muaimingjun && Paper-Dragon>" \
           --label "org.opencontainers.image.description=fast-gpt image" \
           --label "org.opencontainers.image.licenses=MIT" \
           --push \
