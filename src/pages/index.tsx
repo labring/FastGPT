@@ -3,6 +3,8 @@ import { Card, Box, Link } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { useRouter } from 'next/router';
+import { getFilling } from '@/api/system';
+import { useQuery } from '@tanstack/react-query';
 
 const Home = () => {
   const { inviterId } = useRouter().query as { inviterId: string };
@@ -14,6 +16,8 @@ const Home = () => {
     }
   }, [inviterId]);
 
+  const { data: { beianText = '' } = {} } = useQuery(['init'], getFilling);
+
   return (
     <Box p={[5, 10]}>
       <Card p={5} lineHeight={2}>
@@ -21,11 +25,12 @@ const Home = () => {
       </Card>
 
       <Card p={5} mt={4} textAlign={'center'}>
-        <Box>
+        {beianText && (
           <Link href="https://beian.miit.gov.cn/" target="_blank">
-            浙ICP备2023011255号-1
+            {beianText}
           </Link>
-        </Box>
+        )}
+
         <Box>Made by FastGpt Team.</Box>
       </Card>
     </Box>
