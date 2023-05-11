@@ -31,13 +31,14 @@ jobs:
       - name: Login to  gitbub
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
+          #registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GH_PAT }}
       - name: build and publish image
         env:
           # fork friendly ^^
-          DOCKER_REPO: ghcr.io/${{ github.repository_owner }}/fast-gpt
+          # DOCKER_REPO: ghcr.io/${{ github.repository_owner }}/fast-gpt
+          DOCKER_REPO: ${{ github.repository_owner }}/fast-gpt
         run: |
           docker buildx build \
           --platform linux/amd64,linux/arm64 \
