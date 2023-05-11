@@ -12,6 +12,7 @@ declare global {
   var generatingVector: boolean;
   var QRCode: any;
   var httpsAgent: Agent;
+  var particlesJS: any;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
