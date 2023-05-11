@@ -106,7 +106,7 @@ const SelectUrlModal = ({
             <Box flex={'0 0 70px'}>网站地址</Box>
             <Input
               mx={2}
-              placeholder="需要获取内容的地址。例如：https://fastgpt.ahapocket.cn"
+              placeholder="需要获取内容的地址。例如：gpt.ahapocket.cn"
               value={webUrl}
               onChange={(e) => setWebUrl(e.target.value)}
               size={'sm'}

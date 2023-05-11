@@ -18,7 +18,7 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
     <Modal isOpen={true} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>wx交流群</ModalHeader>
+        <ModalHeader>QQ频道</ModalHeader>
         <ModalCloseButton />
         <ModalBody textAlign={'center'}>
           <Image
@@ -29,9 +29,9 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
             alt=""
           />
           <Box mt={2}>
-            微信号:
+            QQ频道号:
             <Box as={'span'} userSelect={'all'}>
-              fastgpt123
+            4lu816ki1o
             </Box>
           </Box>
         </ModalBody>

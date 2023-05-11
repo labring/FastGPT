@@ -71,7 +71,7 @@ export const getApiKey = async ({
   if (!mustPay && keyMap[model].userOpenAiKey) {
     return {
       user,
-      userOpenAiKey: keyMap[model].userOpenAiKey,
+      userOpenAiKey: keyMap[model].user,
       systemAuthKey: ''
     };
   }
