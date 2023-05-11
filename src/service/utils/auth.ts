@@ -71,11 +71,13 @@ export const getApiKey = async ({
   if (!mustPay && keyMap[model].userOpenAiKey) {
     return {
       user,
-      userOpenAiKey: keyMap[model].user,
+      userOpenAiKey: keyMap[model].userOpenAiKey,
       systemAuthKey: ''
     };
   }
 
+    
+    
   // 平台账号余额校验
   if (formatPrice(user.balance) <= 0) {
     return Promise.reject(ERROR_ENUM.insufficientQuota);
