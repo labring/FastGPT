@@ -141,6 +141,7 @@ const Home = () => {
       flexDirection={'column'}
       alignItems={'center'}
       pt={'20vh'}
+      overflow={'overlay'}
     >
       <Box id={'particles-js'} position={'absolute'} top={0} left={0} right={0} bottom={0} />
       <Image src="/icon/logo.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
@@ -162,7 +163,8 @@ const Home = () => {
       <Button
         my={5}
         fontSize={['xl', '3xl']}
-        h={['35px', '40px']}
+        h={'auto'}
+        py={[2, 3]}
         onClick={() => router.push(`/model`)}
       >
         点击开始

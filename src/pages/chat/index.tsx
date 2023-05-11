@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useMemo, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useMemo, useEffect, MouseEvent } from 'react';
 import { useRouter } from 'next/router';
 import {
   getInitChatSiteInfo,
@@ -26,7 +26,10 @@ import {
   useDisclosure,
   Drawer,
   DrawerOverlay,
-  DrawerContent
+  DrawerContent,
+  Card,
+  Tooltip,
+  useOutsideClick
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
@@ -76,6 +79,8 @@ const Chat = ({
 
   const ChatBox = useRef<HTMLDivElement>(null);
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
+  const ContextMenuRef = useRef(null);
+  const PhoneContextShow = useRef(false);
 
   // 中断请求
   const controller = useRef(new AbortController());
@@ -83,6 +88,12 @@ const Chat = ({
 
   const [inputVal, setInputVal] = useState(''); // user input prompt
   const [showSystemPrompt, setShowSystemPrompt] = useState('');
+  const [messageContextMenuData, setMessageContextMenuData] = useState<{
+    // message messageContextMenuData
+    left: number;
+    top: number;
+    message: ChatSiteItemType;
+  }>();
 
   const {
     lastChatModelId,
@@ -107,6 +118,24 @@ const Chat = ({
   const { Loading, setIsLoading } = useLoading();
   const { userInfo } = useUserStore();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
+  // close contextMenu
+  useOutsideClick({
+    ref: ContextMenuRef,
+    handler: () => {
+      // 移动端长按后会将其设置为true，松手时候也会触发一次，松手的时候需要忽略一次。
+      if (PhoneContextShow.current) {
+        PhoneContextShow.current = false;
+      } else {
+        messageContextMenuData &&
+          setTimeout(() => {
+            setMessageContextMenuData(undefined);
+            window.getSelection?.()?.empty?.();
+            window.getSelection?.()?.removeAllRanges?.();
+            document?.getSelection()?.empty();
+          });
+      }
+    }
+  });
 
   // 滚动到底部
   const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -234,6 +263,9 @@ const Chat = ({
 
       // refresh history
       loadHistory({ pageNum: 1, init: true });
+      setTimeout(() => {
+        generatingMessage();
+      }, 100);
     },
     [
       chatId,
@@ -327,24 +359,26 @@ const Chat = ({
   ]);
 
   // 删除一句话
-  const delChatRecord = useCallback(
-    async (index: number, id: string) => {
-      setIsLoading(true);
-      try {
-        // 删除数据库最后一句
-        await delChatRecordByIndex(chatId, id);
+  const delChatRecord = useCallback(async () => {
+    if (!messageContextMenuData) return;
+    setIsLoading(true);
+    const index = chatData.history.findIndex(
+      (item) => item._id === messageContextMenuData.message._id
+    );
 
-        setChatData((state) => ({
-          ...state,
-          history: state.history.filter((_, i) => i !== index)
-        }));
-      } catch (err) {
-        console.log(err);
-      }
-      setIsLoading(false);
-    },
-    [chatId, setChatData, setIsLoading]
-  );
+    try {
+      // 删除数据库最后一句
+      await delChatRecordByIndex(chatId, messageContextMenuData.message._id);
+
+      setChatData((state) => ({
+        ...state,
+        history: state.history.filter((_, i) => i !== index)
+      }));
+    } catch (err) {
+      console.log(err);
+    }
+    setIsLoading(false);
+  }, [chatData.history, chatId, messageContextMenuData, setChatData, setIsLoading]);
 
   // 复制内容
   const onclickCopy = useCallback(
@@ -433,6 +467,34 @@ const Chat = ({
     [loadHistory]
   );
 
+  // onclick chat message context
+  const onclickContextMenu = useCallback(
+    (e: MouseEvent<HTMLDivElement>, message: ChatSiteItemType) => {
+      e.preventDefault(); // 阻止默认右键菜单
+
+      // select all text
+      const range = document.createRange();
+      range.selectNodeContents(e.currentTarget as HTMLDivElement);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+
+      navigator.vibrate?.(50); // 震动 50 毫秒
+
+      if (!isPcDevice) {
+        PhoneContextShow.current = true;
+      }
+
+      setMessageContextMenuData({
+        left: e.clientX,
+        top: e.clientY,
+        message
+      });
+
+      return false;
+    },
+    [isPcDevice]
+  );
+
   // 获取对话信息
   const loadChatInfo = useCallback(
     async ({
@@ -511,6 +573,7 @@ const Chat = ({
     });
   });
 
+  // abort stream
   useEffect(() => {
     return () => {
       isLeavePage.current = true;
@@ -522,7 +585,7 @@ const Chat = ({
     <Flex
       h={'100%'}
       flexDirection={['column', 'row']}
-      backgroundColor={useColorModeValue('white', '')}
+      backgroundColor={useColorModeValue('#fefefe', '')}
     >
       {/* pc always show history. phone is only show when modelId is present */}
       {isPc || !modelId ? (
@@ -605,6 +668,7 @@ const Chat = ({
           position={'relative'}
           h={[0, '100%']}
           w={['100%', 0]}
+          pt={[2, 4]}
           flex={'1 0 0'}
           flexDirection={'column'}
         >
@@ -617,20 +681,25 @@ const Chat = ({
             w={'100%'}
             overflow={'overlay'}
           >
-            {chatData.history.map((item, index) => (
-              <Box
-                key={item._id}
-                py={[6, 9]}
-                px={[2, 4]}
-                backgroundColor={
-                  index % 2 !== 0 ? useColorModeValue('blackAlpha.50', 'gray.700') : ''
-                }
-                color={useColorModeValue('blackAlpha.700', 'white')}
-                borderBottom={'1px solid rgba(0,0,0,0.1)'}
-              >
-                <Flex maxW={'750px'} m={'auto'} alignItems={'flex-start'}>
-                  <Menu autoSelect={false}>
-                    <MenuButton as={Box} mr={[1, 4]} cursor={'pointer'}>
+            <Box maxW={['auto', '800px', '1000px']} m={'auto'}>
+              {chatData.history.map((item, index) => (
+                <Flex key={item._id} alignItems={'flex-start'} py={2} px={[2, 4]}>
+                  {item.obj === 'Human' && <Box flex={1} />}
+                  {/* avatar */}
+                  <Box
+                    {...(item.obj === 'AI'
+                      ? {
+                          order: 1,
+                          mr: ['6px', 4],
+                          cursor: 'pointer',
+                          onClick: () => router.push(`/model?modelId=${chatData.modelId}`)
+                        }
+                      : {
+                          order: 3,
+                          ml: ['6px', 4]
+                        })}
+                  >
+                    <Tooltip label={item.obj === 'AI' ? 'AI助手详情' : ''}>
                       <Image
                         className="avatar"
                         src={
@@ -639,75 +708,73 @@ const Chat = ({
                             : chatData.model.avatar || LOGO_ICON
                         }
                         alt="avatar"
-                        w={['20px', '30px']}
-                        maxH={'50px'}
+                        w={['20px', '34px']}
+                        h={['20px', '34px']}
+                        borderRadius={'50%'}
                         objectFit={'contain'}
                       />
-                    </MenuButton>
-                    <MenuList fontSize={'sm'}>
-                      {chatData.model.canUse && item.obj === 'AI' && (
-                        <MenuItem onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}>
-                          AI助手详情
-                        </MenuItem>
-                      )}
-                      <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>
-                      <MenuItem onClick={() => delChatRecord(index, item._id)}>删除该行</MenuItem>
-                    </MenuList>
-                  </Menu>
-                  <Box flex={'1 0 0'} w={0} overflow={'hidden'}>
+                    </Tooltip>
+                  </Box>
+                  {/* message */}
+                  <Flex order={2} maxW={['calc(100% - 50px)', '80%']}>
                     {item.obj === 'AI' ? (
-                      <>
-                        <Markdown
-                          source={item.value}
-                          isChatting={isChatting && index === chatData.history.length - 1}
-                        />
-                        {item.systemPrompt && (
-                          <Button
-                            size={'xs'}
-                            mt={2}
-                            fontWeight={'normal'}
-                            colorScheme={'gray'}
-                            variant={'outline'}
-                            onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
-                          >
-                            查看提示词
-                          </Button>
+                      <Box w={'100%'}>
+                        {isPc && (
+                          <Box color={'myGray.600'} fontSize={'sm'} mb={1}>
+                            {chatData.model.name}
+                          </Box>
                         )}
-                      </>
+                        <Card
+                          bg={'white'}
+                          px={4}
+                          py={3}
+                          borderRadius={'0 8px 8px 8px'}
+                          onContextMenu={(e) => onclickContextMenu(e, item)}
+                        >
+                          <Markdown
+                            source={item.value}
+                            isChatting={isChatting && index === chatData.history.length - 1}
+                          />
+                          {item.systemPrompt && (
+                            <Button
+                              size={'xs'}
+                              mt={2}
+                              fontWeight={'normal'}
+                              colorScheme={'gray'}
+                              variant={'outline'}
+                              w={'90px'}
+                              onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
+                            >
+                              查看提示词
+                            </Button>
+                          )}
+                        </Card>
+                      </Box>
                     ) : (
-                      <Box className="markdown" whiteSpace={'pre-wrap'}>
-                        <Box as={'p'}>{item.value}</Box>
+                      <Box>
+                        {isPc && (
+                          <Box color={'myGray.600'} mb={1} fontSize={'sm'} textAlign={'right'}>
+                            Human
+                          </Box>
+                        )}
+                        <Card
+                          className="markdown"
+                          whiteSpace={'pre-wrap'}
+                          px={4}
+                          py={3}
+                          borderRadius={'8px 0 8px 8px'}
+                          bg={'myBlue.300'}
+                          onContextMenu={(e) => onclickContextMenu(e, item)}
+                        >
+                          <Box as={'p'}>{item.value}</Box>
+                        </Card>
                       </Box>
                     )}
-                  </Box>
-                  {/* copy and clear icon */}
-                  {isPc && (
-                    <Flex h={'100%'} flexDirection={'column'} ml={2} w={'14px'} height={'100%'}>
-                      <Box minH={'40px'} flex={1}>
-                        <MyIcon
-                          name="copy"
-                          w={'14px'}
-                          cursor={'pointer'}
-                          color={'blackAlpha.700'}
-                          onClick={() => onclickCopy(item.value)}
-                        />
-                      </Box>
-                      <MyIcon
-                        name="delete"
-                        w={'14px'}
-                        cursor={'pointer'}
-                        color={'blackAlpha.700'}
-                        _hover={{
-                          color: 'red.600'
-                        }}
-                        onClick={() => delChatRecord(index, item._id)}
-                      />
-                    </Flex>
-                  )}
+                  </Flex>
                 </Flex>
-              </Box>
-            ))}
-            {chatData.history.length === 0 && <Empty model={chatData.model} />}
+              ))}
+              {chatData.history.length === 0 && <Empty model={chatData.model} />}
+            </Box>
           </Box>
           {/* 发送区 */}
           {chatData.model.canUse ? (
@@ -715,7 +782,7 @@ const Chat = ({
               <Box
                 py={'18px'}
                 position={'relative'}
-                boxShadow={`0 0 15px rgba(0,0,0,0.1)`}
+                boxShadow={`0 0 10px rgba(0,0,0,0.1)`}
                 borderTop={['1px solid', 0]}
                 borderTopColor={useColorModeValue('gray.200', 'gray.700')}
                 borderRadius={['none', 'md']}
@@ -751,7 +818,7 @@ const Chat = ({
                   }}
                   onKeyDown={(e) => {
                     // 触发快捷发送
-                    if (isPc && e.keyCode === 13 && !e.shiftKey) {
+                    if (isPcDevice && e.keyCode === 13 && !e.shiftKey) {
                       sendPrompt();
                       e.preventDefault();
                     }
@@ -817,6 +884,25 @@ const Chat = ({
           </ModalContent>
         </Modal>
       }
+      {/* context menu */}
+      {messageContextMenuData && (
+        <Box
+          zIndex={10}
+          position={'fixed'}
+          top={messageContextMenuData.top}
+          left={messageContextMenuData.left}
+        >
+          <Box ref={ContextMenuRef}></Box>
+          <Menu isOpen>
+            <MenuList minW={`100px !important`}>
+              <MenuItem onClick={() => onclickCopy(messageContextMenuData.message.value)}>
+                复制
+              </MenuItem>
+              <MenuItem onClick={delChatRecord}>删除</MenuItem>
+            </MenuList>
+          </Menu>
+        </Box>
+      )}
     </Flex>
   );
 };

@@ -9,9 +9,11 @@ import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
+  '/': true,
   '/login': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
+  '/': true,
   '/login': true
 };
 
