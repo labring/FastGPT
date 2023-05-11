@@ -87,6 +87,13 @@ textarea::placeholder {
   }
 }
 
+@supports (bottom: constant(safe-area-inset-bottom)) or (bottom: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 #nprogress .bar {
   background: '#85b1ff' !important; //自定义颜色
 }

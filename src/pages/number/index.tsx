@@ -13,10 +13,20 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
+import Loading from '@/components/Loading';
 
-const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
-const BilTable = dynamic(() => import('./components/BillTable'));
-const PayModal = dynamic(() => import('./components/PayModal'));
+const PayRecordTable = dynamic(() => import('./components/PayRecordTable'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
+const BilTable = dynamic(() => import('./components/BillTable'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
+const PayModal = dynamic(() => import('./components/PayModal'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
 
 const NumberSetting = () => {
   const router = useRouter();
