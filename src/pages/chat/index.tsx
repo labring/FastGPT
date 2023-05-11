@@ -44,10 +44,20 @@ import { useLoading } from '@/hooks/useLoading';
 import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
+import Loading from '@/components/Loading';
 
-const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'));
-const History = dynamic(() => import('./components/History'));
-const Empty = dynamic(() => import('./components/Empty'));
+const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
+const History = dynamic(() => import('./components/History'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
+const Empty = dynamic(() => import('./components/Empty'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
 
 import styles from './index.module.scss';
 

@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo } from 'react';
 import { Box, useColorMode, Flex } from '@chakra-ui/react';
-import Navbar from './navbar';
-import NavbarPhone from './navbarPhone';
 import { useRouter } from 'next/router';
 import { useScreen } from '@/hooks/useScreen';
 import { useLoading } from '@/hooks/useLoading';
-import Auth from './auth';
 import { useGlobalStore } from '@/store/global';
+import Auth from './auth';
+import Navbar from './navbar';
+import NavbarPhone from './navbarPhone';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/login': true
