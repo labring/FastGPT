@@ -29,7 +29,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
           const code = String(children);
 
           return !inline || match ? (
-            <Box my={3} borderRadius={'md'} overflow={'hidden'} backgroundColor={'#222'}>
+            <Box my={3} borderRadius={'md'} overflow={'overlay'} backgroundColor={'#222'}>
               <Flex
                 className="code-header"
                 py={2}
