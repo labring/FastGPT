@@ -185,8 +185,8 @@ const SelectFileModal = ({
             <Radio
               ml={3}
               list={[
-                { label: 'QA拆分', value: 'qa' },
-                { label: '直接分段', value: 'subsection' }
+                { label: '直接分段', value: 'subsection' },
+                { label: 'QA拆分', value: 'qa' }
               ]}
               value={mode}
               onChange={(e) => setMode(e as 'subsection' | 'qa')}
