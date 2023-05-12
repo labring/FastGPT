@@ -40,7 +40,7 @@ export const lafClaudChat = async ({
       headers: {
         Authorization: apiKey
       },
-      timeout: stream ? 40000 : 240000,
+      timeout: stream ? 60000 : 240000,
       responseType: stream ? 'stream' : 'json'
     }
   );
