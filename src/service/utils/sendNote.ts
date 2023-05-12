@@ -25,33 +25,28 @@ const emailMap: { [key: string]: any } = {
     <includetail>
         <table style="font-family: Segoe UI, SegoeUIWF, Arial, sans-serif; font-size: 12px; color: #333333; border-spacing: 0px; border-collapse: collapse; padding: 0px; width: 580px; direction: ltr">
             <tbody>
-            <tr>
-                <td style="font-size: 10px; padding: 0px 0px 7px 0px; text-align: right">
-                    您正在注册 FastGPT 账号，验证码为：${code} FastGPT &nbsp;GPT
-                </td>
-            </tr>
             <tr style="background-color: #0078D4">
                 <td style="padding: 0px">
                     <table style="font-family: Segoe UI, SegoeUIWF, Arial, sans-serif; border-spacing: 0px; border-collapse: collapse; width: 100%">
                         <tbody>
                         <tr>
                             <td style="padding: 0px; width: 175px; max-width: 175px">
-                                <img src="https://omex.cdn.office.net/images/retailer.images/invite/4aa98a27d0d4978a.png">
+                                <img src="https://xxx/images/retailer.images/invite/4aa98a27d0d4978a.png">
                             </td>
                             <td style="padding: 0px; width: 100%">
                             </td>
                             <td style="padding: 0px; width: 107px; max-width: 107px">
-                                <img src="https://omex.cdn.office.net/images/retailer.images/invite/fd67eae9865f5f10.png">
+                                <img src="https://xxx/images/retailer.images/invite/fd67eae9865f5f10.png">
                             </td>
                         </tr>
                         <tr>
                             <td style="font-size: 38px; color: #FFFFFF; padding: 12px 22px 4px 22px" colspan="3">
-                               <div>您正在注册 FastGPT 账号，验证码为：</div>
+                               <div>您正在注册 FastGPT 账号</div>
                             </td>
                         </tr>
                         <tr>
                             <td style="font-size: 20px; color: #FFFFFF; padding: 0px 22px 18px 22px" colspan="3">
-                              ${code}
+                               验证码为：${code}
                             </td>
                         </tr>
                         </tbody>
@@ -88,7 +83,7 @@ const emailMap: { [key: string]: any } = {
                         <tr>
                             <td style="font-size: 12px; padding: 0px;">
                                 想要了解有关  FastGPTxxx 更多信息?
-                                <a href="" style="color: #0044CC; text-decoration: none">查看 Office 常见问题。</a>
+                                <a href="" style="color: #0044CC; text-decoration: none">查看 xxxGPT 常见问题。</a>
                             </td>
                         </tr>
                         </tbody>
@@ -97,18 +92,18 @@ const emailMap: { [key: string]: any } = {
             </tr>
             <tr>
                 <td style="padding: 35px 0px; color: #B2B2B2; font-size: 12px">
-                    Microsoft Office
+                    xx GPT
                     <br>
-                    One Microsoft Way
+                    One of the ChatGPT Way
                     <br>
-                    Redmond, WA
+                    Shanghai, HP
                     <br>
-                    98052 USA
+                    10000 CN
                 </td>
             </tr>
             <tr>
                 <td style="padding: 0px 0px 10px 0px; color: #B2B2B2; font-size: 12px">
-                    版权所有 Microsoft Corporation
+                    版权所有 xxGPT
                     <br>
                     <a href="" style="color: #0044CC">隐私声明</a>
                     <br>
