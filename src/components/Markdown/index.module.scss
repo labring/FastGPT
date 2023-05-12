@@ -337,10 +337,10 @@
 }
 .markdown {
   text-align: justify;
-  overflow-y: hidden;
   tab-size: 4;
   word-spacing: normal;
   word-break: break-all;
+  width: 100%;
 
   p {
     white-space: pre-line;
@@ -353,13 +353,13 @@
     margin: 0;
     border: none;
     border-radius: 0;
-    background-color: #222 !important;
+    background-color: #292b33 !important;
     overflow-x: auto;
     color: #fff;
   }
 
   pre code {
-    background-color: #222 !important;
+    background-color: #292b33 !important;
     width: 100%;
   }
 

@@ -1,17 +1,19 @@
 import React, { useEffect, useMemo } from 'react';
 import { Box, useColorMode, Flex } from '@chakra-ui/react';
-import Navbar from './navbar';
-import NavbarPhone from './navbarPhone';
 import { useRouter } from 'next/router';
 import { useScreen } from '@/hooks/useScreen';
 import { useLoading } from '@/hooks/useLoading';
-import Auth from './auth';
 import { useGlobalStore } from '@/store/global';
+import Auth from './auth';
+import Navbar from './navbar';
+import NavbarPhone from './navbarPhone';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
+  '/': true,
   '/login': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
+  '/': true,
   '/login': true
 };
 
@@ -35,7 +37,10 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
 
   return (
     <>
-      <Box h={'100%'} bg={'gray.100'}>
+      <Box
+        h={'100%'}
+        bgGradient={'linear(to-t,rgba(173, 206, 255, 0.05) 0%, rgba(173, 206, 255, 0.12) 100%)'}
+      >
         {isPc ? (
           pcUnShowLayoutRoute[router.pathname] ? (
             <Auth>{children}</Auth>

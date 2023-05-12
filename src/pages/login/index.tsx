@@ -74,7 +74,7 @@ const Login = ({ isPcDevice }: { isPcDevice: boolean }) => {
         height="100%"
         w={'100%'}
         maxW={'1240px'}
-        maxH={['auto', '660px']}
+        maxH={['auto', 'max(660px,80vh)']}
         backgroundColor={'#fff'}
         alignItems={'center'}
         justifyContent={'center'}

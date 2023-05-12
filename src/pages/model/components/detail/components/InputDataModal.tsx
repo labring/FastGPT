@@ -44,6 +44,13 @@ const InputDataModal = ({
    */
   const sureImportData = useCallback(
     async (e: FormData) => {
+      if (e.a.length + e.q.length >= 3000) {
+        toast({
+          title: '总长度超长了',
+          status: 'warning'
+        });
+        return;
+      }
       setImporting(true);
 
       try {
@@ -66,7 +73,11 @@ const InputDataModal = ({
           q: ''
         });
         onSuccess();
-      } catch (err) {
+      } catch (err: any) {
+        toast({
+          title: err?.message || '出现了点意外~',
+          status: 'error'
+        });
         console.log(err);
       }
       setImporting(false);
@@ -121,8 +132,8 @@ const InputDataModal = ({
           <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['230px', '100%']}>
             <Box h={'30px'}>{'匹配的知识点'}</Box>
             <Textarea
-              placeholder={'匹配的知识点。这部分内容会被搜索，请把控内容的质量。最多 1500 字。'}
-              maxLength={1500}
+              placeholder={'匹配的知识点。这部分内容会被搜索，请把控内容的质量。总和最多 3000 字。'}
+              maxLength={3000}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register(`q`, {
@@ -134,9 +145,9 @@ const InputDataModal = ({
             <Box h={'30px'}>补充知识</Box>
             <Textarea
               placeholder={
-                '补充知识。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，你可以讲一些细节的内容填写在这里。最多 1500 字。'
+                '补充知识。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，你可以讲一些细节的内容填写在这里。总和最多 3000 字。'
               }
-              maxLength={1500}
+              maxLength={3000}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register('a')}

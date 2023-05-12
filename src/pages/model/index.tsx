@@ -5,8 +5,12 @@ import { useRouter } from 'next/router';
 import ModelList from './components/ModelList';
 import dynamic from 'next/dynamic';
 import { useUserStore } from '@/store/user';
+import Loading from '@/components/Loading';
 
-const ModelDetail = dynamic(() => import('./components/detail/index'));
+const ModelDetail = dynamic(() => import('./components/detail/index'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
 
 const Model = ({ modelId, isPcDevice }: { modelId: string; isPcDevice: boolean }) => {
   const router = useRouter();
