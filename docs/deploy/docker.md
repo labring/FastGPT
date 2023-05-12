@@ -8,6 +8,7 @@
 2. [clash 方案](./proxy/clash.md) - 仅需一台服务器（需要有 clash）
 3. [nginx 方案](./proxy/nginx.md) - 需要一台国外服务器
 4. [cloudflare 方案](./proxy/cloudflare.md) - 需要有域名（每日免费 10w 次代理请求）
+5. [腾讯云函数代理方案](https://github.com/easychen/openai-api-proxy/blob/master/FUNC.md) - 仅需一台服务器
 
 ### 1. 准备一些内容
 
