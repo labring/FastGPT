@@ -395,7 +395,6 @@ const Chat = ({
       const getHistoryHtml = () => {
         const historyDom = document.getElementById('history');
         if (!historyDom) return;
-
         const dom = Array.from(historyDom.children).map((child, i) => {
           const avatar = `<img src="${
             child.querySelector<HTMLImageElement>('.avatar')?.src
@@ -672,16 +671,8 @@ const Chat = ({
           flex={'1 0 0'}
           flexDirection={'column'}
         >
-          <Box
-            id={'history'}
-            ref={ChatBox}
-            pb={[4, 0]}
-            flex={'1 0 0'}
-            h={0}
-            w={'100%'}
-            overflow={'overlay'}
-          >
-            <Box maxW={['auto', '800px', '1000px']} m={'auto'}>
+          <Box ref={ChatBox} pb={[4, 0]} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'}>
+            <Box id={'history'} maxW={['auto', '800px', '1000px']} m={'auto'}>
               {chatData.history.map((item, index) => (
                 <Flex key={item._id} alignItems={'flex-start'} py={2} px={[2, 4]}>
                   {item.obj === 'Human' && <Box flex={1} />}
