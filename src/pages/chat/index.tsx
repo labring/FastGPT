@@ -359,26 +359,26 @@ const Chat = ({
   ]);
 
   // 删除一句话
-  const delChatRecord = useCallback(async () => {
-    if (!messageContextMenuData) return;
-    setIsLoading(true);
-    const index = chatData.history.findIndex(
-      (item) => item._id === messageContextMenuData.message._id
-    );
+  const delChatRecord = useCallback(
+    async (index: number, historyId: string) => {
+      if (!messageContextMenuData) return;
+      setIsLoading(true);
 
-    try {
-      // 删除数据库最后一句
-      await delChatRecordByIndex(chatId, messageContextMenuData.message._id);
+      try {
+        // 删除数据库最后一句
+        await delChatRecordByIndex(chatId, historyId);
 
-      setChatData((state) => ({
-        ...state,
-        history: state.history.filter((_, i) => i !== index)
-      }));
-    } catch (err) {
-      console.log(err);
-    }
-    setIsLoading(false);
-  }, [chatData.history, chatId, messageContextMenuData, setChatData, setIsLoading]);
+        setChatData((state) => ({
+          ...state,
+          history: state.history.filter((_, i) => i !== index)
+        }));
+      } catch (err) {
+        console.log(err);
+      }
+      setIsLoading(false);
+    },
+    [chatId, messageContextMenuData, setChatData, setIsLoading]
+  );
 
   // 复制内容
   const onclickCopy = useCallback(
@@ -485,7 +485,7 @@ const Chat = ({
       }
 
       setMessageContextMenuData({
-        left: e.clientX,
+        left: e.clientX - 20,
         top: e.clientY,
         message
       });
@@ -686,35 +686,51 @@ const Chat = ({
                 <Flex key={item._id} alignItems={'flex-start'} py={2} px={[2, 4]}>
                   {item.obj === 'Human' && <Box flex={1} />}
                   {/* avatar */}
-                  <Box
-                    {...(item.obj === 'AI'
-                      ? {
-                          order: 1,
-                          mr: ['6px', 4],
-                          cursor: 'pointer',
-                          onClick: () => router.push(`/model?modelId=${chatData.modelId}`)
-                        }
-                      : {
-                          order: 3,
-                          ml: ['6px', 4]
-                        })}
-                  >
-                    <Tooltip label={item.obj === 'AI' ? 'AI助手详情' : ''}>
-                      <Image
-                        className="avatar"
-                        src={
-                          item.obj === 'Human'
-                            ? userInfo?.avatar
-                            : chatData.model.avatar || LOGO_ICON
-                        }
-                        alt="avatar"
-                        w={['20px', '34px']}
-                        h={['20px', '34px']}
-                        borderRadius={'50%'}
-                        objectFit={'contain'}
-                      />
-                    </Tooltip>
-                  </Box>
+                  <Menu autoSelect={false} isLazy>
+                    <MenuButton
+                      as={Box}
+                      {...(item.obj === 'AI'
+                        ? {
+                            order: 1,
+                            mr: ['6px', 4],
+                            cursor: 'pointer',
+                            onClick: () => isPc && router.push(`/model?modelId=${chatData.modelId}`)
+                          }
+                        : {
+                            order: 3,
+                            ml: ['6px', 4]
+                          })}
+                    >
+                      <Tooltip label={item.obj === 'AI' ? 'AI助手详情' : ''}>
+                        <Image
+                          className="avatar"
+                          src={
+                            item.obj === 'Human'
+                              ? userInfo?.avatar
+                              : chatData.model.avatar || LOGO_ICON
+                          }
+                          alt="avatar"
+                          w={['20px', '34px']}
+                          h={['20px', '34px']}
+                          borderRadius={'50%'}
+                          objectFit={'contain'}
+                        />
+                      </Tooltip>
+                    </MenuButton>
+                    {!isPc && (
+                      <MenuList fontSize={'sm'} minW={'100px !important'}>
+                        {chatData.model.canUse && item.obj === 'AI' && (
+                          <MenuItem
+                            onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}
+                          >
+                            AI助手详情
+                          </MenuItem>
+                        )}
+                        <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>
+                        <MenuItem onClick={() => delChatRecord(index, item._id)}>删除</MenuItem>
+                      </MenuList>
+                    )}
+                  </Menu>
                   {/* message */}
                   <Flex order={2} maxW={['calc(100% - 50px)', '80%']}>
                     {item.obj === 'AI' ? (
@@ -898,7 +914,18 @@ const Chat = ({
               <MenuItem onClick={() => onclickCopy(messageContextMenuData.message.value)}>
                 复制
               </MenuItem>
-              <MenuItem onClick={delChatRecord}>删除</MenuItem>
+              <MenuItem
+                onClick={() =>
+                  delChatRecord(
+                    chatData.history.findIndex(
+                      (item) => item._id === messageContextMenuData.message._id
+                    ),
+                    messageContextMenuData.message._id
+                  )
+                }
+              >
+                删除
+              </MenuItem>
             </MenuList>
           </Menu>
         </Box>
