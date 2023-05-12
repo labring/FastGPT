@@ -17,18 +17,18 @@ const Navbar = () => {
   const navbarList = useMemo(
     () => [
       {
-        label: 'AI助手',
-        icon: 'model',
-        link: `/model?modelId=${lastModelId}`,
-        activeLink: ['/model']
-      },
-      {
         label: '聊天',
         icon: 'chat',
         link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
       },
 
+      {
+        label: 'AI助手',
+        icon: 'model',
+        link: `/model?modelId=${lastModelId}`,
+        activeLink: ['/model']
+      },
       {
         label: '共享',
         icon: 'shareMarket',
