@@ -172,7 +172,7 @@ const PhoneSliderBar = ({
 
       <Divider my={3} colorScheme={useColorModeValue('gray', 'white')} />
 
-      <RenderButton onClick={() => router.push('/')}>
+      <RenderButton onClick={() => router.push('/model')}>
         <>
           <MyIcon name="out" fill={'white'} w={'18px'} h={'18px'} mr={4} />
           退出聊天

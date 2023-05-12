@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       newChatId: '' | string;
       chatId: '' | string;
       modelId: string;
-      prompts: ChatItemType[];
+      prompts: [ChatItemType, ChatItemType];
     };
 
     if (!prompts) {
@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         modelId,
         content,
         title: content[0].value.slice(0, 20),
-        latestChat: content[content.length - 1].value
+        latestChat: content[1].value
       });
       return jsonRes(res, {
         data: _id
@@ -54,8 +54,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             $each: content
           }
         },
-        updateTime: new Date(),
-        latestChat: content[content.length - 1].value
+        title: content[0].value.slice(0, 20),
+        latestChat: content[1].value,
+        updateTime: new Date()
       });
     }
     jsonRes(res);

@@ -145,7 +145,7 @@ const ModelEditForm = ({
         </Flex>
         {isOwner && (
           <Flex mt={5} alignItems={'center'}>
-            <Box flex={'0 0 150px'}>删除AI和知识库</Box>
+            <Box flex={'0 0 120px'}>删除AI和知识库</Box>
             <Button
               colorScheme={'gray'}
               variant={'outline'}

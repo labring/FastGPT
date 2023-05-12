@@ -10,16 +10,16 @@ const NavbarPhone = () => {
   const navbarList = useMemo(
     () => [
       {
-        label: 'AI助手',
-        icon: 'tabbarModel',
-        link: `/model`,
-        activeLink: ['/model']
-      },
-      {
         label: '聊天',
         icon: 'tabbarChat',
         link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
+      },
+      {
+        label: 'AI助手',
+        icon: 'tabbarModel',
+        link: `/model`,
+        activeLink: ['/model']
       },
       {
         label: '发现',

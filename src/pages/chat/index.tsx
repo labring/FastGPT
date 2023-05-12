@@ -29,19 +29,21 @@ import {
   DrawerContent,
   Card,
   Tooltip,
-  useOutsideClick
+  useOutsideClick,
+  useTheme
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useCopyData } from '@/utils/tools';
+import { useCopyData, voiceBroadcast } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
 import Markdown from '@/components/Markdown';
 import { LOGO_ICON } from '@/constants/chat';
+import { ChatModelMap } from '@/constants/model';
 import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
 import { fileDownload } from '@/utils/file';
@@ -75,7 +77,9 @@ const Chat = ({
   chatId: string;
   isPcDevice: boolean;
 }) => {
+  const hasVoiceApi = !!window.speechSynthesis;
   const router = useRouter();
+  const theme = useTheme();
 
   const ChatBox = useRef<HTMLDivElement>(null);
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
@@ -118,6 +122,7 @@ const Chat = ({
   const { Loading, setIsLoading } = useLoading();
   const { userInfo } = useUserStore();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
+
   // close contextMenu
   useOutsideClick({
     ref: ContextMenuRef,
@@ -575,19 +580,64 @@ const Chat = ({
   // abort stream
   useEffect(() => {
     return () => {
+      window.speechSynthesis?.cancel();
       isLeavePage.current = true;
       controller.current?.abort();
     };
   }, [modelId, chatId]);
 
+  // context menu component
+  const RenderContextMenu = useCallback(
+    ({
+      history,
+      index,
+      AiDetail = false
+    }: {
+      history: ChatSiteItemType;
+      index: number;
+      AiDetail?: boolean;
+    }) => (
+      <MenuList fontSize={'sm'} minW={'100px !important'}>
+        {AiDetail && chatData.model.canUse && history.obj === 'AI' && (
+          <MenuItem
+            borderBottom={theme.borders.base}
+            onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}
+          >
+            AI助手详情
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => onclickCopy(history.value)}>复制</MenuItem>
+        {hasVoiceApi && (
+          <MenuItem
+            borderBottom={theme.borders.base}
+            onClick={() => voiceBroadcast({ text: history.value })}
+          >
+            语音播报
+          </MenuItem>
+        )}
+
+        <MenuItem onClick={() => delChatRecord(index, history._id)}>删除</MenuItem>
+      </MenuList>
+    ),
+    [
+      chatData.model.canUse,
+      chatData.modelId,
+      delChatRecord,
+      hasVoiceApi,
+      onclickCopy,
+      router,
+      theme.borders.base
+    ]
+  );
+
   return (
     <Flex
       h={'100%'}
       flexDirection={['column', 'row']}
-      backgroundColor={useColorModeValue('#fefefe', '')}
+      backgroundColor={useColorModeValue('#fdfdfd', '')}
     >
       {/* pc always show history. phone is only show when modelId is present */}
-      {isPc || !modelId ? (
+      {(isPc || !modelId) && (
         <Box flex={[1, '0 0 250px']} w={['100%', 0]} h={'100%'}>
           <History
             onclickDelHistory={onclickDelHistory}
@@ -595,29 +645,47 @@ const Chat = ({
             isPcDevice={isPcDevice}
           />
         </Box>
-      ) : (
-        <Box
-          h={'44px'}
-          borderBottom={'1px solid '}
-          borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
+      )}
+
+      {/* 聊天内容 */}
+      {modelId && (
+        <Flex
+          position={'relative'}
+          h={[0, '100%']}
+          w={['100%', 0]}
+          flex={'1 0 0'}
+          flexDirection={'column'}
         >
           <Flex
             alignItems={'center'}
-            h={'100%'}
             justifyContent={'space-between'}
-            backgroundColor={useColorModeValue('white', 'gray.700')}
-            color={useColorModeValue('blackAlpha.700', 'white')}
+            py={[3, 5]}
             px={5}
+            borderBottom={'1px solid '}
+            borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
+            color={useColorModeValue('myGray.900', 'white')}
           >
-            <MyIcon
-              name={'tabbarMore'}
-              w={'14px'}
-              h={'14px'}
-              color={useColorModeValue('blackAlpha.700', 'white')}
-              onClick={onOpenSlider}
-            />
-            <Box>{chatData.model.name}</Box>
-            {chatId && (
+            {!isPc && (
+              <MyIcon
+                name={'tabbarMore'}
+                w={'14px'}
+                h={'14px'}
+                color={useColorModeValue('blackAlpha.700', 'white')}
+                onClick={onOpenSlider}
+              />
+            )}
+            <Box
+              cursor={'pointer'}
+              lineHeight={1.2}
+              textAlign={'center'}
+              px={3}
+              fontSize={['sm', 'md']}
+              onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}
+            >
+              {chatData.model.name} {ChatModelMap[chatData.chatModel].name}
+              {chatData.history.length > 0 ? ` (${chatData.history.length})` : ''}
+            </Box>
+            {chatId ? (
               <Menu autoSelect={false}>
                 <MenuButton lineHeight={1}>
                   <MyIcon
@@ -650,27 +718,10 @@ const Chat = ({
                   <MenuItem onClick={() => onclickExportChat('md')}>导出Markdown格式</MenuItem>
                 </MenuList>
               </Menu>
+            ) : (
+              <Box w={'16px'} h={'16px'} />
             )}
           </Flex>
-          <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
-            <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-            <DrawerContent maxWidth={'250px'}>
-              <PhoneSliderBar chatId={chatId} modelId={modelId} onClose={onCloseSlider} />
-            </DrawerContent>
-          </Drawer>
-        </Box>
-      )}
-
-      {/* 聊天内容 */}
-      {modelId && (
-        <Flex
-          position={'relative'}
-          h={[0, '100%']}
-          w={['100%', 0]}
-          pt={[2, 4]}
-          flex={'1 0 0'}
-          flexDirection={'column'}
-        >
           <Box ref={ChatBox} pb={[4, 0]} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'}>
             <Box id={'history'} maxW={['auto', '800px', '1000px']} m={'auto'}>
               {chatData.history.map((item, index) => (
@@ -683,13 +734,13 @@ const Chat = ({
                       {...(item.obj === 'AI'
                         ? {
                             order: 1,
-                            mr: ['6px', 4],
+                            mr: ['6px', 2],
                             cursor: 'pointer',
                             onClick: () => isPc && router.push(`/model?modelId=${chatData.modelId}`)
                           }
                         : {
                             order: 3,
-                            ml: ['6px', 4]
+                            ml: ['6px', 2]
                           })}
                     >
                       <Tooltip label={item.obj === 'AI' ? 'AI助手详情' : ''}>
@@ -708,29 +759,12 @@ const Chat = ({
                         />
                       </Tooltip>
                     </MenuButton>
-                    {!isPc && (
-                      <MenuList fontSize={'sm'} minW={'100px !important'}>
-                        {chatData.model.canUse && item.obj === 'AI' && (
-                          <MenuItem
-                            onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}
-                          >
-                            AI助手详情
-                          </MenuItem>
-                        )}
-                        <MenuItem onClick={() => onclickCopy(item.value)}>复制</MenuItem>
-                        <MenuItem onClick={() => delChatRecord(index, item._id)}>删除</MenuItem>
-                      </MenuList>
-                    )}
+                    {!isPc && <RenderContextMenu history={item} index={index} AiDetail />}
                   </Menu>
                   {/* message */}
-                  <Flex order={2} maxW={['calc(100% - 50px)', '80%']}>
+                  <Flex order={2} pt={2} maxW={['calc(100% - 50px)', '80%']}>
                     {item.obj === 'AI' ? (
                       <Box w={'100%'}>
-                        {isPc && (
-                          <Box color={'myGray.600'} fontSize={'sm'} mb={1}>
-                            {chatData.model.name}
-                          </Box>
-                        )}
                         <Card
                           bg={'white'}
                           px={4}
@@ -759,11 +793,6 @@ const Chat = ({
                       </Box>
                     ) : (
                       <Box>
-                        {isPc && (
-                          <Box color={'myGray.600'} mb={1} fontSize={'sm'} textAlign={'right'}>
-                            Human
-                          </Box>
-                        )}
                         <Card
                           className="markdown"
                           whiteSpace={'pre-wrap'}
@@ -879,6 +908,15 @@ const Chat = ({
         </Flex>
       )}
 
+      {/* phone slider */}
+      {!isPc && (
+        <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
+          <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+          <DrawerContent maxWidth={'250px'}>
+            <PhoneSliderBar chatId={chatId} modelId={modelId} onClose={onCloseSlider} />
+          </DrawerContent>
+        </Drawer>
+      )}
       {/* system prompt show modal */}
       {
         <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
@@ -901,23 +939,13 @@ const Chat = ({
         >
           <Box ref={ContextMenuRef}></Box>
           <Menu isOpen>
-            <MenuList minW={`100px !important`}>
-              <MenuItem onClick={() => onclickCopy(messageContextMenuData.message.value)}>
-                复制
-              </MenuItem>
-              <MenuItem
-                onClick={() =>
-                  delChatRecord(
-                    chatData.history.findIndex(
-                      (item) => item._id === messageContextMenuData.message._id
-                    ),
-                    messageContextMenuData.message._id
-                  )
-                }
-              >
-                删除
-              </MenuItem>
-            </MenuList>
+            <RenderContextMenu
+              history={messageContextMenuData.message}
+              index={chatData.history.findIndex(
+                (item) => item._id === messageContextMenuData.message._id
+              )}
+              AiDetail={!isPc}
+            />
           </Menu>
         </Box>
       )}
