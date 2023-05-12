@@ -19,15 +19,15 @@ docker -v
 6、需要创建一个放置 pg 和 mongo 数据的文件夹，这里创建在`~/fastgpt`目录中,里面有`pg` 和`mongo `两个文件夹
 
 ```
-➜  fast-gpt pwd
-/Users/jie/fast-gpt
-➜  fast-gpt ls
+➜  fastgpt pwd
+/Users/jie/fastgpt
+➜  fastgpt ls
 mongo pg
 ```
 
 ### docker 部署方式
 
-这种方式主要是为了方便调试，可以使用`pnpm dev ` 运行 fast-gpt 项目
+这种方式主要是为了方便调试，可以使用`pnpm dev ` 运行 fastgpt 项目
 
 **1、.env.local 文件**
 
@@ -61,13 +61,13 @@ PG_DB_NAME=xxx
 **2、部署 mongo**
 
 ```
-docker run --name mongo -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=username -e MONGO_INITDB_ROOT_PASSWORD=password -v ~/fast-gpt/mongo/data:/data/db -d mongo:4.0.1
+docker run --name mongo -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=username -e MONGO_INITDB_ROOT_PASSWORD=password -v ~/fastgpt/mongo/data:/data/db -d mongo:4.0.1
 ```
 
 **3、部署 pgsql**
 
 ```
-docker run -it --name pg -e "POSTGRES_PASSWORD=xxx" -e POSTGRES_USER=xxx -p 8100:5432 -v ~/fast-gpt/pg/data:/var/lib/postgresql/data -d octoberlan/pgvector:v0.4.1
+docker run -it --name pg -e "POSTGRES_PASSWORD=xxx" -e POSTGRES_USER=xxx -p 8100:5432 -v ~/fastgpt/pg/data:/var/lib/postgresql/data -d octoberlan/pgvector:v0.4.1
 ```
 
 进 pgsql 容器运行

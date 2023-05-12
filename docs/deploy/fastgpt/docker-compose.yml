@@ -30,11 +30,11 @@ services:
       - /root/fastgpt/mongo/data:/data/db
       - /root/fastgpt/mongo/logs:/var/log/mongodb
       - /etc/localtime:/etc/localtime:ro
-  fast-gpt:
-    image: c121914yu/fast-gpt:latest
+  fastgpt:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest
     network_mode: host
     restart: always
-    container_name: fast-gpt
+    container_name: fastgpt
     environment:
       # proxy（可选）
       - AXIOS_PROXY_HOST=127.0.0.1
@@ -78,4 +78,3 @@ services:
       # https证书，没有的话不填，对应的nginx.conf也要修改
       - /root/fastgpt/nginx/ssl/docgpt.key:/ssl/docgpt.key
       - /root/fastgpt/nginx/ssl/docgpt.pem:/ssl/docgpt.pem
- 
