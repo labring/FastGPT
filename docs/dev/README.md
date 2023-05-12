@@ -1,6 +1,6 @@
 # FastGpt 本地开发
 
-第一次开发，请先[部署教程](docs/deploy/docker.md)，需要部署数据库.
+第一次开发，请先[部署教程](../deploy/docker.md)，需要部署数据库.
 
 ## 环境变量配置
 

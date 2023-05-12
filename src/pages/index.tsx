@@ -140,37 +140,46 @@ const Home = () => {
       position={'relative'}
       flexDirection={'column'}
       alignItems={'center'}
-      pt={'20vh'}
+      h={'100%'}
       overflow={'overlay'}
     >
       <Box id={'particles-js'} position={'absolute'} top={0} left={0} right={0} bottom={0} />
-      <Image src="/icon/logo.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
-      <Box
-        fontWeight={'bold'}
-        fontSize={['40px', '70px']}
-        letterSpacing={'5px'}
-        color={'myBlue.600'}
-      >
-        FastGpt
-      </Box>
-      <Box color={'myBlue.600'} fontSize={['30px', '50px']}>
-        三分钟
-      </Box>
-      <Box color={'myBlue.600'} fontSize={['30px', '50px']}>
-        搭建 AI 知识库
-      </Box>
 
-      <Button
-        my={5}
-        fontSize={['xl', '3xl']}
-        h={'auto'}
-        py={[2, 3]}
-        onClick={() => router.push(`/model`)}
+      <Flex
+        flexDirection={'column'}
+        alignItems={'center'}
+        mt={'22vh'}
+        position={'absolute'}
+        userSelect={'none'}
       >
-        点击开始
-      </Button>
+        <Image src="/icon/logo.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
+        <Box
+          fontWeight={'bold'}
+          fontSize={['40px', '70px']}
+          letterSpacing={'5px'}
+          color={'myBlue.600'}
+        >
+          FastGpt
+        </Box>
+        <Box color={'myBlue.600'} fontSize={['30px', '50px']}>
+          三分钟
+        </Box>
+        <Box color={'myBlue.600'} fontSize={['30px', '50px']}>
+          搭建 AI 知识库
+        </Box>
 
-      <Box mt={'20vh'} w={'100%'} p={[5, 10]}>
+        <Button
+          my={5}
+          fontSize={['xl', '3xl']}
+          h={'auto'}
+          py={[2, 3]}
+          onClick={() => router.push(`/model`)}
+        >
+          点击开始
+        </Button>
+      </Flex>
+
+      <Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>
         <Card p={5} lineHeight={2}>
           <Markdown source={data} isChatting={false} />
         </Card>
