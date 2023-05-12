@@ -221,8 +221,8 @@ export const theme = extendTheme({
     sm: '900px',
     md: '1200px',
     lg: '1500px',
-    xl: '1800',
-    '2xl': '2100'
+    xl: '1800px',
+    '2xl': '2100px'
   },
   components: {
     Modal: ModalTheme,
