@@ -31,7 +31,7 @@ services:
       - ./mongo/logs:/var/log/mongodb
       - /etc/localtime:/etc/localtime:ro
   fast-gpt:
-    image: c121914yu/fast-gpt:latest
+    image: muaimingjun/fast-gpt:latest
     #network_mode: host
     ports:
       - 3002:3000
@@ -83,4 +83,3 @@ services:
       # https证书，没有的话不填，对应的nginx.conf也要修改
       - ./nginx/ssl/docgpt.key:/ssl/docgpt.key
       - ./nginx/ssl/docgpt.pem:/ssl/docgpt.pem
- 
