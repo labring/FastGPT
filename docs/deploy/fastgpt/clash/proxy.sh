@@ -11,7 +11,7 @@ if [ ! -z "$OLD_PROCESS" ]; then
 fi
 sleep 2
 
-cd  /root/fast-gpt/clash/fast
+cd  /root/fastgpt/clash/fast
 rm -f ./nohup.out || true
 rm -f ./cache.db || true
 nohup ./clash-linux-amd64-v3  -d ./ &

@@ -161,11 +161,11 @@ services:
       - /root/fastgpt/mongo/data:/data/db
       - /root/fastgpt/mongo/logs:/var/log/mongodb
       - /etc/localtime:/etc/localtime:ro
-  fast-gpt:
-    image: c121914yu/fast-gpt:latest
+  fastgpt:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest
     network_mode: host
     restart: always
-    container_name: fast-gpt
+    container_name: fastgpt
     environment:
       # proxy（可选）
       - AXIOS_PROXY_HOST=127.0.0.1
@@ -225,7 +225,7 @@ docker-compose up -d
 echo "Docker Compose 重新拉取镜像完成！"
 
 # 删除本地旧镜像
-images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fast-gpt)
+images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fastgpt)
 
 # 将镜像 ID 和名称放入数组中
 IFS=$'\n' read -rd '' -a image_array <<<"$images"
