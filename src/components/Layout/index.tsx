@@ -21,7 +21,7 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
   const { isPc } = useScreen({ defaultIsPc: isPcDevice });
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
-  const { Loading } = useLoading({ defaultLoading: true });
+  const { Loading } = useLoading();
   const { loading } = useGlobalStore();
 
   const isChatPage = useMemo(
