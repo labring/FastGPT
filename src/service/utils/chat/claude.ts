@@ -30,7 +30,7 @@ export const lafClaudChat = async ({
   const prompt = `${systemPromptText}我的问题是:'${messages[messages.length - 1].value}'`;
 
   const lafResponse = await axios.post(
-    'https://hnvacz.laf.run/claude-gpt',
+    process.env.CLAUDE_BASE_URL || '',
     {
       prompt,
       stream,

@@ -21,12 +21,13 @@ import {
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { UseFormReturn } from 'react-hook-form';
-import { ChatModelMap, ModelVectorSearchModeMap, chatModelList } from '@/constants/model';
+import { ChatModelMap, ModelVectorSearchModeMap, getChatModelList } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
 import { compressImg } from '@/utils/file';
+import { useQuery } from '@tanstack/react-query';
 
 const ModelEditForm = ({
   formHooks,
@@ -69,6 +70,8 @@ const ModelEditForm = ({
     },
     [setValue, toast]
   );
+
+  const { data: chatModelList = [] } = useQuery(['init'], getChatModelList);
 
   return (
     <>
@@ -299,104 +302,6 @@ const ModelEditForm = ({
         </Card>
       )}
       <File onSelect={onSelectFile} />
-
-      {/* <Card p={4}>
-        <Box fontWeight={'bold'}>安全策略</Box>
-        <FormControl mt={2}>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 120px'} w={0}>
-              单句最大长度:
-            </Box>
-            <Input
-              flex={1}
-              type={'number'}
-              {...register('security.contentMaxLen', {
-                required: '单句长度不能为空',
-                min: {
-                  value: 0,
-                  message: '单句长度最小为0'
-                },
-                max: {
-                  value: 4000,
-                  message: '单句长度最长为4000'
-                },
-                valueAsNumber: true
-              })}
-            ></Input>
-          </Flex>
-        </FormControl>
-        <FormControl mt={5}>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 120px'} w={0}>
-              上下文最大长度:
-            </Box>
-            <Input
-              flex={1}
-              type={'number'}
-              {...register('security.contextMaxLen', {
-                required: '上下文长度不能为空',
-                min: {
-                  value: 1,
-                  message: '上下文长度最小为5'
-                },
-                max: {
-                  value: 400000,
-                  message: '上下文长度最长为 400000'
-                },
-                valueAsNumber: true
-              })}
-            ></Input>
-          </Flex>
-        </FormControl>
-        <FormControl mt={5}>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 120px'} w={0}>
-              聊天过期时间:
-            </Box>
-            <Input
-              flex={1}
-              type={'number'}
-              {...register('security.expiredTime', {
-                required: '聊天过期时间不能为空',
-                min: {
-                  value: 0.1,
-                  message: '聊天过期时间最小为0.1小时'
-                },
-                max: {
-                  value: 999999,
-                  message: '聊天过期时间最长为 999999 小时'
-                },
-                valueAsNumber: true
-              })}
-            ></Input>
-            <Box ml={3}>小时</Box>
-          </Flex>
-        </FormControl>
-        <FormControl mt={5} pb={5}>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 130px'} w={0}>
-              聊天最大加载次数:
-            </Box>
-            <Box flex={1}>
-              <Input
-                type={'number'}
-                {...register('security.maxLoadAmount', {
-                  required: '聊天最大加载次数不能为空',
-                  max: {
-                    value: 999999,
-                    message: '聊天最大加载次数最小为 999999 次'
-                  },
-                  valueAsNumber: true
-                })}
-              ></Input>
-              <Box fontSize={'sm'} color={'blackAlpha.400'} position={'absolute'}>
-                设置为-1代表不限制次数
-              </Box>
-            </Box>
-            <Box ml={3}>次</Box>
-          </Flex>
-        </FormControl>
-      </Card> */}
       <ConfirmChild />
     </>
   );

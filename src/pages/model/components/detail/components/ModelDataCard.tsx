@@ -138,7 +138,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
   });
 
   return (
-    <>
+    <Box position={'relative'}>
       <Flex>
         <Box fontWeight={'bold'} fontSize={'lg'} flex={1} mr={2}>
           知识库数据: {total}组
@@ -303,7 +303,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
       {isOpenSelectCsvModal && (
         <SelectCsvModal modelId={modelId} onClose={onCloseSelectCsvModal} onSuccess={refetchData} />
       )}
-    </>
+    </Box>
   );
 };
 
