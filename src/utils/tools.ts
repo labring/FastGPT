@@ -88,3 +88,28 @@ export const formatTimeToChatTime = (time: Date) => {
   // 如果是更久之前，展示某年某月某日
   return target.format('YYYY/M/D');
 };
+
+/**
+ * voice broadcast
+ */
+export const voiceBroadcast = ({ text }: { text: string }) => {
+  window.speechSynthesis?.cancel();
+  const msg = new SpeechSynthesisUtterance(text);
+  const voices = window.speechSynthesis?.getVoices?.(); // 获取语言包
+  const voice = voices.find((item) => {
+    return item.name === 'Microsoft Yaoyao - Chinese (Simplified, PRC)';
+  });
+  if (voice) {
+    msg.voice = voice;
+  }
+
+  window.speechSynthesis?.speak(msg);
+
+  msg.onerror = (e) => {
+    console.log(e);
+  };
+
+  return {
+    cancel: () => window.speechSynthesis?.cancel()
+  };
+};

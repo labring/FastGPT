@@ -27,7 +27,7 @@ export const postSaveChat = (data: {
   modelId: string;
   newChatId: '' | string;
   chatId: '' | string;
-  prompts: ChatItemType[];
+  prompts: [ChatItemType, ChatItemType];
 }) => POST<string>('/chat/saveChat', data);
 
 /**

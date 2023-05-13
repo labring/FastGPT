@@ -34,7 +34,7 @@ const Model = ({ modelId, isPcDevice }: { modelId: string; isPcDevice: boolean }
           <ModelList modelId={modelId} />
         </Box>
       )}
-      <Box flex={1} h={'100%'}>
+      <Box flex={1} h={'100%'} position={'relative'}>
         {modelId && <ModelDetail modelId={modelId} isPc={isPc} />}
       </Box>
     </Flex>

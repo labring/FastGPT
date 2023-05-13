@@ -63,7 +63,7 @@ export const getApiKey = async ({
     },
     [ClaudeEnum.Claude]: {
       userOpenAiKey: '',
-      systemAuthKey: process.env.LAFKEY as string
+      systemAuthKey: process.env.CLAUDE_KEY as string
     }
   };
 

@@ -37,6 +37,7 @@ jobs:
       - name: build and publish image
         env:
           # fork friendly ^^
+<<<<<<< HEAD
           # DOCKER_REPO: ghcr.io/${{ github.repository_owner }}/fast-gpt
           DOCKER_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/fast-gpt
         run: |
@@ -45,6 +46,14 @@ jobs:
           --label "org.opencontainers.image.source=https://github.com/${{ secrets.repository_owner }}/FastGPT" \
           --label "Maintainer: <muaimingjun && Paper-Dragon>" \
           --label "org.opencontainers.image.description=fast-gpt image" \
+=======
+          DOCKER_REPO: ghcr.io/${{ github.repository_owner }}/fastgpt
+        run: |
+          docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
+          --label "org.opencontainers.image.description=fastgpt image" \
+>>>>>>> 5f66f4523cacd07789b1a5eef23c8aca1c9bc1ca
           --label "org.opencontainers.image.licenses=MIT" \
           --push \
           -t ${DOCKER_REPO}:latest \
