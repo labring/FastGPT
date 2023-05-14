@@ -10,11 +10,13 @@ import NavbarPhone from './navbarPhone';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
-  '/login': true
+  '/login': true,
+  '/chat/share': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
-  '/login': true
+  '/login': true,
+  '/chat/share': true
 };
 
 const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: boolean }) => {
@@ -67,7 +69,7 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
           </Flex>
         )}
       </Box>
-      {loading && <Loading />}
+      <Loading loading={loading} />
     </>
   );
 };

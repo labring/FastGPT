@@ -51,3 +51,4 @@ export * from './models/splitData';
 export * from './models/openapi';
 export * from './models/promotionRecord';
 export * from './models/collection';
+export * from './models/shareChat';

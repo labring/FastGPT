@@ -1,5 +1,5 @@
 import { ChatRoleEnum } from '@/constants/chat';
-import type { InitChatResponse } from '@/api/response/chat';
+import type { InitChatResponse, InitShareChatResponse } from '@/api/response/chat';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
@@ -20,10 +20,23 @@ export interface ChatType extends InitChatResponse {
   history: ChatSiteItemType[];
 }
 
+export interface ShareChatType extends InitShareChatResponse {
+  history: ChatSiteItemType[];
+}
+
 export type HistoryItemType = {
   _id: string;
   updateTime: Date;
   modelId: string;
   title: string;
   latestChat: string;
+};
+
+export type ShareChatHistoryItemType = {
+  _id: string;
+  shareId: string;
+  updateTime: Date;
+  title: string;
+  latestChat: string;
+  chats: ChatSiteItemType[];
 };

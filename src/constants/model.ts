@@ -1,5 +1,6 @@
 import { getSystemModelList } from '@/api/system';
 import type { ModelSchema } from '@/types/mongoSchema';
+import type { ShareChatEditType } from '@/types/model';
 
 export const embeddingModel = 'text-embedding-ada-002';
 export type EmbeddingModelType = 'text-embedding-ada-002';
@@ -160,4 +161,10 @@ export const defaultModel: ModelSchema = {
     expiredTime: 9999,
     maxLoadAmount: 1
   }
+};
+
+export const defaultShareChat: ShareChatEditType = {
+  name: '',
+  password: '',
+  maxContext: 5
 };
