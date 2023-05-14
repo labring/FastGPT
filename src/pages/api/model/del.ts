@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, Model, connectToDatabase, Collection } from '@/service/mongo';
+import { Chat, Model, connectToDatabase, Collection, ShareChat } from '@/service/mongo';
 import { authToken } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { authModel } from '@/service/utils/auth';
@@ -37,6 +37,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 删除收藏列表
     await Collection.deleteMany({
+      modelId
+    });
+
+    // 删除分享链接
+    await ShareChat.deleteMany({
       modelId
     });
 

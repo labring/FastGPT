@@ -681,7 +681,12 @@ const Chat = ({
               color={'white'}
             />
           </Flex>
-          <Box position={'relative'} h={'100%'} bg={'white'} overflow={'hidden'}>
+          <Box
+            position={'relative'}
+            h={'100%'}
+            bg={'white'}
+            overflow={foldSliderBar ? 'hidden' : 'visible'}
+          >
             <History
               onclickDelHistory={onclickDelHistory}
               onclickExportChat={onclickExportChat}
@@ -967,7 +972,7 @@ const Chat = ({
       {
         <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
           <ModalOverlay />
-          <ModalContent maxW={'min(90vw, 600px)'} pr={2} maxH={'80vh'} overflowY={'auto'}>
+          <ModalContent pt={5} maxW={'min(90vw, 600px)'} h={'80vh'} overflow={'overlay'}>
             <ModalCloseButton />
             <ModalBody pt={5} whiteSpace={'pre-wrap'} textAlign={'justify'}>
               {showSystemPrompt}
