@@ -97,7 +97,7 @@ const PcSliderBar = ({
       {isPc && (
         <Box
           className={styles.newChat}
-          zIndex={1000}
+          zIndex={1001}
           w={'90%'}
           h={'40px'}
           my={5}
@@ -117,7 +117,7 @@ const PcSliderBar = ({
             <Box
               className={styles.modelListContainer}
               position={'absolute'}
-              w={'110%'}
+              w={'115%'}
               left={0}
               top={'40px'}
               transition={'0.15s ease-out'}

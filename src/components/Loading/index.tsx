@@ -5,7 +5,7 @@ const Loading = ({ fixed = true }: { fixed?: boolean }) => {
   return (
     <Flex
       position={fixed ? 'fixed' : 'absolute'}
-      zIndex={10000}
+      zIndex={1000}
       backgroundColor={'rgba(255,255,255,0.5)'}
       top={0}
       left={0}
