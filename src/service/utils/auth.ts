@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
-import { Chat, Model, OpenApi, User } from '../mongo';
+import { Chat, Model, OpenApi, User, ShareChat } from '../mongo';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ChatItemSimpleType } from '@/types/chat';
 import mongoose from 'mongoose';
@@ -9,6 +9,7 @@ import { ClaudeEnum, defaultModel } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
 import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
+import { hashPassword } from '@/service/utils/tools';
 
 /* 校验 token */
 export const authToken = (req: NextApiRequest): Promise<string> => {
@@ -113,8 +114,8 @@ export const authModel = async ({
     1. authOwner=true or authUser = true ,  just owner can use
     2. authUser = false and share, anyone can use
   */
-  if ((authOwner || (authUser && !model.share.isShare)) && userId !== String(model.userId)) {
-    return Promise.reject(ERROR_ENUM.unAuthModel);
+  if (authOwner || (authUser && !model.share.isShare)) {
+    if (userId !== String(model.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
   }
 
   // do not share detail info
@@ -178,6 +179,50 @@ export const authChat = async ({
     userOpenAiKey,
     systemAuthKey,
     content,
+    userId,
+    model,
+    showModelDetail
+  };
+};
+export const authShareChat = async ({
+  shareId,
+  password
+}: {
+  shareId: string;
+  password: string;
+}) => {
+  // get shareChat
+  const shareChat = await ShareChat.findById(shareId);
+
+  if (!shareChat) {
+    return Promise.reject('分享链接已失效');
+  }
+
+  if (shareChat.password !== hashPassword(password)) {
+    return Promise.reject({
+      code: 501,
+      message: '密码不正确'
+    });
+  }
+
+  const modelId = String(shareChat.modelId);
+  const userId = String(shareChat.userId);
+
+  // 获取 model 数据
+  const { model, showModelDetail } = await authModel({
+    modelId,
+    userId
+  });
+
+  // 获取 user 的 apiKey
+  const { userOpenAiKey, systemAuthKey } = await getApiKey({
+    model: model.chat.chatModel,
+    userId
+  });
+
+  return {
+    userOpenAiKey,
+    systemAuthKey,
     userId,
     model,
     showModelDetail
