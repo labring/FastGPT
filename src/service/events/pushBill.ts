@@ -1,4 +1,4 @@
-import { connectToDatabase, Bill, User } from '../mongo';
+import { connectToDatabase, Bill, User, ShareChat } from '../mongo';
 import { ChatModelMap, OpenAiChatEnum, ChatModelType, embeddingModel } from '@/constants/model';
 import { BillTypeEnum } from '@/constants/user';
 
@@ -52,6 +52,23 @@ export const pushChatBill = async ({
     }
   } catch (error) {
     console.log(error);
+  }
+};
+
+export const updateShareChatBill = async ({
+  shareId,
+  tokens
+}: {
+  shareId: string;
+  tokens: number;
+}) => {
+  try {
+    await ShareChat.findByIdAndUpdate(shareId, {
+      $inc: { tokens },
+      lastTime: new Date()
+    });
+  } catch (error) {
+    console.log('update shareChat error', error);
   }
 };
 

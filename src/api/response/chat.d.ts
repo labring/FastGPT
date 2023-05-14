@@ -13,3 +13,13 @@ export interface InitChatResponse {
   chatModel: ModelSchema['chat']['chatModel']; // 对话模型名
   history: ChatItemType[];
 }
+
+export interface InitShareChatResponse {
+  maxContext: number;
+  model: {
+    name: string;
+    avatar: string;
+    intro: string;
+  };
+  chatModel: ModelSchema['chat']['chatModel']; // 对话模型名
+}
