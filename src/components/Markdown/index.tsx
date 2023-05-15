@@ -1,12 +1,13 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
-import { useCopyData } from '@/utils/tools';
+import { useCopyData, formatLinkTextToHtml } from '@/utils/tools';
 import Icon from '@/components/Icon';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 
 import 'katex/dist/katex.min.css';
 import styles from './index.module.scss';
@@ -15,13 +16,17 @@ import { codeLight } from './codeLight';
 const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
   const { copyData } = useCopyData();
 
+  const formatSource = useMemo(() => {
+    return formatLinkTextToHtml(source);
+  }, [source]);
+
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown} ${
         isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''
       }`}
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[remarkGfm, rehypeKatex]}
+      rehypePlugins={[rehypeRaw, remarkGfm, rehypeKatex]}
       components={{
         pre: 'div',
         code({ node, inline, className, children, ...props }) {
@@ -63,7 +68,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
       }}
       linkTarget="_blank"
     >
-      {source}
+      {formatSource}
     </ReactMarkdown>
   );
 };
