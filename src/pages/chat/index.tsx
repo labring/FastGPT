@@ -36,7 +36,7 @@ import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useCopyData, voiceBroadcast } from '@/utils/tools';
+import { useCopyData, voiceBroadcast, formatLinkTextToHtml } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
@@ -90,7 +90,6 @@ const Chat = ({
   const controller = useRef(new AbortController());
   const isLeavePage = useRef(false);
 
-  const [inputVal, setInputVal] = useState(''); // user input prompt
   const [showSystemPrompt, setShowSystemPrompt] = useState('');
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
@@ -168,7 +167,8 @@ const Chat = ({
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {
-    setInputVal(val);
+    if (!TextareaDom.current) return;
+    TextareaDom.current.value = val;
     setTimeout(() => {
       /* 回到最小高度 */
       if (TextareaDom.current) {
@@ -289,6 +289,7 @@ const Chat = ({
    * 发送一个内容
    */
   const sendPrompt = useCallback(async () => {
+    // get value
     if (isChatting) {
       toast({
         title: '正在聊天中...请等待结束',
@@ -296,9 +297,10 @@ const Chat = ({
       });
       return;
     }
-    const storeInput = inputVal;
-    // 去除空行
-    const val = inputVal.trim().replace(/\n\s*/g, '\n');
+
+    // get input value
+    const value = TextareaDom.current?.value || '';
+    const val = value.trim().replace(/\n\s*/g, '\n');
 
     if (!val) {
       toast({
@@ -346,7 +348,7 @@ const Chat = ({
         isClosable: true
       });
 
-      resetInputVal(storeInput);
+      resetInputVal(value);
 
       setChatData((state) => ({
         ...state,
@@ -355,7 +357,6 @@ const Chat = ({
     }
   }, [
     isChatting,
-    inputVal,
     chatData.history,
     setChatData,
     resetInputVal,
@@ -855,7 +856,10 @@ const Chat = ({
                           bg={'myBlue.300'}
                           onContextMenu={(e) => onclickContextMenu(e, item)}
                         >
-                          <Box as={'p'}>{item.value}</Box>
+                          <Box
+                            as={'p'}
+                            dangerouslySetInnerHTML={{ __html: formatLinkTextToHtml(item.value) }}
+                          />
                         </Card>
                       </Box>
                     )}
@@ -888,7 +892,6 @@ const Chat = ({
                   }}
                   placeholder="提问"
                   resize={'none'}
-                  value={inputVal}
                   rows={1}
                   height={'22px'}
                   lineHeight={'22px'}
@@ -901,7 +904,6 @@ const Chat = ({
                   color={useColorModeValue('blackAlpha.700', 'white')}
                   onChange={(e) => {
                     const textarea = e.target;
-                    setInputVal(textarea.value);
                     textarea.style.height = textareaMinH;
                     textarea.style.height = `${textarea.scrollHeight}px`;
                   }}
