@@ -67,7 +67,7 @@ docker run --name mongo -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=username -e
 **3、部署 pgsql**
 
 ```
-docker run -it --name pg -e "POSTGRES_PASSWORD=xxx" -e POSTGRES_USER=xxx -p 8100:5432 -v ~/fastgpt/pg/data:/var/lib/postgresql/data -d octoberlan/pgvector:v0.4.1
+docker run -it --name pg -e "POSTGRES_DB=fastgpt" -e "POSTGRES_PASSWORD=xxx" -e POSTGRES_USER=xxx -p 8100:5432 -v ~/fastgpt/pg/data:/var/lib/postgresql/data -d octoberlan/pgvector:v0.4.1
 ```
 
 进 pgsql 容器运行
@@ -88,8 +88,8 @@ CREATE TABLE modelData (
 );
 -- create index
 CREATE INDEX modelData_status_index ON modelData (status);
-CREATE INDEX modelData_modelId_index ON modelData (modelId);
-CREATE INDEX modelData_userId_index ON modelData (userId);
+CREATE INDEX modelData_modelId_index ON modelData (model_id);
+CREATE INDEX modelData_userId_index ON modelData (user_id);
 EOSQL
 ```
 
