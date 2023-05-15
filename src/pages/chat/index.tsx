@@ -77,7 +77,7 @@ const Chat = ({
   chatId: string;
   isPcDevice: boolean;
 }) => {
-  const hasVoiceApi = !!window.speechSynthesis;
+  const hasVoiceApi = typeof window === 'undefined' ? false : !!window.speechSynthesis;
   const router = useRouter();
   const theme = useTheme();
 
@@ -522,6 +522,8 @@ const Chat = ({
             status: 'finish'
           }))
         });
+
+        // have records.
         if (res.history.length > 0) {
           setTimeout(() => {
             scrollToBottom('auto');
@@ -599,6 +601,7 @@ const Chat = ({
       AiDetail?: boolean;
     }) => (
       <MenuList fontSize={'sm'} minW={'100px !important'}>
+        <MenuItem onClick={() => onclickCopy(history.value)}>复制</MenuItem>
         {AiDetail && chatData.model.canUse && history.obj === 'AI' && (
           <MenuItem
             borderBottom={theme.borders.base}
@@ -607,7 +610,6 @@ const Chat = ({
             AI助手详情
           </MenuItem>
         )}
-        <MenuItem onClick={() => onclickCopy(history.value)}>复制</MenuItem>
         {hasVoiceApi && (
           <MenuItem
             borderBottom={theme.borders.base}
@@ -799,7 +801,7 @@ const Chat = ({
                           className="avatar"
                           src={
                             item.obj === 'Human'
-                              ? userInfo?.avatar
+                              ? userInfo?.avatar || '/icon/human.png'
                               : chatData.model.avatar || LOGO_ICON
                           }
                           alt="avatar"

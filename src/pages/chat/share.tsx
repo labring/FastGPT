@@ -70,7 +70,7 @@ const Chat = ({
   historyId: string;
   isPcDevice: boolean;
 }) => {
-  const hasVoiceApi = !!window.speechSynthesis;
+  const hasVoiceApi = typeof window === 'undefined' ? false : !!window.speechSynthesis;
   const router = useRouter();
   const theme = useTheme();
 
@@ -454,16 +454,19 @@ const Chat = ({
         password
       });
 
+      const history = shareChatHistory.find((item) => item._id === historyId)?.chats || [];
+
       setShareChatData({
         ...res,
-        history: shareChatHistory.find((item) => item._id === historyId)?.chats || []
+        history
       });
 
       onClosePassword();
 
-      setTimeout(() => {
-        scrollToBottom();
-      }, 500);
+      history.length > 0 &&
+        setTimeout(() => {
+          scrollToBottom();
+        }, 500);
     } catch (e: any) {
       toast({
         status: 'error',
@@ -690,7 +693,7 @@ const Chat = ({
                         className="avatar"
                         src={
                           item.obj === 'Human'
-                            ? userInfo?.avatar
+                            ? userInfo?.avatar || '/icon/human.png'
                             : shareChatData.model.avatar || LOGO_ICON
                         }
                         alt="avatar"
