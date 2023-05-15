@@ -5,8 +5,10 @@ import Markdown from '@/components/Markdown';
 import { LOGO_ICON } from '@/constants/chat';
 
 const Empty = ({
+  showChatProblem,
   model: { name, intro, avatar }
 }: {
+  showChatProblem: boolean;
   model: {
     name: string;
     intro: string;
@@ -43,13 +45,18 @@ const Empty = ({
           <Box whiteSpace={'pre-line'}>{intro}</Box>
         </Card>
       )}
-      {/* version intro */}
-      <Card p={4} mb={10}>
-        <Markdown source={versionIntro} />
-      </Card>
-      <Card p={4}>
-        <Markdown source={chatProblem} />
-      </Card>
+
+      {showChatProblem && (
+        <>
+          {/* version intro */}
+          <Card p={4} mb={10}>
+            <Markdown source={versionIntro} />
+          </Card>
+          <Card p={4}>
+            <Markdown source={chatProblem} />
+          </Card>
+        </>
+      )}
     </Box>
   );
 };

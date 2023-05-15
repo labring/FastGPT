@@ -36,12 +36,11 @@ import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useCopyData, voiceBroadcast, formatLinkTextToHtml } from '@/utils/tools';
+import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
-import Markdown from '@/components/Markdown';
 import { LOGO_ICON } from '@/constants/chat';
 import { ChatModelMap } from '@/constants/model';
 import { useChatStore } from '@/store/chat';
@@ -50,16 +49,13 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
 import Loading from '@/components/Loading';
+import Markdown from '@/components/Markdown';
+import Empty from './components/Empty';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
-  loading: () => <Loading fixed={false} />,
   ssr: false
 });
 const History = dynamic(() => import('./components/History'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
-});
-const Empty = dynamic(() => import('./components/Empty'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
 });
@@ -77,7 +73,6 @@ const Chat = ({
   chatId: string;
   isPcDevice: boolean;
 }) => {
-  const hasVoiceApi = typeof window === 'undefined' ? false : !!window.speechSynthesis;
   const router = useRouter();
   const theme = useTheme();
 
@@ -627,7 +622,6 @@ const Chat = ({
       chatData.model.canUse,
       chatData.modelId,
       delChatRecord,
-      hasVoiceApi,
       onclickCopy,
       router,
       theme.borders.base
@@ -714,7 +708,7 @@ const Chat = ({
             justifyContent={'space-between'}
             py={[3, 5]}
             px={5}
-            borderBottom={'1px solid '}
+            borderBottom={'1px solid'}
             borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
             color={useColorModeValue('myGray.900', 'white')}
           >
@@ -790,7 +784,10 @@ const Chat = ({
                             order: 1,
                             mr: ['6px', 2],
                             cursor: 'pointer',
-                            onClick: () => isPc && router.push(`/model?modelId=${chatData.modelId}`)
+                            onClick: () =>
+                              isPc &&
+                              chatData.model.canUse &&
+                              router.push(`/model?modelId=${chatData.modelId}`)
                           }
                         : {
                             order: 3,
@@ -856,17 +853,16 @@ const Chat = ({
                           bg={'myBlue.300'}
                           onContextMenu={(e) => onclickContextMenu(e, item)}
                         >
-                          <Box
-                            as={'p'}
-                            dangerouslySetInnerHTML={{ __html: formatLinkTextToHtml(item.value) }}
-                          />
+                          <Box as={'p'}>{item.value}</Box>
                         </Card>
                       </Box>
                     )}
                   </Flex>
                 </Flex>
               ))}
-              {chatData.history.length === 0 && <Empty model={chatData.model} />}
+              {chatData.history.length === 0 && (
+                <Empty model={chatData.model} showChatProblem={true} />
+              )}
             </Box>
           </Box>
           {/* 发送区 */}
@@ -1012,7 +1008,7 @@ Chat.getInitialProps = ({ query, req }: any) => {
   return {
     modelId: query?.modelId || '',
     chatId: query?.chatId || '',
-    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
+    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
   };
 };
 
