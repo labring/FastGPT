@@ -89,6 +89,7 @@ export const formatTimeToChatTime = (time: Date) => {
   return target.format('YYYY/M/D');
 };
 
+export const hasVoiceApi = typeof window !== 'undefined' && 'speechSynthesis' in window;
 /**
  * voice broadcast
  */

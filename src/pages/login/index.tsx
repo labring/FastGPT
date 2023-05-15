@@ -117,6 +117,6 @@ export default Login;
 
 Login.getInitialProps = ({ query, req }: any) => {
   return {
-    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
+    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
   };
 };

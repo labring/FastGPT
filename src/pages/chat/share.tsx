@@ -34,12 +34,11 @@ import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useCopyData, voiceBroadcast } from '@/utils/tools';
+import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
-import Markdown from '@/components/Markdown';
 import { LOGO_ICON } from '@/constants/chat';
 import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
@@ -47,12 +46,10 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
 import Loading from '@/components/Loading';
+import Markdown from '@/components/Markdown';
+import Empty from './components/Empty';
 
 const ShareHistory = dynamic(() => import('./components/ShareHistory'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
-});
-const Empty = dynamic(() => import('./components/Empty'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
 });
@@ -70,7 +67,6 @@ const Chat = ({
   historyId: string;
   isPcDevice: boolean;
 }) => {
-  const hasVoiceApi = typeof window === 'undefined' ? false : !!window.speechSynthesis;
   const router = useRouter();
   const theme = useTheme();
 
@@ -536,7 +532,7 @@ const Chat = ({
         <MenuItem onClick={() => delShareChatHistoryItemById(historyId, index)}>删除</MenuItem>
       </MenuList>
     ),
-    [delShareChatHistoryItemById, hasVoiceApi, historyId, onclickCopy, theme.borders.base]
+    [delShareChatHistoryItemById, historyId, onclickCopy, theme.borders.base]
   );
 
   return (
@@ -754,7 +750,9 @@ const Chat = ({
                 </Flex>
               </Flex>
             ))}
-            {shareChatData.history.length === 0 && <Empty model={shareChatData.model} />}
+            {shareChatData.history.length === 0 && (
+              <Empty model={shareChatData.model} showChatProblem={false} />
+            )}
           </Box>
         </Box>
         {/* 发送区 */}
@@ -926,7 +924,7 @@ Chat.getInitialProps = ({ query, req }: any) => {
   return {
     shareId: query?.shareId || '',
     historyId: query?.historyId || '',
-    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
+    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
   };
 };
 
