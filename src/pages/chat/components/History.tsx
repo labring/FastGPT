@@ -1,7 +1,8 @@
-import React, { useCallback, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react';
 import type { MouseEvent } from 'react';
-import { AddIcon } from '@chakra-ui/icons';
+import { AddIcon, EditIcon, CheckIcon, CloseIcon, DeleteIcon } from '@chakra-ui/icons';
 import {
+  Input,
   Box,
   Button,
   Flex,
@@ -21,6 +22,7 @@ import MyIcon from '@/components/Icon';
 import type { HistoryItemType, ExportChatType } from '@/types/chat';
 import { useChatStore } from '@/store/chat';
 import { useScreen } from '@/hooks/useScreen';
+import { useEditTitle } from '@/hooks/useEditTitle';
 import ModelList from './ModelList';
 
 import styles from '../index.module.scss';
@@ -34,6 +36,17 @@ const PcSliderBar = ({
   onclickDelHistory: (historyId: string) => Promise<void>;
   onclickExportChat: (type: ExportChatType) => void;
 }) => {
+  // 使用自定义的useEditTitle hook来管理聊天标题的编辑状态
+  const {
+    editingHistoryId,
+    editedTitle,
+    setEditedTitle,
+    inputRef,
+    onEditClick,
+    onSaveClick,
+    onCloseClick
+  } = useEditTitle();
+
   const router = useRouter();
   const { modelId = '', chatId = '' } = router.query as { modelId: string; chatId: string };
   const theme = useTheme();
@@ -172,12 +185,74 @@ const PcSliderBar = ({
             <ChatIcon fontSize={'16px'} color={'myGray.500'} />
             <Box flex={'1 0 0'} w={0} ml={3}>
               <Flex alignItems={'center'}>
-                <Box flex={'1 0 0'} w={0} className="textEllipsis" color={'myGray.1000'}>
-                  {item.title}
-                </Box>
-                <Box color={'myGray.400'} fontSize={'sm'}>
-                  {formatTimeToChatTime(item.updateTime)}
-                </Box>
+                {editingHistoryId === item._id ? (
+                  <Input
+                    ref={inputRef}
+                    value={editedTitle}
+                    onChange={(e: { target: { value: React.SetStateAction<string> } }) =>
+                      setEditedTitle(e.target.value)
+                    }
+                    onBlur={onCloseClick}
+                    height={'1.5em'}
+                    paddingLeft={'0'}
+                  />
+                ) : (
+                  <Box flex={'1 0 0'} w={0} className="textEllipsis" color={'myGray.1000'}>
+                    {item.title}
+                  </Box>
+                )}
+
+                {/* 选中时不显示时间 */}
+                {chatId !== item._id && (
+                  <Box color={'myGray.400'} fontSize={'sm'}>
+                    {formatTimeToChatTime(item.updateTime)}
+                  </Box>
+                )}
+                {/* 编辑状态下显示确认和取消按钮 */}
+                {editingHistoryId === item._id ? (
+                  <>
+                    <Box mx={1}>
+                      <CheckIcon
+                        onMouseDown={async (event) => {
+                          event.preventDefault();
+                          setIsLoading(true);
+                          try {
+                            await onSaveClick(item._id, item.modelId, editedTitle);
+                            await loadHistory({ pageNum: 1, init: true });
+                          } catch (error) {
+                            console.log(error);
+                          }
+                          setIsLoading(false);
+                        }}
+                        _hover={{ color: 'blue.500' }}
+                      />
+                    </Box>
+                    <Box mx={1}>
+                      <CloseIcon onClick={onCloseClick} _hover={{ color: 'blue.500' }} />
+                    </Box>
+                  </>
+                ) : chatId === item._id ? (
+                  <Box mx={1}>
+                    <EditIcon
+                      onClick={() => onEditClick(item._id, item.title)}
+                      _hover={{ color: 'blue.500' }}
+                    />
+                    <DeleteIcon
+                      onClickCapture={async (e) => {
+                        e.stopPropagation();
+                        setIsLoading(true);
+                        try {
+                          await onclickDelHistory(item._id);
+                        } catch (error) {
+                          console.log(error);
+                        }
+                        setIsLoading(false);
+                      }}
+                      _hover={{ color: 'blue.500' }}
+                      marginLeft={'1'}
+                    />
+                  </Box>
+                ) : null}
               </Flex>
               <Box className="textEllipsis" mt={1} fontSize={'sm'} color={'myGray.500'}>
                 {item.latestChat || '……'}

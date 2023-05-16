@@ -35,3 +35,12 @@ export const postSaveChat = (data: {
  */
 export const delChatRecordByIndex = (chatId: string, contentId: string) =>
   DELETE(`/chat/delChatRecordByContentId?chatId=${chatId}&contentId=${contentId}`);
+
+/**
+ * 修改历史记录标题
+ */
+export const updateChatHistoryTitle = (data: {
+  chatId: string;
+  modelId: string;
+  newTitle: string;
+}) => POST<string>('/chat/updateChatHistoryTitle', data);
