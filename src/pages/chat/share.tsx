@@ -716,6 +716,7 @@ const Chat = ({
                         <Markdown
                           source={item.value}
                           isChatting={isChatting && index === shareChatData.history.length - 1}
+                          formatLink
                         />
                         {item.systemPrompt && (
                           <Button
