@@ -117,6 +117,6 @@ export const voiceBroadcast = ({ text }: { text: string }) => {
 
 export const formatLinkTextToHtml = (text: string) => {
   const httpReg =
-    /(?<!\[.*\]\()((http|https|ftp):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?)(?![\)])/gi;
+    /(http|https|ftp):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?/gi;
   return text.replace(httpReg, '<a href="$&" target="_blank">$&</a>');
 };
