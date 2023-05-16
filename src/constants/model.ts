@@ -1,4 +1,6 @@
+import { getSystemModelList } from '@/api/system';
 import type { ModelSchema } from '@/types/mongoSchema';
+import type { ShareChatEditType } from '@/types/model';
 
 export const embeddingModel = 'text-embedding-ada-002';
 export type EmbeddingModelType = 'text-embedding-ada-002';
@@ -58,11 +60,15 @@ export const ChatModelMap = {
   }
 };
 
-export const chatModelList: ChatModelItemType[] = [
-  ChatModelMap[OpenAiChatEnum.GPT35],
-  ChatModelMap[OpenAiChatEnum.GPT4],
-  ChatModelMap[ClaudeEnum.Claude]
-];
+let chatModelList: ChatModelItemType[] = [];
+export const getChatModelList = async () => {
+  if (chatModelList.length > 0) {
+    return chatModelList;
+  }
+  const list = await getSystemModelList();
+  chatModelList = list;
+  return list;
+};
 
 export enum ModelStatusEnum {
   running = 'running',
@@ -155,4 +161,10 @@ export const defaultModel: ModelSchema = {
     expiredTime: 9999,
     maxLoadAmount: 1
   }
+};
+
+export const defaultShareChat: ShareChatEditType = {
+  name: '',
+  password: '',
+  maxContext: 5
 };

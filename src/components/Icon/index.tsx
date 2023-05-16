@@ -25,7 +25,8 @@ const map = {
   tabbarMe: require('./icons/phoneTabbar/me.svg').default,
   closeSolid: require('./icons/closeSolid.svg').default,
   wx: require('./icons/wx.svg').default,
-  out: require('./icons/out.svg').default
+  out: require('./icons/out.svg').default,
+  git: require('./icons/git.svg').default
 };
 
 export type IconName = keyof typeof map;

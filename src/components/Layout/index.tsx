@@ -10,18 +10,20 @@ import NavbarPhone from './navbarPhone';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
-  '/login': true
+  '/login': true,
+  '/chat/share': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
-  '/login': true
+  '/login': true,
+  '/chat/share': true
 };
 
 const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: boolean }) => {
   const { isPc } = useScreen({ defaultIsPc: isPcDevice });
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
-  const { Loading } = useLoading({ defaultLoading: true });
+  const { Loading } = useLoading();
   const { loading } = useGlobalStore();
 
   const isChatPage = useMemo(
@@ -67,7 +69,7 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
           </Flex>
         )}
       </Box>
-      {loading && <Loading />}
+      <Loading loading={loading} />
     </>
   );
 };
@@ -76,6 +78,6 @@ export default Layout;
 
 Layout.getInitialProps = ({ req }: any) => {
   return {
-    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
+    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
   };
 };

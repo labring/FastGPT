@@ -17,7 +17,7 @@ const modelList = () => {
   /* 加载模型 */
   const { data, isLoading, Pagination, getData, pageNum } = usePagination<ShareModelItem>({
     api: getShareModelList,
-    pageSize: 20,
+    pageSize: 24,
     params: {
       searchText
     }

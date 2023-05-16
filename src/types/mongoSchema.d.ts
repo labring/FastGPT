@@ -137,3 +137,14 @@ export interface PromotionRecordSchema {
   createTime: Date; // 记录时间
   amount: number;
 }
+
+export interface ShareChatSchema {
+  _id: string;
+  userId: string;
+  modelId: string;
+  password: string;
+  name: string;
+  tokens: number;
+  maxContext: number;
+  lastTime: Date;
+}

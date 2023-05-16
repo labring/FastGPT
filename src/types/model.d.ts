@@ -33,3 +33,9 @@ export interface ShareModelItem {
   share: ModelSchema['share'];
   isCollection: boolean;
 }
+
+export type ShareChatEditType = {
+  name: string;
+  password: string;
+  maxContext: number;
+};

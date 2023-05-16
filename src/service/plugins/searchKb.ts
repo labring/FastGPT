@@ -29,6 +29,11 @@ export const searchKb = async ({
   }[];
 }> => {
   async function search(textArr: string[] = []) {
+    const limitMap: Record<ModelVectorSearchModeEnum, number> = {
+      [ModelVectorSearchModeEnum.hightSimilarity]: 15,
+      [ModelVectorSearchModeEnum.noContext]: 15,
+      [ModelVectorSearchModeEnum.lowSimilarity]: 20
+    };
     // 获取提示词的向量
     const { vectors: promptVectors } = await openaiCreateEmbedding({
       userOpenAiKey,
@@ -48,7 +53,7 @@ export const searchKb = async ({
             `vector <=> '[${promptVector}]' < ${similarity}`
           ],
           order: [{ field: 'vector', mode: `<=> '[${promptVector}]'` }],
-          limit: 20
+          limit: limitMap[model.chat.searchMode]
         }).then((res) => res.rows)
       )
     );

@@ -73,7 +73,7 @@ export const chatResponse = async ({
   const filterMessages = ChatContextFilter({
     model,
     prompts: messages,
-    maxTokens: Math.ceil(ChatModelMap[model].contextMaxToken * 0.9)
+    maxTokens: Math.ceil(ChatModelMap[model].contextMaxToken * 0.85)
   });
 
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages });
@@ -90,7 +90,7 @@ export const chatResponse = async ({
       stop: ['.!?。']
     },
     {
-      timeout: stream ? 40000 : 240000,
+      timeout: stream ? 60000 : 240000,
       responseType: stream ? 'stream' : 'json',
       ...axiosConfig()
     }

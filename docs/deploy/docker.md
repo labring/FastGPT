@@ -161,18 +161,15 @@ services:
       - /root/fastgpt/mongo/data:/data/db
       - /root/fastgpt/mongo/logs:/var/log/mongodb
       - /etc/localtime:/etc/localtime:ro
-  fast-gpt:
-    image: c121914yu/fast-gpt:latest
+  fastgpt:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest
     network_mode: host
     restart: always
-    container_name: fast-gpt
+    container_name: fastgpt
     environment:
       # proxy（可选）
       - AXIOS_PROXY_HOST=127.0.0.1
       - AXIOS_PROXY_PORT=7890
-      # openai 中转连接（可选）
-      - OPENAI_BASE_URL=https://api.openai.com/v1
-      - OPENAI_BASE_URL_AUTH=可选的安全凭证
       # 是否开启队列任务。 1-开启，0-关闭（请求 parentUrl 去执行任务,单机时直接填1）
       - queueTask=1
       - parentUrl=https://hostname/api/openapi/startEvents
@@ -195,8 +192,14 @@ services:
       - PG_USER=fastgpt # POSTGRES_USER
       - PG_PASSWORD=1234 # POSTGRES_PASSWORD
       - PG_DB_NAME=fastgpt # POSTGRES_DB
-      # openai api key
+      # openai
       - OPENAIKEY=sk-xxxxx
+      - GPT4KEY=sk-xxx
+      - OPENAI_BASE_URL=https://api.openai.com/v1
+      - OPENAI_BASE_URL_AUTH=可选的安全凭证
+      # claude
+      - CLAUDE_BASE_URL=calude模型请求地址
+      - CLAUDE_KEY=CLAUDE_KEY
   nginx:
     image: nginx:alpine3.17
     container_name: nginx
@@ -225,7 +228,7 @@ docker-compose up -d
 echo "Docker Compose 重新拉取镜像完成！"
 
 # 删除本地旧镜像
-images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fast-gpt)
+images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fastgpt)
 
 # 将镜像 ID 和名称放入数组中
 IFS=$'\n' read -rd '' -a image_array <<<"$images"

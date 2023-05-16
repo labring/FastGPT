@@ -5,7 +5,7 @@ docker-compose up -d
 echo "Docker Compose 重新拉取镜像完成！"
 
 # 删除本地旧镜像
-images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fast-gpt)
+images=$(docker images --format "{{.ID}} {{.Repository}}" | grep fastgpt)
 
 # 将镜像 ID 和名称放入数组中
 IFS=$'\n' read -rd '' -a image_array <<<"$images"
