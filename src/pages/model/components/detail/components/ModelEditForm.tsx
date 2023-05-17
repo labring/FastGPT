@@ -32,11 +32,9 @@ import {
   Th,
   Td,
   TableContainer,
-  IconButton
+  Checkbox
 } from '@chakra-ui/react';
-import { DeleteIcon } from '@chakra-ui/icons';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import type { ModelSchema } from '@/types/mongoSchema';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { ChatModelMap, ModelVectorSearchModeMap, getChatModelList } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
@@ -49,9 +47,12 @@ import { getShareChatList, createShareChat, delShareChatById } from '@/api/chat'
 import { useRouter } from 'next/router';
 import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 import { formatTimeToChatTime, useCopyData } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import { useGlobalStore } from '@/store/global';
+import { useUserStore } from '@/store/user';
+import type { KbItemType } from '@/types/plugin';
 
 const ModelEditForm = ({
   formHooks,
@@ -62,10 +63,11 @@ const ModelEditForm = ({
   isOwner: boolean;
   handleDelModel: () => void;
 }) => {
-  const { toast } = useToast();
   const { modelId } = useRouter().query as { modelId: string };
-  const { setLoading } = useGlobalStore();
   const [refresh, setRefresh] = useState(false);
+  const { toast } = useToast();
+  const { setLoading } = useGlobalStore();
+  const { loadKbList } = useUserStore();
 
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认删除该AI助手?'
@@ -85,6 +87,11 @@ const ModelEditForm = ({
     isOpen: isOpenCreateShareChat,
     onOpen: onOpenCreateShareChat,
     onClose: onCloseCreateShareChat
+  } = useDisclosure();
+  const {
+    isOpen: isOpenKbSelect,
+    onOpen: onOpenKbSelect,
+    onClose: onCloseKbSelect
   } = useDisclosure();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -153,10 +160,40 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
     ]
   );
 
+  // format share used token
   const formatTokens = (tokens: number) => {
     if (tokens < 10000) return tokens;
     return `${(tokens / 10000).toFixed(2)}万`;
   };
+
+  // init kb select list
+  const { data: kbList = [] } = useQuery(['loadKbList'], () => loadKbList());
+  const RenderSelectedKbList = useCallback(() => {
+    const kbs = getValues('chat.relatedKbs').map((id) => kbList.find((kb) => kb._id === id));
+
+    return (
+      <>
+        {kbs.map((item) =>
+          item ? (
+            <Card key={item._id} p={3} mt={3}>
+              <Flex alignItems={'center'}>
+                <Image
+                  src={item.avatar}
+                  fallbackSrc="/icon/logo.png"
+                  w={'20px'}
+                  h={'20px'}
+                  alt=""
+                ></Image>
+                <Box ml={3} fontWeight={'bold'}>
+                  {item.name}
+                </Box>
+              </Flex>
+            </Card>
+          ) : null
+        )}
+      </>
+    );
+  }, [getValues, kbList]);
 
   return (
     <>
@@ -292,18 +329,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
             </Slider>
           </Flex>
         </FormControl>
-        <Flex mt={4} alignItems={'center'}>
-          <Box mr={4}>知识库搜索</Box>
-          <Switch
-            isDisabled={!isOwner}
-            isChecked={getValues('chat.useKb')}
-            onChange={() => {
-              setValue('chat.useKb', !getValues('chat.useKb'));
-              setRefresh(!refresh);
-            }}
-          />
-        </Flex>
-        {getValues('chat.useKb') && (
+        {getValues('chat.relatedKbs').length > 0 && (
           <Flex mt={4} alignItems={'center'}>
             <Box mr={4} whiteSpace={'nowrap'}>
               搜索模式&emsp;
@@ -339,7 +365,9 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
             <Box fontWeight={'bold'}>分享设置</Box>
             <Box>
               <Flex mt={5} alignItems={'center'}>
-                <Box mr={1}>模型分享:</Box>
+                <Box mr={1} fontSize={['sm', 'md']}>
+                  模型分享:
+                </Box>
                 <Tooltip label="开启模型分享后，你的模型将会出现在共享市场，可供 FastGpt 所有用户使用。用户使用时不会消耗你的 tokens，而是消耗使用者的 tokens。">
                   <QuestionOutlineIcon mr={3} />
                 </Tooltip>
@@ -350,7 +378,8 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                     setRefresh(!refresh);
                   }}
                 />
-                <Box ml={12} mr={1}>
+
+                <Box ml={12} mr={1} fontSize={['sm', 'md']}>
                   分享模型细节:
                 </Box>
                 <Tooltip label="开启分享详情后，其他用户可以查看该模型的特有数据：温度、提示词和数据集。">
@@ -376,8 +405,22 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
               </Box>
             </Box>
           </Card>
-          {/* shareChat */}
           <Card p={4}>
+            <Flex justifyContent={'space-between'}>
+              <Box fontWeight={'bold'}>关联的知识库</Box>
+              <Button
+                size={'sm'}
+                variant={'outline'}
+                colorScheme={'myBlue'}
+                onClick={onOpenKbSelect}
+              >
+                选择
+              </Button>
+            </Flex>
+            <RenderSelectedKbList />
+          </Card>
+          {/* shareChat */}
+          <Card p={4} gridColumnStart={1} gridColumnEnd={[2, 3]}>
             <Flex justifyContent={'space-between'}>
               <Box fontWeight={'bold'}>
                 免登录聊天窗口
@@ -410,7 +453,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                     <Th>最大上下文</Th>
                     <Th>tokens消耗</Th>
                     <Th>最后使用时间</Th>
-                    <Th></Th>
+                    <Th>操作</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -536,6 +579,52 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
               取消
             </Button>
             <Button onClick={submitShareChat(onclickCreateShareChat)}>确认</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      {/* select kb modal */}
+      <Modal isOpen={isOpenKbSelect} onClose={onCloseKbSelect}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>选择关联的知识库</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {kbList.map((item) => (
+              <Card key={item._id} p={3} mb={3}>
+                <Checkbox
+                  isChecked={getValues('chat.relatedKbs').includes(item._id)}
+                  onChange={(e) => {
+                    const ids = getValues('chat.relatedKbs');
+                    // toggle to true
+                    if (e.target.checked) {
+                      setValue('chat.relatedKbs', ids.concat(item._id));
+                    } else {
+                      const i = ids.findIndex((id) => id === item._id);
+                      ids.splice(i, 1);
+                      setValue('chat.relatedKbs', ids);
+                    }
+                    setRefresh(!refresh);
+                  }}
+                >
+                  <Flex alignItems={'center'}>
+                    <Image
+                      src={item.avatar}
+                      fallbackSrc="/icon/logo.png"
+                      w={'20px'}
+                      h={'20px'}
+                      alt=""
+                    ></Image>
+                    <Box ml={3} fontWeight={'bold'}>
+                      {item.name}
+                    </Box>
+                  </Flex>
+                </Checkbox>
+              </Card>
+            ))}
+          </ModalBody>
+
+          <ModalFooter>
+            <Button onClick={onCloseKbSelect}>完成,记得点保存修改</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

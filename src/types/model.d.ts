@@ -1,5 +1,6 @@
 import { ModelStatusEnum } from '@/constants/model';
-import type { ModelSchema } from './mongoSchema';
+import type { ModelSchema, kbSchema } from './mongoSchema';
+import { ChatModelType, ModelVectorSearchModeEnum } from '@/constants/model';
 
 export type ModelListItemType = {
   _id: string;
@@ -13,7 +14,6 @@ export interface ModelUpdateParams {
   avatar: string;
   chat: ModelSchema['chat'];
   share: ModelSchema['share'];
-  security: ModelSchema['security'];
 }
 
 export interface ShareModelItem {

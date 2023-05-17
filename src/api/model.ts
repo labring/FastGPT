@@ -2,7 +2,6 @@ import { GET, POST, DELETE, PUT } from './request';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ModelUpdateParams, ShareModelItem } from '@/types/model';
 import { RequestPaging } from '../types/index';
-import { Obj2Query } from '@/utils/tools';
 import type { ModelListResponse } from './response/model';
 
 /**

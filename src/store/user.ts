@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import type { ModelSchema } from '@/types/mongoSchema';
 import { getMyModels, getModelById } from '@/api/model';
 import { formatPrice } from '@/utils/user';
 import { getTokenLogin } from '@/api/user';
@@ -11,6 +10,7 @@ import { ModelListItemType } from '@/types/model';
 import { KbItemType } from '@/types/plugin';
 import { getKbList } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
+import type { ModelSchema } from '@/types/mongoSchema';
 
 type State = {
   userInfo: UserType | null;
@@ -34,7 +34,7 @@ type State = {
   lastKbId: string;
   setLastKbId: (id: string) => void;
   myKbList: KbItemType[];
-  loadKbList: (init?: boolean) => Promise<null>;
+  loadKbList: (init?: boolean) => Promise<KbItemType[]>;
   KbDetail: KbItemType;
   getKbDetail: (id: string) => KbItemType;
 };
@@ -123,12 +123,12 @@ export const useUserStore = create<State>()(
         },
         myKbList: [],
         async loadKbList(init = false) {
-          if (get().myKbList.length > 0 && !init) return null;
+          if (get().myKbList.length > 0 && !init) return get().myKbList;
           const res = await getKbList();
           set((state) => {
             state.myKbList = res;
           });
-          return null;
+          return res;
         },
         KbDetail: defaultKbDetail,
         getKbDetail(id: string) {

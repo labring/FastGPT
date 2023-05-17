@@ -7,6 +7,7 @@ import { adaptChatItem_openAI } from '@/utils/chat/openai';
 import { modelToolMap } from '@/utils/chat';
 import { ChatCompletionType, ChatContextFilter, StreamResponseType } from './index';
 import { ChatRoleEnum } from '@/constants/chat';
+import { getOpenAiKey } from '../auth';
 
 export const getOpenAIApi = (apiKey: string) => {
   const configuration = new Configuration({
@@ -27,7 +28,7 @@ export const openaiCreateEmbedding = async ({
   userId: string;
   textArr: string[];
 }) => {
-  const systemAuthKey = process.env.OPENAIKEY as string;
+  const systemAuthKey = getOpenAiKey();
 
   // 获取 chatAPI
   const chatAPI = getOpenAIApi(userOpenAiKey || systemAuthKey);
