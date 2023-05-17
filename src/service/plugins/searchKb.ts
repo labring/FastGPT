@@ -48,7 +48,7 @@ export const searchKb = async ({
           where: [
             ['status', ModelDataStatusEnum.ready],
             'AND',
-            ['model_id', model._id],
+            `kb_id IN (${model.chat.relatedKbs.map((item) => `'${item}'`).join(',')})`,
             'AND',
             `vector <=> '[${promptVector}]' < ${similarity}`
           ],

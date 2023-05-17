@@ -1,6 +1,6 @@
 import { extendTheme, defineStyleConfig, ComponentStyleConfig } from '@chakra-ui/react';
 // @ts-ignore
-import { modalAnatomy, switchAnatomy, selectAnatomy } from '@chakra-ui/anatomy';
+import { modalAnatomy, switchAnatomy, selectAnatomy, checkboxAnatomy } from '@chakra-ui/anatomy';
 // @ts-ignore
 import { createMultiStyleConfigHelpers } from '@chakra-ui/styled-system';
 
@@ -11,6 +11,8 @@ const { definePartsStyle: switchPart, defineMultiStyleConfig: switchMultiStyle }
   createMultiStyleConfigHelpers(switchAnatomy.keys);
 const { definePartsStyle: selectPart, defineMultiStyleConfig: selectMultiStyle } =
   createMultiStyleConfigHelpers(selectAnatomy.keys);
+const { definePartsStyle: checkboxPart, defineMultiStyleConfig: checkboxMultiStyle } =
+  createMultiStyleConfigHelpers(checkboxAnatomy.keys);
 
 // modal 弹窗
 const ModalTheme = defineMultiStyleConfig({

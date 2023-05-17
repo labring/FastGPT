@@ -9,10 +9,10 @@ import { authModel } from '@/service/utils/auth';
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, avatar, chat, share, security } = req.body as ModelUpdateParams;
+    const { name, avatar, chat, share } = req.body as ModelUpdateParams;
     const { modelId } = req.query as { modelId: string };
 
-    if (!name || !chat || !security || !modelId) {
+    if (!name || !chat || !modelId) {
       throw new Error('参数错误');
     }
 
@@ -38,8 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         chat,
         'share.isShare': share.isShare,
         'share.isShareDetail': share.isShareDetail,
-        'share.intro': share.intro,
-        security
+        'share.intro': share.intro
       }
     );
 

@@ -1,6 +1,6 @@
 import { getSystemModelList } from '@/api/system';
-import type { ModelSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/model';
+import type { ModelSchema } from '@/types/mongoSchema';
 
 export const embeddingModel = 'text-embedding-ada-002';
 export type EmbeddingModelType = 'text-embedding-ada-002';
@@ -142,7 +142,7 @@ export const defaultModel: ModelSchema = {
   status: ModelStatusEnum.pending,
   updateTime: Date.now(),
   chat: {
-    useKb: false,
+    relatedKbs: [],
     searchMode: ModelVectorSearchModeEnum.hightSimilarity,
     systemPrompt: '',
     temperature: 0,
@@ -153,13 +153,6 @@ export const defaultModel: ModelSchema = {
     isShareDetail: false,
     intro: '',
     collection: 0
-  },
-  security: {
-    domain: ['*'],
-    contextMaxLen: 1,
-    contentMaxLen: 1,
-    expiredTime: 9999,
-    maxLoadAmount: 1
   }
 };
 

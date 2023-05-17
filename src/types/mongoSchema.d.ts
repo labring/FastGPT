@@ -38,7 +38,7 @@ export interface ModelSchema {
   status: `${ModelStatusEnum}`;
   updateTime: number;
   chat: {
-    useKb: boolean;
+    relatedKbs: string[];
     searchMode: `${ModelVectorSearchModeEnum}`;
     systemPrompt: string;
     temperature: number;
@@ -49,13 +49,6 @@ export interface ModelSchema {
     isShareDetail: boolean;
     intro: string;
     collection: number;
-  };
-  security: {
-    domain: string[];
-    contextMaxLen: number;
-    contentMaxLen: number;
-    expiredTime: number;
-    maxLoadAmount: number;
   };
 }
 

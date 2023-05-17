@@ -34,6 +34,13 @@ export const authToken = (req: NextApiRequest): Promise<string> => {
   });
 };
 
+export const getOpenAiKey = () => {
+  // 纯字符串类型
+  const keys = process.env.OPENAIKEY?.split(',') || [];
+  const i = Math.floor(Math.random() * keys.length);
+  return keys[i] || (process.env.OPENAIKEY as string);
+};
+
 /* 获取 api 请求的 key */
 export const getApiKey = async ({
   model,
@@ -52,7 +59,7 @@ export const getApiKey = async ({
   const keyMap = {
     [OpenAiChatEnum.GPT35]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: process.env.OPENAIKEY as string
+      systemAuthKey: getOpenAiKey() as string
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
