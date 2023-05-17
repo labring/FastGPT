@@ -39,6 +39,7 @@
     "mongoose": "^6.10.0",
     "nanoid": "^4.0.1",
     "next": "13.1.6",
+    "nextjs-cors": "^2.1.2",
     "nodemailer": "^6.9.1",
     "nprogress": "^0.2.0",
     "openai": "^3.2.1",

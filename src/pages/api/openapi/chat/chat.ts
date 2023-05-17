@@ -9,9 +9,12 @@ import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
+import { withNextCors } from '@/withNextCors';
 
 /* 发送提示词 */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withNextCors(handler);
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   let step = 0; // step=1时，表示开始了流响应
   const stream = new PassThrough();
   stream.on('error', () => {
