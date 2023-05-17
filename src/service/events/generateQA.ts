@@ -5,7 +5,7 @@ import { pushSplitDataBill } from '@/service/events/pushBill';
 import { generateVector } from './generateVector';
 import { openaiError2 } from '../errorCode';
 import { PgClient } from '@/service/pg';
-import { ModelSplitDataSchema } from '@/types/mongoSchema';
+import { SplitDataSchema } from '@/types/mongoSchema';
 import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { getErrMessage } from '../utils/tools';
@@ -32,7 +32,7 @@ export async function generateQA(next = false): Promise<any> {
       { $sample: { size: 1 } }
     ]);
 
-    const dataItem: ModelSplitDataSchema = data[0];
+    const dataItem: SplitDataSchema = data[0];
 
     if (!dataItem) {
       console.log('没有需要生成 QA 的数据');
@@ -127,14 +127,15 @@ A2:
     const resultList = successResponse.map((item) => item.result).flat();
 
     await Promise.allSettled([
+      // 删掉后5个数据
       SplitData.findByIdAndUpdate(dataItem._id, {
         textList: dataItem.textList.slice(0, -5)
-      }), // 删掉后5个数据
+      }),
       // 生成的内容插入 pg
       PgClient.insert('modelData', {
         values: resultList.map((item) => [
           { key: 'user_id', value: dataItem.userId },
-          { key: 'model_id', value: dataItem.modelId },
+          { key: 'kb_id', value: dataItem.kbId },
           { key: 'q', value: item.q },
           { key: 'a', value: item.a },
           { key: 'status', value: 'waiting' }

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
 import { Box, useColorMode, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useScreen } from '@/hooks/useScreen';
 import { useLoading } from '@/hooks/useLoading';
 import { useGlobalStore } from '@/store/global';
+import { throttle } from 'lodash';
 import Auth from './auth';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
@@ -19,12 +19,11 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/chat/share': true
 };
 
-const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: boolean }) => {
-  const { isPc } = useScreen({ defaultIsPc: isPcDevice });
+const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
-  const { loading } = useGlobalStore();
+  const { loading, setScreenWidth, isPc } = useGlobalStore();
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
@@ -36,6 +35,19 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
       setColorMode('light');
     }
   }, [colorMode, router.pathname, setColorMode]);
+
+  useEffect(() => {
+    const resize = throttle(() => {
+      setScreenWidth(document.documentElement.clientWidth);
+    }, 300);
+    resize();
+
+    window.addEventListener('resize', resize);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+    };
+  }, [setScreenWidth]);
 
   return (
     <>
@@ -75,9 +87,3 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
 };
 
 export default Layout;
-
-Layout.getInitialProps = ({ req }: any) => {
-  return {
-    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
-  };
-};

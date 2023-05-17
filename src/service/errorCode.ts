@@ -37,7 +37,8 @@ export const proxyError: Record<string, boolean> = {
 export enum ERROR_ENUM {
   unAuthorization = 'unAuthorization',
   insufficientQuota = 'insufficientQuota',
-  unAuthModel = 'unAuthModel'
+  unAuthModel = 'unAuthModel',
+  unAuthKb = 'unAuthKb'
 }
 export const ERROR_RESPONSE: Record<
   any,
@@ -64,6 +65,12 @@ export const ERROR_RESPONSE: Record<
     code: 511,
     statusText: ERROR_ENUM.unAuthModel,
     message: '无权使用该模型',
+    data: null
+  },
+  [ERROR_ENUM.unAuthKb]: {
+    code: 512,
+    statusText: ERROR_ENUM.unAuthKb,
+    message: '无权使用该知识库',
     data: null
   }
 };

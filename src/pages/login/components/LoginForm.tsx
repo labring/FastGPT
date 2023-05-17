@@ -5,7 +5,6 @@ import { PageTypeEnum } from '@/constants/user';
 import { postLogin } from '@/api/user';
 import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
-import { useScreen } from '@/hooks/useScreen';
 
 interface Props {
   setPageType: Dispatch<`${PageTypeEnum}`>;
@@ -19,7 +18,6 @@ interface LoginFormType {
 
 const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
-  const { mediaLgMd } = useScreen();
   const {
     register,
     handleSubmit,
@@ -62,7 +60,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl mt={8} isInvalid={!!errors.username}>
           <Input
             placeholder="邮箱/手机号"
-            size={mediaLgMd}
+            size={['md', 'lg']}
             {...register('username', {
               required: '邮箱/手机号不能为空',
               pattern: {
@@ -79,7 +77,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl mt={8} isInvalid={!!errors.password}>
           <Input
             type={'password'}
-            size={mediaLgMd}
+            size={['md', 'lg']}
             placeholder="密码"
             {...register('password', {
               required: '密码不能为空',
@@ -119,7 +117,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           type="submit"
           mt={8}
           w={'100%'}
-          size={mediaLgMd}
+          size={['md', 'lg']}
           colorScheme="blue"
           isLoading={requesting}
         >

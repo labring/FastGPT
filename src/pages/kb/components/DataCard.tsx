@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   Box,
   TableContainer,
@@ -21,30 +21,29 @@ import {
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { BoxProps } from '@chakra-ui/react';
-import type { ModelDataItemType } from '@/types/model';
+import type { KbDataItemType } from '@/types/plugin';
 import { ModelDataStatusMap } from '@/constants/model';
 import { usePagination } from '@/hooks/usePagination';
 import {
-  getModelDataList,
-  delOneModelData,
-  getModelSplitDataListLen,
-  getExportDataList
-} from '@/api/model';
+  getKbDataList,
+  getExportDataList,
+  delOneKbDataByDataId,
+  getTrainingData
+} from '@/api/plugins/kb';
 import { DeleteIcon, RepeatIcon, EditIcon } from '@chakra-ui/icons';
 import { useLoading } from '@/hooks/useLoading';
 import { fileDownload } from '@/utils/file';
-import dynamic from 'next/dynamic';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/useToast';
 import Papa from 'papaparse';
+import dynamic from 'next/dynamic';
 import InputModal, { FormData as InputDataType } from './InputDataModal';
 
 const SelectFileModal = dynamic(() => import('./SelectFileModal'));
 const SelectCsvModal = dynamic(() => import('./SelectCsvModal'));
 
-const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean }) => {
-  const { Loading, setIsLoading } = useLoading();
+const DataCard = ({ kbId }: { kbId: string }) => {
   const lastSearch = useRef('');
-  const [searchText, setSearchText] = useState('');
   const tdStyles = useRef<BoxProps>({
     fontSize: 'xs',
     minW: '150px',
@@ -53,6 +52,9 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
     whiteSpace: 'pre-wrap',
     overflowY: 'auto'
   });
+  const [searchText, setSearchText] = useState('');
+  const { Loading, setIsLoading } = useLoading();
+  const { toast } = useToast();
 
   const {
     data: modelDataList,
@@ -61,19 +63,20 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
     total,
     getData,
     pageNum
-  } = usePagination<ModelDataItemType>({
-    api: getModelDataList,
+  } = usePagination<KbDataItemType>({
+    api: getKbDataList,
     pageSize: 10,
     params: {
-      modelId,
+      kbId,
       searchText
     },
     defaultRequest: false
   });
 
-  useEffect(() => {
+  useQuery(['getKbData', kbId], () => {
     getData(1);
-  }, [modelId, getData]);
+    return null;
+  });
 
   const [editInputData, setEditInputData] = useState<InputDataType>();
 
@@ -90,7 +93,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
 
   const { data: { splitDataQueue = 0, embeddingQueue = 0 } = {}, refetch } = useQuery(
     ['getModelSplitDataList'],
-    () => getModelSplitDataListLen(modelId),
+    () => getTrainingData(kbId),
     {
       onError(err) {
         console.log(err);
@@ -107,14 +110,15 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
     [getData, refetch]
   );
 
+  // interval get data
   useQuery(['refetchData'], () => refetchData(pageNum), {
     refetchInterval: 5000,
     enabled: splitDataQueue > 0 || embeddingQueue > 0
   });
 
-  // 获取所有的数据，并导出 json
+  // get al data and export csv
   const { mutate: onclickExport, isLoading: isLoadingExport = false } = useMutation({
-    mutationFn: () => getExportDataList(modelId),
+    mutationFn: () => getExportDataList(kbId),
     onSuccess(res) {
       try {
         setIsLoading(true);
@@ -132,61 +136,61 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
       }
       setIsLoading(false);
     },
-    onError(err) {
+    onError(err: any) {
+      toast({
+        title: typeof err === 'string' ? err : err?.message || '导出异常',
+        status: 'error'
+      });
       console.log(err);
     }
   });
 
   return (
-    <Box position={'relative'}>
+    <Box position={'relative'} w={'100%'}>
       <Flex>
         <Box fontWeight={'bold'} fontSize={'lg'} flex={1} mr={2}>
           知识库数据: {total}组
         </Box>
-        {isOwner && (
-          <>
-            <IconButton
-              icon={<RepeatIcon />}
-              aria-label={'refresh'}
-              variant={'outline'}
-              mr={4}
-              size={'sm'}
-              onClick={() => refetchData(pageNum)}
-            />
-            <Button
-              variant={'outline'}
-              mr={2}
-              size={'sm'}
-              isLoading={isLoadingExport}
-              title={'换行数据导出时，会进行格式转换'}
-              onClick={() => onclickExport()}
+        <IconButton
+          icon={<RepeatIcon />}
+          aria-label={'refresh'}
+          variant={'outline'}
+          mr={4}
+          size={'sm'}
+          onClick={() => refetchData(pageNum)}
+        />
+        <Button
+          variant={'outline'}
+          mr={2}
+          size={'sm'}
+          isLoading={isLoadingExport}
+          title={'换行数据导出时，会进行格式转换'}
+          onClick={() => onclickExport()}
+        >
+          导出
+        </Button>
+        <Menu autoSelect={false}>
+          <MenuButton as={Button} size={'sm'}>
+            导入
+          </MenuButton>
+          <MenuList>
+            <MenuItem
+              onClick={() =>
+                setEditInputData({
+                  a: '',
+                  q: ''
+                })
+              }
             >
-              导出
-            </Button>
-            <Menu autoSelect={false}>
-              <MenuButton as={Button} size={'sm'}>
-                导入
-              </MenuButton>
-              <MenuList>
-                <MenuItem
-                  onClick={() =>
-                    setEditInputData({
-                      a: '',
-                      q: ''
-                    })
-                  }
-                >
-                  手动输入
-                </MenuItem>
-                <MenuItem onClick={onOpenSelectFileModal}>文本/文件拆分</MenuItem>
-                <MenuItem onClick={onOpenSelectCsvModal}>csv 问答对导入</MenuItem>
-              </MenuList>
-            </Menu>
-          </>
-        )}
+              手动输入
+            </MenuItem>
+            <MenuItem onClick={onOpenSelectFileModal}>文本/文件拆分</MenuItem>
+            <MenuItem onClick={onOpenSelectCsvModal}>csv 问答对导入</MenuItem>
+          </MenuList>
+        </Menu>
       </Flex>
       <Flex mt={4}>
-        {isOwner && (splitDataQueue > 0 || embeddingQueue > 0) && (
+        {(splitDataQueue > 0 || embeddingQueue > 0) && (
           <Box fontSize={'xs'}>
             {splitDataQueue > 0 ? `${splitDataQueue}条数据正在拆分，` : ''}
             {embeddingQueue > 0 ? `${embeddingQueue}条数据正在生成索引，` : ''}
@@ -216,7 +220,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
       </Flex>
 
       <Box mt={4}>
-        <TableContainer minH={'500px'}>
+        <TableContainer>
           <Table variant={'simple'} w={'100%'}>
             <Thead>
               <Tr>
@@ -232,7 +236,7 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
                 </Th>
                 <Th>补充知识</Th>
                 <Th>状态</Th>
-                {isOwner && <Th>操作</Th>}
+                <Th>操作</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -245,35 +249,33 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
                     <Box {...tdStyles.current}>{item.a || '-'}</Box>
                   </Td>
                   <Td>{ModelDataStatusMap[item.status]}</Td>
-                  {isOwner && (
-                    <Td>
-                      <IconButton
-                        mr={5}
-                        icon={<EditIcon />}
-                        variant={'outline'}
-                        aria-label={'delete'}
-                        size={'sm'}
-                        onClick={() =>
-                          setEditInputData({
-                            dataId: item.id,
-                            q: item.q,
-                            a: item.a
-                          })
-                        }
-                      />
-                      <IconButton
-                        icon={<DeleteIcon />}
-                        variant={'outline'}
-                        colorScheme={'gray'}
-                        aria-label={'delete'}
-                        size={'sm'}
-                        onClick={async () => {
-                          await delOneModelData(item.id);
-                          refetchData(pageNum);
-                        }}
-                      />
-                    </Td>
-                  )}
+                  <Td>
+                    <IconButton
+                      mr={5}
+                      icon={<EditIcon />}
+                      variant={'outline'}
+                      aria-label={'delete'}
+                      size={'sm'}
+                      onClick={() =>
+                        setEditInputData({
+                          dataId: item.id,
+                          q: item.q,
+                          a: item.a
+                        })
+                      }
+                    />
+                    <IconButton
+                      icon={<DeleteIcon />}
+                      variant={'outline'}
+                      colorScheme={'gray'}
+                      aria-label={'delete'}
+                      size={'sm'}
+                      onClick={async () => {
+                        await delOneKbDataByDataId(item.id);
+                        refetchData(pageNum);
+                      }}
+                    />
+                  </Td>
                 </Tr>
               ))}
             </Tbody>
@@ -287,24 +289,20 @@ const ModelDataCard = ({ modelId, isOwner }: { modelId: string; isOwner: boolean
       <Loading loading={isLoading} fixed={false} />
       {editInputData !== undefined && (
         <InputModal
-          modelId={modelId}
+          kbId={kbId}
           defaultValues={editInputData}
           onClose={() => setEditInputData(undefined)}
           onSuccess={refetchData}
         />
       )}
       {isOpenSelectFileModal && (
-        <SelectFileModal
-          modelId={modelId}
-          onClose={onCloseSelectFileModal}
-          onSuccess={refetchData}
-        />
+        <SelectFileModal kbId={kbId} onClose={onCloseSelectFileModal} onSuccess={refetchData} />
       )}
       {isOpenSelectCsvModal && (
-        <SelectCsvModal modelId={modelId} onClose={onCloseSelectCsvModal} onSuccess={refetchData} />
+        <SelectCsvModal kbId={kbId} onClose={onCloseSelectCsvModal} onSuccess={refetchData} />
       )}
     </Box>
   );
 };
 
-export default ModelDataCard;
+export default DataCard;

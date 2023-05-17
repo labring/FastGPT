@@ -1,20 +1,25 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import type { KbDataItemType } from '@/types/plugin';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
-import { ModelDataStatusEnum } from '@/constants/model';
 import { PgClient } from '@/service/pg';
-import { authModel } from '@/service/utils/auth';
+import { authKb } from '@/service/utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { modelId, data } = req.body as {
-      modelId: string;
-      data: string[][];
+    const {
+      kbId,
+      data,
+      formatLineBreak = true
+    } = req.body as {
+      kbId: string;
+      formatLineBreak?: boolean;
+      data: { a: KbDataItemType['a']; q: KbDataItemType['q'] }[];
     };
 
-    if (!modelId || !Array.isArray(data)) {
+    if (!kbId || !Array.isArray(data)) {
       throw new Error('缺少参数');
     }
 
@@ -23,31 +28,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    // 验证是否是该用户的 model
-    await authModel({
+    await authKb({
       userId,
-      modelId
+      kbId
     });
 
-    // 去重
+    // 过滤重复的内容
     const searchRes = await Promise.allSettled(
-      data.map(async ([q, a = '']) => {
+      data.map(async ({ q, a = '' }) => {
         if (!q) {
           return Promise.reject('q为空');
         }
-        try {
+
+        if (formatLineBreak) {
           q = q.replace(/\\n/g, '\n');
           a = a.replace(/\\n/g, '\n');
+        }
+
+        // Exactly the same data, not push
+        try {
           const count = await PgClient.count('modelData', {
-            where: [
-              ['user_id', userId],
-              'AND',
-              ['model_id', modelId],
-              'AND',
-              ['q', q],
-              'AND',
-              ['a', a]
-            ]
+            where: [['user_id', userId], 'AND', ['kb_id', kbId], 'AND', ['q', q], 'AND', ['a', a]]
           });
           if (count > 0) {
             return Promise.reject('已经存在');
@@ -61,25 +62,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
       })
     );
-    // 过滤重复的内容
     const filterData = searchRes
       .filter((item) => item.status === 'fulfilled')
       .map<{ q: string; a: string }>((item: any) => item.value);
 
-    // 插入 pg
+    // 插入记录
     const insertRes = await PgClient.insert('modelData', {
       values: filterData.map((item) => [
         { key: 'user_id', value: userId },
-        { key: 'model_id', value: modelId },
+        { key: 'kb_id', value: kbId },
         { key: 'q', value: item.q },
         { key: 'a', value: item.a },
-        { key: 'status', value: ModelDataStatusEnum.waiting }
+        { key: 'status', value: 'waiting' }
       ])
     });
 
     generateVector();
 
     jsonRes(res, {
+      message: `共插入 ${insertRes.rowCount} 条数据`,
       data: insertRes.rowCount
     });
   } catch (err) {
@@ -89,11 +90,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
   }
 }
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb'
-    }
-  }
-};

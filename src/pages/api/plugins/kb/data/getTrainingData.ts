@@ -8,8 +8,8 @@ import { PgClient } from '@/service/pg';
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { modelId } = req.query as { modelId: string };
-    if (!modelId) {
+    const { kbId } = req.query as { kbId: string };
+    if (!kbId) {
       throw new Error('参数错误');
     }
     await connectToDatabase();
@@ -19,25 +19,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // split queue data
     const data = await SplitData.find({
       userId,
-      modelId,
+      kbId,
       textList: { $exists: true, $not: { $size: 0 } }
     });
 
     // embedding queue data
-    const where: any = [
-      ['user_id', userId],
-      'AND',
-      ['model_id', modelId],
-      'AND',
-      ['status', ModelDataStatusEnum.waiting]
-    ];
+    const embeddingData = await PgClient.count('modelData', {
+      where: [
+        ['user_id', userId],
+        'AND',
+        ['kb_id', kbId],
+        'AND',
+        ['status', ModelDataStatusEnum.waiting]
+      ]
+    });
 
     jsonRes(res, {
       data: {
         splitDataQueue: data.map((item) => item.textList).flat().length,
-        embeddingQueue: await PgClient.count('modelData', {
-          where
-        })
+        embeddingQueue: embeddingData
       }
     });
   } catch (err) {

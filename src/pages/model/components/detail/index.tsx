@@ -10,7 +10,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import { useLoading } from '@/hooks/useLoading';
 import ModelEditForm from './components/ModelEditForm';
-import ModelDataCard from './components/ModelDataCard';
 
 const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
   const { toast } = useToast();
@@ -194,10 +193,6 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
       </Card>
       <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={5}>
         <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} isOwner={isOwner} />
-
-        <Card p={4} gridColumnStart={[1, 1]} gridColumnEnd={[2, 3]}>
-          <ModelDataCard modelId={modelId} isOwner={isOwner} />
-        </Card>
       </Grid>
       <Loading loading={isLoading} fixed={false} />
     </Box>

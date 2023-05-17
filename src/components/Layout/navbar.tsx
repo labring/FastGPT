@@ -22,12 +22,17 @@ const Navbar = () => {
         link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
       },
-
       {
         label: 'AI助手',
         icon: 'model',
         link: `/model?modelId=${lastModelId}`,
         activeLink: ['/model']
+      },
+      {
+        label: '知识库',
+        icon: 'kb',
+        link: `/kb`,
+        activeLink: ['/kb']
       },
       {
         label: '共享',

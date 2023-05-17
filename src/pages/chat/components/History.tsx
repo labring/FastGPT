@@ -20,24 +20,22 @@ import { formatTimeToChatTime } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import type { HistoryItemType, ExportChatType } from '@/types/chat';
 import { useChatStore } from '@/store/chat';
-import { useScreen } from '@/hooks/useScreen';
 import ModelList from './ModelList';
+import { useGlobalStore } from '@/store/global';
 
 import styles from '../index.module.scss';
 
 const PcSliderBar = ({
-  isPcDevice,
   onclickDelHistory,
   onclickExportChat
 }: {
-  isPcDevice: boolean;
   onclickDelHistory: (historyId: string) => Promise<void>;
   onclickExportChat: (type: ExportChatType) => void;
 }) => {
   const router = useRouter();
   const { modelId = '', chatId = '' } = router.query as { modelId: string; chatId: string };
   const theme = useTheme();
-  const { isPc } = useScreen({ defaultIsPc: isPcDevice });
+  const { isPc } = useGlobalStore();
 
   const ContextMenuRef = useRef(null);
 
