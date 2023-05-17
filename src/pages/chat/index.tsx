@@ -36,11 +36,12 @@ import { useToast } from '@/hooks/useToast';
 import { useScreen } from '@/hooks/useScreen';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
+import { useCopyData, voiceBroadcast } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
+import Markdown from '@/components/Markdown';
 import { LOGO_ICON } from '@/constants/chat';
 import { ChatModelMap } from '@/constants/model';
 import { useChatStore } from '@/store/chat';
@@ -49,13 +50,16 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
 import Loading from '@/components/Loading';
-import Markdown from '@/components/Markdown';
-import Empty from './components/Empty';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
+  loading: () => <Loading fixed={false} />,
   ssr: false
 });
 const History = dynamic(() => import('./components/History'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
+const Empty = dynamic(() => import('./components/Empty'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
 });
@@ -73,6 +77,7 @@ const Chat = ({
   chatId: string;
   isPcDevice: boolean;
 }) => {
+  const hasVoiceApi = !!window.speechSynthesis;
   const router = useRouter();
   const theme = useTheme();
 
@@ -85,6 +90,7 @@ const Chat = ({
   const controller = useRef(new AbortController());
   const isLeavePage = useRef(false);
 
+  const [inputVal, setInputVal] = useState(''); // user input prompt
   const [showSystemPrompt, setShowSystemPrompt] = useState('');
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
@@ -162,8 +168,7 @@ const Chat = ({
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {
-    if (!TextareaDom.current) return;
-    TextareaDom.current.value = val;
+    setInputVal(val);
     setTimeout(() => {
       /* 回到最小高度 */
       if (TextareaDom.current) {
@@ -284,7 +289,6 @@ const Chat = ({
    * 发送一个内容
    */
   const sendPrompt = useCallback(async () => {
-    // get value
     if (isChatting) {
       toast({
         title: '正在聊天中...请等待结束',
@@ -292,10 +296,9 @@ const Chat = ({
       });
       return;
     }
-
-    // get input value
-    const value = TextareaDom.current?.value || '';
-    const val = value.trim().replace(/\n\s*/g, '\n');
+    const storeInput = inputVal;
+    // 去除空行
+    const val = inputVal.trim().replace(/\n\s*/g, '\n');
 
     if (!val) {
       toast({
@@ -343,7 +346,7 @@ const Chat = ({
         isClosable: true
       });
 
-      resetInputVal(value);
+      resetInputVal(storeInput);
 
       setChatData((state) => ({
         ...state,
@@ -352,6 +355,7 @@ const Chat = ({
     }
   }, [
     isChatting,
+    inputVal,
     chatData.history,
     setChatData,
     resetInputVal,
@@ -518,8 +522,6 @@ const Chat = ({
             status: 'finish'
           }))
         });
-
-        // have records.
         if (res.history.length > 0) {
           setTimeout(() => {
             scrollToBottom('auto');
@@ -597,7 +599,6 @@ const Chat = ({
       AiDetail?: boolean;
     }) => (
       <MenuList fontSize={'sm'} minW={'100px !important'}>
-        <MenuItem onClick={() => onclickCopy(history.value)}>复制</MenuItem>
         {AiDetail && chatData.model.canUse && history.obj === 'AI' && (
           <MenuItem
             borderBottom={theme.borders.base}
@@ -606,6 +607,7 @@ const Chat = ({
             AI助手详情
           </MenuItem>
         )}
+        <MenuItem onClick={() => onclickCopy(history.value)}>复制</MenuItem>
         {hasVoiceApi && (
           <MenuItem
             borderBottom={theme.borders.base}
@@ -622,6 +624,7 @@ const Chat = ({
       chatData.model.canUse,
       chatData.modelId,
       delChatRecord,
+      hasVoiceApi,
       onclickCopy,
       router,
       theme.borders.base
@@ -678,12 +681,7 @@ const Chat = ({
               color={'white'}
             />
           </Flex>
-          <Box
-            position={'relative'}
-            h={'100%'}
-            bg={'white'}
-            overflow={foldSliderBar ? 'hidden' : 'visible'}
-          >
+          <Box position={'relative'} h={'100%'} bg={'white'} overflow={'hidden'}>
             <History
               onclickDelHistory={onclickDelHistory}
               onclickExportChat={onclickExportChat}
@@ -708,7 +706,7 @@ const Chat = ({
             justifyContent={'space-between'}
             py={[3, 5]}
             px={5}
-            borderBottom={'1px solid'}
+            borderBottom={'1px solid '}
             borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
             color={useColorModeValue('myGray.900', 'white')}
           >
@@ -784,10 +782,7 @@ const Chat = ({
                             order: 1,
                             mr: ['6px', 2],
                             cursor: 'pointer',
-                            onClick: () =>
-                              isPc &&
-                              chatData.model.canUse &&
-                              router.push(`/model?modelId=${chatData.modelId}`)
+                            onClick: () => isPc && router.push(`/model?modelId=${chatData.modelId}`)
                           }
                         : {
                             order: 3,
@@ -799,7 +794,7 @@ const Chat = ({
                           className="avatar"
                           src={
                             item.obj === 'Human'
-                              ? userInfo?.avatar || '/icon/human.png'
+                              ? userInfo?.avatar
                               : chatData.model.avatar || LOGO_ICON
                           }
                           alt="avatar"
@@ -826,7 +821,6 @@ const Chat = ({
                           <Markdown
                             source={item.value}
                             isChatting={isChatting && index === chatData.history.length - 1}
-                            formatLink
                           />
                           {item.systemPrompt && (
                             <Button
@@ -861,9 +855,7 @@ const Chat = ({
                   </Flex>
                 </Flex>
               ))}
-              {chatData.history.length === 0 && (
-                <Empty model={chatData.model} showChatProblem={true} />
-              )}
+              {chatData.history.length === 0 && <Empty model={chatData.model} />}
             </Box>
           </Box>
           {/* 发送区 */}
@@ -889,6 +881,7 @@ const Chat = ({
                   }}
                   placeholder="提问"
                   resize={'none'}
+                  value={inputVal}
                   rows={1}
                   height={'22px'}
                   lineHeight={'22px'}
@@ -901,6 +894,7 @@ const Chat = ({
                   color={useColorModeValue('blackAlpha.700', 'white')}
                   onChange={(e) => {
                     const textarea = e.target;
+                    setInputVal(textarea.value);
                     textarea.style.height = textareaMinH;
                     textarea.style.height = `${textarea.scrollHeight}px`;
                   }}
@@ -973,7 +967,7 @@ const Chat = ({
       {
         <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
           <ModalOverlay />
-          <ModalContent pt={5} maxW={'min(90vw, 600px)'} h={'80vh'} overflow={'overlay'}>
+          <ModalContent maxW={'min(90vw, 600px)'} pr={2} maxH={'80vh'} overflowY={'auto'}>
             <ModalCloseButton />
             <ModalBody pt={5} whiteSpace={'pre-wrap'} textAlign={'justify'}>
               {showSystemPrompt}
@@ -1009,7 +1003,7 @@ Chat.getInitialProps = ({ query, req }: any) => {
   return {
     modelId: query?.modelId || '',
     chatId: query?.chatId || '',
-    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
+    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
   };
 };
 

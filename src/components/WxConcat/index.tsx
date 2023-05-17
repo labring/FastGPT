@@ -18,12 +18,12 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
     <Modal isOpen={true} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>wx交流群</ModalHeader>
+        <ModalHeader>充值异常请扫码联系</ModalHeader>
         <ModalCloseButton />
         <ModalBody textAlign={'center'}>
           <Image
             style={{ margin: 'auto' }}
-            src={'/imgs/wx300.jpg'}
+            src={'/imgs/wxxiaoerlang.png'}
             width={'200px'}
             height={'200px'}
             alt=""
@@ -31,7 +31,7 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
           <Box mt={2}>
             微信号:
             <Box as={'span'} userSelect={'all'}>
-              fastgpt123
+              xiaodongbiu
             </Box>
           </Box>
         </ModalBody>

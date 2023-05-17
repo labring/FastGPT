@@ -89,7 +89,6 @@ export const formatTimeToChatTime = (time: Date) => {
   return target.format('YYYY/M/D');
 };
 
-export const hasVoiceApi = typeof window !== 'undefined' && 'speechSynthesis' in window;
 /**
  * voice broadcast
  */
@@ -113,10 +112,4 @@ export const voiceBroadcast = ({ text }: { text: string }) => {
   return {
     cancel: () => window.speechSynthesis?.cancel()
   };
-};
-
-export const formatLinkTextToHtml = (text: string) => {
-  const httpReg =
-    /(http|https|ftp):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?/gi;
-  return text.replace(httpReg, '<a href="$&" target="_blank">$&</a>');
 };

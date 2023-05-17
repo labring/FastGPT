@@ -45,11 +45,6 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
     [modelDetail.userId, userInfo?._id]
   );
 
-  const canRead = useMemo(
-    () => isOwner || isLoading || modelDetail.share.isShareDetail,
-    [isLoading, isOwner, modelDetail.share.isShareDetail]
-  );
-
   /* 点击删除 */
   const handleDelModel = useCallback(async () => {
     if (!modelDetail) return;
@@ -134,7 +129,7 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
     };
   }, [router]);
 
-  return canRead ? (
+  return (
     <Box h={'100%'} p={5} overflow={'overlay'} position={'relative'}>
       {/* 头部 */}
       <Card px={6} py={3}>
@@ -200,10 +195,6 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
         </Card>
       </Grid>
       <Loading loading={isLoading} fixed={false} />
-    </Box>
-  ) : (
-    <Box h={'100%'} p={5}>
-      无权查看模型配置
     </Box>
   );
 };

@@ -85,7 +85,7 @@ const Login = ({ isPcDevice }: { isPcDevice: boolean }) => {
       >
         {isPc && (
           <Image
-            src={'/icon/loginLeft.svg'}
+            src={'/icon/denglu.png'}
             order={pageType === PageTypeEnum.login ? 0 : 2}
             flex={'1 0 0'}
             w="0"
@@ -117,6 +117,6 @@ export default Login;
 
 Login.getInitialProps = ({ query, req }: any) => {
   return {
-    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
+    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
   };
 };
