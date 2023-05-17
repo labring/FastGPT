@@ -41,6 +41,7 @@ export const usePagination = <T = any,>({
         });
         console.log(error);
       }
+      return null;
     }
   });
 

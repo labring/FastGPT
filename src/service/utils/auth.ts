@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
-import { Chat, Model, OpenApi, User, ShareChat } from '../mongo';
+import { Chat, Model, OpenApi, User, ShareChat, KB } from '../mongo';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ChatItemSimpleType } from '@/types/chat';
 import mongoose from 'mongoose';
@@ -127,6 +127,18 @@ export const authModel = async ({
   }
 
   return { model, showModelDetail: model.share.isShareDetail || userId === String(model.userId) };
+};
+
+// 知识库操作权限
+export const authKb = async ({ kbId, userId }: { kbId: string; userId: string }) => {
+  const kb = await KB.findOne({
+    _id: kbId,
+    userId
+  });
+  if (kb) {
+    return kb;
+  }
+  return Promise.reject(ERROR_ENUM.unAuthKb);
 };
 
 // 获取对话校验

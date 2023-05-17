@@ -4,8 +4,8 @@ import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { getFilling } from '@/api/system';
 import { useQuery } from '@tanstack/react-query';
-import { useScreen } from '@/hooks/useScreen';
 import { useRouter } from 'next/router';
+import { useGlobalStore } from '@/store/global';
 
 import styles from './index.module.scss';
 
@@ -13,7 +13,7 @@ const Home = () => {
   const router = useRouter();
   const { inviterId } = router.query as { inviterId: string };
   const { data } = useMarkdown({ url: '/intro.md' });
-  const { isPc } = useScreen();
+  const { isPc } = useGlobalStore();
 
   useEffect(() => {
     if (inviterId) {

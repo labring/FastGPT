@@ -11,17 +11,15 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { postModelDataInput, putModelDataById } from '@/api/model';
+import { postKbDataFromList, putKbDataById } from '@/api/plugins/kb';
 import { useToast } from '@/hooks/useToast';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export type FormData = { dataId?: string; a: string; q: string };
 
 const InputDataModal = ({
   onClose,
   onSuccess,
-  modelId,
+  kbId,
   defaultValues = {
     a: '',
     q: ''
@@ -29,7 +27,7 @@ const InputDataModal = ({
 }: {
   onClose: () => void;
   onSuccess: () => void;
-  modelId: string;
+  kbId: string;
   defaultValues?: FormData;
 }) => {
   const [importing, setImporting] = useState(false);
@@ -54,8 +52,8 @@ const InputDataModal = ({
       setImporting(true);
 
       try {
-        const res = await postModelDataInput({
-          modelId: modelId,
+        const res = await postKbDataFromList({
+          kbId,
           data: [
             {
               a: e.a,
@@ -65,8 +63,8 @@ const InputDataModal = ({
         });
 
         toast({
-          title: res === 0 ? '导入数据成功,需要一段时间训练' : '数据导入异常',
-          status: res === 0 ? 'success' : 'warning'
+          title: res === 0 ? '可能已存在完全一致的数据' : '导入数据成功,需要一段时间训练',
+          status: 'success'
         });
         reset({
           a: '',
@@ -82,7 +80,7 @@ const InputDataModal = ({
       }
       setImporting(false);
     },
-    [modelId, onSuccess, reset, toast]
+    [kbId, onSuccess, reset, toast]
   );
 
   const updateData = useCallback(
@@ -90,7 +88,7 @@ const InputDataModal = ({
       if (!e.dataId) return;
 
       if (e.a !== defaultValues.a || e.q !== defaultValues.q) {
-        await putModelDataById({
+        await putKbDataById({
           dataId: e.dataId,
           a: e.a,
           q: e.q === defaultValues.q ? '' : e.q

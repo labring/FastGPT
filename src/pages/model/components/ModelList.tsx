@@ -126,7 +126,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
                 {...(modelId === item._id
                   ? {
                       backgroundColor: '#eff0f1',
-                      borderLeftColor: 'myBlue.600'
+                      borderLeftColor: 'myBlue.600 !important'
                     }
                   : {})}
                 onClick={() => {

@@ -17,10 +17,10 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
-import { postModelDataSplitData } from '@/api/model';
-import { formatPrice } from '@/utils/user';
+import { postSplitData } from '@/api/plugins/kb';
 import Radio from '@/components/Radio';
 import { splitText_token } from '@/utils/file';
+import { SplitTextTypEnum } from '@/constants/plugin';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
@@ -42,17 +42,17 @@ const modeMap = {
 const SelectFileModal = ({
   onClose,
   onSuccess,
-  modelId
+  kbId
 }: {
   onClose: () => void;
   onSuccess: () => void;
-  modelId: string;
+  kbId: string;
 }) => {
   const [btnLoading, setBtnLoading] = useState(false);
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
-  const [mode, setMode] = useState<'qa' | 'subsection'>('qa');
+  const [mode, setMode] = useState<`${SplitTextTypEnum}`>(SplitTextTypEnum.subsection);
   const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
   const [splitRes, setSplitRes] = useState<{ tokens: number; chunks: string[] }>({
     tokens: 0,
@@ -107,8 +107,8 @@ const SelectFileModal = ({
     mutationFn: async () => {
       if (splitRes.chunks.length === 0) return;
 
-      await postModelDataSplitData({
-        modelId,
+      await postSplitData({
+        kbId,
         chunks: splitRes.chunks,
         prompt: `下面是"${prompt || '一段长文本'}"`,
         mode

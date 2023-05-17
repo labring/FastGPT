@@ -1,6 +1,6 @@
 /* 模型的知识库 */
 import { Schema, model, models, Model as MongoModel } from 'mongoose';
-import { ModelSplitDataSchema as SplitDataType } from '@/types/mongoSchema';
+import { SplitDataSchema as SplitDataType } from '@/types/mongoSchema';
 
 const SplitDataSchema = new Schema({
   userId: {
@@ -13,9 +13,9 @@ const SplitDataSchema = new Schema({
     type: String,
     required: true
   },
-  modelId: {
+  kbId: {
     type: Schema.Types.ObjectId,
-    ref: 'model',
+    ref: 'kb',
     required: true
   },
   textList: {

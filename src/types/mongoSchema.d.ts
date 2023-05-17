@@ -69,19 +69,11 @@ export interface CollectionSchema {
 }
 
 export type ModelDataType = 0 | 1;
-export interface ModelDataSchema {
-  _id: string;
-  modelId: string;
-  userId: string;
-  a: string;
-  q: string;
-  status: ModelDataType;
-}
 
-export interface ModelSplitDataSchema {
+export interface SplitDataSchema {
   _id: string;
   userId: string;
-  modelId: string;
+  kbId: string;
   prompt: string;
   errorText: string;
   textList: string[];
@@ -147,4 +139,13 @@ export interface ShareChatSchema {
   tokens: number;
   maxContext: number;
   lastTime: Date;
+}
+
+export interface kbSchema {
+  _id: string;
+  userId: string;
+  updateTime: Date;
+  avatar: string;
+  name: string;
+  tags: string[];
 }

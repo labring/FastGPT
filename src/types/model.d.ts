@@ -16,15 +16,6 @@ export interface ModelUpdateParams {
   security: ModelSchema['security'];
 }
 
-export interface ModelDataItemType {
-  id: string;
-  status: 'waiting' | 'ready';
-  q: string; // 提问词
-  a: string; // 原文
-  modelId: string;
-  userId: string;
-}
-
 export interface ShareModelItem {
   _id: string;
   avatar: string;

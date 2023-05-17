@@ -17,17 +17,15 @@ import { formatTimeToChatTime } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import type { ShareChatHistoryItemType, ExportChatType } from '@/types/chat';
 import { useChatStore } from '@/store/chat';
-import { useScreen } from '@/hooks/useScreen';
+import { useGlobalStore } from '@/store/global';
 
 import styles from '../index.module.scss';
 
 const PcSliderBar = ({
-  isPcDevice,
   onclickDelHistory,
   onclickExportChat,
   onCloseSlider
 }: {
-  isPcDevice: boolean;
   onclickDelHistory: (historyId: string) => void;
   onclickExportChat: (type: ExportChatType) => void;
   onCloseSlider: () => void;
@@ -35,7 +33,7 @@ const PcSliderBar = ({
   const router = useRouter();
   const { shareId = '', historyId = '' } = router.query as { shareId: string; historyId: string };
   const theme = useTheme();
-  const { isPc } = useScreen({ defaultIsPc: isPcDevice });
+  const { isPc } = useGlobalStore();
 
   const ContextMenuRef = useRef(null);
 
