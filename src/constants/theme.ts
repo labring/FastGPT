@@ -171,9 +171,6 @@ export const theme = extendTheme({
         fontWeight: 400,
         height: '100%',
         overflow: 'hidden'
-      },
-      a: {
-        color: 'myBlue.700'
       }
     }
   },

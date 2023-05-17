@@ -10,13 +10,11 @@ import NavbarPhone from './navbarPhone';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
-  '/login': true,
-  '/chat/share': true
+  '/login': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
-  '/login': true,
-  '/chat/share': true
+  '/login': true
 };
 
 const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: boolean }) => {
@@ -69,7 +67,7 @@ const Layout = ({ children, isPcDevice }: { children: JSX.Element; isPcDevice: b
           </Flex>
         )}
       </Box>
-      <Loading loading={loading} />
+      {loading && <Loading />}
     </>
   );
 };
@@ -78,6 +76,6 @@ export default Layout;
 
 Layout.getInitialProps = ({ req }: any) => {
   return {
-    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
+    isPcDevice: !/Mobile/.test(req ? req.headers['user-agent'] : navigator.userAgent)
   };
 };

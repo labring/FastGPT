@@ -1,32 +1,19 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
-import { useCopyData, formatLinkTextToHtml } from '@/utils/tools';
+import { useCopyData } from '@/utils/tools';
 import Icon from '@/components/Icon';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 
 import 'katex/dist/katex.min.css';
 import styles from './index.module.scss';
 import { codeLight } from './codeLight';
 
-const Markdown = ({
-  source,
-  isChatting = false,
-  formatLink
-}: {
-  source: string;
-  formatLink?: boolean;
-  isChatting?: boolean;
-}) => {
+const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
   const { copyData } = useCopyData();
-
-  const formatSource = useMemo(() => {
-    return formatLink ? formatLinkTextToHtml(source) : source;
-  }, [source, formatLink]);
 
   return (
     <ReactMarkdown
@@ -34,7 +21,7 @@ const Markdown = ({
         isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''
       }`}
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeRaw, remarkGfm, rehypeKatex]}
+      rehypePlugins={[remarkGfm, rehypeKatex]}
       components={{
         pre: 'div',
         code({ node, inline, className, children, ...props }) {
@@ -76,7 +63,7 @@ const Markdown = ({
       }}
       linkTarget="_blank"
     >
-      {formatSource}
+      {source}
     </ReactMarkdown>
   );
 };

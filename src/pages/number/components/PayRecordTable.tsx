@@ -67,7 +67,7 @@ const PayRecordTable = () => {
             充值记录
           </Box>
           <Button onClick={onOpenWx} size={'xs'} ml={4} variant={'outline'}>
-            异常问题，wx联系
+            充值异常，请联系WX
           </Button>
         </Flex>
         <TableContainer px={6}>

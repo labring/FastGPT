@@ -67,7 +67,7 @@ const OpenApi = () => {
           我的邀请
         </Box>
         <Box my={2} color={'blackAlpha.600'} fontSize={'sm'}>
-          你可以通过邀请链接邀请好友注册 FastGpt 账号。好友在 FastGpt
+          你可以通过邀请链接邀请好友注册 MZ FastGpt 账号。好友在 MZ FastGpt
           平台的每次充值，你都会获得一定比例的佣金。
         </Box>
         <Flex my={2} alignItems={'center'}>
@@ -100,7 +100,7 @@ const OpenApi = () => {
       <Card mt={4} px={6} py={4} position={'relative'}>
         <Flex alignItems={'center'} mb={3} justifyContent={['space-between', 'flex-start']}>
           <Box w={'120px'}>佣金比例</Box>
-          <Box fontWeight={'bold'}>{userInfo?.promotion.rate || 15}%</Box>
+          <Box fontWeight={'bold'}>{userInfo?.promotion.rate || 25}%</Box>
         </Flex>
         <Flex alignItems={'center'} mb={3} justifyContent={['space-between', 'flex-start']}>
           <Box w={'120px'}>已注册用户数</Box>
@@ -151,7 +151,7 @@ const OpenApi = () => {
           <ModalBody textAlign={'center'}>
             <Image
               style={{ margin: 'auto' }}
-              src={'/imgs/wx300-2.jpg'}
+              src={'/imgs/wxxiaoerlang.png'}
               width={200}
               height={200}
               alt=""
@@ -159,10 +159,10 @@ const OpenApi = () => {
             <Box mt={2}>
               微信号:
               <Box as={'span'} userSelect={'all'}>
-                YNyiqi
+                xiaodongbiu
               </Box>
             </Box>
-            <Box>发送你的邀请链接和需要提现的金额</Box>
+            <Box>添加微信请备注提现/通过后发送你的邀请链接和需要提现的金额</Box>
           </ModalBody>
 
           <ModalFooter>

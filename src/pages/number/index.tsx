@@ -128,13 +128,22 @@ const NumberSetting = () => {
               <strong>{userInfo?.balance}</strong> 元
             </Box>
             <Button
-              size={['xs', 'sm']}
-              w={['70px', '80px']}
-              ml={5}
-              onClick={() => setShowPay(true)}
-            >
-              充值
-            </Button>
+            size={['xs', 'sm']}
+            w={['70px', '80px']}
+            ml={5}
+            onClick={() => setShowPay(true)}
+          >
+            充值
+          </Button>
+          <Button
+            size={['xs', 'sm']}
+            w={['70px', '80px']}
+            ml={5}
+            onClick={() => window.open('https://www.youpumao.xyz/mqaMba', '_blank')}
+          >
+            openai账号购买
+          </Button>
+
           </Flex>
           <Box fontSize={'xs'} color={'blackAlpha.500'}>
             如果填写了自己的 openai 账号，将不会计费
