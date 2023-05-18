@@ -146,7 +146,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   });
 
   return (
-    <Box position={'relative'} w={'100%'}>
+    <Box position={'relative'}>
       <Flex>
         <Box fontWeight={'bold'} fontSize={'lg'} flex={1} mr={2}>
           知识库数据: {total}组
@@ -155,7 +155,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           icon={<RepeatIcon />}
           aria-label={'refresh'}
           variant={'outline'}
-          mr={4}
+          mr={[2, 4]}
           size={'sm'}
           onClick={() => refetchData(pageNum)}
         />
@@ -218,73 +218,70 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           }}
         />
       </Flex>
-
-      <Box mt={4}>
-        <TableContainer>
-          <Table variant={'simple'} w={'100%'}>
-            <Thead>
-              <Tr>
-                <Th>
-                  匹配的知识点
-                  <Tooltip
-                    label={
-                      '对话时，会将用户的问题和知识库的 "匹配知识点" 进行比较，找到最相似的前 n 条记录，将这些记录的 "匹配知识点"+"补充知识点" 作为 chatgpt 的系统提示词。'
+      <TableContainer mt={4} minH={'200px'}>
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>
+                匹配的知识点
+                <Tooltip
+                  label={
+                    '对话时，会将用户的问题和知识库的 "匹配知识点" 进行比较，找到最相似的前 n 条记录，将这些记录的 "匹配知识点"+"补充知识点" 作为 chatgpt 的系统提示词。'
+                  }
+                >
+                  <QuestionOutlineIcon ml={1} />
+                </Tooltip>
+              </Th>
+              <Th>补充知识</Th>
+              <Th>状态</Th>
+              <Th>操作</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {modelDataList.map((item) => (
+              <Tr key={item.id}>
+                <Td>
+                  <Box {...tdStyles.current}>{item.q}</Box>
+                </Td>
+                <Td>
+                  <Box {...tdStyles.current}>{item.a || '-'}</Box>
+                </Td>
+                <Td>{ModelDataStatusMap[item.status]}</Td>
+                <Td>
+                  <IconButton
+                    mr={5}
+                    icon={<EditIcon />}
+                    variant={'outline'}
+                    aria-label={'delete'}
+                    size={'sm'}
+                    onClick={() =>
+                      setEditInputData({
+                        dataId: item.id,
+                        q: item.q,
+                        a: item.a
+                      })
                     }
-                  >
-                    <QuestionOutlineIcon ml={1} />
-                  </Tooltip>
-                </Th>
-                <Th>补充知识</Th>
-                <Th>状态</Th>
-                <Th>操作</Th>
+                  />
+                  <IconButton
+                    icon={<DeleteIcon />}
+                    variant={'outline'}
+                    colorScheme={'gray'}
+                    aria-label={'delete'}
+                    size={'sm'}
+                    onClick={async () => {
+                      await delOneKbDataByDataId(item.id);
+                      refetchData(pageNum);
+                    }}
+                  />
+                </Td>
               </Tr>
-            </Thead>
-            <Tbody>
-              {modelDataList.map((item) => (
-                <Tr key={item.id}>
-                  <Td>
-                    <Box {...tdStyles.current}>{item.q}</Box>
-                  </Td>
-                  <Td>
-                    <Box {...tdStyles.current}>{item.a || '-'}</Box>
-                  </Td>
-                  <Td>{ModelDataStatusMap[item.status]}</Td>
-                  <Td>
-                    <IconButton
-                      mr={5}
-                      icon={<EditIcon />}
-                      variant={'outline'}
-                      aria-label={'delete'}
-                      size={'sm'}
-                      onClick={() =>
-                        setEditInputData({
-                          dataId: item.id,
-                          q: item.q,
-                          a: item.a
-                        })
-                      }
-                    />
-                    <IconButton
-                      icon={<DeleteIcon />}
-                      variant={'outline'}
-                      colorScheme={'gray'}
-                      aria-label={'delete'}
-                      size={'sm'}
-                      onClick={async () => {
-                        await delOneKbDataByDataId(item.id);
-                        refetchData(pageNum);
-                      }}
-                    />
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
-        <Flex mt={2} justifyContent={'flex-end'}>
-          <Pagination />
-        </Flex>
-      </Box>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+      <Flex mt={2} justifyContent={'flex-end'}>
+        <Pagination />
+      </Flex>
 
       <Loading loading={isLoading} fixed={false} />
       {editInputData !== undefined && (

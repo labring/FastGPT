@@ -23,11 +23,11 @@ const Kb = ({ kbId }: { kbId: string }) => {
     <Flex h={'100%'} position={'relative'} overflow={'hidden'}>
       {/* 模型列表 */}
       {(isPc || !kbId) && (
-        <SideBar w={[1, '0 0 250px', '0 0 270px', '0 0 290px']}>
+        <SideBar w={['100%', '0 0 250px', '0 0 270px', '0 0 290px']}>
           <KbList kbId={kbId} />
         </SideBar>
       )}
-      <Box flex={1} h={'100%'} position={'relative'}>
+      <Box flex={'1 0 0'} w={0} h={'100%'} position={'relative'}>
         {kbId && <KbDetail kbId={kbId} />}
       </Box>
     </Flex>

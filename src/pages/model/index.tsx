@@ -29,7 +29,7 @@ const Model = ({ modelId }: { modelId: string }) => {
     <Flex h={'100%'} position={'relative'} overflow={'hidden'}>
       {/* 模型列表 */}
       {(isPc || !modelId) && (
-        <SideBar w={[1, '0 0 250px', '0 0 270px', '0 0 290px']}>
+        <SideBar w={['100%', '0 0 250px', '0 0 270px', '0 0 290px']}>
           <ModelList modelId={modelId} />
         </SideBar>
       )}

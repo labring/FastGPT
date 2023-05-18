@@ -18,6 +18,7 @@ const ShareModelList = ({
     <>
       {models.map((model) => (
         <Flex
+          w={'100%'}
           flexDirection={'column'}
           key={model._id}
           p={4}
