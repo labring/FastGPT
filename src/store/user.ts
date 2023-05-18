@@ -2,18 +2,22 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import type { ModelSchema } from '@/types/mongoSchema';
 import { getMyModels, getModelById } from '@/api/model';
 import { formatPrice } from '@/utils/user';
 import { getTokenLogin } from '@/api/user';
 import { defaultModel } from '@/constants/model';
 import { ModelListItemType } from '@/types/model';
+import { KbItemType } from '@/types/plugin';
+import { getKbList } from '@/api/plugins/kb';
+import { defaultKbDetail } from '@/constants/kb';
+import type { ModelSchema } from '@/types/mongoSchema';
 
 type State = {
   userInfo: UserType | null;
   initUserInfo: () => Promise<null>;
   setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => void;
+  // model
   lastModelId: string;
   setLastModelId: (id: string) => void;
   myModels: ModelListItemType[];
@@ -26,6 +30,13 @@ type State = {
     updateModelDetail(model: ModelSchema): void;
     removeModelDetail(modelId: string): void;
   };
+  // kb
+  lastKbId: string;
+  setLastKbId: (id: string) => void;
+  myKbList: KbItemType[];
+  loadKbList: (init?: boolean) => Promise<KbItemType[]>;
+  KbDetail: KbItemType;
+  getKbDetail: (id: string) => KbItemType;
 };
 
 export const useUserStore = create<State>()(
@@ -103,12 +114,38 @@ export const useUserStore = create<State>()(
             }
             get().loadMyModels(true);
           }
+        },
+        lastKbId: '',
+        setLastKbId(id: string) {
+          set((state) => {
+            state.lastKbId = id;
+          });
+        },
+        myKbList: [],
+        async loadKbList(init = false) {
+          if (get().myKbList.length > 0 && !init) return get().myKbList;
+          const res = await getKbList();
+          set((state) => {
+            state.myKbList = res;
+          });
+          return res;
+        },
+        KbDetail: defaultKbDetail,
+        getKbDetail(id: string) {
+          const data = get().myKbList.find((item) => item._id === id) || defaultKbDetail;
+
+          set((state) => {
+            state.KbDetail = data;
+          });
+
+          return data;
         }
       })),
       {
         name: 'userStore',
         partialize: (state) => ({
-          lastModelId: state.lastModelId
+          lastModelId: state.lastModelId,
+          lastKbId: state.lastKbId
         })
       }
     )

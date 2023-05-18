@@ -26,7 +26,8 @@ const map = {
   closeSolid: require('./icons/closeSolid.svg').default,
   wx: require('./icons/wx.svg').default,
   out: require('./icons/out.svg').default,
-  git: require('./icons/git.svg').default
+  git: require('./icons/git.svg').default,
+  kb: require('./icons/kb.svg').default
 };
 
 export type IconName = keyof typeof map;

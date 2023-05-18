@@ -1,8 +1,7 @@
 import { GET, POST, DELETE, PUT } from './request';
-import type { ModelSchema, ModelDataSchema } from '@/types/mongoSchema';
+import type { ModelSchema } from '@/types/mongoSchema';
 import type { ModelUpdateParams, ShareModelItem } from '@/types/model';
 import { RequestPaging } from '../types/index';
-import { Obj2Query } from '@/utils/tools';
 import type { ModelListResponse } from './response/model';
 
 /**
@@ -30,72 +29,6 @@ export const getModelById = (id: string) => GET<ModelSchema>(`/model/detail?mode
  */
 export const putModelById = (id: string, data: ModelUpdateParams) =>
   PUT(`/model/update?modelId=${id}`, data);
-
-/* 模型 data */
-type GetModelDataListProps = RequestPaging & {
-  modelId: string;
-  searchText: string;
-};
-/**
- * 获取模型的知识库数据
- */
-export const getModelDataList = (props: GetModelDataListProps) =>
-  GET(`/model/data/getModelData?${Obj2Query(props)}`);
-
-/**
- * 获取导出数据（不分页）
- */
-export const getExportDataList = (modelId: string) =>
-  GET<[string, string][]>(`/model/data/exportModelData?modelId=${modelId}`);
-
-/**
- * 获取模型正在拆分数据的数量
- */
-export const getModelSplitDataListLen = (modelId: string) =>
-  GET<{
-    splitDataQueue: number;
-    embeddingQueue: number;
-  }>(`/model/data/getTrainingData?modelId=${modelId}`);
-
-/**
- * 获取 web 页面内容
- */
-export const getWebContent = (url: string) => POST<string>(`/model/data/fetchingUrlData`, { url });
-
-/**
- * 手动输入数据
- */
-export const postModelDataInput = (data: {
-  modelId: string;
-  data: { a: ModelDataSchema['a']; q: ModelDataSchema['q'] }[];
-}) => POST<number>(`/model/data/pushModelDataInput`, data);
-
-/**
- * 拆分数据
- */
-export const postModelDataSplitData = (data: {
-  modelId: string;
-  chunks: string[];
-  prompt: string;
-  mode: 'qa' | 'subsection';
-}) => POST(`/model/data/splitData`, data);
-
-/**
- * json导入数据
- */
-export const postModelDataCsvData = (modelId: string, data: string[][]) =>
-  POST<number>(`/model/data/pushModelDataCsv`, { modelId, data: data });
-
-/**
- * 更新模型数据
- */
-export const putModelDataById = (data: { dataId: string; a: string; q?: string }) =>
-  PUT('/model/data/putModelData', data);
-/**
- * 删除一条模型数据
- */
-export const delOneModelData = (dataId: string) =>
-  DELETE(`/model/data/delModelDataById?dataId=${dataId}`);
 
 /* 共享市场 */
 /**

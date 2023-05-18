@@ -3,27 +3,22 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authToken } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
-import type { PgModelDataItemType } from '@/types/pg';
-import { authModel } from '@/service/utils/auth';
+import type { PgKBDataItemType } from '@/types/pg';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     let {
-      modelId,
+      kbId,
       pageNum = 1,
       pageSize = 10,
       searchText = ''
-    } = req.query as {
-      modelId: string;
-      pageNum: string;
-      pageSize: string;
+    } = req.body as {
+      kbId: string;
+      pageNum: number;
+      pageSize: number;
       searchText: string;
     };
-
-    pageNum = +pageNum;
-    pageSize = +pageSize;
-
-    if (!modelId) {
+    if (!kbId) {
       throw new Error('缺少参数');
     }
 
@@ -32,19 +27,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    const { model } = await authModel({
-      userId,
-      modelId,
-      authOwner: false
-    });
-
     const where: any = [
-      ...(model.share.isShareDetail ? [] : [['user_id', userId], 'AND']),
-      ['model_id', modelId],
+      ['user_id', userId],
+      'AND',
+      ['kb_id', kbId],
       ...(searchText ? ['AND', `(q LIKE '%${searchText}%' OR a LIKE '%${searchText}%')`] : [])
     ];
 
-    const searchRes = await PgClient.select<PgModelDataItemType>('modelData', {
+    const searchRes = await PgClient.select<PgKBDataItemType>('modelData', {
       fields: ['id', 'q', 'a', 'status'],
       where,
       order: [{ field: 'id', mode: 'DESC' }],

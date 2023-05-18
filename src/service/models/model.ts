@@ -31,10 +31,10 @@ const ModelSchema = new Schema({
     default: () => new Date()
   },
   chat: {
-    useKb: {
-      // use knowledge base to search
-      type: Boolean,
-      default: false
+    relatedKbs: {
+      type: [Schema.Types.ObjectId],
+      ref: 'kb',
+      default: []
     },
     searchMode: {
       // knowledge base search mode
@@ -79,33 +79,6 @@ const ModelSchema = new Schema({
       type: Number,
       default: 0
     }
-  },
-  security: {
-    type: {
-      domain: {
-        type: [String],
-        default: ['*']
-      },
-      contextMaxLen: {
-        type: Number,
-        default: 20
-      },
-      contentMaxLen: {
-        type: Number,
-        default: 4000
-      },
-      expiredTime: {
-        type: Number,
-        default: 1,
-        set: (val: number) => val * (60 * 60 * 1000)
-      },
-      maxLoadAmount: {
-        // 负数代表不限制
-        type: Number,
-        default: -1
-      }
-    },
-    default: {}
   }
 });
 

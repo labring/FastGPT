@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
     // 使用了知识库搜索
-    if (model.chat.useKb) {
+    if (model.chat.relatedKbs.length > 0) {
       const similarity = ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22;
 
       const { code, searchPrompts } = await searchKb({

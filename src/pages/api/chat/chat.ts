@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const prompts = [...content, prompt];
 
     // 使用了知识库搜索
-    if (model.chat.useKb) {
+    if (model.chat.relatedKbs.length > 0) {
       const { code, searchPrompts } = await searchKb({
         userOpenAiKey,
         prompts,

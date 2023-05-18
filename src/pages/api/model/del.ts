@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { Chat, Model, connectToDatabase, Collection, ShareChat } from '@/service/mongo';
 import { authToken } from '@/service/utils/auth';
-import { PgClient } from '@/service/pg';
 import { authModel } from '@/service/utils/auth';
 
 /* 获取我的模型 */
@@ -23,11 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await authModel({
       modelId,
       userId
-    });
-
-    // 删除 pg 中所有该模型的数据
-    await PgClient.delete('modelData', {
-      where: [['user_id', userId], 'AND', ['model_id', modelId]]
     });
 
     // 删除对应的聊天

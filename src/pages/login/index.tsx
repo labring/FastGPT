@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import styles from './index.module.scss';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
-import { useScreen } from '@/hooks/useScreen';
+import { useGlobalStore } from '@/store/global';
 import type { ResLogin } from '@/api/response/user';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
@@ -12,10 +12,10 @@ import dynamic from 'next/dynamic';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
-const Login = ({ isPcDevice }: { isPcDevice: boolean }) => {
+const Login = () => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
-  const { isPc } = useScreen({ defaultIsPc: isPcDevice });
+  const { isPc } = useGlobalStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo, setLastModelId, loadMyModels } = useUserStore();
   const { setLastChatId, setLastChatModelId, loadHistory } = useChatStore();
@@ -114,9 +114,3 @@ const Login = ({ isPcDevice }: { isPcDevice: boolean }) => {
 };
 
 export default Login;
-
-Login.getInitialProps = ({ query, req }: any) => {
-  return {
-    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
-  };
-};

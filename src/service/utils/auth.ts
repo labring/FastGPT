@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
-import { Chat, Model, OpenApi, User, ShareChat } from '../mongo';
+import { Chat, Model, OpenApi, User, ShareChat, KB } from '../mongo';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ChatItemSimpleType } from '@/types/chat';
 import mongoose from 'mongoose';
@@ -34,6 +34,13 @@ export const authToken = (req: NextApiRequest): Promise<string> => {
   });
 };
 
+export const getOpenAiKey = () => {
+  // 纯字符串类型
+  const keys = process.env.OPENAIKEY?.split(',') || [];
+  const i = Math.floor(Math.random() * keys.length);
+  return keys[i] || (process.env.OPENAIKEY as string);
+};
+
 /* 获取 api 请求的 key */
 export const getApiKey = async ({
   model,
@@ -52,7 +59,7 @@ export const getApiKey = async ({
   const keyMap = {
     [OpenAiChatEnum.GPT35]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: process.env.OPENAIKEY as string
+      systemAuthKey: getOpenAiKey() as string
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
@@ -127,6 +134,18 @@ export const authModel = async ({
   }
 
   return { model, showModelDetail: model.share.isShareDetail || userId === String(model.userId) };
+};
+
+// 知识库操作权限
+export const authKb = async ({ kbId, userId }: { kbId: string; userId: string }) => {
+  const kb = await KB.findOne({
+    _id: kbId,
+    userId
+  });
+  if (kb) {
+    return kb;
+  }
+  return Promise.reject(ERROR_ENUM.unAuthKb);
 };
 
 // 获取对话校验

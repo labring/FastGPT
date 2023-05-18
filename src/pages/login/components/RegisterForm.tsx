@@ -5,7 +5,6 @@ import { PageTypeEnum } from '@/constants/user';
 import { postRegister } from '@/api/user';
 import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
-import { useScreen } from '@/hooks/useScreen';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
 import { postCreateModel } from '@/api/model';
@@ -25,7 +24,6 @@ interface RegisterType {
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { inviterId = '' } = useRouter().query as { inviterId: string };
   const { toast } = useToast();
-  const { mediaLgMd } = useScreen();
   const {
     register,
     handleSubmit,
@@ -89,7 +87,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <FormControl mt={5} isInvalid={!!errors.username}>
           <Input
             placeholder="邮箱/手机号"
-            size={mediaLgMd}
+            size={['md', 'lg']}
             {...register('username', {
               required: '邮箱/手机号不能为空',
               pattern: {
@@ -107,7 +105,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           <Flex>
             <Input
               flex={1}
-              size={mediaLgMd}
+              size={['md', 'lg']}
               placeholder="验证码"
               {...register('code', {
                 required: '验证码不能为空'
@@ -117,7 +115,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               ml={5}
               w={'145px'}
               maxW={'50%'}
-              size={mediaLgMd}
+              size={['md', 'lg']}
               onClick={onclickSendCode}
               isDisabled={codeCountDown > 0}
               isLoading={codeSending}
@@ -133,7 +131,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             type={'password'}
             placeholder="密码"
-            size={mediaLgMd}
+            size={['md', 'lg']}
             {...register('password', {
               required: '密码不能为空',
               minLength: {
@@ -154,7 +152,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             type={'password'}
             placeholder="确认密码"
-            size={mediaLgMd}
+            size={['md', 'lg']}
             {...register('password2', {
               validate: (val) => (getValues('password') === val ? true : '两次密码不一致')
             })}
@@ -178,7 +176,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           type="submit"
           mt={5}
           w={'100%'}
-          size={mediaLgMd}
+          size={['md', 'lg']}
           colorScheme="blue"
           isLoading={requesting}
         >

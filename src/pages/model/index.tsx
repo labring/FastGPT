@@ -1,22 +1,21 @@
 import React, { useEffect } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { useScreen } from '@/hooks/useScreen';
 import { useRouter } from 'next/router';
 import ModelList from './components/ModelList';
 import dynamic from 'next/dynamic';
 import { useUserStore } from '@/store/user';
+import { useGlobalStore } from '@/store/global';
 import Loading from '@/components/Loading';
+import SideBar from '@/components/SideBar';
 
 const ModelDetail = dynamic(() => import('./components/detail/index'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
 });
 
-const Model = ({ modelId, isPcDevice }: { modelId: string; isPcDevice: boolean }) => {
+const Model = ({ modelId }: { modelId: string }) => {
   const router = useRouter();
-  const { isPc } = useScreen({
-    defaultIsPc: isPcDevice
-  });
+  const { isPc } = useGlobalStore();
   const { lastModelId } = useUserStore();
 
   // redirect modelId
@@ -27,12 +26,12 @@ const Model = ({ modelId, isPcDevice }: { modelId: string; isPcDevice: boolean }
   }, [isPc, lastModelId, modelId, router]);
 
   return (
-    <Flex h={'100%'} position={'relative'}>
+    <Flex h={'100%'} position={'relative'} overflow={'hidden'}>
       {/* 模型列表 */}
       {(isPc || !modelId) && (
-        <Box w={['100%', '250px']}>
+        <SideBar w={[1, '0 0 250px', '0 0 270px', '0 0 290px']}>
           <ModelList modelId={modelId} />
-        </Box>
+        </SideBar>
       )}
       <Box flex={1} h={'100%'} position={'relative'}>
         {modelId && <ModelDetail modelId={modelId} isPc={isPc} />}
@@ -45,7 +44,6 @@ export default Model;
 
 Model.getInitialProps = ({ query, req }: any) => {
   return {
-    modelId: query?.modelId || '',
-    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
+    modelId: query?.modelId || ''
   };
 };

@@ -15,7 +15,7 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readCsvContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
-import { postModelDataCsvData } from '@/api/model';
+import { postKbDataFromList } from '@/api/plugins/kb';
 import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { fileDownload } from '@/utils/file';
@@ -25,16 +25,16 @@ const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开
 const SelectJsonModal = ({
   onClose,
   onSuccess,
-  modelId
+  kbId
 }: {
   onClose: () => void;
   onSuccess: () => void;
-  modelId: string;
+  kbId: string;
 }) => {
   const [selecting, setSelecting] = useState(false);
   const { toast } = useToast();
   const { File, onOpen } = useSelectFile({ fileType: '.csv', multiple: false });
-  const [fileData, setFileData] = useState<string[][]>([]);
+  const [fileData, setFileData] = useState<{ q: string; a: string }[]>([]);
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认导入该数据集?'
   });
@@ -48,7 +48,12 @@ const SelectJsonModal = ({
         if (header[0] !== 'question' || header[1] !== 'answer') {
           throw new Error('csv 文件格式有误');
         }
-        setFileData(data);
+        setFileData(
+          data.map((item) => ({
+            q: item[0] || '',
+            a: item[1] || ''
+          }))
+        );
       } catch (error: any) {
         console.log(error);
         toast({
@@ -63,8 +68,13 @@ const SelectJsonModal = ({
 
   const { mutate, isLoading } = useMutation({
     mutationFn: async () => {
-      if (!fileData) return;
-      const res = await postModelDataCsvData(modelId, fileData);
+      if (!fileData || fileData.length === 0) return;
+
+      const res = await postKbDataFromList({
+        kbId,
+        data: fileData
+      });
+
       toast({
         title: `导入数据成功，最终导入: ${res || 0} 条数据。需要一段时间训练`,
         status: 'success',
@@ -120,10 +130,10 @@ const SelectJsonModal = ({
             {fileData.map((item, index) => (
               <Box key={index}>
                 <Box>
-                  Q{index + 1}. {item[0]}
+                  Q{index + 1}. {item.q}
                 </Box>
                 <Box>
-                  A{index + 1}. {item[1]}
+                  A{index + 1}. {item.a}
                 </Box>
               </Box>
             ))}

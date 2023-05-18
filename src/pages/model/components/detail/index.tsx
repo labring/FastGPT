@@ -2,15 +2,13 @@ import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { delModelById, putModelById } from '@/api/model';
 import type { ModelSchema } from '@/types/mongoSchema';
-import { Card, Box, Flex, Button, Tag, Grid } from '@chakra-ui/react';
+import { Card, Box, Flex, Button, Grid } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useForm } from 'react-hook-form';
-import { formatModelStatus } from '@/constants/model';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import { useLoading } from '@/hooks/useLoading';
 import ModelEditForm from './components/ModelEditForm';
-import ModelDataCard from './components/ModelDataCard';
 
 const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
   const { toast } = useToast();
@@ -19,7 +17,7 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
   const { Loading, setIsLoading } = useLoading();
   const [btnLoading, setBtnLoading] = useState(false);
 
-  const formHooks = useForm<ModelSchema>({
+  const formHooks = useForm({
     defaultValues: modelDetail
   });
 
@@ -85,13 +83,9 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
           name: data.name,
           avatar: data.avatar || '/icon/logo.png',
           chat: data.chat,
-          share: data.share,
-          security: data.security
+          share: data.share
         });
-        toast({
-          title: '更新成功',
-          status: 'success'
-        });
+
         refreshModel.updateModelDetail(data);
       } catch (err: any) {
         toast({
@@ -121,18 +115,16 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
     });
   }, [formHooks.formState.errors, toast]);
 
+  const saveUpdateModel = useCallback(
+    () => formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)(),
+    [formHooks, saveSubmitError, saveSubmitSuccess]
+  );
+
   useEffect(() => {
-    router.prefetch('/chat');
-
-    window.onbeforeunload = (e) => {
-      e.preventDefault();
-      e.returnValue = '内容已修改，确认离开页面吗？';
-    };
-
     return () => {
-      window.onbeforeunload = null;
+      saveUpdateModel();
     };
-  }, [router]);
+  }, []);
 
   return canRead ? (
     <Box h={'100%'} p={5} overflow={'overlay'} position={'relative'}>
@@ -143,13 +135,6 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
             <Box fontSize={'xl'} fontWeight={'bold'}>
               {modelDetail.name}
             </Box>
-            <Tag
-              ml={2}
-              variant="solid"
-              colorScheme={formatModelStatus[modelDetail.status].colorTheme}
-            >
-              {formatModelStatus[modelDetail.status].text}
-            </Tag>
             <Box flex={1} />
             <Button variant={'outline'} onClick={handlePreviewChat}>
               开始对话
@@ -158,7 +143,18 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
               <Button
                 isLoading={btnLoading}
                 ml={4}
-                onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}
+                onClick={async () => {
+                  try {
+                    await saveUpdateModel();
+                    toast({
+                      title: '更新成功',
+                      status: 'success'
+                    });
+                  } catch (error) {
+                    console.log(error);
+                    error;
+                  }
+                }}
               >
                 保存修改
               </Button>
@@ -170,9 +166,6 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
               <Box as={'h3'} fontSize={'xl'} fontWeight={'bold'} flex={1}>
                 {modelDetail.name}
               </Box>
-              <Tag ml={2} colorScheme={formatModelStatus[modelDetail.status].colorTheme}>
-                {formatModelStatus[modelDetail.status].text}
-              </Tag>
             </Flex>
             <Box mt={4} textAlign={'right'}>
               <Button variant={'outline'} size={'sm'} onClick={handlePreviewChat}>
@@ -183,7 +176,18 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
                   ml={4}
                   size={'sm'}
                   isLoading={btnLoading}
-                  onClick={formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)}
+                  onClick={async () => {
+                    try {
+                      await saveUpdateModel();
+                      toast({
+                        title: '更新成功',
+                        status: 'success'
+                      });
+                    } catch (error) {
+                      console.log(error);
+                      error;
+                    }
+                  }}
                 >
                   保存修改
                 </Button>
@@ -194,10 +198,6 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
       </Card>
       <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={5}>
         <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} isOwner={isOwner} />
-
-        <Card p={4} gridColumnStart={[1, 1]} gridColumnEnd={[2, 3]}>
-          <ModelDataCard modelId={modelId} isOwner={isOwner} />
-        </Card>
       </Grid>
       <Loading loading={isLoading} fixed={false} />
     </Box>

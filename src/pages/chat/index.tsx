@@ -33,7 +33,7 @@ import {
   useTheme
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
-import { useScreen } from '@/hooks/useScreen';
+import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
@@ -50,6 +50,7 @@ import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
 import Loading from '@/components/Loading';
 import Markdown from '@/components/Markdown';
+import SideBar from '@/components/SideBar';
 import Empty from './components/Empty';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
@@ -64,15 +65,7 @@ import styles from './index.module.scss';
 
 const textareaMinH = '22px';
 
-const Chat = ({
-  modelId,
-  chatId,
-  isPcDevice
-}: {
-  modelId: string;
-  chatId: string;
-  isPcDevice: boolean;
-}) => {
+const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const router = useRouter();
   const theme = useTheme();
 
@@ -92,7 +85,6 @@ const Chat = ({
     top: number;
     message: ChatSiteItemType;
   }>();
-  const [foldSliderBar, setFoldSlideBar] = useState(false);
 
   const {
     lastChatModelId,
@@ -113,7 +105,7 @@ const Chat = ({
 
   const { toast } = useToast();
   const { copyData } = useCopyData();
-  const { isPc } = useScreen({ defaultIsPc: isPcDevice });
+  const { isPc } = useGlobalStore();
   const { Loading, setIsLoading } = useLoading();
   const { userInfo } = useUserStore();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
@@ -481,7 +473,7 @@ const Chat = ({
 
       navigator.vibrate?.(50); // 震动 50 毫秒
 
-      if (!isPcDevice) {
+      if (!isPc) {
         PhoneContextShow.current = true;
       }
 
@@ -493,7 +485,7 @@ const Chat = ({
 
       return false;
     },
-    [isPcDevice]
+    [isPc]
   );
 
   // 获取对话信息
@@ -636,61 +628,9 @@ const Chat = ({
     >
       {/* pc always show history.  */}
       {(isPc || !modelId) && (
-        <Box
-          position={'relative'}
-          flex={foldSliderBar ? '0 0 0' : [1, '0 0 250px', '0 0 280px', '0 0 310px', '0 0 340px']}
-          w={['100%', 0]}
-          h={'100%'}
-          zIndex={1}
-          transition={'0.2s'}
-          _hover={{
-            '& > div': { visibility: 'visible', opacity: 1 }
-          }}
-        >
-          <Flex
-            position={'absolute'}
-            right={0}
-            top={'50%'}
-            transform={'translate(50%,-50%)'}
-            alignItems={'center'}
-            justifyContent={'flex-end'}
-            pr={1}
-            w={'36px'}
-            h={'50px'}
-            borderRadius={'10px'}
-            bg={'rgba(0,0,0,0.5)'}
-            cursor={'pointer'}
-            transition={'0.2s'}
-            {...(foldSliderBar
-              ? {
-                  opacity: 0.6
-                }
-              : {
-                  visibility: 'hidden',
-                  opacity: 0
-                })}
-            onClick={() => setFoldSlideBar(!foldSliderBar)}
-          >
-            <MyIcon
-              name={'back'}
-              transform={foldSliderBar ? 'rotate(180deg)' : ''}
-              w={'14px'}
-              color={'white'}
-            />
-          </Flex>
-          <Box
-            position={'relative'}
-            h={'100%'}
-            bg={'white'}
-            overflow={foldSliderBar ? 'hidden' : 'visible'}
-          >
-            <History
-              onclickDelHistory={onclickDelHistory}
-              onclickExportChat={onclickExportChat}
-              isPcDevice={isPcDevice}
-            />
-          </Box>
-        </Box>
+        <SideBar>
+          <History onclickDelHistory={onclickDelHistory} onclickExportChat={onclickExportChat} />
+        </SideBar>
       )}
 
       {/* 聊天内容 */}
@@ -906,7 +846,7 @@ const Chat = ({
                   }}
                   onKeyDown={(e) => {
                     // 触发快捷发送
-                    if (isPcDevice && e.keyCode === 13 && !e.shiftKey) {
+                    if (isPc && e.keyCode === 13 && !e.shiftKey) {
                       sendPrompt();
                       e.preventDefault();
                     }
@@ -1008,8 +948,7 @@ const Chat = ({
 Chat.getInitialProps = ({ query, req }: any) => {
   return {
     modelId: query?.modelId || '',
-    chatId: query?.chatId || '',
-    isPcDevice: !/Mobile/.test(req?.headers?.['user-agent'])
+    chatId: query?.chatId || ''
   };
 };
 
