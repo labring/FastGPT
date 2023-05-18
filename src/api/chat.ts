@@ -48,6 +48,7 @@ export const updateChatHistoryTitle = (data: {
   newTitle: string;
 }) => POST<string>('/chat/updateChatHistoryTitle', data);
 
+/**
  * create a shareChat
  */
 export const createShareChat = (
