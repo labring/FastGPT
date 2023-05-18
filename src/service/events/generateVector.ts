@@ -86,9 +86,13 @@ export async function generateVector(next = false): Promise<any> {
     // 没有余额或者凭证错误时，拒绝任务
     if (dataId && openaiError2[error?.response?.data?.error?.type]) {
       console.log('删除向量生成任务记录');
-      await PgClient.delete('modelData', {
-        where: [['id', dataId]]
-      });
+      try {
+        await PgClient.delete('modelData', {
+          where: [['id', dataId]]
+        });
+      } catch (error) {
+        error;
+      }
       generateVector(true);
       return;
     }

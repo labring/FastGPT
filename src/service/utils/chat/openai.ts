@@ -110,8 +110,8 @@ export const chatResponse = async ({
 
 /* openai stream response */
 export const openAiStreamResponse = async ({
+  res,
   model,
-  stream,
   chatResponse,
   prompts
 }: StreamResponseType & {
@@ -129,7 +129,7 @@ export const openAiStreamResponse = async ({
         const content: string = json?.choices?.[0].delta.content || '';
         responseContent += content;
 
-        !stream.destroyed && content && stream.push(content.replace(/\n/g, '<br/>'));
+        res.writable && content && res.write(content);
       } catch (error) {
         error;
       }
@@ -139,7 +139,7 @@ export const openAiStreamResponse = async ({
       const decoder = new TextDecoder();
       const parser = createParser(onParse);
       for await (const chunk of chatResponse.data as any) {
-        if (stream.destroyed) {
+        if (!res.writable) {
           // 流被中断了，直接忽略后面的内容
           break;
         }

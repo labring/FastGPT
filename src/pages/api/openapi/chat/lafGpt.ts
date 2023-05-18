@@ -4,7 +4,6 @@ import { authOpenApiKey, authModel, getApiKey } from '@/service/utils/auth';
 import { resStreamResponse, modelServiceToolMap } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
-import { PassThrough } from 'stream';
 import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { searchKb } from '@/service/plugins/searchKb';
@@ -13,17 +12,9 @@ import { ChatRoleEnum } from '@/constants/chat';
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let step = 0; // step=1时，表示开始了流响应
-  const stream = new PassThrough();
-  stream.on('error', () => {
-    console.log('error: ', 'stream error');
-    stream.destroy();
-  });
-  res.on('close', () => {
-    stream.destroy();
-  });
   res.on('error', () => {
     console.log('error: ', 'request error');
-    stream.destroy();
+    res.end();
   });
 
   try {
@@ -155,7 +146,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { finishMessages, totalTokens } = await resStreamResponse({
         model: model.chat.chatModel,
         res,
-        stream,
         chatResponse: streamResponse,
         prompts
       });
@@ -182,7 +172,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (step === 1) {
       // 直接结束流
       console.log('error，结束');
-      stream.destroy();
+      res.end();
     } else {
       res.status(500);
       jsonRes(res, {

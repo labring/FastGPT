@@ -38,7 +38,14 @@ const ShareModelList = ({
               {model.name}
             </Box>
           </Flex>
-          <Box flex={1} className={styles.intro} my={4} fontSize={'sm'} color={'blackAlpha.600'}>
+          <Box
+            flex={1}
+            className={styles.intro}
+            my={4}
+            fontSize={'sm'}
+            wordBreak={'break-all'}
+            color={'blackAlpha.600'}
+          >
             {model.share.intro || '这个AI助手还没有介绍~'}
           </Box>
           <Flex justifyContent={'space-between'}>
