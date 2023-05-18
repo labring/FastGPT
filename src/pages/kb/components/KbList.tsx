@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { Box, Flex, useTheme, Input, IconButton, Tooltip, Image, Tag } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
@@ -16,6 +16,11 @@ const KbList = ({ kbId }: { kbId: string }) => {
   const { Loading, setIsLoading } = useLoading();
   const { myKbList, loadKbList } = useUserStore();
   const [searchText, setSearchText] = useState('');
+
+  const kbs = useMemo(
+    () => myKbList.filter((item) => new RegExp(searchText, 'ig').test(item.name + item.tags)),
+    [myKbList, searchText]
+  );
 
   /* 加载模型 */
   const { isLoading } = useQuery(['loadModels'], () => loadKbList(false));
@@ -82,7 +87,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
         </Tooltip>
       </Flex>
       <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
-        {myKbList.map((item) => (
+        {kbs.map((item) => (
           <Flex
             key={item._id}
             position={'relative'}
