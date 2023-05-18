@@ -4,15 +4,13 @@ import type { ChatModelType } from '@/constants/model';
 import { ChatRoleEnum, SYSTEM_PROMPT_HEADER } from '@/constants/chat';
 import { OpenAiChatEnum, ClaudeEnum } from '@/constants/model';
 import { chatResponse, openAiStreamResponse } from './openai';
-import { lafClaudChat, lafClaudStreamResponse } from './claude';
+import { claudChat, claudStreamResponse } from './claude';
 import type { NextApiResponse } from 'next';
-import type { PassThrough } from 'stream';
 
 export type ChatCompletionType = {
   apiKey: string;
   temperature: number;
   messages: ChatItemSimpleType[];
-  stream: boolean;
   [key: string]: any;
 };
 export type ChatCompletionResponseType = {
@@ -22,7 +20,6 @@ export type ChatCompletionResponseType = {
   totalTokens: number;
 };
 export type StreamResponseType = {
-  stream: PassThrough;
   chatResponse: any;
   prompts: ChatItemSimpleType[];
   res: NextApiResponse;
@@ -70,8 +67,8 @@ export const modelServiceToolMap: Record<
       })
   },
   [ClaudeEnum.Claude]: {
-    chatCompletion: lafClaudChat,
-    streamResponse: lafClaudStreamResponse
+    chatCompletion: claudChat,
+    streamResponse: claudStreamResponse
   }
 };
 
@@ -131,7 +128,6 @@ export const ChatContextFilter = ({
 export const resStreamResponse = async ({
   model,
   res,
-  stream,
   chatResponse,
   systemPrompt,
   prompts
@@ -144,21 +140,17 @@ export const resStreamResponse = async ({
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   systemPrompt && res.setHeader(SYSTEM_PROMPT_HEADER, encodeURIComponent(systemPrompt));
-  stream.pipe(res);
 
   const { responseContent, totalTokens, finishMessages } = await modelServiceToolMap[
     model
   ].streamResponse({
     chatResponse,
-    stream,
     prompts,
     res,
     systemPrompt
   });
 
-  // close stream
-  !stream.destroyed && stream.push(null);
-  stream.destroy();
+  res.end();
 
   return { responseContent, totalTokens, finishMessages };
 };

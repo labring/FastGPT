@@ -5,7 +5,7 @@ export interface PgKBDataItemType {
   q: string;
   a: string;
   status: `${ModelDataStatusEnum}`;
-  model_id: string;
-  user_id: string;
-  kb_id: string;
+  // model_id: string;
+  // user_id: string;
+  // kb_id: string;
 }
