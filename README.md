@@ -29,8 +29,8 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 
 ## 🏘️ 交流群
 
-wx: fastgpt123  
-![Demo](docs/imgs/wx300.jpg?raw=true 'wx')
+添加 wx 进入：  
+![Demo](https://otnvvf-imgs.oss.laf.run/wx300.png?raw=true 'wx')
 
 ## 👀 其他
 
