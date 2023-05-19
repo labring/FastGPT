@@ -121,12 +121,17 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
   );
 
   useEffect(() => {
-    return () => {
-      saveUpdateModel();
+    window.onbeforeunload = (e) => {
+      e.preventDefault();
+      e.returnValue = '内容已修改，确认离开页面吗？';
     };
-  }, []);
 
-  return canRead ? (
+    return () => {
+      window.onbeforeunload = null;
+    };
+  }, [router]);
+
+  return (
     <Box h={'100%'} p={5} overflow={'overlay'} position={'relative'}>
       {/* 头部 */}
       <Card px={6} py={3}>
@@ -197,13 +202,14 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
         )}
       </Card>
       <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={5}>
-        <ModelEditForm formHooks={formHooks} handleDelModel={handleDelModel} isOwner={isOwner} />
+        <ModelEditForm
+          formHooks={formHooks}
+          handleDelModel={handleDelModel}
+          isOwner={isOwner}
+          canRead={canRead}
+        />
       </Grid>
       <Loading loading={isLoading} fixed={false} />
-    </Box>
-  ) : (
-    <Box h={'100%'} p={5}>
-      无权查看模型配置
     </Box>
   );
 };

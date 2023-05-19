@@ -36,7 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 校验使用权限
     const { model } = await authModel({
       modelId: shareChat.modelId,
-      userId: String(shareChat.userId)
+      userId: String(shareChat.userId),
+      authOwner: false
     });
 
     jsonRes<InitShareChatResponse>(res, {

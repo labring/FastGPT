@@ -115,8 +115,12 @@ export const voiceBroadcast = ({ text }: { text: string }) => {
   };
 };
 
-export const formatLinkTextToHtml = (text: string) => {
+export const formatLinkText = (text: string) => {
   const httpReg =
     /(http|https|ftp):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?/gi;
-  return text.replace(httpReg, '<a href="$&" target="_blank">$&</a>');
+  return text.replace(httpReg, ` $& `);
+};
+
+export const getErrText = (err: any, def = '') => {
+  return typeof err === 'string' ? err : err?.message || def;
 };

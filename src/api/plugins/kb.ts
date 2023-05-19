@@ -9,6 +9,8 @@ export type KbUpdateParams = { id: string; name: string; tags: string; avatar: s
 /* knowledge base */
 export const getKbList = () => GET<KbItemType[]>(`/plugins/kb/list`);
 
+export const getKbById = (id: string) => GET<KbItemType>(`/plugins/kb/detail?id=${id}`);
+
 export const postCreateKb = (data: { name: string }) => POST<string>(`/plugins/kb/create`, data);
 
 export const putKbById = (data: KbUpdateParams) => PUT(`/plugins/kb/update`, data);
