@@ -141,7 +141,7 @@ Please make sure to follow the rules.`
       searchPrompts: [
         {
           obj: ChatRoleEnum.System,
-          value: '对不起，你的问题不在知识库中。'
+          value: 'I\'m sorry, your question is not in the knowledge base.'
         }
       ]
     };
