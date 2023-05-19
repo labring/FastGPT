@@ -587,7 +587,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
               </MenuButton>
               <MenuList minW={`90px !important`}>
                 <MenuItem onClick={() => router.replace(`/chat/share?shareId=${shareId}`)}>
-                  新对话
+                  New chat
                 </MenuItem>
                 <MenuItem
                   onClick={() => {
@@ -718,7 +718,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
               _focusVisible={{
                 border: 'none'
               }}
-              placeholder="提问"
+              placeholder="Send a message."
               resize={'none'}
               value={inputVal}
               rows={1}

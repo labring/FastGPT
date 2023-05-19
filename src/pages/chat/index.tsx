@@ -684,7 +684,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 </MenuButton>
                 <MenuList minW={`90px !important`}>
                   <MenuItem onClick={() => router.replace(`/chat?modelId=${modelId}`)}>
-                    新对话
+                    New chat
                   </MenuItem>
                   <MenuItem
                     onClick={async () => {
@@ -827,7 +827,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   _focusVisible={{
                     border: 'none'
                   }}
-                  placeholder="提问"
+                  placeholder="Send a message."
                   resize={'none'}
                   rows={1}
                   height={'22px'}
