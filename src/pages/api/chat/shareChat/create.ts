@@ -16,7 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authToken(req);
     await authModel({
       modelId,
-      userId
+      userId,
+      authOwner: false
     });
 
     const { _id } = await ShareChat.create({

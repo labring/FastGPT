@@ -230,7 +230,8 @@ export const authShareChat = async ({
   // 获取 model 数据
   const { model, showModelDetail } = await authModel({
     modelId,
-    userId
+    userId,
+    authOwner: false
   });
 
   // 获取 user 的 apiKey

@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     let startTime = Date.now();
 
-    const { model, showModelDetail, userOpenAiKey, systemAuthKey, userId } = await authShareChat({
+    const { model, userOpenAiKey, systemAuthKey, userId } = await authShareChat({
       shareId,
       password
     });
