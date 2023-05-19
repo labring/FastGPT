@@ -8,7 +8,7 @@ import { PgClient } from '@/service/pg';
 import { SplitDataSchema } from '@/types/mongoSchema';
 import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { getErrMessage } from '../utils/tools';
+import { getErrText } from '@/utils/tools';
 
 export async function generateQA(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -56,7 +56,7 @@ export async function generateQA(next = false): Promise<any> {
       // 余额不够了, 清空该记录
       await SplitData.findByIdAndUpdate(dataItem._id, {
         textList: [],
-        errorText: getErrMessage(err, '获取 OpenAi Key 失败')
+        errorText: getErrText(err, '获取 OpenAi Key 失败')
       });
       generateQA(true);
       return;

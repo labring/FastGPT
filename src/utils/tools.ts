@@ -122,5 +122,7 @@ export const formatLinkText = (text: string) => {
 };
 
 export const getErrText = (err: any, def = '') => {
-  return typeof err === 'string' ? err : err?.message || def;
+  const msg = typeof err === 'string' ? err : err?.message || def || '';
+  msg && console.log('error =>', msg);
+  return msg;
 };

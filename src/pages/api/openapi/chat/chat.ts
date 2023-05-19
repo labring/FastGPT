@@ -8,9 +8,10 @@ import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
+import { withNextCors } from '@/service/utils/tools';
 
 /* 发送提示词 */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
   let step = 0; // step=1时，表示开始了流响应
   res.on('error', () => {
     console.log('error: ', 'request error');
@@ -143,4 +144,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
   }
-}
+});

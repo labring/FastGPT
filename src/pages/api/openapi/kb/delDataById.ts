@@ -2,8 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authToken } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
+import { withNextCors } from '@/service/utils/tools';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     let { dataId } = req.query as {
       dataId: string;
@@ -28,4 +29,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
+});
