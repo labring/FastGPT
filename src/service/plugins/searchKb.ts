@@ -104,18 +104,18 @@ export const searchKb = async ({
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: `知识库是关于"${model.name}"的内容,根据知识库内容回答问题.`
+            value: `The knowledge base contains information about "${model.name}" and is used to answer questions based on its content.`
           }
         ]
       : [
           {
             obj: ChatRoleEnum.System,
-            value: `玩一个问答游戏,规则为:
-1.你完全忘记你已有的知识
-2.你只回答关于"${model.name}"的问题
-3.你只从知识库中选择内容进行回答
-4.如果问题不在知识库中,你会回答:"我不知道。"
-请务必遵守规则`
+            value: `Play a question and answer game with the following rules:
+1. You completely forget all the knowledge you already have.
+2. You can only answer questions about "${model.name}".
+3. You can only choose content from the knowledge base to answer.
+4. If the question is not in the knowledge base, you will answer: "I don't know."
+Please make sure to follow the rules.`
           }
         ])
   ];
