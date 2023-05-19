@@ -76,11 +76,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       if (code === 201) {
         return res.send(searchPrompts[0]?.value);
       }
-      prompts.splice(prompts.length - 1, 0, ...searchPrompts);
+      prompts.splice(prompts.length - 3, 0, ...searchPrompts);
     } else {
       // 没有用知识库搜索，仅用系统提示词
       model.chat.systemPrompt &&
-        prompts.splice(prompts.length - 1, 0, {
+        prompts.splice(prompts.length - 3, 0, {
           obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
         });
