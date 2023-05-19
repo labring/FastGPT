@@ -4,8 +4,9 @@ import { authToken } from '@/service/utils/auth';
 import { ModelDataStatusEnum } from '@/constants/model';
 import { generateVector } from '@/service/events/generateVector';
 import { PgClient } from '@/service/pg';
+import { withNextCors } from '@/service/utils/tools';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { dataId, a, q } = req.body as { dataId: string; a: string; q?: string };
 
@@ -39,4 +40,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
+});

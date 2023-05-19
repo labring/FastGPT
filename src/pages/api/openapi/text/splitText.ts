@@ -6,9 +6,10 @@ import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
 import { PgClient } from '@/service/pg';
 import { SplitTextTypEnum } from '@/constants/plugin';
+import { withNextCors } from '@/service/utils/tools';
 
 /* split text */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { chunks, kbId, prompt, mode } = req.body as {
       kbId: string;
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: err
     });
   }
-}
+});
 
 export const config = {
   api: {
