@@ -26,7 +26,7 @@ export const pushChatBill = async ({
     await connectToDatabase();
 
     // 计算价格
-    const unitPrice = ChatModelMap[chatModel]?.price || 5;
+    const unitPrice = ChatModelMap[chatModel]?.price || 3;
     const price = unitPrice * tokens;
 
     try {
