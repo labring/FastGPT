@@ -91,3 +91,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
   }
 });
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb'
+    }
+  }
+};
