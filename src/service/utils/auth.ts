@@ -66,8 +66,8 @@ export const authUser = async ({
       return Promise.reject(error);
     }
   };
-  const parseRootKey = async (rootKey?: string, userId?: string) => {
-    if (!rootKey || !userId || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
+  const parseRootKey = async (rootKey?: string, userId = '') => {
+    if (!rootKey || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
     return userId;
@@ -104,7 +104,7 @@ export const authUser = async ({
 };
 
 /* random get openai api key */
-export const getOpenAiKey = () => {
+export const getSystemOpenAiKey = () => {
   // 纯字符串类型
   const keys = process.env.OPENAIKEY?.split(',') || [];
   const i = Math.floor(Math.random() * keys.length);
@@ -129,7 +129,7 @@ export const getApiKey = async ({
   const keyMap = {
     [OpenAiChatEnum.GPT35]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getOpenAiKey() as string
+      systemAuthKey: getSystemOpenAiKey() as string
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
