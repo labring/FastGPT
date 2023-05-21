@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Collection, Model } from '@/service/mongo';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import type { ModelListResponse } from '@/api/response/model';
 
 /* 获取模型列表 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     // 凭证校验
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 

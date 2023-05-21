@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat, Model } from '@/service/mongo';
 import type { InitChatResponse } from '@/api/response/chat';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
 import { authModel } from '@/service/utils/auth';
 import mongoose from 'mongoose';
@@ -12,7 +12,7 @@ import type { ModelSchema } from '@/types/mongoSchema';
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     let { modelId, chatId } = req.query as { modelId: '' | string; chatId: '' | string };
 

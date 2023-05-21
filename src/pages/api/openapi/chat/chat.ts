@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authOpenApiKey, authModel, getApiKey } from '@/service/utils/auth';
+import { authUser, authModel, getApiKey } from '@/service/utils/auth';
 import { modelServiceToolMap, resStreamResponse } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
@@ -45,7 +45,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     let startTime = Date.now();
 
     /* 凭证校验 */
-    const { userId } = await authOpenApiKey(req);
+    const { userId } = await authUser({ req, authOpenApi: true });
 
     const { model } = await authModel({
       userId,
