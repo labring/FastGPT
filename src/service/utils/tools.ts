@@ -31,9 +31,11 @@ export const clearCookie = (res: NextApiResponse) => {
 };
 
 /* openai axios config */
-export const axiosConfig = () => ({
+export const axiosConfig = (apikey: string) => ({
+  baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
   httpsAgent: global.httpsAgent,
   headers: {
+    Authorization: `Bearer ${apikey}`,
     auth: process.env.OPENAI_BASE_URL_AUTH || ''
   }
 });

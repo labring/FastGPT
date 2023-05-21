@@ -10,6 +10,7 @@ import { resStreamResponse } from '@/service/utils/chat';
 import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
+import { sensitiveCheck } from '@/service/api/text';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -44,6 +45,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 读取对话内容
     const prompts = [...content, prompt];
+    let systemPrompts: {
+      obj: ChatRoleEnum;
+      value: string;
+    }[] = [];
 
     // 使用了知识库搜索
     if (model.chat.relatedKbs.length > 0) {
@@ -60,15 +65,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.send(searchPrompts[0]?.value);
       }
 
-      prompts.splice(prompts.length - 3, 0, ...searchPrompts);
-    } else {
-      // 没有用知识库搜索，仅用系统提示词
-      model.chat.systemPrompt &&
-        prompts.splice(prompts.length - 3, 0, {
+      systemPrompts = searchPrompts;
+    } else if (model.chat.systemPrompt) {
+      systemPrompts = [
+        {
           obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
-        });
+        }
+      ];
     }
+
+    prompts.splice(prompts.length - 3, 0, ...systemPrompts);
+
+    // content check
+    await sensitiveCheck({
+      input: [...systemPrompts, prompt].map((item) => item.value).join('')
+    });
 
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(

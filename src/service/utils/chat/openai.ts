@@ -7,16 +7,14 @@ import { adaptChatItem_openAI } from '@/utils/chat/openai';
 import { modelToolMap } from '@/utils/chat';
 import { ChatCompletionType, ChatContextFilter, StreamResponseType } from './index';
 import { ChatRoleEnum } from '@/constants/chat';
-import { getOpenAiKey } from '../auth';
+import { getSystemOpenAiKey } from '../auth';
 
-export const getOpenAIApi = (apiKey: string) => {
-  const configuration = new Configuration({
-    apiKey,
-    basePath: process.env.OPENAI_BASE_URL
-  });
-
-  return new OpenAIApi(configuration);
-};
+export const getOpenAIApi = () =>
+  new OpenAIApi(
+    new Configuration({
+      basePath: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+    })
+  );
 
 /* 获取向量 */
 export const openaiCreateEmbedding = async ({
@@ -28,10 +26,10 @@ export const openaiCreateEmbedding = async ({
   userId: string;
   textArr: string[];
 }) => {
-  const systemAuthKey = getOpenAiKey();
+  const systemAuthKey = getSystemOpenAiKey();
 
   // 获取 chatAPI
-  const chatAPI = getOpenAIApi(userOpenAiKey || systemAuthKey);
+  const chatAPI = getOpenAIApi();
 
   // 把输入的内容转成向量
   const res = await chatAPI
@@ -42,7 +40,7 @@ export const openaiCreateEmbedding = async ({
       },
       {
         timeout: 60000,
-        ...axiosConfig()
+        ...axiosConfig(userOpenAiKey || systemAuthKey)
       }
     )
     .then((res) => ({
@@ -78,7 +76,7 @@ export const chatResponse = async ({
   });
 
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages });
-  const chatAPI = getOpenAIApi(apiKey);
+  const chatAPI = getOpenAIApi();
 
   const response = await chatAPI.createChatCompletion(
     {
@@ -93,7 +91,7 @@ export const chatResponse = async ({
     {
       timeout: stream ? 60000 : 240000,
       responseType: stream ? 'stream' : 'json',
-      ...axiosConfig()
+      ...axiosConfig(apiKey)
     }
   );
 

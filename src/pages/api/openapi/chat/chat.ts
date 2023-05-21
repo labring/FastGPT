@@ -10,6 +10,7 @@ import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
 import { withNextCors } from '@/service/utils/tools';
 import { BillTypeEnum } from '@/constants/user';
+import { sensitiveCheck } from '@/service/api/text';
 
 /* 发送提示词 */
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -62,13 +63,16 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
+    let systemPrompts: {
+      obj: ChatRoleEnum;
+      value: string;
+    }[] = [];
+
     // 使用了知识库搜索
     if (model.chat.relatedKbs.length > 0) {
-      const similarity = ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22;
-
       const { code, searchPrompts } = await searchKb({
         prompts,
-        similarity,
+        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
         model,
         userId
       });
@@ -77,17 +81,28 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       if (code === 201) {
         return isStream
           ? res.send(searchPrompts[0]?.value)
-          : jsonRes(res, { data: searchPrompts[0]?.value });
+          : jsonRes(res, {
+              data: searchPrompts[0]?.value,
+              message: searchPrompts[0]?.value
+            });
       }
-      prompts.splice(prompts.length - 3, 0, ...searchPrompts);
-    } else {
-      // 没有用知识库搜索，仅用系统提示词
-      model.chat.systemPrompt &&
-        prompts.splice(prompts.length - 3, 0, {
+
+      systemPrompts = searchPrompts;
+    } else if (model.chat.systemPrompt) {
+      systemPrompts = [
+        {
           obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
-        });
+        }
+      ];
     }
+
+    prompts.splice(prompts.length - 3, 0, ...systemPrompts);
+
+    // content check
+    await sensitiveCheck({
+      input: [...systemPrompts, prompts[prompts.length - 1]].map((item) => item.value).join('')
+    });
 
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
