@@ -2,10 +2,9 @@ import { GET, POST, PUT } from './request';
 import { createHashPassword, Obj2Query } from '@/utils/tools';
 import { ResLogin, PromotionRecordType } from './response/user';
 import { UserAuthTypeEnum } from '@/constants/common';
-import { UserType, UserUpdateParams } from '@/types/user';
+import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
-import { BillSchema, PaySchema } from '@/types/mongoSchema';
-import { adaptBill } from '@/utils/adapt';
+import { PaySchema } from '@/types/mongoSchema';
 
 export const sendAuthCode = ({
   username,
@@ -69,10 +68,7 @@ export const loginOut = () => GET('/user/loginout');
 export const putUserInfo = (data: UserUpdateParams) => PUT('/user/update', data);
 
 export const getUserBills = (data: RequestPaging) =>
-  GET<PagingData<BillSchema>>(`/user/getBill?${Obj2Query(data)}`).then((res) => ({
-    ...res,
-    data: res.data.map((bill) => adaptBill(bill))
-  }));
+  GET<PagingData<UserBillType>>(`/user/getBill?${Obj2Query(data)}`);
 
 export const getPayOrders = () => GET<PaySchema[]>(`/user/getPayOrders`);
 

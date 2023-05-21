@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import type { BillSchema } from '@/types/mongoSchema';
+import { adaptBill } from '@/utils/adapt';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 根据 id 获取用户账单
-    const bills = await Bill.find<BillSchema>({
+    const bills = await Bill.find({
       userId
     })
       .sort({ _id: -1 }) // 按照创建时间倒序排列
@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: {
         pageNum,
         pageSize,
-        data: bills,
+        data: bills.map(adaptBill),
         total
       }
     });

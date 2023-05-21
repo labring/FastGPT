@@ -15,7 +15,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authUser({ req });
 
     await PgClient.delete('modelData', {
       where: [['user_id', userId], 'AND', ['id', dataId]]

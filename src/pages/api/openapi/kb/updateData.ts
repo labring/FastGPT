@@ -15,7 +15,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authUser({ req });
 
     // 更新 pg 内容.仅修改a，不需要更新向量。
     await PgClient.update('modelData', {

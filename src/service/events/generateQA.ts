@@ -9,6 +9,7 @@ import { SplitDataSchema } from '@/types/mongoSchema';
 import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
+import { BillTypeEnum } from '@/constants/user';
 
 export async function generateQA(next = false): Promise<any> {
   if (process.env.queueTask !== '1') {
@@ -98,7 +99,7 @@ A2:
             pushSplitDataBill({
               isPay: !userOpenAiKey && result.length > 0,
               userId: dataItem.userId,
-              type: 'QA',
+              type: BillTypeEnum.QA,
               textLen: responseMessages.map((item) => item.value).join('').length,
               totalTokens
             });
