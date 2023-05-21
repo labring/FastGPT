@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 
@@ -15,7 +15,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     await PgClient.delete('modelData', {
       where: [['user_id', userId], 'AND', ['id', dataId]]

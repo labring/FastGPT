@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, SplitData } from '@/service/mongo';
-import { authKb, authToken } from '@/service/utils/auth';
+import { authKb, authUser } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
 import { PgClient } from '@/service/pg';
@@ -22,7 +22,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
     await connectToDatabase();
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     // 验证是否是该用户的 model
     await authKb({

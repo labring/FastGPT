@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, User, Pay } from '@/service/mongo';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { PaySchema, UserModelSchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { getPayResult } from '@/service/utils/wxpay';
@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     let { payId } = req.query as { payId: string };
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 

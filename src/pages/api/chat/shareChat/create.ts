@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, ShareChat } from '@/service/mongo';
-import { authModel, authToken } from '@/service/utils/auth';
+import { authModel, authUser } from '@/service/utils/auth';
 import type { ShareChatEditType } from '@/types/model';
 
 /* create a shareChat */
@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
     await authModel({
       modelId,
       userId,

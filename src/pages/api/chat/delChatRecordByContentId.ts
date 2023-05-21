@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 凭证校验
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     const chatRecord = await Chat.findById(chatId);
 

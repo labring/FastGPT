@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, SplitData, Model } from '@/service/mongo';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { ModelDataStatusEnum } from '@/constants/model';
 import { PgClient } from '@/service/pg';
 
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     // split queue data
     const data = await SplitData.find({
