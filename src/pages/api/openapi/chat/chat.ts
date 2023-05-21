@@ -9,6 +9,7 @@ import { pushChatBill } from '@/service/events/pushBill';
 import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
 import { withNextCors } from '@/service/utils/tools';
+import { BillTypeEnum } from '@/constants/user';
 
 /* 发送提示词 */
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -45,7 +46,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     let startTime = Date.now();
 
     /* 凭证校验 */
-    const { userId } = await authUser({ req, authOpenApi: true });
+    const { userId } = await authUser({ req });
 
     const { model } = await authModel({
       userId,
@@ -74,7 +75,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
       // search result is empty
       if (code === 201) {
-        return res.send(searchPrompts[0]?.value);
+        return isStream
+          ? res.send(searchPrompts[0]?.value)
+          : jsonRes(res, { data: searchPrompts[0]?.value });
       }
       prompts.splice(prompts.length - 3, 0, ...searchPrompts);
     } else {
@@ -129,7 +132,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       chatModel: model.chat.chatModel,
       userId,
       textLen,
-      tokens
+      tokens,
+      type: BillTypeEnum.openapiChat
     });
   } catch (err: any) {
     if (step === 1) {

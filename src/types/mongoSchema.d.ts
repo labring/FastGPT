@@ -3,9 +3,11 @@ import {
   ModelStatusEnum,
   ModelNameEnum,
   ModelVectorSearchModeEnum,
-  ChatModelType
+  ChatModelType,
+  EmbeddingModelType
 } from '@/constants/model';
 import type { DataType } from './data';
+import { BillTypeEnum } from '@/constants/user';
 
 export interface UserModelSchema {
   _id: string;
@@ -89,7 +91,8 @@ export interface ChatPopulate extends ChatSchema {
 export interface BillSchema {
   _id: string;
   userId: string;
-  type: 'chat' | 'splitData' | 'return';
+  type: `${BillTypeEnum}`;
+  modelName: ChatModelType | EmbeddingModelType;
   chatId: string;
   time: Date;
   textLen: number;

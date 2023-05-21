@@ -9,6 +9,7 @@ import { pushChatBill } from '@/service/events/pushBill';
 import { resStreamResponse } from '@/service/utils/chat';
 import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
+import { BillTypeEnum } from '@/constants/user';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -108,7 +109,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId,
       chatId,
       textLen: finishMessages.map((item) => item.value).join('').length,
-      tokens: totalTokens
+      tokens: totalTokens,
+      type: BillTypeEnum.chat
     });
   } catch (err: any) {
     if (step === 1) {

@@ -14,13 +14,11 @@ import { hashPassword } from '@/service/utils/tools';
 /* uniform auth user */
 export const authUser = async ({
   req,
-  userId = '',
   authToken = false,
   authOpenApi = false,
   authRoot = false
 }: {
   req: NextApiRequest;
-  userId?: string;
   authToken?: boolean;
   authOpenApi?: boolean;
   authRoot?: boolean;
@@ -68,17 +66,18 @@ export const authUser = async ({
       return Promise.reject(error);
     }
   };
-  const parseRootKey = async (rootKey?: string) => {
-    if (!rootKey || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
+  const parseRootKey = async (rootKey?: string, userId?: string) => {
+    if (!rootKey || !userId || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
     return userId;
   };
 
-  const { cookie, apikey, rootkey } = (req.headers || {}) as {
+  const { cookie, apikey, rootkey, userid } = (req.headers || {}) as {
     cookie?: string;
     apikey?: string;
     rootkey?: string;
+    userid?: string;
   };
 
   let uid = '';
@@ -88,13 +87,13 @@ export const authUser = async ({
   } else if (authOpenApi) {
     uid = await parseOpenApiKey(apikey);
   } else if (authRoot) {
-    uid = await parseRootKey(rootkey);
+    uid = await parseRootKey(rootkey, userid);
   } else if (cookie) {
     uid = await parseCookie(cookie);
   } else if (apikey) {
     uid = await parseOpenApiKey(apikey);
   } else if (rootkey) {
-    uid = await parseRootKey(rootkey);
+    uid = await parseRootKey(rootkey, userid);
   } else {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }

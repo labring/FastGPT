@@ -7,9 +7,8 @@ export const adaptBill = (bill: BillSchema): UserBillType => {
   return {
     id: bill._id,
     type: bill.type,
-    userId: bill.userId,
-    chatId: bill.chatId,
-    time: dayjs(bill.time).format('YYYY/MM/DD HH:mm:ss'),
+    modelName: bill.modelName,
+    time: bill.time,
     textLen: bill.textLen,
     tokenLen: bill.tokenLen,
     price: formatPrice(bill.price)

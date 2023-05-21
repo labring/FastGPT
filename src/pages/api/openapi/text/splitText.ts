@@ -22,7 +22,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
     await connectToDatabase();
 
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authUser({ req });
 
     // 验证是否是该用户的 model
     await authKb({
