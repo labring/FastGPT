@@ -1,14 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, SplitData } from '@/service/mongo';
-import { authKb, authToken } from '@/service/utils/auth';
+import { authKb, authUser } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
 import { PgClient } from '@/service/pg';
 import { SplitTextTypEnum } from '@/constants/plugin';
+import { withNextCors } from '@/service/utils/tools';
 
 /* split text */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { chunks, kbId, prompt, mode } = req.body as {
       kbId: string;
@@ -21,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await connectToDatabase();
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req });
 
     // 验证是否是该用户的 model
     await authKb({
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: err
     });
   }
-}
+});
 
 export const config = {
   api: {

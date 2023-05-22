@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { ModelDataStatusEnum } from '@/constants/model';
 import { generateVector } from '@/service/events/generateVector';
 import { PgClient } from '@/service/pg';
+import { withNextCors } from '@/service/utils/tools';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { dataId, a, q } = req.body as { dataId: string; a: string; q?: string };
 
@@ -14,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req });
 
     // 更新 pg 内容.仅修改a，不需要更新向量。
     await PgClient.update('modelData', {
@@ -39,4 +40,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
+});

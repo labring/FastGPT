@@ -8,7 +8,8 @@ export const pushChatBill = async ({
   userId,
   chatId,
   textLen,
-  tokens
+  tokens,
+  type
 }: {
   isPay: boolean;
   chatModel: ChatModelType;
@@ -16,6 +17,7 @@ export const pushChatBill = async ({
   chatId?: '' | string;
   textLen: number;
   tokens: number;
+  type: BillTypeEnum.chat | BillTypeEnum.openapiChat;
 }) => {
   console.log(`chat generate success. text len: ${textLen}. token len: ${tokens}. pay:${isPay}`);
   if (!isPay) return;
@@ -26,14 +28,14 @@ export const pushChatBill = async ({
     await connectToDatabase();
 
     // 计算价格
-    const unitPrice = ChatModelMap[chatModel]?.price || 5;
+    const unitPrice = ChatModelMap[chatModel]?.price || 3;
     const price = unitPrice * tokens;
 
     try {
       // 插入 Bill 记录
       const res = await Bill.create({
         userId,
-        type: 'chat',
+        type,
         modelName: chatModel,
         chatId: chatId ? chatId : undefined,
         textLen,
@@ -83,7 +85,7 @@ export const pushSplitDataBill = async ({
   userId: string;
   totalTokens: number;
   textLen: number;
-  type: `${BillTypeEnum}`;
+  type: BillTypeEnum.QA;
 }) => {
   console.log(
     `splitData generate success. text len: ${textLen}. token len: ${totalTokens}. pay:${isPay}`

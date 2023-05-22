@@ -24,18 +24,18 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { useConfirm } from '@/hooks/useConfirm';
 import { compressImg } from '@/utils/file';
 import DataCard from './DataCard';
+import { getErrText } from '@/utils/tools';
 
 const Detail = ({ kbId }: { kbId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const InputRef = useRef<HTMLInputElement>(null);
-  const { setLastKbId, KbDetail, getKbDetail, loadKbList, myKbList } = useUserStore();
-  const { Loading, setIsLoading } = useLoading();
+  const { setLastKbId, kbDetail, getKbDetail, loadKbList, myKbList } = useUserStore();
   const [btnLoading, setBtnLoading] = useState(false);
   const [refresh, setRefresh] = useState(false);
 
   const { getValues, formState, setValue, reset, register, handleSubmit } = useForm<KbItemType>({
-    defaultValues: KbDetail
+    defaultValues: kbDetail
   });
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认删除该知识库？数据将无法恢复，请确认！'
@@ -46,7 +46,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
     multiple: false
   });
 
-  const { isLoading } = useQuery([kbId, myKbList], () => getKbDetail(kbId), {
+  useQuery([kbId, myKbList], () => getKbDetail(kbId), {
     onSuccess(res) {
       kbId && setLastKbId(kbId);
       if (res) {
@@ -58,17 +58,18 @@ const Detail = ({ kbId }: { kbId: string }) => {
     },
     onError(err: any) {
       toast({
-        title: err?.message || '获取AI助手异常',
+        title: getErrText(err, '获取AI助手异常'),
         status: 'error'
       });
+      loadKbList(true);
       setLastKbId('');
-      router.replace('/model');
+      router.replace(`/kb?kbId=${myKbList[0]?._id || ''}`);
     }
   });
 
   /* 点击删除 */
   const onclickDelKb = useCallback(async () => {
-    setIsLoading(true);
+    setBtnLoading(true);
     try {
       await delKbById(kbId);
       toast({
@@ -83,8 +84,8 @@ const Detail = ({ kbId }: { kbId: string }) => {
         status: 'error'
       });
     }
-    setIsLoading(false);
-  }, [setIsLoading, kbId, toast, router, myKbList, loadKbList]);
+    setBtnLoading(false);
+  }, [setBtnLoading, kbId, toast, router, myKbList, loadKbList]);
 
   const saveSubmitSuccess = useCallback(
     async (data: KbItemType) => {
@@ -155,7 +156,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
           <Box fontWeight={'bold'} fontSize={'2xl'} flex={1}>
             知识库信息
           </Box>
-          {KbDetail._id && (
+          {kbDetail._id && (
             <>
               <Button
                 isLoading={btnLoading}
@@ -237,7 +238,6 @@ const Detail = ({ kbId }: { kbId: string }) => {
       </Card>
       <File onSelect={onSelectFile} />
       <ConfirmChild />
-      <Loading loading={isLoading} fixed={false} />
     </Box>
   );
 };

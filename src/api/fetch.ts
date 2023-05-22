@@ -41,7 +41,7 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
 
               return;
             }
-            const text = decoder.decode(value).replace(/<br\/>/g, '\n');
+            const text = decoder.decode(value);
             responseText += text;
             onMessage(text);
             read();

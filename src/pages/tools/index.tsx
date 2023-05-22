@@ -6,6 +6,11 @@ import { useRouter } from 'next/router';
 
 const list = [
   {
+    icon: 'kb',
+    label: '我的知识库',
+    link: '/kb'
+  },
+  {
     icon: 'shareMarket',
     label: 'AI助手市场',
     link: '/model/share'

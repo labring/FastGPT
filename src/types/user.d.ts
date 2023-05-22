@@ -1,3 +1,4 @@
+import type { BillSchema } from './mongoSchema';
 export interface UserType {
   _id: string;
   username: string;
@@ -17,11 +18,10 @@ export interface UserUpdateParams {
 
 export interface UserBillType {
   id: string;
-  time: string;
-  type: 'chat' | 'splitData' | 'return';
+  time: Date;
+  modelName: BillSchema['modelName'];
+  type: BillSchema['type'];
   textLen: number;
   tokenLen: number;
-  userId: string;
-  chatId: string;
   price: number;
 }

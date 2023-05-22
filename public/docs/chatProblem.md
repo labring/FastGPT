@@ -15,13 +15,13 @@
 | 计费项 | 价格: 元/ 1K tokens（包含上下文）|
 | --- | --- |
 | claude - 对话 | 免费 |
-| chatgpt - 对话 | 0.03 |
-| gpt4 - 对话 | 0.5 |
 | 知识库 - 索引 | 免费 |
-| 文件拆分 | 0.03 |
+| chatgpt - 对话 | 0.025 |
+| gpt4 - 对话 | 0.5 |
+| 文件拆分 | 0.025 |
 
 **其他问题**
 请 WX 联系: fastgpt123
 | 交流群 | 小助手 |
 | ----------------------- | -------------------- |
-| ![](/imgs/wxqun300.jpg) | ![](/imgs/wx300.jpg) |
+| ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |

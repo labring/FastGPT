@@ -2,12 +2,11 @@ import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
-import { useCopyData, formatLinkTextToHtml } from '@/utils/tools';
+import { useCopyData, formatLinkText } from '@/utils/tools';
 import Icon from '@/components/Icon';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 
 import 'katex/dist/katex.min.css';
 import styles from './index.module.scss';
@@ -25,7 +24,7 @@ const Markdown = ({
   const { copyData } = useCopyData();
 
   const formatSource = useMemo(() => {
-    return formatLink ? formatLinkTextToHtml(source) : source;
+    return formatLink ? formatLinkText(source) : source;
   }, [source, formatLink]);
 
   return (
@@ -34,7 +33,7 @@ const Markdown = ({
         isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''
       }`}
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeRaw, remarkGfm, rehypeKatex]}
+      rehypePlugins={[remarkGfm, rehypeKatex]}
       components={{
         pre: 'div',
         code({ node, inline, className, children, ...props }) {

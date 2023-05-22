@@ -28,7 +28,7 @@ export async function connectToDatabase(): Promise<void> {
   }
 
   generateQA();
-  generateVector(true);
+  generateVector();
 
   // 创建代理对象
   if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {

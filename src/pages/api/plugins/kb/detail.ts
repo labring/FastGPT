@@ -1,16 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase } from '@/service/mongo';
+import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { authModel } from '@/service/utils/auth';
 
-/* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { modelId } = req.query as { modelId: string };
+    const { id } = req.query as {
+      id: string;
+    };
 
-    if (!modelId) {
-      throw new Error('参数错误');
+    if (!id) {
+      throw new Error('缺少参数');
     }
 
     // 凭证校验
@@ -18,14 +18,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    const { model } = await authModel({
-      modelId,
-      userId,
-      authOwner: false
+    const data = await KB.findOne({
+      _id: id,
+      userId
     });
 
+    if (!data) {
+      throw new Error('kb is not exist');
+    }
+
     jsonRes(res, {
-      data: model
+      data: {
+        _id: data._id,
+        avatar: data.avatar,
+        name: data.name,
+        userId: data.userId,
+        updateTime: data.updateTime,
+        tags: data.tags.join(' ')
+      }
     });
   } catch (err) {
     jsonRes(res, {

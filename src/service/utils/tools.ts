@@ -1,4 +1,5 @@
-import type { NextApiResponse } from 'next';
+import type { NextApiResponse, NextApiHandler, NextApiRequest } from 'next';
+import NextCors from 'nextjs-cors';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -30,18 +31,28 @@ export const clearCookie = (res: NextApiResponse) => {
 };
 
 /* openai axios config */
-export const axiosConfig = () => ({
+export const axiosConfig = (apikey: string) => ({
+  baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
   httpsAgent: global.httpsAgent,
   headers: {
+    Authorization: `Bearer ${apikey}`,
     auth: process.env.OPENAI_BASE_URL_AUTH || ''
   }
 });
 
-/**
- * get error message
- */
-export const getErrMessage = (err: any, defaultMsg = ''): string => {
-  const msg = typeof err === 'string' ? err : err?.message || defaultMsg || '';
-  msg && console.log('error =>', msg);
-  return msg;
-};
+export function withNextCors(handler: NextApiHandler): NextApiHandler {
+  return async function nextApiHandlerWrappedWithNextCors(
+    req: NextApiRequest,
+    res: NextApiResponse
+  ) {
+    const methods = ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'];
+    const origin = req.headers.origin;
+    await NextCors(req, res, {
+      methods,
+      origin: origin,
+      optionsSuccessStatus: 200
+    });
+
+    return handler(req, res);
+  };
+}

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { customAlphabet } from 'nanoid';
 import { connectToDatabase, Pay } from '@/service/mongo';
 import { PRICE_SCALE } from '@/constants/common';
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let { amount = 0 } = req.query as { amount: string };
     amount = +amount;
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     const id = nanoid();
     await connectToDatabase();

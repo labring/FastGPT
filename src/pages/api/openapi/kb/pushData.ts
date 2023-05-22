@@ -2,12 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import type { KbDataItemType } from '@/types/plugin';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
 import { PgClient } from '@/service/pg';
 import { authKb } from '@/service/utils/auth';
+import { withNextCors } from '@/service/utils/tools';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const {
       kbId,
@@ -23,10 +24,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('缺少参数');
     }
 
-    // 凭证校验
-    const userId = await authToken(req);
-
     await connectToDatabase();
+
+    // 凭证校验
+    const { userId } = await authUser({ req });
 
     await authKb({
       userId,
@@ -89,4 +90,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
+});
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb'
+    }
+  }
+};

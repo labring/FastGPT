@@ -1,19 +1,11 @@
-import { modelToolMap } from '@/utils/chat';
 import { ChatCompletionType, StreamResponseType } from './index';
 import { ChatRoleEnum } from '@/constants/chat';
 import axios from 'axios';
 import mongoose from 'mongoose';
 import { NEW_CHATID_HEADER } from '@/constants/chat';
-import { ClaudeEnum } from '@/constants/model';
 
 /* 模型对话 */
-export const lafClaudChat = async ({
-  apiKey,
-  messages,
-  stream,
-  chatId,
-  res
-}: ChatCompletionType) => {
+export const claudChat = async ({ apiKey, messages, stream, chatId, res }: ChatCompletionType) => {
   const conversationId = chatId || String(new mongoose.Types.ObjectId());
   // create a new chat
   !chatId &&
@@ -29,7 +21,7 @@ export const lafClaudChat = async ({
 
   const prompt = `${systemPromptText}'${messages[messages.length - 1].value}'`;
 
-  const lafResponse = await axios.post(
+  const response = await axios.post(
     process.env.CLAUDE_BASE_URL || '',
     {
       prompt,
@@ -45,10 +37,10 @@ export const lafClaudChat = async ({
     }
   );
 
-  const responseText = stream ? '' : lafResponse.data?.text || '';
+  const responseText = stream ? '' : response.data?.text || '';
 
   return {
-    streamResponse: lafResponse,
+    streamResponse: response,
     responseMessages: messages.concat({ obj: ChatRoleEnum.AI, value: responseText }),
     responseText,
     totalTokens: 0
@@ -56,24 +48,20 @@ export const lafClaudChat = async ({
 };
 
 /* openai stream response */
-export const lafClaudStreamResponse = async ({
-  stream,
-  chatResponse,
-  prompts
-}: StreamResponseType) => {
+export const claudStreamResponse = async ({ res, chatResponse, prompts }: StreamResponseType) => {
   try {
     let responseContent = '';
 
     try {
       const decoder = new TextDecoder();
       for await (const chunk of chatResponse.data as any) {
-        if (stream.destroyed) {
+        if (!res.writable) {
           // 流被中断了，直接忽略后面的内容
           break;
         }
         const content = decoder.decode(chunk);
         responseContent += content;
-        content && stream.push(content.replace(/\n/g, '<br/>'));
+        content && res.write(content);
       }
     } catch (error) {
       console.log('pipe error', error);

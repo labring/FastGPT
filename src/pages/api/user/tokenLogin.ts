@@ -3,11 +3,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { User } from '@/service/models/user';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 

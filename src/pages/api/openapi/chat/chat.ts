@@ -1,29 +1,23 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authOpenApiKey, authModel, getApiKey } from '@/service/utils/auth';
+import { authUser, authModel, getApiKey } from '@/service/utils/auth';
 import { modelServiceToolMap, resStreamResponse } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
-import { PassThrough } from 'stream';
 import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
+import { withNextCors } from '@/service/utils/tools';
+import { BillTypeEnum } from '@/constants/user';
+import { sensitiveCheck } from '@/service/api/text';
 
 /* 发送提示词 */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
   let step = 0; // step=1时，表示开始了流响应
-  const stream = new PassThrough();
-  stream.on('error', () => {
-    console.log('error: ', 'stream error');
-    stream.destroy();
-  });
-  res.on('close', () => {
-    stream.destroy();
-  });
   res.on('error', () => {
     console.log('error: ', 'request error');
-    stream.destroy();
+    res.end();
   });
 
   try {
@@ -53,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let startTime = Date.now();
 
     /* 凭证校验 */
-    const { userId } = await authOpenApiKey(req);
+    const { userId } = await authUser({ req });
 
     const { model } = await authModel({
       userId,
@@ -69,30 +63,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
+    let systemPrompts: {
+      obj: ChatRoleEnum;
+      value: string;
+    }[] = [];
+
     // 使用了知识库搜索
     if (model.chat.relatedKbs.length > 0) {
-      const similarity = ModelVectorSearchModeMap[model.chat.searchMode]?.similarity || 0.22;
-
       const { code, searchPrompts } = await searchKb({
         prompts,
-        similarity,
+        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
         model,
         userId
       });
 
       // search result is empty
       if (code === 201) {
-        return res.send(searchPrompts[0]?.value);
+        return isStream
+          ? res.send(searchPrompts[0]?.value)
+          : jsonRes(res, {
+              data: searchPrompts[0]?.value,
+              message: searchPrompts[0]?.value
+            });
       }
-      prompts.splice(prompts.length - 1, 0, ...searchPrompts);
-    } else {
-      // 没有用知识库搜索，仅用系统提示词
-      model.chat.systemPrompt &&
-        prompts.splice(prompts.length - 1, 0, {
+
+      systemPrompts = searchPrompts;
+    } else if (model.chat.systemPrompt) {
+      systemPrompts = [
+        {
           obj: ChatRoleEnum.System,
           value: model.chat.systemPrompt
-        });
+        }
+      ];
     }
+
+    prompts.splice(prompts.length - 3, 0, ...systemPrompts);
+
+    // content check
+    await sensitiveCheck({
+      input: [...systemPrompts, prompts[prompts.length - 1]].map((item) => item.value).join('')
+    });
 
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
@@ -120,7 +130,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { finishMessages, totalTokens } = await resStreamResponse({
         model: model.chat.chatModel,
         res,
-        stream,
         chatResponse: streamResponse,
         prompts
       });
@@ -138,13 +147,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatModel: model.chat.chatModel,
       userId,
       textLen,
-      tokens
+      tokens,
+      type: BillTypeEnum.openapiChat
     });
   } catch (err: any) {
     if (step === 1) {
       // 直接结束流
+      res.end();
       console.log('error，结束');
-      stream.destroy();
     } else {
       res.status(500);
       jsonRes(res, {
@@ -153,4 +163,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
   }
-}
+});

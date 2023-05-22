@@ -27,7 +27,6 @@ import {
   Table,
   Thead,
   Tbody,
-  Tfoot,
   Tr,
   Th,
   Td,
@@ -48,22 +47,24 @@ import { useRouter } from 'next/router';
 import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/model';
 import type { ModelSchema } from '@/types/mongoSchema';
-import { formatTimeToChatTime, useCopyData } from '@/utils/tools';
+import { formatTimeToChatTime, useCopyData, getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
-import type { KbItemType } from '@/types/plugin';
 
 const ModelEditForm = ({
   formHooks,
   isOwner,
+  canRead,
   handleDelModel
 }: {
   formHooks: UseFormReturn<ModelSchema>;
   isOwner: boolean;
+  canRead: boolean;
   handleDelModel: () => void;
 }) => {
-  const { modelId } = useRouter().query as { modelId: string };
+  const router = useRouter();
+  const { modelId } = router.query as { modelId: string };
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const { setLoading } = useGlobalStore();
@@ -112,7 +113,7 @@ const ModelEditForm = ({
         setRefresh((state) => !state);
       } catch (err: any) {
         toast({
-          title: typeof err === 'string' ? err : '头像选择异常',
+          title: getErrText(err, '头像选择异常'),
           status: 'warning'
         });
       }
@@ -144,8 +145,12 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         copyData(url, '已复制分享地址');
 
         resetShareChat(defaultShareChat);
-      } catch (error) {
-        console.log(error);
+      } catch (err) {
+        toast({
+          title: getErrText(err, '创建分享链接异常'),
+          status: 'warning'
+        });
+        console.log(err);
       }
       setLoading(false);
     },
@@ -156,7 +161,8 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
       onCloseCreateShareChat,
       refetchShareChatList,
       resetShareChat,
-      setLoading
+      setLoading,
+      toast
     ]
   );
 
@@ -175,7 +181,13 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
       <>
         {kbs.map((item) =>
           item ? (
-            <Card key={item._id} p={3} mt={3}>
+            <Card
+              key={item._id}
+              p={3}
+              mt={3}
+              cursor={'pointer'}
+              onClick={() => router.push(`/kb?kbId=${item._id}`)}
+            >
               <Flex alignItems={'center'}>
                 <Image
                   src={item.avatar}
@@ -193,7 +205,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         )}
       </>
     );
-  }, [getValues, kbList]);
+  }, [getValues, kbList, router]);
 
   return (
     <>
@@ -202,13 +214,13 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         <Box fontWeight={'bold'}>基本信息</Box>
         <Flex alignItems={'center'} mt={4}>
           <Box flex={'0 0 80px'} w={0}>
-            modelId:
+            modelId
           </Box>
-          <Box>{getValues('_id')}</Box>
+          <Box userSelect={'all'}>{getValues('_id')}</Box>
         </Flex>
         <Flex mt={4} alignItems={'center'}>
           <Box flex={'0 0 80px'} w={0}>
-            头像:
+            头像
           </Box>
           <Image
             src={getValues('avatar') || '/icon/logo.png'}
@@ -224,7 +236,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         <FormControl mt={4}>
           <Flex alignItems={'center'}>
             <Box flex={'0 0 80px'} w={0}>
-              名称:
+              名称
             </Box>
             <Input
               isDisabled={!isOwner}
@@ -237,7 +249,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
 
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
-            对话模型:
+            对话模型
           </Box>
           <Select
             isDisabled={!isOwner}
@@ -256,7 +268,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
-            价格:
+            价格
           </Box>
           <Box>
             {formatPrice(ChatModelMap[getValues('chat.chatModel')]?.price, 1000)}
@@ -271,7 +283,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         </Flex>
         {isOwner && (
           <Flex mt={5} alignItems={'center'}>
-            <Box flex={'0 0 120px'}>删除AI和知识库</Box>
+            <Box flex={'0 0 100px'}>删除AI助手</Box>
             <Button
               colorScheme={'gray'}
               variant={'outline'}
@@ -284,80 +296,82 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         )}
       </Card>
       {/* model effect */}
-      <Card p={4}>
-        <Box fontWeight={'bold'}>模型效果</Box>
-        <FormControl mt={4}>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 80px'} w={0}>
-              <Box as={'span'} mr={2}>
-                温度
+      {canRead && (
+        <Card p={4}>
+          <Box fontWeight={'bold'}>模型效果</Box>
+          <FormControl mt={4}>
+            <Flex alignItems={'center'}>
+              <Box flex={'0 0 80px'} w={0}>
+                <Box as={'span'} mr={2}>
+                  温度
+                </Box>
+                <Tooltip label={'温度越高，模型的发散能力越强；温度越低，内容越严谨。'}>
+                  <QuestionOutlineIcon />
+                </Tooltip>
               </Box>
-              <Tooltip label={'温度越高，模型的发散能力越强；温度越低，内容越严谨。'}>
-                <QuestionOutlineIcon />
-              </Tooltip>
-            </Box>
 
-            <Slider
-              aria-label="slider-ex-1"
-              min={0}
-              max={10}
-              step={1}
-              value={getValues('chat.temperature')}
-              isDisabled={!isOwner}
-              onChange={(e) => {
-                setValue('chat.temperature', e);
-                setRefresh(!refresh);
-              }}
-            >
-              <SliderMark
+              <Slider
+                aria-label="slider-ex-1"
+                min={0}
+                max={10}
+                step={1}
                 value={getValues('chat.temperature')}
-                textAlign="center"
-                bg="myBlue.600"
-                color="white"
-                w={'18px'}
-                h={'18px'}
-                borderRadius={'100px'}
-                fontSize={'xs'}
-                transform={'translate(-50%, -200%)'}
+                isDisabled={!isOwner}
+                onChange={(e) => {
+                  setValue('chat.temperature', e);
+                  setRefresh(!refresh);
+                }}
               >
-                {getValues('chat.temperature')}
-              </SliderMark>
-              <SliderTrack>
-                <SliderFilledTrack bg={'myBlue.700'} />
-              </SliderTrack>
-              <SliderThumb />
-            </Slider>
-          </Flex>
-        </FormControl>
-        {getValues('chat.relatedKbs').length > 0 && (
-          <Flex mt={4} alignItems={'center'}>
-            <Box mr={4} whiteSpace={'nowrap'}>
-              搜索模式&emsp;
-            </Box>
-            <Select
-              isDisabled={!isOwner}
-              {...register('chat.searchMode', { required: '搜索模式不能为空' })}
-            >
-              {Object.entries(ModelVectorSearchModeMap).map(([key, { text }]) => (
-                <option key={key} value={key}>
-                  {text}
-                </option>
-              ))}
-            </Select>
-          </Flex>
-        )}
+                <SliderMark
+                  value={getValues('chat.temperature')}
+                  textAlign="center"
+                  bg="myBlue.600"
+                  color="white"
+                  w={'18px'}
+                  h={'18px'}
+                  borderRadius={'100px'}
+                  fontSize={'xs'}
+                  transform={'translate(-50%, -200%)'}
+                >
+                  {getValues('chat.temperature')}
+                </SliderMark>
+                <SliderTrack>
+                  <SliderFilledTrack bg={'myBlue.700'} />
+                </SliderTrack>
+                <SliderThumb />
+              </Slider>
+            </Flex>
+          </FormControl>
+          {getValues('chat.relatedKbs').length > 0 && (
+            <Flex mt={4} alignItems={'center'}>
+              <Box mr={4} whiteSpace={'nowrap'}>
+                搜索模式&emsp;
+              </Box>
+              <Select
+                isDisabled={!isOwner}
+                {...register('chat.searchMode', { required: '搜索模式不能为空' })}
+              >
+                {Object.entries(ModelVectorSearchModeMap).map(([key, { text }]) => (
+                  <option key={key} value={key}>
+                    {text}
+                  </option>
+                ))}
+              </Select>
+            </Flex>
+          )}
 
-        <Box mt={4}>
-          <Box mb={1}>系统提示词</Box>
-          <Textarea
-            rows={8}
-            maxLength={-1}
-            isDisabled={!isOwner}
-            placeholder={'模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。'}
-            {...register('chat.systemPrompt')}
-          />
-        </Box>
-      </Card>
+          <Box mt={4}>
+            <Box mb={1}>系统提示词</Box>
+            <Textarea
+              rows={8}
+              maxLength={-1}
+              isDisabled={!isOwner}
+              placeholder={'模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。'}
+              {...register('chat.systemPrompt')}
+            />
+          </Box>
+        </Card>
+      )}
       {isOwner && (
         <>
           {/* model share setting */}
@@ -419,90 +433,90 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
             </Flex>
             <RenderSelectedKbList />
           </Card>
-          {/* shareChat */}
-          <Card p={4} gridColumnStart={1} gridColumnEnd={[2, 3]}>
-            <Flex justifyContent={'space-between'}>
-              <Box fontWeight={'bold'}>
-                免登录聊天窗口
-                <Tooltip label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的tokens。请保管好链接和密码。">
-                  <QuestionOutlineIcon ml={1} />
-                </Tooltip>
-                （Beta）
-              </Box>
-              <Button
-                size={'sm'}
-                variant={'outline'}
-                colorScheme={'myBlue'}
-                {...(shareChatList.length >= 10
-                  ? {
-                      isDisabled: true,
-                      title: '最多创建10组'
-                    }
-                  : {})}
-                onClick={onOpenCreateShareChat}
-              >
-                创建分享窗口
-              </Button>
-            </Flex>
-            <TableContainer mt={1} minH={'100px'}>
-              <Table variant={'simple'} w={'100%'}>
-                <Thead>
-                  <Tr>
-                    <Th>名称</Th>
-                    <Th>密码</Th>
-                    <Th>最大上下文</Th>
-                    <Th>tokens消耗</Th>
-                    <Th>最后使用时间</Th>
-                    <Th>操作</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {shareChatList.map((item) => (
-                    <Tr key={item._id}>
-                      <Td>{item.name}</Td>
-                      <Td>{item.password === '1' ? '已开启' : '未使用'}</Td>
-                      <Td>{item.maxContext}</Td>
-                      <Td>{formatTokens(item.tokens)}</Td>
-                      <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
-                      <Td>
-                        <Flex>
-                          <MyIcon
-                            mr={3}
-                            name="copy"
-                            w={'14px'}
-                            cursor={'pointer'}
-                            _hover={{ color: 'myBlue.600' }}
-                            onClick={() => {
-                              const url = `${location.origin}/chat/share?shareId=${item._id}`;
-                              copyData(url, '已复制分享地址');
-                            }}
-                          />
-                          <MyIcon
-                            name="delete"
-                            w={'14px'}
-                            cursor={'pointer'}
-                            _hover={{ color: 'red' }}
-                            onClick={async () => {
-                              setLoading(true);
-                              try {
-                                await delShareChatById(item._id);
-                                refetchShareChatList();
-                              } catch (error) {
-                                console.log(error);
-                              }
-                              setLoading(false);
-                            }}
-                          />
-                        </Flex>
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Card>
         </>
       )}
+      {/* shareChat */}
+      <Card p={4} gridColumnStart={1} gridColumnEnd={[2, 3]}>
+        <Flex justifyContent={'space-between'}>
+          <Box fontWeight={'bold'}>
+            免登录聊天窗口
+            <Tooltip label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的tokens。请保管好链接和密码。">
+              <QuestionOutlineIcon ml={1} />
+            </Tooltip>
+            （Beta）
+          </Box>
+          <Button
+            size={'sm'}
+            variant={'outline'}
+            colorScheme={'myBlue'}
+            {...(shareChatList.length >= 10
+              ? {
+                  isDisabled: true,
+                  title: '最多创建10组'
+                }
+              : {})}
+            onClick={onOpenCreateShareChat}
+          >
+            创建分享窗口
+          </Button>
+        </Flex>
+        <TableContainer mt={1} minH={'100px'}>
+          <Table variant={'simple'} w={'100%'}>
+            <Thead>
+              <Tr>
+                <Th>名称</Th>
+                <Th>密码</Th>
+                <Th>最大上下文</Th>
+                <Th>tokens消耗</Th>
+                <Th>最后使用时间</Th>
+                <Th>操作</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {shareChatList.map((item) => (
+                <Tr key={item._id}>
+                  <Td>{item.name}</Td>
+                  <Td>{item.password === '1' ? '已开启' : '未使用'}</Td>
+                  <Td>{item.maxContext}</Td>
+                  <Td>{formatTokens(item.tokens)}</Td>
+                  <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
+                  <Td>
+                    <Flex>
+                      <MyIcon
+                        mr={3}
+                        name="copy"
+                        w={'14px'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'myBlue.600' }}
+                        onClick={() => {
+                          const url = `${location.origin}/chat/share?shareId=${item._id}`;
+                          copyData(url, '已复制分享地址');
+                        }}
+                      />
+                      <MyIcon
+                        name="delete"
+                        w={'14px'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'red' }}
+                        onClick={async () => {
+                          setLoading(true);
+                          try {
+                            await delShareChatById(item._id);
+                            refetchShareChatList();
+                          } catch (error) {
+                            console.log(error);
+                          }
+                          setLoading(false);
+                        }}
+                      />
+                    </Flex>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Card>
       {/* create shareChat modal */}
       <Modal isOpen={isOpenCreateShareChat} onClose={onCloseCreateShareChat}>
         <ModalOverlay />

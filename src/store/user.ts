@@ -8,7 +8,7 @@ import { getTokenLogin } from '@/api/user';
 import { defaultModel } from '@/constants/model';
 import { ModelListItemType } from '@/types/model';
 import { KbItemType } from '@/types/plugin';
-import { getKbList } from '@/api/plugins/kb';
+import { getKbList, getKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
 import type { ModelSchema } from '@/types/mongoSchema';
 
@@ -35,8 +35,8 @@ type State = {
   setLastKbId: (id: string) => void;
   myKbList: KbItemType[];
   loadKbList: (init?: boolean) => Promise<KbItemType[]>;
-  KbDetail: KbItemType;
-  getKbDetail: (id: string) => KbItemType;
+  kbDetail: KbItemType;
+  getKbDetail: (id: string, init?: boolean) => Promise<KbItemType>;
 };
 
 export const useUserStore = create<State>()(
@@ -130,12 +130,14 @@ export const useUserStore = create<State>()(
           });
           return res;
         },
-        KbDetail: defaultKbDetail,
-        getKbDetail(id: string) {
-          const data = get().myKbList.find((item) => item._id === id) || defaultKbDetail;
+        kbDetail: defaultKbDetail,
+        async getKbDetail(id: string, init = false) {
+          if (id === get().kbDetail._id && !init) return get().kbDetail;
+
+          const data = await getKbById(id);
 
           set((state) => {
-            state.KbDetail = data;
+            state.kbDetail = data;
           });
 
           return data;
