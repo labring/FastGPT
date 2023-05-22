@@ -48,13 +48,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } else {
       // 已经有记录，追加入库
+      const chat = await Chat.findById(chatId);
+
       await Chat.findByIdAndUpdate(chatId, {
         $push: {
           content: {
             $each: content
           }
         },
-        title: content[0].value.slice(0, 20),
+        ...(chat && !chat.customTitle ? { title: content[0].value.slice(0, 20) } : {}),
         latestChat: content[1].value,
         updateTime: new Date()
       });

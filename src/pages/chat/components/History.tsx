@@ -17,16 +17,64 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useLoading } from '@/hooks/useLoading';
 import { useUserStore } from '@/store/user';
-import { formatTimeToChatTime } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import type { HistoryItemType, ExportChatType } from '@/types/chat';
 import { useChatStore } from '@/store/chat';
-import { useEditTitle } from '@/hooks/useEditTitle';
-
+import { updateChatHistoryTitle } from '@/api/chat';
 import ModelList from './ModelList';
 import { useGlobalStore } from '@/store/global';
-
 import styles from '../index.module.scss';
+
+type UseEditTitleReturnType = {
+  editingHistoryId: string | null;
+  setEditingHistoryId: React.Dispatch<React.SetStateAction<string | null>>;
+  editedTitle: string;
+  setEditedTitle: React.Dispatch<React.SetStateAction<string>>;
+  inputRef: React.RefObject<HTMLInputElement>;
+  onEditClick: (id: string, title: string) => void;
+  onSaveClick: (chatId: string, modelId: string, editedTitle: string) => Promise<void>;
+  onCloseClick: () => void;
+};
+
+const useEditTitle = (): UseEditTitleReturnType => {
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
+  const [editedTitle, setEditedTitle] = useState<string>('');
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const onEditClick = (id: string, title: string) => {
+    setEditingHistoryId(id);
+    setEditedTitle(title);
+    inputRef.current && inputRef.current.focus();
+  };
+
+  const onSaveClick = async (chatId: string, modelId: string, editedTitle: string) => {
+    setEditingHistoryId(null);
+
+    await updateChatHistoryTitle({ chatId: chatId, modelId: modelId, newTitle: editedTitle });
+  };
+
+  const onCloseClick = () => {
+    setEditingHistoryId(null);
+  };
+
+  useEffect(() => {
+    if (editingHistoryId) {
+      inputRef.current && inputRef.current.focus();
+    }
+  }, [editingHistoryId]);
+
+  return {
+    editingHistoryId,
+    setEditingHistoryId,
+    editedTitle,
+    setEditedTitle,
+    inputRef,
+    onEditClick,
+    onSaveClick,
+    onCloseClick
+  };
+};
 
 const PcSliderBar = ({
   onclickDelHistory,
@@ -201,12 +249,6 @@ const PcSliderBar = ({
                   </Box>
                 )}
 
-                {/* 选中时不显示时间 */}
-                {chatId !== item._id && (
-                  <Box color={'myGray.400'} fontSize={'sm'}>
-                    {formatTimeToChatTime(item.updateTime)}
-                  </Box>
-                )}
                 {/* 编辑状态下显示确认和取消按钮 */}
                 {editingHistoryId === item._id ? (
                   <>

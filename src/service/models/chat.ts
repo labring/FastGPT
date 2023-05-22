@@ -31,6 +31,10 @@ const ChatSchema = new Schema({
     type: String,
     default: '历史记录'
   },
+  customTitle: {
+    type: Boolean,
+    default: false
+  },
   latestChat: {
     type: String,
     default: ''

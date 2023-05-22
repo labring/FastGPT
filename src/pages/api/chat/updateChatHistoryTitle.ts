@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { authModel } from '@/service/utils/auth';
-import { authToken } from '@/service/utils/auth';
-import mongoose from 'mongoose';
+import { authUser } from '@/service/utils/auth';
 
 /* 更新聊天标题 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       newTitle: string;
     };
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 
