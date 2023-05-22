@@ -16,6 +16,10 @@ const UserSchema = new Schema({
     get: (val: string) => hashPassword(val),
     select: false
   },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
   avatar: {
     type: String,
     default: '/icon/human.png'
@@ -41,9 +45,11 @@ const UserSchema = new Schema({
     type: String,
     default: ''
   },
-  createTime: {
-    type: Date,
-    default: () => new Date()
+  limit: {
+    exportKbTime: {
+      // Every half hour
+      type: Date
+    }
   }
 });
 

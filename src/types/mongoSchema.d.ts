@@ -22,6 +22,9 @@ export interface UserModelSchema {
   promotion: {
     rate: number;
   };
+  limit: {
+    exportKbTime?: Date;
+  };
 }
 
 export interface AuthCodeSchema {
