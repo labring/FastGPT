@@ -4,7 +4,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
-import { PgClient } from '@/service/pg';
+import { PgClient, insertKbItem } from '@/service/pg';
 import { authKb } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 
@@ -68,14 +68,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       .map<{ q: string; a: string }>((item: any) => item.value);
 
     // 插入记录
-    const insertRes = await PgClient.insert('modelData', {
-      values: filterData.map((item) => [
-        { key: 'user_id', value: userId },
-        { key: 'kb_id', value: kbId },
-        { key: 'q', value: item.q },
-        { key: 'a', value: item.a },
-        { key: 'status', value: 'waiting' }
-      ])
+    const insertRes = await insertKbItem({
+      userId,
+      kbId,
+      data: filterData
     });
 
     generateVector();

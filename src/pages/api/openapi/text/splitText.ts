@@ -4,7 +4,7 @@ import { connectToDatabase, SplitData } from '@/service/mongo';
 import { authKb, authUser } from '@/service/utils/auth';
 import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
-import { PgClient } from '@/service/pg';
+import { insertKbItem } from '@/service/pg';
 import { SplitTextTypEnum } from '@/constants/plugin';
 import { withNextCors } from '@/service/utils/tools';
 
@@ -43,14 +43,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     } else if (mode === SplitTextTypEnum.subsection) {
       // 待优化，直接调用另一个接口
       // 插入记录
-      await PgClient.insert('modelData', {
-        values: chunks.map((item) => [
-          { key: 'user_id', value: userId },
-          { key: 'kb_id', value: kbId },
-          { key: 'q', value: item },
-          { key: 'a', value: '' },
-          { key: 'status', value: 'waiting' }
-        ])
+      await insertKbItem({
+        userId,
+        kbId,
+        data: chunks.map((item) => ({
+          q: item,
+          a: ''
+        }))
       });
 
       generateVector();
