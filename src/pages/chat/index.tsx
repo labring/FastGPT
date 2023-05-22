@@ -16,7 +16,6 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Image,
   Button,
   Modal,
   ModalOverlay,
@@ -51,6 +50,7 @@ import { useUserStore } from '@/store/user';
 import Loading from '@/components/Loading';
 import Markdown from '@/components/Markdown';
 import SideBar from '@/components/SideBar';
+import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
@@ -595,7 +595,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             borderBottom={theme.borders.base}
             onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}
           >
-            AI助手详情
+            应用详情
           </MenuItem>
         )}
         {hasVoiceApi && (
@@ -654,9 +654,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           >
             {!isPc && (
               <MyIcon
-                name={'tabbarMore'}
-                w={'14px'}
-                h={'14px'}
+                name={'menu'}
+                w={'20px'}
+                h={'20px'}
                 color={useColorModeValue('blackAlpha.700', 'white')}
                 onClick={onOpenSlider}
               />
@@ -734,19 +734,15 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                             ml: ['6px', 2]
                           })}
                     >
-                      <Tooltip label={item.obj === 'AI' ? 'AI助手详情' : ''}>
-                        <Image
-                          className="avatar"
+                      <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                        <Avatar
                           src={
                             item.obj === 'Human'
                               ? userInfo?.avatar || '/icon/human.png'
                               : chatData.model.avatar || LOGO_ICON
                           }
-                          alt="avatar"
                           w={['20px', '34px']}
                           h={['20px', '34px']}
-                          borderRadius={'50%'}
-                          objectFit={'contain'}
                         />
                       </Tooltip>
                     </MenuButton>

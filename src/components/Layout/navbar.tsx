@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Image, Tooltip } from '@chakra-ui/react';
+import { Box, Flex, Tooltip } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '../Icon';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
+import Avatar from '../Avatar';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -23,7 +24,7 @@ const Navbar = () => {
         activeLink: ['/chat']
       },
       {
-        label: 'AI助手',
+        label: '我的应用',
         icon: 'model',
         link: `/model?modelId=${lastModelId}`,
         activeLink: ['/model']
@@ -35,8 +36,8 @@ const Navbar = () => {
         activeLink: ['/kb']
       },
       {
-        label: '共享',
-        icon: 'shareMarket',
+        label: '应用市场',
+        icon: 'appStore',
         link: '/model/share',
         activeLink: ['/model/share']
       },
@@ -82,13 +83,7 @@ const Navbar = () => {
         cursor={'pointer'}
         onClick={() => router.push('/number')}
       >
-        <Image
-          src={userInfo?.avatar || '/icon/human.png'}
-          objectFit={'contain'}
-          w={'36px'}
-          h={'36px'}
-          alt=""
-        />
+        <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={'/icon/human.png'} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>

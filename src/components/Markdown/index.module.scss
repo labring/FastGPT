@@ -339,8 +339,11 @@
   text-align: justify;
   tab-size: 4;
   word-spacing: normal;
-  word-break: break-all;
   width: 100%;
+
+  * {
+    word-break: break-all;
+  }
 
   p {
     white-space: pre-line;

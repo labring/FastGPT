@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Card, Box, Flex, Button, Input, Image } from '@chakra-ui/react';
+import { Card, Box, Flex, Button, Input } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { putUserInfo } from '@/api/user';
@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import Loading from '@/components/Loading';
+import Avatar from '@/components/Avatar';
 
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'), {
   loading: () => <Loading fixed={false} />,
@@ -106,12 +107,10 @@ const NumberSetting = () => {
         </Flex>
         <Flex mt={6} alignItems={'center'}>
           <Box flex={'0 0 50px'}>头像:</Box>
-          <Image
+          <Avatar
             src={userInfo?.avatar}
-            alt={'avatar'}
             w={['28px', '36px']}
-            maxH={'40px'}
-            objectFit={'contain'}
+            h={['28px', '36px']}
             cursor={'pointer'}
             title={'点击切换头像'}
             onClick={onOpenSelectFile}

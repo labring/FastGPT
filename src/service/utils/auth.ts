@@ -11,6 +11,28 @@ import { ERROR_ENUM } from '../errorCode';
 import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
 import { hashPassword } from '@/service/utils/tools';
 
+export const parseCookie = (cookie?: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    // 获取 cookie
+    const cookies = Cookie.parse(cookie || '');
+    const token = cookies.token;
+
+    if (!token) {
+      return reject(ERROR_ENUM.unAuthorization);
+    }
+
+    const key = process.env.TOKEN_KEY as string;
+
+    jwt.verify(token, key, function (err, decoded: any) {
+      if (err || !decoded?.userId) {
+        reject(ERROR_ENUM.unAuthorization);
+        return;
+      }
+      resolve(decoded.userId);
+    });
+  });
+};
+
 /* uniform auth user */
 export const authUser = async ({
   req,
@@ -23,27 +45,6 @@ export const authUser = async ({
   authOpenApi?: boolean;
   authRoot?: boolean;
 }) => {
-  const parseCookie = (cookie?: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      // 获取 cookie
-      const cookies = Cookie.parse(cookie || '');
-      const token = cookies.token;
-
-      if (!token) {
-        return reject(ERROR_ENUM.unAuthorization);
-      }
-
-      const key = process.env.TOKEN_KEY as string;
-
-      jwt.verify(token, key, function (err, decoded: any) {
-        if (err || !decoded?.userId) {
-          reject(ERROR_ENUM.unAuthorization);
-          return;
-        }
-        resolve(decoded.userId);
-      });
-    });
-  };
   const parseOpenApiKey = async (apiKey?: string) => {
     if (!apiKey) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
