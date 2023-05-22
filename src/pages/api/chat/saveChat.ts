@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { ChatItemType } from '@/types/chat';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { authModel } from '@/service/utils/auth';
-import { authToken } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import mongoose from 'mongoose';
 
 /* 聊天内容存存储 */
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('缺少参数');
     }
 
-    const userId = await authToken(req);
+    const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 

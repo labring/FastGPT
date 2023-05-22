@@ -52,6 +52,10 @@ services:
       - aliTemplateCode=SMS_xxxx
       # token加密凭证（随便填，作为登录凭证）
       - TOKEN_KEY=xxxx
+      # root key, 最高权限
+      - ROOT_KEY=xxx
+      # 是否进行安全校验(1: 开启，0: 关闭)
+      - SENSITIVE_CHECK=1
       # 和上方mongo镜像的username,password对应
       - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
       - MONGODB_NAME=fastgpt
