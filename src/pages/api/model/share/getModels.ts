@@ -3,6 +3,8 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Collection, Model } from '@/service/mongo';
 import type { PagingData } from '@/types';
 import type { ShareModelItem } from '@/types/model';
+import { parseCookie } from '@/service/utils/auth';
+import { Types } from 'mongoose';
 
 /* 获取模型列表 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -15,6 +17,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
+    let userId = '';
+
+    try {
+      userId = await parseCookie(req.headers.cookie);
+    } catch (error) {
+      error;
+    }
+
     const regex = new RegExp(searchText, 'i');
 
     const where = {
@@ -23,15 +33,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         { $or: [{ name: { $regex: regex } }, { 'share.intro': { $regex: regex } }] }
       ]
     };
+    const pipeline = [
+      {
+        $match: where
+      },
+      {
+        $lookup: {
+          from: 'collections',
+          let: { modelId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$modelId', '$$modelId'] },
+                    {
+                      $eq: ['$userId', userId ? new Types.ObjectId(userId) : new Types.ObjectId()]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          as: 'collections'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          avatar: { $ifNull: ['$avatar', '/icon/logo.png'] },
+          name: 1,
+          userId: 1,
+          share: 1,
+          isCollection: {
+            $cond: { if: { $gt: [{ $size: '$collections' }, 0] }, then: true, else: false }
+          }
+        }
+      },
+      {
+        $sort: { 'share.collection': -1 }
+      },
+      {
+        $skip: (pageNum - 1) * pageSize
+      },
+      {
+        $limit: pageSize
+      }
+    ];
 
     // 获取被分享的模型
     const [models, total] = await Promise.all([
-      Model.find(where, '_id avatar name userId share')
-        .sort({
-          'share.collection': -1
-        })
-        .limit(pageSize)
-        .skip((pageNum - 1) * pageSize),
+      // @ts-ignore
+      Model.aggregate(pipeline),
       Model.countDocuments(where)
     ]);
 
@@ -39,14 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       data: {
         pageNum,
         pageSize,
-        data: models.map((item) => ({
-          _id: item._id,
-          avatar: item.avatar || '/icon/logo.png',
-          name: item.name,
-          userId: item.userId,
-          share: item.share,
-          isCollection: false
-        })),
+        data: models,
         total
       }
     });

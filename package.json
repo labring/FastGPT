@@ -1,6 +1,6 @@
 {
   "name": "fastgpt",
-  "version": "0.1.0",
+  "version": "3.7",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -83,5 +83,8 @@
   },
   "lint-staged": {
     "./src/**/*.{ts,tsx,scss}": "npm run format"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

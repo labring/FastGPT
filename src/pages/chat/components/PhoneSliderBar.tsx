@@ -7,8 +7,7 @@ import {
   Divider,
   useDisclosure,
   useColorMode,
-  useColorModeValue,
-  Image
+  useColorModeValue
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +16,7 @@ import MyIcon from '@/components/Icon';
 import WxConcat from '@/components/WxConcat';
 import { delChatHistoryById } from '@/api/chat';
 import { useChatStore } from '@/store/chat';
+import Avatar from '@/components/Avatar';
 
 const PhoneSliderBar = ({
   chatId,
@@ -74,7 +74,7 @@ const PhoneSliderBar = ({
       color={'white'}
     >
       <Flex alignItems={'center'} justifyContent={'space-between'} px={3}>
-        <Box flex={'0 0 50px'}>AI助手</Box>
+        <Box flex={'0 0 50px'}>AI应用</Box>
         {/* 新对话 */}
         <Button
           w={'50%'}
@@ -115,7 +115,7 @@ const PhoneSliderBar = ({
                 onClose();
               }}
             >
-              <Image src={item.avatar || '/icon/logo.png'} mr={2} alt={''} w={'16px'} h={'16px'} />
+              <Avatar src={item.avatar} mr={2} w={'18px'} h={'18px'} />
               <Box className={'textEllipsis'} flex={'1 0 0'} w={0}>
                 {item.name}
               </Box>

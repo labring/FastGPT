@@ -11,8 +11,8 @@ const list = [
     link: '/kb'
   },
   {
-    icon: 'shareMarket',
-    label: 'AI助手市场',
+    icon: 'appStore',
+    label: 'AI应用市场',
     link: '/model/share'
   },
   {

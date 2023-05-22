@@ -29,7 +29,7 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
     },
     onError(err: any) {
       toast({
-        title: err?.message || '获取AI助手异常',
+        title: err?.message || '获取应用异常',
         status: 'error'
       });
       setLastModelId('');

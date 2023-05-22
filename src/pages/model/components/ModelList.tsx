@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex, useTheme, Input, IconButton, Tooltip, Image } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Input, IconButton, Tooltip } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
@@ -8,6 +8,7 @@ import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
+import Avatar from '@/components/Avatar';
 
 const ModelList = ({ modelId }: { modelId: string }) => {
   const theme = useTheme();
@@ -23,7 +24,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
   const onclickCreateModel = useCallback(async () => {
     setIsLoading(true);
     try {
-      const id = await postCreateModel({ name: `AI助手${myModels.length + 1}` });
+      const id = await postCreateModel({ name: `AI应用${myModels.length + 1}` });
       toast({
         title: '创建成功',
         status: 'success'
@@ -94,7 +95,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
             />
           )}
         </Flex>
-        <Tooltip label={'新建一个AI助手'}>
+        <Tooltip label={'新建一个AI应用'}>
           <IconButton
             h={'32px'}
             icon={<AddIcon />}
@@ -134,19 +135,13 @@ const ModelList = ({ modelId }: { modelId: string }) => {
                   router.push(`/model?modelId=${item._id}`);
                 }}
               >
-                <Image
-                  src={item.avatar || '/icon/logo.png'}
-                  alt=""
-                  w={'34px'}
-                  maxH={'50px'}
-                  objectFit={'contain'}
-                />
+                <Avatar src={item.avatar} w={'34px'} h={'34px'} />
                 <Box flex={'1 0 0'} w={0} ml={3}>
                   <Box className="textEllipsis" color={'myGray.1000'}>
                     {item.name}
                   </Box>
                   <Box className="textEllipsis" color={'myGray.400'} fontSize={'sm'}>
-                    {item.systemPrompt || '这个AI助手没有设置提示词~'}
+                    {item.systemPrompt || '这个 应用 没有设置提示词~'}
                   </Box>
                 </Box>
               </Flex>

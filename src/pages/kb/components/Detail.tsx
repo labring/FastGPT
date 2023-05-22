@@ -6,7 +6,6 @@ import {
   Flex,
   Button,
   Tooltip,
-  Image,
   FormControl,
   Input,
   Tag,
@@ -18,13 +17,13 @@ import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import { delKbById, putKbById } from '@/api/plugins/kb';
-import { useLoading } from '@/hooks/useLoading';
 import { KbItemType } from '@/types/plugin';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useConfirm } from '@/hooks/useConfirm';
 import { compressImg } from '@/utils/file';
 import DataCard from './DataCard';
 import { getErrText } from '@/utils/tools';
+import Avatar from '@/components/Avatar';
 
 const Detail = ({ kbId }: { kbId: string }) => {
   const { toast } = useToast();
@@ -58,7 +57,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
     },
     onError(err: any) {
       toast({
-        title: getErrText(err, '获取AI助手异常'),
+        title: getErrText(err, '获取知识库异常'),
         status: 'error'
       });
       loadKbList(true);
@@ -95,6 +94,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
           id: kbId,
           ...data
         });
+        await getKbDetail(kbId, true);
         toast({
           title: '更新成功',
           status: 'success'
@@ -108,7 +108,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
       }
       setBtnLoading(false);
     },
-    [kbId, loadKbList, toast]
+    [getKbDetail, kbId, loadKbList, toast]
   );
   const saveSubmitError = useCallback(() => {
     // deep search message
@@ -138,7 +138,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
           maxH: 100
         });
         setValue('avatar', base64);
-        loadKbList(true);
+        setRefresh((state) => !state);
       } catch (err: any) {
         toast({
           title: typeof err === 'string' ? err : '头像选择异常',
@@ -146,7 +146,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
         });
       }
     },
-    [loadKbList, setValue, toast]
+    [setRefresh, setValue, toast]
   );
 
   return (
@@ -180,12 +180,10 @@ const Detail = ({ kbId }: { kbId: string }) => {
           <Box flex={'0 0 60px'} w={0}>
             头像
           </Box>
-          <Image
-            src={getValues('avatar') || '/icon/logo.png'}
-            alt={'avatar'}
+          <Avatar
+            src={getValues('avatar')}
             w={['28px', '36px']}
             h={['28px', '36px']}
-            objectFit={'cover'}
             cursor={'pointer'}
             title={'点击切换头像'}
             onClick={onOpenSelectFile}

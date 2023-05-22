@@ -12,7 +12,6 @@ const map = {
   delete: require('./icons/delete.svg').default,
   withdraw: require('./icons/withdraw.svg').default,
   stop: require('./icons/stop.svg').default,
-  shareMarket: require('./icons/shareMarket.svg').default,
   collectionLight: require('./icons/collectionLight.svg').default,
   collectionSolid: require('./icons/collectionSolid.svg').default,
   chat: require('./icons/chat.svg').default,
@@ -27,7 +26,9 @@ const map = {
   wx: require('./icons/wx.svg').default,
   out: require('./icons/out.svg').default,
   git: require('./icons/git.svg').default,
-  kb: require('./icons/kb.svg').default
+  kb: require('./icons/kb.svg').default,
+  appStore: require('./icons/appStore.svg').default,
+  menu: require('./icons/menu.svg').default
 };
 
 export type IconName = keyof typeof map;
