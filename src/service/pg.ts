@@ -156,3 +156,29 @@ class Pg {
 }
 
 export const PgClient = new Pg();
+
+/**
+ * data insert kb
+ */
+export const insertKbItem = ({
+  userId,
+  kbId,
+  data
+}: {
+  userId: string;
+  kbId: string;
+  data: {
+    q: string;
+    a: string;
+  }[];
+}) => {
+  return PgClient.insert('modelData', {
+    values: data.map((item) => [
+      { key: 'user_id', value: userId },
+      { key: 'kb_id', value: kbId },
+      { key: 'q', value: item.q },
+      { key: 'a', value: item.a },
+      { key: 'status', value: 'waiting' }
+    ])
+  });
+};
