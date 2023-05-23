@@ -76,6 +76,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const isLeavePage = useRef(false);
 
   const [showHistoryQuote, setShowHistoryQuote] = useState<string>();
+  const [showSystemPrompt, setShowSystemPrompt] = useState('');
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
     left: number;
@@ -177,7 +178,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       }));
 
       // 流请求，获取数据
-      const { newChatId, quoteLen } = await streamFetch({
+      const { newChatId, quoteLen, systemPrompt } = await streamFetch({
         url: '/api/chat/chat',
         data: {
           prompt,
@@ -221,14 +222,15 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           return {
             ...item,
             status: 'finish',
-            quoteLen
+            quoteLen,
+            systemPrompt
           };
         })
       }));
 
       // refresh history
-      loadHistory({ pageNum: 1, init: true });
       setTimeout(() => {
+        loadHistory({ pageNum: 1, init: true });
         generatingMessage();
       }, 100);
     },
@@ -699,6 +701,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                             })}
                       >
                         <Avatar
+                          className="avatar"
                           src={
                             item.obj === 'Human'
                               ? userInfo?.avatar || '/icon/human.png'
@@ -727,19 +730,35 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                             isChatting={isChatting && index === chatData.history.length - 1}
                             formatLink
                           />
-                          {!!item.quoteLen && (
-                            <Button
-                              size={'xs'}
-                              mt={2}
-                              fontWeight={'normal'}
-                              colorScheme={'gray'}
-                              variant={'outline'}
-                              w={'90px'}
-                              onClick={() => setShowHistoryQuote(item._id)}
-                            >
-                              {item.quoteLen}条引用
-                            </Button>
-                          )}
+                          <Flex>
+                            {!!item.systemPrompt && (
+                              <Button
+                                mt={2}
+                                mr={3}
+                                size={'xs'}
+                                fontWeight={'normal'}
+                                colorScheme={'gray'}
+                                variant={'outline'}
+                                px={[2, 4]}
+                                onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
+                              >
+                                提示词
+                              </Button>
+                            )}
+                            {!!item.quoteLen && (
+                              <Button
+                                mt={2}
+                                size={'xs'}
+                                fontWeight={'normal'}
+                                colorScheme={'gray'}
+                                variant={'outline'}
+                                px={[2, 4]}
+                                onClick={() => setShowHistoryQuote(item._id)}
+                              >
+                                {item.quoteLen}条引用
+                              </Button>
+                            )}
+                          </Flex>
                         </Card>
                       </Box>
                     ) : (
@@ -876,6 +895,19 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           onClose={() => setShowHistoryQuote(undefined)}
         />
       )}
+      {/* system prompt show modal */}
+      {
+        <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
+          <ModalOverlay />
+          <ModalContent maxW={'min(90vw, 600px)'} maxH={'80vh'} minH={'50vh'} overflow={'overlay'}>
+            <ModalCloseButton />
+            <ModalHeader>提示词</ModalHeader>
+            <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'xs'}>
+              {showSystemPrompt}
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+      }
       {/* context menu */}
       {messageContextMenuData && (
         <Box

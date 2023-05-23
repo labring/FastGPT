@@ -9,6 +9,7 @@ export type ChatItemSimpleType = {
   value: string;
   quoteLen?: number;
   quote?: QuoteItemType[];
+  systemPrompt?: string;
 };
 export type ChatItemType = {
   _id: string;

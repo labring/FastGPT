@@ -8,7 +8,7 @@ import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { resStreamResponse } from '@/service/utils/chat';
 import { appKbSearch } from '../openapi/kb/appKbSearch';
-import { ChatRoleEnum, QUOTE_LEN_HEADER } from '@/constants/chat';
+import { ChatRoleEnum, QUOTE_LEN_HEADER, GUIDE_PROMPT_HEADER } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
 import { sensitiveCheck } from '@/service/api/text';
 import { NEW_CHATID_HEADER } from '@/constants/chat';
@@ -53,11 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const {
       code = 200,
       systemPrompts = [],
-      quote = []
+      quote = [],
+      guidePrompt = ''
     } = await (async () => {
       // 使用了知识库搜索
       if (model.chat.relatedKbs.length > 0) {
-        const { code, searchPrompts, rawSearch } = await appKbSearch({
+        const { code, searchPrompts, rawSearch, guidePrompt } = await appKbSearch({
           model,
           userId,
           prompts,
@@ -67,11 +68,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return {
           code,
           quote: rawSearch,
-          systemPrompts: searchPrompts
+          systemPrompts: searchPrompts,
+          guidePrompt
         };
       }
       if (model.chat.systemPrompt) {
         return {
+          guidePrompt: model.chat.systemPrompt,
           systemPrompts: [
             {
               obj: ChatRoleEnum.System,
@@ -86,7 +89,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // get conversationId. create a newId if it is null
     const conversationId = chatId || String(new Types.ObjectId());
     !chatId && res.setHeader(NEW_CHATID_HEADER, conversationId);
-    res.setHeader(QUOTE_LEN_HEADER, quote.length);
+    if (showModelDetail) {
+      guidePrompt && res.setHeader(GUIDE_PROMPT_HEADER, encodeURIComponent(guidePrompt));
+      res.setHeader(QUOTE_LEN_HEADER, quote.length);
+    }
 
     // search result is empty
     if (code === 201) {
@@ -151,8 +157,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           prompt[0],
           {
             ...prompt[1],
+            value: responseContent,
             quote: showModelDetail ? quote : [],
-            value: responseContent
+            systemPrompt: showModelDetail ? guidePrompt : ''
           }
         ],
         userId
