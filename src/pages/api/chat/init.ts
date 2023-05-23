@@ -73,7 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             _id: '$content._id',
             obj: '$content.obj',
             value: '$content.value',
-            quoteLen: { $size: '$content.quote' }
+            systemPrompt: '$content.systemPrompt',
+            quoteLen: { $size: { $ifNull: ['$content.quote', []] } }
           }
         }
       ]);

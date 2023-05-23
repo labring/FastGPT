@@ -22,6 +22,7 @@ type Props = {
 type Response = {
   code: 200 | 201;
   rawSearch: QuoteItemType[];
+  guidePrompt: string;
   searchPrompts: {
     obj: ChatRoleEnum;
     value: string;
@@ -131,36 +132,29 @@ export async function appKbSearch({
   };
   const sliceRate = sliceRateMap[searchRes.length] || sliceRateMap[0];
   // 计算固定提示词的 token 数量
-  const fixedPrompts = [
-    // user system prompt
-    ...(model.chat.systemPrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: model.chat.systemPrompt
-          }
-        ]
-      : model.chat.searchMode === ModelVectorSearchModeEnum.noContext
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: `知识库是关于"${model.name}"的内容,根据知识库内容回答问题.`
-          }
-        ]
-      : [
-          {
-            obj: ChatRoleEnum.System,
-            value: `玩一个问答游戏,规则为:
+
+  const guidePrompt = model.chat.systemPrompt // user system prompt
+    ? {
+        obj: ChatRoleEnum.System,
+        value: model.chat.systemPrompt
+      }
+    : model.chat.searchMode === ModelVectorSearchModeEnum.noContext
+    ? {
+        obj: ChatRoleEnum.System,
+        value: `知识库是关于"${model.name}"的内容,根据知识库内容回答问题.`
+      }
+    : {
+        obj: ChatRoleEnum.System,
+        value: `玩一个问答游戏,规则为:
 1.你完全忘记你已有的知识
 2.你只回答关于"${model.name}"的问题
 3.你只从知识库中选择内容进行回答
 4.如果问题不在知识库中,你会回答:"我不知道。"
 请务必遵守规则`
-          }
-        ])
-  ];
+      };
+
   const fixedSystemTokens = modelToolMap[model.chat.chatModel].countTokens({
-    messages: fixedPrompts
+    messages: [guidePrompt]
   });
   const maxTokens = modelConstantsData.systemMaxToken - fixedSystemTokens;
   const sliceResult = sliceRate.map((rate, i) =>
@@ -186,6 +180,7 @@ export async function appKbSearch({
     return {
       code: 201,
       rawSearch: [],
+      guidePrompt: '',
       searchPrompts: [
         {
           obj: ChatRoleEnum.System,
@@ -199,6 +194,7 @@ export async function appKbSearch({
     return {
       code: 200,
       rawSearch: [],
+      guidePrompt: model.chat.systemPrompt || '',
       searchPrompts: model.chat.systemPrompt
         ? [
             {
@@ -213,12 +209,13 @@ export async function appKbSearch({
   return {
     code: 200,
     rawSearch: sliceSearch,
+    guidePrompt: guidePrompt.value || '',
     searchPrompts: [
       {
         obj: ChatRoleEnum.System,
         value: `知识库:${systemPrompt}`
       },
-      ...fixedPrompts
+      guidePrompt
     ]
   };
 }
