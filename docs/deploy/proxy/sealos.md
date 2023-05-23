@@ -90,7 +90,7 @@ http {
 1. 进入刚刚部署应用的详情，复制外网地址
    ![step5](./imgs//sealos5.png)
 
-2. 修改环境变量:
+2. 修改环境变量（是 FastGpt 的环境变量，不是 sealos 的）:
 
 ```
 OPENAI_BASE_URL=https://tgohwtdlrmer.cloud.sealos.io/openai/v1

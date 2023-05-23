@@ -52,7 +52,7 @@ services:
       - aliTemplateCode=SMS_xxxx
       # token加密凭证（随便填，作为登录凭证）
       - TOKEN_KEY=xxxx
-      # root key, 最高权限
+      # root key, 最高权限，可以内部接口互相调用
       - ROOT_KEY=xxx
       # 是否进行安全校验(1: 开启，0: 关闭)
       - SENSITIVE_CHECK=1
