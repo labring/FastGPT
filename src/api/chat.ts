@@ -5,7 +5,7 @@ import { RequestPaging } from '../types/index';
 import type { ShareChatSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/model';
 import { Obj2Query } from '@/utils/tools';
-import { Response as LastChatResultResponseType } from '@/pages/api/openapi/chat/lastChatResult';
+import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 
 /**
  * 获取初始化聊天内容
@@ -25,10 +25,20 @@ export const getChatHistory = (data: RequestPaging) =>
 export const delChatHistoryById = (id: string) => GET(`/chat/removeHistory?id=${id}`);
 
 /**
- * get latest chat result by chatId
+ * get history quotes
  */
-export const getChatResult = (chatId: string) =>
-  GET<LastChatResultResponseType>('/openapi/chat/lastChatResult', { chatId });
+export const getHistoryQuote = (params: { chatId: string; historyId: string }) =>
+  GET<(QuoteItemType & { _id: string })[]>(`/chat/getHistoryQuote`, params);
+
+/**
+ * update history quote status
+ */
+export const updateHistoryQuote = (params: {
+  chatId: string;
+  historyId: string;
+  quoteId: string;
+}) => GET(`/chat/updateHistoryQuote`, params);
+
 /**
  * 删除一句对话
  */

@@ -8,7 +8,7 @@ import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { resStreamResponse } from '@/service/utils/chat';
 import { appKbSearch } from '../openapi/kb/appKbSearch';
-import { ChatRoleEnum } from '@/constants/chat';
+import { ChatRoleEnum, QUOTE_LEN_HEADER } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
 import { sensitiveCheck } from '@/service/api/text';
 import { NEW_CHATID_HEADER } from '@/constants/chat';
@@ -85,7 +85,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // get conversationId. create a newId if it is null
     const conversationId = chatId || String(new Types.ObjectId());
-    !chatId && res?.setHeader(NEW_CHATID_HEADER, conversationId);
+    !chatId && res.setHeader(NEW_CHATID_HEADER, conversationId);
+    res.setHeader(QUOTE_LEN_HEADER, quote.length);
 
     // search result is empty
     if (code === 201) {

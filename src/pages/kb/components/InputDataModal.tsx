@@ -30,7 +30,7 @@ const InputDataModal = ({
   kbId: string;
   defaultValues?: FormData;
 }) => {
-  const [importing, setImporting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const { register, handleSubmit, reset } = useForm<FormData>({
@@ -49,7 +49,7 @@ const InputDataModal = ({
         });
         return;
       }
-      setImporting(true);
+      setLoading(true);
 
       try {
         const res = await postKbDataFromList({
@@ -78,7 +78,7 @@ const InputDataModal = ({
         });
         console.log(err);
       }
-      setImporting(false);
+      setLoading(false);
     },
     [kbId, onSuccess, reset, toast]
   );
@@ -88,16 +88,20 @@ const InputDataModal = ({
       if (!e.dataId) return;
 
       if (e.a !== defaultValues.a || e.q !== defaultValues.q) {
-        await putKbDataById({
-          dataId: e.dataId,
-          a: e.a,
-          q: e.q === defaultValues.q ? '' : e.q
-        });
-        onSuccess();
+        setLoading(true);
+        try {
+          await putKbDataById({
+            dataId: e.dataId,
+            a: e.a,
+            q: e.q === defaultValues.q ? '' : e.q
+          });
+          onSuccess();
+        } catch (error) {}
+        setLoading(false);
       }
 
       toast({
-        title: '修改回答成功',
+        title: '修改数据成功',
         status: 'success'
       });
       onClose();
@@ -116,18 +120,18 @@ const InputDataModal = ({
         maxW={'90vw'}
         position={'relative'}
       >
-        <ModalHeader>手动导入</ModalHeader>
+        <ModalHeader>{defaultValues.dataId ? '变更数据' : '手动导入数据'}</ModalHeader>
         <ModalCloseButton />
 
         <Box
           display={['block', 'flex']}
           flex={'1 0 0'}
           h={['100%', 0]}
-          overflowY={'auto'}
+          overflow={'overlay'}
           px={6}
           pb={2}
         >
-          <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['230px', '100%']}>
+          <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['50%', '100%']}>
             <Box h={'30px'}>{'匹配的知识点'}</Box>
             <Textarea
               placeholder={'匹配的知识点。这部分内容会被搜索，请把控内容的质量。总和最多 3000 字。'}
@@ -139,7 +143,7 @@ const InputDataModal = ({
               })}
             />
           </Box>
-          <Box flex={1} h={['330px', '100%']}>
+          <Box flex={1} h={['50%', '100%']}>
             <Box h={'30px'}>补充知识</Box>
             <Textarea
               placeholder={
@@ -159,10 +163,10 @@ const InputDataModal = ({
             取消
           </Button>
           <Button
-            isLoading={importing}
+            isLoading={loading}
             onClick={handleSubmit(defaultValues.dataId ? updateData : sureImportData)}
           >
-            确认导入
+            {defaultValues.dataId ? '确认变更' : '确认导入'}
           </Button>
         </Flex>
       </ModalContent>

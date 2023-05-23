@@ -13,7 +13,7 @@ import { openaiEmbedding } from '../plugin/openaiEmbedding';
 import { ModelDataStatusEnum } from '@/constants/model';
 import { modelToolMap } from '@/utils/plugin';
 
-export type QuoteItemType = { id: string; q: string; a: string };
+export type QuoteItemType = { id: string; q: string; a: string; isEdit: boolean };
 type Props = {
   prompts: ChatItemSimpleType[];
   similarity: number;
@@ -97,7 +97,7 @@ export async function appKbSearch({
   // search kb
   const searchRes = await Promise.all(
     promptVectors.map((promptVector) =>
-      PgClient.select<{ id: string; q: string; a: string }>('modelData', {
+      PgClient.select<QuoteItemType>('modelData', {
         fields: ['id', 'q', 'a'],
         where: [
           ['status', ModelDataStatusEnum.ready],
