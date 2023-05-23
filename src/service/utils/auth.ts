@@ -38,12 +38,14 @@ export const authUser = async ({
   req,
   authToken = false,
   authOpenApi = false,
-  authRoot = false
+  authRoot = false,
+  authBalance = false
 }: {
   req: NextApiRequest;
   authToken?: boolean;
   authOpenApi?: boolean;
   authRoot?: boolean;
+  authBalance?: boolean;
 }) => {
   const parseOpenApiKey = async (apiKey?: string) => {
     if (!apiKey) {
@@ -97,6 +99,17 @@ export const authUser = async ({
     uid = await parseRootKey(rootkey, userid);
   } else {
     return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
+
+  if (authBalance) {
+    const user = await User.findById(uid);
+    if (!user) {
+      return Promise.reject(ERROR_ENUM.unAuthorization);
+    }
+
+    if (!user.openaiKey && formatPrice(user.balance) <= 0) {
+      return Promise.reject(ERROR_ENUM.insufficientQuota);
+    }
   }
 
   return {
@@ -226,7 +239,7 @@ export const authChat = async ({
   req
 }: {
   modelId: string;
-  chatId: '' | string;
+  chatId?: string;
   req: NextApiRequest;
 }) => {
   const { userId } = await authUser({ req, authToken: true });

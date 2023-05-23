@@ -1,12 +1,13 @@
 import { ChatRoleEnum } from '@/constants/chat';
 import type { InitChatResponse, InitShareChatResponse } from '@/api/response/chat';
+import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
 export type ChatItemSimpleType = {
   obj: `${ChatRoleEnum}`;
   value: string;
-  systemPrompt?: string;
+  quote?: QuoteItemType[];
 };
 export type ChatItemType = {
   _id: string;

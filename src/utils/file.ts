@@ -1,6 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { getOpenAiEncMap } from './chat/openai';
+import { getOpenAiEncMap } from './plugin/openai';
 
 /**
  * 读取 txt 文件内容

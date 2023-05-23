@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             _id: '$content._id',
             obj: '$content.obj',
             value: '$content.value',
-            systemPrompt: '$content.systemPrompt'
+            quote: '$content.quote'
           }
         }
       ]);

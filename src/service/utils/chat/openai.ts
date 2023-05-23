@@ -1,13 +1,11 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 import { axiosConfig } from '../tools';
-import { ChatModelMap, embeddingModel, OpenAiChatEnum } from '@/constants/model';
-import { pushGenerateVectorBill } from '../../events/pushBill';
-import { adaptChatItem_openAI } from '@/utils/chat/openai';
-import { modelToolMap } from '@/utils/chat';
+import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
+import { adaptChatItem_openAI } from '@/utils/plugin/openai';
+import { modelToolMap } from '@/utils/plugin';
 import { ChatCompletionType, ChatContextFilter, StreamResponseType } from './index';
 import { ChatRoleEnum } from '@/constants/chat';
-import { getSystemOpenAiKey } from '../auth';
 
 export const getOpenAIApi = () =>
   new OpenAIApi(
@@ -15,51 +13,6 @@ export const getOpenAIApi = () =>
       basePath: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
     })
   );
-
-/* 获取向量 */
-export const openaiCreateEmbedding = async ({
-  userOpenAiKey,
-  userId,
-  textArr
-}: {
-  userOpenAiKey?: string;
-  userId: string;
-  textArr: string[];
-}) => {
-  const systemAuthKey = getSystemOpenAiKey();
-
-  // 获取 chatAPI
-  const chatAPI = getOpenAIApi();
-
-  // 把输入的内容转成向量
-  const res = await chatAPI
-    .createEmbedding(
-      {
-        model: embeddingModel,
-        input: textArr
-      },
-      {
-        timeout: 60000,
-        ...axiosConfig(userOpenAiKey || systemAuthKey)
-      }
-    )
-    .then((res) => ({
-      tokenLen: res.data.usage.total_tokens || 0,
-      vectors: res.data.data.map((item) => item.embedding)
-    }));
-
-  pushGenerateVectorBill({
-    isPay: !userOpenAiKey,
-    userId,
-    text: textArr.join(''),
-    tokenLen: res.tokenLen
-  });
-
-  return {
-    vectors: res.vectors,
-    chatAPI
-  };
-};
 
 /* 模型对话 */
 export const chatResponse = async ({
@@ -127,7 +80,7 @@ export const openAiStreamResponse = async ({
         const content: string = json?.choices?.[0].delta.content || '';
         responseContent += content;
 
-        res.writable && content && res.write(content);
+        !res.closed && content && res.write(content);
       } catch (error) {
         error;
       }
@@ -137,8 +90,7 @@ export const openAiStreamResponse = async ({
       const decoder = new TextDecoder();
       const parser = createParser(onParse);
       for await (const chunk of chatResponse.data as any) {
-        if (!res.writable) {
-          // 流被中断了，直接忽略后面的内容
+        if (res.closed) {
           break;
         }
         parser.feed(decoder.decode(chunk, { stream: true }));

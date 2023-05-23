@@ -47,10 +47,14 @@ const ChatSchema = new Schema({
           type: String,
           required: true
         },
-        systemPrompt: {
-          type: String,
-          default: ''
+        quote: {
+          type: [{ id: String, q: String, a: String }],
+          default: []
         }
+        // systemPrompt: {
+        //   type: String,
+        //   default: ''
+        // }
       }
     ],
     default: []

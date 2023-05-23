@@ -7,14 +7,13 @@ import { jsonRes } from '@/service/response';
 import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
 import { pushChatBill, updateShareChatBill } from '@/service/events/pushBill';
 import { resStreamResponse } from '@/service/utils/chat';
-import { searchKb } from '@/service/plugins/searchKb';
 import { ChatRoleEnum } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
 import { sensitiveCheck } from '@/service/api/text';
+import { appKbSearch } from '../../openapi/kb/appKbSearch';
 
 /* 发送提示词 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let step = 0; // step=1 时，表示开始了流响应
   res.on('error', () => {
     console.log('error: ', 'request error');
     res.end();
@@ -42,34 +41,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
-    let systemPrompts: {
-      obj: ChatRoleEnum;
-      value: string;
-    }[] = [];
+    const { code = 200, systemPrompts = [] } = await (async () => {
+      // 使用了知识库搜索
+      if (model.chat.relatedKbs.length > 0) {
+        const { code, searchPrompts } = await appKbSearch({
+          model,
+          userId,
+          prompts,
+          similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity
+        });
 
-    // 使用了知识库搜索
-    if (model.chat.relatedKbs.length > 0) {
-      const { code, searchPrompts } = await searchKb({
-        userOpenAiKey,
-        prompts,
-        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
-        model,
-        userId
-      });
-
-      // search result is empty
-      if (code === 201) {
-        return res.send(searchPrompts[0]?.value);
+        return {
+          code,
+          systemPrompts: searchPrompts
+        };
       }
+      if (model.chat.systemPrompt) {
+        return {
+          systemPrompts: [
+            {
+              obj: ChatRoleEnum.System,
+              value: model.chat.systemPrompt
+            }
+          ]
+        };
+      }
+      return {};
+    })();
 
-      systemPrompts = searchPrompts;
-    } else if (model.chat.systemPrompt) {
-      systemPrompts = [
-        {
-          obj: ChatRoleEnum.System,
-          value: model.chat.systemPrompt
-        }
-      ];
+    // search result is empty
+    if (code === 201) {
+      return res.send(systemPrompts[0]?.value);
     }
 
     prompts.splice(prompts.length - 3, 0, ...systemPrompts);
@@ -96,40 +98,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);
 
-    step = 1;
+    if (res.closed) return res.end();
 
-    const { totalTokens, finishMessages } = await resStreamResponse({
-      model: model.chat.chatModel,
-      res,
-      chatResponse: streamResponse,
-      prompts,
-      systemPrompt: ''
-    });
-
-    /* bill */
-    pushChatBill({
-      isPay: !userOpenAiKey,
-      chatModel: model.chat.chatModel,
-      userId,
-      textLen: finishMessages.map((item) => item.value).join('').length,
-      tokens: totalTokens,
-      type: BillTypeEnum.chat
-    });
-    updateShareChatBill({
-      shareId,
-      tokens: totalTokens
-    });
-  } catch (err: any) {
-    if (step === 1) {
-      // 直接结束流
-      res.end();
-      console.log('error，结束');
-    } else {
-      res.status(500);
-      jsonRes(res, {
-        code: 500,
-        error: err
+    try {
+      const { totalTokens, finishMessages } = await resStreamResponse({
+        model: model.chat.chatModel,
+        res,
+        chatResponse: streamResponse,
+        prompts
       });
+
+      res.end();
+
+      /* bill */
+      pushChatBill({
+        isPay: !userOpenAiKey,
+        chatModel: model.chat.chatModel,
+        userId,
+        textLen: finishMessages.map((item) => item.value).join('').length,
+        tokens: totalTokens,
+        type: BillTypeEnum.chat
+      });
+      updateShareChatBill({
+        shareId,
+        tokens: totalTokens
+      });
+    } catch (error) {
+      res.end();
+      console.log('error，结束', error);
     }
+  } catch (err: any) {
+    res.status(500);
+    jsonRes(res, {
+      code: 500,
+      error: err
+    });
   }
 }

@@ -73,7 +73,6 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
   const isLeavePage = useRef(false);
 
   const [inputVal, setInputVal] = useState(''); // user input prompt
-  const [showSystemPrompt, setShowSystemPrompt] = useState('');
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
     left: number;
@@ -178,7 +177,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
       }));
 
       // 流请求，获取数据
-      const { responseText, systemPrompt } = await streamFetch({
+      const { responseText } = await streamFetch({
         url: '/api/chat/shareChat/chat',
         data: {
           prompts: formatPrompts.slice(-shareChatData.maxContext - 1, -1),
@@ -215,8 +214,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
           if (index !== state.history.length - 1) return item;
           return {
             ...item,
-            status: 'finish',
-            systemPrompt
+            status: 'finish'
           };
         });
 
@@ -614,19 +612,19 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
                 {item.obj === 'Human' && <Box flex={1} />}
                 {/* avatar */}
                 <Menu autoSelect={false} isLazy>
-                  <MenuButton
-                    as={Box}
-                    {...(item.obj === 'AI'
-                      ? {
-                          order: 1,
-                          mr: ['6px', 2]
-                        }
-                      : {
-                          order: 3,
-                          ml: ['6px', 2]
-                        })}
-                  >
-                    <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                  <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                    <MenuButton
+                      as={Box}
+                      {...(item.obj === 'AI'
+                        ? {
+                            order: 1,
+                            mr: ['6px', 2]
+                          }
+                        : {
+                            order: 3,
+                            ml: ['6px', 2]
+                          })}
+                    >
                       <Avatar
                         src={
                           item.obj === 'Human'
@@ -636,8 +634,8 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
                         w={['20px', '34px']}
                         h={['20px', '34px']}
                       />
-                    </Tooltip>
-                  </MenuButton>
+                    </MenuButton>
+                  </Tooltip>
                   {!isPc && <RenderContextMenu history={item} index={index} />}
                 </Menu>
                 {/* message */}
@@ -656,19 +654,6 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
                           isChatting={isChatting && index === shareChatData.history.length - 1}
                           formatLink
                         />
-                        {item.systemPrompt && (
-                          <Button
-                            size={'xs'}
-                            mt={2}
-                            fontWeight={'normal'}
-                            colorScheme={'gray'}
-                            variant={'outline'}
-                            w={'90px'}
-                            onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
-                          >
-                            查看提示词
-                          </Button>
-                        )}
                       </Card>
                     </Box>
                   ) : (
@@ -796,18 +781,6 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
           </DrawerContent>
         </Drawer>
       )}
-      {/* system prompt show modal */}
-      {
-        <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
-          <ModalOverlay />
-          <ModalContent maxW={'min(90vw, 600px)'} pr={2} maxH={'80vh'} overflowY={'auto'}>
-            <ModalCloseButton />
-            <ModalBody pt={5} whiteSpace={'pre-wrap'} textAlign={'justify'}>
-              {showSystemPrompt}
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-      }
       {/* context menu */}
       {messageContextMenuData && (
         <Box

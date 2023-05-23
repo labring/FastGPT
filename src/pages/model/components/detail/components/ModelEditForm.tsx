@@ -358,7 +358,9 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
               rows={8}
               maxLength={-1}
               isDisabled={!isOwner}
-              placeholder={'模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。'}
+              placeholder={
+                '模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。\n\n如果使用了知识库搜索，没有填写该内容时，系统会自动补充提示词；如果填写了内容，则以填写的内容为准。'
+              }
               {...register('chat.systemPrompt')}
             />
           </Box>
