@@ -50,22 +50,10 @@ const ChatSchema = new Schema({
         quote: {
           type: [
             {
-              id: {
-                type: String,
-                required: true
-              },
-              q: {
-                type: String,
-                default: ''
-              },
-              a: {
-                type: String,
-                default: ''
-              },
-              isEdit: {
-                type: String,
-                default: false
-              }
+              id: String,
+              q: String,
+              a: String,
+              isEdit: Boolean
             }
           ],
           default: []

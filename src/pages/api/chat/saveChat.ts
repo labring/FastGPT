@@ -58,7 +58,11 @@ export async function saveChat({
     obj: item.obj,
     value: item.value,
     systemPrompt: item.systemPrompt,
-    quote: item.quote || []
+    quote:
+      item.quote?.map((item) => ({
+        ...item,
+        isEdit: false
+      })) || []
   }));
 
   // 没有 chatId, 创建一个对话
