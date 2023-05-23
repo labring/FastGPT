@@ -57,7 +57,10 @@ export async function saveChat({
     _id: item._id ? new mongoose.Types.ObjectId(item._id) : undefined,
     obj: item.obj,
     value: item.value,
-    quote: item.quote
+    quote: item.quote?.map((item) => ({
+      ...item,
+      isEdit: false
+    }))
   }));
 
   // 没有 chatId, 创建一个对话

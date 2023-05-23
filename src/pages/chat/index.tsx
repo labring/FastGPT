@@ -1,11 +1,6 @@
 import React, { useCallback, useState, useRef, useMemo, useEffect, MouseEvent } from 'react';
 import { useRouter } from 'next/router';
-import {
-  getInitChatSiteInfo,
-  delChatRecordByIndex,
-  getChatResult,
-  delChatHistoryById
-} from '@/api/chat';
+import { getInitChatSiteInfo, delChatRecordByIndex, delChatHistoryById } from '@/api/chat';
 import type { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
 import {
   Textarea,
@@ -22,6 +17,7 @@ import {
   ModalContent,
   ModalBody,
   ModalCloseButton,
+  ModalHeader,
   useDisclosure,
   Drawer,
   DrawerOverlay,
@@ -29,8 +25,7 @@ import {
   Card,
   Tooltip,
   useOutsideClick,
-  useTheme,
-  ModalHeader
+  useTheme
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
@@ -48,12 +43,12 @@ import { useLoading } from '@/hooks/useLoading';
 import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
-import type { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 import Loading from '@/components/Loading';
 import Markdown from '@/components/Markdown';
 import SideBar from '@/components/SideBar';
 import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
+import QuoteModal from './components/QuoteModal';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
   ssr: false
@@ -80,7 +75,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const controller = useRef(new AbortController());
   const isLeavePage = useRef(false);
 
-  const [showQuote, setShowQuote] = useState<QuoteItemType[]>([]);
+  const [showHistoryQuote, setShowHistoryQuote] = useState<string>();
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
     left: number;
@@ -182,7 +177,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       }));
 
       // 流请求，获取数据
-      const { newChatId } = await streamFetch({
+      const { newChatId, quoteLen } = await streamFetch({
         url: '/api/chat/chat',
         data: {
           prompt,
@@ -217,9 +212,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
       abortSignal.signal.aborted && (await delay(600));
 
-      // get chat result
-      const { quote } = await getChatResult(chatId || newChatId);
-
       // 设置聊天内容为完成状态
       setChatData((state) => ({
         ...state,
@@ -229,7 +221,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           return {
             ...item,
             status: 'finish',
-            quote
+            quoteLen
           };
         })
       }));
@@ -735,7 +727,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                             isChatting={isChatting && index === chatData.history.length - 1}
                             formatLink
                           />
-                          {item.quote && item.quote.length > 0 && (
+                          {!!item.quoteLen && (
                             <Button
                               size={'xs'}
                               mt={2}
@@ -743,9 +735,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                               colorScheme={'gray'}
                               variant={'outline'}
                               w={'90px'}
-                              onClick={() => setShowQuote(item.quote || [])}
+                              onClick={() => setShowHistoryQuote(item._id)}
                             >
-                              查看引用
+                              {item.quoteLen}条引用
                             </Button>
                           )}
                         </Card>
@@ -876,30 +868,14 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           </DrawerContent>
         </Drawer>
       )}
-      {/* system prompt show modal */}
-      {
-        <Modal isOpen={showQuote.length > 0} onClose={() => setShowQuote([])}>
-          <ModalOverlay />
-          <ModalContent maxW={'min(90vw, 700px)'} h={'80vh'} overflow={'overlay'}>
-            <ModalHeader>知识库引用({showQuote.length}条)</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
-              {showQuote.map((item) => (
-                <Box
-                  key={item.id}
-                  p={2}
-                  borderRadius={'sm'}
-                  border={theme.borders.base}
-                  _notLast={{ mb: 2 }}
-                >
-                  <Box>{item.q}</Box>
-                  <Box>{item.a}</Box>
-                </Box>
-              ))}
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-      }
+      {/* quote modal*/}
+      {showHistoryQuote && chatId && (
+        <QuoteModal
+          historyId={showHistoryQuote}
+          chatId={chatId}
+          onClose={() => setShowHistoryQuote(undefined)}
+        />
+      )}
       {/* context menu */}
       {messageContextMenuData && (
         <Box

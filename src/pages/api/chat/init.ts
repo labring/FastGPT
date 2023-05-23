@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             _id: '$content._id',
             obj: '$content.obj',
             value: '$content.value',
-            quote: '$content.quote'
+            quoteLen: { $size: '$content.quote' }
           }
         }
       ]);

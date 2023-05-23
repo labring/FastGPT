@@ -7,6 +7,7 @@ export type ExportChatType = 'md' | 'pdf' | 'html';
 export type ChatItemSimpleType = {
   obj: `${ChatRoleEnum}`;
   value: string;
+  quoteLen?: number;
   quote?: QuoteItemType[];
 };
 export type ChatItemType = {

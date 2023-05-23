@@ -122,15 +122,15 @@ export const ModelVectorSearchModeMap: Record<
 > = {
   [ModelVectorSearchModeEnum.hightSimilarity]: {
     text: '高相似度, 无匹配时拒绝回复',
-    similarity: 0.2
+    similarity: 0.18
   },
   [ModelVectorSearchModeEnum.noContext]: {
     text: '高相似度，无匹配时直接回复',
-    similarity: 0.2
+    similarity: 0.18
   },
   [ModelVectorSearchModeEnum.lowSimilarity]: {
     text: '低相似度匹配',
-    similarity: 0.8
+    similarity: 0.7
   }
 };
 

@@ -1,4 +1,5 @@
 export const NEW_CHATID_HEADER = 'response-new-chat-id';
+export const QUOTE_LEN_HEADER = 'response-quote-len';
 
 export enum ChatRoleEnum {
   System = 'System',
