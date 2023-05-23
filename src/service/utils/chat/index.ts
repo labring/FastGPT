@@ -1,7 +1,7 @@
 import { ChatItemSimpleType } from '@/types/chat';
-import { modelToolMap } from '@/utils/chat';
+import { modelToolMap } from '@/utils/plugin';
 import type { ChatModelType } from '@/constants/model';
-import { ChatRoleEnum, SYSTEM_PROMPT_HEADER } from '@/constants/chat';
+import { ChatRoleEnum } from '@/constants/chat';
 import { OpenAiChatEnum, ClaudeEnum } from '@/constants/model';
 import { chatResponse, openAiStreamResponse } from './openai';
 import { claudChat, claudStreamResponse } from './claude';
@@ -11,6 +11,7 @@ export type ChatCompletionType = {
   apiKey: string;
   temperature: number;
   messages: ChatItemSimpleType[];
+  chatId?: string;
   [key: string]: any;
 };
 export type ChatCompletionResponseType = {
@@ -23,7 +24,6 @@ export type StreamResponseType = {
   chatResponse: any;
   prompts: ChatItemSimpleType[];
   res: NextApiResponse;
-  systemPrompt?: string;
   [key: string]: any;
 };
 export type StreamResponseReturnType = {
@@ -129,7 +129,6 @@ export const resStreamResponse = async ({
   model,
   res,
   chatResponse,
-  systemPrompt,
   prompts
 }: StreamResponseType & {
   model: ChatModelType;
@@ -139,18 +138,14 @@ export const resStreamResponse = async ({
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
-  systemPrompt && res.setHeader(SYSTEM_PROMPT_HEADER, encodeURIComponent(systemPrompt));
 
   const { responseContent, totalTokens, finishMessages } = await modelServiceToolMap[
     model
   ].streamResponse({
     chatResponse,
     prompts,
-    res,
-    systemPrompt
+    res
   });
-
-  res.end();
 
   return { responseContent, totalTokens, finishMessages };
 };

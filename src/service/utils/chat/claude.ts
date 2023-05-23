@@ -1,17 +1,9 @@
 import { ChatCompletionType, StreamResponseType } from './index';
 import { ChatRoleEnum } from '@/constants/chat';
 import axios from 'axios';
-import mongoose from 'mongoose';
-import { NEW_CHATID_HEADER } from '@/constants/chat';
 
 /* 模型对话 */
-export const claudChat = async ({ apiKey, messages, stream, chatId, res }: ChatCompletionType) => {
-  const conversationId = chatId || String(new mongoose.Types.ObjectId());
-  // create a new chat
-  !chatId &&
-    messages.filter((item) => item.obj === 'Human').length === 1 &&
-    res?.setHeader(NEW_CHATID_HEADER, conversationId);
-
+export const claudChat = async ({ apiKey, messages, stream, chatId }: ChatCompletionType) => {
   // get system prompt
   const systemPrompt = messages
     .filter((item) => item.obj === 'System')
@@ -26,7 +18,7 @@ export const claudChat = async ({ apiKey, messages, stream, chatId, res }: ChatC
     {
       prompt,
       stream,
-      conversationId
+      conversationId: chatId
     },
     {
       headers: {
@@ -55,8 +47,7 @@ export const claudStreamResponse = async ({ res, chatResponse, prompts }: Stream
     try {
       const decoder = new TextDecoder();
       for await (const chunk of chatResponse.data as any) {
-        if (!res.writable) {
-          // 流被中断了，直接忽略后面的内容
+        if (res.closed) {
           break;
         }
         const content = decoder.decode(chunk);

@@ -3,10 +3,10 @@ import { useRouter } from 'next/router';
 import {
   getInitChatSiteInfo,
   delChatRecordByIndex,
-  postSaveChat,
+  getChatResult,
   delChatHistoryById
 } from '@/api/chat';
-import type { ChatSiteItemType, ExportChatType } from '@/types/chat';
+import type { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
 import {
   Textarea,
   Box,
@@ -29,13 +29,14 @@ import {
   Card,
   Tooltip,
   useOutsideClick,
-  useTheme
+  useTheme,
+  ModalHeader
 } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
+import { useCopyData, voiceBroadcast, hasVoiceApi, delay } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
@@ -47,6 +48,7 @@ import { useLoading } from '@/hooks/useLoading';
 import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
+import type { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 import Loading from '@/components/Loading';
 import Markdown from '@/components/Markdown';
 import SideBar from '@/components/SideBar';
@@ -78,7 +80,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const controller = useRef(new AbortController());
   const isLeavePage = useRef(false);
 
-  const [showSystemPrompt, setShowSystemPrompt] = useState('');
+  const [showQuote, setShowQuote] = useState<QuoteItemType[]>([]);
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
     left: number;
@@ -173,13 +175,14 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       controller.current = abortSignal;
       isLeavePage.current = false;
 
-      const prompt = {
-        obj: prompts[0].obj,
-        value: prompts[0].value
-      };
+      const prompt: ChatItemType[] = prompts.map((item) => ({
+        _id: item._id,
+        obj: item.obj,
+        value: item.value
+      }));
 
       // 流请求，获取数据
-      let { responseText, systemPrompt, newChatId } = await streamFetch({
+      const { newChatId } = await streamFetch({
         url: '/api/chat/chat',
         data: {
           prompt,
@@ -207,38 +210,15 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         return;
       }
 
-      // save chat record
-      try {
-        newChatId = await postSaveChat({
-          newChatId, // 如果有newChatId，会自动以这个Id创建对话框
-          modelId,
-          chatId,
-          prompts: [
-            {
-              _id: prompts[0]._id,
-              obj: 'Human',
-              value: prompt.value
-            },
-            {
-              _id: prompts[1]._id,
-              obj: 'AI',
-              value: responseText,
-              systemPrompt
-            }
-          ]
-        });
-        if (newChatId) {
-          setForbidLoadChatData(true);
-          router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
-        }
-      } catch (err) {
-        toast({
-          title: '对话出现异常, 继续对话会导致上下文丢失，请刷新页面',
-          status: 'warning',
-          duration: 3000,
-          isClosable: true
-        });
+      if (newChatId) {
+        setForbidLoadChatData(true);
+        router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
       }
+
+      abortSignal.signal.aborted && (await delay(600));
+
+      // get chat result
+      const { quote } = await getChatResult(chatId || newChatId);
 
       // 设置聊天内容为完成状态
       setChatData((state) => ({
@@ -249,7 +229,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           return {
             ...item,
             status: 'finish',
-            systemPrompt
+            quote
           };
         })
       }));
@@ -260,16 +240,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         generatingMessage();
       }, 100);
     },
-    [
-      chatId,
-      setForbidLoadChatData,
-      generatingMessage,
-      loadHistory,
-      modelId,
-      router,
-      setChatData,
-      toast
-    ]
+    [chatId, setForbidLoadChatData, generatingMessage, loadHistory, modelId, router, setChatData]
   );
 
   /**
@@ -717,24 +688,24 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   {item.obj === 'Human' && <Box flex={1} />}
                   {/* avatar */}
                   <Menu autoSelect={false} isLazy>
-                    <MenuButton
-                      as={Box}
-                      {...(item.obj === 'AI'
-                        ? {
-                            order: 1,
-                            mr: ['6px', 2],
-                            cursor: 'pointer',
-                            onClick: () =>
-                              isPc &&
-                              chatData.model.canUse &&
-                              router.push(`/model?modelId=${chatData.modelId}`)
-                          }
-                        : {
-                            order: 3,
-                            ml: ['6px', 2]
-                          })}
-                    >
-                      <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                    <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                      <MenuButton
+                        as={Box}
+                        {...(item.obj === 'AI'
+                          ? {
+                              order: 1,
+                              mr: ['6px', 2],
+                              cursor: 'pointer',
+                              onClick: () =>
+                                isPc &&
+                                chatData.model.canUse &&
+                                router.push(`/model?modelId=${chatData.modelId}`)
+                            }
+                          : {
+                              order: 3,
+                              ml: ['6px', 2]
+                            })}
+                      >
                         <Avatar
                           src={
                             item.obj === 'Human'
@@ -744,8 +715,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                           w={['20px', '34px']}
                           h={['20px', '34px']}
                         />
-                      </Tooltip>
-                    </MenuButton>
+                      </MenuButton>
+                    </Tooltip>
                     {!isPc && <RenderContextMenu history={item} index={index} AiDetail />}
                   </Menu>
                   {/* message */}
@@ -764,7 +735,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                             isChatting={isChatting && index === chatData.history.length - 1}
                             formatLink
                           />
-                          {item.systemPrompt && (
+                          {item.quote && item.quote.length > 0 && (
                             <Button
                               size={'xs'}
                               mt={2}
@@ -772,9 +743,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                               colorScheme={'gray'}
                               variant={'outline'}
                               w={'90px'}
-                              onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
+                              onClick={() => setShowQuote(item.quote || [])}
                             >
-                              查看提示词
+                              查看引用
                             </Button>
                           )}
                         </Card>
@@ -907,12 +878,24 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       )}
       {/* system prompt show modal */}
       {
-        <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
+        <Modal isOpen={showQuote.length > 0} onClose={() => setShowQuote([])}>
           <ModalOverlay />
-          <ModalContent pt={5} maxW={'min(90vw, 600px)'} h={'80vh'} overflow={'overlay'}>
+          <ModalContent maxW={'min(90vw, 700px)'} h={'80vh'} overflow={'overlay'}>
+            <ModalHeader>知识库引用({showQuote.length}条)</ModalHeader>
             <ModalCloseButton />
-            <ModalBody pt={5} whiteSpace={'pre-wrap'} textAlign={'justify'}>
-              {showSystemPrompt}
+            <ModalBody whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
+              {showQuote.map((item) => (
+                <Box
+                  key={item.id}
+                  p={2}
+                  borderRadius={'sm'}
+                  border={theme.borders.base}
+                  _notLast={{ mb: 2 }}
+                >
+                  <Box>{item.q}</Box>
+                  <Box>{item.a}</Box>
+                </Box>
+              ))}
             </ModalBody>
           </ModalContent>
         </Modal>
