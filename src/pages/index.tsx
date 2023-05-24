@@ -2,8 +2,6 @@ import React, { useEffect } from 'react';
 import { Card, Box, Link, Flex, Image, Button } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
-import { getFilling } from '@/api/system';
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 
@@ -13,15 +11,16 @@ const Home = () => {
   const router = useRouter();
   const { inviterId } = router.query as { inviterId: string };
   const { data } = useMarkdown({ url: '/intro.md' });
-  const { isPc } = useGlobalStore();
+  const {
+    isPc,
+    initData: { beianText }
+  } = useGlobalStore();
 
   useEffect(() => {
     if (inviterId) {
       localStorage.setItem('inviterId', inviterId);
     }
   }, [inviterId]);
-
-  const { data: { beianText = '' } = {} } = useQuery(['init'], getFilling);
 
   /* 加载动画 */
   useEffect(() => {
