@@ -1,18 +1,16 @@
 import type { Mongoose } from 'mongoose';
-import type { RedisClientType } from 'redis';
 import type { Agent } from 'http';
 import type { Pool } from 'pg';
 
 declare global {
   var mongodb: Mongoose | string | null;
-  var redisClient: RedisClientType | null;
   var pgClient: Pool | null;
   var generatingQA: boolean;
-  var generatingAbstract: boolean;
   var generatingVector: boolean;
-  var QRCode: any;
   var httpsAgent: Agent;
   var particlesJS: any;
+  var grecaptcha: any;
+  var QRCode: any;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

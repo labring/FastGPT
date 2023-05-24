@@ -291,7 +291,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     }, 100);
 
     try {
-      await gptChatPrompt(newChatList.slice(-2));
+      await gptChatPrompt(newChatList.slice(newChatList.length - 2));
     } catch (err: any) {
       toast({
         title: typeof err === 'string' ? err : err?.message || '聊天出错了~',

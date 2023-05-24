@@ -2,10 +2,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 
+export type InitDateResponse = {
+  beianText: string;
+  googleVerKey: string;
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  jsonRes(res, {
+  jsonRes<InitDateResponse>(res, {
     data: {
-      beianText: process.env.SAFE_BEIAN_TEXT || ''
+      beianText: process.env.SAFE_BEIAN_TEXT || '',
+      googleVerKey: process.env.CLIENT_GOOGLE_VER_TOKEN || ''
     }
   });
 }

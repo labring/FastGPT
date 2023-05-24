@@ -124,7 +124,8 @@ const InputDataModal = ({
         <ModalCloseButton />
 
         <Box
-          display={['block', 'flex']}
+          display={'flex'}
+          flexDirection={['column', 'row']}
           flex={'1 0 0'}
           h={['100%', 0]}
           overflow={'overlay'}
