@@ -1,12 +1,7 @@
 import React, { useCallback, useState, useRef, useMemo, useEffect, MouseEvent } from 'react';
 import { useRouter } from 'next/router';
-import {
-  getInitChatSiteInfo,
-  delChatRecordByIndex,
-  postSaveChat,
-  delChatHistoryById
-} from '@/api/chat';
-import type { ChatSiteItemType, ExportChatType } from '@/types/chat';
+import { getInitChatSiteInfo, delChatRecordByIndex, delChatHistoryById } from '@/api/chat';
+import type { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
 import {
   Textarea,
   Box,
@@ -16,13 +11,13 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Image,
   Button,
   Modal,
   ModalOverlay,
   ModalContent,
   ModalBody,
   ModalCloseButton,
+  ModalHeader,
   useDisclosure,
   Drawer,
   DrawerOverlay,
@@ -36,7 +31,7 @@ import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
+import { useCopyData, voiceBroadcast, hasVoiceApi, delay } from '@/utils/tools';
 import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
@@ -51,7 +46,9 @@ import { useUserStore } from '@/store/user';
 import Loading from '@/components/Loading';
 import Markdown from '@/components/Markdown';
 import SideBar from '@/components/SideBar';
+import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
+import QuoteModal from './components/QuoteModal';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
   ssr: false
@@ -78,6 +75,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const controller = useRef(new AbortController());
   const isLeavePage = useRef(false);
 
+  const [showHistoryQuote, setShowHistoryQuote] = useState<string>();
   const [showSystemPrompt, setShowSystemPrompt] = useState('');
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
@@ -173,13 +171,14 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       controller.current = abortSignal;
       isLeavePage.current = false;
 
-      const prompt = {
-        obj: prompts[0].obj,
-        value: prompts[0].value
-      };
+      const prompt: ChatItemType[] = prompts.map((item) => ({
+        _id: item._id,
+        obj: item.obj,
+        value: item.value
+      }));
 
       // 流请求，获取数据
-      let { responseText, systemPrompt, newChatId } = await streamFetch({
+      const { newChatId, quoteLen, systemPrompt } = await streamFetch({
         url: '/api/chat/chat',
         data: {
           prompt,
@@ -207,38 +206,12 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         return;
       }
 
-      // save chat record
-      try {
-        newChatId = await postSaveChat({
-          newChatId, // 如果有newChatId，会自动以这个Id创建对话框
-          modelId,
-          chatId,
-          prompts: [
-            {
-              _id: prompts[0]._id,
-              obj: 'Human',
-              value: prompt.value
-            },
-            {
-              _id: prompts[1]._id,
-              obj: 'AI',
-              value: responseText,
-              systemPrompt
-            }
-          ]
-        });
-        if (newChatId) {
-          setForbidLoadChatData(true);
-          router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
-        }
-      } catch (err) {
-        toast({
-          title: '对话出现异常, 继续对话会导致上下文丢失，请刷新页面',
-          status: 'warning',
-          duration: 3000,
-          isClosable: true
-        });
+      if (newChatId) {
+        setForbidLoadChatData(true);
+        router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
       }
+
+      abortSignal.signal.aborted && (await delay(600));
 
       // 设置聊天内容为完成状态
       setChatData((state) => ({
@@ -249,27 +222,19 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           return {
             ...item,
             status: 'finish',
+            quoteLen,
             systemPrompt
           };
         })
       }));
 
       // refresh history
-      loadHistory({ pageNum: 1, init: true });
       setTimeout(() => {
+        loadHistory({ pageNum: 1, init: true });
         generatingMessage();
       }, 100);
     },
-    [
-      chatId,
-      setForbidLoadChatData,
-      generatingMessage,
-      loadHistory,
-      modelId,
-      router,
-      setChatData,
-      toast
-    ]
+    [chatId, setForbidLoadChatData, generatingMessage, loadHistory, modelId, router, setChatData]
   );
 
   /**
@@ -595,7 +560,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             borderBottom={theme.borders.base}
             onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}
           >
-            AI助手详情
+            应用详情
           </MenuItem>
         )}
         {hasVoiceApi && (
@@ -654,9 +619,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           >
             {!isPc && (
               <MyIcon
-                name={'tabbarMore'}
-                w={'14px'}
-                h={'14px'}
+                name={'menu'}
+                w={'20px'}
+                h={'20px'}
                 color={useColorModeValue('blackAlpha.700', 'white')}
                 onClick={onOpenSlider}
               />
@@ -717,39 +682,36 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   {item.obj === 'Human' && <Box flex={1} />}
                   {/* avatar */}
                   <Menu autoSelect={false} isLazy>
-                    <MenuButton
-                      as={Box}
-                      {...(item.obj === 'AI'
-                        ? {
-                            order: 1,
-                            mr: ['6px', 2],
-                            cursor: 'pointer',
-                            onClick: () =>
-                              isPc &&
-                              chatData.model.canUse &&
-                              router.push(`/model?modelId=${chatData.modelId}`)
-                          }
-                        : {
-                            order: 3,
-                            ml: ['6px', 2]
-                          })}
-                    >
-                      <Tooltip label={item.obj === 'AI' ? 'AI助手详情' : ''}>
-                        <Image
+                    <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                      <MenuButton
+                        as={Box}
+                        {...(item.obj === 'AI'
+                          ? {
+                              order: 1,
+                              mr: ['6px', 2],
+                              cursor: 'pointer',
+                              onClick: () =>
+                                isPc &&
+                                chatData.model.canUse &&
+                                router.push(`/model?modelId=${chatData.modelId}`)
+                            }
+                          : {
+                              order: 3,
+                              ml: ['6px', 2]
+                            })}
+                      >
+                        <Avatar
                           className="avatar"
                           src={
                             item.obj === 'Human'
                               ? userInfo?.avatar || '/icon/human.png'
                               : chatData.model.avatar || LOGO_ICON
                           }
-                          alt="avatar"
                           w={['20px', '34px']}
                           h={['20px', '34px']}
-                          borderRadius={'50%'}
-                          objectFit={'contain'}
                         />
-                      </Tooltip>
-                    </MenuButton>
+                      </MenuButton>
+                    </Tooltip>
                     {!isPc && <RenderContextMenu history={item} index={index} AiDetail />}
                   </Menu>
                   {/* message */}
@@ -768,19 +730,35 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                             isChatting={isChatting && index === chatData.history.length - 1}
                             formatLink
                           />
-                          {item.systemPrompt && (
-                            <Button
-                              size={'xs'}
-                              mt={2}
-                              fontWeight={'normal'}
-                              colorScheme={'gray'}
-                              variant={'outline'}
-                              w={'90px'}
-                              onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
-                            >
-                              查看提示词
-                            </Button>
-                          )}
+                          <Flex>
+                            {!!item.systemPrompt && (
+                              <Button
+                                mt={2}
+                                mr={3}
+                                size={'xs'}
+                                fontWeight={'normal'}
+                                colorScheme={'gray'}
+                                variant={'outline'}
+                                px={[2, 4]}
+                                onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
+                              >
+                                提示词
+                              </Button>
+                            )}
+                            {!!item.quoteLen && (
+                              <Button
+                                mt={2}
+                                size={'xs'}
+                                fontWeight={'normal'}
+                                colorScheme={'gray'}
+                                variant={'outline'}
+                                px={[2, 4]}
+                                onClick={() => setShowHistoryQuote(item._id)}
+                              >
+                                {item.quoteLen}条引用
+                              </Button>
+                            )}
+                          </Flex>
                         </Card>
                       </Box>
                     ) : (
@@ -909,13 +887,22 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
           </DrawerContent>
         </Drawer>
       )}
+      {/* quote modal*/}
+      {showHistoryQuote && chatId && (
+        <QuoteModal
+          historyId={showHistoryQuote}
+          chatId={chatId}
+          onClose={() => setShowHistoryQuote(undefined)}
+        />
+      )}
       {/* system prompt show modal */}
       {
         <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
           <ModalOverlay />
-          <ModalContent pt={5} maxW={'min(90vw, 600px)'} h={'80vh'} overflow={'overlay'}>
+          <ModalContent maxW={'min(90vw, 600px)'} maxH={'80vh'} minH={'50vh'} overflow={'overlay'}>
             <ModalCloseButton />
-            <ModalBody pt={5} whiteSpace={'pre-wrap'} textAlign={'justify'}>
+            <ModalHeader>提示词</ModalHeader>
+            <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'xs'}>
               {showSystemPrompt}
             </ModalBody>
           </ModalContent>

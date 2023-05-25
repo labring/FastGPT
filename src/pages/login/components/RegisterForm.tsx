@@ -65,7 +65,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         });
         // aut register a model
         postCreateModel({
-          name: 'AI助手1'
+          name: '应用1'
         });
       } catch (error: any) {
         toast({

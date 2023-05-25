@@ -51,6 +51,17 @@ const ChatSchema = new Schema({
           type: String,
           required: true
         },
+        quote: {
+          type: [
+            {
+              id: String,
+              q: String,
+              a: String,
+              isEdit: Boolean
+            }
+          ],
+          default: []
+        },
         systemPrompt: {
           type: String,
           default: ''

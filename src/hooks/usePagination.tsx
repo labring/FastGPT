@@ -4,7 +4,6 @@ import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from './useToast';
-import { useQuery } from '@tanstack/react-query';
 
 export const usePagination = <T = any,>({
   api,

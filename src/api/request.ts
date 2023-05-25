@@ -54,13 +54,13 @@ function responseError(err: any) {
   if (typeof err === 'string') {
     return Promise.reject({ message: err });
   }
-  if (err.response) {
-    // 有报错响应
-    const res = err.response;
-    if (res.data.code in TOKEN_ERROR_CODE) {
-      clearCookie();
-      return Promise.reject({ message: 'token过期，重新登录' });
-    }
+  // 有报错响应
+  if (err?.code in TOKEN_ERROR_CODE) {
+    clearCookie();
+    window.location.replace(
+      `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
+    );
+    return Promise.reject({ message: 'token过期，重新登录' });
   }
   return Promise.reject(err);
 }

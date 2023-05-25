@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { Box, Flex, useTheme, Input, IconButton, Tooltip, Image, Tag } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Input, IconButton, Tooltip, Tag } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import { postCreateKb } from '@/api/plugins/kb';
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import MyIcon from '@/components/Icon';
+import Avatar from '@/components/Avatar';
 
 const KbList = ({ kbId }: { kbId: string }) => {
   const theme = useTheme();
@@ -111,13 +112,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
               router.push(`/kb?kbId=${item._id}`);
             }}
           >
-            <Image
-              src={item.avatar || '/icon/logo.png'}
-              alt=""
-              w={'34px'}
-              maxH={'50px'}
-              objectFit={'contain'}
-            />
+            <Avatar src={item.avatar} w={'34px'} h={'34px'} />
             <Box flex={'1 0 0'} w={0} ml={3}>
               <Box className="textEllipsis" color={'myGray.1000'}>
                 {item.name}

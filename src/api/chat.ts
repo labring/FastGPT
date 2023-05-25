@@ -1,10 +1,11 @@
 import { GET, POST, DELETE } from './request';
-import type { ChatItemType, HistoryItemType } from '@/types/chat';
+import type { HistoryItemType } from '@/types/chat';
 import type { InitChatResponse, InitShareChatResponse } from './response/chat';
 import { RequestPaging } from '../types/index';
 import type { ShareChatSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/model';
 import { Obj2Query } from '@/utils/tools';
+import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 
 /**
  * 获取初始化聊天内容
@@ -24,14 +25,19 @@ export const getChatHistory = (data: RequestPaging) =>
 export const delChatHistoryById = (id: string) => GET(`/chat/removeHistory?id=${id}`);
 
 /**
- * 存储一轮对话
+ * get history quotes
  */
-export const postSaveChat = (data: {
-  modelId: string;
-  newChatId: '' | string;
-  chatId: '' | string;
-  prompts: [ChatItemType, ChatItemType];
-}) => POST<string>('/chat/saveChat', data);
+export const getHistoryQuote = (params: { chatId: string; historyId: string }) =>
+  GET<(QuoteItemType & { _id: string })[]>(`/chat/getHistoryQuote`, params);
+
+/**
+ * update history quote status
+ */
+export const updateHistoryQuote = (params: {
+  chatId: string;
+  historyId: string;
+  quoteId: string;
+}) => GET(`/chat/updateHistoryQuote`, params);
 
 /**
  * 删除一句对话

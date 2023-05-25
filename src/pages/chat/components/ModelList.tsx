@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { ModelListItemType } from '@/types/model';
+import Avatar from '@/components/Avatar';
 
 const ModelList = ({ models, modelId }: { models: ModelListItemType[]; modelId: string }) => {
   const router = useRouter();
@@ -32,19 +33,13 @@ const ModelList = ({ models, modelId }: { models: ModelListItemType[]; modelId: 
               router.replace(`/chat?modelId=${item._id}`);
             }}
           >
-            <Image
-              src={item.avatar || '/icon/logo.png'}
-              alt=""
-              w={'34px'}
-              maxH={'50px'}
-              objectFit={'contain'}
-            />
+            <Avatar src={item.avatar} w={'34px'} h={'34px'} />
             <Box flex={'1 0 0'} w={0} ml={3}>
               <Box className="textEllipsis" color={'myGray.1000'}>
                 {item.name}
               </Box>
               <Box className="textEllipsis" color={'myGray.400'} fontSize={'sm'}>
-                {item.systemPrompt || '这个AI助手没有设置提示词~'}
+                {item.systemPrompt || '这个 应用 没有设置提示词~'}
               </Box>
             </Box>
           </Flex>

@@ -15,7 +15,6 @@ import {
   Button,
   Select,
   Switch,
-  Image,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -51,6 +50,7 @@ import { formatTimeToChatTime, useCopyData, getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
+import Avatar from '@/components/Avatar';
 
 const ModelEditForm = ({
   formHooks,
@@ -71,7 +71,7 @@ const ModelEditForm = ({
   const { loadKbList } = useUserStore();
 
   const { openConfirm, ConfirmChild } = useConfirm({
-    content: '确认删除该AI助手?'
+    content: '确认删除该应用?'
   });
   const { copyData } = useCopyData();
   const { register, setValue, getValues } = formHooks;
@@ -189,13 +189,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
               onClick={() => router.push(`/kb?kbId=${item._id}`)}
             >
               <Flex alignItems={'center'}>
-                <Image
-                  src={item.avatar}
-                  fallbackSrc="/icon/logo.png"
-                  w={'20px'}
-                  h={'20px'}
-                  alt=""
-                ></Image>
+                <Avatar src={item.avatar} w={'20px'} h={'20px'}></Avatar>
                 <Box ml={3} fontWeight={'bold'}>
                   {item.name}
                 </Box>
@@ -222,12 +216,10 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
           <Box flex={'0 0 80px'} w={0}>
             头像
           </Box>
-          <Image
-            src={getValues('avatar') || '/icon/logo.png'}
-            alt={'avatar'}
+          <Avatar
+            src={getValues('avatar')}
             w={['28px', '36px']}
             h={['28px', '36px']}
-            objectFit={'cover'}
             cursor={isOwner ? 'pointer' : 'default'}
             title={'点击切换头像'}
             onClick={() => isOwner && onOpenSelectFile()}
@@ -283,14 +275,14 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         </Flex>
         {isOwner && (
           <Flex mt={5} alignItems={'center'}>
-            <Box flex={'0 0 100px'}>删除AI助手</Box>
+            <Box flex={'0 0 100px'}>删除应用</Box>
             <Button
               colorScheme={'gray'}
               variant={'outline'}
               size={'sm'}
               onClick={openConfirm(handleDelModel)}
             >
-              删除AI助手
+              删除
             </Button>
           </Flex>
         )}
@@ -366,7 +358,9 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
               rows={8}
               maxLength={-1}
               isDisabled={!isOwner}
-              placeholder={'模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。'}
+              placeholder={
+                '模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。\n\n如果使用了知识库搜索，没有填写该内容时，系统会自动补充提示词；如果填写了内容，则以填写的内容为准。'
+              }
               {...register('chat.systemPrompt')}
             />
           </Box>
@@ -621,13 +615,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                   }}
                 >
                   <Flex alignItems={'center'}>
-                    <Image
-                      src={item.avatar}
-                      fallbackSrc="/icon/logo.png"
-                      w={'20px'}
-                      h={'20px'}
-                      alt=""
-                    ></Image>
+                    <Avatar src={item.avatar} w={'20px'} h={'20px'} />
                     <Box ml={3} fontWeight={'bold'}>
                       {item.name}
                     </Box>

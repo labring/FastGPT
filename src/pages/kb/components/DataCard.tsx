@@ -131,6 +131,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           type: 'text/csv',
           filename: 'data.csv'
         });
+        toast({
+          title: '导出成功，下次导出需要半小时后',
+          status: 'success'
+        });
       } catch (error) {
         error;
       }
@@ -164,10 +168,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           mr={2}
           size={'sm'}
           isLoading={isLoadingExport}
-          title={'换行数据导出时，会进行格式转换'}
+          title={'半小时仅能导出1次'}
           onClick={() => onclickExport()}
         >
-          导出
+          导出csv
         </Button>
         <Menu autoSelect={false}>
           <MenuButton as={Button} size={'sm'}>

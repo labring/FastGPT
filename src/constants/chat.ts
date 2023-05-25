@@ -1,5 +1,6 @@
-export const SYSTEM_PROMPT_HEADER = 'System-Prompt-Header';
-export const NEW_CHATID_HEADER = 'Chat-Id-Header';
+export const NEW_CHATID_HEADER = 'response-new-chat-id';
+export const QUOTE_LEN_HEADER = 'response-quote-len';
+export const GUIDE_PROMPT_HEADER = 'response-guide-prompt';
 
 export enum ChatRoleEnum {
   System = 'System',

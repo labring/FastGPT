@@ -40,10 +40,8 @@ export const getTrainingData = (kbId: string) =>
     embeddingQueue: number;
   }>(`/plugins/kb/data/getTrainingData?kbId=${kbId}`);
 
-/**
- * 获取 web 页面内容
- */
-export const getWebContent = (url: string) => POST<string>(`/model/data/fetchingUrlData`, { url });
+export const getKbDataItemById = (dataId: string) =>
+  GET(`/plugins/kb/data/getDataById`, { dataId });
 
 /**
  * 直接push数据

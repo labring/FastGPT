@@ -1,4 +1,4 @@
-import { SYSTEM_PROMPT_HEADER, NEW_CHATID_HEADER } from '@/constants/chat';
+import { GUIDE_PROMPT_HEADER, NEW_CHATID_HEADER, QUOTE_LEN_HEADER } from '@/constants/chat';
 
 interface StreamFetchProps {
   url: string;
@@ -7,7 +7,7 @@ interface StreamFetchProps {
   abortSignal: AbortController;
 }
 export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchProps) =>
-  new Promise<{ responseText: string; systemPrompt: string; newChatId: string }>(
+  new Promise<{ responseText: string; newChatId: string; systemPrompt: string; quoteLen: number }>(
     async (resolve, reject) => {
       try {
         const res = await fetch(url, {
@@ -23,8 +23,11 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
 
         const decoder = new TextDecoder();
 
-        const systemPrompt = decodeURIComponent(res.headers.get(SYSTEM_PROMPT_HEADER) || '').trim();
         const newChatId = decodeURIComponent(res.headers.get(NEW_CHATID_HEADER) || '');
+        const systemPrompt = decodeURIComponent(res.headers.get(GUIDE_PROMPT_HEADER) || '').trim();
+        const quoteLen = res.headers.get(QUOTE_LEN_HEADER)
+          ? Number(res.headers.get(QUOTE_LEN_HEADER))
+          : 0;
 
         let responseText = '';
 
@@ -33,7 +36,7 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
             const { done, value } = await reader?.read();
             if (done) {
               if (res.status === 200) {
-                resolve({ responseText, systemPrompt, newChatId });
+                resolve({ responseText, newChatId, quoteLen, systemPrompt });
               } else {
                 const parseError = JSON.parse(responseText);
                 reject(parseError?.message || '请求异常');
@@ -47,7 +50,7 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
             read();
           } catch (err: any) {
             if (err?.message === 'The user aborted a request.') {
-              return resolve({ responseText, systemPrompt, newChatId });
+              return resolve({ responseText, newChatId, quoteLen: 0, systemPrompt: '' });
             }
             reject(typeof err === 'string' ? err : err?.message || '请求异常');
           }

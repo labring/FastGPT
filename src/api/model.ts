@@ -1,6 +1,6 @@
 import { GET, POST, DELETE, PUT } from './request';
 import type { ModelSchema } from '@/types/mongoSchema';
-import type { ModelUpdateParams, ShareModelItem } from '@/types/model';
+import type { ModelUpdateParams } from '@/types/model';
 import { RequestPaging } from '../types/index';
 import type { ModelListResponse } from './response/model';
 
@@ -36,10 +36,7 @@ export const putModelById = (id: string, data: ModelUpdateParams) =>
  */
 export const getShareModelList = (data: { searchText?: string } & RequestPaging) =>
   POST(`/model/share/getModels`, data);
-/**
- * 获取我收藏的模型
- */
-export const getCollectionModels = () => GET<ShareModelItem[]>(`/model/share/getCollection`);
+
 /**
  * 收藏/取消收藏模型
  */
