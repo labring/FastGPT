@@ -22,7 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await Chat.findByIdAndUpdate(
       chatId,
       {
-        title: newTitle
+        title: newTitle,
+        customTitle: true
       } // 自定义标题}
     );
     jsonRes(res);

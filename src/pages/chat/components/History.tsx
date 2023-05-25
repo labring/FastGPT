@@ -241,7 +241,8 @@ const PcSliderBar = ({
                     }
                     onBlur={onCloseClick}
                     height={'1.5em'}
-                    paddingLeft={'0'}
+                    paddingLeft={'0.5'}
+                    style={{ width: '65%' }} // 设置输入框宽度为父元素宽度的一半
                   />
                 ) : (
                   <Box flex={'1 0 0'} w={0} className="textEllipsis" color={'myGray.1000'}>
@@ -266,6 +267,7 @@ const PcSliderBar = ({
                           setIsLoading(false);
                         }}
                         _hover={{ color: 'blue.500' }}
+                        paddingLeft={'1'}
                       />
                     </Box>
                   </>
