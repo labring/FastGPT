@@ -268,31 +268,7 @@ const PcSliderBar = ({
                         _hover={{ color: 'blue.500' }}
                       />
                     </Box>
-                    <Box mx={1}>
-                      <CloseIcon onClick={onCloseClick} _hover={{ color: 'blue.500' }} />
-                    </Box>
                   </>
-                ) : chatId === item._id ? (
-                  <Box mx={1}>
-                    <EditIcon
-                      onClick={() => onEditClick(item._id, item.title)}
-                      _hover={{ color: 'blue.500' }}
-                    />
-                    <DeleteIcon
-                      onClickCapture={async (e) => {
-                        e.stopPropagation();
-                        setIsLoading(true);
-                        try {
-                          await onclickDelHistory(item._id);
-                        } catch (error) {
-                          console.log(error);
-                        }
-                        setIsLoading(false);
-                      }}
-                      _hover={{ color: 'blue.500' }}
-                      marginLeft={'1'}
-                    />
-                  </Box>
                 ) : null}
               </Flex>
               <Box className="textEllipsis" mt={1} fontSize={'sm'} color={'myGray.500'}>
@@ -349,6 +325,17 @@ const PcSliderBar = ({
                 }}
               >
                 删除记录
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  try {
+                    onEditClick(contextMenuData.history._id, contextMenuData.history.title);
+                  } catch (error) {
+                    console.log(error);
+                  }
+                }}
+              >
+                编辑标题
               </MenuItem>
               <MenuItem onClick={() => onclickExportChat('html')}>导出HTML格式</MenuItem>
               <MenuItem onClick={() => onclickExportChat('pdf')}>导出PDF格式</MenuItem>
