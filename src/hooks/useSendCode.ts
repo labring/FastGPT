@@ -3,8 +3,13 @@ import { sendAuthCode } from '@/api/user';
 import { UserAuthTypeEnum } from '@/constants/common';
 let timer: any;
 import { useToast } from './useToast';
+import { getClientToken } from '@/utils/plugin/google';
+import { useGlobalStore } from '@/store/global';
 
 export const useSendCode = () => {
+  const {
+    initData: { googleVerKey }
+  } = useGlobalStore();
   const { toast } = useToast();
   const [codeSending, setCodeSending] = useState(false);
   const [codeCountDown, setCodeCountDown] = useState(0);
@@ -24,7 +29,8 @@ export const useSendCode = () => {
       try {
         await sendAuthCode({
           username,
-          type
+          type,
+          googleToken: await getClientToken(googleVerKey)
         });
         setCodeCountDown(60);
         timer = setInterval(() => {

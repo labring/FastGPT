@@ -7,14 +7,28 @@ import { sendPhoneCode, sendEmailCode } from '@/service/utils/sendNote';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('123456789', 6);
+import { authGoogleToken } from '@/utils/plugin/google';
+import requestIp from 'request-ip';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { username, type } = req.query as { username: string; type: `${UserAuthTypeEnum}` };
+    const { username, type, googleToken } = req.body as {
+      username: string;
+      type: `${UserAuthTypeEnum}`;
+      googleToken: string;
+    };
 
     if (!username || !type) {
       throw new Error('缺少参数');
     }
+
+    // google auth
+    process.env.SERVICE_GOOGLE_VER_TOKEN &&
+      (await authGoogleToken({
+        secret: process.env.SERVICE_GOOGLE_VER_TOKEN,
+        response: googleToken,
+        remoteip: requestIp.getClientIp(req) || undefined
+      }));
 
     await connectToDatabase();
 

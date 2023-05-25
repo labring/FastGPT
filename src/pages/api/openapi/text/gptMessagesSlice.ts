@@ -62,5 +62,5 @@ export function gpt_chatItemTokenSlice({
     }
   }
 
-  return result;
+  return result.length === 0 && messages[0] ? [messages[0]] : result;
 }

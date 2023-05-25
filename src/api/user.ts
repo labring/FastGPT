@@ -6,13 +6,11 @@ import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
 import { PaySchema } from '@/types/mongoSchema';
 
-export const sendAuthCode = ({
-  username,
-  type
-}: {
+export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
-}) => GET('/user/sendAuthCode', { username, type });
+  googleToken: string;
+}) => POST('/user/sendAuthCode', data);
 
 export const getTokenLogin = () => GET<UserType>('/user/tokenLogin');
 
