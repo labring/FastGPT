@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Obj2Query } from '../tools';
 
 export const getClientToken = (googleVerKey: string) => {
-  if (!grecaptcha?.ready) return '';
+  if (typeof grecaptcha === 'undefined' || !grecaptcha?.ready) return '';
   return new Promise<string>((resolve, reject) => {
     grecaptcha.ready(async () => {
       try {
@@ -23,10 +23,11 @@ export const authGoogleToken = async (data: {
   response: string;
   remoteip?: string;
 }) => {
-  const res = await axios.post<{ score?: number }>(
+  const res = await axios.post<{ score?: number; success: boolean }>(
     `https://www.recaptcha.net/recaptcha/api/siteverify?${Obj2Query(data)}`
   );
-  if (res.data.score && res.data.score >= 0.5) {
+
+  if (res.data.success && res.data.score && res.data.score >= 0.7) {
     return Promise.resolve('');
   }
   return Promise.reject('非法环境');
