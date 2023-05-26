@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB } from '@/service/mongo';
+import { connectToDatabase, KB, Model, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
+import { Types } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -19,19 +20,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    // delete mongo data
-    await KB.findOneAndDelete({
-      _id: id,
-      userId
-    });
-
     // delete all pg data
-    // 删除 pg 中所有该模型的数据
     await PgClient.delete('modelData', {
       where: [['user_id', userId], 'AND', ['kb_id', id]]
     });
 
+    // delete training data
+    await TrainingData.deleteMany({
+      userId,
+      kbId: id
+    });
+
     // delete related model
+    await Model.updateMany(
+      {
+        userId
+      },
+      { $pull: { 'chat.relatedKbs': new Types.ObjectId(id) } }
+    );
+
+    // delete kb data
+    await KB.findOneAndDelete({
+      _id: id,
+      userId
+    });
 
     jsonRes(res);
   } catch (err) {

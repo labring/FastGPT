@@ -54,7 +54,7 @@ export const useSendCode = () => {
       }
       setCodeSending(false);
     },
-    [toast]
+    [googleVerKey, toast]
   );
 
   return {
