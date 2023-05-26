@@ -33,7 +33,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // 更新 pg 内容.仅修改a，不需要更新向量。
     await PgClient.update('modelData', {
       where: [['id', dataId], 'AND', ['user_id', userId]],
-      values: [{ key: 'a', value: a }, ...(q ? [{ key: 'q', value: `${vector[0]}` }] : [])]
+      values: [
+        { key: 'a', value: a },
+        ...(q
+          ? [
+              { key: 'q', value: q },
+              { key: 'vector', value: `[${vector[0]}]` }
+            ]
+          : [])
+      ]
     });
 
     jsonRes(res);

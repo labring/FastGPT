@@ -13,6 +13,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { postKbDataFromList, putKbDataById } from '@/api/plugins/kb';
 import { useToast } from '@/hooks/useToast';
+import { TrainingTypeEnum } from '@/constants/plugin';
 
 export type FormData = { dataId?: string; a: string; q: string };
 
@@ -59,7 +60,8 @@ const InputDataModal = ({
               a: e.a,
               q: e.q
             }
-          ]
+          ],
+          mode: TrainingTypeEnum.index
         });
 
         toast({
