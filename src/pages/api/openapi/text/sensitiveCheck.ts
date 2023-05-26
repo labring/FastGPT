@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { input } = req.body as TextPluginRequestParams;
 
     const response = await axios({
-      ...axiosConfig(getSystemOpenAiKey()),
+      ...axiosConfig(getSystemOpenAiKey('chat')),
       method: 'POST',
       url: `/moderations`,
       data: {

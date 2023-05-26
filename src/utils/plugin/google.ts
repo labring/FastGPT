@@ -26,7 +26,7 @@ export const authGoogleToken = async (data: {
   const res = await axios.post<{ score?: number }>(
     `https://www.recaptcha.net/recaptcha/api/siteverify?${Obj2Query(data)}`
   );
-  if (res.data.score && res.data.score >= 0.9) {
+  if (res.data.score && res.data.score >= 0.5) {
     return Promise.resolve('');
   }
   return Promise.reject('非法环境');

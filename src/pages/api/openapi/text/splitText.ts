@@ -1,12 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, SplitData } from '@/service/mongo';
+import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authKb, authUser } from '@/service/utils/auth';
-import { generateVector } from '@/service/events/generateVector';
 import { generateQA } from '@/service/events/generateQA';
-import { insertKbItem } from '@/service/pg';
-import { SplitTextTypEnum } from '@/constants/plugin';
+import { TrainingTypeEnum } from '@/constants/plugin';
 import { withNextCors } from '@/service/utils/tools';
+import { pushDataToKb } from '../kb/pushData';
 
 /* split text */
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,7 +14,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       kbId: string;
       chunks: string[];
       prompt: string;
-      mode: `${SplitTextTypEnum}`;
+      mode: `${TrainingTypeEnum}`;
     };
     if (!chunks || !kbId || !prompt) {
       throw new Error('参数错误');
@@ -30,29 +29,26 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       userId
     });
 
-    if (mode === SplitTextTypEnum.qa) {
+    if (mode === TrainingTypeEnum.qa) {
       // 批量QA拆分插入数据
-      await SplitData.create({
+      const { _id } = await TrainingData.create({
         userId,
         kbId,
-        textList: chunks,
+        qaList: chunks,
         prompt
       });
-
-      generateQA();
-    } else if (mode === SplitTextTypEnum.subsection) {
-      // 待优化，直接调用另一个接口
-      // 插入记录
-      await insertKbItem({
-        userId,
+      generateQA(_id);
+    } else if (mode === TrainingTypeEnum.subsection) {
+      // 分段导入，直接插入向量队列
+      const response = await pushDataToKb({
         kbId,
-        data: chunks.map((item) => ({
-          q: item,
-          a: ''
-        }))
+        data: chunks.map((item) => ({ q: item, a: '' })),
+        userId
       });
 
-      generateVector();
+      return jsonRes(res, {
+        data: response
+      });
     }
 
     jsonRes(res);

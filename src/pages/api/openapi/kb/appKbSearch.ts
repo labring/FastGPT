@@ -5,7 +5,7 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import type { ChatItemSimpleType } from '@/types/chat';
 import type { ModelSchema } from '@/types/mongoSchema';
-import { ModelVectorSearchModeEnum } from '@/constants/model';
+import { appVectorSearchModeEnum } from '@/constants/model';
 import { authModel } from '@/service/utils/auth';
 import { ChatModelMap } from '@/constants/model';
 import { ChatRoleEnum } from '@/constants/chat';
@@ -92,7 +92,8 @@ export async function appKbSearch({
   // get vector
   const promptVectors = await openaiEmbedding({
     userId,
-    input
+    input,
+    type: 'chat'
   });
 
   // search kb
@@ -138,7 +139,7 @@ export async function appKbSearch({
         obj: ChatRoleEnum.System,
         value: model.chat.systemPrompt
       }
-    : model.chat.searchMode === ModelVectorSearchModeEnum.noContext
+    : model.chat.searchMode === appVectorSearchModeEnum.noContext
     ? {
         obj: ChatRoleEnum.System,
         value: `知识库是关于"${model.name}"的内容,根据知识库内容回答问题.`
@@ -176,7 +177,7 @@ export async function appKbSearch({
   const systemPrompt = sliceResult.flat().join('\n').trim();
 
   /* 高相似度+不回复 */
-  if (!systemPrompt && model.chat.searchMode === ModelVectorSearchModeEnum.hightSimilarity) {
+  if (!systemPrompt && model.chat.searchMode === appVectorSearchModeEnum.hightSimilarity) {
     return {
       code: 201,
       rawSearch: [],
@@ -190,7 +191,7 @@ export async function appKbSearch({
     };
   }
   /* 高相似度+无上下文，不添加额外知识,仅用系统提示词 */
-  if (!systemPrompt && model.chat.searchMode === ModelVectorSearchModeEnum.noContext) {
+  if (!systemPrompt && model.chat.searchMode === appVectorSearchModeEnum.noContext) {
     return {
       code: 200,
       rawSearch: [],

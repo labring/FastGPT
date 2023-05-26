@@ -20,7 +20,8 @@ import { useMutation } from '@tanstack/react-query';
 import { postSplitData } from '@/api/plugins/kb';
 import Radio from '@/components/Radio';
 import { splitText_token } from '@/utils/file';
-import { SplitTextTypEnum } from '@/constants/plugin';
+import { TrainingTypeEnum } from '@/constants/plugin';
+import { getErrText } from '@/utils/tools';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
@@ -52,7 +53,7 @@ const SelectFileModal = ({
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
-  const [mode, setMode] = useState<`${SplitTextTypEnum}`>(SplitTextTypEnum.subsection);
+  const [mode, setMode] = useState<`${TrainingTypeEnum}`>(TrainingTypeEnum.subsection);
   const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
   const [splitRes, setSplitRes] = useState<{ tokens: number; chunks: string[] }>({
     tokens: 0,
@@ -113,8 +114,9 @@ const SelectFileModal = ({
         prompt: `下面是"${prompt || '一段长文本'}"`,
         mode
       });
+
       toast({
-        title: '导入数据成功,需要一段拆解和训练',
+        title: '导入数据成功,需要一段拆解和训练. 重复数据会自动删除',
         status: 'success'
       });
       onClose();
@@ -130,27 +132,35 @@ const SelectFileModal = ({
 
   const onclickImport = useCallback(async () => {
     setBtnLoading(true);
-    let promise = Promise.resolve();
+    try {
+      let promise = Promise.resolve();
 
-    const splitRes = fileTextArr
-      .filter((item) => item)
-      .map((item) =>
-        splitText_token({
-          text: item,
-          ...modeMap[mode]
-        })
+      const splitRes = await Promise.all(
+        fileTextArr
+          .filter((item) => item)
+          .map((item) =>
+            splitText_token({
+              text: item,
+              ...modeMap[mode]
+            })
+          )
       );
 
-    setSplitRes({
-      tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
-      chunks: splitRes.map((item) => item.chunks).flat()
-    });
+      setSplitRes({
+        tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
+        chunks: splitRes.map((item) => item.chunks).flat()
+      });
 
+      await promise;
+      openConfirm(mutate)();
+    } catch (error) {
+      toast({
+        status: 'warning',
+        title: getErrText(error, '拆分文本异常')
+      });
+    }
     setBtnLoading(false);
-
-    await promise;
-    openConfirm(mutate)();
-  }, [fileTextArr, mode, mutate, openConfirm]);
+  }, [fileTextArr, mode, mutate, openConfirm, toast]);
 
   return (
     <Modal isOpen={true} onClose={onClose} isCentered>

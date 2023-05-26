@@ -2,12 +2,13 @@ import type { ChatItemType } from './chat';
 import {
   ModelStatusEnum,
   ModelNameEnum,
-  ModelVectorSearchModeEnum,
+  appVectorSearchModeEnum,
   ChatModelType,
   EmbeddingModelType
 } from '@/constants/model';
 import type { DataType } from './data';
 import { BillTypeEnum } from '@/constants/user';
+import { TrainingTypeEnum } from '@/constants/plugin';
 
 export interface UserModelSchema {
   _id: string;
@@ -44,7 +45,7 @@ export interface ModelSchema {
   updateTime: number;
   chat: {
     relatedKbs: string[];
-    searchMode: `${ModelVectorSearchModeEnum}`;
+    searchMode: `${appVectorSearchModeEnum}`;
     systemPrompt: string;
     temperature: number;
     chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
@@ -68,13 +69,14 @@ export interface CollectionSchema {
 
 export type ModelDataType = 0 | 1;
 
-export interface SplitDataSchema {
+export interface TrainingDataSchema {
   _id: string;
   userId: string;
   kbId: string;
+  lockTime: Date;
+  vectorList: { q: string; a: string }[];
   prompt: string;
-  errorText: string;
-  textList: string[];
+  qaList: string[];
 }
 
 export interface ChatSchema {
