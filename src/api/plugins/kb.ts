@@ -1,7 +1,7 @@
 import { GET, POST, PUT, DELETE } from '../request';
 import type { KbItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
-import { SplitTextTypEnum } from '@/constants/plugin';
+import { TrainingTypeEnum } from '@/constants/plugin';
 import { KbDataItemType } from '@/types/plugin';
 
 export type KbUpdateParams = { id: string; name: string; tags: string; avatar: string };
@@ -34,11 +34,11 @@ export const getExportDataList = (kbId: string) =>
 /**
  * 获取模型正在拆分数据的数量
  */
-export const getTrainingData = (kbId: string) =>
-  GET<{
-    splitDataQueue: number;
-    embeddingQueue: number;
-  }>(`/plugins/kb/data/getTrainingData?kbId=${kbId}`);
+export const getTrainingData = (data: { kbId: string; init: boolean }) =>
+  POST<{
+    qaListLen: number;
+    vectorListLen: number;
+  }>(`/plugins/kb/data/getTrainingData`, data);
 
 export const getKbDataItemById = (dataId: string) =>
   GET(`/plugins/kb/data/getDataById`, { dataId });
@@ -69,5 +69,5 @@ export const postSplitData = (data: {
   kbId: string;
   chunks: string[];
   prompt: string;
-  mode: `${SplitTextTypEnum}`;
+  mode: `${TrainingTypeEnum}`;
 }) => POST(`/openapi/text/splitText`, data);

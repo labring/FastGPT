@@ -91,9 +91,9 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     onClose: onCloseSelectCsvModal
   } = useDisclosure();
 
-  const { data: { splitDataQueue = 0, embeddingQueue = 0 } = {}, refetch } = useQuery(
+  const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch } = useQuery(
     ['getModelSplitDataList'],
-    () => getTrainingData(kbId),
+    () => getTrainingData({ kbId, init: false }),
     {
       onError(err) {
         console.log(err);
@@ -113,7 +113,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   // interval get data
   useQuery(['refetchData'], () => refetchData(pageNum), {
     refetchInterval: 5000,
-    enabled: splitDataQueue > 0 || embeddingQueue > 0
+    enabled: qaListLen > 0 || vectorListLen > 0
   });
 
   // get al data and export csv
@@ -161,7 +161,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           variant={'outline'}
           mr={[2, 4]}
           size={'sm'}
-          onClick={() => refetchData(pageNum)}
+          onClick={() => {
+            refetchData(pageNum);
+            getTrainingData({ kbId, init: true });
+          }}
         />
         <Button
           variant={'outline'}
@@ -194,10 +197,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         </Menu>
       </Flex>
       <Flex mt={4}>
-        {(splitDataQueue > 0 || embeddingQueue > 0) && (
+        {(qaListLen > 0 || vectorListLen > 0) && (
           <Box fontSize={'xs'}>
-            {splitDataQueue > 0 ? `${splitDataQueue}条数据正在拆分，` : ''}
-            {embeddingQueue > 0 ? `${embeddingQueue}条数据正在生成索引，` : ''}
+            {qaListLen > 0 ? `${qaListLen}条数据正在拆分，` : ''}
+            {vectorListLen > 0 ? `${vectorListLen}条数据正在生成索引，` : ''}
             请耐心等待...
           </Box>
         )}

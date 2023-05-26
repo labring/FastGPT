@@ -53,10 +53,11 @@ function responseError(err: any) {
 }
 
 /* 创建请求实例 */
-const instance = axios.create({
+export const instance = axios.create({
   timeout: 60000, // 超时时间
+  baseURL: `http://localhost:${process.env.PORT || 3000}/api`,
   headers: {
-    'content-type': 'application/json'
+    rootkey: process.env.ROOT_KEY
   }
 });
 
@@ -75,7 +76,6 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
 
   return instance
     .request({
-      baseURL: `http://localhost:${process.env.PORT || 3000}/api`,
       url,
       method,
       data: method === 'GET' ? null : data,
@@ -93,18 +93,30 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
  * @param {Object} config
  * @returns
  */
-export function GET<T>(url: string, params = {}, config: ConfigType = {}): Promise<T> {
+export function GET<T = { data: any }>(
+  url: string,
+  params = {},
+  config: ConfigType = {}
+): Promise<T> {
   return request(url, params, config, 'GET');
 }
 
-export function POST<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function POST<T = { data: any }>(
+  url: string,
+  data = {},
+  config: ConfigType = {}
+): Promise<T> {
   return request(url, data, config, 'POST');
 }
 
-export function PUT<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function PUT<T = { data: any }>(
+  url: string,
+  data = {},
+  config: ConfigType = {}
+): Promise<T> {
   return request(url, data, config, 'PUT');
 }
 
-export function DELETE<T>(url: string, config: ConfigType = {}): Promise<T> {
+export function DELETE<T = { data: any }>(url: string, config: ConfigType = {}): Promise<T> {
   return request(url, {}, config, 'DELETE');
 }

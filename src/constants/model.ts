@@ -108,27 +108,27 @@ export const ModelDataStatusMap: Record<`${ModelDataStatusEnum}`, string> = {
 
 /* 知识库搜索时的配置 */
 // 搜索方式
-export enum ModelVectorSearchModeEnum {
+export enum appVectorSearchModeEnum {
   hightSimilarity = 'hightSimilarity', // 高相似度+禁止回复
   lowSimilarity = 'lowSimilarity', // 低相似度
   noContext = 'noContex' // 高相似度+无上下文回复
 }
 export const ModelVectorSearchModeMap: Record<
-  `${ModelVectorSearchModeEnum}`,
+  `${appVectorSearchModeEnum}`,
   {
     text: string;
     similarity: number;
   }
 > = {
-  [ModelVectorSearchModeEnum.hightSimilarity]: {
+  [appVectorSearchModeEnum.hightSimilarity]: {
     text: '高相似度, 无匹配时拒绝回复',
     similarity: 0.18
   },
-  [ModelVectorSearchModeEnum.noContext]: {
+  [appVectorSearchModeEnum.noContext]: {
     text: '高相似度，无匹配时直接回复',
     similarity: 0.18
   },
-  [ModelVectorSearchModeEnum.lowSimilarity]: {
+  [appVectorSearchModeEnum.lowSimilarity]: {
     text: '低相似度匹配',
     similarity: 0.7
   }
@@ -143,7 +143,7 @@ export const defaultModel: ModelSchema = {
   updateTime: Date.now(),
   chat: {
     relatedKbs: [],
-    searchMode: ModelVectorSearchModeEnum.hightSimilarity,
+    searchMode: appVectorSearchModeEnum.hightSimilarity,
     systemPrompt: '',
     temperature: 0,
     chatModel: OpenAiChatEnum.GPT35

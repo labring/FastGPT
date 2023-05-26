@@ -1,14 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, SplitData, Model } from '@/service/mongo';
+import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { ModelDataStatusEnum } from '@/constants/model';
-import { PgClient } from '@/service/pg';
+import { Types } from 'mongoose';
+import { generateQA } from '@/service/events/generateQA';
+import { generateVector } from '@/service/events/generateVector';
 
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { kbId } = req.query as { kbId: string };
+    const { kbId, init = false } = req.body as { kbId: string; init: boolean };
     if (!kbId) {
       throw new Error('参数错误');
     }
@@ -17,29 +18,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId } = await authUser({ req, authToken: true });
 
     // split queue data
-    const data = await SplitData.find({
-      userId,
-      kbId,
-      textList: { $exists: true, $not: { $size: 0 } }
-    });
-
-    // embedding queue data
-    const embeddingData = await PgClient.count('modelData', {
-      where: [
-        ['user_id', userId],
-        'AND',
-        ['kb_id', kbId],
-        'AND',
-        ['status', ModelDataStatusEnum.waiting]
-      ]
-    });
+    const result = await TrainingData.aggregate([
+      { $match: { userId: new Types.ObjectId(userId), kbId: new Types.ObjectId(kbId) } },
+      {
+        $project: {
+          qaListLength: { $size: { $ifNull: ['$qaList', []] } },
+          vectorListLength: { $size: { $ifNull: ['$vectorList', []] } }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalQaListLength: { $sum: '$qaListLength' },
+          totalVectorListLength: { $sum: '$vectorListLength' }
+        }
+      }
+    ]);
 
     jsonRes(res, {
       data: {
-        splitDataQueue: data.map((item) => item.textList).flat().length,
-        embeddingQueue: embeddingData
+        qaListLen: result[0]?.totalQaListLength || 0,
+        vectorListLen: result[0]?.totalVectorListLength || 0
       }
     });
+
+    if (init) {
+      const list = await TrainingData.find(
+        {
+          userId,
+          kbId
+        },
+        '_id'
+      );
+      list.forEach((item) => {
+        generateQA(item._id);
+        generateVector(item._id);
+      });
+    }
   } catch (err) {
     jsonRes(res, {
       code: 500,

@@ -36,7 +36,6 @@ mongo pg
 AXIOS_PROXY_HOST=127.0.0.1
 AXIOS_PROXY_PORT_FAST=7890
 AXIOS_PROXY_PORT_NORMAL=7890
-queueTask=1
 # email
 MY_MAIL= {Your Mail}
 MAILE_CODE={Yoir Mail code}
@@ -48,7 +47,8 @@ aliTemplateCode=SMS_xxx
 # token
 TOKEN_KEY=sswada
 # openai
-OPENAIKEY={Your openapi key}
+OPENAIKEY=sk-xxx # 对话用的key
+OPENAI_TRAINING_KEY=sk-xxx # 训练用的key
 # db
 MONGODB_URI=mongodb://username:password@0.0.0.0:27017/test?authSource=admin
 PG_HOST=0.0.0.0
