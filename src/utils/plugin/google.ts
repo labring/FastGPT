@@ -23,12 +23,12 @@ export const authGoogleToken = async (data: {
   response: string;
   remoteip?: string;
 }) => {
-  const res = await axios.post<{ score?: number; success: boolean }>(
+  const res = await axios.post<{ score?: number; success: boolean; 'error-codes': string[] }>(
     `https://www.recaptcha.net/recaptcha/api/siteverify?${Obj2Query(data)}`
   );
 
   if (res.data.success && res.data.score && res.data.score >= 0.7) {
     return Promise.resolve('');
   }
-  return Promise.reject('非法环境');
+  return Promise.reject(res.data['error-codes'][0] || '非法环境');
 };
