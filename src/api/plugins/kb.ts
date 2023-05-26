@@ -2,7 +2,7 @@ import { GET, POST, PUT, DELETE } from '../request';
 import type { KbItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
 import { TrainingTypeEnum } from '@/constants/plugin';
-import { KbDataItemType } from '@/types/plugin';
+import { Props as PushDataProps } from '@/pages/api/openapi/kb/pushData';
 
 export type KbUpdateParams = { id: string; name: string; tags: string; avatar: string };
 
@@ -46,10 +46,7 @@ export const getKbDataItemById = (dataId: string) =>
 /**
  * 直接push数据
  */
-export const postKbDataFromList = (data: {
-  kbId: string;
-  data: { a: KbDataItemType['a']; q: KbDataItemType['q'] }[];
-}) => POST(`/openapi/kb/pushData`, data);
+export const postKbDataFromList = (data: PushDataProps) => POST(`/openapi/kb/pushData`, data);
 
 /**
  * 更新一条数据
@@ -70,4 +67,4 @@ export const postSplitData = (data: {
   chunks: string[];
   prompt: string;
   mode: `${TrainingTypeEnum}`;
-}) => POST(`/openapi/text/splitText`, data);
+}) => POST(`/openapi/text/pushData`, data);

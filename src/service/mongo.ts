@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
-import { generateQA } from './events/generateQA';
-import { generateVector } from './events/generateVector';
 import tunnel from 'tunnel';
 import { TrainingData } from './mongo';
+import { startQueue } from './utils/tools';
 
 /**
  * 连接 MongoDB 数据库
@@ -38,7 +37,10 @@ export async function connectToDatabase(): Promise<void> {
     });
   }
 
-  startTrain();
+  global.qaQueueLen = 0;
+  global.vectorQueueLen = 0;
+
+  startQueue();
   // 5 分钟后解锁不正常的数据，并触发开始训练
   setTimeout(async () => {
     await TrainingData.updateMany(
@@ -49,22 +51,8 @@ export async function connectToDatabase(): Promise<void> {
         lockTime: new Date('2000/1/1')
       }
     );
-    startTrain();
+    startQueue();
   }, 5 * 60 * 1000);
-}
-
-async function startTrain() {
-  const qa = await TrainingData.find({
-    qaList: { $exists: true, $ne: [] }
-  });
-
-  qa.map((item) => generateQA(String(item._id)));
-
-  const vector = await TrainingData.find({
-    vectorList: { $exists: true, $ne: [] }
-  });
-
-  vector.map((item) => generateVector(String(item._id)));
 }
 
 export * from './models/authCode';

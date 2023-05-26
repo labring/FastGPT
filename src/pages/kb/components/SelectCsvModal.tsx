@@ -19,6 +19,7 @@ import { postKbDataFromList } from '@/api/plugins/kb';
 import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { fileDownload } from '@/utils/file';
+import { TrainingTypeEnum } from '@/constants/plugin';
 
 const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
@@ -72,7 +73,8 @@ const SelectJsonModal = ({
 
       const res = await postKbDataFromList({
         kbId,
-        data: fileData
+        data: fileData,
+        mode: TrainingTypeEnum.index
       });
 
       toast({

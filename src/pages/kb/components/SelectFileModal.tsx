@@ -17,7 +17,7 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
-import { postSplitData } from '@/api/plugins/kb';
+import { postKbDataFromList } from '@/api/plugins/kb';
 import Radio from '@/components/Radio';
 import { splitText_token } from '@/utils/file';
 import { TrainingTypeEnum } from '@/constants/plugin';
@@ -32,7 +32,7 @@ const modeMap = {
     price: 4,
     isPrompt: true
   },
-  subsection: {
+  index: {
     maxLen: 800,
     slideLen: 300,
     price: 0.4,
@@ -53,7 +53,7 @@ const SelectFileModal = ({
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
-  const [mode, setMode] = useState<`${TrainingTypeEnum}`>(TrainingTypeEnum.subsection);
+  const [mode, setMode] = useState<`${TrainingTypeEnum}`>(TrainingTypeEnum.index);
   const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
   const [splitRes, setSplitRes] = useState<{ tokens: number; chunks: string[] }>({
     tokens: 0,
@@ -108,9 +108,9 @@ const SelectFileModal = ({
     mutationFn: async () => {
       if (splitRes.chunks.length === 0) return;
 
-      await postSplitData({
+      await postKbDataFromList({
         kbId,
-        chunks: splitRes.chunks,
+        data: splitRes.chunks.map((text) => ({ q: text, a: '' })),
         prompt: `下面是"${prompt || '一段长文本'}"`,
         mode
       });
@@ -195,11 +195,11 @@ const SelectFileModal = ({
             <Radio
               ml={3}
               list={[
-                { label: '直接分段', value: 'subsection' },
+                { label: '直接分段', value: 'index' },
                 { label: 'QA拆分', value: 'qa' }
               ]}
               value={mode}
-              onChange={(e) => setMode(e as 'subsection' | 'qa')}
+              onChange={(e) => setMode(e as 'index' | 'qa')}
             />
           </Flex>
           {/* 内容介绍 */}

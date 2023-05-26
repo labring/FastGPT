@@ -9,6 +9,8 @@ declare global {
   var particlesJS: any;
   var grecaptcha: any;
   var QRCode: any;
+  var qaQueueLen: number;
+  var vectorQueueLen: number;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

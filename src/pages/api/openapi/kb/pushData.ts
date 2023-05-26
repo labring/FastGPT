@@ -3,19 +3,21 @@ import type { KbDataItemType } from '@/types/plugin';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { generateVector } from '@/service/events/generateVector';
-import { PgClient } from '@/service/pg';
 import { authKb } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
+import { TrainingTypeEnum } from '@/constants/plugin';
+import { startQueue } from '@/service/utils/tools';
 
-interface Props {
+export type Props = {
   kbId: string;
   data: { a: KbDataItemType['a']; q: KbDataItemType['q'] }[];
-}
+  mode: `${TrainingTypeEnum}`;
+  prompt?: string;
+};
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { kbId, data } = req.body as Props;
+    const { kbId, data, mode, prompt } = req.body as Props;
 
     if (!kbId || !Array.isArray(data)) {
       throw new Error('缺少参数');
@@ -29,7 +31,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       data: await pushDataToKb({
         kbId,
         data,
-        userId
+        userId,
+        mode,
+        prompt
       })
     });
   } catch (err) {
@@ -40,36 +44,43 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 });
 
-export async function pushDataToKb({ userId, kbId, data }: { userId: string } & Props) {
+export async function pushDataToKb({
+  userId,
+  kbId,
+  data,
+  mode,
+  prompt
+}: { userId: string } & Props) {
   await authKb({
     userId,
     kbId
   });
 
   if (data.length === 0) {
-    return {
-      trainingId: ''
-    };
+    return {};
   }
 
   // 插入记录
-  const { _id } = await TrainingData.create({
-    userId,
-    kbId,
-    vectorList: data
-  });
+  await TrainingData.insertMany(
+    data.map((item) => ({
+      q: item.q,
+      a: item.a,
+      userId,
+      kbId,
+      mode,
+      prompt
+    }))
+  );
 
-  generateVector(_id);
+  startQueue();
 
-  return {
-    trainingId: _id
-  };
+  return {};
 }
 
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '100mb'
+      sizeLimit: '20mb'
     }
   }
 };

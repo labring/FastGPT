@@ -74,9 +74,10 @@ export interface TrainingDataSchema {
   userId: string;
   kbId: string;
   lockTime: Date;
-  vectorList: { q: string; a: string }[];
+  mode: `${TrainingTypeEnum}`;
   prompt: string;
-  qaList: string[];
+  q: string;
+  a: string;
 }
 
 export interface ChatSchema {
