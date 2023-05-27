@@ -7,7 +7,7 @@ import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
 import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 
 export async function generateQA(): Promise<any> {
@@ -23,7 +23,7 @@ export async function generateQA(): Promise<any> {
     // 找出一个需要生成的 dataItem (4分钟锁)
     const data = await TrainingData.findOneAndUpdate(
       {
-        mode: TrainingTypeEnum.qa,
+        mode: TrainingModeEnum.qa,
         lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
       },
       {
@@ -115,7 +115,7 @@ A2:
       kbId,
       data: responseList,
       userId,
-      mode: TrainingTypeEnum.index
+      mode: TrainingModeEnum.index
     });
 
     // delete data from training
@@ -126,6 +126,7 @@ A2:
     global.qaQueueLen--;
     generateQA();
   } catch (err: any) {
+    global.qaQueueLen--;
     // log
     if (err?.response) {
       console.log('openai error: 生成QA错误');
@@ -144,7 +145,6 @@ A2:
     }
 
     // unlock
-    global.qaQueueLen--;
     await TrainingData.findByIdAndUpdate(trainingId, {
       lockTime: new Date('2000/1/1')
     });

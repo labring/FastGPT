@@ -45,7 +45,7 @@ export const jsonRes = <T = any>(
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }
-    console.log(error?.message || error);
+    console.log(error);
   }
 
   res.json({

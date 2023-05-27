@@ -1,8 +1,8 @@
-export enum TrainingTypeEnum {
+export enum TrainingModeEnum {
   'qa' = 'qa',
   'index' = 'index'
 }
 export const TrainingTypeMap = {
-  [TrainingTypeEnum.qa]: 'qa',
-  [TrainingTypeEnum.index]: 'index'
+  [TrainingModeEnum.qa]: 'qa',
+  [TrainingModeEnum.index]: 'index'
 };

@@ -5,13 +5,13 @@ import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { authKb } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 
 export type Props = {
   kbId: string;
   data: { a: KbDataItemType['a']; q: KbDataItemType['q'] }[];
-  mode: `${TrainingTypeEnum}`;
+  mode: `${TrainingModeEnum}`;
   prompt?: string;
 };
 
@@ -59,6 +59,39 @@ export async function pushDataToKb({
   if (data.length === 0) {
     return {};
   }
+
+  // 去重
+  // 过滤重复的 qa 内容
+  // const searchRes = await Promise.allSettled(
+  //   dataItems.map(async ({ q, a = '' }) => {
+  //     if (!q) {
+  //       return Promise.reject('q为空');
+  //     }
+
+  //     q = q.replace(/\\n/g, '\n');
+  //     a = a.replace(/\\n/g, '\n');
+
+  //     // Exactly the same data, not push
+  //     try {
+  //       const count = await PgClient.count('modelData', {
+  //         where: [['user_id', userId], 'AND', ['kb_id', kbId], 'AND', ['q', q], 'AND', ['a', a]]
+  //       });
+
+  //       if (count > 0) {
+  //         return Promise.reject('已经存在');
+  //       }
+  //     } catch (error) {
+  //       error;
+  //     }
+  //     return Promise.resolve({
+  //       q,
+  //       a
+  //     });
+  //   })
+  // );
+  // const filterData = searchRes
+  //   .filter((item) => item.status === 'fulfilled')
+  //   .map<{ q: string; a: string }>((item: any) => item.value);
 
   // 插入记录
   await TrainingData.insertMany(

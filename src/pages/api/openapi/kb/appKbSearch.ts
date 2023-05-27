@@ -10,7 +10,6 @@ import { authModel } from '@/service/utils/auth';
 import { ChatModelMap } from '@/constants/model';
 import { ChatRoleEnum } from '@/constants/chat';
 import { openaiEmbedding } from '../plugin/openaiEmbedding';
-import { ModelDataStatusEnum } from '@/constants/model';
 import { modelToolMap } from '@/utils/plugin';
 
 export type QuoteItemType = { id: string; q: string; a: string; isEdit: boolean };
@@ -102,8 +101,6 @@ export async function appKbSearch({
       PgClient.select<QuoteItemType>('modelData', {
         fields: ['id', 'q', 'a'],
         where: [
-          ['status', ModelDataStatusEnum.ready],
-          'AND',
           `kb_id IN (${model.chat.relatedKbs.map((item) => `'${item}'`).join(',')})`,
           'AND',
           `vector <=> '[${promptVector}]' < ${similarity}`

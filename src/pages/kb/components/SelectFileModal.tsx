@@ -20,19 +20,19 @@ import { useMutation } from '@tanstack/react-query';
 import { postKbDataFromList } from '@/api/plugins/kb';
 import Radio from '@/components/Radio';
 import { splitText_token } from '@/utils/file';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
 const modeMap = {
-  qa: {
+  [TrainingModeEnum.qa]: {
     maxLen: 2800,
     slideLen: 800,
     price: 4,
     isPrompt: true
   },
-  index: {
+  [TrainingModeEnum.index]: {
     maxLen: 800,
     slideLen: 300,
     price: 0.4,
@@ -53,7 +53,7 @@ const SelectFileModal = ({
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
-  const [mode, setMode] = useState<`${TrainingTypeEnum}`>(TrainingTypeEnum.index);
+  const [mode, setMode] = useState<`${TrainingModeEnum}`>(TrainingModeEnum.index);
   const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
   const [splitRes, setSplitRes] = useState<{ tokens: number; chunks: string[] }>({
     tokens: 0,
@@ -122,9 +122,9 @@ const SelectFileModal = ({
       onClose();
       onSuccess();
     },
-    onError() {
+    onError(err) {
       toast({
-        title: '导入文件失败',
+        title: getErrText(err, '导入文件失败'),
         status: 'error'
       });
     }

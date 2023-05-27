@@ -96,16 +96,6 @@ export const formatModelStatus = {
   }
 };
 
-export enum ModelDataStatusEnum {
-  ready = 'ready',
-  waiting = 'waiting'
-}
-
-export const ModelDataStatusMap: Record<`${ModelDataStatusEnum}`, string> = {
-  ready: '训练完成',
-  waiting: '训练中'
-};
-
 /* 知识库搜索时的配置 */
 // 搜索方式
 export enum appVectorSearchModeEnum {

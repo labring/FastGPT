@@ -3,7 +3,7 @@ import { insertKbItem, PgClient } from '@/service/pg';
 import { openaiEmbedding } from '@/pages/api/openapi/plugin/openaiEmbedding';
 import { TrainingData } from '../models/trainingData';
 import { ERROR_ENUM } from '../errorCode';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
@@ -18,7 +18,7 @@ export async function generateVector(): Promise<any> {
   try {
     const data = await TrainingData.findOneAndUpdate(
       {
-        mode: TrainingTypeEnum.index,
+        mode: TrainingModeEnum.index,
         lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
       },
       {
@@ -50,38 +50,6 @@ export async function generateVector(): Promise<any> {
       }
     ];
 
-    // 过滤重复的 qa 内容
-    // const searchRes = await Promise.allSettled(
-    //   dataItems.map(async ({ q, a = '' }) => {
-    //     if (!q) {
-    //       return Promise.reject('q为空');
-    //     }
-
-    //     q = q.replace(/\\n/g, '\n');
-    //     a = a.replace(/\\n/g, '\n');
-
-    //     // Exactly the same data, not push
-    //     try {
-    //       const count = await PgClient.count('modelData', {
-    //         where: [['user_id', userId], 'AND', ['kb_id', kbId], 'AND', ['q', q], 'AND', ['a', a]]
-    //       });
-
-    //       if (count > 0) {
-    //         return Promise.reject('已经存在');
-    //       }
-    //     } catch (error) {
-    //       error;
-    //     }
-    //     return Promise.resolve({
-    //       q,
-    //       a
-    //     });
-    //   })
-    // );
-    // const filterData = searchRes
-    //   .filter((item) => item.status === 'fulfilled')
-    //   .map<{ q: string; a: string }>((item: any) => item.value);
-
     // 生成词向量
     const vectors = await openaiEmbedding({
       input: dataItems.map((item) => item.q),
@@ -107,6 +75,7 @@ export async function generateVector(): Promise<any> {
     global.vectorQueueLen--;
     generateVector();
   } catch (err: any) {
+    global.vectorQueueLen--;
     // log
     if (err?.response) {
       console.log('openai error: 生成向量错误');
@@ -125,7 +94,6 @@ export async function generateVector(): Promise<any> {
     }
 
     // unlock
-    global.vectorQueueLen--;
     await TrainingData.findByIdAndUpdate(trainingId, {
       lockTime: new Date('2000/1/1')
     });

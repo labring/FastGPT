@@ -1,8 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
-import { ModelDataStatusEnum } from '@/constants/model';
-import { generateVector } from '@/service/events/generateVector';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { openaiEmbedding } from '../plugin/openaiEmbedding';

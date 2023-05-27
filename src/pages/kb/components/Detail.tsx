@@ -56,13 +56,13 @@ const Detail = ({ kbId }: { kbId: string }) => {
       }
     },
     onError(err: any) {
+      loadKbList(true);
+      setLastKbId('');
+      router.replace(`/kb`);
       toast({
         title: getErrText(err, '获取知识库异常'),
         status: 'error'
       });
-      loadKbList(true);
-      setLastKbId('');
-      router.replace(`/kb?kbId=${myKbList[0]?._id || ''}`);
     }
   });
 
