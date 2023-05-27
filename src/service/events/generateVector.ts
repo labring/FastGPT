@@ -130,14 +130,6 @@ export async function generateVector(): Promise<any> {
       lockTime: new Date('2000/1/1')
     });
 
-    // 频率限制
-    if (err?.response?.statusText === 'Too Many Requests') {
-      console.log('生成向量次数限制，20s后尝试');
-      return setTimeout(() => {
-        generateVector();
-      }, 20000);
-    }
-
     setTimeout(() => {
       generateVector();
     }, 1000);
