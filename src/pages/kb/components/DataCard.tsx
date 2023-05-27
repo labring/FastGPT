@@ -22,7 +22,6 @@ import {
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { BoxProps } from '@chakra-ui/react';
 import type { KbDataItemType } from '@/types/plugin';
-import { ModelDataStatusMap } from '@/constants/model';
 import { usePagination } from '@/hooks/usePagination';
 import {
   getKbDataList,
@@ -92,7 +91,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   } = useDisclosure();
 
   const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch } = useQuery(
-    ['getModelSplitDataList'],
+    ['getModelSplitDataList', kbId],
     () => getTrainingData({ kbId, init: false }),
     {
       onError(err) {
@@ -240,7 +239,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 </Tooltip>
               </Th>
               <Th>补充知识</Th>
-              <Th>状态</Th>
               <Th>操作</Th>
             </Tr>
           </Thead>
@@ -253,7 +251,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 <Td>
                   <Box {...tdStyles.current}>{item.a || '-'}</Box>
                 </Td>
-                <Td>{ModelDataStatusMap[item.status]}</Td>
                 <Td>
                   <IconButton
                     mr={5}

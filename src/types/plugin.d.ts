@@ -8,7 +8,6 @@ export interface KbItemType extends kbSchema {
 
 export interface KbDataItemType {
   id: string;
-  status: 'waiting' | 'ready';
   q: string; // 提问词
   a: string; // 原文
   kbId: string;

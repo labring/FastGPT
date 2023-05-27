@@ -13,7 +13,8 @@ import {
 import { useForm } from 'react-hook-form';
 import { postKbDataFromList, putKbDataById } from '@/api/plugins/kb';
 import { useToast } from '@/hooks/useToast';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
+import { getErrText } from '@/utils/tools';
 
 export type FormData = { dataId?: string; a: string; q: string };
 
@@ -61,7 +62,7 @@ const InputDataModal = ({
               q: e.q
             }
           ],
-          mode: TrainingTypeEnum.index
+          mode: TrainingModeEnum.index
         });
 
         toast({
@@ -75,10 +76,9 @@ const InputDataModal = ({
         onSuccess();
       } catch (err: any) {
         toast({
-          title: err?.message || '出现了点意外~',
+          title: getErrText(err, '出现了点意外~'),
           status: 'error'
         });
-        console.log(err);
       }
       setLoading(false);
     },

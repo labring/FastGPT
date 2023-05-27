@@ -19,7 +19,8 @@ import { postKbDataFromList } from '@/api/plugins/kb';
 import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { fileDownload } from '@/utils/file';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
+import { getErrText } from '@/utils/tools';
 
 const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
@@ -56,9 +57,8 @@ const SelectJsonModal = ({
           }))
         );
       } catch (error: any) {
-        console.log(error);
         toast({
-          title: error?.message || 'csv 文件格式有误',
+          title: getErrText(error, 'csv 文件格式有误'),
           status: 'error'
         });
       }
@@ -74,7 +74,7 @@ const SelectJsonModal = ({
       const res = await postKbDataFromList({
         kbId,
         data: fileData,
-        mode: TrainingTypeEnum.index
+        mode: TrainingModeEnum.index
       });
 
       toast({

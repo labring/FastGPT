@@ -1,6 +1,5 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
-import { ModelDataStatusEnum } from '@/constants/model';
 
 export const connectPg = async () => {
   if (global.pgClient) {
@@ -180,8 +179,7 @@ export const insertKbItem = ({
       { key: 'kb_id', value: kbId },
       { key: 'q', value: item.q },
       { key: 'a', value: item.a },
-      { key: 'vector', value: `[${item.vector}]` },
-      { key: 'status', value: ModelDataStatusEnum.ready }
+      { key: 'vector', value: `[${item.vector}]` }
     ])
   });
 };

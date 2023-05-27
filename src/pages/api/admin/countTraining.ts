@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -23,8 +23,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     jsonRes(res, {
       data: {
-        qaListLen: result.find((item) => item._id === TrainingTypeEnum.qa)?.count || 0,
-        vectorListLen: result.find((item) => item._id === TrainingTypeEnum.index)?.count || 0
+        qaListLen: result.find((item) => item._id === TrainingModeEnum.qa)?.count || 0,
+        vectorListLen: result.find((item) => item._id === TrainingModeEnum.index)?.count || 0
       }
     });
   } catch (error) {

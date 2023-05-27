@@ -8,7 +8,7 @@ import {
 } from '@/constants/model';
 import type { DataType } from './data';
 import { BillTypeEnum } from '@/constants/user';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 
 export interface UserModelSchema {
   _id: string;
@@ -74,7 +74,7 @@ export interface TrainingDataSchema {
   userId: string;
   kbId: string;
   lockTime: Date;
-  mode: `${TrainingTypeEnum}`;
+  mode: `${TrainingModeEnum}`;
   prompt: string;
   q: string;
   a: string;

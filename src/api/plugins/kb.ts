@@ -1,7 +1,7 @@
 import { GET, POST, PUT, DELETE } from '../request';
 import type { KbItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
-import { TrainingTypeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 import { Props as PushDataProps } from '@/pages/api/openapi/kb/pushData';
 
 export type KbUpdateParams = { id: string; name: string; tags: string; avatar: string };
@@ -66,5 +66,5 @@ export const postSplitData = (data: {
   kbId: string;
   chunks: string[];
   prompt: string;
-  mode: `${TrainingTypeEnum}`;
+  mode: `${TrainingModeEnum}`;
 }) => POST(`/openapi/text/pushData`, data);
