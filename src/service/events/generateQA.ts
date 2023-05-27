@@ -149,14 +149,6 @@ A2:
       lockTime: new Date('2000/1/1')
     });
 
-    // 频率限制
-    if (err?.response?.statusText === 'Too Many Requests') {
-      console.log('生成向量次数限制，20s后尝试');
-      return setTimeout(() => {
-        generateQA();
-      }, 20000);
-    }
-
     setTimeout(() => {
       generateQA();
     }, 1000);

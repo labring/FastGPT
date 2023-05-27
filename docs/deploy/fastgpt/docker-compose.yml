@@ -17,7 +17,7 @@ services:
       - /root/fastgpt/pg/data:/var/lib/postgresql/data
       - /etc/localtime:/etc/localtime:ro
   mongodb:
-    image: mongo:6.0.4
+    image: mongo:5.0.18
     container_name: mongo
     restart: always
     ports:
@@ -47,6 +47,9 @@ services:
       - aliAccessKeySecret=xxxx
       - aliSignName=xxxxx
       - aliTemplateCode=SMS_xxxx
+      # QA和向量生成最大进程数
+      - QA_MAX_PROCESS=10
+      - VECTOR_MAX_PROCESS=10
       # token加密凭证（随便填，作为登录凭证）
       - TOKEN_KEY=xxxx
       # root key, 最高权限，可以内部接口互相调用
