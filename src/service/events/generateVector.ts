@@ -110,11 +110,11 @@ export async function generateVector(): Promise<any> {
     } else {
       console.log('生成向量错误:', err);
     }
-
     // message error or openai account error
     if (
       err?.message === 'invalid message format' ||
-      openaiAccountError[err?.response?.data?.error?.code]
+      err.response?.statusText === 'Unauthorized' ||
+      openaiAccountError[err?.response?.data?.error?.code || err?.response?.data?.error?.type]
     ) {
       console.log('删除一个任务');
       await TrainingData.findByIdAndRemove(trainingId);

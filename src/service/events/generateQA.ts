@@ -162,7 +162,8 @@ A2:
     // message error or openai account error
     if (
       err?.message === 'invalid message format' ||
-      openaiAccountError[err?.response?.data?.error?.code]
+      err.response?.statusText === 'Unauthorized' ||
+      openaiAccountError[err?.response?.data?.error?.code || err?.response?.data?.error?.type]
     ) {
       await TrainingData.findByIdAndRemove(trainingId);
     }
