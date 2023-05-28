@@ -48,8 +48,8 @@ services:
       - aliSignName=xxxxx
       - aliTemplateCode=SMS_xxxx
       # google V3 安全校验（可选）
-      - CLIENT_GOOGLE_VER_TOKEN=6LcDlDUmAAAAAAbGrwhIZtt3G_Ulf5V-lPamB5qd
-      - SERVICE_GOOGLE_VER_TOKEN=6LcDlDUmAAAAANIOO1jLdSLDAiyQCnX9dVTr81nt
+      - CLIENT_GOOGLE_VER_TOKEN=xxx
+      - SERVICE_GOOGLE_VER_TOKEN=xx
       # QA和向量生成最大进程数
       - QA_MAX_PROCESS=10
       - VECTOR_MAX_PROCESS=10
