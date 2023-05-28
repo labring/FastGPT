@@ -177,8 +177,8 @@ export const insertKbItem = ({
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
-      { key: 'q', value: item.q },
-      { key: 'a', value: item.a },
+      { key: 'q', value: item.q.replace(/'/g, '"') },
+      { key: 'a', value: item.a.replace(/'/g, '"') },
       { key: 'vector', value: `[${item.vector}]` }
     ])
   });
