@@ -110,6 +110,7 @@ export async function generateVector(): Promise<any> {
     } else {
       console.log('生成向量错误:', err);
     }
+
     // message error or openai account error
     if (
       err?.message === 'invalid message format' ||
