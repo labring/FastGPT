@@ -54,7 +54,7 @@ const InputDataModal = ({
       setLoading(true);
 
       try {
-        const res = await postKbDataFromList({
+        const { insertLen } = await postKbDataFromList({
           kbId,
           data: [
             {
@@ -65,14 +65,22 @@ const InputDataModal = ({
           mode: TrainingModeEnum.index
         });
 
-        toast({
-          title: res === 0 ? '可能已存在完全一致的数据' : '导入数据成功,需要一段时间训练',
-          status: 'success'
-        });
-        reset({
-          a: '',
-          q: ''
-        });
+        if (insertLen === 0) {
+          toast({
+            title: '已存在完全一致的数据',
+            status: 'warning'
+          });
+        } else {
+          toast({
+            title: '导入数据成功,需要一段时间训练',
+            status: 'success'
+          });
+          reset({
+            a: '',
+            q: ''
+          });
+        }
+
         onSuccess();
       } catch (err: any) {
         toast({

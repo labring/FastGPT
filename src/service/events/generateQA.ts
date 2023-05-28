@@ -2,7 +2,7 @@ import { TrainingData } from '@/service/mongo';
 import { getApiKey } from '../utils/auth';
 import { OpenAiChatEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
-import { openaiError2 } from '../errorCode';
+import { openaiAccountError } from '../errorCode';
 import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
@@ -81,8 +81,6 @@ export async function generateQA(): Promise<any> {
       type: 'training'
     });
 
-    console.log(`正在生成一组QA。ID: ${trainingId}`);
-
     const startTime = Date.now();
 
     // 请求 chatgpt 获取回答
@@ -137,7 +135,7 @@ A2:
     const responseList = response.map((item) => item.result).flat();
 
     // 创建 向量生成 队列
-    pushDataToKb({
+    await pushDataToKb({
       kbId,
       data: responseList,
       userId,
@@ -161,8 +159,16 @@ A2:
       console.log('生成QA错误:', err);
     }
 
-    // openai 账号异常或者账号余额不足，删除任务
-    if (openaiError2[err?.response?.data?.error?.type] || err === ERROR_ENUM.insufficientQuota) {
+    // message error or openai account error
+    if (
+      err?.message === 'invalid message format' ||
+      openaiAccountError[err?.response?.data?.error?.code]
+    ) {
+      await TrainingData.findByIdAndRemove(trainingId);
+    }
+
+    // 账号余额不足，删除任务
+    if (err === ERROR_ENUM.insufficientQuota) {
       console.log('余额不足，删除向量生成任务');
       await TrainingData.deleteMany({
         userId

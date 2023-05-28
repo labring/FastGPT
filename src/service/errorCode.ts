@@ -24,10 +24,10 @@ export const openaiError: Record<string, string> = {
   'Bad Request': 'Bad Request~ 可能内容太多了',
   'Bad Gateway': '网关异常，请重试'
 };
-export const openaiError2: Record<string, string> = {
-  insufficient_quota: 'API 余额不足',
-  billing_not_active: 'openai 账号异常',
-  invalid_request_error: '无效的 openai 请求'
+export const openaiAccountError: Record<string, string> = {
+  // insufficient_quota: 'API 余额不足',
+  invalid_api_key: 'openai 账号异常'
+  // invalid_request_error: '无效的 openai 请求'
 };
 export const proxyError: Record<string, boolean> = {
   ECONNABORTED: true,

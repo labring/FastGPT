@@ -1,4 +1,4 @@
-import { openaiError2 } from '../errorCode';
+import { openaiAccountError } from '../errorCode';
 import { insertKbItem } from '@/service/pg';
 import { openaiEmbedding } from '@/pages/api/openapi/plugin/openaiEmbedding';
 import { TrainingData } from '../models/trainingData';
@@ -111,8 +111,17 @@ export async function generateVector(): Promise<any> {
       console.log('生成向量错误:', err);
     }
 
-    // openai 账号异常或者账号余额不足，删除任务
-    if (openaiError2[err?.response?.data?.error?.type] || err === ERROR_ENUM.insufficientQuota) {
+    // message error or openai account error
+    if (
+      err?.message === 'invalid message format' ||
+      openaiAccountError[err?.response?.data?.error?.code]
+    ) {
+      console.log('删除一个任务');
+      await TrainingData.findByIdAndRemove(trainingId);
+    }
+
+    // 账号余额不足，删除任务
+    if (err === ERROR_ENUM.insufficientQuota) {
       console.log('余额不足，删除向量生成任务');
       await TrainingData.deleteMany({
         userId

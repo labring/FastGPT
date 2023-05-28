@@ -134,9 +134,9 @@ export const pushGenerateVectorBill = async ({
   text: string;
   tokenLen: number;
 }) => {
-  console.log(
-    `vector generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
-  );
+  // console.log(
+  //   `vector generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
+  // );
   if (!isPay) return;
 
   let billId;

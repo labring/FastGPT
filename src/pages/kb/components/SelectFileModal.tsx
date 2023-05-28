@@ -55,9 +55,14 @@ const SelectFileModal = ({
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
   const [mode, setMode] = useState<`${TrainingModeEnum}`>(TrainingModeEnum.index);
   const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
-  const [splitRes, setSplitRes] = useState<{ tokens: number; chunks: string[] }>({
+  const [splitRes, setSplitRes] = useState<{
+    tokens: number;
+    chunks: string[];
+    successChunks: number;
+  }>({
     tokens: 0,
-    chunks: []
+    chunks: [],
+    successChunks: 0
   });
   const { openConfirm, ConfirmChild } = useConfirm({
     content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被直接清除。一共 ${
@@ -104,19 +109,30 @@ const SelectFileModal = ({
     [toast]
   );
 
-  const { mutate, isLoading } = useMutation({
+  const { mutate, isLoading: uploading } = useMutation({
     mutationFn: async () => {
       if (splitRes.chunks.length === 0) return;
 
-      await postKbDataFromList({
-        kbId,
-        data: splitRes.chunks.map((text) => ({ q: text, a: '' })),
-        prompt: `下面是"${prompt || '一段长文本'}"`,
-        mode
-      });
+      // subsection import
+      let success = 0;
+      const step = 50;
+      for (let i = 0; i < splitRes.chunks.length; i += step) {
+        const { insertLen } = await postKbDataFromList({
+          kbId,
+          data: splitRes.chunks.slice(i, i + step).map((text) => ({ q: text, a: '' })),
+          prompt: `下面是"${prompt || '一段长文本'}"`,
+          mode
+        });
+
+        success += insertLen;
+        setSplitRes((state) => ({
+          ...state,
+          successChunks: state.successChunks + step
+        }));
+      }
 
       toast({
-        title: '导入数据成功,需要一段拆解和训练. 重复数据会自动删除',
+        title: `去重后共导入 ${success} 条数据,需要一段拆解和训练.`,
         status: 'success'
       });
       onClose();
@@ -148,7 +164,8 @@ const SelectFileModal = ({
 
       setSplitRes({
         tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
-        chunks: splitRes.map((item) => item.chunks).flat()
+        chunks: splitRes.map((item) => item.chunks).flat(),
+        successChunks: 0
       });
 
       await promise;
@@ -235,6 +252,11 @@ const SelectFileModal = ({
                       ...fileTextArr.slice(i + 1)
                     ]);
                   }}
+                  onBlur={(e) => {
+                    if (fileTextArr.length > 1 && e.target.value === '') {
+                      setFileTextArr((state) => [...state.slice(0, i), ...state.slice(i + 1)]);
+                    }
+                  }}
                 />
               </Box>
             ))}
@@ -242,19 +264,22 @@ const SelectFileModal = ({
         </ModalBody>
 
         <Flex px={6} pt={2} pb={4}>
-          <Button isLoading={btnLoading} onClick={onOpen}>
+          <Button isLoading={btnLoading} isDisabled={uploading} onClick={onOpen}>
             选择文件
           </Button>
           <Box flex={1}></Box>
-          <Button variant={'outline'} colorScheme={'gray'} mr={3} onClick={onClose}>
+          <Button variant={'outline'} isLoading={uploading} mr={3} onClick={onClose}>
             取消
           </Button>
           <Button
-            isLoading={isLoading || btnLoading}
-            isDisabled={isLoading || btnLoading || fileTextArr[0] === ''}
+            isDisabled={uploading || btnLoading || fileTextArr[0] === ''}
             onClick={onclickImport}
           >
-            确认导入
+            {uploading ? (
+              <Box>{Math.round((splitRes.successChunks / splitRes.chunks.length) * 100)}%</Box>
+            ) : (
+              '确认导入'
+            )}
           </Button>
         </Flex>
       </ModalContent>

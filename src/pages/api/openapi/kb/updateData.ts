@@ -32,10 +32,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     await PgClient.update('modelData', {
       where: [['id', dataId], 'AND', ['user_id', userId]],
       values: [
-        { key: 'a', value: a },
+        { key: 'a', value: a.replace(/'/g, '"') },
         ...(q
           ? [
-              { key: 'q', value: q },
+              { key: 'q', value: q.replace(/'/g, '"') },
               { key: 'vector', value: `[${vector[0]}]` }
             ]
           : [])
