@@ -35,7 +35,7 @@ services:
     network_mode: host
     restart: always
     container_name: fastgpt
-    environment:
+    environment: # 可选的变量，不需要的话需要去掉
       # proxy（可选）
       - AXIOS_PROXY_HOST=127.0.0.1
       - AXIOS_PROXY_PORT=7890
@@ -47,6 +47,9 @@ services:
       - aliAccessKeySecret=xxxx
       - aliSignName=xxxxx
       - aliTemplateCode=SMS_xxxx
+      # google V3 安全校验（可选）
+      - CLIENT_GOOGLE_VER_TOKEN=6LcDlDUmAAAAAAbGrwhIZtt3G_Ulf5V-lPamB5qd
+      - SERVICE_GOOGLE_VER_TOKEN=6LcDlDUmAAAAANIOO1jLdSLDAiyQCnX9dVTr81nt
       # QA和向量生成最大进程数
       - QA_MAX_PROCESS=10
       - VECTOR_MAX_PROCESS=10
@@ -54,7 +57,7 @@ services:
       - TOKEN_KEY=xxxx
       # root key, 最高权限，可以内部接口互相调用
       - ROOT_KEY=xxx
-      # 是否进行安全校验(1: 开启，0: 关闭)
+      # 是否进行内容安全校验(1: 开启，0: 关闭)
       - SENSITIVE_CHECK=1
       # 和上方mongo镜像的username,password对应
       - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
@@ -66,8 +69,8 @@ services:
       - PG_PASSWORD=1234 # POSTGRES_PASSWORD
       - PG_DB_NAME=fastgpt # POSTGRES_DB
       # openai
-      - OPENAIKEY=sk-xxxxx # 对话用的key
-      - OPENAI_TRAINING_KEY=sk-xxx # 训练用的key
+      - OPENAIKEY=sk-xxxxx,sk-xxx # 对话用的key，多个key，逗号分开
+      - OPENAI_TRAINING_KEY=sk-xxx,sk-xxxx # 训练用的key
       - GPT4KEY=sk-xxx
       - OPENAI_BASE_URL=https://api.openai.com/v1
       - OPENAI_BASE_URL_AUTH=可选的安全凭证
