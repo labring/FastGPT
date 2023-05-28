@@ -10,6 +10,10 @@ import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 
+const reduceQueue = () => {
+  global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
+};
+
 export async function generateQA(): Promise<any> {
   const maxProcess = Number(process.env.QA_MAX_PROCESS || 10);
 
@@ -20,11 +24,34 @@ export async function generateQA(): Promise<any> {
   let userId = '';
 
   try {
-    // 找出一个需要生成的 dataItem (4分钟锁)
+    const match = {
+      mode: TrainingModeEnum.qa,
+      lockTime: { $lte: new Date(Date.now() - 4 * 60 * 1000) }
+    };
+    // random get task
+    const agree = await TrainingData.aggregate([
+      {
+        $match: match
+      },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          _id: 1
+        }
+      }
+    ]);
+
+    // no task
+    if (agree.length === 0) {
+      reduceQueue();
+      global.qaQueueLen <= 0 && console.log(`没有需要【QA】的数据, ${global.qaQueueLen}`);
+      return;
+    }
+
     const data = await TrainingData.findOneAndUpdate(
       {
-        mode: TrainingModeEnum.qa,
-        lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
+        _id: agree[0]._id,
+        ...match
       },
       {
         lockTime: new Date()
@@ -37,11 +64,10 @@ export async function generateQA(): Promise<any> {
       q: 1
     });
 
-    /* 无待生成的任务 */
+    // task preemption
     if (!data) {
-      global.qaQueueLen--;
-      !global.qaQueueLen && console.log(`没有需要【QA】的数据`);
-      return;
+      reduceQueue();
+      return generateQA();
     }
 
     trainingId = data._id;
@@ -123,10 +149,10 @@ A2:
 
     console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
 
-    global.qaQueueLen--;
+    reduceQueue();
     generateQA();
   } catch (err: any) {
-    global.qaQueueLen--;
+    reduceQueue();
     // log
     if (err?.response) {
       console.log('openai error: 生成QA错误');

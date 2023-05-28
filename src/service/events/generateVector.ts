@@ -1,9 +1,13 @@
 import { openaiError2 } from '../errorCode';
-import { insertKbItem, PgClient } from '@/service/pg';
+import { insertKbItem } from '@/service/pg';
 import { openaiEmbedding } from '@/pages/api/openapi/plugin/openaiEmbedding';
 import { TrainingData } from '../models/trainingData';
 import { ERROR_ENUM } from '../errorCode';
 import { TrainingModeEnum } from '@/constants/plugin';
+
+const reduceQueue = () => {
+  global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
+};
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
@@ -16,10 +20,34 @@ export async function generateVector(): Promise<any> {
   let userId = '';
 
   try {
+    const match = {
+      mode: TrainingModeEnum.index,
+      lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
+    };
+    // random get task
+    const agree = await TrainingData.aggregate([
+      {
+        $match: match
+      },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          _id: 1
+        }
+      }
+    ]);
+
+    // no task
+    if (agree.length === 0) {
+      reduceQueue();
+      global.vectorQueueLen <= 0 && console.log(`没有需要【索引】的数据, ${global.vectorQueueLen}`);
+      return;
+    }
+
     const data = await TrainingData.findOneAndUpdate(
       {
-        mode: TrainingModeEnum.index,
-        lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
+        _id: agree[0]._id,
+        ...match
       },
       {
         lockTime: new Date()
@@ -32,11 +60,10 @@ export async function generateVector(): Promise<any> {
       a: 1
     });
 
-    /* 无待生成的任务 */
+    // task preemption
     if (!data) {
-      global.vectorQueueLen--;
-      !global.vectorQueueLen && console.log(`没有需要【索引】的数据`);
-      return;
+      reduceQueue();
+      return generateVector();
     }
 
     trainingId = data._id;
@@ -72,10 +99,10 @@ export async function generateVector(): Promise<any> {
     await TrainingData.findByIdAndDelete(data._id);
     console.log(`生成向量成功: ${data._id}`);
 
-    global.vectorQueueLen--;
+    reduceQueue();
     generateVector();
   } catch (err: any) {
-    global.vectorQueueLen--;
+    reduceQueue();
     // log
     if (err?.response) {
       console.log('openai error: 生成向量错误');

@@ -7,6 +7,7 @@ import { authKb } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
+import { PgClient } from '@/service/pg';
 
 export type Props = {
   kbId: string;
@@ -60,10 +61,23 @@ export async function pushDataToKb({
     return {};
   }
 
-  // 去重
   // 过滤重复的 qa 内容
+  const set = new Set();
+  const filterData: {
+    a: string;
+    q: string;
+  }[] = [];
+
+  data.forEach((item) => {
+    const text = item.q + item.a;
+    if (!set.has(text)) {
+      filterData.push(item);
+      set.add(text);
+    }
+  });
+  // 数据库去重
   // const searchRes = await Promise.allSettled(
-  //   dataItems.map(async ({ q, a = '' }) => {
+  //   data.map(async ({ q, a = '' }) => {
   //     if (!q) {
   //       return Promise.reject('q为空');
   //     }
