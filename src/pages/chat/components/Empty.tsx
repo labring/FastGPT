@@ -2,7 +2,6 @@ import React from 'react';
 import { Card, Box, Flex } from '@chakra-ui/react';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import Markdown from '@/components/Markdown';
-import { LOGO_ICON } from '@/constants/chat';
 import Avatar from '@/components/Avatar';
 
 const Empty = ({

@@ -11,6 +11,7 @@ import {
   ShareChatType
 } from '@/types/chat';
 import { getChatHistory } from '@/api/chat';
+import { HUMAN_ICON } from '@/constants/chat';
 
 type SetShareChatHistoryItem = {
   historyId: string;
@@ -57,6 +58,7 @@ const defaultChatData = {
 };
 const defaultShareChatData: ShareChatType = {
   maxContext: 5,
+  userAvatar: HUMAN_ICON,
   model: {
     name: '',
     avatar: '/icon/logo.png',

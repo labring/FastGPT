@@ -2,6 +2,7 @@ import { Schema, model, models, Model } from 'mongoose';
 import { hashPassword } from '@/service/utils/tools';
 import { PRICE_SCALE } from '@/constants/common';
 import { UserModelSchema } from '@/types/mongoSchema';
+
 const UserSchema = new Schema({
   username: {
     // 可以是手机/邮箱，新的验证都只用手机
