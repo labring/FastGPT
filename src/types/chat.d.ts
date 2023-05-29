@@ -33,6 +33,7 @@ export type HistoryItemType = {
   modelId: string;
   title: string;
   latestChat: string;
+  top: boolean;
 };
 
 export type ShareChatHistoryItemType = {
