@@ -1,8 +1,7 @@
-import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import type { MouseEvent } from 'react';
-import { AddIcon, EditIcon, CheckIcon, CloseIcon, DeleteIcon } from '@chakra-ui/icons';
+import { AddIcon } from '@chakra-ui/icons';
 import {
-  Input,
   Box,
   Button,
   Flex,
@@ -20,61 +19,13 @@ import { useUserStore } from '@/store/user';
 import MyIcon from '@/components/Icon';
 import type { HistoryItemType, ExportChatType } from '@/types/chat';
 import { useChatStore } from '@/store/chat';
-import { updateChatHistoryTitle } from '@/api/chat';
 import ModelList from './ModelList';
 import { useGlobalStore } from '@/store/global';
 import styles from '../index.module.scss';
-
-type UseEditTitleReturnType = {
-  editingHistoryId: string | null;
-  setEditingHistoryId: React.Dispatch<React.SetStateAction<string | null>>;
-  editedTitle: string;
-  setEditedTitle: React.Dispatch<React.SetStateAction<string>>;
-  inputRef: React.RefObject<HTMLInputElement>;
-  onEditClick: (id: string, title: string) => void;
-  onSaveClick: (chatId: string, modelId: string, editedTitle: string) => Promise<void>;
-  onCloseClick: () => void;
-};
-
-const useEditTitle = (): UseEditTitleReturnType => {
-  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
-  const [editedTitle, setEditedTitle] = useState<string>('');
-
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  const onEditClick = (id: string, title: string) => {
-    setEditingHistoryId(id);
-    setEditedTitle(title);
-    inputRef.current && inputRef.current.focus();
-  };
-
-  const onSaveClick = async (chatId: string, modelId: string, editedTitle: string) => {
-    setEditingHistoryId(null);
-
-    await updateChatHistoryTitle({ chatId: chatId, modelId: modelId, newTitle: editedTitle });
-  };
-
-  const onCloseClick = () => {
-    setEditingHistoryId(null);
-  };
-
-  useEffect(() => {
-    if (editingHistoryId) {
-      inputRef.current && inputRef.current.focus();
-    }
-  }, [editingHistoryId]);
-
-  return {
-    editingHistoryId,
-    setEditingHistoryId,
-    editedTitle,
-    setEditedTitle,
-    inputRef,
-    onEditClick,
-    onSaveClick,
-    onCloseClick
-  };
-};
+import { useEditTitle } from './useEditTitle';
+import { putChatHistory } from '@/api/chat';
+import { useToast } from '@/hooks/useToast';
+import { formatTimeToChatTime, getErrText } from '@/utils/tools';
 
 const PcSliderBar = ({
   onclickDelHistory,
@@ -83,23 +34,13 @@ const PcSliderBar = ({
   onclickDelHistory: (historyId: string) => Promise<void>;
   onclickExportChat: (type: ExportChatType) => void;
 }) => {
-  // 使用自定义的useEditTitle hook来管理聊天标题的编辑状态
-  const {
-    editingHistoryId,
-    editedTitle,
-    setEditedTitle,
-    inputRef,
-    onEditClick,
-    onSaveClick,
-    onCloseClick
-  } = useEditTitle();
-
   const router = useRouter();
+  const { toast } = useToast();
   const { modelId = '', chatId = '' } = router.query as { modelId: string; chatId: string };
+  const ContextMenuRef = useRef(null);
+
   const theme = useTheme();
   const { isPc } = useGlobalStore();
-
-  const ContextMenuRef = useRef(null);
 
   const { Loading, setIsLoading } = useLoading();
   const [contextMenuData, setContextMenuData] = useState<{
@@ -114,7 +55,12 @@ const PcSliderBar = ({
     () => [...myModels, ...myCollectionModels],
     [myCollectionModels, myModels]
   );
-  useQuery(['loadModels'], () => loadMyModels(false));
+
+  // custom title edit
+  const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
+    title: '自定义历史记录标题',
+    placeholder: '如果设置为空，会自动跟随聊天记录。'
+  });
 
   // close contextMenu
   useOutsideClick({
@@ -122,12 +68,8 @@ const PcSliderBar = ({
     handler: () =>
       setTimeout(() => {
         setContextMenuData(undefined);
-      })
+      }, 10)
   });
-
-  const { isLoading: isLoadingHistory } = useQuery(['loadingHistory'], () =>
-    loadHistory({ pageNum: 1 })
-  );
 
   const onclickContextMenu = useCallback(
     (e: MouseEvent<HTMLDivElement>, history: HistoryItemType) => {
@@ -142,6 +84,12 @@ const PcSliderBar = ({
       });
     },
     [isPc]
+  );
+
+  useQuery(['loadModels'], () => loadMyModels(false));
+
+  const { isLoading: isLoadingHistory } = useQuery(['loadingHistory'], () =>
+    loadHistory({ pageNum: 1 })
   );
 
   return (
@@ -211,14 +159,16 @@ const PcSliderBar = ({
             borderLeft={['none', '5px solid transparent']}
             userSelect={'none'}
             _hover={{
-              backgroundColor: ['', '#dee0e3']
+              bg: ['', '#dee0e3']
             }}
             {...(item._id === chatId
               ? {
-                  backgroundColor: '#eff0f1',
+                  bg: 'myGray.100 !important',
                   borderLeftColor: 'myBlue.600 !important'
                 }
-              : {})}
+              : {
+                  bg: item.top ? 'myBlue.200' : ''
+                })}
             onClick={() => {
               if (item._id === chatId) return;
               if (isPc) {
@@ -232,46 +182,12 @@ const PcSliderBar = ({
             <ChatIcon fontSize={'16px'} color={'myGray.500'} />
             <Box flex={'1 0 0'} w={0} ml={3}>
               <Flex alignItems={'center'}>
-                {editingHistoryId === item._id ? (
-                  <Input
-                    ref={inputRef}
-                    value={editedTitle}
-                    onChange={(e: { target: { value: React.SetStateAction<string> } }) =>
-                      setEditedTitle(e.target.value)
-                    }
-                    onBlur={onCloseClick}
-                    height={'1.5em'}
-                    paddingLeft={'0.5'}
-                    style={{ width: '65%' }} // 设置输入框宽度为父元素宽度的一半
-                  />
-                ) : (
-                  <Box flex={'1 0 0'} w={0} className="textEllipsis" color={'myGray.1000'}>
-                    {item.title}
-                  </Box>
-                )}
-
-                {/* 编辑状态下显示确认和取消按钮 */}
-                {editingHistoryId === item._id ? (
-                  <>
-                    <Box mx={1}>
-                      <CheckIcon
-                        onMouseDown={async (event) => {
-                          event.preventDefault();
-                          setIsLoading(true);
-                          try {
-                            await onSaveClick(item._id, item.modelId, editedTitle);
-                            await loadHistory({ pageNum: 1, init: true });
-                          } catch (error) {
-                            console.log(error);
-                          }
-                          setIsLoading(false);
-                        }}
-                        _hover={{ color: 'blue.500' }}
-                        paddingLeft={'1'}
-                      />
-                    </Box>
-                  </>
-                ) : null}
+                <Box flex={'1 0 0'} w={0} className="textEllipsis" color={'myGray.1000'}>
+                  {item.title}
+                </Box>
+                <Box color={'myGray.400'} fontSize={'sm'}>
+                  {formatTimeToChatTime(item.updateTime)}
+                </Box>
               </Flex>
               <Box className="textEllipsis" mt={1} fontSize={'sm'} color={'myGray.500'}>
                 {item.latestChat || '……'}
@@ -314,6 +230,19 @@ const PcSliderBar = ({
             <MenuList>
               <MenuItem
                 onClick={async () => {
+                  try {
+                    await putChatHistory({
+                      chatId: contextMenuData.history._id,
+                      top: !contextMenuData.history.top
+                    });
+                    loadHistory({ pageNum: 1, init: true });
+                  } catch (error) {}
+                }}
+              >
+                {contextMenuData.history.top ? '取消置顶' : '置顶'}
+              </MenuItem>
+              <MenuItem
+                onClick={async () => {
                   setIsLoading(true);
                   try {
                     await onclickDelHistory(contextMenuData.history._id);
@@ -329,15 +258,31 @@ const PcSliderBar = ({
                 删除记录
               </MenuItem>
               <MenuItem
-                onClick={() => {
-                  try {
-                    onEditClick(contextMenuData.history._id, contextMenuData.history.title);
-                  } catch (error) {
-                    console.log(error);
-                  }
-                }}
+                onClick={() =>
+                  onOpenModal({
+                    defaultVal: contextMenuData.history.title,
+                    onSuccess: async (val: string) => {
+                      await putChatHistory({
+                        chatId: contextMenuData.history._id,
+                        customTitle: val,
+                        top: contextMenuData.history.top
+                      });
+                      toast({
+                        title: '自定义标题成功',
+                        status: 'success'
+                      });
+                      loadHistory({ pageNum: 1, init: true });
+                    },
+                    onError(err) {
+                      toast({
+                        title: getErrText(err),
+                        status: 'error'
+                      });
+                    }
+                  })
+                }
               >
-                编辑标题
+                自定义标题
               </MenuItem>
               <MenuItem onClick={() => onclickExportChat('html')}>导出HTML格式</MenuItem>
               <MenuItem onClick={() => onclickExportChat('pdf')}>导出PDF格式</MenuItem>
@@ -346,7 +291,7 @@ const PcSliderBar = ({
           </Menu>
         </Box>
       )}
-
+      <EditTitleModal />
       <Loading loading={isLoadingHistory} fixed={false} />
     </Flex>
   );

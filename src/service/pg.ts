@@ -6,13 +6,14 @@ export const connectPg = async () => {
     return global.pgClient;
   }
 
+  const maxLink = Number(process.env.VECTOR_MAX_PROCESS || 10);
   global.pgClient = new Pool({
     host: process.env.PG_HOST,
     port: process.env.PG_PORT ? +process.env.PG_PORT : 5432,
     user: process.env.PG_USER,
     password: process.env.PG_PASSWORD,
     database: process.env.PG_DB_NAME,
-    max: 20,
+    max: maxLink,
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 20000
   });

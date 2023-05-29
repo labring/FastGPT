@@ -3,25 +3,32 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 
-/* 获取历史记录 */
+export type Props = {
+  chatId: '' | string;
+  customTitle?: string;
+  top?: boolean;
+};
+
+/* 更新聊天标题 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const { chatId, customTitle, top } = req.body as Props;
+
     const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 
-    const data = await Chat.find(
+    await Chat.findOneAndUpdate(
       {
+        _id: chatId,
         userId
       },
-      '_id title modelId updateTime latestChat'
-    )
-      .sort({ updateTime: -1 })
-      .limit(20);
-
-    jsonRes(res, {
-      data
-    });
+      {
+        ...(customTitle ? { customTitle } : {}),
+        ...(top ? { top } : { top: null })
+      }
+    );
+    jsonRes(res);
   } catch (err) {
     jsonRes(res, {
       code: 500,
