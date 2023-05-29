@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         },
         '_id avatar name chat.systemPrompt'
       ).sort({
-        _id: -1
+        updateTime: -1
       }),
       Collection.find({ userId })
         .populate({

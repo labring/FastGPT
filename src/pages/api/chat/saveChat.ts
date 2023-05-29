@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { ChatItemType } from '@/types/chat';
-import { connectToDatabase, Chat } from '@/service/mongo';
+import { connectToDatabase, Chat, Model } from '@/service/mongo';
 import { authModel } from '@/service/utils/auth';
 import { authUser } from '@/service/utils/auth';
 import mongoose from 'mongoose';
@@ -65,27 +65,36 @@ export async function saveChat({
       })) || []
   }));
 
-  // 没有 chatId, 创建一个对话
-  if (!chatId) {
-    const { _id } = await Chat.create({
-      _id: newChatId ? new mongoose.Types.ObjectId(newChatId) : undefined,
-      userId,
-      modelId,
-      content,
-      title: content[0].value.slice(0, 20),
-      latestChat: content[1].value
-    });
-    return _id;
-  } else {
-    await Chat.findByIdAndUpdate(chatId, {
-      $push: {
-        content: {
-          $each: content
-        }
-      },
-      title: content[0].value.slice(0, 20),
-      latestChat: content[1].value,
+  const [id] = await Promise.all([
+    ...(chatId // update chat
+      ? [
+          Chat.findByIdAndUpdate(chatId, {
+            $push: {
+              content: {
+                $each: content
+              }
+            },
+            title: content[0].value.slice(0, 20),
+            latestChat: content[1].value,
+            updateTime: new Date()
+          }).then(() => '')
+        ]
+      : [
+          Chat.create({
+            _id: newChatId ? new mongoose.Types.ObjectId(newChatId) : undefined,
+            userId,
+            modelId,
+            content,
+            title: content[0].value.slice(0, 20),
+            latestChat: content[1].value
+          }).then((res) => res._id)
+        ]),
+    Model.findByIdAndUpdate(modelId, {
       updateTime: new Date()
-    });
-  }
+    }) // update model
+  ]);
+
+  return {
+    id
+  };
 }
