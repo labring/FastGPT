@@ -22,7 +22,7 @@ import { useChatStore } from '@/store/chat';
 import ModelList from './ModelList';
 import { useGlobalStore } from '@/store/global';
 import styles from '../index.module.scss';
-import { useEditTitle } from './useEditTitle';
+import { useEditInfo } from '@/hooks/useEditInfo';
 import { putChatHistory } from '@/api/chat';
 import { useToast } from '@/hooks/useToast';
 import { formatTimeToChatTime, getErrText } from '@/utils/tools';
@@ -57,7 +57,7 @@ const PcSliderBar = ({
   );
 
   // custom title edit
-  const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
+  const { onOpenModal, EditModal: EditTitleModal } = useEditInfo({
     title: '自定义历史记录标题',
     placeholder: '如果设置为空，会自动跟随聊天记录。'
   });

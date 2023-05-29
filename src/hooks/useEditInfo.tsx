@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, memo } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -12,7 +12,7 @@ import {
   Button
 } from '@chakra-ui/react';
 
-export const useEditTitle = ({
+export const useEditInfo = ({
   title,
   placeholder = ''
 }: {
