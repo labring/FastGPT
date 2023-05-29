@@ -1,14 +1,8 @@
-export enum SplitTextTypEnum {
+export enum TrainingModeEnum {
   'qa' = 'qa',
-  'subsection' = 'subsection'
+  'index' = 'index'
 }
-
-export enum PluginTypeEnum {
-  LLM = 'LLM',
-  Text = 'Text',
-  Function = 'Function'
-}
-
-export enum PluginParamsTypeEnum {
-  'Text' = 'text'
-}
+export const TrainingTypeMap = {
+  [TrainingModeEnum.qa]: 'qa',
+  [TrainingModeEnum.index]: 'index'
+};

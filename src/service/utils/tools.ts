@@ -2,6 +2,8 @@ import type { NextApiResponse, NextApiHandler, NextApiRequest } from 'next';
 import NextCors from 'nextjs-cors';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { generateQA } from '../events/generateQA';
+import { generateVector } from '../events/generateVector';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -45,7 +47,7 @@ export function withNextCors(handler: NextApiHandler): NextApiHandler {
     req: NextApiRequest,
     res: NextApiResponse
   ) {
-    const methods = ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'];
+    const methods = ['GET', 'eHEAD', 'PUT', 'PATCH', 'POST', 'DELETE'];
     const origin = req.headers.origin;
     await NextCors(req, res, {
       methods,
@@ -56,3 +58,15 @@ export function withNextCors(handler: NextApiHandler): NextApiHandler {
     return handler(req, res);
   };
 }
+
+export const startQueue = () => {
+  const qaMax = Number(process.env.QA_MAX_PROCESS || 10);
+  const vectorMax = Number(process.env.VECTOR_MAX_PROCESS || 10);
+
+  for (let i = 0; i < qaMax; i++) {
+    generateQA();
+  }
+  for (let i = 0; i < vectorMax; i++) {
+    generateVector();
+  }
+};

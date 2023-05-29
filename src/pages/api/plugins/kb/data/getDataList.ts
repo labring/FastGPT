@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     ];
 
     const searchRes = await PgClient.select<PgKBDataItemType>('modelData', {
-      fields: ['id', 'q', 'a', 'status'],
+      fields: ['id', 'q', 'a'],
       where,
       order: [{ field: 'id', mode: 'DESC' }],
       limit: pageSize,

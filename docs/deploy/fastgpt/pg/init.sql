@@ -1,21 +1,20 @@
 set -e
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
 
-CREATE EXTENSION vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 -- init table
-CREATE TABLE modelData (
+CREATE TABLE IF NOT EXISTS modelData (
     id BIGSERIAL PRIMARY KEY,
-    vector VECTOR(1536),
-    status VARCHAR(50) NOT NULL,
+    vector VECTOR(1536) NOT NULL,
     user_id VARCHAR(50) NOT NULL,
-    model_id VARCHAR(50),
-    kb_id VARCHAR(50),
+    kb_id VARCHAR(50) NOT NULL,
     q TEXT NOT NULL,
     a TEXT NOT NULL
 );
--- create index
-CREATE INDEX modelData_status_index ON modelData USING HASH (status);
-CREATE INDEX modelData_userId_index ON modelData USING HASH (user_id);
-CREATE INDEX modelData_userId_index ON modelData USING HASH (model_id);
-CREATE INDEX modelData_kbId_index ON modelData USING HASH (kb_id);
+-- 索引设置，按需取
+-- CREATE INDEX IF NOT EXISTS modelData_userId_index ON modelData USING HASH (user_id);
+-- CREATE INDEX IF NOT EXISTS modelData_kbId_index ON modelData USING HASH (kb_id);
+-- CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON modelData (md5(q), md5(a), user_id, kb_id);
+-- CREATE INDEX IF NOT EXISTS vector_index ON modelData USING ivfflat (vector vector_cosine_ops) WITH (lists = 1000);
+-- vector 索引，可以到 pg vector 去配置，根据数据量去配置
 EOSQL

@@ -17,21 +17,22 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
-import { postSplitData } from '@/api/plugins/kb';
+import { postKbDataFromList } from '@/api/plugins/kb';
 import Radio from '@/components/Radio';
 import { splitText_token } from '@/utils/file';
-import { SplitTextTypEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
+import { getErrText } from '@/utils/tools';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
 const modeMap = {
-  qa: {
+  [TrainingModeEnum.qa]: {
     maxLen: 2800,
     slideLen: 800,
     price: 4,
     isPrompt: true
   },
-  subsection: {
+  [TrainingModeEnum.index]: {
     maxLen: 800,
     slideLen: 300,
     price: 0.4,
@@ -52,11 +53,16 @@ const SelectFileModal = ({
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
-  const [mode, setMode] = useState<`${SplitTextTypEnum}`>(SplitTextTypEnum.subsection);
+  const [mode, setMode] = useState<`${TrainingModeEnum}`>(TrainingModeEnum.index);
   const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
-  const [splitRes, setSplitRes] = useState<{ tokens: number; chunks: string[] }>({
+  const [splitRes, setSplitRes] = useState<{
+    tokens: number;
+    chunks: string[];
+    successChunks: number;
+  }>({
     tokens: 0,
-    chunks: []
+    chunks: [],
+    successChunks: 0
   });
   const { openConfirm, ConfirmChild } = useConfirm({
     content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被直接清除。一共 ${
@@ -103,26 +109,38 @@ const SelectFileModal = ({
     [toast]
   );
 
-  const { mutate, isLoading } = useMutation({
+  const { mutate, isLoading: uploading } = useMutation({
     mutationFn: async () => {
       if (splitRes.chunks.length === 0) return;
 
-      await postSplitData({
-        kbId,
-        chunks: splitRes.chunks,
-        prompt: `下面是"${prompt || '一段长文本'}"`,
-        mode
-      });
+      // subsection import
+      let success = 0;
+      const step = 50;
+      for (let i = 0; i < splitRes.chunks.length; i += step) {
+        const { insertLen } = await postKbDataFromList({
+          kbId,
+          data: splitRes.chunks.slice(i, i + step).map((text) => ({ q: text, a: '' })),
+          prompt: `下面是"${prompt || '一段长文本'}"`,
+          mode
+        });
+
+        success += insertLen;
+        setSplitRes((state) => ({
+          ...state,
+          successChunks: state.successChunks + step
+        }));
+      }
+
       toast({
-        title: '导入数据成功,需要一段拆解和训练',
+        title: `去重后共导入 ${success} 条数据,需要一段拆解和训练.`,
         status: 'success'
       });
       onClose();
       onSuccess();
     },
-    onError() {
+    onError(err) {
       toast({
-        title: '导入文件失败',
+        title: getErrText(err, '导入文件失败'),
         status: 'error'
       });
     }
@@ -130,27 +148,36 @@ const SelectFileModal = ({
 
   const onclickImport = useCallback(async () => {
     setBtnLoading(true);
-    let promise = Promise.resolve();
+    try {
+      let promise = Promise.resolve();
 
-    const splitRes = fileTextArr
-      .filter((item) => item)
-      .map((item) =>
-        splitText_token({
-          text: item,
-          ...modeMap[mode]
-        })
+      const splitRes = await Promise.all(
+        fileTextArr
+          .filter((item) => item)
+          .map((item) =>
+            splitText_token({
+              text: item,
+              ...modeMap[mode]
+            })
+          )
       );
 
-    setSplitRes({
-      tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
-      chunks: splitRes.map((item) => item.chunks).flat()
-    });
+      setSplitRes({
+        tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
+        chunks: splitRes.map((item) => item.chunks).flat(),
+        successChunks: 0
+      });
 
+      await promise;
+      openConfirm(mutate)();
+    } catch (error) {
+      toast({
+        status: 'warning',
+        title: getErrText(error, '拆分文本异常')
+      });
+    }
     setBtnLoading(false);
-
-    await promise;
-    openConfirm(mutate)();
-  }, [fileTextArr, mode, mutate, openConfirm]);
+  }, [fileTextArr, mode, mutate, openConfirm, toast]);
 
   return (
     <Modal isOpen={true} onClose={onClose} isCentered>
@@ -185,11 +212,11 @@ const SelectFileModal = ({
             <Radio
               ml={3}
               list={[
-                { label: '直接分段', value: 'subsection' },
+                { label: '直接分段', value: 'index' },
                 { label: 'QA拆分', value: 'qa' }
               ]}
               value={mode}
-              onChange={(e) => setMode(e as 'subsection' | 'qa')}
+              onChange={(e) => setMode(e as 'index' | 'qa')}
             />
           </Flex>
           {/* 内容介绍 */}
@@ -225,6 +252,11 @@ const SelectFileModal = ({
                       ...fileTextArr.slice(i + 1)
                     ]);
                   }}
+                  onBlur={(e) => {
+                    if (fileTextArr.length > 1 && e.target.value === '') {
+                      setFileTextArr((state) => [...state.slice(0, i), ...state.slice(i + 1)]);
+                    }
+                  }}
                 />
               </Box>
             ))}
@@ -232,19 +264,22 @@ const SelectFileModal = ({
         </ModalBody>
 
         <Flex px={6} pt={2} pb={4}>
-          <Button isLoading={btnLoading} onClick={onOpen}>
+          <Button isLoading={btnLoading} isDisabled={uploading} onClick={onOpen}>
             选择文件
           </Button>
           <Box flex={1}></Box>
-          <Button variant={'outline'} colorScheme={'gray'} mr={3} onClick={onClose}>
+          <Button variant={'outline'} isLoading={uploading} mr={3} onClick={onClose}>
             取消
           </Button>
           <Button
-            isLoading={isLoading || btnLoading}
-            isDisabled={isLoading || btnLoading || fileTextArr[0] === ''}
+            isDisabled={uploading || btnLoading || fileTextArr[0] === ''}
             onClick={onclickImport}
           >
-            确认导入
+            {uploading ? (
+              <Box>{Math.round((splitRes.successChunks / splitRes.chunks.length) * 100)}%</Box>
+            ) : (
+              '确认导入'
+            )}
           </Button>
         </Flex>
       </ModalContent>

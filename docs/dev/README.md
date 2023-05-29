@@ -2,7 +2,7 @@
 
 第一次开发，请先[部署教程](../deploy/docker.md)，需要部署数据库.
 
-## 环境变量配置
+## 环境变量配置 (可能更新不及时，以 docker-compose 里的变量为准)
 
 复制.env.template 文件，生成一个.env.local 环境变量文件夹，修改.env.local 里内容。
 
@@ -10,9 +10,6 @@
 # proxy（可选）
 AXIOS_PROXY_HOST=127.0.0.1
 AXIOS_PROXY_PORT=7890
-# 是否开启队列任务。 1-开启，0-关闭（请求parentUrl去执行任务,单机时直接填1）
-queueTask=1
-parentUrl=https://hostname/api/openapi/startEvents
 # email
 MY_MAIL=xxx@qq.com
 MAILE_CODE=xxx
@@ -30,7 +27,8 @@ SENSITIVE_CHECK=1
 # openai
 # OPENAI_BASE_URL=https://api.openai.com/v1
 # OPENAI_BASE_URL_AUTH=可选的安全凭证(不需要的时候，记得去掉)
-OPENAIKEY=sk-xxx
+OPENAIKEY=sk-xxx # 对话用的key
+OPENAI_TRAINING_KEY=sk-xxx # 训练用的key
 GPT4KEY=sk-xxx
 # claude
 CLAUDE_BASE_URL=calude模型请求地址

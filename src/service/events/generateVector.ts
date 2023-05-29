@@ -1,107 +1,142 @@
-import { getApiKey } from '../utils/auth';
-import { openaiError2 } from '../errorCode';
-import { PgClient } from '@/service/pg';
-import { getErrText } from '@/utils/tools';
+import { openaiAccountError } from '../errorCode';
+import { insertKbItem } from '@/service/pg';
 import { openaiEmbedding } from '@/pages/api/openapi/plugin/openaiEmbedding';
+import { TrainingData } from '../models/trainingData';
+import { ERROR_ENUM } from '../errorCode';
+import { TrainingModeEnum } from '@/constants/plugin';
 
-export async function generateVector(next = false): Promise<any> {
-  if (process.env.queueTask !== '1') {
-    try {
-      fetch(process.env.parentUrl || '');
-    } catch (error) {
-      console.log('parentUrl fetch error', error);
-    }
-    return;
-  }
+const reduceQueue = () => {
+  global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
+};
 
-  if (global.generatingVector && !next) return;
+/* 索引生成队列。每导入一次，就是一个单独的线程 */
+export async function generateVector(): Promise<any> {
+  const maxProcess = Number(process.env.VECTOR_MAX_PROCESS || 10);
 
-  global.generatingVector = true;
-  let dataId = null;
+  if (global.vectorQueueLen >= maxProcess) return;
+  global.vectorQueueLen++;
+
+  let trainingId = '';
+  let userId = '';
 
   try {
-    // 从找出一个 status = waiting 的数据
-    const searchRes = await PgClient.select('modelData', {
-      fields: ['id', 'q', 'user_id'],
-      where: [['status', 'waiting']],
-      limit: 1
-    });
+    const match = {
+      mode: TrainingModeEnum.index,
+      lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
+    };
+    // random get task
+    const agree = await TrainingData.aggregate([
+      {
+        $match: match
+      },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          _id: 1
+        }
+      }
+    ]);
 
-    if (searchRes.rowCount === 0) {
-      console.log('没有需要生成 【向量】 的数据');
-      global.generatingVector = false;
+    // no task
+    if (agree.length === 0) {
+      reduceQueue();
+      global.vectorQueueLen <= 0 && console.log(`没有需要【索引】的数据, ${global.vectorQueueLen}`);
       return;
     }
 
-    const dataItem: { id: string; q: string; userId: string } = {
-      id: searchRes.rows[0].id,
-      q: searchRes.rows[0].q,
-      userId: searchRes.rows[0].user_id
-    };
+    const data = await TrainingData.findOneAndUpdate(
+      {
+        _id: agree[0]._id,
+        ...match
+      },
+      {
+        lockTime: new Date()
+      }
+    ).select({
+      _id: 1,
+      userId: 1,
+      kbId: 1,
+      q: 1,
+      a: 1
+    });
 
-    dataId = dataItem.id;
-
-    // 获取 openapi Key
-    try {
-      await getApiKey({ model: 'gpt-3.5-turbo', userId: dataItem.userId });
-    } catch (err: any) {
-      await PgClient.delete('modelData', {
-        where: [['id', dataId]]
-      });
-      getErrText(err, '获取 OpenAi Key 失败');
-      return generateVector(true);
+    // task preemption
+    if (!data) {
+      reduceQueue();
+      return generateVector();
     }
+
+    trainingId = data._id;
+    userId = String(data.userId);
+    const kbId = String(data.kbId);
+
+    const dataItems = [
+      {
+        q: data.q,
+        a: data.a
+      }
+    ];
 
     // 生成词向量
     const vectors = await openaiEmbedding({
-      input: [dataItem.q],
-      userId: dataItem.userId
+      input: dataItems.map((item) => item.q),
+      userId,
+      type: 'training'
     });
 
-    // 更新 pg 向量和状态数据
-    await PgClient.update('modelData', {
-      values: [
-        { key: 'vector', value: `[${vectors[0]}]` },
-        { key: 'status', value: `ready` }
-      ],
-      where: [['id', dataId]]
+    // 生成结果插入到 pg
+    await insertKbItem({
+      userId,
+      kbId,
+      data: vectors.map((vector, i) => ({
+        q: dataItems[i].q,
+        a: dataItems[i].a,
+        vector
+      }))
     });
 
-    console.log(`生成向量成功: ${dataItem.id}`);
+    // delete data from training
+    await TrainingData.findByIdAndDelete(data._id);
+    console.log(`生成向量成功: ${data._id}`);
 
-    generateVector(true);
-  } catch (error: any) {
+    reduceQueue();
+    generateVector();
+  } catch (err: any) {
+    reduceQueue();
     // log
-    if (error?.response) {
+    if (err?.response) {
       console.log('openai error: 生成向量错误');
-      console.log(error.response?.status, error.response?.statusText, error.response?.data);
+      console.log(err.response?.status, err.response?.statusText, err.response?.data);
     } else {
-      console.log('生成向量错误:', error);
+      console.log('生成向量错误:', err);
     }
 
-    // 没有余额或者凭证错误时，拒绝任务
-    if (dataId && openaiError2[error?.response?.data?.error?.type]) {
-      console.log('删除向量生成任务记录');
-      try {
-        await PgClient.delete('modelData', {
-          where: [['id', dataId]]
-        });
-      } catch (error) {
-        error;
-      }
-      generateVector(true);
-      return;
+    // message error or openai account error
+    if (
+      err?.message === 'invalid message format' ||
+      err.response?.statusText === 'Unauthorized' ||
+      openaiAccountError[err?.response?.data?.error?.code || err?.response?.data?.error?.type]
+    ) {
+      console.log('删除一个任务');
+      await TrainingData.findByIdAndRemove(trainingId);
     }
-    if (error?.response?.statusText === 'Too Many Requests') {
-      console.log('生成向量次数限制，1分钟后尝试');
-      // 限制次数，1分钟后再试
-      setTimeout(() => {
-        generateVector(true);
-      }, 60000);
-      return;
+
+    // 账号余额不足，删除任务
+    if (err === ERROR_ENUM.insufficientQuota) {
+      console.log('余额不足，删除向量生成任务');
+      await TrainingData.deleteMany({
+        userId
+      });
+      return generateVector();
     }
+
+    // unlock
+    await TrainingData.findByIdAndUpdate(trainingId, {
+      lockTime: new Date('2000/1/1')
+    });
+
     setTimeout(() => {
-      generateVector(true);
+      generateVector();
     }, 1000);
   }
 }

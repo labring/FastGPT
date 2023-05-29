@@ -13,8 +13,8 @@ export const connectPg = async () => {
     password: process.env.PG_PASSWORD,
     database: process.env.PG_DB_NAME,
     max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 20000
   });
 
   global.pgClient.on('error', (err) => {
@@ -168,6 +168,7 @@ export const insertKbItem = ({
   userId: string;
   kbId: string;
   data: {
+    vector: number[];
     q: string;
     a: string;
   }[];
@@ -176,9 +177,9 @@ export const insertKbItem = ({
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
-      { key: 'q', value: item.q },
-      { key: 'a', value: item.a },
-      { key: 'status', value: 'waiting' }
+      { key: 'q', value: item.q.replace(/'/g, '"') },
+      { key: 'a', value: item.a.replace(/'/g, '"') },
+      { key: 'vector', value: `[${item.vector}]` }
     ])
   });
 };

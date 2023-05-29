@@ -1,8 +1,11 @@
 import { GET, POST, PUT, DELETE } from '../request';
 import type { KbItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
-import { SplitTextTypEnum } from '@/constants/plugin';
-import { KbDataItemType } from '@/types/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
+import {
+  Props as PushDataProps,
+  Response as PushDateResponse
+} from '@/pages/api/openapi/kb/pushData';
 
 export type KbUpdateParams = { id: string; name: string; tags: string; avatar: string };
 
@@ -29,16 +32,22 @@ export const getKbDataList = (data: GetKbDataListProps) =>
  * 获取导出数据（不分页）
  */
 export const getExportDataList = (kbId: string) =>
-  GET<[string, string][]>(`/plugins/kb/data/exportModelData?kbId=${kbId}`);
+  GET<[string, string][]>(
+    `/plugins/kb/data/exportModelData`,
+    { kbId },
+    {
+      timeout: 600000
+    }
+  );
 
 /**
  * 获取模型正在拆分数据的数量
  */
-export const getTrainingData = (kbId: string) =>
-  GET<{
-    splitDataQueue: number;
-    embeddingQueue: number;
-  }>(`/plugins/kb/data/getTrainingData?kbId=${kbId}`);
+export const getTrainingData = (data: { kbId: string; init: boolean }) =>
+  POST<{
+    qaListLen: number;
+    vectorListLen: number;
+  }>(`/plugins/kb/data/getTrainingData`, data);
 
 export const getKbDataItemById = (dataId: string) =>
   GET(`/plugins/kb/data/getDataById`, { dataId });
@@ -46,10 +55,8 @@ export const getKbDataItemById = (dataId: string) =>
 /**
  * 直接push数据
  */
-export const postKbDataFromList = (data: {
-  kbId: string;
-  data: { a: KbDataItemType['a']; q: KbDataItemType['q'] }[];
-}) => POST(`/openapi/kb/pushData`, data);
+export const postKbDataFromList = (data: PushDataProps) =>
+  POST<PushDateResponse>(`/openapi/kb/pushData`, data);
 
 /**
  * 更新一条数据
@@ -69,5 +76,5 @@ export const postSplitData = (data: {
   kbId: string;
   chunks: string[];
   prompt: string;
-  mode: `${SplitTextTypEnum}`;
-}) => POST(`/openapi/text/splitText`, data);
+  mode: `${TrainingModeEnum}`;
+}) => POST(`/openapi/text/pushData`, data);

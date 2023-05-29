@@ -22,7 +22,6 @@ import {
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { BoxProps } from '@chakra-ui/react';
 import type { KbDataItemType } from '@/types/plugin';
-import { ModelDataStatusMap } from '@/constants/model';
 import { usePagination } from '@/hooks/usePagination';
 import {
   getKbDataList,
@@ -91,9 +90,9 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     onClose: onCloseSelectCsvModal
   } = useDisclosure();
 
-  const { data: { splitDataQueue = 0, embeddingQueue = 0 } = {}, refetch } = useQuery(
-    ['getModelSplitDataList'],
-    () => getTrainingData(kbId),
+  const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch } = useQuery(
+    ['getModelSplitDataList', kbId],
+    () => getTrainingData({ kbId, init: false }),
     {
       onError(err) {
         console.log(err);
@@ -113,7 +112,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   // interval get data
   useQuery(['refetchData'], () => refetchData(pageNum), {
     refetchInterval: 5000,
-    enabled: splitDataQueue > 0 || embeddingQueue > 0
+    enabled: qaListLen > 0 || vectorListLen > 0
   });
 
   // get al data and export csv
@@ -161,7 +160,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           variant={'outline'}
           mr={[2, 4]}
           size={'sm'}
-          onClick={() => refetchData(pageNum)}
+          onClick={() => {
+            refetchData(pageNum);
+            getTrainingData({ kbId, init: true });
+          }}
         />
         <Button
           variant={'outline'}
@@ -194,10 +196,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         </Menu>
       </Flex>
       <Flex mt={4}>
-        {(splitDataQueue > 0 || embeddingQueue > 0) && (
+        {(qaListLen > 0 || vectorListLen > 0) && (
           <Box fontSize={'xs'}>
-            {splitDataQueue > 0 ? `${splitDataQueue}条数据正在拆分，` : ''}
-            {embeddingQueue > 0 ? `${embeddingQueue}条数据正在生成索引，` : ''}
+            {qaListLen > 0 ? `${qaListLen}条数据正在拆分，` : ''}
+            {vectorListLen > 0 ? `${vectorListLen}条数据正在生成索引，` : ''}
             请耐心等待...
           </Box>
         )}
@@ -237,7 +239,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 </Tooltip>
               </Th>
               <Th>补充知识</Th>
-              <Th>状态</Th>
               <Th>操作</Th>
             </Tr>
           </Thead>
@@ -250,7 +251,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 <Td>
                   <Box {...tdStyles.current}>{item.a || '-'}</Box>
                 </Td>
-                <Td>{ModelDataStatusMap[item.status]}</Td>
                 <Td>
                   <IconButton
                     mr={5}

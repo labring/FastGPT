@@ -1,75 +1,91 @@
-import { SplitData } from '@/service/mongo';
+import { TrainingData } from '@/service/mongo';
 import { getApiKey } from '../utils/auth';
 import { OpenAiChatEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
-import { generateVector } from './generateVector';
-import { openaiError2 } from '../errorCode';
-import { insertKbItem } from '@/service/pg';
-import { SplitDataSchema } from '@/types/mongoSchema';
+import { openaiAccountError } from '../errorCode';
 import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { getErrText } from '@/utils/tools';
 import { BillTypeEnum } from '@/constants/user';
+import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
+import { TrainingModeEnum } from '@/constants/plugin';
+import { ERROR_ENUM } from '../errorCode';
 
-export async function generateQA(next = false): Promise<any> {
-  if (process.env.queueTask !== '1') {
-    try {
-      fetch(process.env.parentUrl || '');
-    } catch (error) {
-      console.log('parentUrl fetch error', error);
-    }
-    return;
-  }
-  if (global.generatingQA === true && !next) return;
+const reduceQueue = () => {
+  global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
+};
 
-  global.generatingQA = true;
+export async function generateQA(): Promise<any> {
+  const maxProcess = Number(process.env.QA_MAX_PROCESS || 10);
 
-  let dataId = null;
+  if (global.qaQueueLen >= maxProcess) return;
+  global.qaQueueLen++;
+
+  let trainingId = '';
+  let userId = '';
 
   try {
-    // 找出一个需要生成的 dataItem
-    const data = await SplitData.aggregate([
-      { $match: { textList: { $exists: true, $ne: [] } } },
-      { $sample: { size: 1 } }
+    const match = {
+      mode: TrainingModeEnum.qa,
+      lockTime: { $lte: new Date(Date.now() - 4 * 60 * 1000) }
+    };
+    // random get task
+    const agree = await TrainingData.aggregate([
+      {
+        $match: match
+      },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          _id: 1
+        }
+      }
     ]);
 
-    const dataItem: SplitDataSchema = data[0];
-
-    if (!dataItem) {
-      console.log('没有需要生成 QA 的数据');
-      global.generatingQA = false;
+    // no task
+    if (agree.length === 0) {
+      reduceQueue();
+      global.qaQueueLen <= 0 && console.log(`没有需要【QA】的数据, ${global.qaQueueLen}`);
       return;
     }
 
-    dataId = dataItem._id;
+    const data = await TrainingData.findOneAndUpdate(
+      {
+        _id: agree[0]._id,
+        ...match
+      },
+      {
+        lockTime: new Date()
+      }
+    ).select({
+      _id: 1,
+      userId: 1,
+      kbId: 1,
+      prompt: 1,
+      q: 1
+    });
 
-    // 获取 5 个源文本
-    const textList: string[] = dataItem.textList.slice(-5);
-
-    // 获取 openapi Key
-    let userOpenAiKey = '',
-      systemAuthKey = '';
-    try {
-      const key = await getApiKey({ model: OpenAiChatEnum.GPT35, userId: dataItem.userId });
-      userOpenAiKey = key.userOpenAiKey;
-      systemAuthKey = key.systemAuthKey;
-    } catch (err: any) {
-      // 余额不够了, 清空该记录
-      await SplitData.findByIdAndUpdate(dataItem._id, {
-        textList: [],
-        errorText: getErrText(err, '获取 OpenAi Key 失败')
-      });
-      generateQA(true);
-      return;
+    // task preemption
+    if (!data) {
+      reduceQueue();
+      return generateQA();
     }
 
-    console.log(`正在生成一组QA, 包含 ${textList.length} 组文本。ID: ${dataItem._id}`);
+    trainingId = data._id;
+    userId = String(data.userId);
+    const kbId = String(data.kbId);
+
+    // 余额校验并获取 openapi Key
+    const { userOpenAiKey, systemAuthKey } = await getApiKey({
+      model: OpenAiChatEnum.GPT35,
+      userId,
+      type: 'training'
+    });
 
     const startTime = Date.now();
 
     // 请求 chatgpt 获取回答
-    const response = await Promise.allSettled(
-      textList.map((text) =>
+    const response = await Promise.all(
+      [data.q].map((text) =>
         modelServiceToolMap[OpenAiChatEnum.GPT35]
           .chatCompletion({
             apiKey: userOpenAiKey || systemAuthKey,
@@ -78,7 +94,7 @@ export async function generateQA(next = false): Promise<any> {
               {
                 obj: ChatRoleEnum.System,
                 value: `你是出题人
-${dataItem.prompt || '下面是"一段长文本"'}
+${data.prompt || '下面是"一段长文本"'}
 从中选出5至20个题目和答案.答案详细.按格式返回: Q1:
 A1:
 Q2:
@@ -98,7 +114,7 @@ A2:
             // 计费
             pushSplitDataBill({
               isPay: !userOpenAiKey && result.length > 0,
-              userId: dataItem.userId,
+              userId: data.userId,
               type: BillTypeEnum.QA,
               textLen: responseMessages.map((item) => item.value).join('').length,
               totalTokens
@@ -116,57 +132,58 @@ A2:
       )
     );
 
-    // 获取成功的回答
-    const successResponse: {
-      rawContent: string;
-      result: {
-        q: string;
-        a: string;
-      }[];
-    }[] = response.filter((item) => item.status === 'fulfilled').map((item: any) => item.value);
+    const responseList = response.map((item) => item.result).flat();
 
-    const resultList = successResponse.map((item) => item.result).flat();
+    // 创建 向量生成 队列
+    await pushDataToKb({
+      kbId,
+      data: responseList,
+      userId,
+      mode: TrainingModeEnum.index
+    });
 
-    await Promise.allSettled([
-      // 删掉后5个数据
-      SplitData.findByIdAndUpdate(dataItem._id, {
-        textList: dataItem.textList.slice(0, -5)
-      }),
-      // 生成的内容插入 pg
-      insertKbItem({
-        userId: dataItem.userId,
-        kbId: dataItem.kbId,
-        data: resultList
-      })
-    ]);
+    // delete data from training
+    await TrainingData.findByIdAndDelete(data._id);
+
     console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
 
-    generateQA(true);
-    generateVector();
-  } catch (error: any) {
+    reduceQueue();
+    generateQA();
+  } catch (err: any) {
+    reduceQueue();
     // log
-    if (error?.response) {
+    if (err?.response) {
       console.log('openai error: 生成QA错误');
-      console.log(error.response?.status, error.response?.statusText, error.response?.data);
+      console.log(err.response?.status, err.response?.statusText, err.response?.data);
     } else {
-      console.log('生成QA错误:', error);
+      console.log('生成QA错误:', err);
     }
 
-    // 没有余额或者凭证错误时，拒绝任务
-    if (dataId && openaiError2[error?.response?.data?.error?.type]) {
-      console.log(openaiError2[error?.response?.data?.error?.type], '删除QA任务');
+    // message error or openai account error
+    if (
+      err?.message === 'invalid message format' ||
+      err.response?.statusText === 'Unauthorized' ||
+      openaiAccountError[err?.response?.data?.error?.code || err?.response?.data?.error?.type]
+    ) {
+      await TrainingData.findByIdAndRemove(trainingId);
+    }
 
-      await SplitData.findByIdAndUpdate(dataId, {
-        textList: [],
-        errorText: 'api 余额不足'
+    // 账号余额不足，删除任务
+    if (err === ERROR_ENUM.insufficientQuota) {
+      console.log('余额不足，删除向量生成任务');
+      await TrainingData.deleteMany({
+        userId
       });
-
-      generateQA(true);
-      return;
+      return generateQA();
     }
+
+    // unlock
+    await TrainingData.findByIdAndUpdate(trainingId, {
+      lockTime: new Date('2000/1/1')
+    });
 
     setTimeout(() => {
-      generateQA(true);
+      generateQA();
     }, 1000);
   }
 }

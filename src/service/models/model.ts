@@ -2,7 +2,7 @@ import { Schema, model, models, Model as MongoModel } from 'mongoose';
 import { ModelSchema as ModelType } from '@/types/mongoSchema';
 import {
   ModelVectorSearchModeMap,
-  ModelVectorSearchModeEnum,
+  appVectorSearchModeEnum,
   ChatModelMap,
   OpenAiChatEnum
 } from '@/constants/model';
@@ -40,7 +40,7 @@ const ModelSchema = new Schema({
       // knowledge base search mode
       type: String,
       enum: Object.keys(ModelVectorSearchModeMap),
-      default: ModelVectorSearchModeEnum.hightSimilarity
+      default: appVectorSearchModeEnum.hightSimilarity
     },
     systemPrompt: {
       // 系统提示词

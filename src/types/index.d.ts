@@ -5,12 +5,12 @@ import type { Pool } from 'pg';
 declare global {
   var mongodb: Mongoose | string | null;
   var pgClient: Pool | null;
-  var generatingQA: boolean;
-  var generatingVector: boolean;
   var httpsAgent: Agent;
   var particlesJS: any;
   var grecaptcha: any;
   var QRCode: any;
+  var qaQueueLen: number;
+  var vectorQueueLen: number;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

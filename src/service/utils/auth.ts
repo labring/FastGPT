@@ -5,11 +5,13 @@ import { Chat, Model, OpenApi, User, ShareChat, KB } from '../mongo';
 import type { ModelSchema } from '@/types/mongoSchema';
 import type { ChatItemSimpleType } from '@/types/chat';
 import mongoose from 'mongoose';
-import { ClaudeEnum, defaultModel } from '@/constants/model';
+import { ClaudeEnum, defaultModel, embeddingModel, EmbeddingModelType } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
 import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
 import { hashPassword } from '@/service/utils/tools';
+
+export type ApiKeyType = 'training' | 'chat';
 
 export const parseCookie = (cookie?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -118,9 +120,15 @@ export const authUser = async ({
 };
 
 /* random get openai api key */
-export const getSystemOpenAiKey = () => {
+export const getSystemOpenAiKey = (type: ApiKeyType) => {
+  const keys = (() => {
+    if (type === 'training') {
+      return process.env.OPENAI_TRAINING_KEY?.split(',') || [];
+    }
+    return process.env.OPENAIKEY?.split(',') || [];
+  })();
+
   // 纯字符串类型
-  const keys = process.env.OPENAIKEY?.split(',') || [];
   const i = Math.floor(Math.random() * keys.length);
   return keys[i] || (process.env.OPENAIKEY as string);
 };
@@ -129,11 +137,13 @@ export const getSystemOpenAiKey = () => {
 export const getApiKey = async ({
   model,
   userId,
-  mustPay = false
+  mustPay = false,
+  type = 'chat'
 }: {
   model: ChatModelType;
   userId: string;
   mustPay?: boolean;
+  type?: ApiKeyType;
 }) => {
   const user = await User.findById(userId);
   if (!user) {
@@ -143,7 +153,7 @@ export const getApiKey = async ({
   const keyMap = {
     [OpenAiChatEnum.GPT35]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey() as string
+      systemAuthKey: getSystemOpenAiKey(type) as string
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',

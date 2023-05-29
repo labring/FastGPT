@@ -19,6 +19,8 @@ import { postKbDataFromList } from '@/api/plugins/kb';
 import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { fileDownload } from '@/utils/file';
+import { TrainingModeEnum } from '@/constants/plugin';
+import { getErrText } from '@/utils/tools';
 
 const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
@@ -35,6 +37,7 @@ const SelectJsonModal = ({
   const { toast } = useToast();
   const { File, onOpen } = useSelectFile({ fileType: '.csv', multiple: false });
   const [fileData, setFileData] = useState<{ q: string; a: string }[]>([]);
+  const [successData, setSuccessData] = useState(0);
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认导入该数据集?'
   });
@@ -55,9 +58,8 @@ const SelectJsonModal = ({
           }))
         );
       } catch (error: any) {
-        console.log(error);
         toast({
-          title: error?.message || 'csv 文件格式有误',
+          title: getErrText(error, 'csv 文件格式有误'),
           status: 'error'
         });
       }
@@ -66,26 +68,35 @@ const SelectJsonModal = ({
     [setSelecting, toast]
   );
 
-  const { mutate, isLoading } = useMutation({
+  const { mutate, isLoading: uploading } = useMutation({
     mutationFn: async () => {
       if (!fileData || fileData.length === 0) return;
 
-      const res = await postKbDataFromList({
-        kbId,
-        data: fileData
-      });
+      let success = 0;
+
+      // subsection import
+      const step = 50;
+      for (let i = 0; i < fileData.length; i += step) {
+        const { insertLen } = await postKbDataFromList({
+          kbId,
+          data: fileData.slice(i, i + step),
+          mode: TrainingModeEnum.index
+        });
+        success += insertLen || 0;
+        setSuccessData((state) => state + step);
+      }
 
       toast({
-        title: `导入数据成功，最终导入: ${res || 0} 条数据。需要一段时间训练`,
+        title: `导入数据成功，最终导入: ${success} 条数据。需要一段时间训练`,
         status: 'success',
         duration: 4000
       });
       onClose();
       onSuccess();
     },
-    onError() {
+    onError(err) {
       toast({
-        title: '导入文件失败',
+        title: getErrText(err, '导入文件失败'),
         status: 'error'
       });
     }
@@ -119,15 +130,15 @@ const SelectJsonModal = ({
               点击下载csv模板
             </Box>
             <Flex alignItems={'center'}>
-              <Button isLoading={selecting} onClick={onOpen}>
+              <Button isLoading={selecting} isDisabled={uploading} onClick={onOpen}>
                 选择 csv 问答对
               </Button>
 
-              <Box ml={4}>一共 {fileData.length} 组数据</Box>
+              <Box ml={4}>一共 {fileData.length} 组数据（下面最多展示100组）</Box>
             </Flex>
           </Box>
           <Box flex={'3 0 0'} h={'100%'} overflow={'auto'} p={2} backgroundColor={'blackAlpha.50'}>
-            {fileData.map((item, index) => (
+            {fileData.slice(0, 100).map((item, index) => (
               <Box key={index}>
                 <Box>
                   Q{index + 1}. {item.q}
@@ -142,15 +153,15 @@ const SelectJsonModal = ({
 
         <Flex px={6} pt={2} pb={4}>
           <Box flex={1}></Box>
-          <Button variant={'outline'} mr={3} onClick={onClose}>
+          <Button variant={'outline'} isLoading={uploading} mr={3} onClick={onClose}>
             取消
           </Button>
-          <Button
-            isLoading={isLoading}
-            isDisabled={fileData.length === 0}
-            onClick={openConfirm(mutate)}
-          >
-            确认导入
+          <Button isDisabled={fileData.length === 0 || uploading} onClick={openConfirm(mutate)}>
+            {uploading ? (
+              <Box>{Math.round((successData / fileData.length) * 100)}%</Box>
+            ) : (
+              '确认导入'
+            )}
           </Button>
         </Flex>
       </ModalContent>

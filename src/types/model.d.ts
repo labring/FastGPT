@@ -1,6 +1,6 @@
 import { ModelStatusEnum } from '@/constants/model';
 import type { ModelSchema, kbSchema } from './mongoSchema';
-import { ChatModelType, ModelVectorSearchModeEnum } from '@/constants/model';
+import { ChatModelType, appVectorSearchModeEnum } from '@/constants/model';
 
 export type ModelListItemType = {
   _id: string;

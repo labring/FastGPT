@@ -5,6 +5,7 @@ import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 interface ConfigType {
   headers?: { [key: string]: string };
   hold?: boolean;
+  timeout?: number;
 }
 interface ResponseDataType {
   code: number;

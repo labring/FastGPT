@@ -13,6 +13,8 @@ import {
 import { useForm } from 'react-hook-form';
 import { postKbDataFromList, putKbDataById } from '@/api/plugins/kb';
 import { useToast } from '@/hooks/useToast';
+import { TrainingModeEnum } from '@/constants/plugin';
+import { getErrText } from '@/utils/tools';
 
 export type FormData = { dataId?: string; a: string; q: string };
 
@@ -52,31 +54,39 @@ const InputDataModal = ({
       setLoading(true);
 
       try {
-        const res = await postKbDataFromList({
+        const { insertLen } = await postKbDataFromList({
           kbId,
           data: [
             {
               a: e.a,
               q: e.q
             }
-          ]
+          ],
+          mode: TrainingModeEnum.index
         });
 
-        toast({
-          title: res === 0 ? '可能已存在完全一致的数据' : '导入数据成功,需要一段时间训练',
-          status: 'success'
-        });
-        reset({
-          a: '',
-          q: ''
-        });
+        if (insertLen === 0) {
+          toast({
+            title: '已存在完全一致的数据',
+            status: 'warning'
+          });
+        } else {
+          toast({
+            title: '导入数据成功,需要一段时间训练',
+            status: 'success'
+          });
+          reset({
+            a: '',
+            q: ''
+          });
+        }
+
         onSuccess();
       } catch (err: any) {
         toast({
-          title: err?.message || '出现了点意外~',
+          title: getErrText(err, '出现了点意外~'),
           status: 'error'
         });
-        console.log(err);
       }
       setLoading(false);
     },
