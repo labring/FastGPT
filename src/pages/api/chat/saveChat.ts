@@ -51,7 +51,7 @@ export async function saveChat({
   userId
 }: Props & { userId: string }) {
   await connectToDatabase();
-  await authModel({ modelId, userId, authOwner: false });
+  const { model } = await authModel({ modelId, userId, authOwner: false });
 
   const content = prompts.map((item) => ({
     _id: item._id ? new mongoose.Types.ObjectId(item._id) : undefined,
@@ -89,9 +89,14 @@ export async function saveChat({
             latestChat: content[1].value
           }).then((res) => res._id)
         ]),
-    Model.findByIdAndUpdate(modelId, {
-      updateTime: new Date()
-    }) // update model
+    // update model
+    ...(String(model.userId) === userId
+      ? [
+          Model.findByIdAndUpdate(modelId, {
+            updateTime: new Date()
+          })
+        ]
+      : [])
   ]);
 
   return {
