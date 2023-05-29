@@ -38,7 +38,6 @@ import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
-import { LOGO_ICON } from '@/constants/chat';
 import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
 import { fileDownload } from '@/utils/file';
@@ -49,6 +48,7 @@ import Markdown from '@/components/Markdown';
 import SideBar from '@/components/SideBar';
 import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
+import { HUMAN_ICON } from '@/constants/chat';
 
 const ShareHistory = dynamic(() => import('./components/ShareHistory'), {
   loading: () => <Loading fixed={false} />,
@@ -101,7 +101,6 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
   const { copyData } = useCopyData();
   const { isPc } = useGlobalStore();
   const { Loading, setIsLoading } = useLoading();
-  const { userInfo } = useUserStore();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const {
     isOpen: isOpenPassword,
@@ -628,8 +627,8 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
                       <Avatar
                         src={
                           item.obj === 'Human'
-                            ? userInfo?.avatar || '/icon/human.png'
-                            : shareChatData.model.avatar || LOGO_ICON
+                            ? shareChatData.userAvatar || HUMAN_ICON
+                            : shareChatData.model.avatar
                         }
                         w={['20px', '34px']}
                         h={['20px', '34px']}

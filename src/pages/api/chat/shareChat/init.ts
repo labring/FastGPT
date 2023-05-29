@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ShareChat } from '@/service/mongo';
+import { connectToDatabase, ShareChat, User } from '@/service/mongo';
 import type { InitShareChatResponse } from '@/api/response/chat';
 import { authModel } from '@/service/utils/auth';
 import { hashPassword } from '@/service/utils/tools';
+import { HUMAN_ICON } from '@/constants/chat';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,9 +41,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       authOwner: false
     });
 
+    const user = await User.findById(shareChat.userId, 'avatar');
+
     jsonRes<InitShareChatResponse>(res, {
       data: {
         maxContext: shareChat.maxContext,
+        userAvatar: user?.avatar || HUMAN_ICON,
         model: {
           name: model.name,
           avatar: model.avatar,

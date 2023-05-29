@@ -5,6 +5,7 @@ import MyIcon from '../Icon';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
 import Avatar from '../Avatar';
+import { HUMAN_ICON } from '@/constants/chat';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -83,7 +84,7 @@ const Navbar = () => {
         cursor={'pointer'}
         onClick={() => router.push('/number')}
       >
-        <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={'/icon/human.png'} />
+        <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={HUMAN_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>

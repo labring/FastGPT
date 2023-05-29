@@ -36,7 +36,6 @@ import { streamFetch } from '@/api/fetch';
 import MyIcon from '@/components/Icon';
 import { throttle } from 'lodash';
 import { Types } from 'mongoose';
-import { LOGO_ICON } from '@/constants/chat';
 import { ChatModelMap } from '@/constants/model';
 import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
@@ -49,6 +48,7 @@ import SideBar from '@/components/SideBar';
 import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
 import QuoteModal from './components/QuoteModal';
+import { HUMAN_ICON } from '@/constants/chat';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
   ssr: false
@@ -713,8 +713,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                           className="avatar"
                           src={
                             item.obj === 'Human'
-                              ? userInfo?.avatar || '/icon/human.png'
-                              : chatData.model.avatar || LOGO_ICON
+                              ? userInfo?.avatar || HUMAN_ICON
+                              : chatData.model.avatar
                           }
                           w={['20px', '34px']}
                           h={['20px', '34px']}
