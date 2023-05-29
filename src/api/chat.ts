@@ -62,7 +62,7 @@ export const createShareChat = (
 ) => POST<string>(`/chat/shareChat/create`, data);
 
 /**
- * get  shareChat
+ * get shareChat
  */
 export const getShareChatList = (modelId: string) =>
   GET<ShareChatSchema[]>(`/chat/shareChat/list?modelId=${modelId}`);

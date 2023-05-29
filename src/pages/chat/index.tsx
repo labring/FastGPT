@@ -105,7 +105,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const { copyData } = useCopyData();
   const { isPc } = useGlobalStore();
   const { Loading, setIsLoading } = useLoading();
-  const { userInfo } = useUserStore();
+  const { userInfo, loadMyModels } = useUserStore();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
   // close contextMenu
@@ -228,13 +228,21 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         })
       }));
 
-      // refresh history
-      setTimeout(() => {
-        loadHistory({ pageNum: 1, init: true });
-        generatingMessage();
-      }, 100);
+      // refresh data
+      loadHistory({ pageNum: 1, init: true });
+      loadMyModels(true);
+      generatingMessage();
     },
-    [chatId, setForbidLoadChatData, generatingMessage, loadHistory, modelId, router, setChatData]
+    [
+      chatId,
+      modelId,
+      setChatData,
+      loadHistory,
+      loadMyModels,
+      generatingMessage,
+      setForbidLoadChatData,
+      router
+    ]
   );
 
   /**
@@ -458,14 +466,14 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     async ({
       modelId,
       chatId,
-      isLoading = false
+      loading = false
     }: {
       modelId: string;
       chatId: string;
-      isLoading?: boolean;
+      loading?: boolean;
     }) => {
-      isLoading && setIsLoading(true);
       try {
+        loading && setIsLoading(true);
         const res = await getInitChatSiteInfo(modelId, chatId);
 
         setChatData({
@@ -500,18 +508,18 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       return null;
     },
     [
-      router,
-      loadHistory,
-      setForbidLoadChatData,
-      scrollToBottom,
-      setChatData,
       setIsLoading,
+      setChatData,
+      scrollToBottom,
+      setForbidLoadChatData,
+      router,
+      setLastChatModelId,
       setLastChatId,
-      setLastChatModelId
+      loadHistory
     ]
   );
   // 初始化聊天框
-  const { isLoading } = useQuery(['init', modelId, chatId], () => {
+  useQuery(['init', modelId, chatId], () => {
     // pc: redirect to latest model chat
     if (!modelId && lastChatModelId) {
       router.replace(`/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`);
@@ -529,7 +537,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
 
     return loadChatInfo({
       modelId,
-      chatId
+      chatId,
+      loading: true
     });
   });
 
@@ -874,7 +883,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             </Box>
           )}
 
-          <Loading loading={isLoading} fixed={false} />
+          <Loading fixed={false} />
         </Flex>
       )}
 
