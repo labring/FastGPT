@@ -1,7 +1,8 @@
-import React, { useCallback, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react';
 import type { MouseEvent } from 'react';
-import { AddIcon } from '@chakra-ui/icons';
+import { AddIcon, EditIcon, CheckIcon, CloseIcon, DeleteIcon } from '@chakra-ui/icons';
 import {
+  Input,
   Box,
   Button,
   Flex,
@@ -16,14 +17,64 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useLoading } from '@/hooks/useLoading';
 import { useUserStore } from '@/store/user';
-import { formatTimeToChatTime } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import type { HistoryItemType, ExportChatType } from '@/types/chat';
 import { useChatStore } from '@/store/chat';
+import { updateChatHistoryTitle } from '@/api/chat';
 import ModelList from './ModelList';
 import { useGlobalStore } from '@/store/global';
-
 import styles from '../index.module.scss';
+
+type UseEditTitleReturnType = {
+  editingHistoryId: string | null;
+  setEditingHistoryId: React.Dispatch<React.SetStateAction<string | null>>;
+  editedTitle: string;
+  setEditedTitle: React.Dispatch<React.SetStateAction<string>>;
+  inputRef: React.RefObject<HTMLInputElement>;
+  onEditClick: (id: string, title: string) => void;
+  onSaveClick: (chatId: string, modelId: string, editedTitle: string) => Promise<void>;
+  onCloseClick: () => void;
+};
+
+const useEditTitle = (): UseEditTitleReturnType => {
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
+  const [editedTitle, setEditedTitle] = useState<string>('');
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const onEditClick = (id: string, title: string) => {
+    setEditingHistoryId(id);
+    setEditedTitle(title);
+    inputRef.current && inputRef.current.focus();
+  };
+
+  const onSaveClick = async (chatId: string, modelId: string, editedTitle: string) => {
+    setEditingHistoryId(null);
+
+    await updateChatHistoryTitle({ chatId: chatId, modelId: modelId, newTitle: editedTitle });
+  };
+
+  const onCloseClick = () => {
+    setEditingHistoryId(null);
+  };
+
+  useEffect(() => {
+    if (editingHistoryId) {
+      inputRef.current && inputRef.current.focus();
+    }
+  }, [editingHistoryId]);
+
+  return {
+    editingHistoryId,
+    setEditingHistoryId,
+    editedTitle,
+    setEditedTitle,
+    inputRef,
+    onEditClick,
+    onSaveClick,
+    onCloseClick
+  };
+};
 
 const PcSliderBar = ({
   onclickDelHistory,
@@ -32,6 +83,17 @@ const PcSliderBar = ({
   onclickDelHistory: (historyId: string) => Promise<void>;
   onclickExportChat: (type: ExportChatType) => void;
 }) => {
+  // 使用自定义的useEditTitle hook来管理聊天标题的编辑状态
+  const {
+    editingHistoryId,
+    editedTitle,
+    setEditedTitle,
+    inputRef,
+    onEditClick,
+    onSaveClick,
+    onCloseClick
+  } = useEditTitle();
+
   const router = useRouter();
   const { modelId = '', chatId = '' } = router.query as { modelId: string; chatId: string };
   const theme = useTheme();
@@ -170,12 +232,46 @@ const PcSliderBar = ({
             <ChatIcon fontSize={'16px'} color={'myGray.500'} />
             <Box flex={'1 0 0'} w={0} ml={3}>
               <Flex alignItems={'center'}>
-                <Box flex={'1 0 0'} w={0} className="textEllipsis" color={'myGray.1000'}>
-                  {item.title}
-                </Box>
-                <Box color={'myGray.400'} fontSize={'sm'}>
-                  {formatTimeToChatTime(item.updateTime)}
-                </Box>
+                {editingHistoryId === item._id ? (
+                  <Input
+                    ref={inputRef}
+                    value={editedTitle}
+                    onChange={(e: { target: { value: React.SetStateAction<string> } }) =>
+                      setEditedTitle(e.target.value)
+                    }
+                    onBlur={onCloseClick}
+                    height={'1.5em'}
+                    paddingLeft={'0.5'}
+                    style={{ width: '65%' }} // 设置输入框宽度为父元素宽度的一半
+                  />
+                ) : (
+                  <Box flex={'1 0 0'} w={0} className="textEllipsis" color={'myGray.1000'}>
+                    {item.title}
+                  </Box>
+                )}
+
+                {/* 编辑状态下显示确认和取消按钮 */}
+                {editingHistoryId === item._id ? (
+                  <>
+                    <Box mx={1}>
+                      <CheckIcon
+                        onMouseDown={async (event) => {
+                          event.preventDefault();
+                          setIsLoading(true);
+                          try {
+                            await onSaveClick(item._id, item.modelId, editedTitle);
+                            await loadHistory({ pageNum: 1, init: true });
+                          } catch (error) {
+                            console.log(error);
+                          }
+                          setIsLoading(false);
+                        }}
+                        _hover={{ color: 'blue.500' }}
+                        paddingLeft={'1'}
+                      />
+                    </Box>
+                  </>
+                ) : null}
               </Flex>
               <Box className="textEllipsis" mt={1} fontSize={'sm'} color={'myGray.500'}>
                 {item.latestChat || '……'}
@@ -231,6 +327,17 @@ const PcSliderBar = ({
                 }}
               >
                 删除记录
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  try {
+                    onEditClick(contextMenuData.history._id, contextMenuData.history.title);
+                  } catch (error) {
+                    console.log(error);
+                  }
+                }}
+              >
+                编辑标题
               </MenuItem>
               <MenuItem onClick={() => onclickExportChat('html')}>导出HTML格式</MenuItem>
               <MenuItem onClick={() => onclickExportChat('pdf')}>导出PDF格式</MenuItem>

@@ -88,6 +88,7 @@ export interface ChatSchema {
   loadAmount: number;
   updateTime: Date;
   content: ChatItemType[];
+  customTitle: Boolean;
 }
 export interface ChatPopulate extends ChatSchema {
   userId: UserModelSchema;
