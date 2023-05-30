@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       {
         $set: {
-          'content.$.quote.$[quoteElem].isEdit': true
+          'content.$.quote.$[quoteElem].source': '手动修改'
         }
       },
       {

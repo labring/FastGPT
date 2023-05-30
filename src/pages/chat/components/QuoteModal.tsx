@@ -126,7 +126,7 @@ const QuoteModal = ({
                 position={'relative'}
                 _hover={{ '& .edit': { display: 'flex' } }}
               >
-                {item.isEdit && <Box color={'myGray.600'}>(编辑过)</Box>}
+                {item.source && <Box color={'myGray.600'}>({item.source})</Box>}
                 <Box>{item.q}</Box>
                 <Box>{item.a}</Box>
                 <Box
