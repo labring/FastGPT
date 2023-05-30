@@ -37,6 +37,7 @@ const SelectJsonModal = ({
   const { toast } = useToast();
   const { File, onOpen } = useSelectFile({ fileType: '.csv', multiple: false });
   const [fileData, setFileData] = useState<{ q: string; a: string }[]>([]);
+  const [fileName, setFileName] = useState('');
   const [successData, setSuccessData] = useState(0);
   const { openConfirm, ConfirmChild } = useConfirm({
     content: '确认导入该数据集?'
@@ -46,6 +47,7 @@ const SelectJsonModal = ({
     async (e: File[]) => {
       const file = e[0];
       setSelecting(true);
+      setFileName(file.name);
       try {
         const { header, data } = await readCsvContent(file);
         if (header[0] !== 'question' || header[1] !== 'answer') {
@@ -75,11 +77,14 @@ const SelectJsonModal = ({
       let success = 0;
 
       // subsection import
-      const step = 50;
+      const step = 100;
       for (let i = 0; i < fileData.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
-          data: fileData.slice(i, i + step),
+          data: fileData.slice(i, i + step).map((item) => ({
+            ...item,
+            source: fileName
+          })),
           mode: TrainingModeEnum.index
         });
         success += insertLen || 0;
@@ -129,13 +134,14 @@ const SelectJsonModal = ({
             >
               点击下载csv模板
             </Box>
-            <Flex alignItems={'center'}>
+            <Box>
               <Button isLoading={selecting} isDisabled={uploading} onClick={onOpen}>
                 选择 csv 问答对
               </Button>
-
-              <Box ml={4}>一共 {fileData.length} 组数据（下面最多展示100组）</Box>
-            </Flex>
+              <Box mt={4}>
+                【{fileName}】一共有 {fileData.length} 组数据（下面最多展示100组）
+              </Box>
+            </Box>
           </Box>
           <Box flex={'3 0 0'} h={'100%'} overflow={'auto'} p={2} backgroundColor={'blackAlpha.50'}>
             {fileData.slice(0, 100).map((item, index) => (

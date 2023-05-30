@@ -10,8 +10,7 @@ export interface KbDataItemType {
   id: string;
   q: string; // 提问词
   a: string; // 原文
-  kbId: string;
-  userId: string;
+  source: string;
 }
 
 export type TextPluginRequestParams = {

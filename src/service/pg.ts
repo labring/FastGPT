@@ -172,12 +172,14 @@ export const insertKbItem = ({
     vector: number[];
     q: string;
     a: string;
+    source?: string;
   }[];
 }) => {
   return PgClient.insert('modelData', {
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
+      { key: 'source', value: item.source?.slice(0, 30)?.trim() || '' },
       { key: 'q', value: item.q.replace(/'/g, '"') },
       { key: 'a', value: item.a.replace(/'/g, '"') },
       { key: 'vector', value: `[${item.vector}]` }

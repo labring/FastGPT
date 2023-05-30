@@ -57,7 +57,8 @@ export async function generateVector(): Promise<any> {
       userId: 1,
       kbId: 1,
       q: 1,
-      a: 1
+      a: 1,
+      source: 1
     });
 
     // task preemption
@@ -91,6 +92,7 @@ export async function generateVector(): Promise<any> {
       data: vectors.map((vector, i) => ({
         q: dataItems[i].q,
         a: dataItems[i].a,
+        source: data.source,
         vector
       }))
     });

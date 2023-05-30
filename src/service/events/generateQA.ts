@@ -61,7 +61,8 @@ export async function generateQA(): Promise<any> {
       userId: 1,
       kbId: 1,
       prompt: 1,
-      q: 1
+      q: 1,
+      source: 1
     });
 
     // task preemption
@@ -137,7 +138,10 @@ A2:
     // 创建 向量生成 队列
     await pushDataToKb({
       kbId,
-      data: responseList,
+      data: responseList.map((item) => ({
+        ...item,
+        source: data.source
+      })),
       userId,
       mode: TrainingModeEnum.index
     });

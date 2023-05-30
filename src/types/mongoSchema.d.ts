@@ -78,6 +78,7 @@ export interface TrainingDataSchema {
   prompt: string;
   q: string;
   a: string;
+  source: string;
 }
 
 export interface ChatSchema {

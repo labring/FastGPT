@@ -56,13 +56,14 @@ const InputDataModal = ({
       try {
         const { insertLen } = await postKbDataFromList({
           kbId,
+          mode: TrainingModeEnum.index,
           data: [
             {
               a: e.a,
-              q: e.q
+              q: e.q,
+              source: '手动录入'
             }
-          ],
-          mode: TrainingModeEnum.index
+          ]
         });
 
         if (insertLen === 0) {

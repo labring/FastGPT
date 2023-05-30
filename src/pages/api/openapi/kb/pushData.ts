@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { KbDataItemType } from '@/types/plugin';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
@@ -9,9 +8,11 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
 
+type DateItemType = { a: string; q: string; source?: string };
+
 export type Props = {
   kbId: string;
-  data: { a: KbDataItemType['a']; q: KbDataItemType['q'] }[];
+  data: DateItemType[];
   mode: `${TrainingModeEnum}`;
   prompt?: string;
 };
@@ -63,10 +64,7 @@ export async function pushDataToKb({
 
   // 过滤重复的 qa 内容
   const set = new Set();
-  const filterData: {
-    a: string;
-    q: string;
-  }[] = [];
+  const filterData: DateItemType[] = [];
 
   data.forEach((item) => {
     const text = item.q + item.a;
@@ -79,11 +77,12 @@ export async function pushDataToKb({
   // 数据库去重
   const insertData = (
     await Promise.allSettled(
-      filterData.map(async ({ q, a = '' }) => {
+      filterData.map(async ({ q, a = '', source }) => {
         if (mode !== TrainingModeEnum.index) {
           return Promise.resolve({
             q,
-            a
+            a,
+            source
           });
         }
 
@@ -112,19 +111,21 @@ export async function pushDataToKb({
         }
         return Promise.resolve({
           q,
-          a
+          a,
+          source
         });
       })
     )
   )
     .filter((item) => item.status === 'fulfilled')
-    .map<{ q: string; a: string }>((item: any) => item.value);
+    .map<DateItemType>((item: any) => item.value);
 
   // 插入记录
   await TrainingData.insertMany(
     insertData.map((item) => ({
       q: item.q,
       a: item.a,
+      source: item.source,
       userId,
       kbId,
       mode,

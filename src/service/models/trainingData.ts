@@ -38,8 +38,9 @@ const TrainingDataSchema = new Schema({
     type: String,
     default: ''
   },
-  vectorList: {
-    type: Object
+  source: {
+    type: String,
+    default: ''
   }
 });
 
