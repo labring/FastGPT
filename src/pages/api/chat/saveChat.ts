@@ -58,11 +58,7 @@ export async function saveChat({
     obj: item.obj,
     value: item.value,
     systemPrompt: item.systemPrompt,
-    quote:
-      item.quote?.map((item) => ({
-        ...item,
-        isEdit: false
-      })) || []
+    quote: item.quote || []
   }));
 
   const [id] = await Promise.all([

@@ -12,7 +12,7 @@ import { ChatRoleEnum } from '@/constants/chat';
 import { openaiEmbedding } from '../plugin/openaiEmbedding';
 import { modelToolMap } from '@/utils/plugin';
 
-export type QuoteItemType = { id: string; q: string; a: string; isEdit: boolean };
+export type QuoteItemType = { id: string; q: string; a: string; source?: string };
 type Props = {
   prompts: ChatItemSimpleType[];
   similarity: number;
@@ -92,7 +92,7 @@ export async function appKbSearch({
 
   // search kb
   const { rows: searchRes } = await PgClient.select<QuoteItemType>('modelData', {
-    fields: ['id', 'q', 'a'],
+    fields: ['id', 'q', 'a', 'source'],
     where: [
       `kb_id IN (${model.chat.relatedKbs.map((item) => `'${item}'`).join(',')})`,
       'AND',

@@ -60,7 +60,7 @@ const ChatSchema = new Schema({
               id: String,
               q: String,
               a: String,
-              isEdit: Boolean
+              source: String
             }
           ],
           default: []
