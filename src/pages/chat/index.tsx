@@ -211,8 +211,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
       }
 
-      abortSignal.signal.aborted && (await delay(600));
-
       // 设置聊天内容为完成状态
       setChatData((state) => ({
         ...state,
@@ -229,9 +227,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       }));
 
       // refresh data
+      generatingMessage();
       loadHistory({ pageNum: 1, init: true });
       loadMyModels(true);
-      generatingMessage();
     },
     [
       chatId,
