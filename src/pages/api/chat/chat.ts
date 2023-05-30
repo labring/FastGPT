@@ -129,7 +129,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     // 发出 chat 请求
-    const { streamResponse } = await modelServiceToolMap[model.chat.chatModel].chatCompletion({
+    const { streamResponse, responseMessages } = await modelServiceToolMap[
+      model.chat.chatModel
+    ].chatCompletion({
       apiKey: userOpenAiKey || systemAuthKey,
       temperature: +temperature,
       messages: prompts,
@@ -147,7 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: model.chat.chatModel,
         res,
         chatResponse: streamResponse,
-        prompts
+        prompts: responseMessages
       });
 
       // save chat

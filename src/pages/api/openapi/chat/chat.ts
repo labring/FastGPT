@@ -140,7 +140,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             model: model.chat.chatModel,
             res,
             chatResponse: streamResponse,
-            prompts
+            prompts: responseMessages
           });
           res.end();
           return {
