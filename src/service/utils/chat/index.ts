@@ -89,39 +89,55 @@ export const ChatContextFilter = ({
   prompts: ChatItemSimpleType[];
   maxTokens: number;
 }) => {
+  const systemPrompts: ChatItemSimpleType[] = [];
+  const chatPrompts: ChatItemSimpleType[] = [];
+
   let rawTextLen = 0;
-  const formatPrompts = prompts.map<ChatItemSimpleType>((item) => {
+  prompts.forEach((item) => {
     const val = simplifyStr(item.value);
     rawTextLen += val.length;
-    return {
+
+    const data = {
       obj: item.obj,
       value: val
     };
+
+    if (item.obj === ChatRoleEnum.System) {
+      systemPrompts.push(data);
+    } else {
+      chatPrompts.push(data);
+    }
   });
 
   // 长度太小时，不需要进行 token 截断
-  if (formatPrompts.length <= 2 || rawTextLen < maxTokens * 0.5) {
-    return formatPrompts;
+  if (rawTextLen < maxTokens * 0.5) {
+    return [...systemPrompts, ...chatPrompts];
   }
+
+  // 去掉 system 的 token
+  maxTokens -= modelToolMap[model].countTokens({
+    messages: systemPrompts
+  });
 
   // 根据 tokens 截断内容
   const chats: ChatItemSimpleType[] = [];
 
   // 从后往前截取对话内容
-  for (let i = formatPrompts.length - 1; i >= 0; i--) {
-    chats.unshift(formatPrompts[i]);
+  for (let i = chatPrompts.length - 1; i >= 0; i--) {
+    chats.unshift(chatPrompts[i]);
 
     const tokens = modelToolMap[model].countTokens({
       messages: chats
     });
 
     /* 整体 tokens 超出范围, system必须保留 */
-    if (tokens >= maxTokens && formatPrompts[i].obj !== ChatRoleEnum.System) {
-      return chats.slice(1);
+    if (tokens >= maxTokens) {
+      chats.shift();
+      break;
     }
   }
 
-  return chats;
+  return [...systemPrompts, ...chats];
 };
 
 /* stream response */

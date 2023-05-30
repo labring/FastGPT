@@ -50,6 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 读取对话内容
     const prompts = [...content, prompt[0]];
+
     const {
       code = 200,
       systemPrompts = [],
@@ -61,7 +62,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { code, searchPrompts, rawSearch, guidePrompt } = await appKbSearch({
           model,
           userId,
-          prompts,
+          fixedQuote: content[content.length - 1]?.quote || [],
+          prompt: prompt[0],
           similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity
         });
 
@@ -114,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.end(response);
     }
 
-    prompts.splice(prompts.length - 3, 0, ...systemPrompts);
+    prompts.unshift(...systemPrompts);
 
     // content check
     await sensitiveCheck({

@@ -280,7 +280,8 @@ export const authChat = async ({
       {
         $project: {
           obj: '$content.obj',
-          value: '$content.value'
+          value: '$content.value',
+          quote: '$content.quote'
         }
       }
     ]);

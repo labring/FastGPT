@@ -5,7 +5,7 @@ import { RequestPaging } from '../types/index';
 import type { ShareChatSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/model';
 import { Obj2Query } from '@/utils/tools';
-import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
+import type { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
 
 /**

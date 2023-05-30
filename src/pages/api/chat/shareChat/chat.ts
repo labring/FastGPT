@@ -47,7 +47,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { code, searchPrompts } = await appKbSearch({
           model,
           userId,
-          prompts,
+          fixedQuote: [],
+          prompt: prompts[prompts.length - 1],
           similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity
         });
 
@@ -74,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.send(systemPrompts[0]?.value);
     }
 
-    prompts.splice(prompts.length - 3, 0, ...systemPrompts);
+    prompts.unshift(...systemPrompts);
 
     // content check
     await sensitiveCheck({
