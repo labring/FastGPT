@@ -50,7 +50,7 @@ export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchPr
             read();
           } catch (err: any) {
             if (err?.message === 'The user aborted a request.') {
-              return resolve({ responseText, newChatId, quoteLen: 0, systemPrompt: '' });
+              return resolve({ responseText, newChatId, quoteLen, systemPrompt: '' });
             }
             reject(typeof err === 'string' ? err : err?.message || '请求异常');
           }
