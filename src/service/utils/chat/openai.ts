@@ -104,6 +104,7 @@ export const openAiStreamResponse = async ({
       obj: ChatRoleEnum.AI,
       value: responseContent
     });
+
     const totalTokens = modelToolMap[model].countTokens({
       messages: finishMessages
     });
