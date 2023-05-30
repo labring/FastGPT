@@ -75,10 +75,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // 使用了知识库搜索
     if (model.chat.relatedKbs.length > 0) {
       const { code, searchPrompts } = await appKbSearch({
-        prompts,
-        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity,
         model,
-        userId
+        userId,
+        fixedQuote: [],
+        prompt: prompts[prompts.length - 1],
+        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity
       });
 
       // search result is empty
@@ -101,7 +102,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       ];
     }
 
-    prompts.splice(prompts.length - 3, 0, ...systemPrompts);
+    prompts.unshift(...systemPrompts);
 
     // content check
     await sensitiveCheck({
