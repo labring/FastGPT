@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Flex,
@@ -54,15 +54,17 @@ const SelectFileModal = ({
   const [prompt, setPrompt] = useState('');
   const { File, onOpen } = useSelectFile({ fileType: fileExtension, multiple: true });
   const [mode, setMode] = useState<`${TrainingModeEnum}`>(TrainingModeEnum.index);
-  const [fileTextArr, setFileTextArr] = useState<string[]>(['']);
+  const [files, setFiles] = useState<{ filename: string; text: string }[]>([
+    { filename: '文本1', text: '' }
+  ]);
   const [splitRes, setSplitRes] = useState<{
     tokens: number;
-    chunks: string[];
+    chunks: { filename: string; value: string }[];
     successChunks: number;
   }>({
     tokens: 0,
-    chunks: [],
-    successChunks: 0
+    successChunks: 0,
+    chunks: []
   });
   const { openConfirm, ConfirmChild } = useConfirm({
     content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被直接清除。一共 ${
@@ -78,21 +80,21 @@ const SelectFileModal = ({
         files.forEach((file) => {
           promise = promise.then(async () => {
             const extension = file?.name?.split('.')?.pop()?.toLowerCase();
-            let text = '';
-            switch (extension) {
-              case 'txt':
-              case 'md':
-                text = await readTxtContent(file);
-                break;
-              case 'pdf':
-                text = await readPdfContent(file);
-                break;
-              case 'doc':
-              case 'docx':
-                text = await readDocContent(file);
-                break;
-            }
-            text && setFileTextArr((state) => [text].concat(state));
+            const text = await (async () => {
+              switch (extension) {
+                case 'txt':
+                case 'md':
+                  return readTxtContent(file);
+                case 'pdf':
+                  return readPdfContent(file);
+                case 'doc':
+                case 'docx':
+                  return readDocContent(file);
+              }
+              return '';
+            })();
+
+            text && setFiles((state) => [{ filename: file.name, text }].concat(state));
             return;
           });
         });
@@ -115,11 +117,13 @@ const SelectFileModal = ({
 
       // subsection import
       let success = 0;
-      const step = 50;
+      const step = 100;
       for (let i = 0; i < splitRes.chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
-          data: splitRes.chunks.slice(i, i + step).map((text) => ({ q: text, a: '' })),
+          data: splitRes.chunks
+            .slice(i, i + step)
+            .map((item) => ({ q: item.value, a: '', source: item.filename })),
           prompt: `下面是"${prompt || '一段长文本'}"`,
           mode
         });
@@ -149,26 +153,32 @@ const SelectFileModal = ({
   const onclickImport = useCallback(async () => {
     setBtnLoading(true);
     try {
-      let promise = Promise.resolve();
-
-      const splitRes = await Promise.all(
-        fileTextArr
-          .filter((item) => item)
-          .map((item) =>
-            splitText_token({
-              text: item,
-              ...modeMap[mode]
-            })
-          )
-      );
+      const splitRes = files
+        .map((item) =>
+          splitText_token({
+            text: item.text,
+            ...modeMap[mode]
+          })
+        )
+        .map((item, i) => ({
+          ...item,
+          filename: files[i].filename
+        }))
+        .filter((item) => item.tokens > 0);
 
       setSplitRes({
         tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
-        chunks: splitRes.map((item) => item.chunks).flat(),
+        chunks: splitRes
+          .map((item) =>
+            item.chunks.map((chunk) => ({
+              filename: item.filename,
+              value: chunk
+            }))
+          )
+          .flat(),
         successChunks: 0
       });
 
-      await promise;
       openConfirm(mutate)();
     } catch (error) {
       toast({
@@ -177,7 +187,7 @@ const SelectFileModal = ({
       });
     }
     setBtnLoading(false);
-  }, [fileTextArr, mode, mutate, openConfirm, toast]);
+  }, [files, mode, mutate, openConfirm, toast]);
 
   return (
     <Modal isOpen={true} onClose={onClose} isCentered>
@@ -204,7 +214,7 @@ const SelectFileModal = ({
         >
           <Box mt={2} px={5} maxW={['100%', '70%']} textAlign={'justify'} color={'blackAlpha.600'}>
             支持 {fileExtension} 文件。Gpt会自动对文本进行 QA 拆分，需要较长训练时间，拆分需要消耗
-            tokens，账号余额不足时，未拆分的数据会被删除。一个{fileTextArr.length}个文本。
+            tokens，账号余额不足时，未拆分的数据会被删除。一个{files.length}个文本。
           </Box>
           {/* 拆分模式 */}
           <Flex w={'100%'} px={5} alignItems={'center'} mt={4}>
@@ -235,26 +245,26 @@ const SelectFileModal = ({
           )}
           {/* 文本内容 */}
           <Box flex={'1 0 0'} px={5} h={0} w={'100%'} overflowY={'auto'} mt={4}>
-            {fileTextArr.slice(0, 100).map((item, i) => (
+            {files.slice(0, 100).map((item, i) => (
               <Box key={i} mb={5}>
-                <Box mb={1}>文本{i + 1}</Box>
+                <Box mb={1}>{item.filename}</Box>
                 <Textarea
                   placeholder="文件内容,空内容会自动忽略"
                   maxLength={-1}
                   rows={10}
                   fontSize={'xs'}
                   whiteSpace={'pre-wrap'}
-                  value={item}
+                  value={item.text}
                   onChange={(e) => {
-                    setFileTextArr([
-                      ...fileTextArr.slice(0, i),
-                      e.target.value,
-                      ...fileTextArr.slice(i + 1)
+                    setFiles([
+                      ...files.slice(0, i),
+                      { ...item, text: e.target.value },
+                      ...files.slice(i + 1)
                     ]);
                   }}
                   onBlur={(e) => {
-                    if (fileTextArr.length > 1 && e.target.value === '') {
-                      setFileTextArr((state) => [...state.slice(0, i), ...state.slice(i + 1)]);
+                    if (files.length > 1 && e.target.value === '') {
+                      setFiles((state) => [...state.slice(0, i), ...state.slice(i + 1)]);
                     }
                   }}
                 />
@@ -272,7 +282,7 @@ const SelectFileModal = ({
             取消
           </Button>
           <Button
-            isDisabled={uploading || btnLoading || fileTextArr[0] === ''}
+            isDisabled={uploading || btnLoading || files[0]?.text === ''}
             onClick={onclickImport}
           >
             {uploading ? (

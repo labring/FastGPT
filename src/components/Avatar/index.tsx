@@ -4,7 +4,6 @@ import type { ImageProps } from '@chakra-ui/react';
 import { LOGO_ICON } from '@/constants/chat';
 
 const Avatar = ({ w = '30px', ...props }: ImageProps) => {
-  console.log(props.src);
   return (
     <Image
       fallbackSrc={LOGO_ICON}

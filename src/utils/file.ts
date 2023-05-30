@@ -1,6 +1,7 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { getOpenAiEncMap } from './plugin/openai';
+import { getErrText } from './tools';
 
 /**
  * 读取 txt 文件内容
@@ -145,7 +146,7 @@ export const fileDownload = ({
  * slideLen - The size of the before and after Text
  * maxLen > slideLen
  */
-export const splitText_token = async ({
+export const splitText_token = ({
   text,
   maxLen,
   slideLen
@@ -184,8 +185,8 @@ export const splitText_token = async ({
       chunks,
       tokens
     };
-  } catch (error) {
-    return Promise.reject(error);
+  } catch (err) {
+    throw new Error(getErrText(err));
   }
 };
 

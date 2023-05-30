@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   Box,
   TableContainer,
@@ -56,7 +56,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   const { toast } = useToast();
 
   const {
-    data: modelDataList,
+    data: kbDataList,
     isLoading,
     Pagination,
     total,
@@ -70,11 +70,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
       searchText
     },
     defaultRequest: false
-  });
-
-  useQuery(['getKbData', kbId], () => {
-    getData(1);
-    return null;
   });
 
   const [editInputData, setEditInputData] = useState<InputDataType>();
@@ -101,19 +96,13 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   );
 
   const refetchData = useCallback(
-    (num = 1) => {
+    (num = pageNum) => {
       getData(num);
       refetch();
       return null;
     },
-    [getData, refetch]
+    [getData, pageNum, refetch]
   );
-
-  // interval get data
-  useQuery(['refetchData'], () => refetchData(pageNum), {
-    refetchInterval: 5000,
-    enabled: qaListLen > 0 || vectorListLen > 0
-  });
 
   // get al data and export csv
   const { mutate: onclickExport, isLoading: isLoadingExport = false } = useMutation({
@@ -146,6 +135,17 @@ const DataCard = ({ kbId }: { kbId: string }) => {
       });
       console.log(err);
     }
+  });
+
+  // interval get data
+  useQuery(['refetchData'], () => refetchData(1), {
+    refetchInterval: 5000,
+    enabled: qaListLen > 0 || vectorListLen > 0
+  });
+  useQuery(['getKbData', kbId], () => {
+    setSearchText('');
+    getData(1);
+    return null;
   });
 
   return (
@@ -239,17 +239,21 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 </Tooltip>
               </Th>
               <Th>补充知识</Th>
+              <Th>来源</Th>
               <Th>操作</Th>
             </Tr>
           </Thead>
           <Tbody>
-            {modelDataList.map((item) => (
-              <Tr key={item.id}>
+            {kbDataList.map((item) => (
+              <Tr key={item.id} fontSize={'sm'}>
                 <Td>
                   <Box {...tdStyles.current}>{item.q}</Box>
                 </Td>
                 <Td>
                   <Box {...tdStyles.current}>{item.a || '-'}</Box>
+                </Td>
+                <Td maxW={'15%'} whiteSpace={'pre-wrap'} userSelect={'all'}>
+                  {item.source?.trim() || '-'}
                 </Td>
                 <Td>
                   <IconButton
