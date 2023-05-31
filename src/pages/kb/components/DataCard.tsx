@@ -205,10 +205,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         )}
         <Box flex={1} />
         <Input
-          maxW={'240px'}
+          maxW={['90%', '300px']}
           size={'sm'}
           value={searchText}
-          placeholder="搜索相关问题和答案，回车确认"
+          placeholder="搜索匹配知识，补充知识和来源，回车确认"
           onChange={(e) => setSearchText(e.target.value)}
           onBlur={() => {
             if (searchText === lastSearch.current) return;

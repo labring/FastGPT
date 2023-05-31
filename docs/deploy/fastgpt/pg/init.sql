@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS modelData (
     kb_id VARCHAR(50) NOT NULL,
     source VARCHAR(100),
     q TEXT NOT NULL,
-    a TEXT NOT NULL,
+    a TEXT NOT NULL
 );
 -- 索引设置，按需取
 -- CREATE INDEX IF NOT EXISTS modelData_userId_index ON modelData USING HASH (user_id);
