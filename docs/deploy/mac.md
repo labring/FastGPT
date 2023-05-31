@@ -82,13 +82,13 @@ CREATE TABLE modelData (
     vector VECTOR(1536),
     status VARCHAR(50) NOT NULL,
     user_id VARCHAR(50) NOT NULL,
-    model_id VARCHAR(50) NOT NULL,
+    kb_id VARCHAR(50) NOT NULL,
     q TEXT NOT NULL,
     a TEXT NOT NULL
 );
 -- create index
 CREATE INDEX modelData_status_index ON modelData (status);
-CREATE INDEX modelData_modelId_index ON modelData (model_id);
+CREATE INDEX modelData_kbId_index ON modelData (kb_id);
 CREATE INDEX modelData_userId_index ON modelData (user_id);
 EOSQL
 ```
