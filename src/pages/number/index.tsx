@@ -136,7 +136,7 @@ const NumberSetting = () => {
             </Button>
           </Flex>
           <Box fontSize={'xs'} color={'blackAlpha.500'}>
-            如果填写了自己的 openai 账号，将不会计费
+            如果填写了自己的 openai 账号，网页上 openai 模型对话不会计费。
           </Box>
         </Box>
         <Flex mt={6} alignItems={'center'}>
