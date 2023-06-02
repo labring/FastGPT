@@ -1,6 +1,7 @@
 import type { Mongoose } from 'mongoose';
 import type { Agent } from 'http';
 import type { Pool } from 'pg';
+import type { Tiktoken } from '@dqbd/tiktoken';
 
 declare global {
   var mongodb: Mongoose | string | null;
@@ -11,6 +12,7 @@ declare global {
   var QRCode: any;
   var qaQueueLen: number;
   var vectorQueueLen: number;
+  var OpenAiEncMap: Record<string, Tiktoken>;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
