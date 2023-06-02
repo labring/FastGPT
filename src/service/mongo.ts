@@ -37,6 +37,7 @@ export async function connectToDatabase(): Promise<void> {
     });
   }
 
+  // 初始化队列
   global.qaQueueLen = 0;
   global.vectorQueueLen = 0;
 

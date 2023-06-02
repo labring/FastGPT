@@ -8,27 +8,48 @@ import Graphemer from 'graphemer';
 const textDecoder = new TextDecoder();
 const graphemer = new Graphemer();
 
-export const adaptChatItem_openAI = ({
-  messages
-}: {
-  messages: ChatItemSimpleType[];
-}): ChatCompletionRequestMessage[] => {
-  const map = {
-    [ChatRoleEnum.AI]: ChatCompletionRequestMessageRoleEnum.Assistant,
-    [ChatRoleEnum.Human]: ChatCompletionRequestMessageRoleEnum.User,
-    [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System
-  };
-  return messages.map((item) => ({
-    role: map[item.obj] || ChatCompletionRequestMessageRoleEnum.System,
-    content: item.value || ''
-  }));
-};
-
-/* count openai chat token*/
-let OpenAiEncMap: Record<string, Tiktoken>;
 export const getOpenAiEncMap = () => {
-  if (OpenAiEncMap) return OpenAiEncMap;
-  OpenAiEncMap = {
+  if (typeof window !== 'undefined') {
+    window.OpenAiEncMap = window.OpenAiEncMap || {
+      'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      }),
+      'gpt-4': encoding_for_model('gpt-4', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      }),
+      'gpt-4-32k': encoding_for_model('gpt-4-32k', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      })
+    };
+    return window.OpenAiEncMap;
+  }
+  if (typeof global !== 'undefined') {
+    global.OpenAiEncMap = global.OpenAiEncMap || {
+      'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      }),
+      'gpt-4': encoding_for_model('gpt-4', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      }),
+      'gpt-4-32k': encoding_for_model('gpt-4-32k', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      })
+    };
+    return global.OpenAiEncMap;
+  }
+  return {
     'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
       '<|im_start|>': 100264,
       '<|im_end|>': 100265,
@@ -45,8 +66,24 @@ export const getOpenAiEncMap = () => {
       '<|im_sep|>': 100266
     })
   };
-  return OpenAiEncMap;
 };
+
+export const adaptChatItem_openAI = ({
+  messages
+}: {
+  messages: ChatItemSimpleType[];
+}): ChatCompletionRequestMessage[] => {
+  const map = {
+    [ChatRoleEnum.AI]: ChatCompletionRequestMessageRoleEnum.Assistant,
+    [ChatRoleEnum.Human]: ChatCompletionRequestMessageRoleEnum.User,
+    [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System
+  };
+  return messages.map((item) => ({
+    role: map[item.obj] || ChatCompletionRequestMessageRoleEnum.System,
+    content: item.value || ''
+  }));
+};
+
 export function countOpenAIToken({
   messages,
   model
