@@ -133,9 +133,10 @@ export async function generateVector(): Promise<any> {
     }
 
     // unlock
-    await TrainingData.findByIdAndUpdate(trainingId, {
-      lockTime: new Date('2000/1/1')
-    });
+    err.response?.statusText !== 'Too Many Requests' &&
+      (await TrainingData.findByIdAndUpdate(trainingId, {
+        lockTime: new Date('2000/1/1')
+      }));
 
     setTimeout(() => {
       generateVector();
