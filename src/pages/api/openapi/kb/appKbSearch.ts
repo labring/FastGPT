@@ -96,9 +96,9 @@ export async function appKbSearch({
     where: [
       `kb_id IN (${model.chat.relatedKbs.map((item) => `'${item}'`).join(',')})`,
       'AND',
-      `vector <=> '[${promptVector[0]}]' < ${similarity}`
+      `vector <#> '[${promptVector[0]}]' < ${similarity}`
     ],
-    order: [{ field: 'vector', mode: `<=> '[${promptVector[0]}]'` }],
+    order: [{ field: 'vector', mode: `<#> '[${promptVector[0]}]'` }],
     limit: 8
   });
 
