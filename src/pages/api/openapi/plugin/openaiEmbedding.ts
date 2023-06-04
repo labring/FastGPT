@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@/service/utils/auth';
+import { authUser, getSystemOpenAiKey } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { getApiKey } from '@/service/utils/auth';
 import { getOpenAIApi } from '@/service/utils/chat/openai';
 import { embeddingModel } from '@/constants/model';
 import { axiosConfig } from '@/service/utils/tools';
@@ -25,7 +24,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     jsonRes<Response>(res, {
-      data: await openaiEmbedding({ userId, input, mustPay: true, type })
+      data: await openaiEmbedding({ userId, input, type })
     });
   } catch (err) {
     console.log(err);
@@ -39,15 +38,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 export async function openaiEmbedding({
   userId,
   input,
-  mustPay = false,
   type = 'chat'
-}: { userId: string; mustPay?: boolean } & Props) {
-  const { userOpenAiKey, systemAuthKey } = await getApiKey({
-    model: 'gpt-3.5-turbo',
-    userId,
-    mustPay,
-    type
-  });
+}: { userId: string } & Props) {
+  const apiKey = getSystemOpenAiKey(type);
 
   // 获取 chatAPI
   const chatAPI = getOpenAIApi();
@@ -61,7 +54,7 @@ export async function openaiEmbedding({
       },
       {
         timeout: 60000,
-        ...axiosConfig(userOpenAiKey || systemAuthKey)
+        ...axiosConfig(apiKey)
       }
     )
     .then((res) => ({
@@ -70,7 +63,7 @@ export async function openaiEmbedding({
     }));
 
   pushGenerateVectorBill({
-    isPay: !userOpenAiKey,
+    isPay: false,
     userId,
     text: input.join(''),
     tokenLen: result.tokenLen
