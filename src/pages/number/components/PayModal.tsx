@@ -16,6 +16,7 @@ import { getPayCode, checkPayResult } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
+import { getErrText } from '@/utils/tools';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
@@ -39,12 +40,11 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
         correctLevel: QRCode.CorrectLevel.H
       });
       setPayId(res.payId);
-    } catch (error) {
+    } catch (err) {
       toast({
-        title: '出现了一些意外...',
+        title: getErrText(err),
         status: 'error'
       });
-      console.log(error);
     }
     setLoading(false);
   }, [inputVal, toast]);
