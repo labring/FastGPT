@@ -3,6 +3,7 @@ import type { ShareChatEditType } from '@/types/model';
 import type { ModelSchema } from '@/types/mongoSchema';
 
 export const embeddingModel = 'text-embedding-ada-002';
+export const embeddingPrice = 0.1;
 export type EmbeddingModelType = 'text-embedding-ada-002';
 
 export enum OpenAiChatEnum {
