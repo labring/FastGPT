@@ -13,7 +13,7 @@ export const connectPg = async () => {
     user: process.env.PG_USER,
     password: process.env.PG_PASSWORD,
     database: process.env.PG_DB_NAME,
-    max: maxLink,
+    max: Math.floor(maxLink * 0.5),
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 20000
   });
