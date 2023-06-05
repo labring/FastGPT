@@ -91,16 +91,17 @@ export async function appKbSearch({
   });
 
   // search kb
-  const { rows: searchRes } = await PgClient.select<QuoteItemType>('modelData', {
-    fields: ['id', 'q', 'a', 'source'],
-    where: [
-      `kb_id IN (${model.chat.relatedKbs.map((item) => `'${item}'`).join(',')})`,
-      'AND',
-      `vector <#> '[${promptVector[0]}]' < ${similarity}`
-    ],
-    order: [{ field: 'vector', mode: `<#> '[${promptVector[0]}]'` }],
-    limit: 8
-  });
+  const res: any = await PgClient.query(
+    `BEGIN;
+    SET LOCAL ivfflat.probes = ${process.env.PG_IVFFLAT_PROBE || 100};
+    select id,q,a,source from modelData where kb_id IN (${model.chat.relatedKbs
+      .map((item) => `'${item}'`)
+      .join(',')}) AND vector <#> '[${promptVector[0]}]' < ${similarity} order by vector <#> '[${
+      promptVector[0]
+    }]' limit 8;
+    COMMIT;`
+  );
+  const searchRes: QuoteItemType[] = res?.[2]?.rows || [];
 
   // filter same search result
   const idSet = new Set<string>();
