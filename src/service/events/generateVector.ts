@@ -82,7 +82,8 @@ export async function generateVector(): Promise<any> {
     const vectors = await openaiEmbedding({
       input: dataItems.map((item) => item.q),
       userId,
-      type: 'training'
+      type: 'training',
+      mustPay: true
     });
 
     // 生成结果插入到 pg

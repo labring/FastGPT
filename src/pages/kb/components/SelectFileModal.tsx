@@ -22,20 +22,22 @@ import Radio from '@/components/Radio';
 import { splitText_token } from '@/utils/file';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
+import { ChatModelMap, OpenAiChatEnum, embeddingPrice } from '@/constants/model';
+import { formatPrice } from '@/utils/user';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
 const modeMap = {
   [TrainingModeEnum.qa]: {
-    maxLen: 2800,
-    slideLen: 800,
-    price: 4,
+    maxLen: 2600,
+    slideLen: 700,
+    price: ChatModelMap[OpenAiChatEnum.GPT35].price,
     isPrompt: true
   },
   [TrainingModeEnum.index]: {
-    maxLen: 800,
+    maxLen: 700,
     slideLen: 300,
-    price: 0.4,
+    price: embeddingPrice,
     isPrompt: false
   }
 };
@@ -58,18 +60,18 @@ const SelectFileModal = ({
     { filename: '文本1', text: '' }
   ]);
   const [splitRes, setSplitRes] = useState<{
-    tokens: number;
+    price: number;
     chunks: { filename: string; value: string }[];
     successChunks: number;
   }>({
-    tokens: 0,
+    price: 0,
     successChunks: 0,
     chunks: []
   });
   const { openConfirm, ConfirmChild } = useConfirm({
     content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！QA 拆分仅能使用余额，如果余额不足，未完成的任务会被直接清除。一共 ${
       splitRes.chunks.length
-    } 组。${splitRes.tokens ? `大约 ${splitRes.tokens} 个tokens。` : ''}`
+    } 组。${splitRes.price ? `大约 ${splitRes.price} 元。` : ''}`
   });
 
   const onSelectFile = useCallback(
@@ -166,8 +168,16 @@ const SelectFileModal = ({
         }))
         .filter((item) => item.tokens > 0);
 
+      let price = formatPrice(
+        splitRes.reduce((sum, item) => sum + item.tokens, 0) * modeMap[mode].price
+      );
+
+      if (mode === 'qa') {
+        price *= 1.2;
+      }
+
       setSplitRes({
-        tokens: splitRes.reduce((sum, item) => sum + item.tokens, 0),
+        price,
         chunks: splitRes
           .map((item) =>
             item.chunks.map((chunk) => ({

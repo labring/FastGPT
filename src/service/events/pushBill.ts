@@ -1,5 +1,11 @@
 import { connectToDatabase, Bill, User, ShareChat } from '../mongo';
-import { ChatModelMap, OpenAiChatEnum, ChatModelType, embeddingModel } from '@/constants/model';
+import {
+  ChatModelMap,
+  OpenAiChatEnum,
+  ChatModelType,
+  embeddingModel,
+  embeddingPrice
+} from '@/constants/model';
 import { BillTypeEnum } from '@/constants/user';
 
 export const pushChatBill = async ({
@@ -145,11 +151,9 @@ export const pushGenerateVectorBill = async ({
     await connectToDatabase();
 
     try {
-      const unitPrice = 0.4;
       // 计算价格. 至少为1
-      const price = 0;
-      // let price = unitPrice * tokenLen;
-      // price = price > 1 ? price : 1;
+      let price = embeddingPrice * tokenLen;
+      price = price > 1 ? price : 1;
 
       // 插入 Bill 记录
       const res = await Bill.create({

@@ -28,7 +28,7 @@ const UserSchema = new Schema({
   balance: {
     // 平台余额，不可提现
     type: Number,
-    default: 0.5 * PRICE_SCALE
+    default: 2 * PRICE_SCALE
   },
   inviterId: {
     // 谁邀请注册的
