@@ -36,12 +36,13 @@ services:
     restart: always
     container_name: fastgpt
     environment: # 可选的变量，不需要的话需要去掉
+      - PORT=3000 # 运行的端口地址，如果不是 3000，需要修改成实际地址。
       # proxy（可选）
       - AXIOS_PROXY_HOST=127.0.0.1
       - AXIOS_PROXY_PORT=7890
       # 发送邮箱验证码配置。用的是QQ邮箱。参考 nodeMail 获取MAILE_CODE，自行百度。
-      - MY_MAIL=xxxx@qq.com
-      - MAILE_CODE=xxxx
+      - MY_MAIL=54545@qq.com
+      - MAILE_CODE=1234
       # 阿里短信服务（邮箱和短信至少二选一）
       - aliAccessKeyId=xxxx
       - aliAccessKeySecret=xxxx

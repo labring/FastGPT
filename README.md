@@ -1,11 +1,11 @@
 # Fast GPT
 
-Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接口，目前集成了 gpt35 和 embedding. 可构建自己的知识库。
+Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接口，目前集成了 Gpt35, Gpt4 和 embedding. 可构建自己的知识库。
 
 ## 🛸 在线体验
 
-🎉 [fastgpt.run](https://fastgpt.run/) （国内版）  
-🎉 [ai.fastgpt.run](https://ai.fastgpt.run/) （海外版）
+🎉 [fastgpt.run](https://fastgpt.run/)
+🎉 [ai.fastgpt.run](https://ai.fastgpt.run/)
 
 ![Demo](docs/imgs/demo.png?raw=true 'demo')
 
@@ -21,7 +21,8 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 
 ## 🚀 私有化部署
 
-- [docker-compose 部署教程](docs/deploy/docker.md)
+- [Sealos 部署](https://sealos.io/docs/examples/ai-applications/install-fastgpt-on-desktop) 无需服务器，代理和域名。
+- [docker-compose 部署](docs/deploy/docker.md)
 - [由社区贡献的宝塔部署和本地运行教程](https://space.bilibili.com/431177525/channel/collectiondetail?sid=1370663)
 
 ## :point_right: RoadMap
