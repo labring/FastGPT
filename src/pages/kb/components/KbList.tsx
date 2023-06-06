@@ -24,7 +24,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
   );
 
   /* 加载模型 */
-  const { isLoading } = useQuery(['loadModels'], () => loadKbList(false));
+  const { isFetching } = useQuery(['loadModels'], () => loadKbList(false));
 
   const handleCreateModel = useCallback(async () => {
     setIsLoading(true);
@@ -133,7 +133,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
           </Flex>
         ))}
 
-        {!isLoading && myKbList.length === 0 && (
+        {!isFetching && myKbList.length === 0 && (
           <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'30vh'}>
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
@@ -142,7 +142,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
           </Flex>
         )}
       </Box>
-      <Loading loading={isLoading} fixed={false} />
+      <Loading loading={isFetching} fixed={false} />
     </Flex>
   );
 };

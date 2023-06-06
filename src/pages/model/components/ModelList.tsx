@@ -19,7 +19,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
   const [searchText, setSearchText] = useState('');
 
   /* 加载模型 */
-  const { isLoading } = useQuery(['loadModels'], () => loadMyModels(false));
+  const { isFetching } = useQuery(['loadModels'], () => loadMyModels(false));
 
   const onclickCreateModel = useCallback(async () => {
     setIsLoading(true);
@@ -77,7 +77,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
         <Flex flex={1} mr={2} position={'relative'} alignItems={'center'}>
           <Input
             h={'32px'}
-            placeholder="搜索 AI 助手"
+            placeholder="搜索 AI 应用"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
@@ -149,16 +149,16 @@ const ModelList = ({ modelId }: { modelId: string }) => {
           </Box>
         ))}
 
-        {!isLoading && totalModels === 0 && (
+        {!isFetching && totalModels === 0 && (
           <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'30vh'}>
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              还没有 AI 助手~
+              还没有 AI 应用~
             </Box>
           </Flex>
         )}
       </Box>
-      <Loading loading={isLoading} fixed={false} />
+      <Loading loading={isFetching} fixed={false} />
     </Flex>
   );
 };

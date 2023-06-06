@@ -16,18 +16,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    // 根据 id 获取用户账单
-    const bills = await Bill.find({
+    const where = {
       userId
-    })
-      .sort({ _id: -1 }) // 按照创建时间倒序排列
-      .skip((pageNum - 1) * pageSize)
-      .limit(pageSize);
+    };
 
-    // 获取total
-    const total = await Bill.countDocuments({
-      userId
-    });
+    // get bill record and total by record
+    const [bills, total] = await Promise.all([
+      Bill.find(where)
+        .sort({ time: -1 }) // 按照创建时间倒序排列
+        .skip((pageNum - 1) * pageSize)
+        .limit(pageSize),
+      Bill.countDocuments(where)
+    ]);
 
     jsonRes(res, {
       data: {
