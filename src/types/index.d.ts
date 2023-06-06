@@ -20,10 +20,10 @@ declare global {
 }
 
 export type PagingData<T> = {
-  pageNum;
-  pageSize;
+  pageNum: number;
+  pageSize: number;
   data: T[];
-  total;
+  total?: number;
 };
 
 export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };

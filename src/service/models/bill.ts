@@ -47,7 +47,7 @@ try {
   BillSchema.index({ time: -1 });
   BillSchema.index({ userId: 1 });
 } catch (error) {
-  error;
+  console.log(error);
 }
 
 export const Bill: Model<BillType> = models['bill'] || model('bill', BillSchema);
