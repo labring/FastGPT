@@ -31,7 +31,7 @@ export const usePagination = <T = any,>({
           ...params
         });
         setPageNum(num);
-        setTotal(res.total);
+        res.total && setTotal(res.total);
         setData(res.data);
       } catch (error: any) {
         toast({
