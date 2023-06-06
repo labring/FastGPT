@@ -27,8 +27,8 @@ export const authGoogleToken = async (data: {
     `https://www.recaptcha.net/recaptcha/api/siteverify?${Obj2Query(data)}`
   );
 
-  if (res.data.success && res.data.score && res.data.score >= 0.7) {
+  if (res.data.success) {
     return Promise.resolve('');
   }
-  return Promise.reject(res.data['error-codes'][0] || '非法环境');
+  return Promise.reject(res?.data?.['error-codes']?.[0] || '非法环境');
 };
