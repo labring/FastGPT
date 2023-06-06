@@ -39,22 +39,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         : [])
     ];
 
-    const searchRes = await PgClient.select<KbDataItemType>('modelData', {
-      fields: ['id', 'q', 'a', 'source'],
-      where,
-      order: [{ field: 'id', mode: 'DESC' }],
-      limit: pageSize,
-      offset: pageSize * (pageNum - 1)
-    });
+    const [searchRes, total] = await Promise.all([
+      PgClient.select<KbDataItemType>('modelData', {
+        fields: ['id', 'q', 'a', 'source'],
+        where,
+        limit: pageSize,
+        offset: pageSize * (pageNum - 1)
+      }),
+      PgClient.count('modelData', {
+        fields: ['id'],
+        where
+      })
+    ]);
 
     jsonRes(res, {
       data: {
         pageNum,
         pageSize,
         data: searchRes.rows,
-        total: await PgClient.count('modelData', {
-          where
-        })
+        total
       }
     });
   } catch (err) {
