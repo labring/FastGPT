@@ -1,11 +1,12 @@
 import React from 'react';
-import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Box } from '@chakra-ui/react';
 import { useLoading } from '@/hooks/useLoading';
 import dayjs from 'dayjs';
 import { getPromotionRecords } from '@/api/user';
 import { usePagination } from '@/hooks/usePagination';
 import { PromotionRecordType } from '@/api/response/user';
 import { PromotionTypeMap } from '@/constants/user';
+import MyIcon from '@/components/Icon';
 
 const OpenApi = () => {
   const { Loading } = useLoading();
@@ -13,6 +14,8 @@ const OpenApi = () => {
   const {
     data: promotionRecords,
     isLoading,
+    total,
+    pageSize,
     Pagination
   } = usePagination<PromotionRecordType>({
     api: getPromotionRecords
@@ -44,9 +47,20 @@ const OpenApi = () => {
 
         <Loading loading={isLoading} fixed={false} />
       </TableContainer>
-      <Flex mt={4} justifyContent={'flex-end'}>
-        <Pagination />
-      </Flex>
+
+      {!isLoading && promotionRecords.length === 0 && (
+        <Flex flexDirection={'column'} alignItems={'center'}>
+          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+          <Box mt={2} color={'myGray.500'}>
+            无佣金记录~
+          </Box>
+        </Flex>
+      )}
+      {total > pageSize && (
+        <Flex mt={4} justifyContent={'flex-end'}>
+          <Pagination />
+        </Flex>
+      )}
     </>
   );
 };

@@ -7,7 +7,7 @@ import {
   EmbeddingModelType
 } from '@/constants/model';
 import type { DataType } from './data';
-import { BillTypeEnum } from '@/constants/user';
+import { BillTypeEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 
 export interface UserModelSchema {
@@ -154,4 +154,14 @@ export interface kbSchema {
   avatar: string;
   name: string;
   tags: string[];
+}
+
+export interface informSchema {
+  _id: string;
+  userId: string;
+  time: Date;
+  type: `${InformTypeEnum}`;
+  title: string;
+  content: string;
+  read: boolean;
 }

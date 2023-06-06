@@ -4,7 +4,7 @@ import { ResLogin, PromotionRecordType } from './response/user';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
-import { PaySchema } from '@/types/mongoSchema';
+import { informSchema, PaySchema } from '@/types/mongoSchema';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -81,3 +81,9 @@ export const checkPayResult = (payId: string) => GET<number>(`/user/checkPayResu
 /* promotion records */
 export const getPromotionRecords = (data: RequestPaging) =>
   GET<PromotionRecordType>(`/user/promotion/getPromotions?${Obj2Query(data)}`);
+
+export const getInforms = (data: RequestPaging) =>
+  POST<PagingData<informSchema>>(`/user/inform/list`, data);
+
+export const getUnreadCount = () => GET<number>(`/user/inform/countUnread`);
+export const readInform = (id: string) => GET(`/user/inform/read`, { id });

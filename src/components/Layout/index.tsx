@@ -7,6 +7,9 @@ import { throttle } from 'lodash';
 import Auth from './auth';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
+import { useQuery } from '@tanstack/react-query';
+import { useUserStore } from '@/store/user';
+import { getUnreadCount } from '@/api/user';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -24,6 +27,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
   const { loading, setScreenWidth, isPc } = useGlobalStore();
+  const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
@@ -49,6 +53,11 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     };
   }, [setScreenWidth]);
 
+  const { data: unread = 0 } = useQuery(['getUnreadCount'], getUnreadCount, {
+    enabled: !!userInfo,
+    refetchInterval: 5000
+  });
+
   return (
     <>
       <Box
@@ -61,7 +70,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           ) : (
             <>
               <Box h={'100%'} position={'fixed'} left={0} top={0} w={'60px'}>
-                <Navbar />
+                <Navbar unread={unread} />
               </Box>
               <Box h={'100%'} ml={'60px'} overflow={'overlay'}>
                 <Auth>{children}</Auth>
@@ -76,7 +85,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               <Auth>{children}</Auth>
             </Box>
             <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-              <NavbarPhone />
+              <NavbarPhone unread={unread} />
             </Box>
           </Flex>
         )}

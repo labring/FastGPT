@@ -1,11 +1,12 @@
 import React from 'react';
-import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex, Box } from '@chakra-ui/react';
 import { BillTypeMap } from '@/constants/user';
 import { getUserBills } from '@/api/user';
 import type { UserBillType } from '@/types/user';
 import { usePagination } from '@/hooks/usePagination';
 import { useLoading } from '@/hooks/useLoading';
 import dayjs from 'dayjs';
+import MyIcon from '@/components/Icon';
 
 const BillTable = () => {
   const { Loading } = useLoading();
@@ -13,7 +14,9 @@ const BillTable = () => {
   const {
     data: bills,
     isLoading,
-    Pagination
+    Pagination,
+    pageSize,
+    total
   } = usePagination<UserBillType>({
     api: getUserBills
   });
@@ -48,9 +51,20 @@ const BillTable = () => {
 
         <Loading loading={isLoading} fixed={false} />
       </TableContainer>
-      <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
-        <Pagination />
-      </Flex>
+
+      {!isLoading && bills.length === 0 && (
+        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'200px'}>
+          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+          <Box mt={2} color={'myGray.500'}>
+            无使用记录~
+          </Box>
+        </Flex>
+      )}
+      {total > pageSize && (
+        <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
+          <Pagination />
+        </Flex>
+      )}
     </>
   );
 };

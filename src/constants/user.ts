@@ -30,3 +30,13 @@ export const PromotionTypeMap = {
   [PromotionEnum.shareModel]: '应用分享',
   [PromotionEnum.withdraw]: '提现'
 };
+
+export enum InformTypeEnum {
+  system = 'system'
+}
+
+export const InformTypeMap = {
+  [InformTypeEnum.system]: {
+    label: '系统通知'
+  }
+};

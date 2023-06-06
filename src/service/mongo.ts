@@ -68,3 +68,4 @@ export * from './models/promotionRecord';
 export * from './models/collection';
 export * from './models/shareChat';
 export * from './models/kb';
+export * from './models/inform';

@@ -3,8 +3,9 @@ import { useRouter } from 'next/router';
 import MyIcon from '../Icon';
 import { Flex } from '@chakra-ui/react';
 import { useChatStore } from '@/store/chat';
+import Badge from '../Badge';
 
-const NavbarPhone = () => {
+const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { lastChatModelId, lastChatId } = useChatStore();
   const navbarList = useMemo(
@@ -12,25 +13,29 @@ const NavbarPhone = () => {
       {
         icon: 'tabbarChat',
         link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
-        activeLink: ['/chat']
+        activeLink: ['/chat'],
+        unread: 0
       },
       {
         icon: 'tabbarModel',
         link: `/model`,
-        activeLink: ['/model']
+        activeLink: ['/model'],
+        unread: 0
       },
       {
         icon: 'tabbarMore',
         link: '/tools',
-        activeLink: ['/tools']
+        activeLink: ['/tools'],
+        unread: 0
       },
       {
         icon: 'tabbarMe',
         link: '/number',
-        activeLink: ['/number']
+        activeLink: ['/number'],
+        unread
       }
     ],
-    [lastChatId, lastChatModelId]
+    [lastChatId, lastChatModelId, unread]
   );
 
   return (
@@ -82,7 +87,9 @@ const NavbarPhone = () => {
               router.push(item.link);
             }}
           >
-            <MyIcon name={item.icon as any} width={'20px'} height={'20px'} />
+            <Badge isDot count={item.unread}>
+              <MyIcon name={item.icon as any} width={'20px'} height={'20px'} />
+            </Badge>
           </Flex>
         ))}
       </Flex>

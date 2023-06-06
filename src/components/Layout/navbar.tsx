@@ -1,18 +1,20 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Tooltip } from '@chakra-ui/react';
+import { Box, Flex, Tooltip, Link } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '../Icon';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
 import Avatar from '../Avatar';
 import { HUMAN_ICON } from '@/constants/chat';
+import NextLink from 'next/link';
+import Badge from '../Badge';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
   small = 'small'
 }
 
-const Navbar = () => {
+const Navbar = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { userInfo, lastModelId } = useUserStore();
   const { lastChatModelId, lastChatId } = useChatStore();
@@ -58,6 +60,20 @@ const Navbar = () => {
     [lastChatId, lastChatModelId, lastModelId]
   );
 
+  const itemStyles: any = {
+    mb: 3,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    w: '60px',
+    h: '45px',
+    _hover: {
+      color: '#ffffff'
+    }
+  };
+
   return (
     <Flex
       flexDirection={'column'}
@@ -90,21 +106,10 @@ const Navbar = () => {
             openDelay={100}
             gutter={-10}
           >
-            <Flex
-              mb={3}
-              flexDirection={'column'}
-              alignItems={'center'}
-              justifyContent={'center'}
-              onClick={() => {
-                if (item.link === router.asPath) return;
-                router.push(item.link);
-              }}
-              cursor={'pointer'}
-              w={'60px'}
-              h={'45px'}
-              _hover={{
-                color: '#ffffff'
-              }}
+            <Link
+              as={NextLink}
+              href={item.link}
+              {...itemStyles}
               {...(item.activeLink.includes(router.pathname)
                 ? {
                     color: '#ffffff ',
@@ -116,27 +121,29 @@ const Navbar = () => {
                   })}
             >
               <MyIcon name={item.icon as any} width={'22px'} height={'22px'} />
-            </Flex>
+            </Link>
           </Tooltip>
         ))}
       </Box>
+      {unread > 0 && (
+        <Box>
+          <Link as={NextLink} {...itemStyles} href={`/number?type=inform`} mb={0} color={'#9096a5'}>
+            <Badge count={unread}>
+              <MyIcon name={'inform'} width={'22px'} height={'22px'} />
+            </Badge>
+          </Link>
+        </Box>
+      )}
       <Box>
-        <Flex
-          mb={3}
-          flexDirection={'column'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          cursor={'pointer'}
-          w={'60px'}
-          h={'45px'}
+        <Link
+          as={NextLink}
+          href="https://github.com/c121914yu/FastGPT"
+          target={'_blank'}
+          {...itemStyles}
           color={'#9096a5'}
-          _hover={{
-            color: '#ffffff'
-          }}
-          onClick={() => window.open('https://github.com/c121914yu/FastGPT')}
         >
           <MyIcon name={'git'} width={'22px'} height={'22px'} />
-        </Flex>
+        </Link>
       </Box>
     </Flex>
   );
