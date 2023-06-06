@@ -1,7 +1,8 @@
 version: '3.3'
 services:
   pg:
-    image: ankane/pgvector:v0.4.2
+    image: ankane/pgvector:v0.4.2 # dockerhub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
     container_name: pg
     restart: always
     ports:
