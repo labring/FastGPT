@@ -50,7 +50,6 @@ jobs:
           -t ${DOCKER_REPO_TAGGED} \
           -f Dockerfile \
           .
-
   push-to-docker-hub:
     needs: build-images
     runs-on: ubuntu-20.04
@@ -70,14 +69,8 @@ jobs:
             echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
       - name: Pull image from GitHub Container Registry
-        env:
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
-        run: docker pull ghcr.io/${{ github.repository_owner }}/fastgpt:${ IMAGE_TAG }
+        run: docker pull ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}}
       - name: Tag image with Docker Hub repository name and version tag
-        env:
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
-        run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt:${ IMAGE_TAG } ${{ secrets.DOCKER_IMAGE_NAME }}:${ IMAGE_TAG }
+        run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}} ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
       - name: Push image to Docker Hub
-        env:
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
-        run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}:${ IMAGE_TAG }
+        run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
