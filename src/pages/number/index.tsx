@@ -43,6 +43,10 @@ const PromotionTable = dynamic(() => import('./components/PromotionTable'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
 });
+const InformTable = dynamic(() => import('./components/InformTable'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
 const PayModal = dynamic(() => import('./components/PayModal'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
@@ -55,14 +59,16 @@ const WxConcat = dynamic(() => import('@/components/WxConcat'), {
 enum TableEnum {
   'bill' = 'bill',
   'pay' = 'pay',
-  'promotion' = 'promotion'
+  'promotion' = 'promotion',
+  'inform' = 'inform'
 }
 
-const NumberSetting = () => {
-  const tableType = useRef([
-    { label: '账单详情', value: TableEnum.bill, Component: BilTable },
-    { label: '充值记录', value: TableEnum.pay, Component: PayRecordTable },
-    { label: '佣金记录', value: TableEnum.pay, Component: PromotionTable }
+const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
+  const tableList = useRef([
+    { label: '账单', value: TableEnum.bill, Component: BilTable },
+    { label: '充值', value: TableEnum.pay, Component: PayRecordTable },
+    { label: '佣金', value: TableEnum.promotion, Component: PromotionTable },
+    { label: '通知', value: TableEnum.inform, Component: InformTable }
   ]);
   const router = useRouter();
   const { copyData } = useCopyData();
@@ -232,21 +238,26 @@ const NumberSetting = () => {
             colorScheme={'myBlue'}
             onClick={onOpenWxConcat}
           >
-            提现
+            {residueAmount < 50 ? '50元起提' : '提现'}
           </Button>
         </Card>
       </Grid>
 
       <Card mt={4} px={[3, 6]} py={4}>
-        <Tabs variant="unstyled" isLazy>
+        <Tabs
+          variant="unstyled"
+          isLazy
+          defaultIndex={tableList.current.findIndex((item) => item.value === tableType)}
+          onChange={(i) => router.replace(`/number?type=${tableList.current[i].value}`)}
+        >
           <TabList whiteSpace={'nowrap'}>
-            {tableType.current.map((item) => (
+            {tableList.current.map((item) => (
               <Tab
                 key={item.value}
-                py={1}
-                px={3}
+                py={'2px'}
+                px={4}
                 borderRadius={'sm'}
-                mr={1}
+                mr={2}
                 transition={'none'}
                 _selected={{ color: 'white', bg: 'myBlue.600' }}
               >
@@ -255,7 +266,7 @@ const NumberSetting = () => {
             ))}
           </TabList>
           <TabPanels>
-            {tableType.current.map((Item) => (
+            {tableList.current.map((Item) => (
               <TabPanel minH={'550px'} key={Item.value}>
                 <Item.Component />
               </TabPanel>
@@ -272,3 +283,9 @@ const NumberSetting = () => {
 };
 
 export default NumberSetting;
+
+NumberSetting.getInitialProps = ({ query, req }: any) => {
+  return {
+    tableType: query?.type || TableEnum.bill
+  };
+};
