@@ -42,18 +42,6 @@ export async function connectToDatabase(): Promise<void> {
   global.vectorQueueLen = 0;
 
   startQueue();
-  // 5 分钟后解锁不正常的数据，并触发开始训练
-  setTimeout(async () => {
-    await TrainingData.updateMany(
-      {
-        lockTime: { $lte: Date.now() - 5 * 60 * 1000 }
-      },
-      {
-        lockTime: new Date('2000/1/1')
-      }
-    );
-    startQueue();
-  }, 5 * 60 * 1000);
 }
 
 export * from './models/authCode';

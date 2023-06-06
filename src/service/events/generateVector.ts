@@ -4,6 +4,7 @@ import { openaiEmbedding } from '@/pages/api/openapi/plugin/openaiEmbedding';
 import { TrainingData } from '../models/trainingData';
 import { ERROR_ENUM } from '../errorCode';
 import { TrainingModeEnum } from '@/constants/plugin';
+import { sendInform } from '@/pages/api/user/inform/send';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -125,11 +126,22 @@ export async function generateVector(): Promise<any> {
     }
 
     // 账号余额不足，删除任务
-    if (err === ERROR_ENUM.insufficientQuota) {
-      console.log('余额不足，删除向量生成任务');
-      await TrainingData.deleteMany({
+    if (userId && err === ERROR_ENUM.insufficientQuota) {
+      sendInform({
+        type: 'system',
+        title: '索引生成任务中止',
+        content: '由于账号余额不足，索引生成任务中止，重新充值后将会继续。',
         userId
       });
+      console.log('余额不足，暂停向量生成任务');
+      await TrainingData.updateMany(
+        {
+          userId
+        },
+        {
+          lockTime: new Date('2999/5/5')
+        }
+      );
       return generateVector();
     }
 
