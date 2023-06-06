@@ -69,7 +69,7 @@ const SelectFileModal = ({
     chunks: []
   });
   const { openConfirm, ConfirmChild } = useConfirm({
-    content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！QA 拆分仅能使用余额，如果余额不足，未完成的任务会被直接清除。一共 ${
+    content: `确认导入该文件，需要一定时间进行拆解，该任务无法终止！如果余额不足，未完成的任务会被暂停。一共 ${
       splitRes.chunks.length
     } 组。${splitRes.price ? `大约 ${splitRes.price} 元。` : ''}`
   });
