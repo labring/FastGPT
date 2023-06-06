@@ -1,0 +1,54 @@
+import React from 'react';
+import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import { useLoading } from '@/hooks/useLoading';
+import dayjs from 'dayjs';
+import { getPromotionRecords } from '@/api/user';
+import { usePagination } from '@/hooks/usePagination';
+import { PromotionRecordType } from '@/api/response/user';
+import { PromotionTypeMap } from '@/constants/user';
+
+const OpenApi = () => {
+  const { Loading } = useLoading();
+
+  const {
+    data: promotionRecords,
+    isLoading,
+    Pagination
+  } = usePagination<PromotionRecordType>({
+    api: getPromotionRecords
+  });
+
+  return (
+    <>
+      <TableContainer position={'relative'} overflow={'hidden'} minH={'200px'}>
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>时间</Th>
+              <Th>类型</Th>
+              <Th>金额</Th>
+            </Tr>
+          </Thead>
+          <Tbody fontSize={'sm'}>
+            {promotionRecords.map((item) => (
+              <Tr key={item._id}>
+                <Td>
+                  {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                </Td>
+                <Td>{PromotionTypeMap[item.type]}</Td>
+                <Td>{item.amount}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+
+        <Loading loading={isLoading} fixed={false} />
+      </TableContainer>
+      <Flex mt={4} justifyContent={'flex-end'}>
+        <Pagination />
+      </Flex>
+    </>
+  );
+};
+
+export default OpenApi;

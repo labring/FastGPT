@@ -108,7 +108,6 @@ class Pg {
       }
       LIMIT ${props.limit || 10} OFFSET ${props.offset || 0}
     `;
-
     const pg = await connectPg();
     return pg.query<T>(sql);
   }

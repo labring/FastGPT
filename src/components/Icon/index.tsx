@@ -8,7 +8,6 @@ const map = {
   chatSend: require('./icons/chatSend.svg').default,
   develop: require('./icons/develop.svg').default,
   user: require('./icons/user.svg').default,
-  promotion: require('./icons/promotion.svg').default,
   delete: require('./icons/delete.svg').default,
   withdraw: require('./icons/withdraw.svg').default,
   stop: require('./icons/stop.svg').default,

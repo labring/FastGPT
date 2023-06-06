@@ -19,6 +19,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
   mongodb:
     image: mongo:5.0.18
+    # image : registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
     container_name: mongo
     restart: always
     ports:

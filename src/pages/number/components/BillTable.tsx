@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Box, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
 import { BillTypeMap } from '@/constants/user';
 import { getUserBills } from '@/api/user';
 import type { UserBillType } from '@/types/user';
@@ -19,11 +19,8 @@ const BillTable = () => {
   });
 
   return (
-    <Card mt={6} py={4}>
-      <Box fontSize={'xl'} fontWeight={'bold'} px={6} mb={1}>
-        使用记录
-      </Box>
-      <TableContainer position={'relative'}>
+    <>
+      <TableContainer position={'relative'} minH={'200px'}>
         <Table>
           <Thead>
             <Tr>
@@ -51,10 +48,10 @@ const BillTable = () => {
 
         <Loading loading={isLoading} fixed={false} />
       </TableContainer>
-      <Flex mt={4} px={4} justifyContent={'flex-end'}>
+      <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
         <Pagination />
       </Flex>
-    </Card>
+    </>
   );
 };
 

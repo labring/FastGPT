@@ -43,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       PgClient.select<KbDataItemType>('modelData', {
         fields: ['id', 'q', 'a', 'source'],
         where,
+        order: [{ field: 'id', mode: 'DESC' }],
         limit: pageSize,
         offset: pageSize * (pageNum - 1)
       }),
