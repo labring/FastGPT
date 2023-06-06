@@ -61,6 +61,7 @@ const OpenApi = () => {
           的形式接入到自己的应用中，例如：飞书、企业微信、客服助手。请注意保管你的 Api
           Key，不要泄露！
         </Box>
+        <Box>使用 Fast Api 功能仅能使用平台余额。</Box>
         <Box
           my={1}
           as="a"

@@ -16,11 +16,6 @@ const list = [
     link: '/model/share'
   },
   {
-    icon: 'promotion',
-    label: '邀请好友',
-    link: '/promotion'
-  },
-  {
     icon: 'develop',
     label: '开发',
     link: '/openapi'

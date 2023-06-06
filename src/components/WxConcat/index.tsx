@@ -9,7 +9,6 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-  useColorModeValue,
   Image
 } from '@chakra-ui/react';
 
@@ -18,7 +17,7 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
     <Modal isOpen={true} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>wx交流群</ModalHeader>
+        <ModalHeader>联系方式-wx</ModalHeader>
         <ModalCloseButton />
         <ModalBody textAlign={'center'}>
           <Image
@@ -28,12 +27,6 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
             height={'200px'}
             alt=""
           />
-          <Box mt={2}>
-            微信号:
-            <Box as={'span'} userSelect={'all'}>
-              YNyiqi
-            </Box>
-          </Box>
         </ModalBody>
 
         <ModalFooter>
