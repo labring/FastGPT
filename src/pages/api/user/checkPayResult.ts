@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, User, Pay } from '@/service/mongo';
+import { connectToDatabase, User, Pay, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PaySchema, UserModelSchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { getPayResult } from '@/service/utils/wxpay';
 import { pushPromotionRecord } from '@/service/utils/promotion';
 import { PRICE_SCALE } from '@/constants/common';
+import { startQueue } from '@/service/utils/tools';
 
 /* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -75,6 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           jsonRes(res, {
             data: '支付成功'
           });
+          unlockTask(userId);
         }
       } catch (error) {
         await Pay.findByIdAndUpdate(payId, {
@@ -99,5 +101,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       code: 500,
       error: err
     });
+  }
+}
+
+async function unlockTask(userId: string) {
+  try {
+    await TrainingData.updateMany(
+      {
+        userId
+      },
+      {
+        lockTime: new Date('2000/1/1')
+      }
+    );
+    startQueue();
+  } catch (error) {
+    unlockTask(userId);
   }
 }

@@ -9,6 +9,7 @@ import { BillTypeEnum } from '@/constants/user';
 import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
+import { sendInform } from '@/pages/api/user/inform/send';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -174,11 +175,22 @@ A2:
     }
 
     // 账号余额不足，删除任务
-    if (err === ERROR_ENUM.insufficientQuota) {
-      console.log('余额不足，删除向量生成任务');
-      await TrainingData.deleteMany({
+    if (userId && err === ERROR_ENUM.insufficientQuota) {
+      sendInform({
+        type: 'system',
+        title: 'QA 任务中止',
+        content: '由于账号余额不足，QA 任务中止，重新充值后将会继续。',
         userId
       });
+      console.log('余额不足，暂停向量生成任务');
+      await TrainingData.updateMany(
+        {
+          userId
+        },
+        {
+          lockTime: new Date('2999/5/5')
+        }
+      );
       return generateQA();
     }
 

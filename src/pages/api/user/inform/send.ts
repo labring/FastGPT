@@ -32,30 +32,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export async function sendInform({ type, title, content, userId }: Props) {
   if (!type || !title || !content) {
-    return Promise.reject('参数错误');
-  }
-
-  if (userId) {
-    await Inform.create({
-      type,
-      title,
-      content,
-      userId
-    });
-
     return;
   }
 
-  // send to all user
-  const users = await User.find({}, '_id');
-  await Inform.insertMany(
-    users.map(({ _id }) => ({
-      type,
-      title,
-      content,
-      userId: _id
-    }))
-  );
+  try {
+    if (userId) {
+      // skip it if have same inform within 5 minutes
+      const inform = await Inform.findOne({
+        type,
+        title,
+        content,
+        userId,
+        read: false,
+        time: { $lte: new Date(Date.now() + 5 * 60 * 1000) }
+      });
 
-  return;
+      if (inform) return;
+
+      await Inform.create({
+        type,
+        title,
+        content,
+        userId
+      });
+
+      return;
+    }
+
+    // send to all user
+    const users = await User.find({}, '_id');
+    await Inform.insertMany(
+      users.map(({ _id }) => ({
+        type,
+        title,
+        content,
+        userId: _id
+      }))
+    );
+  } catch (error) {
+    console.log('send inform error', error);
+  }
 }
