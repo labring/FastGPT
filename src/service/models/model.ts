@@ -82,4 +82,11 @@ const ModelSchema = new Schema({
   }
 });
 
+try {
+  ModelSchema.index({ updateTime: -1 });
+  ModelSchema.index({ 'share.collection': -1 });
+} catch (error) {
+  error;
+}
+
 export const Model: MongoModel<ModelType> = models['model'] || model('model', ModelSchema);
