@@ -47,7 +47,10 @@ export async function openaiEmbedding({
     mustPay,
     type
   });
-
+  
+  
+  let cleanedUserOpenAiKey  = userOpenAiKey.trim();
+  let cleanedSystemAuthKey  = systemAuthKey.trim();
   // 获取 chatAPI
   const chatAPI = getOpenAIApi();
 
@@ -60,7 +63,7 @@ export async function openaiEmbedding({
       },
       {
         timeout: 60000,
-        ...axiosConfig(userOpenAiKey || systemAuthKey)
+        ...axiosConfig(cleanedUserOpenAiKey || cleanedSystemAuthKey)
       }
     )
     .then((res) => ({
