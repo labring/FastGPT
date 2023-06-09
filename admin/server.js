@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import crypto from 'crypto';
 
 const app = express(); 
 app.use(cors()); 
@@ -75,11 +76,28 @@ const modelSchema = new mongoose.Schema({
   updateTime: Date
 });
 
+// 新增: 定义 setting 模型
+const settingSchema = new mongoose.Schema({
+  _id: mongoose.Schema.Types.ObjectId,
+  OPENAIKEY: String,
+  OPENAI_TRAINING_KEY: String,
+  GPT4KEY: String,
+  VECTOR_MAX_PROCESS: Number,
+  QA_MAX_PROCESS: Number,
+});
+
+// 加密
+const hashPassword = (psw) => {
+  return crypto.createHash('sha256').update(psw).digest('hex');
+};
+
+
 
 const Model = mongoose.model('Model', modelSchema);
 const Kb = mongoose.model('Kb', kbSchema);
 const User = mongoose.model('User', userSchema, 'users');
 const Pay = mongoose.model('Pay', paySchema, 'pays');
+const Setting = mongoose.model('Setting', settingSchema);
 
 // 获取用户列表
 app.get('/users', async (req, res) => {
@@ -113,34 +131,46 @@ app.get('/users', async (req, res) => {
 
 // 创建用户
 app.post('/users', async (req, res) => {
-    try {
-    const { username, password, balance, promotion, openaiKey = '', avatar = '/icon/human.png' } = req.body;
+  try {
+    const {
+      username,
+      password,
+      balance,
+      promotion,
+      openaiKey = '',
+      avatar = '/icon/human.png',
+    } = req.body;
     if (!username || !password || !balance) {
-    return res.status(400).json({ error: 'Invalid user information' });
+      return res.status(400).json({ error: 'Invalid user information' });
     }
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-    return res.status(400).json({ error: 'Username already exists' });
+      return res.status(400).json({ error: 'Username already exists' });
     }
+
+    // Hash the user's plaintext password
+    const hashedPassword = hashPassword(password);
+
     const user = new User({
-    _id: new mongoose.Types.ObjectId(),
-    username,
-    password,
-    balance,
-    promotion: {
-    rate: promotion?.rate || 0,
-    },
-    openaiKey,
-    avatar,
-    createTime: new Date(),
+      _id: new mongoose.Types.ObjectId(),
+      username,
+      password: hashedPassword, // Store hashed password in the database
+      balance,
+      promotion: {
+        rate: promotion?.rate || 0,
+      },
+      openaiKey,
+      avatar,
+      createTime: new Date(),
     });
     const result = await user.save();
     res.json(result);
-    } catch (err) {
+  } catch (err) {
     console.log(`Error creating user: ${err}`);
     res.status(500).json({ error: 'Error creating user' });
-    }
-   });
+  }
+});
+
    
    
    
@@ -151,6 +181,13 @@ app.put('/users/:id', async (req, res) => {
   try {
     const _id = req.params.id;
 
+    // Check if a new password is provided in the request body
+    if (req.body.password) {
+      // Hash the new password
+      const hashedPassword = hashPassword(req.body.password);
+      req.body.password = hashedPassword;
+    }
+
     const result = await User.updateOne({ _id: _id }, { $set: req.body });
     res.json(result);
   } catch (err) {
@@ -158,6 +195,7 @@ app.put('/users/:id', async (req, res) => {
     res.status(500).json({ error: 'Error updating user' });
   }
 });
+
 
 // 删除用户
 app.delete('/users/:id', async (req, res) => {
@@ -318,6 +356,63 @@ app.get('/models', async (req, res) => {
     res.status(500).json({ error: 'Error fetching models', details: err.message });
   }
 });
+
+// 获取系统配置
+app.get('/settings', async (req, res) => {
+  try {
+    const start = parseInt(req.query._start) || 0;
+    const end = parseInt(req.query._end) || 20;
+    const order = req.query._order === 'DESC' ? -1 : 1;
+    const sort = req.query._sort || '_id';
+
+    const settingsRaw = await Setting.find()
+      .skip(start)
+      .limit(end - start)
+      .sort({ [sort]: order });
+
+    const settings = [];
+
+    for (const settingRaw of settingsRaw) {
+      const setting = settingRaw.toObject();
+
+      const orderedSetting = {
+        id: setting._id.toString(),
+        OPENAIKEY: setting.OPENAIKEY,
+        OPENAI_TRAINING_KEY: setting.OPENAI_TRAINING_KEY,
+        GPT4KEY: setting.GPT4KEY,
+        VECTOR_MAX_PROCESS: setting.VECTOR_MAX_PROCESS,
+        QA_MAX_PROCESS: setting.QA_MAX_PROCESS,
+      };
+
+      settings.push(orderedSetting);
+    }
+
+    const totalCount = await Setting.countDocuments();
+    res.header('Access-Control-Expose-Headers', 'X-Total-Count');
+    res.header('X-Total-Count', totalCount);
+    res.json(settings);
+  } catch (err) {
+    console.log(`Error fetching settings: ${err}`);
+    res
+      .status(500)
+      .json({ error: 'Error fetching settings', details: err.message });
+  }
+});
+
+//修改系统配置
+app.put('/settings/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const result = await Setting.updateOne({ _id: id }, { $set: req.body });
+    console.log(result);
+    res.json(result);
+  } catch (err) {
+    console.log(`Error updating setting: ${err}`);
+    res.status(500).json({ error: 'Error updating setting', details: err.message });
+  }
+});
+
 
 
 
