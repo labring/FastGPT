@@ -54,14 +54,14 @@ const OpenApi = () => {
     <Box py={[5, 10]} px={'5vw'}>
       <Card px={6} py={4} position={'relative'}>
         <Box fontSize={'xl'} fontWeight={'bold'}>
-          FastGpt Api
+          UseAIS Api
         </Box>
         <Box fontSize={'sm'} mt={2}>
-          FastGpt Api 允许你将 Fast Gpt 的部分功能通过 api
+          UseAIS Api 允许你将 UseAIS 的部分功能通过 api
           的形式接入到自己的应用中，例如：飞书、企业微信、客服助手。请注意保管你的 Api
           Key，不要泄露！
         </Box>
-        <Box>使用 Fast Api 功能仅能使用平台余额。</Box>
+        <Box>使用 UseAIS Api 功能仅能使用平台余额。</Box>
         <Box
           my={1}
           as="a"
