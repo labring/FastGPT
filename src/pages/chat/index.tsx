@@ -229,9 +229,11 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       }));
 
       // refresh data
-      generatingMessage();
-      loadHistory({ pageNum: 1, init: true });
-      loadMyModels(true);
+      setTimeout(() => {
+        generatingMessage();
+        loadHistory({ pageNum: 1, init: true });
+        loadMyModels(true);
+      }, 100);
     },
     [
       chatId,

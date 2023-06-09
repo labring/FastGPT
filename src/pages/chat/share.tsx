@@ -231,6 +231,16 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
         chats: responseHistory
       });
 
+      window.top?.postMessage(
+        {
+          type: 'shareChatFinish',
+          data: {
+            responseText
+          }
+        },
+        '*'
+      );
+
       setTimeout(() => {
         generatingMessage();
       }, 100);
