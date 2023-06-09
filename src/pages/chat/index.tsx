@@ -49,6 +49,9 @@ import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
 import QuoteModal from './components/QuoteModal';
 import { HUMAN_ICON } from '@/constants/chat';
+import { useEditInfo } from '@/hooks/useEditInfo';
+import { getErrText } from '@/utils/tools';
+import { putChatHistory } from '@/api/chat';
 
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
   ssr: false
@@ -63,6 +66,12 @@ import styles from './index.module.scss';
 const textareaMinH = '22px';
 
 const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
+  // custom title edit
+  const { onOpenModal, EditModal: EditTitleModal } = useEditInfo({
+    title: '自定义历史记录标题',
+    placeholder: '如果设置为空，会自动跟随聊天记录。'
+  });
+
   const router = useRouter();
   const theme = useTheme();
 
@@ -663,6 +672,35 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                     新对话
                   </MenuItem>
                   <MenuItem
+                    onClick={() =>
+                      onOpenModal({
+                        defaultVal: chatData.title,
+                        onSuccess: async (val: string) => {
+                          await putChatHistory({
+                            chatId: chatData.chatId,
+                            customTitle: val,
+                            top: chatData.top
+                          });
+                          toast({
+                            title: '自定义标题成功',
+                            status: 'success'
+                          });
+                          loadHistory({ pageNum: 1, init: true });
+                        },
+                        onError(err) {
+                          toast({
+                            title: getErrText(err),
+                            status: 'error'
+                          });
+                        }
+                      })
+                    }
+                  >
+                    {' '}
+                    自定义标题
+                  </MenuItem>
+
+                  <MenuItem
                     onClick={async () => {
                       try {
                         setIsLoading(true);
@@ -885,6 +923,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             </Box>
           )}
 
+          <EditTitleModal />
           <Loading fixed={false} />
         </Flex>
       )}
