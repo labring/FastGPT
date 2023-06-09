@@ -15,7 +15,7 @@ export const getPayment = () => {
 export const nativePay = (amount: number, payId: string): Promise<string> =>
   getPayment()
     .native({
-      description: 'Fast GPT 余额充值',
+      description: 'Use AIS 余额充值',
       out_trade_no: payId,
       amount: {
         total: amount
