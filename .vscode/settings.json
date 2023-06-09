@@ -1,0 +1,7 @@
+{
+    "editor.formatOnSave": true, //每次保存自动格式化
+    "editor.mouseWheelZoom": true,
+    "typescript.tsdk": "./client/node_modules/typescript/lib",
+    "prettier.prettierPath": "./node_modules/prettier"
+
+}

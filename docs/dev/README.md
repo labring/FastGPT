@@ -11,3 +11,10 @@
 ```
 pnpm dev
 ```
+
+## 镜像打包
+
+```bash
+# 代理可选，不需要的去掉
+docker build -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest . --network host  --build-arg HTTP_PROXY=http://127.0.0.1:7890 --build-arg HTTPS_PROXY=http://127.0.0.1:7890
+```
