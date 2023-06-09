@@ -13,7 +13,7 @@
     "prettier": "^2.8.7"
   },
   "lint-staged": {
-    "./**/src/**/*.{ts,tsx,scss}": "npm run format"
+    "./**/*.{ts,tsx,scss}": "npm run format"
   },
   "engines": {
     "node": ">=18.0.0"
