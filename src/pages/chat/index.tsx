@@ -672,14 +672,28 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                     新对话
                   </MenuItem>
                   <MenuItem
+                    onClick={async () => {
+                      try {
+                        setIsLoading(true);
+                        await onclickDelHistory(chatData.chatId);
+                        router.replace(`/chat?modelId=${modelId}`);
+                      } catch (err) {
+                        console.log(err);
+                      }
+                      setIsLoading(false);
+                    }}
+                  >
+                    删除记录
+                  </MenuItem>
+                  <MenuItem
                     onClick={() =>
                       onOpenModal({
-                        defaultVal: chatData.title,
+                        defaultVal: item.title,
                         onSuccess: async (val: string) => {
                           await putChatHistory({
                             chatId: chatData.chatId,
                             customTitle: val,
-                            top: chatData.top
+                            top: item.top
                           });
                           toast({
                             title: '自定义标题成功',
@@ -698,21 +712,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   >
                     {' '}
                     自定义标题
-                  </MenuItem>
-
-                  <MenuItem
-                    onClick={async () => {
-                      try {
-                        setIsLoading(true);
-                        await onclickDelHistory(chatData.chatId);
-                        router.replace(`/chat?modelId=${modelId}`);
-                      } catch (err) {
-                        console.log(err);
-                      }
-                      setIsLoading(false);
-                    }}
-                  >
-                    删除记录
                   </MenuItem>
                   <MenuItem onClick={() => onclickExportChat('html')}>导出HTML格式</MenuItem>
                   <MenuItem onClick={() => onclickExportChat('pdf')}>导出PDF格式</MenuItem>
