@@ -141,7 +141,11 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
     router.replace('/login');
   }, [router, setUserInfo]);
 
-  useQuery(['init'], initUserInfo);
+  useQuery(['init'], initUserInfo, {
+    onSuccess(res) {
+      reset(res);
+    }
+  });
   const { data: { invitedAmount = 0, historyAmount = 0, residueAmount = 0 } = {} } = useQuery(
     ['getPromotionInitData'],
     getPromotionInitData

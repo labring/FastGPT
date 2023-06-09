@@ -14,7 +14,7 @@ import type { ModelSchema } from '@/types/mongoSchema';
 
 type State = {
   userInfo: UserType | null;
-  initUserInfo: () => Promise<null>;
+  initUserInfo: () => Promise<UserType>;
   setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => void;
   // model
@@ -47,7 +47,7 @@ export const useUserStore = create<State>()(
         async initUserInfo() {
           const res = await getTokenLogin();
           get().setUserInfo(res);
-          return null;
+          return res;
         },
         setUserInfo(user: UserType | null) {
           set((state) => {
