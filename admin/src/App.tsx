@@ -5,19 +5,18 @@ import {
   Resource,
   Tushan,
 } from 'tushan';
-import { authProvider } from './auth';
-import { userFields,payFields,kbFields,ModelFields } from './fields';
-
+import { userFields,payFields,kbFields,ModelFields,SettingFields } from './fields';
+import {Dashboard} from './Dashboard';
 const dataProvider = jsonServerProvider('http://localhost:3001');
 
 function App() {
   return (
     <Tushan
       basename="/"
-      header={'fastgpt-admin'}
+      header={'FastAI后台管理系统'}
       footer={'Build with stakeswky'}
       dataProvider={dataProvider}
-      authProvider={authProvider}
+      dashboard={<Dashboard />}
     >
       <Resource
         name="users"
@@ -26,7 +25,7 @@ function App() {
           <ListTable
             filter={[
               createTextField('q', {
-                label: 'Query',
+                label: 'Search',
               }),
             ]}
             fields={userFields}
@@ -62,6 +61,16 @@ function App() {
           <ListTable
             fields={ModelFields}
             action={{ detail: true }}
+          />
+        }
+      />
+      <Resource
+        name="settings"
+        label="设置"
+        list={
+          <ListTable
+            fields={SettingFields}
+            action={{ detail: true , edit: true }}
           />
         }
       />
