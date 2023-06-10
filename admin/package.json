@@ -8,36 +8,19 @@
     "dev": "concurrently \"vite\" \"npm run start:api\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
-<<<<<<< HEAD
-    "start:api": "node server.js"
-=======
     "start:api": "nodemon server.js"
->>>>>>> upstream/test
   },
   "dependencies": {
     "concurrently": "^8.1.0",
     "cors": "^2.8.5",
-<<<<<<< HEAD
-    "express": "^4.18.2",
-=======
     "dayjs": "^1.11.8",
     "dotenv": "^16.1.4",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
->>>>>>> upstream/test
     "mongoose": "^7.2.2",
     "react": "^18.2.0",
     "react-admin": "^4.11.0",
     "react-dom": "^18.2.0",
-<<<<<<< HEAD
-    "tushan": "^0.2.13"
-  },
-  "devDependencies": {
-    "@types/react": "^18.0.28",
-    "@types/react-dom": "^18.0.11",
-    "@vitejs/plugin-react": "^3.1.0",
-    "typescript": "^4.9.3",
-=======
     "tushan": "^0.2.22"
   },
   "devDependencies": {
@@ -50,7 +33,6 @@
     "@types/styled-components": "^5.1.26",
     "@vitejs/plugin-react": "^3.1.0",
     "typescript": "^4.9.2",
->>>>>>> upstream/test
     "vite": "^4.2.1"
   }
 }
