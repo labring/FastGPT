@@ -46,7 +46,7 @@ function App() {
               })
             ]}
             fields={userFields}
-            action={{ create: true, detail: true, edit: true }}
+            action={{ detail: true, edit: true }}
           />
         }
       />
