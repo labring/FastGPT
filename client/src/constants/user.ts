@@ -40,3 +40,8 @@ export const InformTypeMap = {
     label: '系统通知'
   }
 };
+
+export enum MyModelsTypeEnum {
+  my = 'my',
+  collection = 'collection'
+}
