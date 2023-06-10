@@ -1,5 +1,15 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex, useTheme, Input, IconButton, Tooltip } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Box,
+  Flex,
+  Input,
+  IconButton,
+  Tooltip,
+  Tabs,
+  TabList,
+  Tab,
+  useTheme
+} from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
@@ -9,8 +19,15 @@ import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import Avatar from '@/components/Avatar';
+import { MyModelsTypeEnum } from '@/constants/user';
 
 const ModelList = ({ modelId }: { modelId: string }) => {
+  const tabs = useRef([
+    { label: '我的', value: MyModelsTypeEnum.my },
+    { label: '收藏', value: MyModelsTypeEnum.collection }
+  ]);
+  const [currentTab, setCurrentTab] = useState(MyModelsTypeEnum.my);
+
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
@@ -42,29 +59,23 @@ const ModelList = ({ modelId }: { modelId: string }) => {
     setIsLoading(false);
   }, [myModels.length, refreshModel, router, setIsLoading, toast]);
 
-  const models = useMemo(
-    () =>
-      [
-        {
-          label: '我的',
-          list: myModels.filter((item) =>
-            new RegExp(searchText, 'ig').test(item.name + item.systemPrompt)
-          )
-        },
-        {
-          label: '收藏',
-          list: myCollectionModels.filter((item) =>
-            new RegExp(searchText, 'ig').test(item.name + item.systemPrompt)
-          )
-        }
-      ].filter((item) => item.list.length > 0),
-    [myCollectionModels, myModels, searchText]
-  );
-
-  const totalModels = useMemo(
-    () => models.reduce((sum, item) => sum + item.list.length, 0),
-    [models]
-  );
+  const currentModels = useMemo(() => {
+    const map = {
+      [MyModelsTypeEnum.my]: {
+        list: myModels.filter((item) =>
+          new RegExp(searchText, 'ig').test(item.name + item.systemPrompt)
+        ),
+        emptyText: '还没有 AI 应用~\n快来创建一个吧'
+      },
+      [MyModelsTypeEnum.collection]: {
+        list: myCollectionModels.filter((item) =>
+          new RegExp(searchText, 'ig').test(item.name + item.systemPrompt)
+        ),
+        emptyText: '收藏的 AI 应用为空~\n快去市场找一个吧'
+      }
+    };
+    return map[currentTab];
+  }, [currentTab, myCollectionModels, myModels, searchText]);
 
   return (
     <Flex
@@ -107,55 +118,69 @@ const ModelList = ({ modelId }: { modelId: string }) => {
           />
         </Tooltip>
       </Flex>
-      <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
-        {models.map((item) => (
-          <Box key={item.label} _notFirst={{ mt: 5 }}>
-            <Box fontWeight={'bold'} pl={5}>
-              {item.label}
-            </Box>
-            {item.list.map((item) => (
-              <Flex
-                key={item._id}
-                position={'relative'}
-                alignItems={['flex-start', 'center']}
-                p={3}
-                mb={[2, 0]}
-                cursor={'pointer'}
-                transition={'background-color .2s ease-in'}
-                borderLeft={['', '5px solid transparent']}
-                _hover={{
-                  backgroundColor: ['', '#dee0e3']
-                }}
-                {...(modelId === item._id
-                  ? {
-                      backgroundColor: '#eff0f1',
-                      borderLeftColor: 'myBlue.600 !important'
-                    }
-                  : {})}
-                onClick={() => {
-                  if (item._id === modelId) return;
-                  router.push(`/model?modelId=${item._id}`);
-                }}
+      <Flex mb={4} userSelect={'none'}>
+        <Box flex={1}></Box>
+        <Tabs
+          variant="unstyled"
+          defaultIndex={tabs.current.findIndex((item) => item.value === currentTab)}
+          onChange={(i) => setCurrentTab(tabs.current[i].value)}
+        >
+          <TabList whiteSpace={'nowrap'}>
+            {tabs.current.map((item) => (
+              <Tab
+                key={item.value}
+                py={'2px'}
+                px={4}
+                borderRadius={'sm'}
+                mr={2}
+                transition={'none'}
+                _selected={{ color: 'white', bg: 'myBlue.600' }}
               >
-                <Avatar src={item.avatar} w={'34px'} h={'34px'} />
-                <Box flex={'1 0 0'} w={0} ml={3}>
-                  <Box className="textEllipsis" color={'myGray.1000'}>
-                    {item.name}
-                  </Box>
-                  <Box className="textEllipsis" color={'myGray.400'} fontSize={'sm'}>
-                    {item.systemPrompt || '这个 应用 没有设置提示词~'}
-                  </Box>
-                </Box>
-              </Flex>
+                {item.label}
+              </Tab>
             ))}
-          </Box>
+          </TabList>
+        </Tabs>
+      </Flex>
+      <Box flex={'1 0 0'} h={0} overflow={'overlay'} userSelect={'none'}>
+        {currentModels.list.map((item) => (
+          <Flex
+            key={item._id}
+            position={'relative'}
+            alignItems={['flex-start', 'center']}
+            p={3}
+            mb={[2, 0]}
+            cursor={'pointer'}
+            transition={'background-color .2s ease-in'}
+            _hover={{
+              backgroundImage: ['', theme.active.hoverBlueGradient]
+            }}
+            {...(modelId === item._id
+              ? {
+                  backgroundImage: `${theme.active.activeBlueGradient} !important`
+                }
+              : {})}
+            onClick={() => {
+              if (item._id === modelId) return;
+              router.push(`/model?modelId=${item._id}`);
+            }}
+          >
+            <Avatar src={item.avatar} w={'34px'} h={'34px'} />
+            <Box flex={'1 0 0'} w={0} ml={3}>
+              <Box className="textEllipsis" color={'myGray.1000'}>
+                {item.name}
+              </Box>
+              <Box className="textEllipsis" color={'myGray.400'} fontSize={'sm'}>
+                {item.systemPrompt || '这个 应用 没有设置提示词~'}
+              </Box>
+            </Box>
+          </Flex>
         ))}
-
-        {!isFetching && totalModels === 0 && (
+        {!isFetching && currentModels.list.length === 0 && (
           <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'30vh'}>
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              还没有 AI 应用~
+              {currentModels.emptyText}
             </Box>
           </Flex>
         )}

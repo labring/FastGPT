@@ -44,7 +44,7 @@ svg {
 div {
   &::-webkit-scrollbar-thumb {
     background: transparent !important;
-    transition: 1s;
+    transition: background 1s;
   }
   &:hover {
     &::-webkit-scrollbar-thumb {

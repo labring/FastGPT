@@ -87,7 +87,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
           />
         </Tooltip>
       </Flex>
-      <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
+      <Box flex={'1 0 0'} h={0} overflow={'overlay'} userSelect={'none'}>
         {kbs.map((item) => (
           <Flex
             key={item._id}
@@ -97,14 +97,12 @@ const KbList = ({ kbId }: { kbId: string }) => {
             mb={[2, 0]}
             cursor={'pointer'}
             transition={'background-color .2s ease-in'}
-            borderLeft={['', '5px solid transparent']}
             _hover={{
-              backgroundColor: ['', '#dee0e3']
+              backgroundImage: ['', theme.active.hoverBlueGradient]
             }}
             {...(kbId === item._id
               ? {
-                  backgroundColor: '#eff0f1',
-                  borderLeftColor: 'myBlue.600 !important'
+                  backgroundImage: `${theme.active.activeBlueGradient} !important`
                 }
               : {})}
             onClick={() => {

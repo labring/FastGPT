@@ -28,5 +28,4 @@ next-env.d.ts
 platform.json
 testApi/
 local/
-.husky/
 dist/
