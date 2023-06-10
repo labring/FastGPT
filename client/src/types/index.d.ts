@@ -28,6 +28,7 @@ declare global {
     gpt4Key: string;
     vectorMaxProcess: number;
     qaMaxProcess: number;
+    pgIvfflatProbe: number;
     sensitiveCheck: boolean;
   };
 
