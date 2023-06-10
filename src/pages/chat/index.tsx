@@ -98,6 +98,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     setLastChatModelId,
     lastChatId,
     setLastChatId,
+    history,
     loadHistory,
     chatData,
     setChatData,
@@ -688,12 +689,12 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   <MenuItem
                     onClick={() =>
                       onOpenModal({
-                        defaultVal: item.title,
+                        defaultVal: history.find((item) => item._id === chatId)?.title || '',
                         onSuccess: async (val: string) => {
                           await putChatHistory({
                             chatId: chatData.chatId,
                             customTitle: val,
-                            top: item.top
+                            top: history.find((item) => item._id === chatId)?.top || undefined
                           });
                           toast({
                             title: '自定义标题成功',
@@ -710,7 +711,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                       })
                     }
                   >
-                    {' '}
                     自定义标题
                   </MenuItem>
                   <MenuItem onClick={() => onclickExportChat('html')}>导出HTML格式</MenuItem>
