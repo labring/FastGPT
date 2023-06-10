@@ -67,6 +67,10 @@ do
 done
 ```
 
+## FastGpt Admin
+
+参考 admin 里的 README.md
+
 ## 其他优化点
 
 # Git Action 自动打包镜像
