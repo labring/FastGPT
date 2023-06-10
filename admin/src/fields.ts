@@ -1,13 +1,11 @@
 import {
   createTextField,
   createNumberField,
-  createEmailField,
-  emailValidator
 } from 'tushan';
 
 export const userFields = [
   createTextField('id', { label: 'ID' }),
-  createEmailField('username', { label: '用户名', edit: { rules: [{ required: true, }, { validator: emailValidator, },], }, }),
+  createTextField('username', { label: '用户名' }),
   createNumberField('balance', { label: '余额', list: { sort: true } }),
   createTextField('createTime', { label: 'Create Time', list: { sort: true } })
 ];

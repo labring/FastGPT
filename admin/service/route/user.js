@@ -85,7 +85,7 @@ export const useUserRoute = (app) => {
   });
 
   // 修改用户信息
-  app.put('/users/:id', async (req, res) => {
+  app.put('/users/:id', auth(), async (req, res) => {
     try {
       const _id = req.params.id;
   
