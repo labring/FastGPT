@@ -1,8 +1,9 @@
 import { User, Model, Kb } from '../schema.js';
+import { auth } from './system.js';
 
 export const useAppRoute = (app) => {
   // 获取AI助手列表
-  app.get('/models', async (req, res) => {
+  app.get('/models', auth(), async (req, res) => {
     try {
       const start = parseInt(req.query._start) || 0;
       const end = parseInt(req.query._end) || 20;

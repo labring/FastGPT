@@ -1,13 +1,11 @@
-import {
-  createTextField,
-  createNumberField,
-} from 'tushan';
+import { createTextField, createNumberField } from 'tushan';
 
 export const userFields = [
   createTextField('id', { label: 'ID' }),
   createTextField('username', { label: '用户名' }),
   createNumberField('balance', { label: '余额', list: { sort: true } }),
-  createTextField('createTime', { label: 'Create Time', list: { sort: true } })
+  createTextField('createTime', { label: 'Create Time', list: { sort: true } }),
+  createTextField('password', { label: '密码', list: { hidden: true } })
 ];
 
 export const payFields = [

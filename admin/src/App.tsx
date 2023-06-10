@@ -8,6 +8,7 @@ import {
 } from 'tushan';
 import { authProvider } from './auth';
 import { userFields, payFields, kbFields, ModelFields } from './fields';
+import { Dashboard } from './Dashboard';
 
 const authStorageKey = 'tushan:auth';
 
@@ -34,6 +35,7 @@ function App() {
       header={'FastGpt-Admin'}
       dataProvider={dataProvider}
       authProvider={authProvider}
+      dashboard={<Dashboard />}
     >
       <Resource
         name="users"
