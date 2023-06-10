@@ -44,7 +44,7 @@ const Markdown = ({
       components={{
         pre: "div",
         code({ node, inline, className, children, ...props }) {
-          const match = /language-(\w+)/.exec(className || "");
+          const match = /language-(\w+)/.exec(className || '');
           const code = String(children);
 
           if (match && match[1] === "mermaid") {
