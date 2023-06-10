@@ -55,7 +55,8 @@
     "sass": "^1.58.3",
     "tunnel": "^0.0.6",
     "wxpay-v3": "^3.0.2",
-    "zustand": "^4.3.5"
+    "zustand": "^4.3.5",
+    "mermaid": "^8.13.5"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
