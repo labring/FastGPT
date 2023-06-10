@@ -206,6 +206,9 @@ export const theme = extendTheme({
     },
     myRead: {
       600: '#ff4d4f'
+    },
+    myGreen: {
+      100: '#00fff0'
     }
   },
   fonts: {

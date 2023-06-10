@@ -144,7 +144,15 @@ const Home = () => {
       h={'100%'}
       overflow={'overlay'}
     >
-      <Box id={'particles-js'} position={'absolute'} top={0} left={0} right={0} bottom={0} />
+      <Box
+        className={styles.particles}
+        id={'particles-js'}
+        position={'absolute'}
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+      />
 
       <Flex
         flexDirection={'column'}
@@ -153,27 +161,28 @@ const Home = () => {
         position={'absolute'}
         userSelect={'none'}
       >
-        <Image src="/icon/logo.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
+        <Image src="/icon/human.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
         <Box
           fontWeight={'bold'}
           fontSize={['40px', '70px']}
           letterSpacing={'5px'}
-          color={'myBlue.600'}
+          color={'myGreen.100'}
         >
-          FastGpt
+          Use AIS
         </Box>
-        <Box color={'myBlue.600'} fontSize={['30px', '50px']}>
-          三分钟
+        <Box color={'myGreen.100'} fontSize={['30px', '50px']}>
+          解锁未来
         </Box>
-        <Box color={'myBlue.600'} fontSize={['30px', '50px']}>
+        {/* <Box color={'myGreen.100'} fontSize={['30px', '50px']}>
           搭建 AI 知识库
-        </Box>
+        </Box> */}
 
         <Button
           my={5}
           fontSize={['xl', '3xl']}
           h={'auto'}
           py={[2, 3]}
+          className="backdrop-blur"
           onClick={() => router.push(`/model`)}
         >
           点击开始
@@ -192,7 +201,7 @@ const Home = () => {
             </Link>
           )}
 
-          <Box>Made by FastGpt Team.</Box>
+          <Box>Made by Use AIS Team.</Box>
         </Card>
       </Box>
     </Flex>
