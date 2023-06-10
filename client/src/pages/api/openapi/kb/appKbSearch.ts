@@ -201,7 +201,7 @@ export async function appKbSearch({
     searchPrompts: [
       {
         obj: ChatRoleEnum.System,
-        value: `知识库:${systemPrompt}`
+        value: `知识库:<${systemPrompt}>`
       },
       guidePrompt
     ]

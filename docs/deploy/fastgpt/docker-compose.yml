@@ -55,15 +55,10 @@ services:
       # google V3 安全校验（可选）
       - CLIENT_GOOGLE_VER_TOKEN=xxx
       - SERVICE_GOOGLE_VER_TOKEN=xx
-      # QA和向量生成最大进程数
-      - QA_MAX_PROCESS=10
-      - VECTOR_MAX_PROCESS=10
       # token加密凭证（随便填，作为登录凭证）
       - TOKEN_KEY=xxxx
       # root key, 最高权限，可以内部接口互相调用
       - ROOT_KEY=xxx
-      # 是否进行内容安全校验(1: 开启，0: 关闭)
-      - SENSITIVE_CHECK=1
       # 和上方mongo镜像的username,password对应
       - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
       - MONGODB_NAME=fastgpt

@@ -60,13 +60,10 @@ export function withNextCors(handler: NextApiHandler): NextApiHandler {
 }
 
 export const startQueue = () => {
-  const qaMax = Number(process.env.QA_MAX_PROCESS || 10);
-  const vectorMax = Number(process.env.VECTOR_MAX_PROCESS || 10);
-
-  for (let i = 0; i < qaMax; i++) {
+  for (let i = 0; i < global.systemEnv.qaMaxProcess; i++) {
     generateQA();
   }
-  for (let i = 0; i < vectorMax; i++) {
+  for (let i = 0; i < global.systemEnv.vectorMaxProcess; i++) {
     generateVector();
   }
 };

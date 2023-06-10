@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import tunnel from 'tunnel';
-import { TrainingData } from './mongo';
 import { startQueue } from './utils/tools';
+import { updateSystemEnv } from '@/pages/api/system/updateEnv';
 
 /**
  * 连接 MongoDB 数据库
@@ -9,6 +9,27 @@ import { startQueue } from './utils/tools';
 export async function connectToDatabase(): Promise<void> {
   if (global.mongodb) {
     return;
+  }
+
+  // init global data
+  global.qaQueueLen = 0;
+  global.vectorQueueLen = 0;
+  global.systemEnv = {
+    openAIKeys: process.env.OPENAIKEY || '',
+    openAITrainingKeys: process.env.OPENAI_TRAINING_KEY || '',
+    gpt4Key: process.env.GPT4KEY || '',
+    vectorMaxProcess: 10,
+    qaMaxProcess: 10,
+    sensitiveCheck: false
+  };
+  // proxy obj
+  if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {
+    global.httpsAgent = tunnel.httpsOverHttp({
+      proxy: {
+        host: process.env.AXIOS_PROXY_HOST,
+        port: +process.env.AXIOS_PROXY_PORT
+      }
+    });
   }
 
   global.mongodb = 'connecting';
@@ -27,20 +48,8 @@ export async function connectToDatabase(): Promise<void> {
     global.mongodb = null;
   }
 
-  // 创建代理对象
-  if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {
-    global.httpsAgent = tunnel.httpsOverHttp({
-      proxy: {
-        host: process.env.AXIOS_PROXY_HOST,
-        port: +process.env.AXIOS_PROXY_PORT
-      }
-    });
-  }
-
-  // 初始化队列
-  global.qaQueueLen = 0;
-  global.vectorQueueLen = 0;
-
+  // init function
+  updateSystemEnv();
   startQueue();
 }
 
@@ -57,3 +66,4 @@ export * from './models/collection';
 export * from './models/shareChat';
 export * from './models/kb';
 export * from './models/inform';
+export * from './models/system';

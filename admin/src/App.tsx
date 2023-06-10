@@ -7,7 +7,7 @@ import {
   fetchJSON
 } from 'tushan';
 import { authProvider } from './auth';
-import { userFields, payFields, kbFields, ModelFields } from './fields';
+import { userFields, payFields, kbFields, ModelFields, SystemFields } from './fields';
 import { Dashboard } from './Dashboard';
 
 const authStorageKey = 'tushan:auth';
@@ -87,6 +87,16 @@ function App() {
         name="models"
         label="应用"
         list={<ListTable fields={ModelFields} action={{ detail: true }} />}
+      />
+      <Resource
+        name="system"
+        label="系统"
+        list={
+          <ListTable
+            fields={SystemFields}
+            action={{ detail: true, edit: true, create: true, delete: true }}
+          />
+        }
       />
     </Tushan>
   );
