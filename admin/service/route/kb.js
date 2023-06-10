@@ -1,8 +1,9 @@
 import { Kb } from '../schema.js';
+import { auth } from './system.js';
 
 export const useKbRoute = (app) => {
   // 获取用户知识库列表
-  app.get('/kbs', async (req, res) => {
+  app.get('/kbs', auth(), async (req, res) => {
     try {
       const start = parseInt(req.query._start) || 0;
       const end = parseInt(req.query._end) || 20;

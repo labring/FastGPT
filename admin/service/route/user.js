@@ -31,7 +31,8 @@ export const useUserRoute = (app) => {
         return {
           ...obj,
           id: obj._id,
-          createTime: dayjs(obj.createTime).format('YYYY/MM/DD HH:mm')
+          createTime: dayjs(obj.createTime).format('YYYY/MM/DD HH:mm'),
+          password: ''
         };
       });
 
@@ -49,14 +50,7 @@ export const useUserRoute = (app) => {
   // 创建用户
   app.post('/users', auth(), async (req, res) => {
     try {
-      const {
-        username,
-        password,
-        balance,
-        promotion,
-        openaiKey = '',
-        avatar = '/icon/human.png'
-      } = req.body;
+      const { username, password, balance } = req.body;
       if (!username || !password || !balance) {
         return res.status(400).json({ error: 'Invalid user information' });
       }
@@ -64,19 +58,12 @@ export const useUserRoute = (app) => {
       if (existingUser) {
         return res.status(400).json({ error: 'Username already exists' });
       }
-      const user = new User({
-        _id: new mongoose.Types.ObjectId(),
+
+      const result = await User.create({
         username,
         password,
-        balance,
-        promotion: {
-          rate: promotion?.rate || 0
-        },
-        openaiKey,
-        avatar,
-        createTime: new Date()
+        balance
       });
-      const result = await user.save();
       res.json(result);
     } catch (err) {
       console.log(`Error creating user: ${err}`);
@@ -88,15 +75,13 @@ export const useUserRoute = (app) => {
   app.put('/users/:id', auth(), async (req, res) => {
     try {
       const _id = req.params.id;
-  
-      // Check if a new password is provided in the request body
-      if (req.body.password) {
-        // Hash the new password
-        const hashedPassword = hashPassword(req.body.password);
-        req.body.password = hashedPassword;
-      }
-  
-      const result = await User.updateOne({ _id: _id }, { $set: req.body });
+
+      let { password, balance = 0 } = req.body;
+
+      const result = await User.findByIdAndUpdate(_id, {
+        ...(password && { password: hashPassword(hashPassword(password)) }),
+        ...(balance && { balance })
+      });
       res.json(result);
     } catch (err) {
       console.log(`Error updating user: ${err}`);

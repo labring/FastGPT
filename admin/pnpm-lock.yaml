@@ -5,12 +5,18 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@arco-design/web-react':
+    specifier: ^2.49.1
+    version: registry.npmmirror.com/@arco-design/web-react@2.49.1(@types/react@18.0.28)(react-dom@18.2.0)(react@18.2.0)
   concurrently:
     specifier: ^8.1.0
     version: registry.npmmirror.com/concurrently@8.1.0
   cors:
     specifier: ^2.8.5
     version: registry.npmmirror.com/cors@2.8.5
+  crypto:
+    specifier: ^1.0.1
+    version: registry.npmmirror.com/crypto@1.0.1
   dayjs:
     specifier: ^1.11.8
     version: registry.npmmirror.com/dayjs@1.11.8
@@ -35,6 +41,9 @@ dependencies:
   react-dom:
     specifier: ^18.2.0
     version: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
+  react-i18next:
+    specifier: ^12.3.1
+    version: registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0)
   tushan:
     specifier: ^0.2.22
     version: registry.npmmirror.com/tushan@0.2.22(history@5.3.0)(prop-types@15.8.1)(react-hook-form@7.44.3)
@@ -1894,6 +1903,13 @@ packages:
       node-fetch: registry.npmmirror.com/node-fetch@2.6.11
     transitivePeerDependencies:
       - encoding
+    dev: false
+
+  registry.npmmirror.com/crypto@1.0.1:
+    resolution: {integrity: sha512-VxBKmeNcqQdiUQUW2Tzq0t377b54N2bMtXO/qiLa+6eRRmmC4qT3D4OnTGoT/U6O9aklQ/jTwbOtRMTTY8G0Ig==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/crypto/-/crypto-1.0.1.tgz}
+    name: crypto
+    version: 1.0.1
+    deprecated: This package is no longer supported. It's now a built-in Node module. If you've depended on crypto, you should switch to the one that's built-in.
     dev: false
 
   registry.npmmirror.com/css-color-keywords@1.0.0:
