@@ -1,4 +1,7 @@
-import { createTextField, createNumberField } from 'tushan';
+import {
+  createTextField,
+  createNumberField,
+} from 'tushan';
 
 export const userFields = [
   createTextField('id', { label: 'ID' }),

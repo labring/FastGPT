@@ -1,6 +1,12 @@
 import { User, Pay } from '../schema.js';
 import dayjs from 'dayjs';
 import { auth } from './system.js';
+import crypto from 'crypto';
+
+// 加密
+const hashPassword = (psw) => {
+  return crypto.createHash('sha256').update(psw).digest('hex');
+};
 
 export const useUserRoute = (app) => {
   // 获取用户列表
@@ -82,7 +88,14 @@ export const useUserRoute = (app) => {
   app.put('/users/:id', auth(), async (req, res) => {
     try {
       const _id = req.params.id;
-
+  
+      // Check if a new password is provided in the request body
+      if (req.body.password) {
+        // Hash the new password
+        const hashedPassword = hashPassword(req.body.password);
+        req.body.password = hashedPassword;
+      }
+  
       const result = await User.updateOne({ _id: _id }, { $set: req.body });
       res.json(result);
     } catch (err) {
