@@ -44,12 +44,12 @@ const Navbar = ({ unread }: { unread: number }) => {
         link: '/model/share',
         activeLink: ['/model/share']
       },
-      {
-        label: '开发',
-        icon: 'develop',
-        link: '/openapi',
-        activeLink: ['/openapi']
-      },
+      // {
+      //   label: '开发',
+      //   icon: 'develop',
+      //   link: '/openapi',
+      //   activeLink: ['/openapi']
+      // },
       {
         label: '账号',
         icon: 'user',
@@ -134,7 +134,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </Box>
       )}
-      <Box>
+      {/* <Box>
         <Link
           as={NextLink}
           href="https://github.com/c121914yu/FastGPT"
@@ -144,7 +144,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         >
           <MyIcon name={'git'} width={'22px'} height={'22px'} />
         </Link>
-      </Box>
+      </Box> */}
     </Flex>
   );
 };

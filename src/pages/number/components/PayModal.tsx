@@ -32,6 +32,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
     try {
       // 获取支付二维码
       const res = await getPayCode(inputVal);
+      console.log(res);
       new QRCode(document.getElementById('payQRCode'), {
         text: res.codeUrl,
         width: 128,
