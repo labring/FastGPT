@@ -3,6 +3,15 @@ import type { Agent } from 'http';
 import type { Pool } from 'pg';
 import type { Tiktoken } from '@dqbd/tiktoken';
 
+export type PagingData<T> = {
+  pageNum: number;
+  pageSize: number;
+  data: T[];
+  total?: number;
+};
+
+export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
+
 declare global {
   var mongodb: Mongoose | string | null;
   var pgClient: Pool | null;
@@ -13,17 +22,16 @@ declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
   var OpenAiEncMap: Record<string, Tiktoken>;
+  var systemEnv: {
+    openAIKeys: string;
+    openAITrainingKeys: string;
+    gpt4Key: string;
+    vectorMaxProcess: number;
+    qaMaxProcess: number;
+    sensitiveCheck: boolean;
+  };
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
   }
 }
-
-export type PagingData<T> = {
-  pageNum: number;
-  pageSize: number;
-  data: T[];
-  total?: number;
-};
-
-export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };

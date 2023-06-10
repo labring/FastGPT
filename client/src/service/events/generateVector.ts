@@ -12,9 +12,7 @@ const reduceQueue = () => {
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
-  const maxProcess = Number(process.env.VECTOR_MAX_PROCESS || 10);
-
-  if (global.vectorQueueLen >= maxProcess) return;
+  if (global.vectorQueueLen >= global.systemEnv.vectorMaxProcess) return;
   global.vectorQueueLen++;
 
   let trainingId = '';

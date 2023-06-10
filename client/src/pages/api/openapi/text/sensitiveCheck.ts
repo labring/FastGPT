@@ -8,7 +8,7 @@ import { axiosConfig } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    if (process.env.SENSITIVE_CHECK !== '1') {
+    if (global.systemEnv.sensitiveCheck) {
       return jsonRes(res);
     }
 

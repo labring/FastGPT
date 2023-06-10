@@ -123,14 +123,21 @@ export const authUser = async ({
 export const getSystemOpenAiKey = (type: ApiKeyType) => {
   const keys = (() => {
     if (type === 'training') {
-      return process.env.OPENAI_TRAINING_KEY?.split(',') || [];
+      return global.systemEnv.openAITrainingKeys?.split(',') || [];
     }
-    return process.env.OPENAIKEY?.split(',') || [];
+    return global.systemEnv.openAIKeys?.split(',') || [];
   })();
 
   // 纯字符串类型
   const i = Math.floor(Math.random() * keys.length);
-  return keys[i] || (process.env.OPENAIKEY as string);
+  return keys[i] || (global.systemEnv.openAIKeys as string);
+};
+export const getGpt4Key = () => {
+  const keys = global.systemEnv.gpt4Key?.split(',') || [];
+
+  // 纯字符串类型
+  const i = Math.floor(Math.random() * keys.length);
+  return keys[i] || (global.systemEnv.openAIKeys as string);
 };
 
 /* 获取 api 请求的 key */
@@ -157,11 +164,11 @@ export const getApiKey = async ({
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: process.env.GPT4KEY as string
+      systemAuthKey: getGpt4Key() as string
     },
     [OpenAiChatEnum.GPT432k]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: process.env.GPT4KEY as string
+      systemAuthKey: getGpt4Key() as string
     },
     [ClaudeEnum.Claude]: {
       userOpenAiKey: '',

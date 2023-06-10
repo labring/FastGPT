@@ -16,9 +16,7 @@ const reduceQueue = () => {
 };
 
 export async function generateQA(): Promise<any> {
-  const maxProcess = Number(process.env.QA_MAX_PROCESS || 10);
-
-  if (global.qaQueueLen >= maxProcess) return;
+  if (global.qaQueueLen >= global.systemEnv.qaMaxProcess) return;
   global.qaQueueLen++;
 
   let trainingId = '';
