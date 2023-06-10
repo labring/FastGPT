@@ -4,19 +4,36 @@ import {
   ListTable,
   Resource,
   Tushan,
+  fetchJSON
 } from 'tushan';
-import { userFields,payFields,kbFields,ModelFields,SettingFields } from './fields';
-import {Dashboard} from './Dashboard';
-const dataProvider = jsonServerProvider('http://localhost:3001');
+import { authProvider } from './auth';
+import { userFields, payFields, kbFields, ModelFields } from './fields';
+
+const authStorageKey = 'tushan:auth';
+
+const httpClient: typeof fetchJSON = (url, options = {}) => {
+  try {
+    if (!options.headers) {
+      options.headers = new Headers({ Accept: 'application/json' });
+    }
+    const { token } = JSON.parse(window.localStorage.getItem(authStorageKey) ?? '{}');
+    (options.headers as Headers).set('Authorization', `Bearer ${token}`);
+
+    return fetchJSON(url, options);
+  } catch (err) {
+    return Promise.reject();
+  }
+};
+
+const dataProvider = jsonServerProvider(import.meta.env.VITE_PUBLIC_SERVER_URL, httpClient);
 
 function App() {
   return (
     <Tushan
       basename="/"
-      header={'FastAI后台管理系统'}
-      footer={'Build with stakeswky'}
+      header={'FastGpt-Admin'}
       dataProvider={dataProvider}
-      dashboard={<Dashboard />}
+      authProvider={authProvider}
     >
       <Resource
         name="users"
@@ -24,12 +41,12 @@ function App() {
         list={
           <ListTable
             filter={[
-              createTextField('q', {
-                label: 'Search',
-              }),
+              createTextField('username', {
+                label: 'username'
+              })
             ]}
             fields={userFields}
-            action={{ create: true, detail: true, edit: true, delete: true }}
+            action={{ detail: true, edit: true }}
           />
         }
       />
@@ -39,6 +56,11 @@ function App() {
         label="支付记录"
         list={
           <ListTable
+            filter={[
+              createTextField('userId', {
+                label: 'userId'
+              })
+            ]}
             fields={payFields}
             action={{ detail: true }}
           />
@@ -49,6 +71,11 @@ function App() {
         label="知识库"
         list={
           <ListTable
+            filter={[
+              createTextField('tag', {
+                label: 'tag'
+              })
+            ]}
             fields={kbFields}
             action={{ detail: true }}
           />
@@ -56,23 +83,8 @@ function App() {
       />
       <Resource
         name="models"
-        label="Ai模型"
-        list={
-          <ListTable
-            fields={ModelFields}
-            action={{ detail: true }}
-          />
-        }
-      />
-      <Resource
-        name="settings"
-        label="设置"
-        list={
-          <ListTable
-            fields={SettingFields}
-            action={{ detail: true , edit: true }}
-          />
-        }
+        label="应用"
+        list={<ListTable fields={ModelFields} action={{ detail: true }} />}
       />
     </Tushan>
   );

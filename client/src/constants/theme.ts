@@ -232,6 +232,10 @@ export const theme = extendTheme({
     xl: '1800px',
     '2xl': '2100px'
   },
+  active: {
+    activeBlueGradient: 'linear-gradient(120deg, #d6e8ff 0%, #f0f7ff 100%)',
+    hoverBlueGradient: 'linear-gradient(60deg, #f0f7ff 0%, #d6e8ff 100%)'
+  },
   components: {
     Modal: ModalTheme,
     Button,

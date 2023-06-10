@@ -27,7 +27,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/chat']
       },
       {
-        label: '我的应用',
+        label: '应用',
         icon: 'model',
         link: `/model?modelId=${lastModelId}`,
         activeLink: ['/model']
@@ -39,7 +39,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/kb']
       },
       {
-        label: '应用市场',
+        label: '市场',
         icon: 'appStore',
         link: '/model/share',
         activeLink: ['/model/share']
@@ -61,14 +61,15 @@ const Navbar = ({ unread }: { unread: number }) => {
   );
 
   const itemStyles: any = {
-    mb: 3,
+    my: 3,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    w: '60px',
-    h: '45px',
+    w: '54px',
+    h: '54px',
+    borderRadius: 'md',
     _hover: {
       color: '#ffffff'
     }
@@ -79,7 +80,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       flexDirection={'column'}
       alignItems={'center'}
       pt={6}
-      backgroundColor={'#465069'}
+      backgroundImage={'linear-gradient(to bottom right,#465069,#000000)'}
       h={'100%'}
       w={'100%'}
       boxShadow={'4px 0px 4px 0px rgba(43, 45, 55, 0.01)'}
@@ -99,30 +100,26 @@ const Navbar = ({ unread }: { unread: number }) => {
       {/* 导航列表 */}
       <Box flex={1}>
         {navbarList.map((item) => (
-          <Tooltip
-            label={item.label}
-            key={item.label}
-            placement={'right'}
-            openDelay={100}
-            gutter={-10}
+          <Link
+            key={item.link}
+            as={NextLink}
+            href={item.link}
+            {...itemStyles}
+            {...(item.activeLink.includes(router.pathname)
+              ? {
+                  color: '#ffffff ',
+                  backgroundImage: 'linear-gradient(to bottom right, #2152d9 0%, #4e83fd 100%)'
+                }
+              : {
+                  color: '#9096a5',
+                  backgroundColor: 'transparent'
+                })}
           >
-            <Link
-              as={NextLink}
-              href={item.link}
-              {...itemStyles}
-              {...(item.activeLink.includes(router.pathname)
-                ? {
-                    color: '#ffffff ',
-                    backgroundImage: 'linear-gradient(270deg,#4e83fd,#3370ff)'
-                  }
-                : {
-                    color: '#9096a5',
-                    backgroundColor: 'transparent'
-                  })}
-            >
-              <MyIcon name={item.icon as any} width={'22px'} height={'22px'} />
-            </Link>
-          </Tooltip>
+            <MyIcon name={item.icon as any} width={'20px'} height={'20px'} />
+            <Box fontSize={'12px'} transform={'scale(0.9)'} mt={'5px'} lineHeight={1}>
+              {item.label}
+            </Box>
+          </Link>
         ))}
       </Box>
       {unread > 0 && (

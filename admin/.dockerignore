@@ -1,0 +1,11 @@
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+README.md
+.git
+
+.yalc/
+yalc.lock
+testApi/
+node_modules

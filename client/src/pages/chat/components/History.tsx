@@ -146,31 +146,26 @@ const PcSliderBar = ({
           )}
         </Box>
       )}
-
       {/* chat history */}
-      <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
+      <Box flex={'1 0 0'} h={0} overflow={'overlay'} userSelect={'none'}>
         {history.map((item) => (
           <Flex
-            position={'relative'}
             key={item._id}
+            position={'relative'}
             alignItems={'center'}
-            py={3}
-            pr={[0, 3]}
-            pl={[6, 3]}
+            p={3}
+            mb={[2, 0]}
             cursor={'pointer'}
             transition={'background-color .2s ease-in'}
-            borderLeft={['none', '5px solid transparent']}
-            userSelect={'none'}
             _hover={{
-              bg: ['', '#dee0e3']
+              backgroundImage: ['', theme.active.hoverBlueGradient]
             }}
             {...(item._id === chatId
               ? {
-                  bg: 'myGray.100 !important',
-                  borderLeftColor: 'myBlue.600 !important'
+                  backgroundImage: `${theme.active.activeBlueGradient}`
                 }
               : {
-                  bg: item.top ? 'myBlue.200' : ''
+                  bg: item.top ? 'myGray.200' : ''
                 })}
             onClick={() => {
               if (item._id === chatId) return;
