@@ -105,6 +105,10 @@ const SystemSchema = new mongoose.Schema({
     type: Number,
     default: 10
   },
+  pgIvfflatProbe: {
+    type: Number,
+    default: 10
+  },
   sensitiveCheck: {
     type: Boolean,
     default: false

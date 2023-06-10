@@ -45,5 +45,6 @@ export const SystemFields = [
   createTextField('gpt4Key', { label: 'gpt4Key' }),
   createTextField('vectorMaxProcess', { label: '向量最大进程' }),
   createTextField('qaMaxProcess', { label: 'qa最大进程' }),
+  createTextField('pgIvfflatProbe', { label: 'pg 探针数量' }),
   createTextField('sensitiveCheck', { label: '敏感词校验(true,false)' })
 ];

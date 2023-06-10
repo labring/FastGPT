@@ -20,6 +20,7 @@ export async function connectToDatabase(): Promise<void> {
     gpt4Key: process.env.GPT4KEY || '',
     vectorMaxProcess: 10,
     qaMaxProcess: 10,
+    pgIvfflatProbe: 10,
     sensitiveCheck: false
   };
   // proxy obj
