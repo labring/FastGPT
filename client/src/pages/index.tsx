@@ -205,7 +205,7 @@ const Home = () => {
             py={[2, 3]}
             onClick={() => router.push(`/model`)}
           >
-            点击开始
+            立即开始
           </Button>
         </Flex>
       </Flex>

@@ -77,6 +77,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
       <Box
         ref={dom}
         className={styles.mermaid}
+        minW={'100px'}
         minH={'50px'}
         py={4}
         dangerouslySetInnerHTML={{ __html: svg }}
