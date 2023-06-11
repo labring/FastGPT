@@ -29,7 +29,8 @@ const map = {
   appStore: require('./icons/appStore.svg').default,
   menu: require('./icons/menu.svg').default,
   edit: require('./icons/edit.svg').default,
-  inform: require('./icons/inform.svg').default
+  inform: require('./icons/inform.svg').default,
+  export: require('./icons/export.svg').default
 };
 
 export type IconName = keyof typeof map;

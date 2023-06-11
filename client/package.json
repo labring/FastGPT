@@ -34,6 +34,7 @@
     "jsonwebtoken": "^9.0.0",
     "lodash": "^4.17.21",
     "mammoth": "^1.5.1",
+    "mermaid": "^8.13.5",
     "mongoose": "^6.10.0",
     "nanoid": "^4.0.1",
     "next": "13.1.6",
@@ -49,14 +50,14 @@
     "react-markdown": "^8.0.5",
     "react-syntax-highlighter": "^15.5.0",
     "rehype-katex": "^6.0.2",
+    "remark-breaks": "^3.0.3",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
     "tunnel": "^0.0.6",
     "wxpay-v3": "^3.0.2",
-    "zustand": "^4.3.5",
-    "mermaid": "^8.13.5"
+    "zustand": "^4.3.5"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",

@@ -1,5 +1,10 @@
 import React from 'react';
-export const codeLight: { [key: string]: React.CSSProperties } = {
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
+import Icon from '@/components/Icon';
+import { useCopyData } from '@/utils/tools';
+
+const codeLight: { [key: string]: React.CSSProperties } = {
   'code[class*=language-]': {
     color: '#d4d4d4',
     textShadow: 'none',
@@ -277,3 +282,51 @@ export const codeLight: { [key: string]: React.CSSProperties } = {
     zIndex: '0'
   }
 };
+
+const CodeLight = ({
+  children,
+  className,
+  inline,
+  match,
+  ...props
+}: {
+  children: React.ReactNode & React.ReactNode[];
+  className?: string;
+  inline?: boolean;
+  match: RegExpExecArray | null;
+}) => {
+  const { copyData } = useCopyData();
+
+  if (!inline && match) {
+    return (
+      <Box my={3} borderRadius={'md'} overflow={'overlay'} backgroundColor={'#222'}>
+        <Flex
+          className="code-header"
+          py={2}
+          px={5}
+          backgroundColor={useColorModeValue('#323641', 'gray.600')}
+          color={'#fff'}
+          fontSize={'sm'}
+          userSelect={'none'}
+        >
+          <Box flex={1}>{match?.[1]}</Box>
+          <Flex cursor={'pointer'} onClick={() => copyData(String(children))} alignItems={'center'}>
+            <Icon name={'copy'} width={15} height={15} fill={'#fff'}></Icon>
+            <Box ml={1}>复制</Box>
+          </Flex>
+        </Flex>
+        <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre" {...props}>
+          {String(children)}
+        </SyntaxHighlighter>
+      </Box>
+    );
+  }
+
+  return (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+};
+
+export default React.memo(CodeLight);
