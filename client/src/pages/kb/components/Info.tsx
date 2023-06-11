@@ -7,7 +7,7 @@ import React, {
   ForwardedRef
 } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Button, FormControl, IconButton, Tooltip, Input, Tag } from '@chakra-ui/react';
+import { Box, Flex, Button, FormControl, IconButton, Tooltip, Input } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
 import { delKbById, putKbById } from '@/api/plugins/kb';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -18,6 +18,7 @@ import { UseFormReturn } from 'react-hook-form';
 import { compressImg } from '@/utils/file';
 import type { KbItemType } from '@/types/plugin';
 import Avatar from '@/components/Avatar';
+import Tag from '@/components/Tag';
 
 export interface ComponentRef {
   initInput: (tags: string) => void;
@@ -211,7 +212,7 @@ const Info = (
               .split(' ')
               .filter((item) => item)
               .map((item, i) => (
-                <Tag mr={2} mb={2} key={i} variant={'base'} colorScheme={'blue'}>
+                <Tag mr={2} mb={2} key={i}>
                   {item}
                 </Tag>
               ))}
