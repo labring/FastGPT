@@ -416,3 +416,12 @@
     }
   }
 }
+
+.mermaid {
+  overflow-x: auto;
+
+  svg {
+    height: auto !important;
+    width: auto;
+  }
+}
