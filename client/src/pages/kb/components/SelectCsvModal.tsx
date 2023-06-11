@@ -159,7 +159,7 @@ const SelectJsonModal = ({
 
         <Flex px={6} pt={2} pb={4}>
           <Box flex={1}></Box>
-          <Button variant={'outline'} isLoading={uploading} mr={3} onClick={onClose}>
+          <Button variant={'base'} isLoading={uploading} mr={3} onClick={onClose}>
             取消
           </Button>
           <Button isDisabled={fileData.length === 0 || uploading} onClick={openConfirm(mutate)}>

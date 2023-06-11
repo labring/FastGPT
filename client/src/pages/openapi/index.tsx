@@ -97,7 +97,7 @@ const OpenApi = () => {
                       icon={<DeleteIcon />}
                       size={'xs'}
                       aria-label={'delete'}
-                      variant={'outline'}
+                      variant={'base'}
                       colorScheme={'gray'}
                       onClick={() => onclickRemove(id)}
                     />

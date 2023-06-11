@@ -828,7 +828,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
               </Flex>
             </ModalBody>
             <ModalFooter>
-              <Button variant={'outline'} mr={3} onClick={onClosePassword}>
+              <Button variant={'base'} mr={3} onClick={onClosePassword}>
                 取消
               </Button>
               <Button onClick={loadChatInfo}>确定</Button>

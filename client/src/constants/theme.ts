@@ -66,10 +66,11 @@ const Button = defineStyleConfig({
   },
   variants: {
     primary: {
-      background: 'myBlue.700 !important',
+      backgroundImage:
+        'linear-gradient(to bottom right, #2152d9 0%,#3370ff 40%, #4e83fd 100%) !important',
       color: 'white',
       _hover: {
-        filter: 'brightness(110%)'
+        filter: 'brightness(115%)'
       }
     },
     base: {
@@ -77,12 +78,15 @@ const Button = defineStyleConfig({
       border: '1px solid',
       borderColor: 'myGray.200',
       bg: 'transparent',
+      transition: 'background 0.3s',
       _hover: {
-        color: 'myBlue.600'
+        color: 'myBlue.600',
+        bg: 'myWhite.400'
       },
       _active: {
         color: 'myBlue.700'
-      }
+      },
+      _disabled: { bg: 'myGray.100 !important', color: 'myGray.700 !important' }
     }
   },
   defaultProps: {
@@ -180,6 +184,18 @@ export const theme = extendTheme({
     }
   },
   colors: {
+    myWhite: {
+      100: '#FEFEFE',
+      200: '#FDFDFE',
+      300: '#FBFBFC',
+      400: '#F8FAFB',
+      500: '#F6F8F9',
+      600: '#F4F6F8',
+      700: '#C3C5C6',
+      800: '#929495',
+      900: '#626263',
+      1000: '#313132'
+    },
     myGray: {
       100: '#EFF0F1',
       200: '#DEE0E2',
@@ -204,6 +220,7 @@ export const theme = extendTheme({
       900: '#1237b3',
       1000: '#07228c'
     },
+
     myRead: {
       600: '#ff4d4f'
     }
@@ -232,9 +249,11 @@ export const theme = extendTheme({
     xl: '1800px',
     '2xl': '2100px'
   },
-  active: {
+  lgColor: {
     activeBlueGradient: 'linear-gradient(120deg, #d6e8ff 0%, #f0f7ff 100%)',
-    hoverBlueGradient: 'linear-gradient(60deg, #f0f7ff 0%, #d6e8ff 100%)'
+    hoverBlueGradient: 'linear-gradient(60deg, #f0f7ff 0%, #d6e8ff 100%)',
+    primary: 'linear-gradient(to bottom right, #2152d9 0%,#3370ff 40%, #4e83fd 100%)',
+    primary2: 'linear-gradient(to bottom right, #2152d9 0%,#3370ff 30%,#4e83fd 80%, #85b1ff 100%)'
   },
   components: {
     Modal: ModalTheme,

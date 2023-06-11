@@ -1,15 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Input,
-  IconButton,
-  Tooltip,
-  Tabs,
-  TabList,
-  Tab,
-  useTheme
-} from '@chakra-ui/react';
+import { Box, Flex, Input, IconButton, Tooltip, Tab, useTheme } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
@@ -18,14 +8,12 @@ import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
-import Avatar from '@/components/Avatar';
 import { MyModelsTypeEnum } from '@/constants/user';
 
+import Avatar from '@/components/Avatar';
+import Tabs from '@/components/Tabs';
+
 const ModelList = ({ modelId }: { modelId: string }) => {
-  const tabs = useRef([
-    { label: '我的', value: MyModelsTypeEnum.my },
-    { label: '收藏', value: MyModelsTypeEnum.collection }
-  ]);
   const [currentTab, setCurrentTab] = useState(MyModelsTypeEnum.my);
 
   const theme = useTheme();
@@ -86,7 +74,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
       bg={'white'}
       borderRight={['', theme.borders.base]}
     >
-      <Flex w={'90%'} my={5} mx={'auto'}>
+      <Flex w={'90%'} mt={5} mb={3} mx={'auto'}>
         <Flex flex={1} mr={2} position={'relative'} alignItems={'center'}>
           <Input
             h={'32px'}
@@ -113,34 +101,23 @@ const ModelList = ({ modelId }: { modelId: string }) => {
             h={'32px'}
             icon={<AddIcon />}
             aria-label={''}
-            variant={'outline'}
+            variant={'base'}
             onClick={onclickCreateModel}
           />
         </Tooltip>
       </Flex>
-      <Flex mb={4} userSelect={'none'}>
+      <Flex mb={3} userSelect={'none'}>
         <Box flex={1}></Box>
         <Tabs
-          variant="unstyled"
-          defaultIndex={tabs.current.findIndex((item) => item.value === currentTab)}
-          onChange={(i) => setCurrentTab(tabs.current[i].value)}
-        >
-          <TabList whiteSpace={'nowrap'}>
-            {tabs.current.map((item) => (
-              <Tab
-                key={item.value}
-                py={'2px'}
-                px={4}
-                borderRadius={'sm'}
-                mr={2}
-                transition={'none'}
-                _selected={{ color: 'white', bg: 'myBlue.600' }}
-              >
-                {item.label}
-              </Tab>
-            ))}
-          </TabList>
-        </Tabs>
+          w={'130px'}
+          list={[
+            { label: '我的', id: MyModelsTypeEnum.my },
+            { label: '收藏', id: MyModelsTypeEnum.collection }
+          ]}
+          activeId={currentTab}
+          size={'sm'}
+          onChange={(id: any) => setCurrentTab(id)}
+        />
       </Flex>
       <Box flex={'1 0 0'} h={0} overflow={'overlay'} userSelect={'none'}>
         {currentModels.list.map((item) => (
@@ -153,11 +130,11 @@ const ModelList = ({ modelId }: { modelId: string }) => {
             cursor={'pointer'}
             transition={'background-color .2s ease-in'}
             _hover={{
-              backgroundImage: ['', theme.active.hoverBlueGradient]
+              backgroundImage: ['', theme.lgColor.hoverBlueGradient]
             }}
             {...(modelId === item._id
               ? {
-                  backgroundImage: `${theme.active.activeBlueGradient} !important`
+                  backgroundImage: `${theme.lgColor.activeBlueGradient} !important`
                 }
               : {})}
             onClick={() => {

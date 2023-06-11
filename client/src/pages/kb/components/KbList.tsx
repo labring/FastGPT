@@ -82,7 +82,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
             h={'32px'}
             icon={<AddIcon />}
             aria-label={''}
-            variant={'outline'}
+            variant={'base'}
             onClick={handleCreateModel}
           />
         </Tooltip>
@@ -98,11 +98,11 @@ const KbList = ({ kbId }: { kbId: string }) => {
             cursor={'pointer'}
             transition={'background-color .2s ease-in'}
             _hover={{
-              backgroundImage: ['', theme.active.hoverBlueGradient]
+              backgroundImage: ['', theme.lgColor.hoverBlueGradient]
             }}
             {...(kbId === item._id
               ? {
-                  backgroundImage: `${theme.active.activeBlueGradient} !important`
+                  backgroundImage: `${theme.lgColor.activeBlueGradient} !important`
                 }
               : {})}
             onClick={() => {
@@ -121,7 +121,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
                   <>{item.tags || '你还没设置标签~'}</>
                 ) : (
                   item.tags.split(' ').map((item, i) => (
-                    <Tag key={i} mr={2} mb={2} variant={'outline'} colorScheme={'blue'} size={'sm'}>
+                    <Tag key={i} mr={2} mb={2} variant={'base'} colorScheme={'blue'} size={'sm'}>
                       {item}
                     </Tag>
                   ))

@@ -1,18 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  Card,
-  Box,
-  Flex,
-  Button,
-  Input,
-  Grid,
-  useDisclosure,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel
-} from '@chakra-ui/react';
+import { Card, Box, Flex, Button, Input, Grid, useDisclosure } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { putUserInfo, getPromotionInitData } from '@/api/user';
@@ -30,6 +17,7 @@ import { useCopyData } from '@/utils/tools';
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
+import Tabs from '@/components/Tabs';
 
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'), {
   loading: () => <Loading fixed={false} />,
@@ -65,11 +53,13 @@ enum TableEnum {
 
 const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
   const tableList = useRef([
-    { label: '账单', value: TableEnum.bill, Component: BilTable },
-    { label: '充值', value: TableEnum.pay, Component: PayRecordTable },
-    { label: '佣金', value: TableEnum.promotion, Component: PromotionTable },
-    { label: '通知', value: TableEnum.inform, Component: InformTable }
+    { label: '账单', id: TableEnum.bill, Component: <BilTable /> },
+    { label: '充值', id: TableEnum.pay, Component: <PayRecordTable /> },
+    { label: '佣金', id: TableEnum.promotion, Component: <PromotionTable /> },
+    { label: '通知', id: TableEnum.inform, Component: <InformTable /> }
   ]);
+  const [currentTab, setCurrentTab] = useState(tableType);
+
   const router = useRouter();
   const { copyData } = useCopyData();
   const { userInfo, updateUserInfo, initUserInfo, setUserInfo } = useUserStore();
@@ -98,8 +88,14 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
     async (data: UserUpdateParams) => {
       setLoading(true);
       try {
-        await putUserInfo(data);
-        updateUserInfo(data);
+        await putUserInfo({
+          openaiKey: data.openaiKey,
+          avatar: data.avatar
+        });
+        updateUserInfo({
+          openaiKey: data.openaiKey,
+          avatar: data.avatar
+        });
         reset(data);
         toast({
           title: '更新成功',
@@ -159,7 +155,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
             <Box fontSize={'xl'} fontWeight={'bold'}>
               账号信息
             </Box>
-            <Button variant={'outline'} size={'xs'} onClick={onclickLogOut}>
+            <Button variant={'base'} size={'xs'} onClick={onclickLogOut}>
               退出登录
             </Button>
           </Flex>
@@ -224,7 +220,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
           ))}
           <Button
             mt={4}
-            variant={'outline'}
+            variant={'base'}
             w={'100%'}
             onClick={() =>
               copyData(`${location.origin}/?inviterId=${userInfo?._id}`, '已复制邀请链接')
@@ -238,7 +234,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
             px={4}
             title={residueAmount < 50 ? '最低提现额度为50元' : ''}
             isDisabled={residueAmount < 50}
-            variant={'outline'}
+            variant={'base'}
             colorScheme={'myBlue'}
             onClick={onOpenWxConcat}
           >
@@ -249,34 +245,19 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
 
       <Card mt={4} px={[3, 6]} py={4}>
         <Tabs
-          variant="unstyled"
-          isLazy
-          defaultIndex={tableList.current.findIndex((item) => item.value === tableType)}
-          onChange={(i) => router.replace(`/number?type=${tableList.current[i].value}`)}
-        >
-          <TabList whiteSpace={'nowrap'}>
-            {tableList.current.map((item) => (
-              <Tab
-                key={item.value}
-                py={'2px'}
-                px={4}
-                borderRadius={'sm'}
-                mr={2}
-                transition={'none'}
-                _selected={{ color: 'white', bg: 'myBlue.600' }}
-              >
-                {item.label}
-              </Tab>
-            ))}
-          </TabList>
-          <TabPanels>
-            {tableList.current.map((Item) => (
-              <TabPanel minH={'550px'} key={Item.value}>
-                <Item.Component />
-              </TabPanel>
-            ))}
-          </TabPanels>
-        </Tabs>
+          w={'200px'}
+          list={tableList.current}
+          activeId={currentTab}
+          size={'sm'}
+          onChange={(id: any) => setCurrentTab(id)}
+        />
+        <Box>
+          {(() => {
+            const item = tableList.current.find((item) => item.id === currentTab);
+
+            return item ? item.Component : null;
+          })()}
+        </Box>
       </Card>
 
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}

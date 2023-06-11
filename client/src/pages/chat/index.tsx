@@ -749,7 +749,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                                 size={'xs'}
                                 fontWeight={'normal'}
                                 colorScheme={'gray'}
-                                variant={'outline'}
+                                variant={'base'}
                                 px={[2, 4]}
                                 onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
                               >
@@ -762,7 +762,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                                 size={'xs'}
                                 fontWeight={'normal'}
                                 colorScheme={'gray'}
-                                variant={'outline'}
+                                variant={'base'}
                                 px={[2, 4]}
                                 onClick={() => setShowHistoryQuote(item._id)}
                               >
