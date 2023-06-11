@@ -27,7 +27,9 @@ const MermaidBlock = ({ code }: { code: string }) => {
 
   useEffect(() => {
     try {
-      mermaidAPI.render('mermaid-svg', code, (svgCode: string) => {
+      const formatCode = code.replace(/：/g, ':');
+
+      mermaidAPI.render(`mermaid-${Date.now()}`, formatCode, (svgCode: string) => {
         setSvg(svgCode);
       });
     } catch (error) {
