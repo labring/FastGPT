@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { Box, Flex, useTheme, Input, IconButton, Tooltip, Tag } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Input, IconButton, Tooltip } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import { postCreateKb } from '@/api/plugins/kb';
@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
+import Tag from '@/components/Tag';
 
 const KbList = ({ kbId }: { kbId: string }) => {
   const theme = useTheme();
@@ -118,12 +119,12 @@ const KbList = ({ kbId }: { kbId: string }) => {
                 {item.name}
               </Box>
               {/* tags */}
-              <Box className="textEllipsis" color={'myGray.400'} mt={1} fontSize={'sm'}>
+              <Box className="textEllipsis" color={'myGray.400'} py={1}>
                 {!item.tags ? (
                   <>{item.tags || '你还没设置标签~'}</>
                 ) : (
                   item.tags.split(' ').map((item, i) => (
-                    <Tag key={i} mr={2} mb={2} variant={'base'} colorScheme={'blue'} size={'sm'}>
+                    <Tag key={i} mr={2} mb={2}>
                       {item}
                     </Tag>
                   ))

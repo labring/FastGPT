@@ -220,7 +220,6 @@ export const theme = extendTheme({
       900: '#1237b3',
       1000: '#07228c'
     },
-
     myRead: {
       600: '#ff4d4f'
     }

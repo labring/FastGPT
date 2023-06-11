@@ -893,7 +893,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       {!isPc && (
         <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
           <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-          <DrawerContent maxWidth={'250px'}>
+          <DrawerContent maxW={'70%'}>
             <PhoneSliderBar chatId={chatId} modelId={modelId} onClose={onCloseSlider} />
           </DrawerContent>
         </Drawer>
