@@ -4,6 +4,7 @@ import { Box } from '@chakra-ui/react';
 const Loading = () => {
   return (
     <Box
+      minW={'100px'}
       w={'100%'}
       h={'80px'}
       backgroundImage={'url("/imgs/loading.gif")'}

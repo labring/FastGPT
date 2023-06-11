@@ -147,13 +147,14 @@ const PcSliderBar = ({
         </Box>
       )}
       {/* chat history */}
-      <Box flex={'1 0 0'} h={0} overflow={'overlay'} userSelect={'none'}>
+      <Box flex={'1 0 0'} h={0} pl={2} overflowY={'scroll'} userSelect={'none'}>
         {history.map((item) => (
           <Flex
             key={item._id}
             position={'relative'}
             alignItems={'center'}
             p={3}
+            borderRadius={'md'}
             mb={[2, 0]}
             cursor={'pointer'}
             transition={'background-color .2s ease-in'}
@@ -162,7 +163,7 @@ const PcSliderBar = ({
             }}
             {...(item._id === chatId
               ? {
-                  backgroundImage: `${theme.lgColor.activeBlueGradient}`
+                  backgroundImage: `${theme.lgColor.activeBlueGradient}  !important`
                 }
               : {
                   bg: item.top ? 'myGray.200' : ''

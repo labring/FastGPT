@@ -119,7 +119,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
           onChange={(id: any) => setCurrentTab(id)}
         />
       </Flex>
-      <Box flex={'1 0 0'} h={0} overflow={'overlay'} userSelect={'none'}>
+      <Box flex={'1 0 0'} h={0} pl={[0, 2]} overflowY={'scroll'} userSelect={'none'}>
         {currentModels.list.map((item) => (
           <Flex
             key={item._id}
@@ -129,6 +129,8 @@ const ModelList = ({ modelId }: { modelId: string }) => {
             mb={[2, 0]}
             cursor={'pointer'}
             transition={'background-color .2s ease-in'}
+            borderRadius={['', 'md']}
+            borderBottom={['1px solid #f4f4f4', 'none']}
             _hover={{
               backgroundImage: ['', theme.lgColor.hoverBlueGradient]
             }}

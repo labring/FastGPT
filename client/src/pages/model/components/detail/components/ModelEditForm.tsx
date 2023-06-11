@@ -269,13 +269,13 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 80px'} w={0}>
-            收藏人数:
+            收藏人数
           </Box>
           <Box>{getValues('share.collection')}人</Box>
         </Flex>
         {isOwner && (
           <Flex mt={5} alignItems={'center'}>
-            <Box flex={'0 0 100px'}>删除应用</Box>
+            <Box flex={'0 0 80px'}>删除应用</Box>
             <Button
               colorScheme={'gray'}
               variant={'base'}
