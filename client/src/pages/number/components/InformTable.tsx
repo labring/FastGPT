@@ -31,7 +31,7 @@ const BillTable = () => {
   });
 
   return (
-    <>
+    <Box mt={2}>
       <Accordion defaultIndex={[0, 1, 2]} allowMultiple>
         {informs.map((item) => (
           <AccordionItem
@@ -84,7 +84,7 @@ const BillTable = () => {
         </Flex>
       )}
       <Loading loading={isLoading && informs.length === 0} fixed={false} />
-    </>
+    </Box>
   );
 };
 

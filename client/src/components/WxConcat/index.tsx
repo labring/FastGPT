@@ -30,7 +30,7 @@ const WxConcat = ({ onClose }: { onClose: () => void }) => {
         </ModalBody>
 
         <ModalFooter>
-          <Button variant={'outline'} onClick={onClose}>
+          <Button variant={'base'} onClick={onClose}>
             关闭
           </Button>
         </ModalFooter>

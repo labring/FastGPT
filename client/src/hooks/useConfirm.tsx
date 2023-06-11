@@ -39,7 +39,7 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
 
               <AlertDialogFooter>
                 <Button
-                  variant={'outline'}
+                  variant={'base'}
                   onClick={() => {
                     onClose();
                     typeof cancelCb.current === 'function' && cancelCb.current();

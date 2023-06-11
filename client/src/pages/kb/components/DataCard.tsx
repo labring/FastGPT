@@ -157,7 +157,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         <IconButton
           icon={<RepeatIcon />}
           aria-label={'refresh'}
-          variant={'outline'}
+          variant={'base'}
           mr={[2, 4]}
           size={'sm'}
           onClick={() => {
@@ -166,7 +166,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           }}
         />
         <Button
-          variant={'outline'}
+          variant={'base'}
           mr={2}
           size={'sm'}
           isLoading={isLoadingExport}
@@ -259,7 +259,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                   <IconButton
                     mr={5}
                     icon={<EditIcon />}
-                    variant={'outline'}
+                    variant={'base'}
                     aria-label={'delete'}
                     size={'sm'}
                     onClick={() =>
@@ -272,7 +272,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                   />
                   <IconButton
                     icon={<DeleteIcon />}
-                    variant={'outline'}
+                    variant={'base'}
                     colorScheme={'gray'}
                     aria-label={'delete'}
                     size={'sm'}

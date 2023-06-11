@@ -278,7 +278,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
             <Box flex={'0 0 100px'}>删除应用</Box>
             <Button
               colorScheme={'gray'}
-              variant={'outline'}
+              variant={'base'}
               size={'sm'}
               onClick={openConfirm(handleDelModel)}
             >
@@ -388,20 +388,6 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                     setRefresh(!refresh);
                   }}
                 />
-
-                <Box ml={12} mr={1} fontSize={['sm', 'md']}>
-                  分享模型细节:
-                </Box>
-                <Tooltip label="开启分享详情后，其他用户可以查看该模型的特有数据：温度、提示词和数据集。">
-                  <QuestionOutlineIcon mr={3} />
-                </Tooltip>
-                <Switch
-                  isChecked={getValues('share.isShareDetail')}
-                  onChange={() => {
-                    setValue('share.isShareDetail', !getValues('share.isShareDetail'));
-                    setRefresh(!refresh);
-                  }}
-                />
               </Flex>
               <Box mt={5}>
                 <Box>模型介绍</Box>
@@ -418,12 +404,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
           <Card p={4}>
             <Flex justifyContent={'space-between'}>
               <Box fontWeight={'bold'}>关联的知识库</Box>
-              <Button
-                size={'sm'}
-                variant={'outline'}
-                colorScheme={'myBlue'}
-                onClick={onOpenKbSelect}
-              >
+              <Button size={'sm'} variant={'base'} colorScheme={'myBlue'} onClick={onOpenKbSelect}>
                 选择
               </Button>
             </Flex>
@@ -443,7 +424,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
           </Box>
           <Button
             size={'sm'}
-            variant={'outline'}
+            variant={'base'}
             colorScheme={'myBlue'}
             {...(shareChatList.length >= 10
               ? {
@@ -585,7 +566,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
           </ModalBody>
 
           <ModalFooter>
-            <Button variant={'outline'} mr={3} onClick={onCloseCreateShareChat}>
+            <Button variant={'base'} mr={3} onClick={onCloseCreateShareChat}>
               取消
             </Button>
             <Button onClick={submitShareChat(onclickCreateShareChat)}>确认</Button>

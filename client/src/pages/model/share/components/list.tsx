@@ -68,7 +68,7 @@ const ShareModelList = ({
             <Box>
               <Button
                 size={'sm'}
-                variant={'outline'}
+                variant={'base'}
                 w={['60px', '70px']}
                 onClick={() => router.push(`/chat?modelId=${model._id}`)}
               >

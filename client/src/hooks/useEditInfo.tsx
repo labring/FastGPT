@@ -73,7 +73,7 @@ export const useEditInfo = ({
             />
           </ModalBody>
           <ModalFooter>
-            <Button mr={3} variant={'outline'} onClick={onClose}>
+            <Button mr={3} variant={'base'} onClick={onClose}>
               取消
             </Button>
             <Button onClick={onclickConfirm}>确认</Button>

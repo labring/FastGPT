@@ -158,11 +158,11 @@ const PcSliderBar = ({
             cursor={'pointer'}
             transition={'background-color .2s ease-in'}
             _hover={{
-              backgroundImage: ['', theme.active.hoverBlueGradient]
+              backgroundImage: ['', theme.lgColor.hoverBlueGradient]
             }}
             {...(item._id === chatId
               ? {
-                  backgroundImage: `${theme.active.activeBlueGradient}`
+                  backgroundImage: `${theme.lgColor.activeBlueGradient}`
                 }
               : {
                   bg: item.top ? 'myGray.200' : ''

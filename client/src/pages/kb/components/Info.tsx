@@ -211,7 +211,7 @@ const Info = (
               .split(' ')
               .filter((item) => item)
               .map((item, i) => (
-                <Tag mr={2} mb={2} key={i} variant={'outline'} colorScheme={'blue'}>
+                <Tag mr={2} mb={2} key={i} variant={'base'} colorScheme={'blue'}>
                   {item}
                 </Tag>
               ))}

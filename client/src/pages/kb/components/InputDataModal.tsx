@@ -171,7 +171,7 @@ const InputDataModal = ({
 
         <Flex px={6} pt={2} pb={4}>
           <Box flex={1}></Box>
-          <Button variant={'outline'} mr={3} onClick={onClose}>
+          <Button variant={'base'} mr={3} onClick={onClose}>
             取消
           </Button>
           <Button

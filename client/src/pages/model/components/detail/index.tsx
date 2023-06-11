@@ -141,7 +141,7 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
               {modelDetail.name}
             </Box>
             <Box flex={1} />
-            <Button variant={'outline'} onClick={handlePreviewChat}>
+            <Button variant={'base'} onClick={handlePreviewChat}>
               开始对话
             </Button>
             {isOwner && (
@@ -173,7 +173,7 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
               </Box>
             </Flex>
             <Box mt={4} textAlign={'right'}>
-              <Button variant={'outline'} size={'sm'} onClick={handlePreviewChat}>
+              <Button variant={'base'} size={'sm'} onClick={handlePreviewChat}>
                 开始对话
               </Button>
               {isOwner && (

@@ -78,7 +78,7 @@ const PhoneSliderBar = ({
         {/* 新对话 */}
         <Button
           w={'50%'}
-          variant={'outline'}
+          variant={'base'}
           colorScheme={'white'}
           mb={2}
           leftIcon={<AddIcon />}
