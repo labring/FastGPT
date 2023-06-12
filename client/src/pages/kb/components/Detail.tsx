@@ -8,15 +8,12 @@ import { useUserStore } from '@/store/user';
 import { KbItemType } from '@/types/plugin';
 import { useScreen } from '@/hooks/useScreen';
 import { getErrText } from '@/utils/tools';
-import { type ComponentRef } from './Info';
+import Info, { type ComponentRef } from './Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
 import DataCard from './DataCard';
 
 const Test = dynamic(() => import('./Test'), {
-  ssr: false
-});
-const Info = dynamic(() => import('./Info'), {
   ssr: false
 });
 

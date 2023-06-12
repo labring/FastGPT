@@ -14,6 +14,7 @@ export interface KbDataItemType {
 }
 
 export type KbTestItemType = {
+  id: string;
   kbId: string;
   text: string;
   time: Date;

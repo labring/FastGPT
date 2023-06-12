@@ -214,8 +214,10 @@ const Info = (
             aria-label={''}
             variant={'outline'}
             size={'sm'}
-            colorScheme={'red'}
-            color={'red.500'}
+            _hover={{
+              color: 'red.600',
+              borderColor: 'red.600'
+            }}
             onClick={openConfirm(onclickDelKb)}
           />
         </Flex>
