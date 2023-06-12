@@ -27,7 +27,29 @@ const MermaidBlock = ({ code }: { code: string }) => {
 
   useEffect(() => {
     try {
-      const formatCode = code.replace(/：/g, ':');
+      const punctuationMap: Record<string, string> = {
+        '，': ',',
+        '；': ';',
+        '。': '.',
+        '：': ':',
+        '！': '!',
+        '？': '?',
+        '“': '"',
+        '”': '"',
+        '‘': "'",
+        '’': "'",
+        '【': '[',
+        '】': ']',
+        '（': '(',
+        '）': ')',
+        '《': '<',
+        '》': '>',
+        '、': ','
+      };
+      const formatCode = code.replace(
+        /([，；。：！？“”‘’【】（）《》、])/g,
+        (match) => punctuationMap[match]
+      );
 
       mermaidAPI.render(`mermaid-${Date.now()}`, formatCode, (svgCode: string) => {
         setSvg(svgCode);
