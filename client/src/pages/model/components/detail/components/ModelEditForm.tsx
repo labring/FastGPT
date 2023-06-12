@@ -175,7 +175,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
   // init kb select list
   const { data: kbList = [] } = useQuery(['loadKbList'], () => loadKbList());
   const RenderSelectedKbList = useCallback(() => {
-    const kbs = getValues('chat.relatedKbs').map((id) => kbList.find((kb) => kb._id === id));
+    const kbs = getValues('chat.relatedKbs')?.map((id) => kbList.find((kb) => kb._id === id)) || [];
 
     return (
       <>
@@ -334,7 +334,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
               </Slider>
             </Flex>
           </FormControl>
-          {getValues('chat.relatedKbs').length > 0 && (
+          {getValues('chat.relatedKbs')?.length > 0 && (
             <Flex mt={4} alignItems={'center'}>
               <Box mr={4} whiteSpace={'nowrap'}>
                 搜索模式&emsp;
@@ -583,7 +583,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
             {kbList.map((item) => (
               <Card key={item._id} p={3} mb={3}>
                 <Checkbox
-                  isChecked={getValues('chat.relatedKbs').includes(item._id)}
+                  isChecked={getValues('chat.relatedKbs')?.includes(item._id)}
                   onChange={(e) => {
                     const ids = getValues('chat.relatedKbs');
                     // toggle to true

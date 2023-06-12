@@ -23,7 +23,7 @@ const BillTable = () => {
 
   return (
     <>
-      <TableContainer position={'relative'} minH={'200px'}>
+      <TableContainer position={'relative'} minH={'100px'}>
         <Table>
           <Thead>
             <Tr>
@@ -53,7 +53,7 @@ const BillTable = () => {
       </TableContainer>
 
       {!isLoading && bills.length === 0 && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'200px'}>
+        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
             无使用记录~

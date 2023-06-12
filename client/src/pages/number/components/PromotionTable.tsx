@@ -23,7 +23,7 @@ const OpenApi = () => {
 
   return (
     <>
-      <TableContainer position={'relative'} overflow={'hidden'} minH={'200px'}>
+      <TableContainer position={'relative'} overflow={'hidden'} minH={'100px'}>
         <Table>
           <Thead>
             <Tr>

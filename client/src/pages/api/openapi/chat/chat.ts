@@ -73,7 +73,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }[] = [];
 
     // 使用了知识库搜索
-    if (model.chat.relatedKbs.length > 0) {
+    if (model.chat.relatedKbs?.length > 0) {
       const { code, searchPrompts } = await appKbSearch({
         model,
         userId,

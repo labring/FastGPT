@@ -71,7 +71,7 @@ const BillTable = () => {
         ))}
       </Accordion>
       {!isLoading && informs.length === 0 && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'200px'}>
+        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'100px'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
             暂无通知~
