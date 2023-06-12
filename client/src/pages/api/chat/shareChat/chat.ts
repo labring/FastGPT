@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { code = 200, systemPrompts = [] } = await (async () => {
       // 使用了知识库搜索
-      if (model.chat.relatedKbs.length > 0) {
+      if (model.chat.relatedKbs?.length > 0) {
         const { code, searchPrompts } = await appKbSearch({
           model,
           userId,
