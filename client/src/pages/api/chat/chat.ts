@@ -10,7 +10,7 @@ import { resStreamResponse } from '@/service/utils/chat';
 import { appKbSearch } from '../openapi/kb/appKbSearch';
 import { ChatRoleEnum, QUOTE_LEN_HEADER, GUIDE_PROMPT_HEADER } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
-import { sensitiveCheck } from '@/service/api/text';
+import { sensitiveCheck } from '../openapi/text/sensitiveCheck';
 import { NEW_CHATID_HEADER } from '@/constants/chat';
 import { saveChat } from './saveChat';
 import { Types } from 'mongoose';

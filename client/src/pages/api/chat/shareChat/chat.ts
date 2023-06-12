@@ -9,7 +9,7 @@ import { pushChatBill, updateShareChatBill } from '@/service/events/pushBill';
 import { resStreamResponse } from '@/service/utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { BillTypeEnum } from '@/constants/user';
-import { sensitiveCheck } from '@/service/api/text';
+import { sensitiveCheck } from '../../openapi/text/sensitiveCheck';
 import { appKbSearch } from '../../openapi/kb/appKbSearch';
 
 /* 发送提示词 */

@@ -9,7 +9,7 @@ import { pushChatBill } from '@/service/events/pushBill';
 import { ChatRoleEnum } from '@/constants/chat';
 import { withNextCors } from '@/service/utils/tools';
 import { BillTypeEnum } from '@/constants/user';
-import { sensitiveCheck } from '@/service/api/text';
+import { sensitiveCheck } from '../../openapi/text/sensitiveCheck';
 import { NEW_CHATID_HEADER } from '@/constants/chat';
 import { Types } from 'mongoose';
 import { appKbSearch } from '../kb/appKbSearch';

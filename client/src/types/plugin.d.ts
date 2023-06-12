@@ -19,7 +19,3 @@ export type KbTestItemType = {
   time: Date;
   results: (KbDataItemType & { score: number })[];
 };
-
-export type TextPluginRequestParams = {
-  input: string;
-};
