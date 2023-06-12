@@ -1,16 +1,24 @@
 import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import { KbItemType } from '@/types/plugin';
 import { useScreen } from '@/hooks/useScreen';
-import DataCard from './DataCard';
 import { getErrText } from '@/utils/tools';
-import Info, { type ComponentRef } from './Info';
+import { type ComponentRef } from './Info';
 import Tabs from '@/components/Tabs';
+import dynamic from 'next/dynamic';
+import DataCard from './DataCard';
+
+const Test = dynamic(() => import('./Test'), {
+  ssr: false
+});
+const Info = dynamic(() => import('./Info'), {
+  ssr: false
+});
 
 enum TabEnum {
   data = 'data',
@@ -51,8 +59,15 @@ const Detail = ({ kbId }: { kbId: string }) => {
   });
 
   return (
-    <Box bg={'#fcfcfc'} h={'100%'} p={5} overflow={'overlay'} position={'relative'}>
-      <Box mb={5}>
+    <Flex
+      flexDirection={'column'}
+      bg={'#fcfcfc'}
+      h={'100%'}
+      pt={5}
+      overflow={'overlay'}
+      position={'relative'}
+    >
+      <Box mb={3}>
         <Tabs
           m={'auto'}
           w={'260px'}
@@ -66,9 +81,12 @@ const Detail = ({ kbId }: { kbId: string }) => {
           onChange={(e: any) => setCurrentTab(e)}
         />
       </Box>
-      {currentTab === TabEnum.data && <DataCard kbId={kbId} />}
-      {currentTab === TabEnum.info && <Info ref={BasicInfo} kbId={kbId} form={form} />}
-    </Box>
+      <Box flex={'1 0 0'} overflow={'overlay'}>
+        {currentTab === TabEnum.data && <DataCard kbId={kbId} />}
+        {currentTab === TabEnum.test && <Test />}
+        {currentTab === TabEnum.info && <Info ref={BasicInfo} kbId={kbId} form={form} />}
+      </Box>
+    </Flex>
   );
 };
 

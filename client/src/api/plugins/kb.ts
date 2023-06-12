@@ -6,6 +6,10 @@ import {
   Props as PushDataProps,
   Response as PushDateResponse
 } from '@/pages/api/openapi/kb/pushData';
+import {
+  Props as SearchTestProps,
+  Response as SearchTestResponse
+} from '@/pages/api/openapi/kb/searchTest';
 
 export type KbUpdateParams = {
   id: string;
@@ -83,3 +87,6 @@ export const postSplitData = (data: {
   prompt: string;
   mode: `${TrainingModeEnum}`;
 }) => POST(`/openapi/text/pushData`, data);
+
+export const searchText = (data: SearchTestProps) =>
+  POST<SearchTestResponse>(`/openapi/kb/searchTest`, data);
