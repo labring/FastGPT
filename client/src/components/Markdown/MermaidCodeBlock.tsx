@@ -76,6 +76,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
     <Box position={'relative'}>
       <Box
         ref={dom}
+        as={'p'}
         className={styles.mermaid}
         minW={'100px'}
         minH={'50px'}
