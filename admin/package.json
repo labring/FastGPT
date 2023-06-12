@@ -20,6 +20,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.2.2",
+    "nodemon": "^2.0.22",
     "react": "^18.2.0",
     "react-admin": "^4.11.0",
     "react-dom": "^18.2.0",
