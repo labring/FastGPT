@@ -38,6 +38,7 @@ export const updateHistoryQuote = (params: {
   chatId: string;
   historyId: string;
   quoteId: string;
+  sourceText: string;
 }) => GET(`/chat/history/updateHistoryQuote`, params);
 
 /**

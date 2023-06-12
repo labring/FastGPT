@@ -6,6 +6,8 @@ import { type KbTestItemType } from '@/types/plugin';
 type State = {
   kbTestList: KbTestItemType[];
   pushKbTestItem: (data: KbTestItemType) => void;
+  delKbTestItemById: (id: string) => void;
+  updateKbItemById: (data: KbTestItemType) => void;
 };
 
 export const useKbStore = create<State>()(
@@ -15,7 +17,17 @@ export const useKbStore = create<State>()(
         kbTestList: [],
         pushKbTestItem(data) {
           set((state) => {
-            state.kbTestList = [data, ...state.kbTestList].slice(0, 400);
+            state.kbTestList = [data, ...state.kbTestList].slice(0, 500);
+          });
+        },
+        delKbTestItemById(id) {
+          set((state) => {
+            state.kbTestList = state.kbTestList.filter((item) => item.id !== id);
+          });
+        },
+        updateKbItemById(data: KbTestItemType) {
+          set((state) => {
+            state.kbTestList = state.kbTestList.map((item) => (item.id === data.id ? data : item));
           });
         }
       })),

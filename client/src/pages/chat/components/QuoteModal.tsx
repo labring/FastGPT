@@ -76,13 +76,14 @@ const QuoteModal = ({
    * update kbData, update mongo status and reload quotes
    */
   const updateQuoteStatus = useCallback(
-    async (quoteId: string) => {
+    async (quoteId: string, sourceText: string) => {
       setIsLoading(true);
       try {
         await updateHistoryQuote({
           chatId,
           historyId,
-          quoteId
+          quoteId,
+          sourceText
         });
         // reload quote
         refetch();
@@ -163,7 +164,8 @@ const QuoteModal = ({
       {editDataItem && (
         <InputDataModal
           onClose={() => setEditDataItem(undefined)}
-          onSuccess={() => updateQuoteStatus(editDataItem.dataId)}
+          onSuccess={() => updateQuoteStatus(editDataItem.dataId, '手动修改')}
+          onDelete={() => updateQuoteStatus(editDataItem.dataId, '已删除')}
           kbId=""
           defaultValues={editDataItem}
         />

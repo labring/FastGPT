@@ -208,7 +208,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         />
       </Flex>
       <Grid
-        minH={'200px'}
+        minH={'100px'}
         gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)']}
         gridGap={4}
       >
@@ -216,7 +216,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           <Card
             key={item.id}
             cursor={'pointer'}
-            pb={3}
+            pt={3}
             userSelect={'none'}
             boxShadow={'none'}
             _hover={{ boxShadow: 'lg', '& .delete': { display: 'block' } }}
@@ -230,7 +230,20 @@ const DataCard = ({ kbId }: { kbId: string }) => {
               })
             }
           >
-            <Flex py={3} px={4} h={'40px'}>
+            <Box
+              h={'100px'}
+              overflow={'hidden'}
+              wordBreak={'break-all'}
+              px={3}
+              py={1}
+              fontSize={'13px'}
+            >
+              <Box color={'myGray.1000'} mb={2}>
+                {item.q}
+              </Box>
+              <Box color={'myGray.600'}>{item.a}</Box>
+            </Box>
+            <Flex py={2} px={4} h={'36px'} alignItems={'flex-end'} fontSize={'sm'}>
               <Box className={'textEllipsis'} flex={1}>
                 {item.source?.trim()}
               </Box>
@@ -252,12 +265,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 }}
               />
             </Flex>
-            <Box h={'100px'} overflow={'hidden'} wordBreak={'break-all'} p={3} fontSize={'sm'}>
-              <Box color={'myGray.1000'} mb={2}>
-                {item.q}
-              </Box>
-              <Box color={'myGray.600'}>{item.a}</Box>
-            </Box>
           </Card>
         ))}
       </Grid>
@@ -271,7 +278,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           kbId={kbId}
           defaultValues={editInputData}
           onClose={() => setEditInputData(undefined)}
-          onSuccess={refetchData}
+          onSuccess={() => refetchData()}
         />
       )}
       {isOpenSelectFileModal && (

@@ -6,10 +6,16 @@ import { Types } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { chatId, historyId, quoteId } = req.query as {
+    let {
+      chatId,
+      historyId,
+      quoteId,
+      sourceText = ''
+    } = req.query as {
       chatId: string;
       historyId: string;
       quoteId: string;
+      sourceText: string;
     };
     await connectToDatabase();
 
@@ -27,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       {
         $set: {
-          'content.$.quote.$[quoteElem].source': '手动修改'
+          'content.$.quote.$[quoteElem].source': sourceText
         }
       },
       {

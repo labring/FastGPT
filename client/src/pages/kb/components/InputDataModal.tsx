@@ -8,19 +8,22 @@ import {
   ModalContent,
   ModalHeader,
   ModalCloseButton,
-  Textarea
+  Textarea,
+  IconButton
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { postKbDataFromList, putKbDataById } from '@/api/plugins/kb';
+import { postKbDataFromList, putKbDataById, delOneKbDataByDataId } from '@/api/plugins/kb';
 import { useToast } from '@/hooks/useToast';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
+import MyIcon from '@/components/Icon';
 
 export type FormData = { dataId?: string; a: string; q: string };
 
 const InputDataModal = ({
   onClose,
   onSuccess,
+  onDelete,
   kbId,
   defaultValues = {
     a: '',
@@ -28,7 +31,8 @@ const InputDataModal = ({
   }
 }: {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (data: FormData) => void;
+  onDelete?: () => void;
   kbId: string;
   defaultValues?: FormData;
 }) => {
@@ -54,16 +58,15 @@ const InputDataModal = ({
       setLoading(true);
 
       try {
+        const data = {
+          a: e.a,
+          q: e.q,
+          source: '手动录入'
+        };
         const { insertLen } = await postKbDataFromList({
           kbId,
           mode: TrainingModeEnum.index,
-          data: [
-            {
-              a: e.a,
-              q: e.q,
-              source: '手动录入'
-            }
-          ]
+          data: [data]
         });
 
         if (insertLen === 0) {
@@ -82,7 +85,7 @@ const InputDataModal = ({
           });
         }
 
-        onSuccess();
+        onSuccess(data);
       } catch (err: any) {
         toast({
           title: getErrText(err, '出现了点意外~'),
@@ -101,12 +104,13 @@ const InputDataModal = ({
       if (e.a !== defaultValues.a || e.q !== defaultValues.q) {
         setLoading(true);
         try {
-          await putKbDataById({
+          const data = {
             dataId: e.dataId,
             a: e.a,
             q: e.q === defaultValues.q ? '' : e.q
-          });
-          onSuccess();
+          };
+          await putKbDataById(data);
+          onSuccess(data);
         } catch (error) {}
         setLoading(false);
       }
@@ -169,9 +173,37 @@ const InputDataModal = ({
           </Box>
         </Box>
 
-        <Flex px={6} pt={2} pb={4}>
-          <Box flex={1}></Box>
-          <Button variant={'base'} mr={3} onClick={onClose}>
+        <Flex px={6} pt={2} pb={4} alignItems={'center'}>
+          <Box flex={1}>
+            {defaultValues.dataId && onDelete && (
+              <IconButton
+                variant={'outline'}
+                icon={<MyIcon name={'delete'} w={'16px'} h={'16px'} />}
+                aria-label={''}
+                isLoading={loading}
+                size={'sm'}
+                _hover={{
+                  color: 'red.600',
+                  borderColor: 'red.600'
+                }}
+                onClick={async () => {
+                  if (!onDelete || !defaultValues.dataId) return;
+                  try {
+                    await delOneKbDataByDataId(defaultValues.dataId);
+                    onDelete();
+                    onClose();
+                  } catch (error) {
+                    toast({
+                      status: 'warning',
+                      title: getErrText(error)
+                    });
+                    console.log(error);
+                  }
+                }}
+              />
+            )}
+          </Box>
+          <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
             取消
           </Button>
           <Button
