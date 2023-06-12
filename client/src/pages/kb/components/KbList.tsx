@@ -119,12 +119,12 @@ const KbList = ({ kbId }: { kbId: string }) => {
                 {item.name}
               </Box>
               {/* tags */}
-              <Box className="textEllipsis" color={'myGray.400'} py={1}>
+              <Box color={'myGray.400'} py={1} fontSize={'sm'}>
                 {!item.tags ? (
                   <>{item.tags || '你还没设置标签~'}</>
                 ) : (
                   item.tags.split(' ').map((item, i) => (
-                    <Tag key={i} mr={2} mb={2}>
+                    <Tag key={i} mr={1} mb={1}>
                       {item}
                     </Tag>
                   ))

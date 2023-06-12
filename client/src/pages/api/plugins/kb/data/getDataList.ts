@@ -26,6 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
+    searchText = searchText.replace(/'/g, '');
 
     const where: any = [
       ['user_id', userId],
