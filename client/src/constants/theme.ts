@@ -249,8 +249,8 @@ export const theme = extendTheme({
     '2xl': '2100px'
   },
   lgColor: {
-    activeBlueGradient: 'linear-gradient(120deg, #d6e8ff 0%, #f0f7ff 100%)',
-    hoverBlueGradient: 'linear-gradient(60deg, #f0f7ff 0%, #d6e8ff 100%)',
+    activeBlueGradient: 'linear-gradient(to bottom right, #d6e8ff 0%, #f0f7ff 100%)',
+    hoverBlueGradient: 'linear-gradient(to top left, #d6e8ff 0%, #f0f7ff 100%)',
     primary: 'linear-gradient(to bottom right, #2152d9 0%,#3370ff 40%, #4e83fd 100%)',
     primary2: 'linear-gradient(to bottom right, #2152d9 0%,#3370ff 30%,#4e83fd 80%, #85b1ff 100%)'
   },

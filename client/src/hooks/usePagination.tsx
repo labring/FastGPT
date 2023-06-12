@@ -54,6 +54,7 @@ export const usePagination = <T = any,>({
           size={'sm'}
           w={'28px'}
           h={'28px'}
+          isLoading={isLoading}
           onClick={() => mutate(pageNum - 1)}
         />
         <Flex mx={2} alignItems={'center'}>
@@ -84,13 +85,14 @@ export const usePagination = <T = any,>({
           icon={<ArrowForwardIcon />}
           aria-label={'left'}
           size={'sm'}
+          isLoading={isLoading}
           w={'28px'}
           h={'28px'}
           onClick={() => mutate(pageNum + 1)}
         />
       </Flex>
     );
-  }, [maxPage, mutate, pageNum]);
+  }, [isLoading, maxPage, mutate, pageNum]);
 
   useEffect(() => {
     defaultRequest && mutate(1);

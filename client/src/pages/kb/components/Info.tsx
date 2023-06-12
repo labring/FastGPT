@@ -140,88 +140,89 @@ const Info = (
   }));
 
   return (
-    <Box>
-      <Flex>
-        <Box fontWeight={'bold'} fontSize={'2xl'} flex={1}>
-          知识库信息
+    <Flex flexDirection={'column'} alignItems={'center'}>
+      <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'center'}>
+        <Box flex={'0 0 90px'} w={0}>
+          知识库头像
         </Box>
-        {kbDetail._id && (
-          <>
-            <Button
-              isLoading={btnLoading}
-              mr={3}
-              onClick={handleSubmit(saveSubmitSuccess, saveSubmitError)}
-            >
-              保存
-            </Button>
-            <IconButton
-              isLoading={btnLoading}
-              icon={<DeleteIcon />}
-              aria-label={''}
-              variant={'solid'}
-              colorScheme={'red'}
-              onClick={openConfirm(onclickDelKb)}
-            />
-          </>
-        )}
+        <Box flex={1}>
+          <Avatar
+            m={'auto'}
+            src={getValues('avatar')}
+            w={['32px', '40px']}
+            h={['32px', '40px']}
+            cursor={'pointer'}
+            title={'点击切换头像'}
+            onClick={onOpenSelectFile}
+          />
+        </Box>
       </Flex>
-      <Flex mt={5} alignItems={'center'}>
-        <Box flex={'0 0 60px'} w={0}>
-          头像
+      <FormControl mt={8} w={'100%'} maxW={'350px'} display={'flex'} alignItems={'center'}>
+        <Box flex={'0 0 90px'} w={0}>
+          知识库名称
         </Box>
-        <Avatar
-          src={getValues('avatar')}
-          w={['28px', '36px']}
-          h={['28px', '36px']}
-          cursor={'pointer'}
-          title={'点击切换头像'}
-          onClick={onOpenSelectFile}
+        <Input
+          flex={1}
+          {...register('name', {
+            required: '知识库名称不能为空'
+          })}
         />
-      </Flex>
-      <FormControl mt={5}>
-        <Flex alignItems={'center'} maxW={'350px'}>
-          <Box flex={'0 0 60px'} w={0}>
-            名称
-          </Box>
-          <Input
-            {...register('name', {
-              required: '知识库名称不能为空'
-            })}
-          />
-        </Flex>
       </FormControl>
-      <Box>
-        <Flex mt={5} alignItems={'center'} maxW={'350px'} flexWrap={'wrap'}>
-          <Box flex={'0 0 60px'} w={0}>
-            标签
-            <Tooltip label={'仅用于记忆，用空格隔开多个标签'}>
-              <QuestionOutlineIcon ml={1} />
-            </Tooltip>
-          </Box>
-          <Input
-            flex={1}
-            ref={InputRef}
-            placeholder={'标签,使用空格分割。'}
-            onChange={(e) => {
-              setValue('tags', e.target.value);
-              setRefresh(!refresh);
-            }}
+      <Flex mt={8} alignItems={'center'} w={'100%'} maxW={'350px'} flexWrap={'wrap'}>
+        <Box flex={'0 0 90px'} w={0}>
+          分类标签
+          <Tooltip label={'用空格隔开多个标签，便于搜索'}>
+            <QuestionOutlineIcon ml={1} />
+          </Tooltip>
+        </Box>
+        <Input
+          flex={1}
+          maxW={'300px'}
+          ref={InputRef}
+          placeholder={'标签,使用空格分割。'}
+          maxLength={30}
+          onChange={(e) => {
+            setValue('tags', e.target.value);
+            setRefresh(!refresh);
+          }}
+        />
+        <Box mt={2} w="100%">
+          {getValues('tags')
+            .split(' ')
+            .filter((item) => item)
+            .map((item, i) => (
+              <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>
+                {item}
+              </Tag>
+            ))}
+        </Box>
+      </Flex>
+      {kbDetail._id && (
+        <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'flex-end'}>
+          <Box flex={'0 0 90px'} w={0}></Box>
+          <Button
+            isLoading={btnLoading}
+            mr={4}
+            w={'100px'}
+            onClick={handleSubmit(saveSubmitSuccess, saveSubmitError)}
+          >
+            保存
+          </Button>
+          <IconButton
+            isLoading={btnLoading}
+            icon={<DeleteIcon />}
+            aria-label={''}
+            variant={'outline'}
+            size={'sm'}
+            colorScheme={'red'}
+            color={'red.500'}
+            onClick={openConfirm(onclickDelKb)}
           />
-          <Box pl={'60px'} mt={2} w="100%">
-            {getValues('tags')
-              .split(' ')
-              .filter((item) => item)
-              .map((item, i) => (
-                <Tag mr={2} mb={2} key={i}>
-                  {item}
-                </Tag>
-              ))}
-          </Box>
         </Flex>
-      </Box>
+      )}
       <File onSelect={onSelectFile} />
       <ConfirmChild />
-    </Box>
+    </Flex>
   );
 };
 

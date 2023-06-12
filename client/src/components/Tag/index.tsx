@@ -29,11 +29,11 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
   }, [colorSchema]);
   return (
     <Box
-      as={'span'}
+      display={'inline-block'}
       border={'1px solid'}
       px={2}
-      lineHeight={0}
-      py={'1px'}
+      lineHeight={1}
+      py={'2px'}
       borderRadius={'md'}
       fontSize={'xs'}
       {...theme}

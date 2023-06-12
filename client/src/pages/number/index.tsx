@@ -245,13 +245,14 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
 
       <Card mt={4} px={[3, 6]} py={4}>
         <Tabs
+          m={'auto'}
           w={'200px'}
           list={tableList.current}
           activeId={currentTab}
           size={'sm'}
           onChange={(id: any) => setCurrentTab(id)}
         />
-        <Box>
+        <Box minH={'300px'}>
           {(() => {
             const item = tableList.current.find((item) => item.id === currentTab);
 
