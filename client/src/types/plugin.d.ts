@@ -13,6 +13,13 @@ export interface KbDataItemType {
   source: string;
 }
 
+export type KbTestItemType = {
+  kbId: string;
+  text: string;
+  time: Date;
+  results: (KbDataItemType & { score: number })[];
+};
+
 export type TextPluginRequestParams = {
   input: string;
 };

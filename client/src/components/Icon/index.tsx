@@ -30,7 +30,10 @@ const map = {
   menu: require('./icons/menu.svg').default,
   edit: require('./icons/edit.svg').default,
   inform: require('./icons/inform.svg').default,
-  export: require('./icons/export.svg').default
+  export: require('./icons/export.svg').default,
+  text: require('./icons/text.svg').default,
+  history: require('./icons/history.svg').default,
+  kbTest: require('./icons/kbTest.svg').default
 };
 
 export type IconName = keyof typeof map;

@@ -7,7 +7,7 @@ import React, {
   ForwardedRef
 } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Button, FormControl, IconButton, Tooltip, Input } from '@chakra-ui/react';
+import { Box, Flex, Button, FormControl, IconButton, Tooltip, Input, Card } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
 import { delKbById, putKbById } from '@/api/plugins/kb';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -140,7 +140,7 @@ const Info = (
   }));
 
   return (
-    <Flex flexDirection={'column'} alignItems={'center'}>
+    <Flex px={5} flexDirection={'column'} alignItems={'center'}>
       <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'center'}>
         <Box flex={'0 0 90px'} w={0}>
           知识库头像
@@ -186,7 +186,7 @@ const Info = (
             setRefresh(!refresh);
           }}
         />
-        <Box mt={2} w="100%">
+        <Box pl={'90px'} mt={2} w="100%">
           {getValues('tags')
             .split(' ')
             .filter((item) => item)

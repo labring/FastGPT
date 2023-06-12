@@ -138,7 +138,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   });
 
   return (
-    <Box position={'relative'}>
+    <Box position={'relative'} px={5} pb={[1, 5]}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
           知识库数据: {total}组
@@ -209,7 +209,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
       </Flex>
       <Grid
         minH={'200px'}
-        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)']}
         gridGap={4}
       >
         {kbDataList.map((item) => (
@@ -230,8 +230,8 @@ const DataCard = ({ kbId }: { kbId: string }) => {
               })
             }
           >
-            <Flex py={3} px={4} h={'36px'}>
-              <Box className={'textEllipsis'} flex={1} fontSize={'sm'}>
+            <Flex py={3} px={4} h={'40px'}>
+              <Box className={'textEllipsis'} flex={1}>
                 {item.source?.trim()}
               </Box>
               <IconButton
@@ -252,14 +252,10 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 }}
               />
             </Flex>
-            <Box
-              h={'100px'}
-              overflow={'hidden'}
-              wordBreak={'break-all'}
-              px={3}
-              color={'myGray.600'}
-            >
-              <Box color={'myGray.1000'}>{item.q}</Box>
+            <Box h={'100px'} overflow={'hidden'} wordBreak={'break-all'} p={3} fontSize={'sm'}>
+              <Box color={'myGray.1000'} mb={2}>
+                {item.q}
+              </Box>
               <Box color={'myGray.600'}>{item.a}</Box>
             </Box>
           </Card>

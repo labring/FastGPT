@@ -71,6 +71,9 @@ const Button = defineStyleConfig({
       color: 'white',
       _hover: {
         filter: 'brightness(115%)'
+      },
+      _disabled: {
+        bg: '#3370ff !important'
       }
     },
     base: {
