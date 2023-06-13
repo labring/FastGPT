@@ -8,7 +8,13 @@ import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import { useLoading } from '@/hooks/useLoading';
-import ModelEditForm from './components/ModelEditForm';
+import Loading from '@/components/Loading';
+import dynamic from 'next/dynamic';
+
+const ModelEditForm = dynamic(() => import('./components/ModelEditForm'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
 
 const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
   const { toast } = useToast();
