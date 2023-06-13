@@ -24,9 +24,10 @@ mermaidAPI.initialize({
 const MermaidBlock = ({ code }: { code: string }) => {
   const dom = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState('');
+  const [errorSvgCode, setErrorSvgCode] = useState('');
 
   useEffect(() => {
-    try {
+    (async () => {
       const punctuationMap: Record<string, string> = {
         '，': ',',
         '；': ';',
@@ -50,13 +51,14 @@ const MermaidBlock = ({ code }: { code: string }) => {
         /([，；。：！？“”‘’【】（）《》、])/g,
         (match) => punctuationMap[match]
       );
-
-      mermaidAPI.render(`mermaid-${Date.now()}`, formatCode, (svgCode: string) => {
+      try {
+        const svgCode = await mermaidAPI.render(`mermaid-${Date.now()}`, formatCode);
         setSvg(svgCode);
-      });
-    } catch (error) {
-      console.log(error);
-    }
+      } catch (error) {
+        setErrorSvgCode(formatCode);
+        console.log(error);
+      }
+    })();
   }, [code]);
 
   const onclickExport = useCallback(() => {

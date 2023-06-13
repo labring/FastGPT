@@ -39,6 +39,7 @@ const PcSliderBar = ({
   const { isPc } = useGlobalStore();
 
   const ContextMenuRef = useRef(null);
+  const onclickContext = useRef(false);
 
   const [contextMenuData, setContextMenuData] = useState<{
     left: number;
@@ -51,10 +52,16 @@ const PcSliderBar = ({
   // close contextMenu
   useOutsideClick({
     ref: ContextMenuRef,
-    handler: () =>
+    handler: () => {
       setTimeout(() => {
-        setContextMenuData(undefined);
-      })
+        if (contextMenuData && !onclickContext.current) {
+          setContextMenuData(undefined);
+        }
+      }, 10);
+      setTimeout(() => {
+        onclickContext.current = false;
+      }, 10);
+    }
   });
 
   const onclickContextMenu = useCallback(
@@ -62,10 +69,11 @@ const PcSliderBar = ({
       e.preventDefault(); // 阻止默认右键菜单
 
       if (!isPc) return;
+      onclickContext.current = true;
 
       setContextMenuData({
-        left: e.clientX + 15,
-        top: e.clientY + 10,
+        left: e.clientX,
+        top: e.clientY,
         history
       });
     },

@@ -235,7 +235,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
         {
           type: 'shareChatFinish',
           data: {
-            question: formatPrompts[0].value,
+            question: formatPrompts[formatPrompts.length - 2].value,
             answer: responseText
           }
         },
