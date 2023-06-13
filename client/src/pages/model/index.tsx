@@ -10,7 +10,7 @@ import SideBar from '@/components/SideBar';
 
 const ModelDetail = dynamic(() => import('./components/detail/index'), {
   loading: () => <Loading fixed={false} />,
-  ssr: false
+  ssr: true
 });
 
 const Model = ({ modelId }: { modelId: string }) => {

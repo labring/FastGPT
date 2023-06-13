@@ -9,9 +9,14 @@ import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import { MyModelsTypeEnum } from '@/constants/user';
+import dynamic from 'next/dynamic';
 
-import Avatar from '@/components/Avatar';
-import Tabs from '@/components/Tabs';
+const Avatar = dynamic(() => import('@/components/Avatar'), {
+  ssr: true
+});
+const Tabs = dynamic(() => import('@/components/Tabs'), {
+  ssr: true
+});
 
 const ModelList = ({ modelId }: { modelId: string }) => {
   const [currentTab, setCurrentTab] = useState(MyModelsTypeEnum.my);
