@@ -9,6 +9,7 @@ import {
 import { authProvider } from './auth';
 import { userFields, payFields, kbFields, ModelFields, SystemFields } from './fields';
 import { Dashboard } from './Dashboard';
+import { IconUser, IconApps, IconBook, IconStamp } from 'tushan/icon';
 
 const authStorageKey = 'tushan:auth';
 
@@ -40,6 +41,7 @@ function App() {
       <Resource
         name="users"
         label="用户信息"
+        icon={<IconUser />}
         list={
           <ListTable
             filter={[
@@ -56,6 +58,7 @@ function App() {
       <Resource
         name="pays"
         label="支付记录"
+        icon={<IconStamp />}
         list={
           <ListTable
             filter={[
@@ -71,6 +74,7 @@ function App() {
       <Resource
         name="kbs"
         label="知识库"
+        icon={<IconBook />}
         list={
           <ListTable
             filter={[
@@ -88,6 +92,7 @@ function App() {
       />
       <Resource
         name="models"
+        icon={<IconApps />}
         label="应用"
         list={<ListTable fields={ModelFields} action={{ detail: true }} />}
       />

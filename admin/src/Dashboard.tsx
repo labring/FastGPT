@@ -15,13 +15,13 @@ import dayjs from 'dayjs';
 
 const authStorageKey = 'tushan:auth';
 
-type UsersChartDataType = { count: number; date: string }[];
+type UsersChartDataType = { count: number; date: string; increase: number; increaseRate: string };
 
 export const Dashboard: React.FC = React.memo(() => {
   const [userCount, setUserCount] = useState(0); //用户数量
   const [kbCount, setkbCount] = useState(0);
   const [modelCount, setmodelCount] = useState(0);
-  const [usersData, setUsersData] = useState<UsersChartDataType>([]);
+  const [usersData, setUsersData] = useState<UsersChartDataType[]>([]);
 
   useEffect(() => {
     const baseUrl = import.meta.env.VITE_PUBLIC_SERVER_URL;
@@ -57,7 +57,7 @@ export const Dashboard: React.FC = React.memo(() => {
       }
     };
     const fetchUserData = async () => {
-      const userResponse: UsersChartDataType = await fetch(`${baseUrl}/users/data`, {
+      const userResponse: UsersChartDataType[] = await fetch(`${baseUrl}/users/data`, {
         headers
       }).then((res) => res.json());
       setUsersData(
@@ -96,7 +96,7 @@ export const Dashboard: React.FC = React.memo(() => {
               <Divider type="vertical" style={{ height: 40 }} />
 
               <Grid.Col flex={1} style={{ paddingLeft: '1rem' }}>
-                <DataItem icon={<IconApps />} title={'AI模型'} count={modelCount} />
+                <DataItem icon={<IconApps />} title={'应用'} count={modelCount} />
               </Grid.Col>
             </Grid.Row>
 
@@ -110,38 +110,31 @@ export const Dashboard: React.FC = React.memo(() => {
 });
 Dashboard.displayName = 'Dashboard';
 
-const DashboardItem: React.FC<
-  React.PropsWithChildren<{
-    title: string;
-    href?: string;
-  }>
-> = React.memo((props) => {
-  const { t } = useTranslation();
+const DashboardItem = React.memo(
+  (props: { title: string; href?: string; children: React.ReactNode }) => {
+    const { t } = useTranslation();
 
-  return (
-    <Card
-      title={props.title}
-      extra={
-        props.href && (
-          <Link target="_blank" href={props.href}>
-            {t('tushan.dashboard.more')}
-          </Link>
-        )
-      }
-      bordered={false}
-      style={{ overflow: 'hidden' }}
-    >
-      {props.children}
-    </Card>
-  );
-});
+    return (
+      <Card
+        title={props.title}
+        extra={
+          props.href && (
+            <Link target="_blank" href={props.href}>
+              {t('tushan.dashboard.more')}
+            </Link>
+          )
+        }
+        bordered={false}
+        style={{ overflow: 'hidden' }}
+      >
+        {props.children}
+      </Card>
+    );
+  }
+);
 DashboardItem.displayName = 'DashboardItem';
 
-const DataItem: React.FC<{
-  icon: React.ReactElement;
-  title: string;
-  count: number;
-}> = React.memo((props) => {
+const DataItem = React.memo((props: { icon: React.ReactElement; title: string; count: number }) => {
   return (
     <Space>
       <div
@@ -168,7 +161,34 @@ const DataItem: React.FC<{
 });
 DataItem.displayName = 'DataItem';
 
-const UserChart = ({ data }: { data: UsersChartDataType }) => {
+const CustomTooltip = ({ active, payload }: any) => {
+  const data = payload?.[0]?.payload as UsersChartDataType;
+  if (active && data) {
+    return (
+      <div
+        style={{
+          background: 'white',
+          padding: '5px 8px',
+          borderRadius: '8px',
+          boxShadow: '2px 2px 5px rgba(0,0,0,0.2)'
+        }}
+      >
+        <p className="label">
+          count: <strong>{data.count}</strong>
+        </p>
+        <p className="label">
+          increase: <strong>{data.increase}</strong>
+        </p>
+        <p className="label">
+          increaseRate: <strong>{data.increaseRate}</strong>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const UserChart = ({ data }: { data: UsersChartDataType[] }) => {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <AreaChart
@@ -190,7 +210,7 @@ const UserChart = ({ data }: { data: UsersChartDataType }) => {
         <XAxis dataKey="date" />
         <YAxis />
         <CartesianGrid strokeDasharray="3 3" />
-        <Tooltip />
+        <Tooltip content={<CustomTooltip />} />
         <Area
           type="monotone"
           dataKey="count"
