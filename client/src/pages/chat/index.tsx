@@ -78,7 +78,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const [showHistoryQuote, setShowHistoryQuote] = useState<string>();
   const [showSystemPrompt, setShowSystemPrompt] = useState('');
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
-    // message messageContextMenuData
     left: number;
     top: number;
     message: ChatSiteItemType;

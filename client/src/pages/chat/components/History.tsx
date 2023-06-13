@@ -41,6 +41,7 @@ const PcSliderBar = ({
     chatId: string;
   };
   const ContextMenuRef = useRef(null);
+  const onclickContext = useRef(false);
 
   const theme = useTheme();
   const { isPc } = useGlobalStore();
@@ -68,10 +69,16 @@ const PcSliderBar = ({
   // close contextMenu
   useOutsideClick({
     ref: ContextMenuRef,
-    handler: () =>
+    handler: () => {
       setTimeout(() => {
-        setContextMenuData(undefined);
-      }, 10)
+        if (contextMenuData && !onclickContext.current) {
+          setContextMenuData(undefined);
+        }
+      }, 10);
+      setTimeout(() => {
+        onclickContext.current = false;
+      }, 10);
+    }
   });
 
   const onclickContextMenu = useCallback(
@@ -80,9 +87,10 @@ const PcSliderBar = ({
 
       if (!isPc) return;
 
+      onclickContext.current = true;
       setContextMenuData({
-        left: e.clientX + 15,
-        top: e.clientY + 10,
+        left: e.clientX,
+        top: e.clientY,
         history
       });
     },

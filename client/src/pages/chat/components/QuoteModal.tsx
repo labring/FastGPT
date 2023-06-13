@@ -44,35 +44,6 @@ const QuoteModal = ({
   } = useQuery(['getHistoryQuote'], () => getHistoryQuote({ historyId, chatId }));
 
   /**
-   * click edit, get new kbDataItem
-   */
-  const onclickEdit = useCallback(
-    async (item: QuoteItemType) => {
-      try {
-        setIsLoading(true);
-        const data = (await getKbDataItemById(item.id)) as QuoteItemType;
-
-        if (!data) {
-          throw new Error('该数据已被删除');
-        }
-
-        setEditDataItem({
-          dataId: data.id,
-          q: data.q,
-          a: data.a
-        });
-      } catch (err) {
-        toast({
-          status: 'warning',
-          title: getErrText(err)
-        });
-      }
-      setIsLoading(false);
-    },
-    [setIsLoading, toast]
-  );
-
-  /**
    * update kbData, update mongo status and reload quotes
    */
   const updateQuoteStatus = useCallback(
@@ -96,6 +67,36 @@ const QuoteModal = ({
       setIsLoading(false);
     },
     [chatId, historyId, refetch, setIsLoading, toast]
+  );
+
+  /**
+   * click edit, get new kbDataItem
+   */
+  const onclickEdit = useCallback(
+    async (item: QuoteItemType) => {
+      try {
+        setIsLoading(true);
+        const data = (await getKbDataItemById(item.id)) as QuoteItemType;
+
+        if (!data) {
+          updateQuoteStatus(item.id, '已删除');
+          throw new Error('该数据已被删除');
+        }
+
+        setEditDataItem({
+          dataId: data.id,
+          q: data.q,
+          a: data.a
+        });
+      } catch (err) {
+        toast({
+          status: 'warning',
+          title: getErrText(err)
+        });
+      }
+      setIsLoading(false);
+    },
+    [setIsLoading, toast, updateQuoteStatus]
   );
 
   return (
