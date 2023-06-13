@@ -2,22 +2,36 @@ import { Card, Link, Space, Grid, Divider, Typography } from '@arco-design/web-r
 import { IconApps, IconUser, IconUserGroup } from 'tushan/icon';
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'tushan/chart';
+import dayjs from 'dayjs';
 
 const authStorageKey = 'tushan:auth';
+
+type UsersChartDataType = { count: number; date: string }[];
 
 export const Dashboard: React.FC = React.memo(() => {
   const [userCount, setUserCount] = useState(0); //用户数量
   const [kbCount, setkbCount] = useState(0);
   const [modelCount, setmodelCount] = useState(0);
-  useEffect(() => {
-    const fetchCounts = async () => {
-      const baseUrl = import.meta.env.VITE_PUBLIC_SERVER_URL;
-      const { token } = JSON.parse(window.localStorage.getItem(authStorageKey) ?? '{}');
+  const [usersData, setUsersData] = useState<UsersChartDataType>([]);
 
-      const headers = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      };
+  useEffect(() => {
+    const baseUrl = import.meta.env.VITE_PUBLIC_SERVER_URL;
+    const { token } = JSON.parse(window.localStorage.getItem(authStorageKey) ?? '{}');
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    };
+
+    const fetchCounts = async () => {
       const userResponse = await fetch(`${baseUrl}/users?_end=1`, {
         headers
       });
@@ -31,7 +45,6 @@ export const Dashboard: React.FC = React.memo(() => {
       const userTotalCount = userResponse.headers.get('X-Total-Count');
       const kbTotalCount = kbResponse.headers.get('X-Total-Count');
       const modelTotalCount = modelResponse.headers.get('X-Total-Count');
-      console.log(userTotalCount);
 
       if (userTotalCount) {
         setUserCount(Number(userTotalCount));
@@ -43,8 +56,20 @@ export const Dashboard: React.FC = React.memo(() => {
         setmodelCount(Number(modelTotalCount));
       }
     };
+    const fetchUserData = async () => {
+      const userResponse: UsersChartDataType = await fetch(`${baseUrl}/users/data`, {
+        headers
+      }).then((res) => res.json());
+      setUsersData(
+        userResponse.map((item) => ({
+          ...item,
+          date: dayjs(item.date).format('MM/DD')
+        }))
+      );
+    };
 
     fetchCounts();
+    fetchUserData();
   }, []);
 
   return (
@@ -76,6 +101,7 @@ export const Dashboard: React.FC = React.memo(() => {
             </Grid.Row>
 
             <Divider />
+            <UserChart data={usersData} />
           </Card>
         </Space>
       </div>
@@ -141,3 +167,38 @@ const DataItem: React.FC<{
   );
 });
 DataItem.displayName = 'DataItem';
+
+const UserChart = ({ data }: { data: UsersChartDataType }) => {
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <AreaChart
+        width={730}
+        height={250}
+        data={data}
+        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+      >
+        <defs>
+          <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="colorPv" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <XAxis dataKey="date" />
+        <YAxis />
+        <CartesianGrid strokeDasharray="3 3" />
+        <Tooltip />
+        <Area
+          type="monotone"
+          dataKey="count"
+          stroke="#82ca9d"
+          fillOpacity={1}
+          fill="url(#colorPv)"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+};

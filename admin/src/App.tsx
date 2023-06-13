@@ -74,6 +74,9 @@ function App() {
         list={
           <ListTable
             filter={[
+              createTextField('name', {
+                label: 'name'
+              }),
               createTextField('tag', {
                 label: 'tag'
               })
