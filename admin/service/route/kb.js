@@ -10,7 +10,21 @@ export const useKbRoute = (app) => {
       const order = req.query._order === 'DESC' ? -1 : 1;
       const sort = req.query._sort || '_id';
       const tag = req.query.tag || '';
-      const where = { tags: { $elemMatch: { $regex: tag, $options: 'i' } } };
+      const name = req.query.name || '';
+
+      const where = {
+        ...(name
+          ? {
+              name: { $regex: name, $options: 'i' }
+            }
+          : {}),
+        ...(tag
+          ? {
+              tags: { $elemMatch: { $regex: tag, $options: 'i' } }
+            }
+          : {})
+      };
+      console.log(where);
 
       const kbsRaw = await Kb.find(where)
         .skip(start)

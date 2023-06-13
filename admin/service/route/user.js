@@ -9,6 +9,37 @@ const hashPassword = (psw) => {
 };
 
 export const useUserRoute = (app) => {
+  // 统计近 30 天注册用户数量
+  app.get('/users/data', auth(), async (req, res) => {
+    try {
+      const usersRaw = await User.aggregate([
+        { $match: { createTime: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createTime' },
+              month: { $month: '$createTime' },
+              day: { $dayOfMonth: '$createTime' }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            date: { $dateFromParts: { year: '$_id.year', month: '$_id.month', day: '$_id.day' } },
+            count: 1
+          }
+        },
+        { $sort: { date: 1 } }
+      ]);
+
+      res.json(usersRaw);
+    } catch (err) {
+      console.log(`Error fetching users: ${err}`);
+      res.status(500).json({ error: 'Error fetching users' });
+    }
+  });
   // 获取用户列表
   app.get('/users', auth(), async (req, res) => {
     try {
