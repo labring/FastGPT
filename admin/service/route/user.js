@@ -12,8 +12,12 @@ export const useUserRoute = (app) => {
   // 统计近 30 天注册用户数量
   app.get('/users/data', auth(), async (req, res) => {
     try {
+      const day = 60;
+      let startCount = await User.countDocuments({
+        createTime: { $lt: new Date(Date.now() - day * 24 * 60 * 60 * 1000) }
+      });
       const usersRaw = await User.aggregate([
-        { $match: { createTime: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+        { $match: { createTime: { $gte: new Date(Date.now() - day * 24 * 60 * 60 * 1000) } } },
         {
           $group: {
             _id: {
@@ -34,7 +38,18 @@ export const useUserRoute = (app) => {
         { $sort: { date: 1 } }
       ]);
 
-      res.json(usersRaw);
+      const countResult = usersRaw.map((item) => {
+        const increaseRate = `${((item.count / startCount) * 100).toFixed(2)}%`;
+        startCount += item.count;
+        return {
+          date: item.date,
+          count: startCount,
+          increase: item.count,
+          increaseRate
+        };
+      });
+
+      res.json(countResult);
     } catch (err) {
       console.log(`Error fetching users: ${err}`);
       res.status(500).json({ error: 'Error fetching users' });

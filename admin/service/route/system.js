@@ -110,8 +110,7 @@ export const auth = () => {
     try {
       const authorization = req.headers.authorization;
       if (!authorization) {
-        res.status(401).end('not found authorization in headers');
-        return;
+        return next(new Error("unAuthorization"))
       }
 
       const token = authorization.slice('Bearer '.length);

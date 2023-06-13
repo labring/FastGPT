@@ -1,8 +1,4 @@
-lockfileVersion: '6.1'
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
+lockfileVersion: '6.0'
 
 dependencies:
   '@arco-design/web-react':
@@ -46,10 +42,10 @@ dependencies:
     version: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
   react-i18next:
     specifier: ^12.3.1
-    version: registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0)
+    version: registry.npmmirror.com/react-i18next@12.3.1(react-dom@18.2.0)(react@18.2.0)
   tushan:
-    specifier: ^0.2.22
-    version: registry.npmmirror.com/tushan@0.2.22(history@5.3.0)(prop-types@15.8.1)(react-hook-form@7.44.3)
+    specifier: ^0.2.23
+    version: registry.npmmirror.com/tushan@0.2.23
 
 devDependencies:
   '@types/jsonexport':
@@ -167,10 +163,10 @@ packages:
       '@babel/helpers': registry.npmmirror.com/@babel/helpers@7.22.5
       '@babel/parser': registry.npmmirror.com/@babel/parser@7.22.5
       '@babel/template': registry.npmmirror.com/@babel/template@7.22.5
-      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.5(supports-color@5.5.0)
+      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.5
       '@babel/types': registry.npmmirror.com/@babel/types@7.22.5
       convert-source-map: registry.npmmirror.com/convert-source-map@1.9.0
-      debug: registry.npmmirror.com/debug@4.3.4(supports-color@5.5.0)
+      debug: registry.npmmirror.com/debug@4.3.4
       gensync: registry.npmmirror.com/gensync@1.0.0-beta.2
       json5: registry.npmmirror.com/json5@2.2.3
       semver: registry.npmmirror.com/semver@6.3.0
@@ -258,7 +254,7 @@ packages:
       '@babel/helper-split-export-declaration': registry.npmmirror.com/@babel/helper-split-export-declaration@7.22.5
       '@babel/helper-validator-identifier': registry.npmmirror.com/@babel/helper-validator-identifier@7.22.5
       '@babel/template': registry.npmmirror.com/@babel/template@7.22.5
-      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.5(supports-color@5.5.0)
+      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.5
       '@babel/types': registry.npmmirror.com/@babel/types@7.22.5
     transitivePeerDependencies:
       - supports-color
@@ -314,7 +310,7 @@ packages:
     engines: {node: '>=6.9.0'}
     dependencies:
       '@babel/template': registry.npmmirror.com/@babel/template@7.22.5
-      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.5(supports-color@5.5.0)
+      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.5
       '@babel/types': registry.npmmirror.com/@babel/types@7.22.5
     transitivePeerDependencies:
       - supports-color
@@ -384,6 +380,26 @@ packages:
       '@babel/parser': registry.npmmirror.com/@babel/parser@7.22.5
       '@babel/types': registry.npmmirror.com/@babel/types@7.22.5
 
+  registry.npmmirror.com/@babel/traverse@7.22.5:
+    resolution: {integrity: sha512-7DuIjPgERaNo6r+PZwItpjCZEa5vyw4eJGufeLxrPdBXBoLcCJCIasvK6pK/9DVNrLZTLFhUGqaC6X/PA007TQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@babel/traverse/-/traverse-7.22.5.tgz}
+    name: '@babel/traverse'
+    version: 7.22.5
+    engines: {node: '>=6.9.0'}
+    dependencies:
+      '@babel/code-frame': registry.npmmirror.com/@babel/code-frame@7.22.5
+      '@babel/generator': registry.npmmirror.com/@babel/generator@7.22.5
+      '@babel/helper-environment-visitor': registry.npmmirror.com/@babel/helper-environment-visitor@7.22.5
+      '@babel/helper-function-name': registry.npmmirror.com/@babel/helper-function-name@7.22.5
+      '@babel/helper-hoist-variables': registry.npmmirror.com/@babel/helper-hoist-variables@7.22.5
+      '@babel/helper-split-export-declaration': registry.npmmirror.com/@babel/helper-split-export-declaration@7.22.5
+      '@babel/parser': registry.npmmirror.com/@babel/parser@7.22.5
+      '@babel/types': registry.npmmirror.com/@babel/types@7.22.5
+      debug: registry.npmmirror.com/debug@4.3.4
+      globals: registry.npmmirror.com/globals@11.12.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   registry.npmmirror.com/@babel/traverse@7.22.5(supports-color@5.5.0):
     resolution: {integrity: sha512-7DuIjPgERaNo6r+PZwItpjCZEa5vyw4eJGufeLxrPdBXBoLcCJCIasvK6pK/9DVNrLZTLFhUGqaC6X/PA007TQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@babel/traverse/-/traverse-7.22.5.tgz}
     id: registry.npmmirror.com/@babel/traverse/7.22.5
@@ -403,6 +419,7 @@ packages:
       globals: registry.npmmirror.com/globals@11.12.0
     transitivePeerDependencies:
       - supports-color
+    dev: false
 
   registry.npmmirror.com/@babel/types@7.22.5:
     resolution: {integrity: sha512-zo3MIHGOkPOfoRXitsgHLjEXmlDaD/5KU1Uzuc9GNiZPhSqVxVRtxuPaSBZDsYZ9qV88AjtMtWW7ww98loJ9KA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@babel/types/-/types-7.22.5.tgz}
@@ -2099,6 +2116,19 @@ packages:
       supports-color: registry.npmmirror.com/supports-color@5.5.0
     dev: false
 
+  registry.npmmirror.com/debug@4.3.4:
+    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/debug/-/debug-4.3.4.tgz}
+    name: debug
+    version: 4.3.4
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+    dependencies:
+      ms: registry.npmmirror.com/ms@2.1.2
+
   registry.npmmirror.com/debug@4.3.4(supports-color@5.5.0):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/debug/-/debug-4.3.4.tgz}
     id: registry.npmmirror.com/debug/4.3.4
@@ -2113,6 +2143,7 @@ packages:
     dependencies:
       ms: registry.npmmirror.com/ms@2.1.2
       supports-color: registry.npmmirror.com/supports-color@5.5.0
+    dev: false
 
   registry.npmmirror.com/decimal.js-light@2.5.1:
     resolution: {integrity: sha512-qIMFpTMZmny+MMIitAB6D7iVPEorVw6YQRWkvarTkT4tBeSLLiHzcwj6q0MmYSFCiVpiqPJTJEYIrpcPzVEIvg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/decimal.js-light/-/decimal.js-light-2.5.1.tgz}
@@ -3459,7 +3490,7 @@ packages:
     version: 5.0.0
     engines: {node: '>=14.0.0'}
     dependencies:
-      debug: registry.npmmirror.com/debug@4.3.4(supports-color@5.5.0)
+      debug: registry.npmmirror.com/debug@4.3.4
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -3947,14 +3978,45 @@ packages:
       - react-native
     dev: false
 
-  registry.npmmirror.com/ra-data-json-server@4.11.1(history@5.3.0)(react-dom@18.2.0)(react-hook-form@7.44.3)(react-router-dom@6.12.1)(react-router@6.12.1)(react@18.2.0):
+  registry.npmmirror.com/ra-core@4.11.1(react-dom@18.2.0)(react-router-dom@6.12.1)(react-router@6.12.1)(react@18.2.0):
+    resolution: {integrity: sha512-nqVe++/BvGJpxsfz1HRZbAtoualhbx9UHAYT6n1IekuW5TZ0s86Zj5fRPS4lw2r12a3VR+rsACW3d0zexzIyXg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/ra-core/-/ra-core-4.11.1.tgz}
+    id: registry.npmmirror.com/ra-core/4.11.1
+    name: ra-core
+    version: 4.11.1
+    peerDependencies:
+      history: ^5.1.0
+      react: ^16.9.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.9.0 || ^17.0.0 || ^18.0.0
+      react-hook-form: ^7.43.9
+      react-router: ^6.1.0
+      react-router-dom: ^6.1.0
+    dependencies:
+      clsx: registry.npmmirror.com/clsx@1.2.1
+      date-fns: registry.npmmirror.com/date-fns@2.30.0
+      eventemitter3: registry.npmmirror.com/eventemitter3@4.0.7
+      inflection: registry.npmmirror.com/inflection@1.12.0
+      jsonexport: registry.npmmirror.com/jsonexport@3.2.0
+      lodash: registry.npmmirror.com/lodash@4.17.21
+      prop-types: registry.npmmirror.com/prop-types@15.8.1
+      query-string: registry.npmmirror.com/query-string@7.1.3
+      react: registry.npmmirror.com/react@18.2.0
+      react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
+      react-is: registry.npmmirror.com/react-is@17.0.2
+      react-query: registry.npmmirror.com/react-query@3.39.3(react-dom@18.2.0)(react@18.2.0)
+      react-router: registry.npmmirror.com/react-router@6.12.1(react@18.2.0)
+      react-router-dom: registry.npmmirror.com/react-router-dom@6.12.1(react-dom@18.2.0)(react@18.2.0)
+    transitivePeerDependencies:
+      - react-native
+    dev: false
+
+  registry.npmmirror.com/ra-data-json-server@4.11.1(react-dom@18.2.0)(react-router-dom@6.12.1)(react-router@6.12.1)(react@18.2.0):
     resolution: {integrity: sha512-EE+1Sl2uJfTAhuJPVOPbelkB3JvmSFw0aN45kOpzMcDm8IdWrzMl5I5qHqB7/qV/UrAgBDs0uK0nqg9b6Im6Bw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/ra-data-json-server/-/ra-data-json-server-4.11.1.tgz}
     id: registry.npmmirror.com/ra-data-json-server/4.11.1
     name: ra-data-json-server
     version: 4.11.1
     dependencies:
       query-string: registry.npmmirror.com/query-string@7.1.3
-      ra-core: registry.npmmirror.com/ra-core@4.11.1(history@5.3.0)(react-dom@18.2.0)(react-hook-form@7.44.3)(react-router-dom@6.12.1)(react-router@6.12.1)(react@18.2.0)
+      ra-core: registry.npmmirror.com/ra-core@4.11.1(react-dom@18.2.0)(react-router-dom@6.12.1)(react-router@6.12.1)(react@18.2.0)
     transitivePeerDependencies:
       - history
       - react
@@ -4230,6 +4292,28 @@ packages:
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
     dev: false
 
+  registry.npmmirror.com/react-i18next@12.3.1(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-5v8E2XjZDFzK7K87eSwC7AJcAkcLt5xYZ4+yTPDAW1i7C93oOY1dnr4BaQM7un4Hm+GmghuiPvevWwlca5PwDA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-i18next/-/react-i18next-12.3.1.tgz}
+    id: registry.npmmirror.com/react-i18next/12.3.1
+    name: react-i18next
+    version: 12.3.1
+    peerDependencies:
+      i18next: '>= 19.0.0'
+      react: '>= 16.8.0'
+      react-dom: '*'
+      react-native: '*'
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
+      react-native:
+        optional: true
+    dependencies:
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.22.5
+      html-parse-stringify: registry.npmmirror.com/html-parse-stringify@3.0.1
+      react: registry.npmmirror.com/react@18.2.0
+      react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
+    dev: false
+
   registry.npmmirror.com/react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-is/-/react-is-16.13.1.tgz}
     name: react-is
@@ -4356,7 +4440,7 @@ packages:
       react: registry.npmmirror.com/react@18.2.0
     dev: false
 
-  registry.npmmirror.com/react-smooth@2.0.3(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0):
+  registry.npmmirror.com/react-smooth@2.0.3(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-yl4y3XiMorss7ayF5QnBiSprig0+qFHui8uh7Hgg46QX5O+aRMRKlfGGNGLHno35JkQSvSYY8eCWkBfHfrSHfg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-smooth/-/react-smooth-2.0.3.tgz}
     id: registry.npmmirror.com/react-smooth/2.0.3
     name: react-smooth
@@ -4367,7 +4451,6 @@ packages:
       react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
     dependencies:
       fast-equals: registry.npmmirror.com/fast-equals@5.0.1
-      prop-types: registry.npmmirror.com/prop-types@15.8.1
       react: registry.npmmirror.com/react@18.2.0
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
       react-transition-group: registry.npmmirror.com/react-transition-group@2.9.0(react-dom@18.2.0)(react@18.2.0)
@@ -4458,7 +4541,7 @@ packages:
       decimal.js-light: registry.npmmirror.com/decimal.js-light@2.5.1
     dev: false
 
-  registry.npmmirror.com/recharts@2.6.2(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0):
+  registry.npmmirror.com/recharts@2.6.2(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-dVhNfgI21LlF+4AesO3mj+i+9YdAAjoGaDWIctUgH/G2iy14YVtb/DSUeic77xr19rbKCiq+pQGfeg2kJQDHig==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/recharts/-/recharts-2.6.2.tgz}
     id: registry.npmmirror.com/recharts/2.6.2
     name: recharts
@@ -4472,12 +4555,11 @@ packages:
       classnames: registry.npmmirror.com/classnames@2.3.2
       eventemitter3: registry.npmmirror.com/eventemitter3@4.0.7
       lodash: registry.npmmirror.com/lodash@4.17.21
-      prop-types: registry.npmmirror.com/prop-types@15.8.1
       react: registry.npmmirror.com/react@18.2.0
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
       react-is: registry.npmmirror.com/react-is@16.13.1
       react-resize-detector: registry.npmmirror.com/react-resize-detector@8.1.0(react-dom@18.2.0)(react@18.2.0)
-      react-smooth: registry.npmmirror.com/react-smooth@2.0.3(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
+      react-smooth: registry.npmmirror.com/react-smooth@2.0.3(react-dom@18.2.0)(react@18.2.0)
       recharts-scale: registry.npmmirror.com/recharts-scale@0.4.5
       reduce-css-calc: registry.npmmirror.com/reduce-css-calc@2.1.8
       victory-vendor: registry.npmmirror.com/victory-vendor@36.6.10
@@ -5096,11 +5178,10 @@ packages:
     version: 2.5.3
     dev: false
 
-  registry.npmmirror.com/tushan@0.2.22(history@5.3.0)(prop-types@15.8.1)(react-hook-form@7.44.3):
-    resolution: {integrity: sha512-b+FOFKZduo6GjTS+AfUym4ipP8vmtQFVLETEmhyLO7/awcSXhxQsU3UBWVIbanLOXGOuvkRrACi1Iuk35iXydw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/tushan/-/tushan-0.2.22.tgz}
-    id: registry.npmmirror.com/tushan/0.2.22
+  registry.npmmirror.com/tushan@0.2.23:
+    resolution: {integrity: sha512-1qPuAyaJbw14Hqn298aGvPhlF/qIo9ZgKp/0RDB5ZQ9OzcATxaoug9znTQGJd8aec5xM07T6lW6mjsFHpUh+tA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/tushan/-/tushan-0.2.23.tgz}
     name: tushan
-    version: 0.2.22
+    version: 0.2.23
     dependencies:
       '@arco-design/web-react': registry.npmmirror.com/@arco-design/web-react@2.49.1(@types/react@18.0.28)(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/react-query': registry.npmmirror.com/@tanstack/react-query@4.29.12(react-dom@18.2.0)(react@18.2.0)
@@ -5123,7 +5204,7 @@ packages:
       lodash-es: registry.npmmirror.com/lodash-es@4.17.21
       postcss: registry.npmmirror.com/postcss@8.4.24
       qs: registry.npmmirror.com/qs@6.11.2
-      ra-data-json-server: registry.npmmirror.com/ra-data-json-server@4.11.1(history@5.3.0)(react-dom@18.2.0)(react-hook-form@7.44.3)(react-router-dom@6.12.1)(react-router@6.12.1)(react@18.2.0)
+      ra-data-json-server: registry.npmmirror.com/ra-data-json-server@4.11.1(react-dom@18.2.0)(react-router-dom@6.12.1)(react-router@6.12.1)(react@18.2.0)
       react: registry.npmmirror.com/react@18.2.0
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
       react-helmet: registry.npmmirror.com/react-helmet@6.1.0(react@18.2.0)
@@ -5132,7 +5213,7 @@ packages:
       react-json-view: registry.npmmirror.com/react-json-view@1.21.3(@types/react@18.0.28)(react-dom@18.2.0)(react@18.2.0)
       react-router: registry.npmmirror.com/react-router@6.12.1(react@18.2.0)
       react-router-dom: registry.npmmirror.com/react-router-dom@6.12.1(react-dom@18.2.0)(react@18.2.0)
-      recharts: registry.npmmirror.com/recharts@2.6.2(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
+      recharts: registry.npmmirror.com/recharts@2.6.2(react-dom@18.2.0)(react@18.2.0)
       styled-components: registry.npmmirror.com/styled-components@5.3.11(react-dom@18.2.0)(react-is@18.2.0)(react@18.2.0)
       tailwindcss: registry.npmmirror.com/tailwindcss@3.3.2
       url-regex: registry.npmmirror.com/url-regex@5.0.0
@@ -5572,3 +5653,7 @@ packages:
       react: registry.npmmirror.com/react@18.2.0
       use-sync-external-store: registry.npmmirror.com/use-sync-external-store@1.2.0(react@18.2.0)
     dev: false
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
