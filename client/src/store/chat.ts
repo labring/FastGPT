@@ -53,7 +53,7 @@ const defaultChatData = {
     intro: '',
     canUse: false
   },
-  chatModel: OpenAiChatEnum.GPT35,
+  chatModel: OpenAiChatEnum.GPT3516k,
   history: []
 };
 const defaultShareChatData: ShareChatType = {
@@ -64,7 +64,7 @@ const defaultShareChatData: ShareChatType = {
     avatar: '/icon/logo.png',
     intro: ''
   },
-  chatModel: OpenAiChatEnum.GPT35,
+  chatModel: OpenAiChatEnum.GPT3516k,
   history: []
 };
 

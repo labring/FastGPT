@@ -57,7 +57,7 @@ const ModelSchema = new Schema({
       // 聊天时使用的模型
       type: String,
       enum: Object.keys(ChatModelMap),
-      default: OpenAiChatEnum.GPT35
+      default: OpenAiChatEnum.GPT3516k
     }
   },
   share: {
