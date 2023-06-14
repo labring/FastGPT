@@ -69,6 +69,7 @@ const modelSchema = new mongoose.Schema({
     chatModel: String
   },
   share: {
+    topNum: Number,
     isShare: Boolean,
     isShareDetail: Boolean,
     intro: String,

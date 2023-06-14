@@ -54,7 +54,25 @@ function App() {
           />
         }
       />
-
+      <Resource
+        name="models"
+        icon={<IconApps />}
+        label="应用"
+        list={
+          <ListTable
+            filter={[
+              createTextField('id', {
+                label: 'id'
+              }),
+              createTextField('name', {
+                label: 'name'
+              })
+            ]}
+            fields={ModelFields}
+            action={{ detail: true, edit: true }}
+          />
+        }
+      />
       <Resource
         name="pays"
         label="支付记录"
@@ -90,12 +108,7 @@ function App() {
           />
         }
       />
-      <Resource
-        name="models"
-        icon={<IconApps />}
-        label="应用"
-        list={<ListTable fields={ModelFields} action={{ detail: true }} />}
-      />
+
       <Resource
         name="system"
         label="系统"

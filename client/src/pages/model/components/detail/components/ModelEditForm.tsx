@@ -344,7 +344,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
       {isOwner && (
         <>
           {/* model share setting */}
-          <Card p={4}>
+          {/* <Card p={4}>
             <Box fontWeight={'bold'}>分享设置</Box>
             <Box>
               <Flex mt={5} alignItems={'center'}>
@@ -373,7 +373,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                 />
               </Box>
             </Box>
-          </Card>
+          </Card> */}
           <Card p={4}>
             <Flex justifyContent={'space-between'}>
               <Box fontWeight={'bold'}>关联的知识库</Box>
@@ -411,7 +411,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         </>
       )}
       {/* shareChat */}
-      <Card p={4} gridColumnStart={1} gridColumnEnd={[2, 3]}>
+      <Card p={4}>
         <Flex justifyContent={'space-between'}>
           <Box fontWeight={'bold'}>
             免登录聊天窗口
