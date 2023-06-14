@@ -785,9 +785,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                   </Flex>
                 </Flex>
               ))}
-              {chatData.history.length === 0 && (
-                <Empty model={chatData.model} showChatProblem={false} />
-              )}
+              {/*{chatData.history.length === 0 && (*/}
+              {/*  <Empty model={chatData.model} showChatProblem={false} />*/}
+              {/*)}*/}
             </Box>
           </Box>
           {/* 发送区 */}
