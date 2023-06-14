@@ -640,7 +640,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
               fontSize={['sm', 'md']}
               onClick={() => router.push(`/model?modelId=${chatData.modelId}`)}
             >
-              {chatData.model.name} {ChatModelMap[chatData.chatModel]?.name}
+              {chatData.model.name}
               {chatData.history.length > 0 ? ` (${chatData.history.length})` : ''}
             </Box>
             {chatId ? (

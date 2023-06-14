@@ -71,21 +71,21 @@ const Home = () => {
         </Flex>
       </Flex>
 
-      <Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>
-        <Card p={5} lineHeight={2}>
-          <Markdown source={data} isChatting={false} />
-        </Card>
+      {/*<Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>*/}
+      {/*  <Card p={5} lineHeight={2}>*/}
+      {/*    <Markdown source={data} isChatting={false} />*/}
+      {/*  </Card>*/}
 
-        <Card p={5} mt={4} textAlign={'center'}>
-          {beianText && (
-            <Link href="https://beian.miit.gov.cn/" target="_blank">
-              {beianText}
-            </Link>
-          )}
+      {/*  <Card p={5} mt={4} textAlign={'center'}>*/}
+      {/*    {beianText && (*/}
+      {/*      <Link href="https://beian.miit.gov.cn/" target="_blank">*/}
+      {/*        {beianText}*/}
+      {/*      </Link>*/}
+      {/*    )}*/}
 
-          <Box>Made by AIHelper Team.</Box>
-        </Card>
-      </Box>
+      {/*    <Box>Made by AIHelper Team.</Box>*/}
+      {/*  </Card>*/}
+      {/*</Box>*/}
     </Flex>
   );
 };
