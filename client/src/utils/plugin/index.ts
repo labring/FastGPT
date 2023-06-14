@@ -20,6 +20,11 @@ export const modelToolMap: Record<
     sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT35, ...data }),
     tokenSlice: (data) => gpt_chatItemTokenSlice({ model: OpenAiChatEnum.GPT35, ...data })
   },
+  [OpenAiChatEnum.GPT3516k]: {
+    countTokens: ({ messages }) => countOpenAIToken({ model: OpenAiChatEnum.GPT3516k, messages }),
+    sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT3516k, ...data }),
+    tokenSlice: (data) => gpt_chatItemTokenSlice({ model: OpenAiChatEnum.GPT3516k, ...data })
+  },
   [OpenAiChatEnum.GPT4]: {
     countTokens: ({ messages }) => countOpenAIToken({ model: OpenAiChatEnum.GPT4, messages }),
     sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT4, ...data }),

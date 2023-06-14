@@ -7,7 +7,8 @@ export const embeddingPrice = 0.1;
 export type EmbeddingModelType = 'text-embedding-ada-002';
 
 export enum OpenAiChatEnum {
-  'GPT35' = 'gpt-3.5-turbo-16k',
+  'GPT35' = 'gpt-3.5-turbo',
+  'GPT3516k' = 'gpt-3.5-turbo-16k',
   'GPT4' = 'gpt-4',
   'GPT432k' = 'gpt-4-32k'
 }
@@ -29,7 +30,15 @@ export type ChatModelItemType = {
 export const ChatModelMap = {
   [OpenAiChatEnum.GPT35]: {
     chatModel: OpenAiChatEnum.GPT35,
-    name: 'ChatGpt',
+    name: 'Gpt35-4k',
+    contextMaxToken: 4096,
+    systemMaxToken: 2400,
+    maxTemperature: 1.2,
+    price: 2.2
+  },
+  [OpenAiChatEnum.GPT3516k]: {
+    chatModel: OpenAiChatEnum.GPT3516k,
+    name: 'Gpt35-16k',
     contextMaxToken: 16000,
     systemMaxToken: 8000,
     maxTemperature: 1.2,

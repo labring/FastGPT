@@ -16,6 +16,11 @@ export const getOpenAiEncMap = () => {
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
       }),
+      [OpenAiChatEnum.GPT3516k]: encoding_for_model('gpt-3.5-turbo', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      }),
       [OpenAiChatEnum.GPT4]: encoding_for_model('gpt-4', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
@@ -36,6 +41,11 @@ export const getOpenAiEncMap = () => {
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
       }),
+      [OpenAiChatEnum.GPT3516k]: encoding_for_model('gpt-3.5-turbo', {
+        '<|im_start|>': 100264,
+        '<|im_end|>': 100265,
+        '<|im_sep|>': 100266
+      }),
       [OpenAiChatEnum.GPT4]: encoding_for_model('gpt-4', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
@@ -51,6 +61,11 @@ export const getOpenAiEncMap = () => {
   }
   return {
     [OpenAiChatEnum.GPT35]: encoding_for_model('gpt-3.5-turbo', {
+      '<|im_start|>': 100264,
+      '<|im_end|>': 100265,
+      '<|im_sep|>': 100266
+    }),
+    [OpenAiChatEnum.GPT3516k]: encoding_for_model('gpt-3.5-turbo', {
       '<|im_start|>': 100264,
       '<|im_end|>': 100265,
       '<|im_sep|>': 100266

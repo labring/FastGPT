@@ -49,14 +49,20 @@ export default function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
-      <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
-      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
+      <Script src="/js/qrcode.min.js" strategy="afterInteractive"></Script>
+      <Script src="/js/pdf.js" strategy="afterInteractive"></Script>
+      <Script src="/js/html2pdf.bundle.min.js" strategy="afterInteractive"></Script>
       {googleVerKey && (
-        <Script
-          src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleVerKey}`}
-          strategy="lazyOnload"
-        ></Script>
+        <>
+          <Script
+            src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleVerKey}`}
+            strategy="afterInteractive"
+          ></Script>
+          <Script
+            src={`https://www.google.com/recaptcha/api.js?render=${googleVerKey}`}
+            strategy="afterInteractive"
+          ></Script>
+        </>
       )}
       <Script src="/js/particles.js"></Script>
       <QueryClientProvider client={queryClient}>

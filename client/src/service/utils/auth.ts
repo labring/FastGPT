@@ -162,6 +162,10 @@ export const getApiKey = async ({
       userOpenAiKey: user.openaiKey || '',
       systemAuthKey: getSystemOpenAiKey(type) as string
     },
+    [OpenAiChatEnum.GPT3516k]: {
+      userOpenAiKey: user.openaiKey || '',
+      systemAuthKey: getSystemOpenAiKey(type) as string
+    },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
       systemAuthKey: getGpt4Key() as string

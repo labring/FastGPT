@@ -48,6 +48,15 @@ export const modelServiceToolMap: Record<
         ...data
       })
   },
+  [OpenAiChatEnum.GPT3516k]: {
+    chatCompletion: (data: ChatCompletionType) =>
+      chatResponse({ model: OpenAiChatEnum.GPT3516k, ...data }),
+    streamResponse: (data: StreamResponseType) =>
+      openAiStreamResponse({
+        model: OpenAiChatEnum.GPT3516k,
+        ...data
+      })
+  },
   [OpenAiChatEnum.GPT4]: {
     chatCompletion: (data: ChatCompletionType) =>
       chatResponse({ model: OpenAiChatEnum.GPT4, ...data }),

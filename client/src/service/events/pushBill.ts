@@ -104,7 +104,7 @@ export const pushSplitDataBill = async ({
     await connectToDatabase();
 
     // 获取模型单价格, 都是用 gpt35 拆分
-    const unitPrice = ChatModelMap[OpenAiChatEnum.GPT35].price || 3;
+    const unitPrice = ChatModelMap[OpenAiChatEnum.GPT3516k].price || 3;
     // 计算价格
     const price = unitPrice * totalTokens;
 
@@ -112,7 +112,7 @@ export const pushSplitDataBill = async ({
     const res = await Bill.create({
       userId,
       type,
-      modelName: OpenAiChatEnum.GPT35,
+      modelName: OpenAiChatEnum.GPT3516k,
       textLen,
       tokenLen: totalTokens,
       price

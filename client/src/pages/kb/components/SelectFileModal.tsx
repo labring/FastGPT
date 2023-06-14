@@ -31,12 +31,12 @@ const modeMap = {
   [TrainingModeEnum.qa]: {
     maxLen: 8000,
     slideLen: 3000,
-    price: ChatModelMap[OpenAiChatEnum.GPT35].price,
+    price: ChatModelMap[OpenAiChatEnum.GPT3516k].price,
     isPrompt: true
   },
   [TrainingModeEnum.index]: {
-    maxLen: 1400,
-    slideLen: 700,
+    maxLen: 1000,
+    slideLen: 500,
     price: embeddingPrice,
     isPrompt: false
   }
