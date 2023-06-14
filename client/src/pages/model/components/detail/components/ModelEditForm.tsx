@@ -47,10 +47,10 @@ import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/model';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { formatTimeToChatTime, useCopyData, getErrText } from '@/utils/tools';
+import MyIcon from '@/components/Icon';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
 
 const ModelEditForm = ({
   formHooks,
@@ -174,6 +174,32 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
 
   // init kb select list
   const { data: kbList = [] } = useQuery(['loadKbList'], () => loadKbList());
+  const RenderSelectedKbList = useCallback(() => {
+    const kbs = getValues('chat.relatedKbs')?.map((id) => kbList.find((kb) => kb._id === id)) || [];
+
+    return (
+      <>
+        {kbs.map((item) =>
+          item ? (
+            <Card
+              key={item._id}
+              p={3}
+              mt={3}
+              cursor={'pointer'}
+              onClick={() => router.push(`/kb?kbId=${item._id}`)}
+            >
+              <Flex alignItems={'center'}>
+                <Avatar src={item.avatar} w={'20px'} h={'20px'}></Avatar>
+                <Box ml={3} fontWeight={'bold'}>
+                  {item.name}
+                </Box>
+              </Flex>
+            </Card>
+          ) : null
+        )}
+      </>
+    );
+  }, [getValues, kbList, router]);
 
   return (
     <>
@@ -327,6 +353,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
               </Select>
             </Flex>
           )}
+
           <Box mt={4}>
             <Box mb={1}>系统提示词</Box>
             <Textarea
@@ -351,7 +378,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                 <Box mr={1} fontSize={['sm', 'md']}>
                   模型分享:
                 </Box>
-                <Tooltip label="开启模型分享后，你的模型将会出现在共享市场，可供 FastGpt 所有用户使用。用户使用时不会消耗你的 tokens，而是消耗使用者的 tokens。">
+                <Tooltip label="开启模型分享后，你的模型将会出现在共享市场，可供 AIHelper 所有用户使用。用户使用时不会消耗你的 tokens，而是消耗使用者的 tokens。">
                   <QuestionOutlineIcon mr={3} />
                 </Tooltip>
                 <Switch
@@ -381,32 +408,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                 选择
               </Button>
             </Flex>
-            {(() => {
-              const kbs =
-                getValues('chat.relatedKbs')?.map((id) => kbList.find((kb) => kb._id === id)) || [];
-              return (
-                <>
-                  {kbs.map((item) =>
-                    item ? (
-                      <Card
-                        key={item._id}
-                        p={3}
-                        mt={3}
-                        cursor={'pointer'}
-                        onClick={() => router.push(`/kb?kbId=${item._id}`)}
-                      >
-                        <Flex alignItems={'center'}>
-                          <Avatar src={item.avatar} w={'20px'} h={'20px'}></Avatar>
-                          <Box ml={3} fontWeight={'bold'}>
-                            {item.name}
-                          </Box>
-                        </Flex>
-                      </Card>
-                    ) : null
-                  )}
-                </>
-              );
-            })()}
+            <RenderSelectedKbList />
           </Card>
         </>
       )}
@@ -584,6 +586,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                   isChecked={getValues('chat.relatedKbs')?.includes(item._id)}
                   onChange={(e) => {
                     const ids = getValues('chat.relatedKbs');
+                    // toggle to true
                     if (e.target.checked) {
                       setValue('chat.relatedKbs', ids.concat(item._id));
                     } else {

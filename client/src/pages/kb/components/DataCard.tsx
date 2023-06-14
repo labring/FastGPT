@@ -21,7 +21,7 @@ import {
   delOneKbDataByDataId,
   getTrainingData
 } from '@/api/plugins/kb';
-import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
+import { DeleteIcon } from '@chakra-ui/icons';
 import { fileDownload } from '@/utils/file';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
@@ -29,7 +29,6 @@ import Papa from 'papaparse';
 import dynamic from 'next/dynamic';
 import InputModal, { FormData as InputDataType } from './InputDataModal';
 import { debounce } from 'lodash';
-import { getErrText } from '@/utils/tools';
 
 const SelectFileModal = dynamic(() => import('./SelectFileModal'));
 const SelectCsvModal = dynamic(() => import('./SelectCsvModal'));
@@ -38,7 +37,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   const lastSearch = useRef('');
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     data: kbDataList,
@@ -146,18 +144,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           知识库数据: {total}组
         </Box>
         <Box>
-          <IconButton
-            icon={<RepeatIcon />}
-            aria-label={'refresh'}
-            variant={'base'}
-            isLoading={isLoading}
-            mr={[2, 4]}
-            size={'sm'}
-            onClick={() => {
-              refetchData(pageNum);
-              getTrainingData({ kbId, init: true });
-            }}
-          />
           <Button
             variant={'base'}
             mr={2}
@@ -233,7 +219,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
             pt={3}
             userSelect={'none'}
             boxShadow={'none'}
-            _hover={{ boxShadow: 'lg', '& .delete': { display: 'flex' } }}
+            _hover={{ boxShadow: 'lg', '& .delete': { display: 'block' } }}
             border={'1px solid '}
             borderColor={'myGray.200'}
             onClick={() =>
@@ -263,28 +249,19 @@ const DataCard = ({ kbId }: { kbId: string }) => {
               </Box>
               <IconButton
                 className="delete"
-                display={['flex', 'none']}
+                display={['block', 'none']}
                 icon={<DeleteIcon />}
                 variant={'base'}
                 colorScheme={'gray'}
                 aria-label={'delete'}
                 size={'xs'}
                 borderRadius={'md'}
+                lineHeight={1}
                 _hover={{ color: 'red.600' }}
-                isLoading={isDeleting}
                 onClick={async (e) => {
                   e.stopPropagation();
-                  try {
-                    setIsDeleting(true);
-                    await delOneKbDataByDataId(item.id);
-                    refetchData(pageNum);
-                  } catch (error) {
-                    toast({
-                      title: getErrText(error),
-                      status: 'error'
-                    });
-                  }
-                  setIsDeleting(false);
+                  await delOneKbDataByDataId(item.id);
+                  refetchData(pageNum);
                 }}
               />
             </Flex>

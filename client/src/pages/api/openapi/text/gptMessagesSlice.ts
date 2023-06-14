@@ -4,9 +4,8 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import type { ChatItemSimpleType } from '@/types/chat';
 import { countOpenAIToken } from '@/utils/plugin/openai';
-import { OpenAiChatEnum } from '@/constants/model';
 
-type ModelType = `${OpenAiChatEnum}`;
+type ModelType = 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-32k';
 
 type Props = {
   messages: ChatItemSimpleType[];

@@ -64,7 +64,7 @@ const defaultShareChatData: ShareChatType = {
     avatar: '/icon/logo.png',
     intro: ''
   },
-  chatModel: OpenAiChatEnum.GPT35,
+  chatModel: 'gpt-3.5-turbo',
   history: []
 };
 
