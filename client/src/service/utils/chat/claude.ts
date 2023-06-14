@@ -24,7 +24,7 @@ export const claudChat = async ({ apiKey, messages, stream, chatId }: ChatComple
       headers: {
         Authorization: apiKey
       },
-      timeout: stream ? 60000 : 240000,
+      timeout: stream ? 60000 : 480000,
       responseType: stream ? 'stream' : 'json'
     }
   );
