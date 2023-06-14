@@ -42,7 +42,7 @@ export const getKbDataList = (data: GetKbDataListProps) =>
  * 获取导出数据（不分页）
  */
 export const getExportDataList = (kbId: string) =>
-  GET<[string, string][]>(
+  GET<[string, string, string][]>(
     `/plugins/kb/data/exportModelData`,
     { kbId },
     {

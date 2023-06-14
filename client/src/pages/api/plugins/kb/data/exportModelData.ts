@@ -42,16 +42,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       where: [['kb_id', kbId], 'AND', ['user_id', userId]]
     });
     // 从 pg 中获取所有数据
-    const pgData = await PgClient.select<{ q: string; a: string }>('modelData', {
+    const pgData = await PgClient.select<{ q: string; a: string; source: string }>('modelData', {
       where: [['kb_id', kbId], 'AND', ['user_id', userId]],
-      fields: ['q', 'a'],
+      fields: ['q', 'a', 'source'],
       order: [{ field: 'id', mode: 'DESC' }],
       limit: count
     });
 
-    const data: [string, string][] = pgData.rows.map((item) => [
+    const data: [string, string, string][] = pgData.rows.map((item) => [
       item.q.replace(/\n/g, '\\n'),
-      item.a.replace(/\n/g, '\\n')
+      item.a.replace(/\n/g, '\\n'),
+      item.source
     ]);
 
     // update export time
