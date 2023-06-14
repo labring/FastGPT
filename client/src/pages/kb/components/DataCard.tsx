@@ -95,7 +95,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     onSuccess(res) {
       try {
         const text = Papa.unparse({
-          fields: ['question', 'answer'],
+          fields: ['question', 'answer', 'source'],
           data: res
         });
         fileDownload({
