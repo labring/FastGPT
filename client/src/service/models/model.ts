@@ -61,6 +61,10 @@ const ModelSchema = new Schema({
     }
   },
   share: {
+    topNum: {
+      type: Number,
+      default: 0
+    },
     isShare: {
       type: Boolean,
       default: false

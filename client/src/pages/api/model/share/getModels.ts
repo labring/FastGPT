@@ -77,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         }
       },
       {
-        $sort: { 'share.collection': -1 }
+        $sort: { 'share.topNum': -1, 'share.collection': -1 }
       },
       {
         $skip: (pageNum - 1) * pageSize

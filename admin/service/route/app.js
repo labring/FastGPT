@@ -1,4 +1,4 @@
-import { User, Model, Kb } from '../schema.js';
+import { Model, Kb } from '../schema.js';
 import { auth } from './system.js';
 
 export const useAppRoute = (app) => {
@@ -8,18 +8,19 @@ export const useAppRoute = (app) => {
       const start = parseInt(req.query._start) || 0;
       const end = parseInt(req.query._end) || 20;
       const order = req.query._order === 'DESC' ? -1 : 1;
-      const sort = req.query._sort || '_id';
-      const userId = req.query.userId || '';
+      const sort = req.query._sort;
       const name = req.query.name || '';
+      const id = req.query.id || '';
+
       const where = {
-        ...(userId ? { userId: userId } : {}),
-        name
+        ...(name && { name: { $regex: name, $options: 'i' } }),
+        ...(id && { _id: id })
       };
 
-      const modelsRaw = await Model.find()
+      const modelsRaw = await Model.find(where)
         .skip(start)
         .limit(end - start)
-        .sort({ [sort]: order });
+        .sort({ [sort]: order, 'share.isShare': -1, 'share.collection': -1 });
 
       const models = [];
 
@@ -37,21 +38,49 @@ export const useAppRoute = (app) => {
           id: model._id.toString(),
           userId: model.userId,
           name: model.name,
+          model: model.chat?.chatModel,
           relatedKbs: kbNames, // 将relatedKbs的id转换为相应的Kb名称
           searchMode: model.chat?.searchMode,
           systemPrompt: model.chat?.systemPrompt || '',
-          temperature: model.chat?.temperature
+          'share.topNum': model.share?.topNum || 0,
+          'share.isShare': model.share?.isShare || false,
+          'share.intro': model.share?.intro,
+          'share.collection': model.share?.collection || 0
         };
 
         models.push(orderedModel);
       }
-      const totalCount = await Model.countDocuments();
+      const totalCount = await Model.countDocuments(where);
       res.header('Access-Control-Expose-Headers', 'X-Total-Count');
       res.header('X-Total-Count', totalCount);
       res.json(models);
     } catch (err) {
       console.log(`Error fetching models: ${err}`);
       res.status(500).json({ error: 'Error fetching models', details: err.message });
+    }
+  });
+
+  // 修改 app 信息
+  app.put('/models/:id', auth(), async (req, res) => {
+    try {
+      const _id = req.params.id;
+
+      let {
+        share: { isShare, intro, topNum }
+      } = req.body;
+
+      await Model.findByIdAndUpdate(_id, {
+        $set: {
+          'share.topNum': Number(topNum),
+          'share.isShare': isShare === 'true',
+          'share.intro': intro
+        }
+      });
+
+      res.json({});
+    } catch (err) {
+      console.log(`Error updating user: ${err}`);
+      res.status(500).json({ error: 'Error updating user' });
     }
   });
 };
