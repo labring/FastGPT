@@ -40,6 +40,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
     onSuccess(res) {
       kbId && setLastKbId(kbId);
       if (res) {
+        setCurrentTab(TabEnum.data);
         reset(res);
         BasicInfo.current?.initInput?.(res.tags);
       }

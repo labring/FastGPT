@@ -76,14 +76,17 @@ export async function pushDataToKb({
   data.forEach((item) => {
     const text = item.q + item.a;
 
-    // count token
-    const token = modelToolMap[OpenAiChatEnum.GPT35].countTokens({
-      messages: [{ obj: 'System', value: item.q }]
-    });
+    if (mode === TrainingModeEnum.qa) {
+      // count token
+      const token = modelToolMap[OpenAiChatEnum.GPT35].countTokens({
+        messages: [{ obj: 'System', value: item.q }]
+      });
+      if (token > modeMaxToken[TrainingModeEnum.qa]) {
+        return;
+      }
+    }
 
-    if (mode === TrainingModeEnum.qa && token > modeMaxToken[TrainingModeEnum.qa]) {
-      console.log('q is too long');
-    } else if (!set.has(text)) {
+    if (!set.has(text)) {
       filterData.push(item);
       set.add(text);
     }
