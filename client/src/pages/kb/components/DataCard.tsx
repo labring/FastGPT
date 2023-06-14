@@ -21,7 +21,7 @@ import {
   delOneKbDataByDataId,
   getTrainingData
 } from '@/api/plugins/kb';
-import { DeleteIcon } from '@chakra-ui/icons';
+import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { fileDownload } from '@/utils/file';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
@@ -146,6 +146,18 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           知识库数据: {total}组
         </Box>
         <Box>
+          <IconButton
+            icon={<RepeatIcon />}
+            aria-label={'refresh'}
+            variant={'base'}
+            isLoading={isLoading}
+            mr={[2, 4]}
+            size={'sm'}
+            onClick={() => {
+              refetchData(pageNum);
+              getTrainingData({ kbId, init: true });
+            }}
+          />
           <Button
             variant={'base'}
             mr={2}
