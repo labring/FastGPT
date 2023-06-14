@@ -22,7 +22,7 @@ import { fileDownload } from '@/utils/file';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
 
-const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
+const csvTemplate = `question,answer\n"什么是 KFC","KFC 是一家美食快餐"\n"什么是 高尔夫","高尔夫球 是一项体育运动……"`;
 
 const SelectJsonModal = ({
   onClose,
