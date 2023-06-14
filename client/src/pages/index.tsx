@@ -163,7 +163,7 @@ const Home = () => {
         position={'absolute'}
         userSelect={'none'}
       >
-        <Image src="/icon/logo.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
+        <Image src="/icon/logo2.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
         <Box
           className={styles.textlg}
           fontWeight={'bold'}

@@ -68,3 +68,4 @@ export * from './models/shareChat';
 export * from './models/kb';
 export * from './models/inform';
 export * from './models/system';
+export * from './models/image';

@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { useCopyData } from '@/utils/tools';
+
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -112,14 +113,15 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
       const file = e[0];
       if (!file) return;
       try {
-        const base64 = await compressImg({
+        const src = await compressImg({
           file,
           maxW: 100,
           maxH: 100
         });
+
         onclickSave({
           ...userInfo,
-          avatar: base64
+          avatar: src
         });
       } catch (err: any) {
         toast({

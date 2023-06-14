@@ -104,12 +104,12 @@ const ModelEditForm = ({
       const file = e[0];
       if (!file) return;
       try {
-        const base64 = await compressImg({
+        const src = await compressImg({
           file,
           maxW: 100,
           maxH: 100
         });
-        setValue('avatar', base64);
+        setValue('avatar', src);
         setRefresh((state) => !state);
       } catch (err: any) {
         toast({
