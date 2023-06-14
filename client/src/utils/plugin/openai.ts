@@ -11,17 +11,17 @@ const graphemer = new Graphemer();
 export const getOpenAiEncMap = () => {
   if (typeof window !== 'undefined') {
     window.OpenAiEncMap = window.OpenAiEncMap || {
-      'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
+      [OpenAiChatEnum.GPT35]: encoding_for_model('gpt-3.5-turbo', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
       }),
-      'gpt-4': encoding_for_model('gpt-4', {
+      [OpenAiChatEnum.GPT4]: encoding_for_model('gpt-4', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
       }),
-      'gpt-4-32k': encoding_for_model('gpt-4-32k', {
+      [OpenAiChatEnum.GPT432k]: encoding_for_model('gpt-4-32k', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
@@ -31,17 +31,17 @@ export const getOpenAiEncMap = () => {
   }
   if (typeof global !== 'undefined') {
     global.OpenAiEncMap = global.OpenAiEncMap || {
-      'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
+      [OpenAiChatEnum.GPT35]: encoding_for_model('gpt-3.5-turbo', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
       }),
-      'gpt-4': encoding_for_model('gpt-4', {
+      [OpenAiChatEnum.GPT4]: encoding_for_model('gpt-4', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
       }),
-      'gpt-4-32k': encoding_for_model('gpt-4-32k', {
+      [OpenAiChatEnum.GPT432k]: encoding_for_model('gpt-4-32k', {
         '<|im_start|>': 100264,
         '<|im_end|>': 100265,
         '<|im_sep|>': 100266
@@ -50,17 +50,17 @@ export const getOpenAiEncMap = () => {
     return global.OpenAiEncMap;
   }
   return {
-    'gpt-3.5-turbo': encoding_for_model('gpt-3.5-turbo', {
+    [OpenAiChatEnum.GPT35]: encoding_for_model('gpt-3.5-turbo', {
       '<|im_start|>': 100264,
       '<|im_end|>': 100265,
       '<|im_sep|>': 100266
     }),
-    'gpt-4': encoding_for_model('gpt-4', {
+    [OpenAiChatEnum.GPT4]: encoding_for_model('gpt-4', {
       '<|im_start|>': 100264,
       '<|im_end|>': 100265,
       '<|im_sep|>': 100266
     }),
-    'gpt-4-32k': encoding_for_model('gpt-4-32k', {
+    [OpenAiChatEnum.GPT432k]: encoding_for_model('gpt-4-32k', {
       '<|im_start|>': 100264,
       '<|im_end|>': 100265,
       '<|im_sep|>': 100266
@@ -97,9 +97,9 @@ export function countOpenAIToken({
       content: string;
       name?: string;
     }[],
-    model: 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-32k'
+    model: `${OpenAiChatEnum}`
   ) {
-    const isGpt3 = model === 'gpt-3.5-turbo';
+    const isGpt3 = model.startsWith('gpt-3.5-turbo');
 
     const msgSep = isGpt3 ? '\n' : '';
     const roleSep = isGpt3 ? '\n' : '<|im_sep|>';
@@ -147,7 +147,7 @@ export function countOpenAIToken({
 }
 
 export const openAiSliceTextByToken = ({
-  model = 'gpt-3.5-turbo',
+  model = OpenAiChatEnum.GPT35,
   text,
   length
 }: {

@@ -7,6 +7,7 @@ import { embeddingModel } from '@/constants/model';
 import { axiosConfig } from '@/service/utils/tools';
 import { pushGenerateVectorBill } from '@/service/events/pushBill';
 import { ApiKeyType } from '@/service/utils/auth';
+import { OpenAiChatEnum } from '@/constants/model';
 
 type Props = {
   input: string[];
@@ -42,7 +43,7 @@ export async function openaiEmbedding({
   type = 'chat'
 }: { userId: string; mustPay?: boolean } & Props) {
   const { userOpenAiKey, systemAuthKey } = await getApiKey({
-    model: 'gpt-3.5-turbo',
+    model: OpenAiChatEnum.GPT35,
     userId,
     mustPay,
     type

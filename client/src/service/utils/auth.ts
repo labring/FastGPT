@@ -177,7 +177,7 @@ export const getApiKey = async ({
   };
 
   // 有自己的key
-  if (!mustPay && keyMap[model].userOpenAiKey) {
+  if (!mustPay && keyMap[model]?.userOpenAiKey) {
     return {
       user,
       userOpenAiKey: keyMap[model].userOpenAiKey,

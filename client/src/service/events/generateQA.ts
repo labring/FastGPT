@@ -96,7 +96,7 @@ export async function generateQA(): Promise<any> {
                 obj: ChatRoleEnum.System,
                 value: `你是出题人
 ${data.prompt || '下面是"一段长文本"'}
-从中选出5至20个题目和答案.答案详细.按格式返回: Q1:
+从中选出15至30个题目和答案.答案详细.按格式返回: Q1:
 A1:
 Q2:
 A2:
