@@ -170,35 +170,16 @@ const Home = () => {
           fontSize={['40px', '70px']}
           letterSpacing={'5px'}
         >
-          FastGpt
+          AIHelper
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
-          三分钟
+
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
-          搭建 AI 知识库
+
         </Box>
 
         <Flex flexDirection={['column', 'row']} my={5}>
-          <Button
-            mr={[0, 5]}
-            mb={[5, 0]}
-            fontSize={['xl', '3xl']}
-            h={'auto'}
-            py={[2, 3]}
-            variant={'base'}
-            border={'2px solid'}
-            borderColor={'myGray.800'}
-            transition={'0.3s'}
-            _hover={{
-              bg: 'myGray.800',
-              color: 'white'
-            }}
-            leftIcon={<MyIcon name={'git'} w={'20px'} />}
-            onClick={() => window.open('https://github.com/c121914yu/FastGPT', '_blank')}
-          >
-            Stars {(star / 1000).toFixed(1)}k
-          </Button>
           <Button
             fontSize={['xl', '3xl']}
             h={'auto'}
@@ -222,7 +203,7 @@ const Home = () => {
             </Link>
           )}
 
-          <Box>Made by FastGpt Team.</Box>
+          <Box>Made by AIHelper Team.</Box>
         </Card>
       </Box>
     </Flex>

@@ -11,6 +11,8 @@ const { definePartsStyle: switchPart, defineMultiStyleConfig: switchMultiStyle }
   createMultiStyleConfigHelpers(switchAnatomy.keys);
 const { definePartsStyle: selectPart, defineMultiStyleConfig: selectMultiStyle } =
   createMultiStyleConfigHelpers(selectAnatomy.keys);
+const { definePartsStyle: checkboxPart, defineMultiStyleConfig: checkboxMultiStyle } =
+  createMultiStyleConfigHelpers(checkboxAnatomy.keys);
 
 // modal 弹窗
 const ModalTheme = defineMultiStyleConfig({
@@ -67,7 +69,6 @@ const Button = defineStyleConfig({
       backgroundImage:
         'linear-gradient(to bottom right, #2152d9 0%,#3370ff 40%, #4e83fd 100%) !important',
       color: 'white',
-      border: 'none',
       _hover: {
         filter: 'brightness(115%)'
       },

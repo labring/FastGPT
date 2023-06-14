@@ -25,7 +25,6 @@ const Radio = ({ list, value, onChange, ...props }: Props) => {
             mr: 1,
             borderRadius: '16px',
             transition: '0.2s',
-            boxSizing: 'border-box',
             ...(value === item.value
               ? {
                   border: '5px solid',

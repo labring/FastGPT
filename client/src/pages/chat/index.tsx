@@ -75,9 +75,10 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
   const controller = useRef(new AbortController());
   const isLeavePage = useRef(false);
 
-  const [showHistoryQuote, setShowHistoryQuote] = useState<string>();
+    const [showHistoryQuote, setShowHistoryQuote] = useState<string>();
   const [showSystemPrompt, setShowSystemPrompt] = useState('');
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
+    // message messageContextMenuData
     left: number;
     top: number;
     message: ChatSiteItemType;
@@ -601,12 +602,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       flexDirection={['column', 'row']}
       backgroundColor={useColorModeValue('#fdfdfd', '')}
     >
-      {/* pc always show history.  */}
-      {(isPc || !modelId) && (
-        <SideBar>
-          <History onclickDelHistory={onclickDelHistory} onclickExportChat={onclickExportChat} />
-        </SideBar>
-      )}
+
 
       {/* 聊天内容 */}
       {modelId && (
@@ -790,7 +786,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                 </Flex>
               ))}
               {chatData.history.length === 0 && (
-                <Empty model={chatData.model} showChatProblem={true} />
+                <Empty model={chatData.model} showChatProblem={false} />
               )}
             </Box>
           </Box>

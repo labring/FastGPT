@@ -9,52 +9,6 @@ const hashPassword = (psw) => {
 };
 
 export const useUserRoute = (app) => {
-  // 统计近 30 天注册用户数量
-  app.get('/users/data', auth(), async (req, res) => {
-    try {
-      const day = 60;
-      let startCount = await User.countDocuments({
-        createTime: { $lt: new Date(Date.now() - day * 24 * 60 * 60 * 1000) }
-      });
-      const usersRaw = await User.aggregate([
-        { $match: { createTime: { $gte: new Date(Date.now() - day * 24 * 60 * 60 * 1000) } } },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$createTime' },
-              month: { $month: '$createTime' },
-              day: { $dayOfMonth: '$createTime' }
-            },
-            count: { $sum: 1 }
-          }
-        },
-        {
-          $project: {
-            _id: 0,
-            date: { $dateFromParts: { year: '$_id.year', month: '$_id.month', day: '$_id.day' } },
-            count: 1
-          }
-        },
-        { $sort: { date: 1 } }
-      ]);
-
-      const countResult = usersRaw.map((item) => {
-        const increaseRate = `${((item.count / startCount) * 100).toFixed(2)}%`;
-        startCount += item.count;
-        return {
-          date: item.date,
-          count: startCount,
-          increase: item.count,
-          increaseRate
-        };
-      });
-
-      res.json(countResult);
-    } catch (err) {
-      console.log(`Error fetching users: ${err}`);
-      res.status(500).json({ error: 'Error fetching users' });
-    }
-  });
   // 获取用户列表
   app.get('/users', auth(), async (req, res) => {
     try {

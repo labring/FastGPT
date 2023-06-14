@@ -54,24 +54,15 @@ const OpenApi = () => {
     <Box py={[5, 10]} px={'5vw'}>
       <Card px={6} py={4} position={'relative'}>
         <Box fontSize={'xl'} fontWeight={'bold'}>
-          FastGpt Api
+          AIHelper Api
         </Box>
         <Box fontSize={'sm'} mt={2}>
-          FastGpt Api 允许你将 Fast Gpt 的部分功能通过 api
+          AIHelper Api 允许你将 AIHelper Gpt 的部分功能通过 api
           的形式接入到自己的应用中，例如：飞书、企业微信、客服助手。请注意保管你的 Api
           Key，不要泄露！
         </Box>
-        <Box>使用 Fast Api 功能仅能使用平台余额。</Box>
-        <Box
-          my={1}
-          as="a"
-          href="https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh"
-          color={'myBlue.800'}
-          textDecoration={'underline'}
-          target={'_blank'}
-        >
-          点击查看文档
-        </Box>
+        <Box>使用 AIHelper Api 功能仅能使用平台余额。</Box>
+
         <TableContainer mt={2} position={'relative'}>
           <Table>
             <Thead>
