@@ -128,9 +128,6 @@ dependencies:
   rehype-katex:
     specifier: ^6.0.2
     version: registry.npmmirror.com/rehype-katex@6.0.2
-  remark-breaks:
-    specifier: ^3.0.3
-    version: registry.npmmirror.com/remark-breaks@3.0.3
   remark-gfm:
     specifier: ^3.0.1
     version: registry.npmmirror.com/remark-gfm@3.0.1
@@ -9401,15 +9398,6 @@ packages:
       mdast-util-to-markdown: registry.npmmirror.com/mdast-util-to-markdown@1.5.0
     dev: false
 
-  registry.npmmirror.com/mdast-util-newline-to-break@1.0.0:
-    resolution: {integrity: sha512-491LcYv3gbGhhCrLoeALncQmega2xPh+m3gbsIhVsOX4sw85+ShLFPvPyibxc1Swx/6GtzxgVodq+cGa/47ULg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mdast-util-newline-to-break/-/mdast-util-newline-to-break-1.0.0.tgz}
-    name: mdast-util-newline-to-break
-    version: 1.0.0
-    dependencies:
-      '@types/mdast': registry.npmmirror.com/@types/mdast@3.0.11
-      mdast-util-find-and-replace: registry.npmmirror.com/mdast-util-find-and-replace@2.2.2
-    dev: false
-
   registry.npmmirror.com/mdast-util-phrasing@3.0.1:
     resolution: {integrity: sha512-WmI1gTXUBJo4/ZmSk79Wcb2HcjPJBzM1nlI/OUWA8yk2X9ik3ffNbBGsU+09BFmXaL1IBb9fiuvq6/KMiNycSg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mdast-util-phrasing/-/mdast-util-phrasing-3.0.1.tgz}
     name: mdast-util-phrasing
@@ -11049,16 +11037,6 @@ packages:
       '@types/hast': registry.npmmirror.com/@types/hast@2.3.4
       hast-util-from-parse5: registry.npmmirror.com/hast-util-from-parse5@7.1.2
       parse5: registry.npmmirror.com/parse5@6.0.1
-      unified: registry.npmmirror.com/unified@10.1.2
-    dev: false
-
-  registry.npmmirror.com/remark-breaks@3.0.3:
-    resolution: {integrity: sha512-C7VkvcUp1TPUc2eAYzsPdaUh8Xj4FSbQnYA5A9f80diApLZscTDeG7efiWP65W8hV2sEy3JuGVU0i6qr5D8Hug==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/remark-breaks/-/remark-breaks-3.0.3.tgz}
-    name: remark-breaks
-    version: 3.0.3
-    dependencies:
-      '@types/mdast': registry.npmmirror.com/@types/mdast@3.0.11
-      mdast-util-newline-to-break: registry.npmmirror.com/mdast-util-newline-to-break@1.0.0
       unified: registry.npmmirror.com/unified@10.1.2
     dev: false
 
