@@ -29,7 +29,7 @@ export type ChatModelItemType = {
 export const ChatModelMap = {
   [OpenAiChatEnum.GPT35]: {
     chatModel: OpenAiChatEnum.GPT35,
-    name: 'ChatGpt',
+    name: 'GPT3.5',
     contextMaxToken: 4096,
     systemMaxToken: 2700,
     maxTemperature: 1.2,
@@ -37,7 +37,7 @@ export const ChatModelMap = {
   },
   [OpenAiChatEnum.GPT4]: {
     chatModel: OpenAiChatEnum.GPT4,
-    name: 'Gpt4',
+    name: 'GPT4',
     contextMaxToken: 8000,
     systemMaxToken: 4000,
     maxTemperature: 1.2,
