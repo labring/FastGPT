@@ -103,7 +103,7 @@ export async function appKbSearch({
       .map((item) => `'${item}'`)
       .join(',')}) AND vector <#> '[${promptVector[0]}]' < -${similarity} order by vector <#> '[${
       promptVector[0]
-    }]' limit 15;
+    }]' limit 10;
     COMMIT;`
   );
 
