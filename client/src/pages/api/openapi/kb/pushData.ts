@@ -24,8 +24,8 @@ export type Response = {
 };
 
 const modeMaxToken = {
-  [TrainingModeEnum.index]: 700,
-  [TrainingModeEnum.qa]: 3300
+  [TrainingModeEnum.index]: 6000,
+  [TrainingModeEnum.qa]: 10000
 };
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
