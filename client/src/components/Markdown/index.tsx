@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import { formatLinkText } from '@/utils/tools';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
-import remarkBreaks from 'remark-breaks';
 import rehypeKatex from 'rehype-katex';
 
 import 'katex/dist/katex.min.css';
@@ -30,7 +29,7 @@ const Markdown = ({
       className={`markdown ${styles.markdown}
         ${isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''}
       `}
-      remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
+      remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex]}
       components={{
         pre: 'div',
