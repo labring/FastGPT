@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useEffect } from 'react';
+import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { formatLinkText } from '@/utils/tools';
 import remarkGfm from 'remark-gfm';
