@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, Button, Tooltip } from '@chakra-ui/react';
+import { Box, Flex, Button, Tooltip, Card } from '@chakra-ui/react';
 import type { ShareModelItem } from '@/types/model';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
@@ -18,14 +18,20 @@ const ShareModelList = ({
   return (
     <>
       {models.map((model) => (
-        <Flex
+        <Card
+          key={model._id}
+          display={'flex'}
           w={'100%'}
           flexDirection={'column'}
-          key={model._id}
           p={4}
-          border={'1px solid'}
-          borderColor={'gray.200'}
           borderRadius={'md'}
+          border={'1px solid '}
+          userSelect={'none'}
+          boxShadow={'none'}
+          borderColor={'myGray.200'}
+          _hover={{
+            boxShadow: 'lg'
+          }}
         >
           <Flex alignItems={'center'}>
             <Avatar
@@ -76,7 +82,7 @@ const ShareModelList = ({
               </Button>
             </Box>
           </Flex>
-        </Flex>
+        </Card>
       ))}
     </>
   );
