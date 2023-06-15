@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex, Box } from '@chakra-ui/react';
 import { BillTypeMap } from '@/constants/user';
 import { getUserBills } from '@/api/user';
@@ -7,18 +7,29 @@ import { usePagination } from '@/hooks/usePagination';
 import { useLoading } from '@/hooks/useLoading';
 import dayjs from 'dayjs';
 import MyIcon from '@/components/Icon';
+import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
+import { addDays } from 'date-fns';
 
 const BillTable = () => {
   const { Loading } = useLoading();
+  const [dateRange, setDateRange] = useState<DateRangeType>({
+    from: addDays(new Date(), -7),
+    to: new Date()
+  });
 
   const {
     data: bills,
     isLoading,
     Pagination,
     pageSize,
-    total
+    total,
+    getData
   } = usePagination<UserBillType>({
-    api: getUserBills
+    api: getUserBills,
+    params: {
+      dateStart: dateRange.from,
+      dateEnd: dateRange.to
+    }
   });
 
   return (
@@ -48,8 +59,6 @@ const BillTable = () => {
             ))}
           </Tbody>
         </Table>
-
-        <Loading loading={isLoading} fixed={false} />
       </TableContainer>
 
       {!isLoading && bills.length === 0 && (
@@ -62,9 +71,18 @@ const BillTable = () => {
       )}
       {total > pageSize && (
         <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
-          <Pagination />
+          <DateRangePicker
+            defaultDate={dateRange}
+            position="top"
+            onChange={setDateRange}
+            onSuccess={() => getData(1)}
+          />
+          <Box ml={2}>
+            <Pagination />
+          </Box>
         </Flex>
       )}
+      <Loading loading={isLoading} fixed={false} />
     </>
   );
 };

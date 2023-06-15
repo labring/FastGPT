@@ -19,30 +19,24 @@ import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import Tabs from '@/components/Tabs';
+import BillTable from './components/BillTable';
 
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
-});
-const BilTable = dynamic(() => import('./components/BillTable'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
+  ssr: true
 });
 const PromotionTable = dynamic(() => import('./components/PromotionTable'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
+  ssr: true
 });
 const InformTable = dynamic(() => import('./components/InformTable'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
+  ssr: true
 });
 const PayModal = dynamic(() => import('./components/PayModal'), {
   loading: () => <Loading fixed={false} />,
-  ssr: false
+  ssr: true
 });
 const WxConcat = dynamic(() => import('@/components/WxConcat'), {
   loading: () => <Loading fixed={false} />,
-  ssr: false
+  ssr: true
 });
 
 enum TableEnum {
@@ -54,7 +48,7 @@ enum TableEnum {
 
 const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
   const tableList = useRef([
-    { label: '账单', id: TableEnum.bill, Component: <BilTable /> },
+    { label: '账单', id: TableEnum.bill, Component: <BillTable /> },
     { label: '充值', id: TableEnum.pay, Component: <PayRecordTable /> },
     { label: '佣金', id: TableEnum.promotion, Component: <PromotionTable /> },
     { label: '通知', id: TableEnum.inform, Component: <InformTable /> }
