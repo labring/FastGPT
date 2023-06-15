@@ -182,7 +182,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
         <Box fontWeight={'bold'}>基本信息</Box>
         <Flex alignItems={'center'} mt={4}>
           <Box flex={'0 0 80px'} w={0}>
-            modelId
+            AppId
           </Box>
           <Box userSelect={'all'}>{getValues('_id')}</Box>
         </Flex>

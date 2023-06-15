@@ -10,6 +10,7 @@ import styles from './index.module.scss';
 import CodeLight from './codeLight';
 import Loading from './Loading';
 import MermaidCodeBlock from './MermaidCodeBlock';
+import MdImage from './Image';
 
 const Markdown = ({
   source,
@@ -33,6 +34,9 @@ const Markdown = ({
       rehypePlugins={[rehypeKatex]}
       components={{
         pre: 'div',
+        img({ src = '' }) {
+          return <MdImage src={src} />;
+        },
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
 
