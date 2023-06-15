@@ -75,13 +75,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               amount: (payOrder.price / PRICE_SCALE) * inviter.promotion.rate * 0.01
             });
           }
-          jsonRes(res, {
+          unlockTask(userId);
+          return jsonRes(res, {
             data: '支付成功'
           });
-          unlockTask(userId);
         }
       } catch (error) {
         console.log(error);
+        // roll back status
         try {
           await Pay.findByIdAndUpdate(payId, {
             status: 'NOTPAY'
