@@ -76,6 +76,20 @@ export const usePagination = <T = any,>({
                 mutate(+e.target.value);
               }
             }}
+            onKeyDown={(e) => {
+              // @ts-ignore
+              const val = +e.target.value;
+              if (val && e.keyCode === 13) {
+                if (val === pageNum) return;
+                if (val >= maxPage) {
+                  mutate(maxPage);
+                } else if (val < 1) {
+                  mutate(1);
+                } else {
+                  mutate(val);
+                }
+              }
+            }}
           />
           <Box mx={2}>/</Box>
           {maxPage}

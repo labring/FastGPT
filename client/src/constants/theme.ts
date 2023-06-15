@@ -39,7 +39,7 @@ const Button = defineStyleConfig({
     },
     sm: {
       fontSize: 'sm',
-      px: 3,
+      px: 4,
       py: 0,
       fontWeight: 'normal',
       height: '26px',

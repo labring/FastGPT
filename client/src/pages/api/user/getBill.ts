@@ -4,23 +4,32 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { adaptBill } from '@/utils/adapt';
+import { addDays } from 'date-fns';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { pageNum = 1, pageSize = 10 } = req.query as {
-      pageNum: string;
-      pageSize: string;
+    const {
+      pageNum = 1,
+      pageSize = 10,
+      dateStart = addDays(new Date(), -7),
+      dateEnd = new Date()
+    } = req.body as {
+      pageNum: number;
+      pageSize: number;
+      dateStart: Date;
+      dateEnd: Date;
     };
-
-    pageNum = +pageNum;
-    pageSize = +pageSize;
 
     const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 
     const where = {
-      userId
+      userId,
+      time: {
+        $gte: new Date(dateStart).setHours(0, 0, 0, 0),
+        $lte: new Date(dateEnd).setHours(23, 59, 59, 999)
+      }
     };
 
     // get bill record and total by record

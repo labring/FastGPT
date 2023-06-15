@@ -44,8 +44,6 @@ const OpenApi = () => {
             ))}
           </Tbody>
         </Table>
-
-        <Loading loading={isLoading} fixed={false} />
       </TableContainer>
 
       {!isLoading && promotionRecords.length === 0 && (
@@ -61,6 +59,7 @@ const OpenApi = () => {
           <Pagination />
         </Flex>
       )}
+      <Loading loading={isLoading} fixed={false} />
     </>
   );
 };

@@ -66,7 +66,7 @@ export const loginOut = () => GET('/user/loginout');
 export const putUserInfo = (data: UserUpdateParams) => PUT('/user/update', data);
 
 export const getUserBills = (data: RequestPaging) =>
-  GET<PagingData<UserBillType>>(`/user/getBill?${Obj2Query(data)}`);
+  POST<PagingData<UserBillType>>(`/user/getBill`, data);
 
 export const getPayOrders = () => GET<PaySchema[]>(`/user/getPayOrders`);
 
