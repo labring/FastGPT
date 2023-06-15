@@ -40,7 +40,6 @@ export const useAppRoute = (app) => {
           name: model.name,
           model: model.chat?.chatModel,
           relatedKbs: kbNames, // 将relatedKbs的id转换为相应的Kb名称
-          searchMode: model.chat?.searchMode,
           systemPrompt: model.chat?.systemPrompt || '',
           'share.topNum': model.share?.topNum || 0,
           'share.isShare': model.share?.isShare || false,
