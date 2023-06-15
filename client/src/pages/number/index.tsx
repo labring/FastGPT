@@ -13,7 +13,8 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
-import { useCopyData } from '@/utils/tools';
+import { getErrText, useCopyData } from '@/utils/tools';
+import { authOpenAiKey } from '@/utils/plugin/openai';
 
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
@@ -83,6 +84,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
     async (data: UserUpdateParams) => {
       setLoading(true);
       try {
+        data.openaiKey && (await authOpenAiKey(data.openaiKey));
         await putUserInfo({
           openaiKey: data.openaiKey,
           avatar: data.avatar
@@ -96,7 +98,12 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
           title: '更新成功',
           status: 'success'
         });
-      } catch (error) {}
+      } catch (error) {
+        toast({
+          title: getErrText(error),
+          status: 'error'
+        });
+      }
       setLoading(false);
     },
     [reset, setLoading, toast, updateUserInfo]
