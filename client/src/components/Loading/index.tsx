@@ -14,7 +14,7 @@ const Loading = ({ fixed = true }: { fixed?: boolean }) => {
       alignItems={'center'}
       justifyContent={'center'}
     >
-      <Spinner thickness="4px" speed="0.65s" emptyColor="gray.200" color="myBlue.500" size="xl" />
+      <Spinner thickness="4px" speed="0.65s" emptyColor="myGray.100" color="myBlue.600" size="xl" />
     </Flex>
   );
 };

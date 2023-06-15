@@ -87,7 +87,7 @@ const modelList = () => {
         <Pagination />
       </Flex>
 
-      <Loading loading={isLoading} fixed={false} />
+      <Loading loading={isLoading} />
     </Box>
   );
 };
