@@ -12,7 +12,7 @@ import { startQueue } from '@/service/utils/tools';
 /* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { payId } = req.query as { payId: string };
+    const { payId } = req.query as { payId: string };
 
     const { userId } = await authUser({ req, authToken: true });
 
@@ -34,10 +34,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('找不到用户');
     }
     // 获取邀请者
-    let inviter: UserModelSchema | null = null;
-    if (user.inviterId) {
-      inviter = await User.findById(user.inviterId);
-    }
+    const inviter = await (async () => {
+      if (user.inviterId) {
+        return User.findById(user.inviterId, '_id promotion');
+      }
+      return null;
+    })();
 
     const payRes = await getPayResult(payOrder.orderId);
 
@@ -79,22 +81,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           unlockTask(userId);
         }
       } catch (error) {
-        await Pay.findByIdAndUpdate(payId, {
-          status: 'NOTPAY'
-        });
         console.log(error);
+        try {
+          await Pay.findByIdAndUpdate(payId, {
+            status: 'NOTPAY'
+          });
+        } catch (error) {}
       }
-    } else if (payRes.trade_state === 'CLOSED' || diffInHours > 24) {
+      return jsonRes(res, {
+        code: 500,
+        data: '更新订单失败,请重试'
+      });
+    }
+    if (payRes.trade_state === 'CLOSED' || diffInHours > 24) {
       // 订单已关闭
       await Pay.findByIdAndUpdate(payId, {
         status: 'CLOSED'
       });
-      jsonRes(res, {
+      return jsonRes(res, {
         data: '订单已过期'
       });
-    } else {
-      throw new Error(payRes?.trade_state_desc || '订单无效');
     }
+    throw new Error(payRes?.trade_state_desc || '订单无效');
   } catch (err) {
     // console.log(err);
     jsonRes(res, {

@@ -58,7 +58,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
     },
     {
       enabled: !!payId,
-      refetchInterval: 2000,
+      refetchInterval: 3000,
       onSuccess(res) {
         if (!res) return;
         toast({

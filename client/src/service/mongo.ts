@@ -39,9 +39,9 @@ export async function connectToDatabase(): Promise<void> {
     global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
       bufferCommands: true,
       dbName: process.env.MONGODB_NAME,
-      maxPoolSize: 5,
-      minPoolSize: 1,
-      maxConnecting: 5
+      maxConnecting: 30,
+      maxPoolSize: 30,
+      minPoolSize: 10
     });
     console.log('mongo connected');
   } catch (error) {
