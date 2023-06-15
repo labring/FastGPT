@@ -35,13 +35,17 @@ const Markdown = ({
       components={{
         pre: 'div',
         img({ src = '' }) {
-          return <MdImage src={src} />;
+          return isChatting ? <Loading text="图片加载中..." /> : <MdImage src={src} />;
         },
         code({ node, inline, className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || '');
 
           if (match?.[1] === 'mermaid') {
-            return isChatting ? <Loading /> : <MermaidCodeBlock code={String(children)} />;
+            return isChatting ? (
+              <Loading text="导图加载中..." />
+            ) : (
+              <MermaidCodeBlock code={String(children)} />
+            );
           }
 
           return (

@@ -41,6 +41,7 @@ export const useAppRoute = (app) => {
           model: model.chat?.chatModel,
           relatedKbs: kbNames, // 将relatedKbs的id转换为相应的Kb名称
           systemPrompt: model.chat?.systemPrompt || '',
+          temperature: model.chat?.temperature || 0,
           'share.topNum': model.share?.topNum || 0,
           'share.isShare': model.share?.isShare || false,
           'share.intro': model.share?.intro,
