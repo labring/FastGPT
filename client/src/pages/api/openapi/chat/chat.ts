@@ -4,12 +4,11 @@ import { authUser, authModel, getApiKey } from '@/service/utils/auth';
 import { modelServiceToolMap, resStreamResponse } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
-import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
+import { ChatModelMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { ChatRoleEnum } from '@/constants/chat';
 import { withNextCors } from '@/service/utils/tools';
 import { BillTypeEnum } from '@/constants/user';
-import { sensitiveCheck } from '../../openapi/text/sensitiveCheck';
 import { NEW_CHATID_HEADER } from '@/constants/chat';
 import { Types } from 'mongoose';
 import { appKbSearch } from '../kb/appKbSearch';
@@ -66,48 +65,46 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
+    const prompt = prompts[prompts.length - 1];
 
-    let systemPrompts: {
-      obj: ChatRoleEnum;
-      value: string;
-    }[] = [];
+    const { userSystemPrompt = [], quotePrompt = [] } = await (async () => {
+      // 使用了知识库搜索
+      if (model.chat.relatedKbs?.length > 0) {
+        const { userSystemPrompt, quotePrompt } = await appKbSearch({
+          model,
+          userId,
+          fixedQuote: [],
+          prompt: prompt,
+          similarity: model.chat.searchSimilarity,
+          limit: model.chat.searchLimit
+        });
 
-    // 使用了知识库搜索
-    if (model.chat.relatedKbs?.length > 0) {
-      const { code, searchPrompts } = await appKbSearch({
-        model,
-        userId,
-        fixedQuote: [],
-        prompt: prompts[prompts.length - 1],
-        similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity
-      });
-
-      // search result is empty
-      if (code === 201) {
-        return isStream
-          ? res.send(searchPrompts[0]?.value)
-          : jsonRes(res, {
-              data: searchPrompts[0]?.value,
-              message: searchPrompts[0]?.value
-            });
+        return {
+          userSystemPrompt: userSystemPrompt ? [userSystemPrompt] : [],
+          quotePrompt: [quotePrompt]
+        };
       }
+      if (model.chat.systemPrompt) {
+        return {
+          userSystemPrompt: [
+            {
+              obj: ChatRoleEnum.System,
+              value: model.chat.systemPrompt
+            }
+          ]
+        };
+      }
+      return {};
+    })();
 
-      systemPrompts = searchPrompts;
-    } else if (model.chat.systemPrompt) {
-      systemPrompts = [
-        {
-          obj: ChatRoleEnum.System,
-          value: model.chat.systemPrompt
-        }
-      ];
+    // search result is empty
+    if (model.chat.relatedKbs?.length > 0 && !quotePrompt[0]?.value && model.chat.searchEmptyText) {
+      const response = model.chat.searchEmptyText;
+      return res.end(response);
     }
 
-    prompts.unshift(...systemPrompts);
-
-    // content check
-    await sensitiveCheck({
-      input: [...systemPrompts, prompts[prompts.length - 1]].map((item) => item.value).join('')
-    });
+    // 读取对话内容
+    const completePrompts = [...quotePrompt, ...prompts.slice(0, -1), ...userSystemPrompt, prompt];
 
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
@@ -123,7 +120,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       await modelServiceToolMap[model.chat.chatModel].chatCompletion({
         apiKey,
         temperature: +temperature,
-        messages: prompts,
+        messages: completePrompts,
         stream: isStream,
         res,
         chatId: conversationId

@@ -24,13 +24,13 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
         return {
           fontSize: 'md',
           outP: '4px',
-          inlineP: 2
+          inlineP: 1
         };
       case 'lg':
         return {
           fontSize: 'lg',
           outP: '5px',
-          inlineP: 3
+          inlineP: 2
         };
     }
   }, [size]);

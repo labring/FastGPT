@@ -45,7 +45,7 @@ const modelList = () => {
   return (
     <Box px={[5, 10]} py={[4, 6]} position={'relative'} minH={'109vh'}>
       <Flex alignItems={'center'} mb={2}>
-        <Box className={styles.textlg} fontWeight={'bold'} fontSize={'3xl'}>
+        <Box className={'textlg'} fontWeight={'bold'} fontSize={'3xl'}>
           AI 应用市场
         </Box>
         {/* <Box mt={[2, 0]} textAlign={'right'}>

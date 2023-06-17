@@ -4,7 +4,7 @@ import { authChat } from '@/service/utils/auth';
 import { modelServiceToolMap } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
-import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
+import { ChatModelMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { resStreamResponse } from '@/service/utils/chat';
 import { appKbSearch } from '../openapi/kb/appKbSearch';
@@ -48,36 +48,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
 
-    // 读取对话内容
-    const prompts = [...content, prompt[0]];
-
     const {
-      code = 200,
-      systemPrompts = [],
-      quote = [],
-      guidePrompt = ''
+      rawSearch = [],
+      userSystemPrompt = [],
+      quotePrompt = []
     } = await (async () => {
       // 使用了知识库搜索
       if (model.chat.relatedKbs?.length > 0) {
-        const { code, searchPrompts, rawSearch, guidePrompt } = await appKbSearch({
+        const { rawSearch, userSystemPrompt, quotePrompt } = await appKbSearch({
           model,
           userId,
           fixedQuote: content[content.length - 1]?.quote || [],
           prompt: prompt[0],
-          similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity
+          similarity: model.chat.searchSimilarity,
+          limit: model.chat.searchLimit
         });
 
         return {
-          code,
-          quote: rawSearch,
-          systemPrompts: searchPrompts,
-          guidePrompt
+          rawSearch: rawSearch,
+          userSystemPrompt: userSystemPrompt ? [userSystemPrompt] : [],
+          quotePrompt: [quotePrompt]
         };
       }
       if (model.chat.systemPrompt) {
         return {
-          guidePrompt: model.chat.systemPrompt,
-          systemPrompts: [
+          userSystemPrompt: [
             {
               obj: ChatRoleEnum.System,
               value: model.chat.systemPrompt
@@ -92,13 +87,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const conversationId = chatId || String(new Types.ObjectId());
     !chatId && res.setHeader(NEW_CHATID_HEADER, conversationId);
     if (showModelDetail) {
-      guidePrompt && res.setHeader(GUIDE_PROMPT_HEADER, encodeURIComponent(guidePrompt));
-      res.setHeader(QUOTE_LEN_HEADER, quote.length);
+      userSystemPrompt[0] &&
+        res.setHeader(GUIDE_PROMPT_HEADER, encodeURIComponent(userSystemPrompt[0].value));
+      res.setHeader(QUOTE_LEN_HEADER, rawSearch.length);
     }
 
     // search result is empty
-    if (code === 201) {
-      const response = systemPrompts[0]?.value;
+    if (model.chat.relatedKbs?.length > 0 && !quotePrompt[0]?.value && model.chat.searchEmptyText) {
+      const response = model.chat.searchEmptyText;
       await saveChat({
         chatId,
         newChatId: conversationId,
@@ -116,11 +112,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.end(response);
     }
 
-    prompts.unshift(...systemPrompts);
+    // 读取对话内容
+    const prompts = [...quotePrompt, ...content, ...userSystemPrompt, prompt[0]];
 
     // content check
     await sensitiveCheck({
-      input: [...systemPrompts, prompt[0]].map((item) => item.value).join('')
+      input: [...quotePrompt, ...userSystemPrompt, prompt[0]].map((item) => item.value).join('')
     });
 
     // 计算温度
@@ -162,8 +159,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             ...prompt[1],
             value: responseContent,
-            quote: showModelDetail ? quote : [],
-            systemPrompt: showModelDetail ? guidePrompt : ''
+            quote: showModelDetail ? rawSearch : [],
+            systemPrompt: showModelDetail ? userSystemPrompt[0]?.value : ''
           }
         ],
         userId

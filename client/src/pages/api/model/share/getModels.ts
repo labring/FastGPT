@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       $and: [
         { 'share.isShare': true },
         {
-          $or: [{ name: { $regex: regex } }, { 'share.intro': { $regex: regex } }]
+          $or: [{ name: { $regex: regex } }, { intro: { $regex: regex } }]
         }
       ]
     };
@@ -66,6 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           avatar: { $ifNull: ['$avatar', '/icon/logo.png'] },
           name: 1,
           userId: 1,
+          intro: 1,
           share: 1,
           isCollection: {
             $cond: {

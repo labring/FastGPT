@@ -6,7 +6,6 @@ import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
 import { authModel } from '@/service/utils/auth';
 import mongoose from 'mongoose';
-import { ModelStatusEnum } from '@/constants/model';
 import type { ModelSchema } from '@/types/mongoSchema';
 
 /* 初始化我的聊天框，需要身份验证 */
@@ -29,8 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!myModel) {
         const { _id } = await Model.create({
           name: '应用1',
-          userId,
-          status: ModelStatusEnum.running
+          userId
         });
         model = (await Model.findById(_id)) as ModelSchema;
       } else {
@@ -95,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: {
           name: model.name,
           avatar: model.avatar,
-          intro: model.share.intro,
+          intro: model.intro,
           canUse: model.share.isShare || String(model.userId) === userId
         },
         chatModel: model.chat.chatModel,

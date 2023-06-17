@@ -42,6 +42,12 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 - [FastGpt V3.4 更新集合](https://www.bilibili.com/video/BV1Lo4y147Qh/?vd_source=92041a1a395f852f9d89158eaa3f61b4)
 - [FastGpt 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
 
+## Powered by
+
+- [TuShan 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
+- [Laf 3 分钟快速接入三方应用](https://github.com/labring/laf)
+- [Sealos 快速部署集群应用](https://github.com/labring/sealos)
+
 ## 🌟 Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=c121914yu/FastGPT&type=Date)](https://star-history.com/#c121914yu/FastGPT&Date)
