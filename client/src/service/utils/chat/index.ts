@@ -82,7 +82,7 @@ export const modelServiceToolMap: Record<
 };
 
 /* delete invalid symbol */
-const simplifyStr = (str: string) =>
+const simplifyStr = (str = '') =>
   str
     .replace(/\n+/g, '\n') // 连续空行
     .replace(/[^\S\r\n]+/g, ' ') // 连续空白内容

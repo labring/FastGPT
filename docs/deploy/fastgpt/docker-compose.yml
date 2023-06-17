@@ -16,7 +16,6 @@ services:
       # 刚创建的文件
       - /root/fastgpt/pg/init.sql:/docker-entrypoint-initdb.d/init.sh
       - /root/fastgpt/pg/data:/var/lib/postgresql/data
-      - /etc/localtime:/etc/localtime:ro
   mongodb:
     image: mongo:5.0.18
     # image : registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
@@ -31,7 +30,6 @@ services:
     volumes:
       - /root/fastgpt/mongo/data:/data/db
       - /root/fastgpt/mongo/logs:/var/log/mongodb
-      - /etc/localtime:/etc/localtime:ro
   fastgpt:
     image: ghcr.io/c121914yu/fastgpt:latest # github
     # image: c121914yu/fast-gpt:latest # docker hub
