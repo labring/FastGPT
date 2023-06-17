@@ -83,7 +83,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
         <Flex flex={1} mr={2} position={'relative'} alignItems={'center'}>
           <Input
             h={'32px'}
-            placeholder="搜索 AI 应用"
+            placeholder="根据名字和介绍搜索 AI 应用"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
@@ -111,7 +111,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
           />
         </Tooltip>
       </Flex>
-      <Flex mb={3} userSelect={'none'}>
+      <Flex userSelect={'none'}>
         <Box flex={1}></Box>
         <Tabs
           w={'130px'}
@@ -129,7 +129,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
           <Flex
             key={item._id}
             position={'relative'}
-            alignItems={['flex-start', 'center']}
+            alignItems={'center'}
             p={3}
             mb={[2, 0]}
             cursor={'pointer'}
@@ -153,9 +153,6 @@ const ModelList = ({ modelId }: { modelId: string }) => {
             <Box flex={'1 0 0'} w={0} ml={3}>
               <Box className="textEllipsis" color={'myGray.1000'}>
                 {item.name}
-              </Box>
-              <Box className="textEllipsis" color={'myGray.400'} fontSize={'sm'}>
-                {item.systemPrompt || '这个 应用 没有设置提示词~'}
               </Box>
             </Box>
           </Flex>

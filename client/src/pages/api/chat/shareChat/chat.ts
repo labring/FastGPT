@@ -4,7 +4,7 @@ import { authShareChat } from '@/service/utils/auth';
 import { modelServiceToolMap } from '@/service/utils/chat';
 import { ChatItemSimpleType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
-import { ChatModelMap, ModelVectorSearchModeMap } from '@/constants/model';
+import { ChatModelMap } from '@/constants/model';
 import { pushChatBill, updateShareChatBill } from '@/service/events/pushBill';
 import { resStreamResponse } from '@/service/utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
@@ -40,26 +40,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
+    const prompt = prompts[prompts.length - 1];
 
-    const { code = 200, systemPrompts = [] } = await (async () => {
+    const {
+      rawSearch = [],
+      userSystemPrompt = [],
+      quotePrompt = []
+    } = await (async () => {
       // 使用了知识库搜索
       if (model.chat.relatedKbs?.length > 0) {
-        const { code, searchPrompts } = await appKbSearch({
+        const { rawSearch, userSystemPrompt, quotePrompt } = await appKbSearch({
           model,
           userId,
           fixedQuote: [],
-          prompt: prompts[prompts.length - 1],
-          similarity: ModelVectorSearchModeMap[model.chat.searchMode]?.similarity
+          prompt: prompt,
+          similarity: model.chat.searchSimilarity,
+          limit: model.chat.searchLimit
         });
 
         return {
-          code,
-          systemPrompts: searchPrompts
+          rawSearch: rawSearch,
+          userSystemPrompt: userSystemPrompt ? [userSystemPrompt] : [],
+          quotePrompt: [quotePrompt]
         };
       }
       if (model.chat.systemPrompt) {
         return {
-          systemPrompts: [
+          userSystemPrompt: [
             {
               obj: ChatRoleEnum.System,
               value: model.chat.systemPrompt
@@ -71,15 +78,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })();
 
     // search result is empty
-    if (code === 201) {
-      return res.send(systemPrompts[0]?.value);
+    if (model.chat.relatedKbs?.length > 0 && !quotePrompt[0]?.value && model.chat.searchEmptyText) {
+      const response = model.chat.searchEmptyText;
+      return res.end(response);
     }
 
-    prompts.unshift(...systemPrompts);
+    // 读取对话内容
+    const completePrompts = [...quotePrompt, ...prompts.slice(0, -1), ...userSystemPrompt, prompt];
 
     // content check
     await sensitiveCheck({
-      input: [...systemPrompts, prompts[prompts.length - 1]].map((item) => item.value).join('')
+      input: [...quotePrompt, ...userSystemPrompt, prompt].map((item) => item.value).join('')
     });
 
     // 计算温度
@@ -93,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ].chatCompletion({
       apiKey: userOpenAiKey || systemAuthKey,
       temperature: +temperature,
-      messages: prompts,
+      messages: completePrompts,
       stream: true,
       res,
       chatId: historyId

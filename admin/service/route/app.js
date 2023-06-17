@@ -38,13 +38,13 @@ export const useAppRoute = (app) => {
           id: model._id.toString(),
           userId: model.userId,
           name: model.name,
+          intro: model.intro,
           model: model.chat?.chatModel,
           relatedKbs: kbNames, // 将relatedKbs的id转换为相应的Kb名称
           systemPrompt: model.chat?.systemPrompt || '',
           temperature: model.chat?.temperature || 0,
           'share.topNum': model.share?.topNum || 0,
           'share.isShare': model.share?.isShare || false,
-          'share.intro': model.share?.intro,
           'share.collection': model.share?.collection || 0
         };
 
@@ -66,14 +66,15 @@ export const useAppRoute = (app) => {
       const _id = req.params.id;
 
       let {
-        share: { isShare, intro, topNum }
+        share: { isShare, topNum },
+        intro
       } = req.body;
 
       await Model.findByIdAndUpdate(_id, {
         $set: {
+          intro: intro,
           'share.topNum': Number(topNum),
-          'share.isShare': isShare === 'true',
-          'share.intro': intro
+          'share.isShare': isShare === 'true' || isShare === true
         }
       });
 

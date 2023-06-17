@@ -4,7 +4,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, OpenApi } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890');
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -14,11 +14,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const count = await OpenApi.find({ userId }).countDocuments();
 
-    if (count >= 5) {
-      throw new Error('最多 5 组API Key');
+    if (count >= 10) {
+      throw new Error('最多 10 组 API 秘钥');
     }
 
-    const apiKey = `${userId}-${nanoid()}`;
+    const apiKey = `fastgpt-${nanoid()}`;
 
     await OpenApi.create({
       userId,

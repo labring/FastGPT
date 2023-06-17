@@ -8,9 +8,9 @@ import { theme } from '@/constants/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
-import 'nprogress/nprogress.css';
-import '../styles/reset.scss';
 import { useGlobalStore } from '@/store/global';
+import 'nprogress/nprogress.css';
+import '@/styles/reset.scss';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());
@@ -28,7 +28,7 @@ const queryClient = new QueryClient({
   }
 });
 
-export default function App({ Component, pageProps }: AppProps) {
+function App({ Component, pageProps }: AppProps) {
   const {
     loadInitData,
     initData: { googleVerKey }
@@ -78,6 +78,5 @@ export default function App({ Component, pageProps }: AppProps) {
   );
 }
 
-// export function reportWebVitals(metric: NextWebVitalsMetric) {
-//   console.log(metric);
-// }
+// @ts-ignore
+export default App;

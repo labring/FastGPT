@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         model: {
           name: model.name,
           avatar: model.avatar,
-          intro: model.share.intro
+          intro: model.intro
         },
         chatModel: model.chat.chatModel
       }

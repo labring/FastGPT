@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ({ _id, apiKey, createTime, lastUsedTime }) => {
         return {
           id: _id,
-          apiKey: `${apiKey.substring(0, 2)}******${apiKey.substring(apiKey.length - 2)}`,
+          apiKey: `******${apiKey.substring(apiKey.length - 4)}`,
           createTime,
           lastUsedTime
         };

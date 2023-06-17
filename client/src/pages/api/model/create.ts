@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { ModelStatusEnum } from '@/constants/model';
 import { Model } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -32,8 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 创建模型
     const response = await Model.create({
       name,
-      userId,
-      status: ModelStatusEnum.running
+      userId
     });
 
     jsonRes(res, {

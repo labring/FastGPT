@@ -1,130 +1,35 @@
-import React, { useCallback, useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { delModelById, putModelById } from '@/api/model';
-import type { ModelSchema } from '@/types/mongoSchema';
-import { Card, Box, Flex, Button, Grid } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
-import { useForm } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
+import { Box, Flex } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
-import { useLoading } from '@/hooks/useLoading';
-import Loading from '@/components/Loading';
+import { useGlobalStore } from '@/store/global';
 import dynamic from 'next/dynamic';
+import Tabs from '@/components/Tabs';
 
-const ModelEditForm = dynamic(() => import('./components/ModelEditForm'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
+import Settings from './components/Settings';
+
+const Kb = dynamic(() => import('./components/Kb'), {
+  ssr: true
+});
+const Share = dynamic(() => import('./components/Share'), {
+  ssr: true
+});
+const API = dynamic(() => import('./components/API'), {
+  ssr: true
 });
 
-const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
-  const { toast } = useToast();
+enum TabEnum {
+  'settings' = 'settings',
+  'kb' = 'kb',
+  'share' = 'share',
+  'API' = 'API'
+}
+
+const ModelDetail = ({ modelId }: { modelId: string }) => {
   const router = useRouter();
-  const { userInfo, modelDetail, loadModelDetail, refreshModel, setLastModelId } = useUserStore();
-  const { Loading, setIsLoading } = useLoading();
-  const [btnLoading, setBtnLoading] = useState(false);
-
-  const formHooks = useForm({
-    defaultValues: modelDetail
-  });
-
-  // load model data
-  const { isLoading } = useQuery([modelId], () => loadModelDetail(modelId), {
-    onSuccess(res) {
-      res && formHooks.reset(res);
-      modelId && setLastModelId(modelId);
-    },
-    onError(err: any) {
-      toast({
-        title: err?.message || '获取应用异常',
-        status: 'error'
-      });
-      setLastModelId('');
-      refreshModel.freshMyModels();
-      router.replace('/model');
-    }
-  });
-
-  const isOwner = useMemo(
-    () => modelDetail.userId === userInfo?._id,
-    [modelDetail.userId, userInfo?._id]
-  );
-
-  const canRead = useMemo(
-    () => isOwner || isLoading || modelDetail.share.isShareDetail,
-    [isLoading, isOwner, modelDetail.share.isShareDetail]
-  );
-
-  /* 点击删除 */
-  const handleDelModel = useCallback(async () => {
-    if (!modelDetail) return;
-    setIsLoading(true);
-    try {
-      await delModelById(modelDetail._id);
-      toast({
-        title: '删除成功',
-        status: 'success'
-      });
-      refreshModel.removeModelDetail(modelDetail._id);
-      router.replace('/model');
-    } catch (err: any) {
-      toast({
-        title: err?.message || '删除失败',
-        status: 'error'
-      });
-    }
-    setIsLoading(false);
-  }, [modelDetail, setIsLoading, toast, refreshModel, router]);
-
-  /* 点前往聊天预览页 */
-  const handlePreviewChat = useCallback(async () => {
-    router.push(`/chat?modelId=${modelId}`);
-  }, [router, modelId]);
-
-  // 提交保存模型修改
-  const saveSubmitSuccess = useCallback(
-    async (data: ModelSchema) => {
-      setBtnLoading(true);
-      try {
-        await putModelById(data._id, {
-          name: data.name,
-          avatar: data.avatar || '/icon/logo.png',
-          chat: data.chat,
-          share: data.share
-        });
-
-        refreshModel.updateModelDetail(data);
-      } catch (err: any) {
-        toast({
-          title: err?.message || '更新失败',
-          status: 'error'
-        });
-      }
-      setBtnLoading(false);
-    },
-    [refreshModel, toast]
-  );
-  // 提交保存表单失败
-  const saveSubmitError = useCallback(() => {
-    // deep search message
-    const deepSearch = (obj: any): string => {
-      if (!obj) return '提交表单错误';
-      if (!!obj.message) {
-        return obj.message;
-      }
-      return deepSearch(Object.values(obj)[0]);
-    };
-    toast({
-      title: deepSearch(formHooks.formState.errors),
-      status: 'error',
-      duration: 4000,
-      isClosable: true
-    });
-  }, [formHooks.formState.errors, toast]);
-
-  const saveUpdateModel = useCallback(
-    () => formHooks.handleSubmit(saveSubmitSuccess, saveSubmitError)(),
-    [formHooks, saveSubmitError, saveSubmitSuccess]
-  );
+  const { isPc } = useGlobalStore();
+  const { modelDetail } = useUserStore();
+  const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.settings);
 
   useEffect(() => {
     window.onbeforeunload = (e) => {
@@ -137,86 +42,54 @@ const ModelDetail = ({ modelId, isPc }: { modelId: string; isPc: boolean }) => {
     };
   }, [router]);
 
+  useEffect(() => {
+    setCurrentTab(TabEnum.settings);
+  }, [modelId]);
+
   return (
-    <Box h={'100%'} p={5} overflow={'overlay'} position={'relative'}>
+    <Flex
+      flexDirection={'column'}
+      h={'100%'}
+      maxW={'100vw'}
+      pt={4}
+      overflow={'overlay'}
+      position={'relative'}
+      bg={'white'}
+    >
       {/* 头部 */}
-      <Card px={6} py={3}>
-        {isPc ? (
-          <Flex alignItems={'center'}>
-            <Box fontSize={'xl'} fontWeight={'bold'}>
-              {modelDetail.name}
-            </Box>
-            <Box flex={1} />
-            <Button variant={'base'} onClick={handlePreviewChat}>
-              开始对话
-            </Button>
-            {isOwner && (
-              <Button
-                isLoading={btnLoading}
-                ml={4}
-                onClick={async () => {
-                  try {
-                    await saveUpdateModel();
-                    toast({
-                      title: '更新成功',
-                      status: 'success'
-                    });
-                  } catch (error) {
-                    console.log(error);
-                    error;
-                  }
-                }}
-              >
-                保存修改
-              </Button>
-            )}
-          </Flex>
-        ) : (
-          <>
-            <Flex alignItems={'center'}>
-              <Box as={'h3'} fontSize={'xl'} fontWeight={'bold'} flex={1}>
-                {modelDetail.name}
-              </Box>
-            </Flex>
-            <Box mt={4} textAlign={'right'}>
-              <Button variant={'base'} size={'sm'} onClick={handlePreviewChat}>
-                开始对话
-              </Button>
-              {isOwner && (
-                <Button
-                  ml={4}
-                  size={'sm'}
-                  isLoading={btnLoading}
-                  onClick={async () => {
-                    try {
-                      await saveUpdateModel();
-                      toast({
-                        title: '更新成功',
-                        status: 'success'
-                      });
-                    } catch (error) {
-                      console.log(error);
-                      error;
-                    }
-                  }}
-                >
-                  保存修改
-                </Button>
-              )}
-            </Box>
-          </>
-        )}
-      </Card>
-      <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={5}>
-        <ModelEditForm
-          formHooks={formHooks}
-          handleDelModel={handleDelModel}
-          isOwner={isOwner}
-          canRead={canRead}
+      <Box textAlign={['center', 'left']} px={5} mb={4}>
+        <Box className="textlg" display={['block', 'none']} fontSize={'3xl'} fontWeight={'bold'}>
+          {modelDetail.name}
+        </Box>
+        <Tabs
+          mx={['auto', '0']}
+          mt={2}
+          w={['300px', '360px']}
+          list={[
+            { label: '配置', id: TabEnum.settings },
+            { label: '知识库', id: TabEnum.kb },
+            { label: '分享', id: TabEnum.share },
+            { label: 'API', id: TabEnum.API },
+            { label: '立即对话', id: 'startChat' }
+          ]}
+          size={isPc ? 'md' : 'sm'}
+          activeId={currentTab}
+          onChange={(e: any) => {
+            if (e === 'startChat') {
+              router.push(`/chat?modelId=${modelId}`);
+            } else {
+              setCurrentTab(e);
+            }
+          }}
         />
-      </Grid>
-      <Loading loading={isLoading} fixed={false} />
-    </Box>
+      </Box>
+      <Box flex={1}>
+        {currentTab === TabEnum.settings && <Settings modelId={modelId} />}
+        {currentTab === TabEnum.kb && <Kb modelId={modelId} />}
+        {currentTab === TabEnum.API && <API modelId={modelId} />}
+        {currentTab === TabEnum.share && <Share modelId={modelId} />}
+      </Box>
+    </Flex>
   );
 };
 

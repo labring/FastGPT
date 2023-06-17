@@ -34,7 +34,7 @@ const Model = ({ modelId }: { modelId: string }) => {
         </SideBar>
       )}
       <Box flex={1} h={'100%'} position={'relative'}>
-        {modelId && <ModelDetail modelId={modelId} isPc={isPc} />}
+        {modelId && <ModelDetail modelId={modelId} />}
       </Box>
     </Flex>
   );

@@ -44,7 +44,7 @@ const ShareModelList = ({
               {model.name}
             </Box>
           </Flex>
-          <Tooltip label={model.share.intro}>
+          <Tooltip label={model.intro}>
             <Box
               className={styles.intro}
               flex={1}
@@ -53,7 +53,7 @@ const ShareModelList = ({
               wordBreak={'break-all'}
               color={'blackAlpha.600'}
             >
-              {model.share.intro || '这个 应用 还没有介绍~'}
+              {model.intro || '这个应用还没有介绍~'}
             </Box>
           </Tooltip>
 

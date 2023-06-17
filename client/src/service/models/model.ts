@@ -1,11 +1,6 @@
 import { Schema, model, models, Model as MongoModel } from 'mongoose';
 import { ModelSchema as ModelType } from '@/types/mongoSchema';
-import {
-  ModelVectorSearchModeMap,
-  appVectorSearchModeEnum,
-  ChatModelMap,
-  OpenAiChatEnum
-} from '@/constants/model';
+import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
 
 const ModelSchema = new Schema({
   userId: {
@@ -21,10 +16,9 @@ const ModelSchema = new Schema({
     type: String,
     default: '/icon/logo.png'
   },
-  status: {
+  intro: {
     type: String,
-    required: true,
-    enum: ['waiting', 'running', 'training', 'closed']
+    default: ''
   },
   updateTime: {
     type: Date,
@@ -36,11 +30,17 @@ const ModelSchema = new Schema({
       ref: 'kb',
       default: []
     },
-    searchMode: {
-      // knowledge base search mode
+    searchSimilarity: {
+      type: Number,
+      default: 0.8
+    },
+    searchLimit: {
+      type: Number,
+      default: 5
+    },
+    searchEmptyText: {
       type: String,
-      enum: Object.keys(ModelVectorSearchModeMap),
-      default: appVectorSearchModeEnum.hightSimilarity
+      default: ''
     },
     systemPrompt: {
       // 系统提示词

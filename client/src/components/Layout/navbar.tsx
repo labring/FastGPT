@@ -45,12 +45,6 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/model/share']
       },
       {
-        label: '开发',
-        icon: 'develop',
-        link: '/openapi',
-        activeLink: ['/openapi']
-      },
-      {
         label: '账号',
         icon: 'user',
         link: '/number',

@@ -1,11 +1,5 @@
 import type { ChatItemType } from './chat';
-import {
-  ModelStatusEnum,
-  ModelNameEnum,
-  appVectorSearchModeEnum,
-  ChatModelType,
-  EmbeddingModelType
-} from '@/constants/model';
+import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/model';
 import type { DataType } from './data';
 import { BillTypeEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
@@ -41,11 +35,13 @@ export interface ModelSchema {
   userId: string;
   name: string;
   avatar: string;
-  status: `${ModelStatusEnum}`;
+  intro: string;
   updateTime: number;
   chat: {
     relatedKbs: string[];
-    searchMode: `${appVectorSearchModeEnum}`;
+    searchSimilarity: number;
+    searchLimit: number;
+    searchEmptyText: string;
     systemPrompt: string;
     temperature: number;
     chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
@@ -53,7 +49,6 @@ export interface ModelSchema {
   share: {
     isShare: boolean;
     isShareDetail: boolean;
-    intro: string;
     collection: number;
   };
 }
