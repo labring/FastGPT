@@ -32,8 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatId?: string;
     };
 
-    if (!modelId || !prompt) {
-      throw new Error('缺少参数');
+    if (!modelId || !prompt || prompt.length !== 2) {
+      throw new Error('Chat 缺少参数');
     }
 
     await connectToDatabase();
