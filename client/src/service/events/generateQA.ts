@@ -23,34 +23,10 @@ export async function generateQA(): Promise<any> {
   let userId = '';
 
   try {
-    const match = {
-      mode: TrainingModeEnum.qa,
-      lockTime: { $lte: new Date(Date.now() - 4 * 60 * 1000) }
-    };
-    // random get task
-    const agree = await TrainingData.aggregate([
-      {
-        $match: match
-      },
-      { $sample: { size: 1 } },
-      {
-        $project: {
-          _id: 1
-        }
-      }
-    ]);
-
-    // no task
-    if (agree.length === 0) {
-      reduceQueue();
-      global.qaQueueLen <= 0 && console.log(`没有需要【QA】的数据, ${global.qaQueueLen}`);
-      return;
-    }
-
     const data = await TrainingData.findOneAndUpdate(
       {
-        _id: agree[0]._id,
-        ...match
+        mode: TrainingModeEnum.qa,
+        lockTime: { $lte: new Date(Date.now() - 4 * 60 * 1000) }
       },
       {
         lockTime: new Date()
@@ -67,7 +43,8 @@ export async function generateQA(): Promise<any> {
     // task preemption
     if (!data) {
       reduceQueue();
-      return generateQA();
+      global.qaQueueLen <= 0 && console.log(`没有需要【QA】的数据, ${global.qaQueueLen}`);
+      return;
     }
 
     trainingId = data._id;

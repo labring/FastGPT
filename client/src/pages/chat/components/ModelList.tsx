@@ -38,9 +38,6 @@ const ModelList = ({ models, modelId }: { models: ModelListItemType[]; modelId: 
               <Box className="textEllipsis" color={'myGray.1000'}>
                 {item.name}
               </Box>
-              <Box className="textEllipsis" color={'myGray.400'} fontSize={'sm'}>
-                {item.systemPrompt || '这个 应用 没有设置提示词~'}
-              </Box>
             </Box>
           </Flex>
         </Box>

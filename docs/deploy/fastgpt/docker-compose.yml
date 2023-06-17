@@ -41,6 +41,7 @@ services:
     container_name: fastgpt
     environment: # 可选的变量，不需要的话需要去掉
       - PORT=3000 # 运行的端口地址，如果不是 3000，需要修改成实际地址。
+      - DB_MAX_LINK=15 # database max link
       # proxy（可选）
       - AXIOS_PROXY_HOST=127.0.0.1
       - AXIOS_PROXY_PORT=7890
