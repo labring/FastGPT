@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
@@ -28,8 +28,13 @@ enum TabEnum {
 const ModelDetail = ({ modelId }: { modelId: string }) => {
   const router = useRouter();
   const { isPc } = useGlobalStore();
-  const { modelDetail } = useUserStore();
+  const { modelDetail, userInfo } = useUserStore();
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.settings);
+
+  const isOwner = useMemo(
+    () => modelDetail.userId === userInfo?._id,
+    [modelDetail.userId, userInfo?._id]
+  );
 
   useEffect(() => {
     window.onbeforeunload = (e) => {
@@ -67,7 +72,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
           w={['300px', '360px']}
           list={[
             { label: '配置', id: TabEnum.settings },
-            { label: '知识库', id: TabEnum.kb },
+            ...(isOwner ? [{ label: '知识库', id: TabEnum.kb }] : []),
             { label: '分享', id: TabEnum.share },
             { label: 'API', id: TabEnum.API },
             { label: '立即对话', id: 'startChat' }

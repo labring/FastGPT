@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Divider, Flex, useTheme, Button, Skeleton, useDisclosure } from '@chakra-ui/react';
 import { useCopyData } from '@/utils/tools';
 import dynamic from 'next/dynamic';
@@ -8,17 +8,20 @@ const APIKeyModal = dynamic(() => import('@/components/APIKeyModal'), {
   ssr: true
 });
 
-const baseUrl = 'https://fastgpt.run/api/openapi';
-
 const API = ({ modelId }: { modelId: string }) => {
   const theme = useTheme();
   const { copyData } = useCopyData();
+  const [baseUrl, setBaseUrl] = useState('https://fastgpt.run/api/openapi');
   const {
     isOpen: isOpenAPIModal,
     onOpen: onOpenAPIModal,
     onClose: onCloseAPIModal
   } = useDisclosure();
   const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setBaseUrl(`${location.origin}/api/openapi`);
+  }, []);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
