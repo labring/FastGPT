@@ -1,18 +1,15 @@
-import { ClaudeEnum, OpenAiChatEnum } from '@/constants/model';
+import { OpenAiChatEnum } from '@/constants/model';
 import type { ChatModelType } from '@/constants/model';
-import type { ChatItemSimpleType } from '@/types/chat';
+import type { ChatItemType } from '@/types/chat';
 import { countOpenAIToken, openAiSliceTextByToken } from './openai';
 import { gpt_chatItemTokenSlice } from '@/pages/api/openapi/text/gptMessagesSlice';
 
 export const modelToolMap: Record<
   ChatModelType,
   {
-    countTokens: (data: { messages: ChatItemSimpleType[] }) => number;
+    countTokens: (data: { messages: ChatItemType[] }) => number;
     sliceText: (data: { text: string; length: number }) => string;
-    tokenSlice: (data: {
-      messages: ChatItemSimpleType[];
-      maxToken: number;
-    }) => ChatItemSimpleType[];
+    tokenSlice: (data: { messages: ChatItemType[]; maxToken: number }) => ChatItemType[];
   }
 > = {
   [OpenAiChatEnum.GPT35]: {
@@ -34,10 +31,5 @@ export const modelToolMap: Record<
     countTokens: ({ messages }) => countOpenAIToken({ model: OpenAiChatEnum.GPT432k, messages }),
     sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT432k, ...data }),
     tokenSlice: (data) => gpt_chatItemTokenSlice({ model: OpenAiChatEnum.GPT432k, ...data })
-  },
-  [ClaudeEnum.Claude]: {
-    countTokens: ({ messages }) => countOpenAIToken({ model: OpenAiChatEnum.GPT35, messages }),
-    sliceText: (data) => openAiSliceTextByToken({ model: OpenAiChatEnum.GPT35, ...data }),
-    tokenSlice: (data) => gpt_chatItemTokenSlice({ model: OpenAiChatEnum.GPT35, ...data })
   }
 };

@@ -4,16 +4,14 @@ import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
-export type ChatItemSimpleType = {
+export type ChatItemType = {
+  _id?: string;
   obj: `${ChatRoleEnum}`;
   value: string;
   quoteLen?: number;
   quote?: QuoteItemType[];
   systemPrompt?: string;
 };
-export type ChatItemType = {
-  _id: string;
-} & ChatItemSimpleType;
 
 export type ChatSiteItemType = {
   status: 'loading' | 'finish';

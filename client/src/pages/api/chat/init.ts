@@ -20,31 +20,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
-    let model: ModelSchema;
-
     // 没有 modelId 时，直接获取用户的第一个id
-    if (!modelId) {
-      const myModel = await Model.findOne({ userId });
-      if (!myModel) {
-        const { _id } = await Model.create({
-          name: '应用1',
-          userId
-        });
-        model = (await Model.findById(_id)) as ModelSchema;
+    const model = await (async () => {
+      if (!modelId) {
+        const myModel = await Model.findOne({ userId });
+        if (!myModel) {
+          const { _id } = await Model.create({
+            name: '应用1',
+            userId
+          });
+          return (await Model.findById(_id)) as ModelSchema;
+        } else {
+          return myModel;
+        }
       } else {
-        model = myModel;
+        // 校验使用权限
+        const authRes = await authModel({
+          modelId,
+          userId,
+          authUser: false,
+          authOwner: false
+        });
+        return authRes.model;
       }
-      modelId = model._id;
-    } else {
-      // 校验使用权限
-      const authRes = await authModel({
-        modelId,
-        userId,
-        authUser: false,
-        authOwner: false
-      });
-      model = authRes.model;
-    }
+    })();
+
+    modelId = modelId || model._id;
 
     // 历史记录
     let history: ChatItemType[] = [];
@@ -86,6 +87,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ]);
     }
 
+    const isOwner = String(model.userId) === userId;
+
     jsonRes<InitChatResponse>(res, {
       data: {
         chatId: chatId || '',
@@ -94,9 +97,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           name: model.name,
           avatar: model.avatar,
           intro: model.intro,
-          canUse: model.share.isShare || String(model.userId) === userId
+          canUse: model.share.isShare || isOwner
         },
         chatModel: model.chat.chatModel,
+        systemPrompt: isOwner ? model.chat.systemPrompt : '',
         history
       }
     });

@@ -1,11 +1,12 @@
 import { encoding_for_model, type Tiktoken } from '@dqbd/tiktoken';
-import type { ChatItemSimpleType } from '@/types/chat';
+import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
+import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { OpenAiChatEnum } from '@/constants/model';
 import Graphemer from 'graphemer';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 
 const textDecoder = new TextDecoder();
 const graphemer = new Graphemer();
@@ -86,16 +87,19 @@ export const getOpenAiEncMap = () => {
 };
 
 export const adaptChatItem_openAI = ({
-  messages
+  messages,
+  reserveId
 }: {
-  messages: ChatItemSimpleType[];
-}): ChatCompletionRequestMessage[] => {
+  messages: ChatItemType[];
+  reserveId: boolean;
+}): MessageItemType[] => {
   const map = {
     [ChatRoleEnum.AI]: ChatCompletionRequestMessageRoleEnum.Assistant,
     [ChatRoleEnum.Human]: ChatCompletionRequestMessageRoleEnum.User,
     [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System
   };
   return messages.map((item) => ({
+    ...(reserveId && { _id: item._id }),
     role: map[item.obj] || ChatCompletionRequestMessageRoleEnum.System,
     content: item.value || ''
   }));
@@ -105,7 +109,7 @@ export function countOpenAIToken({
   messages,
   model
 }: {
-  messages: ChatItemSimpleType[];
+  messages: ChatItemType[];
   model: `${OpenAiChatEnum}`;
 }) {
   function getChatGPTEncodingText(
@@ -158,7 +162,7 @@ export function countOpenAIToken({
     return segments.reduce((memo, i) => memo + i.tokens.length, 0) ?? 0;
   }
 
-  const adaptMessages = adaptChatItem_openAI({ messages });
+  const adaptMessages = adaptChatItem_openAI({ messages, reserveId: true });
 
   return text2TokensLen(getOpenAiEncMap()[model], getChatGPTEncodingText(adaptMessages, model));
 }

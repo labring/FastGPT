@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { generateQA } from '../events/generateQA';
 import { generateVector } from '../events/generateVector';
+import { sseResponseEventEnum } from '@/constants/chat';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -66,4 +67,17 @@ export const startQueue = () => {
   for (let i = 0; i < global.systemEnv.vectorMaxProcess; i++) {
     generateVector();
   }
+};
+
+export const sseResponse = ({
+  res,
+  event,
+  data
+}: {
+  res: NextApiResponse;
+  event?: `${sseResponseEventEnum}`;
+  data: string;
+}) => {
+  event && res.write(`event: ${event}\n`);
+  res.write(`data: ${data}\n\n`);
 };
