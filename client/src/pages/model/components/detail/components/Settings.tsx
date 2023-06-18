@@ -308,6 +308,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
           w={'120px'}
           size={['sm', 'md']}
           isLoading={btnLoading}
+          isDisabled={!isOwner}
           onClick={async () => {
             try {
               await saveUpdateModel();
@@ -321,7 +322,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
             }
           }}
         >
-          保存
+          {isOwner ? '保存' : '仅读，无法修改'}
         </Button>
         <Button
           mr={3}
@@ -341,17 +342,20 @@ const Settings = ({ modelId }: { modelId: string }) => {
         >
           对话
         </Button>
-        <Button
-          colorScheme={'gray'}
-          variant={'base'}
-          size={['sm', 'md']}
-          isLoading={btnLoading}
-          _hover={{ color: 'red.600' }}
-          onClick={openConfirm(handleDelModel)}
-        >
-          删除
-        </Button>
+        {isOwner && (
+          <Button
+            colorScheme={'gray'}
+            variant={'base'}
+            size={['sm', 'md']}
+            isLoading={btnLoading}
+            _hover={{ color: 'red.600' }}
+            onClick={openConfirm(handleDelModel)}
+          >
+            删除
+          </Button>
+        )}
       </Flex>
+
       <File onSelect={onSelectFile} />
       <ConfirmChild />
       <Loading loading={isLoading} fixed={false} />
