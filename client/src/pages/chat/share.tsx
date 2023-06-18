@@ -56,6 +56,7 @@ const ShareHistory = dynamic(() => import('./components/ShareHistory'), {
 });
 
 import styles from './index.module.scss';
+import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 
 const textareaMinH = '22px';
 
@@ -170,19 +171,15 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
       controller.current = abortSignal;
       isLeavePage.current = false;
 
-      const formatPrompts = prompts.map((item) => ({
-        obj: item.obj,
-        value: item.value
-      }));
+      const messages = adaptChatItem_openAI({ messages: prompts, reserveId: true });
 
       // 流请求，获取数据
       const { responseText } = await streamFetch({
-        url: '/api/chat/shareChat/chat',
         data: {
-          prompts: formatPrompts.slice(-shareChatData.maxContext - 1, -1),
+          messages: messages.slice(-shareChatData.maxContext - 1, -1),
           password,
           shareId,
-          historyId
+          model: ''
         },
         onMessage: (text: string) => {
           setShareChatData((state) => ({
@@ -226,7 +223,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
       setShareChatHistory({
         historyId,
         shareId,
-        title: formatPrompts[formatPrompts.length - 2].value,
+        title: prompts[prompts.length - 2].value,
         latestChat: responseText,
         chats: responseHistory
       });
@@ -235,7 +232,7 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
         {
           type: 'shareChatFinish',
           data: {
-            question: formatPrompts[formatPrompts.length - 2].value,
+            question: prompts[prompts.length - 2].value,
             answer: responseText
           }
         },

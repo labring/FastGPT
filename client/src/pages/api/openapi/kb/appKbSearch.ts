@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
-import type { ChatItemSimpleType } from '@/types/chat';
+import type { ChatItemType } from '@/types/chat';
 import type { ModelSchema } from '@/types/mongoSchema';
 import { authModel } from '@/service/utils/auth';
 import { ChatModelMap } from '@/constants/model';
@@ -18,7 +18,7 @@ export type QuoteItemType = {
   source?: string;
 };
 type Props = {
-  prompts: ChatItemSimpleType[];
+  prompts: ChatItemType[];
   similarity: number;
   limit: number;
   appId: string;
@@ -79,15 +79,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 export async function appKbSearch({
   model,
   userId,
-  fixedQuote,
+  fixedQuote = [],
   prompt,
   similarity = 0.8,
   limit = 5
 }: {
   model: ModelSchema;
   userId: string;
-  fixedQuote: QuoteItemType[];
-  prompt: ChatItemSimpleType;
+  fixedQuote?: QuoteItemType[];
+  prompt: ChatItemType;
   similarity: number;
   limit: number;
 }): Promise<Response> {
@@ -120,7 +120,7 @@ export async function appKbSearch({
     ...searchRes.slice(0, 3),
     ...fixedQuote.slice(0, 2),
     ...searchRes.slice(3),
-    ...fixedQuote.slice(2, 4)
+    ...fixedQuote.slice(2, Math.floor(fixedQuote.length * 0.4))
   ].filter((item) => {
     if (idSet.has(item.id)) {
       return false;

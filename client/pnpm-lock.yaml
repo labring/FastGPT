@@ -105,8 +105,8 @@ dependencies:
     specifier: ^0.2.0
     version: registry.npmmirror.com/nprogress@0.2.0
   openai:
-    specifier: ^3.2.1
-    version: registry.npmmirror.com/openai@3.2.1
+    specifier: ^3.3.0
+    version: registry.npmmirror.com/openai@3.3.0
   papaparse:
     specifier: ^5.4.1
     version: registry.npmmirror.com/papaparse@5.4.1
@@ -10249,10 +10249,10 @@ packages:
       is-wsl: registry.npmmirror.com/is-wsl@2.2.0
     dev: true
 
-  registry.npmmirror.com/openai@3.2.1:
-    resolution: {integrity: sha512-762C9BNlJPbjjlWZi4WYK9iM2tAVAv0uUp1UmI34vb0CN5T2mjB/qM6RYBmNKMh/dN9fC+bxqPwWJZUTWW052A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-3.2.1.tgz}
+  registry.npmmirror.com/openai@3.3.0:
+    resolution: {integrity: sha512-uqxI/Au+aPRnsaQRe8CojU0eCR7I0mBiKjD3sNMzY6DaC1ZVrc85u98mtJW6voDug8fgGN+DIZmTDxTthxb7dQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-3.3.0.tgz}
     name: openai
-    version: 3.2.1
+    version: 3.3.0
     dependencies:
       axios: registry.npmmirror.com/axios@0.26.1
       form-data: registry.npmmirror.com/form-data@4.0.0

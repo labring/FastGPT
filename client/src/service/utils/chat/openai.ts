@@ -28,13 +28,13 @@ export const chatResponse = async ({
     maxTokens: Math.ceil(ChatModelMap[model].contextMaxToken * 0.85)
   });
 
-  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages });
+  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
   const chatAPI = getOpenAIApi();
 
   const response = await chatAPI.createChatCompletion(
     {
       model,
-      temperature: Number(temperature) || 0,
+      temperature: Number(temperature || 0),
       messages: adaptMessages,
       frequency_penalty: 0.5, // 越大，重复内容越少
       presence_penalty: -0.5, // 越大，越容易出现新内容

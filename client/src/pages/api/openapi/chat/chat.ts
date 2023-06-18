@@ -2,15 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser, authModel, getApiKey } from '@/service/utils/auth';
 import { modelServiceToolMap, resStreamResponse } from '@/service/utils/chat';
-import { ChatItemSimpleType } from '@/types/chat';
+import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
 import { ChatModelMap } from '@/constants/model';
 import { pushChatBill } from '@/service/events/pushBill';
 import { ChatRoleEnum } from '@/constants/chat';
 import { withNextCors } from '@/service/utils/tools';
 import { BillTypeEnum } from '@/constants/user';
-import { NEW_CHATID_HEADER } from '@/constants/chat';
-import { Types } from 'mongoose';
 import { appKbSearch } from '../kb/appKbSearch';
 
 /* 发送提示词 */
@@ -31,7 +29,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       isStream = true
     } = req.body as {
       chatId?: string;
-      prompts: ChatItemSimpleType[];
+      prompts: ChatItemType[];
       modelId: string;
       isStream: boolean;
     };
@@ -111,10 +109,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       2
     );
 
-    // get conversationId. create a newId if it is null
-    const conversationId = chatId || String(new Types.ObjectId());
-    !chatId && res?.setHeader(NEW_CHATID_HEADER, conversationId);
-
     // 发出请求
     const { streamResponse, responseMessages, responseText, totalTokens } =
       await modelServiceToolMap[model.chat.chatModel].chatCompletion({
@@ -122,8 +116,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         temperature: +temperature,
         messages: completePrompts,
         stream: isStream,
-        res,
-        chatId: conversationId
+        res
       });
 
     console.log('api response time:', `${(Date.now() - startTime) / 1000}s`);

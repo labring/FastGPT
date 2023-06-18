@@ -1,6 +1,7 @@
-export const NEW_CHATID_HEADER = 'response-new-chat-id';
-export const QUOTE_LEN_HEADER = 'response-quote-len';
-export const GUIDE_PROMPT_HEADER = 'response-guide-prompt';
+export enum sseResponseEventEnum {
+  answer = 'answer',
+  chatResponse = 'chatResponse'
+}
 
 export enum ChatRoleEnum {
   System = 'System',

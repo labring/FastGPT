@@ -1,67 +1,104 @@
-import { GUIDE_PROMPT_HEADER, NEW_CHATID_HEADER, QUOTE_LEN_HEADER } from '@/constants/chat';
+import { Props, ChatResponseType } from '@/pages/api/openapi/v1/chat/completions';
+import { sseResponseEventEnum } from '@/constants/chat';
+import { getErrText } from '@/utils/tools';
 
 interface StreamFetchProps {
-  url: string;
-  data: any;
+  data: Props;
   onMessage: (text: string) => void;
   abortSignal: AbortController;
 }
-export const streamFetch = ({ url, data, onMessage, abortSignal }: StreamFetchProps) =>
-  new Promise<{
-    responseText: string;
-    newChatId: string;
-    systemPrompt: string;
-    quoteLen: number;
-  }>(async (resolve, reject) => {
+export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) =>
+  new Promise<ChatResponseType & { responseText: string }>(async (resolve, reject) => {
     try {
-      const res = await fetch(url, {
+      const response = await window.fetch('/api/openapi/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data),
-        signal: abortSignal.signal
+        signal: abortSignal.signal,
+        body: JSON.stringify({
+          ...data,
+          stream: true
+        })
       });
-      const reader = res.body?.getReader();
-      if (!reader) return;
 
-      const decoder = new TextDecoder();
+      if (!response?.body) {
+        throw new Error('Request Error');
+      }
 
-      const newChatId = decodeURIComponent(res.headers.get(NEW_CHATID_HEADER) || '');
-      const systemPrompt = decodeURIComponent(res.headers.get(GUIDE_PROMPT_HEADER) || '').trim();
-      const quoteLen = res.headers.get(QUOTE_LEN_HEADER)
-        ? Number(res.headers.get(QUOTE_LEN_HEADER))
-        : 0;
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
 
+      // response data
       let responseText = '';
+      let newChatId = '';
+      let quoteLen = 0;
 
       const read = async () => {
         try {
-          const { done, value } = await reader?.read();
+          const { done, value } = await reader.read();
           if (done) {
-            if (res.status === 200) {
-              resolve({ responseText, newChatId, quoteLen, systemPrompt });
+            if (response.status === 200) {
+              return resolve({
+                responseText,
+                newChatId,
+                quoteLen
+              });
             } else {
-              const parseError = JSON.parse(responseText);
-              reject(parseError?.message || '请求异常');
+              return reject('响应过程出现异常~');
             }
-
-            return;
           }
-          const text = decoder.decode(value);
-          responseText += text;
-          onMessage(text);
+          const chunk = decoder.decode(value);
+          const chunkLines = chunk.split('\n\n').filter((item) => item);
+          const chunkResponse = chunkLines.map((item) => {
+            const splitEvent = item.split('\n');
+            if (splitEvent.length === 2) {
+              return {
+                event: splitEvent[0].replace('event: ', ''),
+                data: splitEvent[1].replace('data: ', '')
+              };
+            }
+            return {
+              event: '',
+              data: splitEvent[0].replace('data: ', '')
+            };
+          });
+
+          chunkResponse.forEach((item) => {
+            // parse json data
+            const data = (() => {
+              try {
+                return JSON.parse(item.data);
+              } catch (error) {
+                return item.data;
+              }
+            })();
+
+            if (item.event === sseResponseEventEnum.answer && data !== '[DONE]') {
+              const answer: string = data?.choices[0].delta.content || '';
+              onMessage(answer);
+              responseText += answer;
+            } else if (item.event === sseResponseEventEnum.chatResponse) {
+              const chatResponse = data as ChatResponseType;
+              newChatId = chatResponse.newChatId;
+              quoteLen = chatResponse.quoteLen || 0;
+            }
+          });
           read();
         } catch (err: any) {
           if (err?.message === 'The user aborted a request.') {
-            return resolve({ responseText, newChatId, quoteLen, systemPrompt });
+            return resolve({
+              responseText,
+              newChatId,
+              quoteLen
+            });
           }
-          reject(typeof err === 'string' ? err : err?.message || '请求异常');
+          reject(getErrText(err, '请求异常'));
         }
       };
       read();
     } catch (err: any) {
       console.log(err, '====');
-      reject(typeof err === 'string' ? err : err?.message || '请求异常');
+      reject(getErrText(err, '请求异常'));
     }
   });

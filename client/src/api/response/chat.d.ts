@@ -4,6 +4,7 @@ import type { ChatItemType } from '@/types/chat';
 export interface InitChatResponse {
   chatId: string;
   modelId: string;
+  systemPrompt?: string;
   model: {
     name: string;
     avatar: string;

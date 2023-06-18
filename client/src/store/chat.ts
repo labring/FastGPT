@@ -44,7 +44,7 @@ type State = {
   delShareChatHistory: (shareId?: string) => void;
 };
 
-const defaultChatData = {
+const defaultChatData: ChatType = {
   chatId: 'chatId',
   modelId: 'modelId',
   model: {
