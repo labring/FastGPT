@@ -36,11 +36,6 @@ const Settings = ({ modelId }: { modelId: string }) => {
   const [btnLoading, setBtnLoading] = useState(false);
   const [refresh, setRefresh] = useState(false);
 
-  const isOwner = useMemo(
-    () => modelDetail.userId === userInfo?._id,
-    [modelDetail.userId, userInfo?._id]
-  );
-
   const {
     register,
     setValue,
@@ -51,6 +46,20 @@ const Settings = ({ modelId }: { modelId: string }) => {
   } = useForm({
     defaultValues: modelDetail
   });
+
+  const isOwner = useMemo(
+    () => modelDetail.userId === userInfo?._id,
+    [modelDetail.userId, userInfo?._id]
+  );
+  const tokenLimit = useMemo(() => {
+    const max = ChatModelMap[getValues('chat.chatModel')]?.contextMaxToken || 4000;
+
+    if (max < getValues('chat.maxToken')) {
+      setValue('chat.maxToken', max);
+    }
+
+    return max;
+  }, [getValues, setValue, refresh]);
 
   // 提交保存模型修改
   const saveSubmitSuccess = useCallback(
@@ -251,6 +260,27 @@ const Settings = ({ modelId }: { modelId: string }) => {
             activeVal={getValues('chat.temperature')}
             setVal={(val) => {
               setValue('chat.temperature', val);
+              setRefresh(!refresh);
+            }}
+          />
+        </Box>
+      </Flex>
+      <Flex alignItems={'center'} mt={12} mb={10}>
+        <Box w={['60px', '100px', '140px']} flexShrink={0}>
+          最大长度
+        </Box>
+        <Box flex={1} ml={'10px'}>
+          <MySlider
+            markList={[
+              { label: '100', value: 100 },
+              { label: `${tokenLimit}`, value: tokenLimit }
+            ]}
+            width={['100%', '260px']}
+            min={100}
+            max={tokenLimit}
+            activeVal={getValues('chat.maxToken')}
+            setVal={(val) => {
+              setValue('chat.maxToken', val);
               setRefresh(!refresh);
             }}
           />

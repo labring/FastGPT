@@ -47,6 +47,11 @@ const ModelSchema = new Schema({
       type: String,
       default: ''
     },
+    maxToken: {
+      type: Number,
+      default: 4000,
+      min: 100
+    },
     temperature: {
       type: Number,
       min: 0,

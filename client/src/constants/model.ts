@@ -83,6 +83,7 @@ export const defaultModel: ModelSchema = {
     searchEmptyText: '',
     systemPrompt: '',
     temperature: 0,
+    maxToken: 4000,
     chatModel: OpenAiChatEnum.GPT35
   },
   share: {

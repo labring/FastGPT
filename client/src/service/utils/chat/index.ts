@@ -12,6 +12,7 @@ import { textAdaptGptResponse } from '@/utils/adapt';
 export type ChatCompletionType = {
   apiKey: string;
   temperature: number;
+  maxToken?: number;
   messages: ChatItemType[];
   chatId?: string;
   [key: string]: any;
