@@ -156,6 +156,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
     onSuccess(res) {
       res && reset(res);
       modelId && setLastModelId(modelId);
+      setRefresh(!refresh);
     },
     onError(err: any) {
       toast({
@@ -278,6 +279,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
             width={['100%', '260px']}
             min={100}
             max={tokenLimit}
+            step={50}
             activeVal={getValues('chat.maxToken')}
             setVal={(val) => {
               setValue('chat.maxToken', val);

@@ -20,15 +20,17 @@ export const adaptBill = (bill: BillSchema): UserBillType => {
 };
 
 export const gptMessage2ChatType = (messages: MessageItemType[]): ChatItemType[] => {
-  const roleMap = {
+  const roleMap: Record<`${ChatCompletionRequestMessageRoleEnum}`, `${ChatRoleEnum}`> = {
     [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
     [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
-    [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System
+    [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
+    [ChatCompletionRequestMessageRoleEnum.Function]: ChatRoleEnum.Human
   };
+
   return messages.map((item) => ({
     _id: item._id,
     obj: roleMap[item.role],
-    value: item.content
+    value: item.content || ''
   }));
 };
 
