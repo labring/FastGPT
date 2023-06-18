@@ -180,6 +180,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       await modelServiceToolMap[model.chat.chatModel].chatCompletion({
         apiKey: userOpenAiKey || apiKey,
         temperature: +temperature,
+        maxToken: model.chat.maxToken,
         messages: completePrompts,
         stream,
         res

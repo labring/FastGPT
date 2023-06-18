@@ -44,6 +44,7 @@ export interface ModelSchema {
     searchEmptyText: string;
     systemPrompt: string;
     temperature: number;
+    maxToken: number;
     chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
   };
   share: {
