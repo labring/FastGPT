@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authModel, getApiKey, authShareChat, type AuthType } from '@/service/utils/auth';
+import { authUser, authModel, getApiKey, authShareChat } from '@/service/utils/auth';
 import { modelServiceToolMap, V2_StreamResponse } from '@/service/utils/chat';
 import { jsonRes } from '@/service/response';
 import { ChatModelMap } from '@/constants/model';

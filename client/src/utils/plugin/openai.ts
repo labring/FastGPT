@@ -1,7 +1,7 @@
 import { encoding_for_model, type Tiktoken } from '@dqbd/tiktoken';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { ChatCompletionRequestMessageRoleEnum } from 'openai';
+import { type ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { OpenAiChatEnum } from '@/constants/model';
 import Graphemer from 'graphemer';
 import axios from 'axios';
@@ -113,11 +113,7 @@ export function countOpenAIToken({
   model: `${OpenAiChatEnum}`;
 }) {
   function getChatGPTEncodingText(
-    messages: {
-      role: 'system' | 'user' | 'assistant';
-      content: string;
-      name?: string;
-    }[],
+    messages: ChatCompletionRequestMessage[],
     model: `${OpenAiChatEnum}`
   ) {
     const isGpt3 = model.startsWith('gpt-3.5-turbo');
