@@ -75,7 +75,7 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
             })();
 
             if (item.event === sseResponseEventEnum.answer && data !== '[DONE]') {
-              const answer: string = data?.choices[0].delta.content || '';
+              const answer: string = data?.choices?.[0].delta.content || '';
               onMessage(answer);
               responseText += answer;
             } else if (item.event === sseResponseEventEnum.chatResponse) {

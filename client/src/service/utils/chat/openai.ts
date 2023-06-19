@@ -57,7 +57,7 @@ export const chatResponse = async ({
     }
   );
 
-  const responseText = stream ? '' : response.data.choices[0].message?.content || '';
+  const responseText = stream ? '' : response.data.choices?.[0].message?.content || '';
   const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
 
   return {
