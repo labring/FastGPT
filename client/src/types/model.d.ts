@@ -5,7 +5,7 @@ export type ModelListItemType = {
   _id: string;
   name: string;
   avatar: string;
-  systemPrompt: string;
+  intro: string;
 };
 
 export interface ModelUpdateParams {

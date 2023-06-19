@@ -24,7 +24,8 @@ const Settings = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { Loading, setIsLoading } = useLoading();
-  const { userInfo, modelDetail, loadModelDetail, refreshModel, setLastModelId } = useUserStore();
+  const { userInfo, modelDetail, myModels, loadModelDetail, refreshModel, setLastModelId } =
+    useUserStore();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
@@ -119,7 +120,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
         status: 'success'
       });
       refreshModel.removeModelDetail(modelDetail._id);
-      router.replace('/model');
+      router.replace(`/model?modelId=${myModels[1]?._id}`);
     } catch (err: any) {
       toast({
         title: err?.message || '删除失败',
@@ -127,7 +128,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
       });
     }
     setIsLoading(false);
-  }, [modelDetail, setIsLoading, toast, refreshModel, router]);
+  }, [modelDetail, setIsLoading, toast, refreshModel, router, myModels]);
 
   const onSelectFile = useCallback(
     async (e: File[]) => {
