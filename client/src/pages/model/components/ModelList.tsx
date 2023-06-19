@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Box, Flex, Input, IconButton, Tooltip, Tab, useTheme } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, Flex, Input, IconButton, Tooltip, useTheme } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
@@ -55,14 +55,12 @@ const ModelList = ({ modelId }: { modelId: string }) => {
   const currentModels = useMemo(() => {
     const map = {
       [MyModelsTypeEnum.my]: {
-        list: myModels.filter((item) =>
-          new RegExp(searchText, 'ig').test(item.name + item.systemPrompt)
-        ),
+        list: myModels.filter((item) => new RegExp(searchText, 'ig').test(item.name + item.intro)),
         emptyText: '还没有 AI 应用~\n快来创建一个吧'
       },
       [MyModelsTypeEnum.collection]: {
         list: myCollectionModels.filter((item) =>
-          new RegExp(searchText, 'ig').test(item.name + item.systemPrompt)
+          new RegExp(searchText, 'ig').test(item.name + item.intro)
         ),
         emptyText: '收藏的 AI 应用为空~\n快去市场找一个吧'
       }

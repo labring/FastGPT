@@ -18,14 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         {
           userId
         },
-        '_id avatar name chat.systemPrompt'
+        '_id avatar name intro'
       ).sort({
         updateTime: -1
       }),
       Collection.find({ userId })
         .populate({
           path: 'modelId',
-          select: '_id avatar name chat.systemPrompt',
+          select: '_id avatar name intro',
           match: { 'share.isShare': true }
         })
         .then((res) => res.filter((item) => item.modelId))
@@ -37,14 +37,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           _id: item._id,
           name: item.name,
           avatar: item.avatar,
-          systemPrompt: item.chat.systemPrompt
+          intro: item.intro
         })),
         myCollectionModels: myCollections
           .map((item: any) => ({
             _id: item.modelId?._id,
             name: item.modelId?.name,
             avatar: item.modelId?.avatar,
-            systemPrompt: item.modelId?.chat.systemPrompt
+            intro: item.modelId?.intro
           }))
           .filter((item) => !myModels.find((model) => String(model._id) === String(item._id))) // 去重
       }
