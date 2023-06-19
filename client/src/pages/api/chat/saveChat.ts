@@ -60,34 +60,48 @@ export async function saveChat({
   }));
 
   if (String(model.userId) === userId) {
-    Model.findByIdAndUpdate(modelId, {
+    await Model.findByIdAndUpdate(modelId, {
       updateTime: new Date()
     });
   }
 
-  const response = await (chatId
-    ? Chat.findByIdAndUpdate(chatId, {
-        $push: {
-          content: {
-            $each: content
-          }
-        },
-        title: content[0].value.slice(0, 20),
-        latestChat: content[1].value,
-        updateTime: new Date()
-      }).then(() => ({
-        newChatId: ''
-      }))
-    : Chat.create({
-        _id: newChatId,
-        userId,
-        modelId,
-        content,
-        title: content[0].value.slice(0, 20),
-        latestChat: content[1].value
-      }).then((res) => ({
-        newChatId: String(res._id)
-      })));
+  const [response] = await Promise.all([
+    ...(chatId
+      ? [
+          Chat.findByIdAndUpdate(chatId, {
+            $push: {
+              content: {
+                $each: content
+              }
+            },
+            title: content[0].value.slice(0, 20),
+            latestChat: content[1].value,
+            updateTime: new Date()
+          }).then(() => ({
+            newChatId: ''
+          }))
+        ]
+      : [
+          Chat.create({
+            _id: newChatId,
+            userId,
+            modelId,
+            content,
+            title: content[0].value.slice(0, 20),
+            latestChat: content[1].value
+          }).then((res) => ({
+            newChatId: String(res._id)
+          }))
+        ]),
+    // update model
+    ...(String(model.userId) === userId
+      ? [
+          Model.findByIdAndUpdate(modelId, {
+            updateTime: new Date()
+          })
+        ]
+      : [])
+  ]);
 
   return {
     ...response

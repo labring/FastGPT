@@ -52,6 +52,7 @@ function App({ Component, pageProps }: AppProps) {
       <Script src="/js/qrcode.min.js" strategy="afterInteractive"></Script>
       <Script src="/js/pdf.js" strategy="afterInteractive"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="afterInteractive"></Script>
+      <Script src="/js/baidutongji.js" strategy="afterInteractive"></Script>
       {googleVerKey && (
         <>
           <Script
