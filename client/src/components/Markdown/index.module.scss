@@ -319,7 +319,6 @@
   border: medium none;
   margin: 0;
   padding: 0;
-  white-space: pre;
 }
 .markdown .highlight pre,
 .markdown pre {
@@ -343,10 +342,6 @@
 
   * {
     word-break: break-all;
-  }
-
-  p {
-    white-space: pre-line;
   }
 
   pre {
@@ -419,9 +414,4 @@
 
 .mermaid {
   overflow-x: auto;
-
-  svg {
-    height: auto !important;
-    width: auto;
-  }
 }

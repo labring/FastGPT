@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, Skeleton } from '@chakra-ui/react';
 
-const MdImage = ({ src }: { src: string }) => {
+const MdImage = ({ src }: { src?: string }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [succeed, setSucceed] = useState(false);
   return (

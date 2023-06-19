@@ -43,13 +43,13 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useUserStore } from '@/store/user';
 import Loading from '@/components/Loading';
-import Markdown from '@/components/Markdown';
 import SideBar from '@/components/SideBar';
 import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
 import QuoteModal from './components/QuoteModal';
 import { HUMAN_ICON } from '@/constants/chat';
 
+const Markdown = dynamic(async () => await import('@/components/Markdown'));
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
   ssr: false
 });
@@ -736,7 +736,6 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                           <Markdown
                             source={item.value}
                             isChatting={isChatting && index === chatData.history.length - 1}
-                            formatLink
                           />
                           <Flex>
                             {!!item.systemPrompt && (

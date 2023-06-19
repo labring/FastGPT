@@ -659,7 +659,6 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
                         <Markdown
                           source={item.value}
                           isChatting={isChatting && index === shareChatData.history.length - 1}
-                          formatLink
                         />
                       </Card>
                     </Box>
