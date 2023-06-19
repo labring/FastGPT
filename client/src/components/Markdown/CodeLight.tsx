@@ -287,8 +287,7 @@ const CodeLight = ({
   children,
   className,
   inline,
-  match,
-  ...props
+  match
 }: {
   children: React.ReactNode & React.ReactNode[];
   className?: string;
@@ -315,18 +314,14 @@ const CodeLight = ({
             <Box ml={1}>复制</Box>
           </Flex>
         </Flex>
-        <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre" {...props}>
+        <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre">
           {String(children)}
         </SyntaxHighlighter>
       </Box>
     );
   }
 
-  return (
-    <code className={className} {...props}>
-      {children}
-    </code>
-  );
+  return <code className={className}>{children}</code>;
 };
 
 export default React.memo(CodeLight);

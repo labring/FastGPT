@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, memo, useCallback, useState } from 'react';
+import React, { useEffect, useRef, memo, useCallback, useState, useMemo } from 'react';
 import { Box } from '@chakra-ui/react';
 // @ts-ignore
 import mermaid from 'mermaid';
@@ -8,8 +8,11 @@ import styles from './index.module.scss';
 
 const mermaidAPI = mermaid.mermaidAPI;
 mermaidAPI.initialize({
-  startOnLoad: false,
+  startOnLoad: true,
   theme: 'base',
+  flowchart: {
+    useMaxWidth: false
+  },
   themeVariables: {
     fontSize: '14px',
     primaryColor: '#d6e8ff',
@@ -21,52 +24,53 @@ mermaidAPI.initialize({
   }
 });
 
+const punctuationMap: Record<string, string> = {
+  '，': ',',
+  '；': ';',
+  '。': '.',
+  '：': ':',
+  '！': '!',
+  '？': '?',
+  '“': '"',
+  '”': '"',
+  '‘': "'",
+  '’': "'",
+  '【': '[',
+  '】': ']',
+  '（': '(',
+  '）': ')',
+  '《': '<',
+  '》': '>',
+  '、': ','
+};
+
 const MermaidBlock = ({ code }: { code: string }) => {
-  const dom = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState('');
-  const [errorSvgCode, setErrorSvgCode] = useState('');
 
   useEffect(() => {
     (async () => {
-      const punctuationMap: Record<string, string> = {
-        '，': ',',
-        '；': ';',
-        '。': '.',
-        '：': ':',
-        '！': '!',
-        '？': '?',
-        '“': '"',
-        '”': '"',
-        '‘': "'",
-        '’': "'",
-        '【': '[',
-        '】': ']',
-        '（': '(',
-        '）': ')',
-        '《': '<',
-        '》': '>',
-        '、': ','
-      };
-      const formatCode = code.replace(
-        /([，；。：！？“”‘’【】（）《》、])/g,
-        (match) => punctuationMap[match]
-      );
+      if (!code || !ref.current) return;
       try {
-        const svgCode = await mermaidAPI.render(`mermaid-${Date.now()}`, formatCode);
-        setSvg(svgCode);
-      } catch (error) {
-        setErrorSvgCode(formatCode);
-        console.log(error);
+        const formatCode = code.replace(
+          new RegExp(`[${Object.keys(punctuationMap).join('')}]`, 'g'),
+          (match) => punctuationMap[match]
+        );
+        const { svg } = await mermaidAPI.render(`mermaid-${Date.now()}`, formatCode);
+        setSvg(svg);
+      } catch (e: any) {
+        console.log('[Mermaid] ', e?.message);
       }
     })();
   }, [code]);
 
   const onclickExport = useCallback(() => {
-    const svg = dom.current?.children[0];
+    const svg = ref.current?.children[0];
     if (!svg) return;
 
-    const w = svg.clientWidth * 4;
-    const h = svg.clientHeight * 4;
+    const rate = svg.clientHeight / svg.clientWidth;
+    const w = 3000;
+    const h = rate * w;
 
     const canvas = document.createElement('canvas');
     canvas.width = w;
@@ -78,7 +82,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
     ctx.fillRect(0, 0, w, h);
 
     const img = new Image();
-    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(dom.current.innerHTML)}`;
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ref.current.innerHTML)}`;
 
     img.onload = () => {
       ctx.drawImage(img, 0, 0, w, h);
@@ -99,14 +103,14 @@ const MermaidBlock = ({ code }: { code: string }) => {
   return (
     <Box position={'relative'}>
       <Box
-        ref={dom}
-        as={'p'}
+        ref={ref}
         className={styles.mermaid}
         minW={'100px'}
         minH={'50px'}
         py={4}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
+
       <MyIcon
         name={'export'}
         w={'20px'}
