@@ -50,13 +50,13 @@ const MermaidBlock = ({ code }: { code: string }) => {
 
   useEffect(() => {
     (async () => {
-      if (!code || !ref.current) return;
+      if (!code) return;
       try {
         const formatCode = code.replace(
           new RegExp(`[${Object.keys(punctuationMap).join('')}]`, 'g'),
           (match) => punctuationMap[match]
         );
-        const { svg } = await mermaidAPI.render(`mermaid-${Date.now()}`, formatCode);
+        const { svg } = await mermaid.render(`mermaid-${Date.now()}`, formatCode);
         setSvg(svg);
       } catch (e: any) {
         console.log('[Mermaid] ', e?.message);
@@ -101,17 +101,25 @@ const MermaidBlock = ({ code }: { code: string }) => {
   }, []);
 
   return (
-    <Box position={'relative'}>
+    <Box
+      position={'relative'}
+      _hover={{
+        '& > .export': {
+          display: 'block'
+        }
+      }}
+    >
       <Box
         ref={ref}
-        className={styles.mermaid}
+        className={`${styles.mermaid}`}
         minW={'100px'}
         minH={'50px'}
         py={4}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
-
       <MyIcon
+        className="export"
+        display={'none'}
         name={'export'}
         w={'20px'}
         position={'absolute'}
@@ -128,4 +136,4 @@ const MermaidBlock = ({ code }: { code: string }) => {
   );
 };
 
-export default memo(MermaidBlock);
+export default MermaidBlock;
