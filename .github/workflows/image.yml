@@ -60,8 +60,8 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.justin1109102}}
-          password: ${{ secrets.8525239Dc }}
+          username: ${{ justin1109102}}
+          password: ${{ 8525239Dc }}
       - name: Set DOCKER_REPO_TAGGED based on branch or tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
