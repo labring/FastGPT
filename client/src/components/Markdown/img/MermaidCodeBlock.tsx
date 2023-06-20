@@ -2,9 +2,7 @@ import React, { useEffect, useRef, memo, useCallback, useState, useMemo } from '
 import { Box } from '@chakra-ui/react';
 // @ts-ignore
 import mermaid from 'mermaid';
-import MyIcon from '../Icon';
-
-import styles from './index.module.scss';
+import MyIcon from '../../Icon';
 
 const mermaidAPI = mermaid.mermaidAPI;
 mermaidAPI.initialize({
@@ -110,8 +108,8 @@ const MermaidBlock = ({ code }: { code: string }) => {
       }}
     >
       <Box
+        overflowX={'auto'}
         ref={ref}
-        className={`${styles.mermaid}`}
         minW={'100px'}
         minH={'50px'}
         py={4}

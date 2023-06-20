@@ -10,8 +10,8 @@ import styles from './index.module.scss';
 
 import Link from './Link';
 import CodeLight from './CodeLight';
-import MermaidCodeBlock from './MermaidCodeBlock';
-import MdImage from './Image';
+import MermaidCodeBlock from './img/MermaidCodeBlock';
+import MdImage from './img/Image';
 
 function Code({ inline, className, children }: any) {
   const match = /language-(\w+)/.exec(className || '');
