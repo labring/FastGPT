@@ -19,7 +19,8 @@ export const useGlobalStore = create<State>()(
     immer((set, get) => ({
       initData: {
         beianText: '',
-        googleVerKey: ''
+        googleVerKey: '',
+        baiduTongji: false
       },
       async loadInitData() {
         try {
