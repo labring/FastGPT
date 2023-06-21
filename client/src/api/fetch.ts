@@ -22,6 +22,11 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
         })
       });
 
+      if (response.status !== 200) {
+        const err = await response.json();
+        return reject(err);
+      }
+
       if (!response?.body) {
         throw new Error('Request Error');
       }
@@ -98,7 +103,8 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
       };
       read();
     } catch (err: any) {
-      console.log(err, '====');
+      console.log(err);
+
       reject(getErrText(err, '请求异常'));
     }
   });
