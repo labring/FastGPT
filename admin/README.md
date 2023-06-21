@@ -2,13 +2,14 @@
 
 ## 项目原理
 
-使用 tushan 项目做前端，然后构造了一个与 mongodb 做沟通的 API 做后端，可以做到创建、修改和删除用户
+使用 [Tushan](https://tushan.msgbyte.com/) 项目做前端，然后构造了一个与 mongodb 做沟通的 API 做后端，可以做到创建、修改和删除用户
 
 ## 开发
 
-1. 复制 .env.template 文件，添加环境变量
-2. pnpm i
-3. pnpm dev
+1. `cp .env.template .env.local`: 复制 .env.template 文件，添加环境变量
+2. `pnpm i`
+3. `pnpm dev`
+4. 打开 `http://localhost:5173/` 访问前端页面
 
 ## 部署
 
@@ -33,7 +34,7 @@ VITE_PUBLIC_SERVER_URL=http://localhost:3001 # 和server.js一致
 1. 进入 sealos 官网: https://cloud.sealos.io/
 2. 打开 App Launchpad(应用管理) 工具
 3. 新建应用
-   1. 镜像名: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:latest
+   1. 镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:latest`
    2. 容器端口: 3001
    3. 环境变量: 参考上面
    4. 打开外网访问开关

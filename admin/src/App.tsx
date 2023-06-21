@@ -4,16 +4,19 @@ import {
   ListTable,
   Resource,
   Tushan,
-  fetchJSON
+  fetchJSON,
+  TushanContextProps,
+  HTTPClient
 } from 'tushan';
 import { authProvider } from './auth';
 import { userFields, payFields, kbFields, ModelFields, SystemFields } from './fields';
 import { Dashboard } from './Dashboard';
 import { IconUser, IconApps, IconBook, IconStamp } from 'tushan/icon';
+import { i18nZhTranslation } from 'tushan/client/i18n/resources/zh';
 
 const authStorageKey = 'tushan:auth';
 
-const httpClient: typeof fetchJSON = (url, options = {}) => {
+const httpClient: HTTPClient = (url, options = {}) => {
   try {
     if (!options.headers) {
       options.headers = new Headers({ Accept: 'application/json' });
@@ -29,11 +32,22 @@ const httpClient: typeof fetchJSON = (url, options = {}) => {
 
 const dataProvider = jsonServerProvider(import.meta.env.VITE_PUBLIC_SERVER_URL, httpClient);
 
+const i18n: TushanContextProps['i18n'] = {
+  languages: [
+    {
+      key: 'zh',
+      label: '简体中文',
+      translation: i18nZhTranslation
+    }
+  ]
+};
+
 function App() {
   return (
     <Tushan
       basename="/"
       header={'FastGpt-Admin'}
+      i18n={i18n}
       dataProvider={dataProvider}
       authProvider={authProvider}
       dashboard={<Dashboard />}
