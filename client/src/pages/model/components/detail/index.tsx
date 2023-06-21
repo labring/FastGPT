@@ -7,15 +7,16 @@ import dynamic from 'next/dynamic';
 import Tabs from '@/components/Tabs';
 
 import Settings from './components/Settings';
+import { defaultModel } from '@/constants/model';
 
 const Kb = dynamic(() => import('./components/Kb'), {
-  ssr: true
+  ssr: false
 });
 const Share = dynamic(() => import('./components/Share'), {
-  ssr: true
+  ssr: false
 });
 const API = dynamic(() => import('./components/API'), {
-  ssr: true
+  ssr: false
 });
 
 enum TabEnum {
@@ -28,7 +29,7 @@ enum TabEnum {
 const ModelDetail = ({ modelId }: { modelId: string }) => {
   const router = useRouter();
   const { isPc } = useGlobalStore();
-  const { modelDetail, userInfo } = useUserStore();
+  const { modelDetail = defaultModel, userInfo } = useUserStore();
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.settings);
 
   const isOwner = useMemo(
