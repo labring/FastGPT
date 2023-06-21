@@ -25,7 +25,7 @@
     "react-admin": "^4.11.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^12.3.1",
-    "tushan": "^0.2.23"
+    "tushan": "^0.2.29"
   },
   "devDependencies": {
     "@types/jsonexport": "^3.0.2",
