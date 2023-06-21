@@ -49,6 +49,7 @@ function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <Script src="/js/particles.js" strategy="lazyOnload"></Script>
       <Script src="/js/qrcode.min.js" strategy="afterInteractive"></Script>
       <Script src="/js/pdf.js" strategy="afterInteractive"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="afterInteractive"></Script>
@@ -65,7 +66,6 @@ function App({ Component, pageProps }: AppProps) {
           ></Script>
         </>
       )}
-      <Script src="/js/particles.js"></Script>
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
           <ColorModeScript initialColorMode={theme.config.initialColorMode} />
