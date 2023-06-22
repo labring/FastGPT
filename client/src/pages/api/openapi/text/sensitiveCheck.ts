@@ -31,9 +31,10 @@ export async function sensitiveCheck({ input }: Props) {
   if (!global.systemEnv.sensitiveCheck) {
     return Promise.resolve('');
   }
-
+  // 3.5key
+  const apikey3 = await getSystemOpenAiKey();
   const response = await axios({
-    ...axiosConfig(getSystemOpenAiKey('chat')),
+    ...axiosConfig(apikey3),
     method: 'POST',
     url: `/moderations`,
     data: {

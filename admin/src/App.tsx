@@ -1,5 +1,6 @@
 import {
   createTextField,
+  createBooleanField,
   jsonServerProvider,
   ListTable,
   Resource,
@@ -9,9 +10,9 @@ import {
   HTTPClient
 } from 'tushan';
 import { authProvider } from './auth';
-import { userFields, payFields, kbFields, ModelFields, SystemFields } from './fields';
+import { userFields, payFields, kbFields, ModelFields, SystemFields, apiKeyFields } from './fields';
 import { Dashboard } from './Dashboard';
-import { IconUser, IconApps, IconBook, IconStamp } from 'tushan/icon';
+import { IconUser, IconApps, IconBook, IconThunderbolt, IconStamp, IconCommon } from 'tushan/icon';
 import { i18nZhTranslation } from 'tushan/client/i18n/resources/zh';
 
 const authStorageKey = 'tushan:auth';
@@ -122,13 +123,29 @@ function App() {
           />
         }
       />
-
       <Resource
         name="system"
         label="系统"
+        icon={<IconCommon />}
         list={
           <ListTable
             fields={SystemFields}
+            action={{ detail: true, edit: true, create: true, delete: true }}
+          />
+        }
+      />
+      <Resource
+        name="openaikey"
+        label="key池管理"
+        icon={<IconThunderbolt />}
+        list={
+          <ListTable
+            filter={[
+              createTextField('apiKey', {
+                label: 'apiKey'
+              })
+            ]}
+            fields={apiKeyFields}
             action={{ detail: true, edit: true, create: true, delete: true }}
           />
         }

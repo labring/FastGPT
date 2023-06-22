@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dayjs from 'dayjs';
 
 dotenv.config({ path: '.env.local' });
 
@@ -113,11 +114,38 @@ const SystemSchema = new mongoose.Schema({
   sensitiveCheck: {
     type: Boolean,
     default: false
+  },
+  sycnOpenAIKeyInterval: {
+    type: Number,
+    default: 60
   }
 });
+
+const openAIKeySchema = new mongoose.Schema(
+  {
+    // OPENAI KEY INFO
+    apikey: { type: String, required: true, unique: true },
+    balanceTotal: { type: Number, default: 0 },
+    balanceUsed: { type: Number, default: 0 },
+    balanceAvailable: { type: Number, default: 0 },
+    isGPT4: { type: Boolean, default: false },
+    expiresAt: { type: Date, default: dayjs().add(1, 'month').toDate() },
+    cardLinked: { type: Boolean, default: false },
+    // CUSTOM USED
+    rpm: { type: Number, default: 5 },
+    rpmAvailable: { type: Number, default: 5 },
+    lastUsedAt: { type: Date, default: null },
+    active: { type: Boolean, default: true },
+    // 只用于展示错误消息，不用于判断
+    error: { type: String, default: '' }
+  },
+  { timestamps: true }
+);
 
 export const Model = mongoose.models['model'] || mongoose.model('model', modelSchema);
 export const Kb = mongoose.models['kb'] || mongoose.model('kb', kbSchema);
 export const User = mongoose.models['user'] || mongoose.model('user', userSchema);
 export const Pay = mongoose.models['pay'] || mongoose.model('pay', paySchema);
 export const System = mongoose.models['system'] || mongoose.model('system', SystemSchema);
+export const OpenAIKey =
+  mongoose.models['openaikey'] || mongoose.model('openaikey', openAIKeySchema);

@@ -21,7 +21,8 @@ export async function connectToDatabase(): Promise<void> {
     vectorMaxProcess: 10,
     qaMaxProcess: 10,
     pgIvfflatProbe: 10,
-    sensitiveCheck: false
+    sensitiveCheck: false,
+    sycnOpenAIKeyInterval: 60
   };
   // proxy obj
   if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {

@@ -161,3 +161,21 @@ export interface informSchema {
   content: string;
   read: boolean;
 }
+
+export interface openAIKeySchema {
+  apikey: string;
+  balanceTotal: number;
+  balanceUsed: number;
+  balanceAvailable: number;
+  isGPT4: boolean;
+  expiresAt: Date;
+  cardLinked: boolean;
+  rpm: number;
+  rpmAvailable: number;
+  lastUsedAt: Date;
+  lastSyncAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  active: boolean;
+  error: string;
+}

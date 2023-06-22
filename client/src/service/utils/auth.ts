@@ -1,8 +1,8 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
-import { Chat, Model, OpenApi, User, ShareChat, KB } from '../mongo';
-import type { ModelSchema } from '@/types/mongoSchema';
+import { Chat, Model, OpenApi, User, ShareChat, KB, connectToDatabase } from '../mongo';
+import type { ModelSchema, openAIKeySchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
 import mongoose from 'mongoose';
 import { defaultModel } from '@/constants/model';
@@ -10,6 +10,10 @@ import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
 import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
 import { hashPassword } from '@/service/utils/tools';
+import { OpenAIKey } from '../models/openaiKey';
+import { syncOpenAIKeyHandler } from '@/pages/api/system/syncOpenAIKey';
+import dayjs from 'dayjs';
+import { debounce } from 'lodash';
 
 export type ApiKeyType = 'training' | 'chat';
 export type AuthType = 'token' | 'root' | 'apikey';
@@ -162,26 +166,39 @@ export const authUser = async ({
   };
 };
 
-/* random get openai api key */
-export const getSystemOpenAiKey = (type: ApiKeyType) => {
-  const keys = (() => {
-    if (type === 'training') {
-      return global.systemEnv.openAITrainingKeys?.split(',') || [];
-    }
-    return global.systemEnv.openAIKeys?.split(',') || [];
-  })();
+/* mongo pool */
+export const getSystemOpenAiKey = async (isGPT4 = false) => {
+  // 先用快过期的
+  const mongoKeys = await OpenAIKey.find({
+    active: true,
+    rpmAvailable: { $gt: 0 },
+    isGPT4
+  }).sort({
+    expiresAt: 1
+  });
 
-  // 纯字符串类型
-  const i = Math.floor(Math.random() * keys.length);
-  return keys[i] || (global.systemEnv.openAIKeys as string);
-};
-export const getGpt4Key = () => {
-  const keys = global.systemEnv.gpt4Key?.split(',') || [];
+  const key = mongoKeys[0]?.apikey || '';
 
-  // 纯字符串类型
-  const i = Math.floor(Math.random() * keys.length);
-  return keys[i] || (global.systemEnv.openAIKeys as string);
+  return key;
 };
+
+/* 使用之后 扣rpm 更新上次使用时间*/
+export const usingOpenAiKey = async (apikey: string) => {
+  await connectToDatabase();
+  const mongoKey = await OpenAIKey.findOne({ apikey });
+
+  if (!mongoKey) return;
+  // 60s后重置一下RPM
+  if (dayjs().diff(dayjs(mongoKey.lastUsedAt), 'second') > 60) mongoKey.rpmAvailable = mongoKey.rpm;
+  else mongoKey.rpmAvailable -= 1;
+
+  mongoKey.lastUsedAt = new Date();
+  await mongoKey.save();
+};
+
+const debouncedKeyUse = debounce((key) => {
+  usingOpenAiKey(key).then(() => syncOpenAIKeyHandler(key));
+}, 300);
 
 /* 获取 api 请求的 key */
 export const getApiKey = async ({
@@ -203,19 +220,19 @@ export const getApiKey = async ({
   const keyMap = {
     [OpenAiChatEnum.GPT35]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey(type) as string
+      systemAuthKey: (await getSystemOpenAiKey()) as string
     },
     [OpenAiChatEnum.GPT3516k]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey(type) as string
+      systemAuthKey: (await getSystemOpenAiKey()) as string
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getGpt4Key() as string
+      systemAuthKey: (await getSystemOpenAiKey(true)) as string
     },
     [OpenAiChatEnum.GPT432k]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getGpt4Key() as string
+      systemAuthKey: (await getSystemOpenAiKey(true)) as string
     }
   };
 
@@ -236,11 +253,15 @@ export const getApiKey = async ({
   if (formatPrice(user.balance) <= 0) {
     return Promise.reject(ERROR_ENUM.insufficientQuota);
   }
+  // 记录key使用并同步信息(这个函数为什么会执行两遍啊)
+  const key = keyMap[model].systemAuthKey;
+  // 我也不知道为什么执行两遍，防抖解决吧
+  debouncedKeyUse(key);
 
   return {
     user,
     userOpenAiKey: '',
-    systemAuthKey: keyMap[model].systemAuthKey
+    systemAuthKey: key
   };
 };
 

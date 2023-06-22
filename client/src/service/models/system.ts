@@ -28,6 +28,10 @@ const SystemSchema = new Schema({
   sensitiveCheck: {
     type: Boolean,
     default: false
+  },
+  sycnOpenAIKeyInterval: {
+    type: Number,
+    default: 60
   }
 });
 

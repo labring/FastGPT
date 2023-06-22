@@ -30,6 +30,7 @@ declare global {
     qaMaxProcess: number;
     pgIvfflatProbe: number;
     sensitiveCheck: boolean;
+    sycnOpenAIKeyInterval: number;
   };
 
   interface Window {

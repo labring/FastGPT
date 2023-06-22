@@ -1,4 +1,9 @@
-import { createTextField, createNumberField, createBooleanField } from 'tushan';
+import {
+  createTextField,
+  createNumberField,
+  createBooleanField,
+  createDateTimeField
+} from 'tushan';
 
 export const userFields = [
   createTextField('id', { label: 'ID' }),
@@ -45,11 +50,26 @@ export const ModelFields = [
 ];
 
 export const SystemFields = [
-  createTextField('openAIKeys', { label: 'openAIKeys，逗号隔开' }),
-  createTextField('openAITrainingKeys', { label: 'openAITrainingKeys' }),
-  createTextField('gpt4Key', { label: 'gpt4Key' }),
+  createTextField('sycnOpenAIKeyInterval', { label: 'apiKey同步冷却时间（秒）' }),
   createTextField('vectorMaxProcess', { label: '向量最大进程' }),
   createTextField('qaMaxProcess', { label: 'qa最大进程' }),
   createTextField('pgIvfflatProbe', { label: 'pg 探针数量' }),
   createBooleanField('sensitiveCheck', { label: '敏感词校验' })
+];
+
+export const apiKeyFields = [
+  createTextField('apikey', { label: 'API Key' }),
+  createNumberField('balanceTotal', { label: '总余额', list: { sort: true } }),
+  createNumberField('balanceUsed', { label: '已使用余额', list: { sort: true } }),
+  createNumberField('balanceAvailable', { label: '可用余额', list: { sort: true } }),
+  createBooleanField('isGPT4', { label: '是否为GPT-4', list: { sort: true } }),
+  createDateTimeField('expiresAt', { label: '过期时间', format: 'iso', list: { sort: true } }),
+  createBooleanField('cardLinked', { label: '是否绑卡', list: { sort: true } }),
+  createNumberField('rpm', { label: '每分钟请求数', list: { sort: true } }),
+  createNumberField('rpmAvailable', { label: '可用的每分钟请求数', list: { sort: true } }),
+  createDateTimeField('lastUsedAt', { label: '上次使用时间', format: 'iso', list: { sort: true } }),
+  createDateTimeField('lastSyncAt', { label: '上次同步时间', format: 'iso', list: { sort: true } }),
+  createDateTimeField('createdAt', { label: '创建时间', format: 'iso', list: { sort: true } }),
+  createBooleanField('active', { label: '是否可用', list: { sort: true } }),
+  createTextField('error', { label: '错误信息' })
 ];
