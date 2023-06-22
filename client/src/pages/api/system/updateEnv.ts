@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { System } from '@/service/models/system';
 import { authUser } from '@/service/utils/auth';
+import { connectToDatabase } from '@/service/mongo';
 
 export type InitDateResponse = {
   beianText: string;
@@ -16,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export async function updateSystemEnv() {
   try {
+    await connectToDatabase();
     const mongoData = await System.findOne();
 
     if (mongoData) {

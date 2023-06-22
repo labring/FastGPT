@@ -1,4 +1,4 @@
-import { createTextField, createNumberField } from 'tushan';
+import { createTextField, createNumberField, createBooleanField } from 'tushan';
 
 export const userFields = [
   createTextField('id', { label: 'ID' }),
@@ -51,5 +51,5 @@ export const SystemFields = [
   createTextField('vectorMaxProcess', { label: '向量最大进程' }),
   createTextField('qaMaxProcess', { label: 'qa最大进程' }),
   createTextField('pgIvfflatProbe', { label: 'pg 探针数量' }),
-  createTextField('sensitiveCheck', { label: '敏感词校验(true,false)' })
+  createBooleanField('sensitiveCheck', { label: '敏感词校验' })
 ];
