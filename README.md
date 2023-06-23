@@ -44,10 +44,10 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 
 ## Powered by
 
-- [TuShan 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
-- [Laf 3 分钟快速接入三方应用](https://github.com/labring/laf)
-- [Sealos 快速部署集群应用](https://github.com/labring/sealos)
-- [key 管理，可多 key 以及兼容微软](https://github.com/songquanpeng/one-api)
+- [TuShan: 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
+- [Laf: 3 分钟快速接入三方应用](https://github.com/labring/laf)
+- [Sealos: 快速部署集群应用](https://github.com/labring/sealos)
+- [One API: 令牌管理 & 二次分发，支持 Azure](https://github.com/songquanpeng/one-api)
 
 ## 🌟 Star History
 
