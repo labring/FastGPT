@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -24,23 +24,9 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
 import { ChatModelMap, OpenAiChatEnum, embeddingPrice } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
+import MySlider from '@/components/Slider';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
-
-const modeMap = {
-  [TrainingModeEnum.qa]: {
-    maxLen: 8000,
-    slideLen: 3000,
-    price: ChatModelMap[OpenAiChatEnum.GPT3516k].price,
-    isPrompt: true
-  },
-  [TrainingModeEnum.index]: {
-    maxLen: 1000,
-    slideLen: 500,
-    price: embeddingPrice,
-    isPrompt: false
-  }
-};
 
 const SelectFileModal = ({
   onClose,
@@ -51,6 +37,16 @@ const SelectFileModal = ({
   onSuccess: () => void;
   kbId: string;
 }) => {
+  const [modeMap, setModeMap] = useState({
+    [TrainingModeEnum.qa]: {
+      maxLen: 8000,
+      price: ChatModelMap[OpenAiChatEnum.GPT3516k].price
+    },
+    [TrainingModeEnum.index]: {
+      maxLen: 600,
+      price: embeddingPrice
+    }
+  });
   const [btnLoading, setBtnLoading] = useState(false);
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
@@ -200,7 +196,7 @@ const SelectFileModal = ({
       });
     }
     setBtnLoading(false);
-  }, [files, mode, mutate, openConfirm, toast]);
+  }, [files, mode, modeMap, mutate, openConfirm, toast]);
 
   return (
     <Modal isOpen={true} onClose={onClose} isCentered>
@@ -244,19 +240,52 @@ const SelectFileModal = ({
             />
           </Flex>
           {/* 内容介绍 */}
-          {modeMap[mode].isPrompt && (
-            <Flex w={'100%'} px={5} alignItems={'center'} mt={4}>
-              <Box flex={'0 0 70px'} mr={2}>
-                下面是
-              </Box>
-              <Input
-                placeholder="提示词，例如: Laf的介绍/关于gpt4的论文/一段长文本"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                size={'sm'}
-              />
-            </Flex>
-          )}
+          <Flex w={'100%'} px={5} alignItems={'center'} mt={4}>
+            {mode === TrainingModeEnum.qa && (
+              <>
+                <Box flex={'0 0 70px'} mr={2}>
+                  下面是
+                </Box>
+                <Input
+                  placeholder="提示词，例如: Laf的介绍/关于gpt4的论文/一段长文本"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  size={'sm'}
+                />
+              </>
+            )}
+            {/* chunk size */}
+            {mode === TrainingModeEnum.index && (
+              <Flex w={'100%'} px={5} alignItems={'center'} mt={4}>
+                <Box w={['70px']} flexShrink={0}>
+                  段落长度
+                </Box>
+                <Box flex={1} ml={'10px'}>
+                  <MySlider
+                    markList={[
+                      { label: '300', value: 300 },
+                      { label: '1000', value: 1000 }
+                    ]}
+                    width={['100%', '260px']}
+                    min={300}
+                    max={1000}
+                    step={50}
+                    activeVal={modeMap[TrainingModeEnum.index].maxLen}
+                    setVal={(val) => {
+                      setModeMap((state) => ({
+                        ...state,
+                        [TrainingModeEnum.index]: {
+                          maxLen: val,
+                          price: embeddingPrice
+                        }
+                      }));
+                    }}
+                  />
+                </Box>
+              </Flex>
+            )}
+          </Flex>
+
           {/* 文本内容 */}
           <Box flex={'1 0 0'} px={5} h={0} w={'100%'} overflowY={'auto'} mt={4}>
             {files.slice(0, 100).map((item, i) => (

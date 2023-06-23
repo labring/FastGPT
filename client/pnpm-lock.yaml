@@ -65,9 +65,6 @@ dependencies:
   framer-motion:
     specifier: ^9.0.6
     version: registry.npmmirror.com/framer-motion@9.0.6(react-dom@18.2.0)(react@18.2.0)
-  graphemer:
-    specifier: ^1.4.0
-    version: registry.npmmirror.com/graphemer@1.4.0
   hyperdown:
     specifier: ^2.4.29
     version: registry.npmmirror.com/hyperdown@2.4.29
@@ -8012,12 +8009,6 @@ packages:
     name: grapheme-splitter
     version: 1.0.4
     dev: true
-
-  registry.npmmirror.com/graphemer@1.4.0:
-    resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/graphemer/-/graphemer-1.4.0.tgz}
-    name: graphemer
-    version: 1.4.0
-    dev: false
 
   registry.npmmirror.com/has-bigints@1.0.2:
     resolution: {integrity: sha512-tSvCKtBr9lkF0Ex0aQiP9N+OpV4zi2r/Nee5VkRDbaqv35RLYMzbwQfFSZZH0kR+Rd6302UJZ2p/bJCEoR3VoQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/has-bigints/-/has-bigints-1.0.2.tgz}

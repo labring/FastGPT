@@ -148,15 +148,9 @@ export const fileDownload = ({
  * slideLen - The size of the before and after Text
  * maxLen > slideLen
  */
-export const splitText_token = ({
-  text,
-  maxLen,
-  slideLen
-}: {
-  text: string;
-  maxLen: number;
-  slideLen: number;
-}) => {
+export const splitText_token = ({ text, maxLen }: { text: string; maxLen: number }) => {
+  const slideLen = Math.floor(maxLen * 0.3);
+
   try {
     const enc = getOpenAiEncMap()[OpenAiChatEnum.GPT35];
     // filter empty text. encode sentence
