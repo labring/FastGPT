@@ -6,8 +6,8 @@ import { sseResponse } from '../tools';
 import { OpenAiChatEnum } from '@/constants/model';
 import { chatResponse, openAiStreamResponse } from './openai';
 import type { NextApiResponse } from 'next';
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 import { textAdaptGptResponse } from '@/utils/adapt';
+import { parseStreamChunk } from '@/utils/adapt';
 
 export type ChatCompletionType = {
   apiKey: string;
@@ -185,65 +185,62 @@ export const V2_StreamResponse = async ({
   model: ChatModelType;
 }) => {
   let responseContent = '';
+  let error: any = null;
+
+  const clientRes = async (data: string) => {
+    const { content = '' } = (() => {
+      try {
+        const json = JSON.parse(data);
+        const content: string = json?.choices?.[0].delta.content || '';
+        error = json.error;
+        responseContent += content;
+        return { content };
+      } catch (error) {
+        return {};
+      }
+    })();
+
+    if (res.closed || error) return;
+
+    if (data === '[DONE]') {
+      sseResponse({
+        res,
+        event: sseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: null,
+          finish_reason: 'stop'
+        })
+      });
+      sseResponse({
+        res,
+        event: sseResponseEventEnum.answer,
+        data: '[DONE]'
+      });
+    } else {
+      sseResponse({
+        res,
+        event: sseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: content
+        })
+      });
+    }
+  };
 
   try {
-    const onParse = async (e: ParsedEvent | ReconnectInterval) => {
-      if (e.type !== 'event') return;
-
-      const data = e.data;
-
-      const { content = '' } = (() => {
-        try {
-          const json = JSON.parse(data);
-          const content: string = json?.choices?.[0].delta.content || '';
-          responseContent += content;
-          return { content };
-        } catch (error) {}
-        return {};
-      })();
-
-      if (res.closed) return;
-
-      if (data === '[DONE]') {
-        sseResponse({
-          res,
-          event: sseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: null,
-            finish_reason: 'stop'
-          })
-        });
-        sseResponse({
-          res,
-          event: sseResponseEventEnum.answer,
-          data: '[DONE]'
-        });
-      } else {
-        sseResponse({
-          res,
-          event: sseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: content
-          })
-        });
-      }
-    };
-
-    try {
-      const parser = createParser(onParse);
-      const decoder = new TextDecoder();
-      for await (const chunk of chatResponse.data as any) {
-        if (res.closed) {
-          break;
-        }
-        parser.feed(decoder.decode(chunk, { stream: true }));
-      }
-    } catch (error) {
-      console.log('pipe error', error);
+    for await (const chunk of chatResponse.data as any) {
+      if (res.closed) break;
+      const parse = parseStreamChunk(chunk);
+      parse.forEach((item) => clientRes(item.data));
     }
   } catch (error) {
-    console.log('stream error', error);
+    console.log('pipe error', error);
   }
+
+  if (error) {
+    return Promise.reject(error);
+  }
+
   // count tokens
   const finishMessages = prompts.concat({
     obj: ChatRoleEnum.AI,

@@ -42,6 +42,12 @@ const Test = () => {
       pushKbTestItem(testItem);
       setInputText('');
       setKbTestItem(testItem);
+    },
+    onError(err) {
+      toast({
+        title: getErrText(err),
+        status: 'error'
+      });
     }
   });
 
