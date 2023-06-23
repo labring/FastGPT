@@ -34,14 +34,18 @@ export const clearCookie = (res: NextApiResponse) => {
 };
 
 /* openai axios config */
-export const axiosConfig = (apikey: string) => ({
-  baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-  httpsAgent: global.httpsAgent,
-  headers: {
-    Authorization: `Bearer ${apikey}`,
-    auth: process.env.OPENAI_BASE_URL_AUTH || ''
-  }
-});
+export const axiosConfig = (apikey: string) => {
+  const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+
+  return {
+    baseURL: apikey === process.env.ONEAPI_KEY ? process.env.ONEAPI_URL : openaiBaseUrl, // 此处仅对非 npm 模块有效
+    httpsAgent: global.httpsAgent,
+    headers: {
+      Authorization: `Bearer ${apikey}`,
+      auth: process.env.OPENAI_BASE_URL_AUTH || ''
+    }
+  };
+};
 
 export function withNextCors(handler: NextApiHandler): NextApiHandler {
   return async function nextApiHandlerWrappedWithNextCors(

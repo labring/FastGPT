@@ -1,4 +1,5 @@
 export enum sseResponseEventEnum {
+  error = 'error',
   answer = 'answer',
   chatResponse = 'chatResponse'
 }

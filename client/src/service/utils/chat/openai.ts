@@ -1,18 +1,20 @@
 import { Configuration, OpenAIApi } from 'openai';
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
 import { axiosConfig } from '../tools';
 import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { modelToolMap } from '@/utils/plugin';
 import { ChatCompletionType, ChatContextFilter, StreamResponseType } from './index';
 import { ChatRoleEnum } from '@/constants/chat';
+import { parseStreamChunk } from '@/utils/adapt';
 
-export const getOpenAIApi = () =>
-  new OpenAIApi(
+export const getOpenAIApi = (apiKey: string) => {
+  const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  return new OpenAIApi(
     new Configuration({
-      basePath: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+      basePath: apiKey === process.env.ONEAPI_KEY ? process.env.ONEAPI_URL : openaiBaseUrl
     })
   );
+};
 
 /* 模型对话 */
 export const chatResponse = async ({
@@ -31,7 +33,7 @@ export const chatResponse = async ({
   });
 
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
-  const chatAPI = getOpenAIApi();
+  const chatAPI = getOpenAIApi(apiKey);
 
   const promptsToken = modelToolMap[model].countTokens({
     messages: filterMessages
@@ -80,29 +82,29 @@ export const openAiStreamResponse = async ({
   try {
     let responseContent = '';
 
-    const onParse = async (event: ParsedEvent | ReconnectInterval) => {
-      if (event.type !== 'event') return;
-      const data = event.data;
-      if (data === '[DONE]') return;
-      try {
-        const json = JSON.parse(data);
-        const content: string = json?.choices?.[0].delta.content || '';
-        responseContent += content;
+    const clientRes = async (data: string) => {
+      const { content = '' } = (() => {
+        try {
+          const json = JSON.parse(data);
+          const content: string = json?.choices?.[0].delta.content || '';
+          responseContent += content;
+          return { content };
+        } catch (error) {
+          return {};
+        }
+      })();
 
-        !res.closed && content && res.write(content);
-      } catch (error) {
-        error;
-      }
+      if (data === '[DONE]') return;
+
+      !res.closed && content && res.write(content);
     };
 
     try {
-      const decoder = new TextDecoder();
-      const parser = createParser(onParse);
       for await (const chunk of chatResponse.data as any) {
-        if (res.closed) {
-          break;
-        }
-        parser.feed(decoder.decode(chunk, { stream: true }));
+        if (res.closed) break;
+
+        const parse = parseStreamChunk(chunk);
+        parse.forEach((item) => clientRes(item.data));
       }
     } catch (error) {
       console.log('pipe error', error);

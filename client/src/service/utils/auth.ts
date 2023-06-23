@@ -163,7 +163,7 @@ export const authUser = async ({
 
 /* random get openai api key */
 export const getSystemOpenAiKey = () => {
-  return process.env.OPENAIKEY || '';
+  return process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
 };
 
 /* 获取 api 请求的 key */

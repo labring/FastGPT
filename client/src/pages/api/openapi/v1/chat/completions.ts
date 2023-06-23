@@ -14,9 +14,9 @@ import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/pages/api/chat/saveChat';
 import { sseResponse } from '@/service/utils/tools';
-import { getErrText } from '@/utils/tools';
 import { type ChatCompletionRequestMessage } from 'openai';
 import { Types } from 'mongoose';
+import { sensitiveCheck } from '../../text/sensitiveCheck';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -175,6 +175,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       2
     );
 
+    await sensitiveCheck({
+      input: `${prompt.value}`
+    });
+
     // start model api. responseText and totalTokens: valid only if stream = false
     const { streamResponse, responseMessages, responseText, totalTokens } =
       await modelServiceToolMap[model.chat.chatModel].chatCompletion({
@@ -231,8 +235,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             tokens: totalTokens
           };
         } catch (error) {
-          console.log('stream response error', error);
-          return {};
+          return Promise.reject(error);
         }
       } else {
         return {
@@ -301,7 +304,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   } catch (err: any) {
     res.status(500);
     if (step === 1) {
-      res.end(getErrText(err, 'Stream response error'));
+      sseResponse({
+        res,
+        event: sseResponseEventEnum.error,
+        data: JSON.stringify(err)
+      });
+      res.end();
     } else {
       jsonRes(res, {
         code: 500,

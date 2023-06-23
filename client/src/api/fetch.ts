@@ -1,6 +1,7 @@
 import { Props, ChatResponseType } from '@/pages/api/openapi/v1/chat/completions';
 import { sseResponseEventEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
+import { parseStreamChunk } from '@/utils/adapt';
 
 interface StreamFetchProps {
   data: Props;
@@ -32,7 +33,6 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
       }
 
       const reader = response.body?.getReader();
-      const decoder = new TextDecoder('utf-8');
 
       // response data
       let responseText = '';
@@ -53,21 +53,7 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
               return reject('响应过程出现异常~');
             }
           }
-          const chunk = decoder.decode(value);
-          const chunkLines = chunk.split('\n\n').filter((item) => item);
-          const chunkResponse = chunkLines.map((item) => {
-            const splitEvent = item.split('\n');
-            if (splitEvent.length === 2) {
-              return {
-                event: splitEvent[0].replace('event: ', ''),
-                data: splitEvent[1].replace('data: ', '')
-              };
-            }
-            return {
-              event: '',
-              data: splitEvent[0].replace('data: ', '')
-            };
-          });
+          const chunkResponse = parseStreamChunk(value);
 
           chunkResponse.forEach((item) => {
             // parse json data
@@ -87,6 +73,8 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
               const chatResponse = data as ChatResponseType;
               newChatId = chatResponse.newChatId;
               quoteLen = chatResponse.quoteLen || 0;
+            } else if (item.event === sseResponseEventEnum.error) {
+              return reject(getErrText(data, '流响应错误'));
             }
           });
           read();
