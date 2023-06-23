@@ -6,26 +6,24 @@ import { getOpenAIApi } from '@/service/utils/chat/openai';
 import { embeddingModel } from '@/constants/model';
 import { axiosConfig } from '@/service/utils/tools';
 import { pushGenerateVectorBill } from '@/service/events/pushBill';
-import { ApiKeyType } from '@/service/utils/auth';
 import { OpenAiChatEnum } from '@/constants/model';
 
 type Props = {
   input: string[];
-  type?: ApiKeyType;
 };
 type Response = number[][];
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { userId } = await authUser({ req });
-    let { input, type } = req.query as Props;
+    let { input } = req.query as Props;
 
     if (!Array.isArray(input)) {
       throw new Error('缺少参数');
     }
 
     jsonRes<Response>(res, {
-      data: await openaiEmbedding({ userId, input, type, mustPay: true })
+      data: await openaiEmbedding({ userId, input, mustPay: true })
     });
   } catch (err) {
     console.log(err);
@@ -39,14 +37,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 export async function openaiEmbedding({
   userId,
   input,
-  mustPay = false,
-  type = 'chat'
+  mustPay = false
 }: { userId: string; mustPay?: boolean } & Props) {
   const { userOpenAiKey, systemAuthKey } = await getApiKey({
     model: OpenAiChatEnum.GPT35,
     userId,
-    mustPay,
-    type
+    mustPay
   });
 
   // 获取 chatAPI

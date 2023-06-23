@@ -45,9 +45,6 @@ export const ModelFields = [
 ];
 
 export const SystemFields = [
-  createTextField('openAIKeys', { label: 'openAIKeys，逗号隔开' }),
-  createTextField('openAITrainingKeys', { label: 'openAITrainingKeys' }),
-  createTextField('gpt4Key', { label: 'gpt4Key' }),
   createTextField('vectorMaxProcess', { label: '向量最大进程' }),
   createTextField('qaMaxProcess', { label: 'qa最大进程' }),
   createTextField('pgIvfflatProbe', { label: 'pg 探针数量' }),

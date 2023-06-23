@@ -55,7 +55,6 @@ export async function generateQA(): Promise<any> {
     const { systemAuthKey } = await getApiKey({
       model: OpenAiChatEnum.GPT35,
       userId,
-      type: 'training',
       mustPay: true
     });
 

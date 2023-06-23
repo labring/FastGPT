@@ -23,9 +23,6 @@ declare global {
   var vectorQueueLen: number;
   var OpenAiEncMap: Record<string, Tiktoken>;
   var systemEnv: {
-    openAIKeys: string;
-    openAITrainingKeys: string;
-    gpt4Key: string;
     vectorMaxProcess: number;
     qaMaxProcess: number;
     pgIvfflatProbe: number;

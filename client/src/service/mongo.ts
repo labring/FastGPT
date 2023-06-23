@@ -15,9 +15,6 @@ export async function connectToDatabase(): Promise<void> {
   global.qaQueueLen = 0;
   global.vectorQueueLen = 0;
   global.systemEnv = {
-    openAIKeys: process.env.OPENAIKEY || '',
-    openAITrainingKeys: process.env.OPENAI_TRAINING_KEY || '',
-    gpt4Key: process.env.GPT4KEY || '',
     vectorMaxProcess: 10,
     qaMaxProcess: 10,
     pgIvfflatProbe: 10,
