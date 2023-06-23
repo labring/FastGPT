@@ -12,6 +12,8 @@ https://cloud.sealos.io/
 
 ## 4. 填写对应参数
 
+镜像：ghcr.io/songquanpeng/one-api:latest
+
 ![step2](./sealosImg/step2.png)
 打开外网访问开关后，Sealos 会自动分配一个可访问的地址，不需要自己配置。
 
