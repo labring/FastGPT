@@ -61,7 +61,7 @@ export async function openaiEmbedding({
       }
     )
     .then((res) => ({
-      tokenLen: res.data.usage.total_tokens || 0,
+      tokenLen: res.data?.usage?.total_tokens || 0,
       vectors: res.data.data.map((item) => item.embedding)
     }));
 
