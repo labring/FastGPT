@@ -96,8 +96,7 @@ export async function appKbSearch({
   // get vector
   const promptVector = await openaiEmbedding({
     userId,
-    input: [prompt.value],
-    type: 'chat'
+    input: [prompt.value]
   });
 
   // search kb

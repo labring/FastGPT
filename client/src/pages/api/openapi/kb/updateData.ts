@@ -21,8 +21,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       if (q) {
         return openaiEmbedding({
           userId,
-          input: [q],
-          type: 'chat'
+          input: [q]
         });
       }
       return [];

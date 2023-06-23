@@ -11,7 +11,6 @@ import { ERROR_ENUM } from '../errorCode';
 import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
 import { hashPassword } from '@/service/utils/tools';
 
-export type ApiKeyType = 'training' | 'chat';
 export type AuthType = 'token' | 'root' | 'apikey';
 
 export const parseCookie = (cookie?: string): Promise<string> => {
@@ -163,37 +162,19 @@ export const authUser = async ({
 };
 
 /* random get openai api key */
-export const getSystemOpenAiKey = (type: ApiKeyType) => {
-  const keys = (() => {
-    if (type === 'training') {
-      return global.systemEnv.openAITrainingKeys?.split(',') || [];
-    }
-    return global.systemEnv.openAIKeys?.split(',') || [];
-  })();
-
-  // 纯字符串类型
-  const i = Math.floor(Math.random() * keys.length);
-  return keys[i] || (global.systemEnv.openAIKeys as string);
-};
-export const getGpt4Key = () => {
-  const keys = global.systemEnv.gpt4Key?.split(',') || [];
-
-  // 纯字符串类型
-  const i = Math.floor(Math.random() * keys.length);
-  return keys[i] || (global.systemEnv.openAIKeys as string);
+export const getSystemOpenAiKey = () => {
+  return process.env.OPENAIKEY || '';
 };
 
 /* 获取 api 请求的 key */
 export const getApiKey = async ({
   model,
   userId,
-  mustPay = false,
-  type = 'chat'
+  mustPay = false
 }: {
   model: ChatModelType;
   userId: string;
   mustPay?: boolean;
-  type?: ApiKeyType;
 }) => {
   const user = await User.findById(userId);
   if (!user) {
@@ -203,19 +184,19 @@ export const getApiKey = async ({
   const keyMap = {
     [OpenAiChatEnum.GPT35]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey(type) as string
+      systemAuthKey: getSystemOpenAiKey()
     },
     [OpenAiChatEnum.GPT3516k]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey(type) as string
+      systemAuthKey: getSystemOpenAiKey()
     },
     [OpenAiChatEnum.GPT4]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getGpt4Key() as string
+      systemAuthKey: getSystemOpenAiKey()
     },
     [OpenAiChatEnum.GPT432k]: {
       userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getGpt4Key() as string
+      systemAuthKey: getSystemOpenAiKey()
     }
   };
 

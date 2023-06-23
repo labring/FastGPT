@@ -26,7 +26,8 @@ MONGODB_NAME=fastgpt
 ADMIN_USER=username
 ADMIN_PASS=password
 ADMIN_SECRET=any
-VITE_PUBLIC_SERVER_URL=http://localhost:3001 # 和server.js一致
+PARENT_URL=http://localhost:3000
+PARENT_ROOT_KEY=rootkey
 ```
 
 ## sealos 部署

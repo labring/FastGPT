@@ -86,18 +86,6 @@ const modelSchema = new mongoose.Schema({
 });
 
 const SystemSchema = new mongoose.Schema({
-  openAIKeys: {
-    type: String,
-    default: ''
-  },
-  openAITrainingKeys: {
-    type: String,
-    default: ''
-  },
-  gpt4Key: {
-    type: String,
-    default: ''
-  },
   vectorMaxProcess: {
     type: Number,
     default: 10

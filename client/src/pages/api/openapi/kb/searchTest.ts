@@ -29,8 +29,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const vector = await openaiEmbedding({
       userId,
-      input: [text],
-      type: 'training'
+      input: [text]
     });
 
     const response: any = await PgClient.query(

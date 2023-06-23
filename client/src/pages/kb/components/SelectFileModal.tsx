@@ -256,7 +256,7 @@ const SelectFileModal = ({
             )}
             {/* chunk size */}
             {mode === TrainingModeEnum.index && (
-              <Flex w={'100%'} px={5} alignItems={'center'} mt={4}>
+              <Flex mt={5}>
                 <Box w={['70px']} flexShrink={0}>
                   段落长度
                 </Box>

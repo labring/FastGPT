@@ -33,7 +33,7 @@ export async function sensitiveCheck({ input }: Props) {
   }
 
   const response = await axios({
-    ...axiosConfig(getSystemOpenAiKey('chat')),
+    ...axiosConfig(getSystemOpenAiKey()),
     method: 'POST',
     url: `/moderations`,
     data: {

@@ -58,7 +58,6 @@ export async function generateVector(): Promise<any> {
     const vectors = await openaiEmbedding({
       input: dataItems.map((item) => item.q),
       userId,
-      type: 'training',
       mustPay: true
     });
 
