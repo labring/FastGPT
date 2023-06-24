@@ -65,10 +65,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const modelConstantsData = ChatModelMap[model.chat.chatModel];
     const prompt = prompts[prompts.length - 1];
 
-    const { userSystemPrompt = [], quotePrompt = [] } = await (async () => {
+    const {
+      userSystemPrompt = [],
+      userLimitPrompt = [],
+      quotePrompt = []
+    } = await (async () => {
       // 使用了知识库搜索
       if (model.chat.relatedKbs?.length > 0) {
-        const { userSystemPrompt, quotePrompt } = await appKbSearch({
+        const { quotePrompt, userSystemPrompt, userLimitPrompt } = await appKbSearch({
           model,
           userId,
           fixedQuote: [],
@@ -78,21 +82,29 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         });
 
         return {
-          userSystemPrompt: userSystemPrompt ? [userSystemPrompt] : [],
+          userSystemPrompt,
+          userLimitPrompt,
           quotePrompt: [quotePrompt]
         };
       }
-      if (model.chat.systemPrompt) {
-        return {
-          userSystemPrompt: [
-            {
-              obj: ChatRoleEnum.System,
-              value: model.chat.systemPrompt
-            }
-          ]
-        };
-      }
-      return {};
+      return {
+        userSystemPrompt: model.chat.systemPrompt
+          ? [
+              {
+                obj: ChatRoleEnum.System,
+                value: model.chat.systemPrompt
+              }
+            ]
+          : [],
+        userLimitPrompt: model.chat.limitPrompt
+          ? [
+              {
+                obj: ChatRoleEnum.Human,
+                value: model.chat.limitPrompt
+              }
+            ]
+          : []
+      };
     })();
 
     // search result is empty
@@ -102,7 +114,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 读取对话内容
-    const completePrompts = [...quotePrompt, ...prompts.slice(0, -1), ...userSystemPrompt, prompt];
+    const completePrompts = [
+      ...quotePrompt,
+      ...userSystemPrompt,
+      ...prompts.slice(0, -1),
+      ...userLimitPrompt,
+      prompt
+    ];
 
     // 计算温度
     const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
