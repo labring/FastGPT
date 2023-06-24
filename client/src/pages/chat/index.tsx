@@ -174,7 +174,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       const messages = adaptChatItem_openAI({ messages: prompts, reserveId: true });
 
       // 流请求，获取数据
-      const { newChatId, quoteLen } = await streamFetch({
+      const { newChatId, quoteLen, errMsg } = await streamFetch({
         data: {
           messages,
           chatId,
@@ -219,7 +219,9 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             ...item,
             status: 'finish',
             quoteLen,
-            systemPrompt: `${chatData.systemPrompt}\n\n${chatData.limitPrompt}`
+            systemPrompt: `${chatData.systemPrompt}${`${
+              chatData.limitPrompt ? `\n\n${chatData.limitPrompt}` : ''
+            }`}`
           };
         })
       }));
@@ -230,6 +232,13 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
         loadHistory({ pageNum: 1, init: true });
         loadMyModels(true);
       }, 100);
+
+      if (errMsg) {
+        toast({
+          status: 'warning',
+          title: errMsg
+        });
+      }
     },
     [
       chatId,
@@ -241,7 +250,8 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
       chatData.systemPrompt,
       chatData.limitPrompt,
       loadHistory,
-      loadMyModels
+      loadMyModels,
+      toast
     ]
   );
 

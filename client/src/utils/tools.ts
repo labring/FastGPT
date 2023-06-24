@@ -116,7 +116,7 @@ export const voiceBroadcast = ({ text }: { text: string }) => {
 };
 
 export const getErrText = (err: any, def = '') => {
-  const msg = typeof err === 'string' ? err : err?.message || def || '';
+  const msg: string = typeof err === 'string' ? err : err?.message || def || '';
   msg && console.log('error =>', msg);
   return msg;
 };
