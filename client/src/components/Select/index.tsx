@@ -26,7 +26,7 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
 
   return (
     <Menu autoSelect={false} onOpen={onOpen} onClose={onClose}>
-      <MenuButton as={'span'}>
+      <MenuButton style={{ width: '100%' }} as={'span'}>
         <Button
           width={width}
           px={3}

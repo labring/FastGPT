@@ -1,5 +1,15 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { Box, Flex, Button, FormControl, Input, Textarea, Divider } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Button,
+  FormControl,
+  Input,
+  Textarea,
+  Divider,
+  Tooltip
+} from '@chakra-ui/react';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
@@ -19,6 +29,11 @@ import type { ModelSchema } from '@/types/mongoSchema';
 import Avatar from '@/components/Avatar';
 import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
+
+const systemPromptTip =
+  '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。';
+const limitPromptTip =
+  '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"';
 
 const Settings = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
@@ -60,7 +75,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
     }
 
     return max;
-  }, [getValues, setValue, refresh]);
+  }, [getValues, setValue]);
 
   // 提交保存模型修改
   const saveSubmitSuccess = useCallback(
@@ -211,7 +226,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
           介绍
         </Box>
         <Textarea
-          rows={5}
+          rows={4}
           maxLength={500}
           placeholder={'给你的 AI 应用一个介绍'}
           {...register('intro')}
@@ -225,26 +240,20 @@ const Settings = ({ modelId }: { modelId: string }) => {
           对话模型
         </Box>
         <MySelect
-          width={['200px', '240px']}
+          width={['100%', '280px']}
           value={getValues('chat.chatModel')}
           list={chatModelList.map((item) => ({
             id: item.chatModel,
-            label: item.name
+            label: `${item.name} (${formatPrice(
+              ChatModelMap[getValues('chat.chatModel')]?.price,
+              1000
+            )} 元/1k tokens)`
           }))}
           onchange={(val: any) => {
             setValue('chat.chatModel', val);
             setRefresh(!refresh);
           }}
         />
-      </Flex>
-      <Flex alignItems={'center'} mt={5}>
-        <Box w={['60px', '100px', '140px']} flexShrink={0}>
-          价格
-        </Box>
-        <Box fontSize={['sm', 'md']}>
-          {formatPrice(ChatModelMap[getValues('chat.chatModel')]?.price, 1000)}
-          元/1K tokens(包括上下文和回答)
-        </Box>
       </Flex>
       <Flex alignItems={'center'} my={10}>
         <Box w={['60px', '100px', '140px']} flexShrink={0}>
@@ -269,7 +278,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
       </Flex>
       <Flex alignItems={'center'} mt={12} mb={10}>
         <Box w={['60px', '100px', '140px']} flexShrink={0}>
-          最大长度
+          回复上限
         </Box>
         <Box flex={1} ml={'10px'}>
           <MySlider
@@ -292,13 +301,27 @@ const Settings = ({ modelId }: { modelId: string }) => {
       <Flex mt={10} alignItems={'flex-start'}>
         <Box w={['60px', '100px', '140px']} flexShrink={0}>
           提示词
+          <Tooltip label={systemPromptTip}>
+            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+          </Tooltip>
         </Box>
         <Textarea
           rows={8}
-          placeholder={
-            '模型默认的 prompt 词，通过调整该内容，可以引导模型聊天方向。\n\n如果使用了知识库搜索，没有填写该内容时，系统会自动补充提示词；如果填写了内容，则以填写的内容为准。'
-          }
+          placeholder={systemPromptTip}
           {...register('chat.systemPrompt')}
+        ></Textarea>
+      </Flex>
+      <Flex mt={5} alignItems={'flex-start'}>
+        <Box w={['60px', '100px', '140px']} flexShrink={0}>
+          限定词
+          <Tooltip label={limitPromptTip}>
+            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+          </Tooltip>
+        </Box>
+        <Textarea
+          rows={5}
+          placeholder={limitPromptTip}
+          {...register('chat.limitPrompt')}
         ></Textarea>
       </Flex>
 
