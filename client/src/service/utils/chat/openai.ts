@@ -49,8 +49,8 @@ export const chatResponse = async ({
       messages: adaptMessages,
       frequency_penalty: 0.5, // 越大，重复内容越少
       presence_penalty: -0.5, // 越大，越容易出现新内容
-      stream,
-      stop: ['.!?。']
+      stream
+      // stop: ['.!?。']
     },
     {
       timeout: stream ? 60000 : 480000,
