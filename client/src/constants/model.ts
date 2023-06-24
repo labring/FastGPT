@@ -82,6 +82,7 @@ export const defaultModel: ModelSchema = {
     searchLimit: 5,
     searchEmptyText: '',
     systemPrompt: '',
+    limitPrompt: '',
     temperature: 0,
     maxToken: 4000,
     chatModel: OpenAiChatEnum.GPT35

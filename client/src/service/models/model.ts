@@ -43,7 +43,10 @@ const ModelSchema = new Schema({
       default: ''
     },
     systemPrompt: {
-      // 系统提示词
+      type: String,
+      default: ''
+    },
+    limitPrompt: {
       type: String,
       default: ''
     },

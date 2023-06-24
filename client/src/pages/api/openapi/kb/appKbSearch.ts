@@ -28,7 +28,11 @@ type Response = {
   userSystemPrompt: {
     obj: ChatRoleEnum;
     value: string;
-  };
+  }[];
+  userLimitPrompt: {
+    obj: ChatRoleEnum;
+    value: string;
+  }[];
   quotePrompt: {
     obj: ChatRoleEnum;
     value: string;
@@ -130,17 +134,24 @@ export async function appKbSearch({
 
   // 计算固定提示词的 token 数量
   const userSystemPrompt = model.chat.systemPrompt // user system prompt
-    ? {
-        obj: ChatRoleEnum.Human,
-        value: model.chat.systemPrompt
-      }
-    : {
-        obj: ChatRoleEnum.Human,
-        value: `知识库是关于 ${model.name} 的内容，参考知识库回答问题。与 "${model.name}" 无关内容，直接回复: "我不知道"。`
-      };
+    ? [
+        {
+          obj: ChatRoleEnum.System,
+          value: model.chat.systemPrompt
+        }
+      ]
+    : [];
+  const userLimitPrompt = [
+    {
+      obj: ChatRoleEnum.Human,
+      value: model.chat.limitPrompt
+        ? model.chat.limitPrompt
+        : `知识库是关于 ${model.name} 的内容，参考知识库回答问题。与 "${model.name}" 无关内容，直接回复: "我不知道"。`
+    }
+  ];
 
   const fixedSystemTokens = modelToolMap[model.chat.chatModel].countTokens({
-    messages: [userSystemPrompt]
+    messages: [...userSystemPrompt, ...userLimitPrompt]
   });
 
   // filter part quote by maxToken
@@ -164,6 +175,7 @@ export async function appKbSearch({
   return {
     rawSearch,
     userSystemPrompt,
+    userLimitPrompt,
     quotePrompt: {
       obj: ChatRoleEnum.System,
       value: quoteText

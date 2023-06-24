@@ -101,6 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         chatModel: model.chat.chatModel,
         systemPrompt: isOwner ? model.chat.systemPrompt : '',
+        limitPrompt: isOwner ? model.chat.limitPrompt : '',
         history
       }
     });

@@ -219,7 +219,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
             ...item,
             status: 'finish',
             quoteLen,
-            systemPrompt: chatData.systemPrompt
+            systemPrompt: `${chatData.systemPrompt}\n\n${chatData.limitPrompt}`
           };
         })
       }));
@@ -234,13 +234,14 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
     [
       chatId,
       modelId,
-      chatData.systemPrompt,
       setChatData,
-      loadHistory,
-      loadMyModels,
       generatingMessage,
       setForbidLoadChatData,
-      router
+      router,
+      chatData.systemPrompt,
+      chatData.limitPrompt,
+      loadHistory,
+      loadMyModels
     ]
   );
 
@@ -749,7 +750,7 @@ const Chat = ({ modelId, chatId }: { modelId: string; chatId: string }) => {
                                 px={[2, 4]}
                                 onClick={() => setShowSystemPrompt(item.systemPrompt || '')}
                               >
-                                提示词
+                                提示词 & 限定词
                               </Button>
                             )}
                             {!!item.quoteLen && (

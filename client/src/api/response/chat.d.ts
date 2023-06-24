@@ -5,6 +5,7 @@ export interface InitChatResponse {
   chatId: string;
   modelId: string;
   systemPrompt?: string;
+  limitPrompt?: string;
   model: {
     name: string;
     avatar: string;
