@@ -238,6 +238,7 @@ export const V2_StreamResponse = async ({
   }
 
   if (error) {
+    console.log(error);
     return Promise.reject(error);
   }
 
