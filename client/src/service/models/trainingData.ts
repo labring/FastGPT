@@ -15,6 +15,10 @@ const TrainingDataSchema = new Schema({
     ref: 'kb',
     required: true
   },
+  expireAt: {
+    type: Date,
+    default: () => new Date()
+  },
   lockTime: {
     type: Date,
     default: () => new Date('2000/1/1')
@@ -43,6 +47,14 @@ const TrainingDataSchema = new Schema({
     default: ''
   }
 });
+
+try {
+  TrainingDataSchema.index({ lockTime: 1 });
+  TrainingDataSchema.index({ userId: 1 });
+  TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 });
+} catch (error) {
+  console.log(error);
+}
 
 export const TrainingData: MongoModel<TrainingDateType> =
   models['trainingData'] || model('trainingData', TrainingDataSchema);

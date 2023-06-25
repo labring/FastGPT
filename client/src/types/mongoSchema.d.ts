@@ -70,6 +70,7 @@ export interface TrainingDataSchema {
   _id: string;
   userId: string;
   kbId: string;
+  expireAt: Date;
   lockTime: Date;
   mode: `${TrainingModeEnum}`;
   prompt: string;

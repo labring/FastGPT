@@ -60,10 +60,6 @@ function App({ Component, pageProps }: AppProps) {
             src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleVerKey}`}
             strategy="afterInteractive"
           ></Script>
-          <Script
-            src={`https://www.google.com/recaptcha/api.js?render=${googleVerKey}`}
-            strategy="afterInteractive"
-          ></Script>
         </>
       )}
       <QueryClientProvider client={queryClient}>

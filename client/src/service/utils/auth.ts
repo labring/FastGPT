@@ -176,7 +176,7 @@ export const getApiKey = async ({
   userId: string;
   mustPay?: boolean;
 }) => {
-  const user = await User.findById(userId);
+  const user = await User.findById(userId, 'openaiKey balance');
   if (!user) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
@@ -207,7 +207,6 @@ export const getApiKey = async ({
   // 有自己的key
   if (!mustPay && keyMap[model].userOpenAiKey) {
     return {
-      user,
       userOpenAiKey: keyMap[model].userOpenAiKey,
       systemAuthKey: ''
     };
@@ -219,7 +218,6 @@ export const getApiKey = async ({
   }
 
   return {
-    user,
     userOpenAiKey: '',
     systemAuthKey: keyMap[model].systemAuthKey
   };
