@@ -75,7 +75,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
     }
 
     return max;
-  }, [getValues, setValue]);
+  }, [getValues, setValue, refresh]);
 
   // 提交保存模型修改
   const saveSubmitSuccess = useCallback(
@@ -240,12 +240,12 @@ const Settings = ({ modelId }: { modelId: string }) => {
           对话模型
         </Box>
         <MySelect
-          width={['100%', '280px']}
+          width={['90%', '280px']}
           value={getValues('chat.chatModel')}
           list={chatModelList.map((item) => ({
             id: item.chatModel,
             label: `${item.name} (${formatPrice(
-              ChatModelMap[getValues('chat.chatModel')]?.price,
+              ChatModelMap[item.chatModel]?.price,
               1000
             )} 元/1k tokens)`
           }))}
@@ -265,7 +265,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
               { label: '严谨', value: 0 },
               { label: '发散', value: 10 }
             ]}
-            width={['100%', '260px']}
+            width={['90%', '260px']}
             min={0}
             max={10}
             activeVal={getValues('chat.temperature')}
@@ -286,7 +286,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
               { label: '100', value: 100 },
               { label: `${tokenLimit}`, value: tokenLimit }
             ]}
-            width={['100%', '260px']}
+            width={['90%', '260px']}
             min={100}
             max={tokenLimit}
             step={50}
