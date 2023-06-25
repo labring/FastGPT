@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Menu, MenuButton, MenuList, MenuItem, Button, useDisclosure } from '@chakra-ui/react';
 import type { ButtonProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
@@ -13,6 +13,7 @@ interface Props extends ButtonProps {
 }
 
 const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props }: Props) => {
+  const ref = useRef<HTMLDivElement>(null);
   const menuItemStyles = {
     borderRadius: 'sm',
     py: 2,
@@ -26,8 +27,9 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
 
   return (
     <Menu autoSelect={false} onOpen={onOpen} onClose={onClose}>
-      <MenuButton style={{ width: '100%' }} as={'span'}>
+      <MenuButton style={{ width: '100%', position: 'relative' }} as={'span'}>
         <Button
+          ref={ref}
           width={width}
           px={3}
           variant={'base'}
@@ -47,9 +49,15 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
         </Button>
       </MenuButton>
       <MenuList
-        minW={
-          Array.isArray(width) ? width.map((item) => `${item} !important`) : `${width} !important`
-        }
+        minW={(() => {
+          const w = ref.current?.clientWidth;
+          if (w) {
+            return `${w}px !important`;
+          }
+          return Array.isArray(width)
+            ? width.map((item) => `${item} !important`)
+            : `${width} !important`;
+        })()}
         p={'6px'}
         border={'1px solid #fff'}
         boxShadow={'0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'}
@@ -78,4 +86,4 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
   );
 };
 
-export default MySelect;
+export default React.memo(MySelect);
