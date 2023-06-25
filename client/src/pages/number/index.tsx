@@ -54,7 +54,6 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
     { label: '佣金', id: TableEnum.promotion, Component: <PromotionTable /> },
     { label: '通知', id: TableEnum.inform, Component: <InformTable /> }
   ]);
-  const [currentTab, setCurrentTab] = useState(tableType);
 
   const router = useRouter();
   const { copyData } = useCopyData();
@@ -84,7 +83,14 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
     async (data: UserUpdateParams) => {
       setLoading(true);
       try {
-        data.openaiKey && (await authOpenAiKey(data.openaiKey));
+        if (data.openaiKey) {
+          const text = await authOpenAiKey(data.openaiKey);
+          text &&
+            toast({
+              title: text,
+              status: 'warning'
+            });
+        }
         await putUserInfo({
           openaiKey: data.openaiKey,
           avatar: data.avatar
@@ -95,7 +101,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
         });
         reset(data);
         toast({
-          title: '更新成功',
+          title: '更新数据成功',
           status: 'success'
         });
       } catch (error) {
@@ -195,7 +201,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
             <Box flex={'0 0 85px'}>openaiKey:</Box>
             <Input
               {...register(`openaiKey`)}
-              maxW={'300px'}
+              maxW={'350px'}
               placeholder={'openai账号。回车或失去焦点保存'}
               size={'sm'}
               onBlur={handleSubmit(onclickSave)}
@@ -251,13 +257,13 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
           m={'auto'}
           w={'200px'}
           list={tableList.current}
-          activeId={currentTab}
+          activeId={tableType}
           size={'sm'}
-          onChange={(id: any) => setCurrentTab(id)}
+          onChange={(id: any) => router.replace(`/number?type=${id}`)}
         />
         <Box minH={'300px'}>
           {(() => {
-            const item = tableList.current.find((item) => item.id === currentTab);
+            const item = tableList.current.find((item) => item.id === tableType);
 
             return item ? item.Component : null;
           })()}

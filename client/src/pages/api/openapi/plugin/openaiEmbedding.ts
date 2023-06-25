@@ -39,7 +39,12 @@ export async function openaiEmbedding({
   input,
   mustPay = false
 }: { userId: string; mustPay?: boolean } & Props) {
-  const apiKey = getSystemOpenAiKey();
+  const { userOpenAiKey, systemAuthKey } = await getApiKey({
+    model: 'gpt-3.5-turbo',
+    userId,
+    mustPay
+  });
+  const apiKey = userOpenAiKey || systemAuthKey;
 
   // 获取 chatAPI
   const chatAPI = getOpenAIApi(apiKey);
@@ -68,7 +73,7 @@ export async function openaiEmbedding({
     });
 
   pushGenerateVectorBill({
-    isPay: mustPay,
+    isPay: !userOpenAiKey,
     userId,
     text: input.join(''),
     tokenLen: result.tokenLen
