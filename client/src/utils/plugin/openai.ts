@@ -111,16 +111,11 @@ export const authOpenAiKey = async (key: string) => {
     })
     .then((res) => {
       if (!res.data.access_until) {
-        return Promise.reject('OpenAI Key 无效，请重试或更换 key');
-      }
-      const keyExpiredTime = dayjs(res.data.access_until * 1000);
-      const currentTime = dayjs();
-      if (keyExpiredTime.isBefore(currentTime)) {
-        return Promise.reject('OpenAI Key 已过期');
+        return Promise.resolve('OpenAI Key 可能无效');
       }
     })
     .catch((err) => {
       console.log(err);
-      return Promise.reject(err?.response?.data?.error || 'OpenAI 账号无效，请重试或更换 key');
+      return Promise.reject(err?.response?.data?.error?.message || 'OpenAI Key 可能无效');
     });
 };
