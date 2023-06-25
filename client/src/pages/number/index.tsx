@@ -23,21 +23,21 @@ import Tabs from '@/components/Tabs';
 import BillTable from './components/BillTable';
 
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'), {
-  ssr: true
+  ssr: false
 });
 const PromotionTable = dynamic(() => import('./components/PromotionTable'), {
-  ssr: true
+  ssr: false
 });
 const InformTable = dynamic(() => import('./components/InformTable'), {
-  ssr: true
+  ssr: false
 });
 const PayModal = dynamic(() => import('./components/PayModal'), {
   loading: () => <Loading fixed={false} />,
-  ssr: true
+  ssr: false
 });
 const WxConcat = dynamic(() => import('@/components/WxConcat'), {
   loading: () => <Loading fixed={false} />,
-  ssr: true
+  ssr: false
 });
 
 enum TableEnum {
