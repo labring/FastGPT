@@ -79,8 +79,8 @@ services:
       - PG_PASSWORD=1234
       - PG_DB_NAME=fastgpt
       # oneapi 配置 推荐使用 one-api 管理key
-      - ONEAPI_URL=https://kfcwurtbijvh.cloud.sealos.io/v1
-      - ONEAPI_KEY=sk-itJ9v8qthRiFDzfs62Ea21Aa9b004c8791937dCf4cC568Ff
+      - ONEAPI_URL=https://xxxxx.cloud.sealos.io/v1
+      - ONEAPI_KEY=sk-xxxxxx
       # openai 相关配置：使用了 oneapi 后，下面只需要填下 OPENAI_BASE_URL （国外可全忽略）
       - OPENAIKEY=sk-xxxxx
       - OPENAI_BASE_URL=https://api.openai.com/v1
@@ -204,8 +204,8 @@ networks:
 #       - PG_PASSWORD=1234
 #       - PG_DB_NAME=fastgpt
 #       # oneapi 配置 推荐使用 one-api 管理key
-#       - ONEAPI_URL=https://kfcwurtbijvh.cloud.sealos.io/v1
-#       - ONEAPI_KEY=sk-itJ9v8qthRiFDzfs62Ea21Aa9b004c8791937dCf4cC568Ff
+#       - ONEAPI_URL=https://xxxxx.cloud.sealos.io/v1
+#       - ONEAPI_KEY=sk-xxxxx
 #       # openai 相关配置：使用了 oneapi 后，下面只需要填下 OPENAI_BASE_URL （国外可全忽略）
 #       - OPENAIKEY=sk-xxxxx
 #       - OPENAI_BASE_URL=https://api.openai.com/v1
