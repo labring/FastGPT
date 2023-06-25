@@ -116,7 +116,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
 | 知识库 - 索引 | 0.001 |
 | chatgpt - 对话 | 0.015 |
 | chatgpt16K - 对话 | 0.015 |
-| gpt4 - 对话 | 0.1 |
+| gpt4 - 对话 | 0.45 |
 | 文件拆分 | 0.015 |`}
                 />
               </>
