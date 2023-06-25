@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 
 const APIKeyModal = dynamic(() => import('@/components/APIKeyModal'), {
-  ssr: true
+  ssr: false
 });
 
 const API = ({ modelId }: { modelId: string }) => {

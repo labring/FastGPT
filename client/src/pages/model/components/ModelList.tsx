@@ -12,10 +12,10 @@ import { MyModelsTypeEnum } from '@/constants/user';
 import dynamic from 'next/dynamic';
 
 const Avatar = dynamic(() => import('@/components/Avatar'), {
-  ssr: true
+  ssr: false
 });
 const Tabs = dynamic(() => import('@/components/Tabs'), {
-  ssr: true
+  ssr: false
 });
 
 const ModelList = ({ modelId }: { modelId: string }) => {

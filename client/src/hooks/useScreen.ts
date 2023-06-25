@@ -8,7 +8,7 @@ interface Props {
 export function useScreen(data?: Props) {
   const { defaultIsPc = false } = data || {};
   const [isPc] = useMediaQuery('(min-width: 900px)', {
-    ssr: true,
+    ssr: false,
     fallback: defaultIsPc
   });
 
