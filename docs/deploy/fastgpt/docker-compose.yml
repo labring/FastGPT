@@ -17,8 +17,8 @@ services:
       - POSTGRES_DB=fastgpt
     volumes:
       # 刚创建的文件
-      - /root/fastgpt/pg/init.sql:/docker-entrypoint-initdb.d/init.sh
-      - /root/fastgpt/pg/data:/var/lib/postgresql/data
+      - ./pg/init.sql:/docker-entrypoint-initdb.d/init.sh
+      - ./pg/data:/var/lib/postgresql/data
   mongo:
     # image: mongo:5.0.18
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
@@ -33,8 +33,8 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=username
       - MONGO_INITDB_ROOT_PASSWORD=password
     volumes:
-      - /root/fastgpt/mongo/data:/data/db
-      - /root/fastgpt/mongo/logs:/var/log/mongodb
+      - ./mongo/data:/data/db
+      - ./mongo/logs:/var/log/mongodb
   fastgpt:
     container_name: fastgpt
     # image: c121914yu/fast-gpt:latest # docker hub
@@ -104,8 +104,8 @@ services:
       - ADMIN_SECRET=any
       - PARENT_URL=http://fastgpt:3000
       - PARENT_ROOT_KEY=root_key
-  key-admin:
-    container_name: key-admin
+  keyadmin:
+    container_name: keyadmin
     image: justsong/one-api
     restart: always
     ports:
@@ -113,7 +113,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - /home/ubuntu/data/one-api:/data
+      - /keyadmin:/data
   nginx: # 宝塔不需要额外装 nginx
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/nginx:alpine3.17
     # image: nginx:alpine3.17
@@ -122,11 +122,11 @@ services:
     network_mode: host
     volumes:
       # 刚创建的文件
-      - /root/fastgpt/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /root/fastgpt/nginx/logs:/var/log/nginx
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/logs:/var/log/nginx
       # https证书，没有的话不填，对应的nginx.conf也要修改
-      - /root/fastgpt/nginx/ssl/docgpt.key:/ssl/docgpt.key
-      - /root/fastgpt/nginx/ssl/docgpt.pem:/ssl/docgpt.pem
+      - ./nginx/ssl/docgpt.key:/ssl/docgpt.key
+      - ./nginx/ssl/docgpt.pem:/ssl/docgpt.pem
 networks:
   fastgpt:
 # host 版本, 不推荐，推荐直接用上面的，用个 BASE_URL 中转
@@ -148,8 +148,8 @@ networks:
 #       - POSTGRES_DB=fastgpt
 #     volumes:
 #       # 刚创建的文件
-#       - /root/fastgpt/pg/init.sql:/docker-entrypoint-initdb.d/init.sh
-#       - /root/fastgpt/pg/data:/var/lib/postgresql/data
+#       - ./pg/init.sql:/docker-entrypoint-initdb.d/init.sh
+#       - ./pg/data:/var/lib/postgresql/data
 #   mongo:
 #     # image: mongo:5.0.18
 #     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
@@ -164,8 +164,8 @@ networks:
 #       - MONGO_INITDB_ROOT_USERNAME=username
 #       - MONGO_INITDB_ROOT_PASSWORD=password
 #     volumes:
-#       - /root/fastgpt/mongo/data:/data/db
-#       - /root/fastgpt/mongo/logs:/var/log/mongodb
+#       - ./mongo/data:/data/db
+#       - ./mongo/logs:/var/log/mongodb
 #   fastgpt:
 #     # image: ghcr.io/c121914yu/fastgpt:latest # github
 #     # image: c121914yu/fast-gpt:latest # docker hub
@@ -247,10 +247,10 @@ networks:
 #     network_mode: host
 #     volumes:
 #       # 刚创建的文件
-#       - /root/fastgpt/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-#       - /root/fastgpt/nginx/logs:/var/log/nginx
+#       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+#       - ./nginx/logs:/var/log/nginx
 #       # https证书，没有的话不填，对应的nginx.conf也要修改
-#       - /root/fastgpt/nginx/ssl/docgpt.key:/ssl/docgpt.key
-#       - /root/fastgpt/nginx/ssl/docgpt.pem:/ssl/docgpt.pem
+#       - ./nginx/ssl/docgpt.key:/ssl/docgpt.key
+#       - ./nginx/ssl/docgpt.pem:/ssl/docgpt.pem
 # networks:
 #   fastgpt:
