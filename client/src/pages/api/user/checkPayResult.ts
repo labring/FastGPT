@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, User, Pay, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { PaySchema, UserModelSchema } from '@/types/mongoSchema';
+import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { getPayResult } from '@/service/utils/wxpay';
 import { pushPromotionRecord } from '@/service/utils/promotion';
