@@ -7,8 +7,9 @@ import SideBar from '@/components/SideBar';
 import KbList from './components/KbList';
 import KbDetail from './components/Detail';
 
-const Kb = ({ kbId }: { kbId: string }) => {
+const Kb = () => {
   const router = useRouter();
+  const { kbId = '' } = router.query as { kbId: string };
   const { isPc } = useGlobalStore();
   const { lastKbId } = useUserStore();
 
@@ -35,9 +36,3 @@ const Kb = ({ kbId }: { kbId: string }) => {
 };
 
 export default Kb;
-
-Kb.getInitialProps = ({ query, req }: any) => {
-  return {
-    kbId: query?.kbId || ''
-  };
-};

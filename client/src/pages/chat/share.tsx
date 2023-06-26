@@ -60,8 +60,9 @@ import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 
 const textareaMinH = '22px';
 
-const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) => {
+const Chat = () => {
   const router = useRouter();
+  const { shareId = '', historyId = '' } = router.query as { shareId: string; historyId: string };
   const theme = useTheme();
 
   const ChatBox = useRef<HTMLDivElement>(null);
@@ -835,13 +836,6 @@ const Chat = ({ shareId, historyId }: { shareId: string; historyId: string }) =>
       }
     </Flex>
   );
-};
-
-Chat.getInitialProps = ({ query, req }: any) => {
-  return {
-    shareId: query?.shareId || '',
-    historyId: query?.historyId || ''
-  };
 };
 
 export default Chat;
