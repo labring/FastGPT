@@ -140,8 +140,10 @@ const Home = () => {
 
   useEffect(() => {
     (async () => {
-      const { data: git } = await axios.get('https://api.github.com/repos/c121914yu/FastGPT');
-      setStar(git.stargazers_count);
+      try {
+        const { data: git } = await axios.get('https://api.github.com/repos/c121914yu/FastGPT');
+        setStar(git.stargazers_count);
+      } catch (error) {}
     })();
   }, []);
 

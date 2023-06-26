@@ -13,8 +13,9 @@ const ModelDetail = dynamic(() => import('./components/detail/index'), {
   ssr: false
 });
 
-const Model = ({ modelId }: { modelId: string }) => {
+const Model = () => {
   const router = useRouter();
+  const { modelId = '' } = router.query as { modelId: string };
   const { isPc } = useGlobalStore();
   const { lastModelId } = useUserStore();
 
@@ -41,9 +42,3 @@ const Model = ({ modelId }: { modelId: string }) => {
 };
 
 export default Model;
-
-Model.getInitialProps = ({ query, req }: any) => {
-  return {
-    modelId: query?.modelId || ''
-  };
-};
