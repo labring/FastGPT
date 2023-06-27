@@ -81,3 +81,35 @@ export async function openaiEmbedding({
 
   return result.vectors;
 }
+
+export async function openaiEmbedding_system({ input }: Props) {
+  const apiKey = getSystemOpenAiKey();
+
+  // 获取 chatAPI
+  const chatAPI = getOpenAIApi(apiKey);
+
+  // 把输入的内容转成向量
+  const result = await chatAPI
+    .createEmbedding(
+      {
+        model: embeddingModel,
+        input
+      },
+      {
+        timeout: 60000,
+        ...axiosConfig(apiKey)
+      }
+    )
+    .then((res) => {
+      if (!res.data?.usage?.total_tokens) {
+        // @ts-ignore
+        return Promise.reject(res.data?.error?.message || 'Embedding Error');
+      }
+      return {
+        tokenLen: res.data.usage.total_tokens || 0,
+        vectors: res.data.data.map((item) => item.embedding)
+      };
+    });
+
+  return result.vectors;
+}

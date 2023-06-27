@@ -12,7 +12,7 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
   new Promise<ChatResponseType & { responseText: string; errMsg: string }>(
     async (resolve, reject) => {
       try {
-        const response = await window.fetch('/api/openapi/v1/chat/completions', {
+        const response = await window.fetch('/api/openapi/v1/chat/test', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -74,8 +74,9 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
                 responseText += answer;
               } else if (item.event === sseResponseEventEnum.chatResponse) {
                 const chatResponse = data as ChatResponseType;
-                newChatId = chatResponse.newChatId;
-                quoteLen = chatResponse.quoteLen || 0;
+                newChatId =
+                  chatResponse.newChatId !== undefined ? chatResponse.newChatId : newChatId;
+                quoteLen = chatResponse.quoteLen !== undefined ? chatResponse.quoteLen : quoteLen;
               } else if (item.event === sseResponseEventEnum.error) {
                 errMsg = getErrText(data, '流响应错误');
               }

@@ -1,3 +1,4 @@
+import { sseResponseEventEnum } from '@/constants/chat';
 import { NextApiResponse } from 'next';
 import {
   openaiError,
@@ -6,7 +7,7 @@ import {
   ERROR_RESPONSE,
   ERROR_ENUM
 } from './errorCode';
-import { clearCookie } from './utils/tools';
+import { clearCookie, sseResponse } from './utils/tools';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -59,5 +60,43 @@ export const jsonRes = <T = any>(
     statusText: '',
     message: msg,
     data: data !== undefined ? data : null
+  });
+};
+
+export const sseErrRes = (res: NextApiResponse, error: any) => {
+  const errResponseKey = typeof error === 'string' ? error : error?.message;
+
+  // Specified error
+  if (ERROR_RESPONSE[errResponseKey]) {
+    // login is expired
+    if (errResponseKey === ERROR_ENUM.unAuthorization) {
+      clearCookie(res);
+    }
+
+    return sseResponse({
+      res,
+      event: sseResponseEventEnum.error,
+      data: JSON.stringify(ERROR_RESPONSE[errResponseKey])
+    });
+  }
+
+  let msg = error?.message || '请求错误';
+  if (typeof error === 'string') {
+    msg = error;
+  } else if (proxyError[error?.code]) {
+    msg = '接口连接异常';
+  } else if (error?.response?.data?.error?.message) {
+    msg = error?.response?.data?.error?.message;
+  } else if (openaiAccountError[error?.response?.data?.error?.code]) {
+    msg = openaiAccountError[error?.response?.data?.error?.code];
+  } else if (openaiError[error?.response?.statusText]) {
+    msg = openaiError[error.response.statusText];
+  }
+  console.log(error);
+
+  sseResponse({
+    res,
+    event: sseResponseEventEnum.error,
+    data: JSON.stringify({ message: msg })
   });
 };
