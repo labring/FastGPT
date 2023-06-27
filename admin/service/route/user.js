@@ -8,11 +8,12 @@ const hashPassword = (psw) => {
   return crypto.createHash('sha256').update(psw).digest('hex');
 };
 
+const day = 60;
+
 export const useUserRoute = (app) => {
   // 统计近 30 天注册用户数量
   app.get('/users/data', auth(), async (req, res) => {
     try {
-      const day = 60;
       let startCount = await User.countDocuments({
         createTime: { $lt: new Date(Date.now() - day * 24 * 60 * 60 * 1000) }
       });
@@ -92,7 +93,6 @@ export const useUserRoute = (app) => {
       res.status(500).json({ error: 'Error fetching users' });
     }
   });
-
   // 创建用户
   app.post('/users', auth(), async (req, res) => {
     try {
@@ -134,7 +134,6 @@ export const useUserRoute = (app) => {
       res.status(500).json({ error: 'Error updating user' });
     }
   });
-
   // 新增: 获取 pays 列表
   app.get('/pays', auth(), async (req, res) => {
     try {
@@ -177,6 +176,54 @@ export const useUserRoute = (app) => {
     } catch (err) {
       console.log(`Error fetching pays: ${err}`);
       res.status(500).json({ error: 'Error fetching pays', details: err.message });
+    }
+  });
+  // 获取本月账单
+  app.get('/pays/data', auth(), async (req, res) => {
+    try {
+      let startCount = 0;
+
+      const paysRaw = await Pay.aggregate([
+        {
+          $match: {
+            status: 'SUCCESS',
+            createTime: {
+              $gte: new Date(Date.now() - day * 24 * 60 * 60 * 1000)
+            }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createTime' },
+              month: { $month: '$createTime' },
+              day: { $dayOfMonth: '$createTime' }
+            },
+            count: { $sum: '$price' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            date: { $dateFromParts: { year: '$_id.year', month: '$_id.month', day: '$_id.day' } },
+            count: 1
+          }
+        },
+        { $sort: { date: 1 } }
+      ]);
+
+      const countResult = paysRaw.map((item) => {
+        startCount += item.count;
+        return {
+          date: item.date,
+          count: startCount
+        };
+      });
+
+      res.json(countResult);
+    } catch (err) {
+      console.log(`Error fetching users: ${err}`);
+      res.status(500).json({ error: 'Error fetching users' });
     }
   });
 };

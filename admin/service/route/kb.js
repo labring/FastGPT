@@ -24,7 +24,6 @@ export const useKbRoute = (app) => {
             }
           : {})
       };
-      console.log(where);
 
       const kbsRaw = await Kb.find(where)
         .skip(start)

@@ -14,14 +14,24 @@ import {
 import dayjs from 'dayjs';
 
 const authStorageKey = 'tushan:auth';
+const PRICE_SCALE = 100000;
 
-type UsersChartDataType = { count: number; date: string; increase: number; increaseRate: string };
+type fetchChatData = { count: number; date: string; increase?: number; increaseRate?: string };
+
+type chatDataType = {
+  date: string;
+  userCount: number;
+  userIncrease?: number;
+  userIncreaseRate?: string;
+  payCount: number;
+};
 
 export const Dashboard: React.FC = React.memo(() => {
   const [userCount, setUserCount] = useState(0); //用户数量
   const [kbCount, setkbCount] = useState(0);
   const [modelCount, setmodelCount] = useState(0);
-  const [usersData, setUsersData] = useState<UsersChartDataType[]>([]);
+
+  const [chatData, setChatData] = useState<chatDataType[]>([]);
 
   useEffect(() => {
     const baseUrl = import.meta.env.VITE_PUBLIC_SERVER_URL;
@@ -56,20 +66,29 @@ export const Dashboard: React.FC = React.memo(() => {
         setmodelCount(Number(modelTotalCount));
       }
     };
-    const fetchUserData = async () => {
-      const userResponse: UsersChartDataType[] = await fetch(`${baseUrl}/users/data`, {
-        headers
-      }).then((res) => res.json());
-      setUsersData(
-        userResponse.map((item) => ({
-          ...item,
-          date: dayjs(item.date).format('MM/DD')
-        }))
-      );
+
+    const fetchChatData = async () => {
+      const [userResponse, payResponse]: fetchChatData[][] = await Promise.all([
+        fetch(`${baseUrl}/users/data`, {
+          headers
+        }).then((res) => res.json()),
+        fetch(`${baseUrl}/pays/data`, {
+          headers
+        }).then((res) => res.json())
+      ]);
+
+      const data = userResponse.map((item, i) => ({
+        date: dayjs(item.date).format('MM/DD'),
+        userCount: item.count,
+        userIncrease: item.increase,
+        userIncreaseRate: item.increaseRate,
+        payCount: payResponse[i].count / PRICE_SCALE
+      }));
+      setChatData(data);
     };
 
     fetchCounts();
-    fetchUserData();
+    fetchChatData();
   }, []);
 
   return (
@@ -101,7 +120,13 @@ export const Dashboard: React.FC = React.memo(() => {
             </Grid.Row>
 
             <Divider />
-            <UserChart data={usersData} />
+
+            <div>
+              <strong>用户数量 & 支付情况</strong>
+              <UserChart data={chatData} />
+            </div>
+
+            <Divider />
           </Card>
         </Space>
       </div>
@@ -162,7 +187,7 @@ const DataItem = React.memo((props: { icon: React.ReactElement; title: string; c
 DataItem.displayName = 'DataItem';
 
 const CustomTooltip = ({ active, payload }: any) => {
-  const data = payload?.[0]?.payload as UsersChartDataType;
+  const data = payload?.[0]?.payload as chatDataType;
   if (active && data) {
     return (
       <div
@@ -174,13 +199,16 @@ const CustomTooltip = ({ active, payload }: any) => {
         }}
       >
         <p className="label">
-          count: <strong>{data.count}</strong>
+          用户总数: <strong>{data.userCount}</strong>
         </p>
         <p className="label">
-          increase: <strong>{data.increase}</strong>
+          60天累计支付: <strong>{data.payCount}</strong>元
         </p>
         <p className="label">
-          increaseRate: <strong>{data.increaseRate}</strong>
+          用户昨日增长数量: <strong>{data.userIncrease}</strong>
+        </p>
+        <p className="label">
+          用户昨日增长比例: <strong>{data.userIncreaseRate}</strong>
         </p>
       </div>
     );
@@ -188,7 +216,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const UserChart = ({ data }: { data: UsersChartDataType[] }) => {
+const UserChart = ({ data }: { data: chatDataType[] }) => {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <AreaChart
@@ -198,13 +226,13 @@ const UserChart = ({ data }: { data: UsersChartDataType[] }) => {
         margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
       >
         <defs>
-          <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="colorPv" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="userCount" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
             <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="payCount" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
           </linearGradient>
         </defs>
         <XAxis dataKey="date" />
@@ -213,10 +241,17 @@ const UserChart = ({ data }: { data: UsersChartDataType[] }) => {
         <Tooltip content={<CustomTooltip />} />
         <Area
           type="monotone"
-          dataKey="count"
+          dataKey="userCount"
           stroke="#82ca9d"
           fillOpacity={1}
-          fill="url(#colorPv)"
+          fill="url(#userCount)"
+        />
+        <Area
+          type="monotone"
+          dataKey="payCount"
+          stroke="#8884d8"
+          fillOpacity={1}
+          fill="url(#payCount)"
         />
       </AreaChart>
     </ResponsiveContainer>
