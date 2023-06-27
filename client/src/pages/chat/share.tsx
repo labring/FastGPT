@@ -62,7 +62,7 @@ const textareaMinH = '22px';
 
 const Chat = () => {
   const router = useRouter();
-  const { shareId = '', historyId = '' } = router.query as { shareId: string; historyId: string };
+  const { shareId = '', historyId } = router.query as { shareId: string; historyId: string };
   const theme = useTheme();
 
   const ChatBox = useRef<HTMLDivElement>(null);
@@ -491,14 +491,13 @@ const Chat = () => {
   ]);
 
   // 初始化聊天框
-  useQuery(['init', historyId], () => {
+  useQuery(['init', shareId, historyId], () => {
     if (!shareId) {
       return null;
     }
 
     if (!historyId) {
-      router.replace(`/chat/share?shareId=${shareId}&historyId=${new Types.ObjectId()}`);
-      return null;
+      return router.replace(`/chat/share?shareId=${shareId}&historyId=${new Types.ObjectId()}`);
     }
 
     return loadChatInfo();

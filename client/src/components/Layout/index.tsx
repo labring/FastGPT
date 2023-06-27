@@ -51,7 +51,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     return () => {
       window.removeEventListener('resize', resize);
     };
-  }, [setScreenWidth]);
+  }, []);
 
   const { data: unread = 0 } = useQuery(['getUnreadCount'], getUnreadCount, {
     enabled: !!userInfo,
@@ -64,8 +64,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         h={'100%'}
         bgGradient={'linear(to-t,rgba(173, 206, 255, 0.05) 0%, rgba(173, 206, 255, 0.12) 100%)'}
       >
-        {isPc ? (
-          pcUnShowLayoutRoute[router.pathname] ? (
+        <Box h={'100%'} display={['none', 'block']}>
+          {pcUnShowLayoutRoute[router.pathname] ? (
             <Auth>{children}</Auth>
           ) : (
             <>
@@ -76,19 +76,22 @@ const Layout = ({ children }: { children: JSX.Element }) => {
                 <Auth>{children}</Auth>
               </Box>
             </>
-          )
-        ) : phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
-          <Auth>{children}</Auth>
-        ) : (
-          <Flex h={'100%'} flexDirection={'column'}>
-            <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
-              <Auth>{children}</Auth>
-            </Box>
-            <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-              <NavbarPhone unread={unread} />
-            </Box>
-          </Flex>
-        )}
+          )}
+        </Box>
+        <Box h={'100%'} display={['block', 'none']}>
+          {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
+            <Auth>{children}</Auth>
+          ) : (
+            <Flex h={'100%'} flexDirection={'column'}>
+              <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
+                <Auth>{children}</Auth>
+              </Box>
+              <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
+                <NavbarPhone unread={unread} />
+              </Box>
+            </Flex>
+          )}
+        </Box>
       </Box>
       <Loading loading={loading} />
     </>
