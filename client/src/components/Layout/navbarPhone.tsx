@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import MyIcon from '../Icon';
-import { Flex } from '@chakra-ui/react';
+import { Flex, Box } from '@chakra-ui/react';
 import { useChatStore } from '@/store/chat';
 import Badge from '../Badge';
 
@@ -11,24 +11,28 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
   const navbarList = useMemo(
     () => [
       {
+        label: '聊天',
         icon: 'tabbarChat',
         link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
       },
       {
+        label: '应用',
         icon: 'tabbarModel',
         link: `/model`,
         activeLink: ['/model'],
         unread: 0
       },
       {
+        label: '工具',
         icon: 'tabbarMore',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
       },
       {
+        label: '我的',
         icon: 'tabbarMe',
         link: '/number',
         activeLink: ['/number'],
@@ -57,7 +61,9 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
             textAlign={'center'}
             alignItems={'center'}
             h={'100%'}
+            pt={1}
             px={3}
+            transform={'scale(0.9)'}
             {...(item.activeLink.includes(router.asPath)
               ? {
                   color: '#7089f1'
@@ -89,6 +95,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           >
             <Badge isDot count={item.unread}>
               <MyIcon name={item.icon as any} width={'20px'} height={'20px'} />
+              <Box fontSize={'12px'}>{item.label}</Box>
             </Badge>
           </Flex>
         ))}
