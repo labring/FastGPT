@@ -1,7 +1,9 @@
 export enum sseResponseEventEnum {
   error = 'error',
   answer = 'answer',
-  chatResponse = 'chatResponse'
+  chatResponse = 'chatResponse', //
+  appStreamResponse = 'appStreamResponse', // sse response request
+  moduleFetchResponse = 'moduleFetchResponse' // http module sse response
 }
 
 export enum ChatRoleEnum {

@@ -11,6 +11,7 @@ export type ChatItemType = {
   quoteLen?: number;
   quote?: QuoteItemType[];
   systemPrompt?: string;
+  [key: string]: any;
 };
 
 export type ChatSiteItemType = {

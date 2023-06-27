@@ -47,7 +47,7 @@ export async function saveChat({
   modelId,
   prompts,
   userId
-}: Props & { newChatId?: Types.ObjectId; userId: string }) {
+}: Props & { newChatId?: Types.ObjectId; userId: string }): Promise<{ newChatId: string }> {
   await connectToDatabase();
   const { model } = await authModel({ modelId, userId, authOwner: false });
 
@@ -104,6 +104,7 @@ export async function saveChat({
   ]);
 
   return {
-    ...response
+    // @ts-ignore
+    newChatId: response?.newChatId || ''
   };
 }

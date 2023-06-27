@@ -79,7 +79,7 @@ export const sseResponse = ({
   data
 }: {
   res: NextApiResponse;
-  event?: `${sseResponseEventEnum}`;
+  event?: string;
   data: string;
 }) => {
   event && res.write(`event: ${event}\n`);
