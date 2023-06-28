@@ -77,13 +77,16 @@ export const Dashboard: React.FC = React.memo(() => {
         }).then((res) => res.json())
       ]);
 
-      const data = userResponse.map((item, i) => ({
-        date: dayjs(item.date).format('MM/DD'),
-        userCount: item.count,
-        userIncrease: item.increase,
-        userIncreaseRate: item.increaseRate,
-        payCount: payResponse[i].count / PRICE_SCALE
-      }));
+      const data = userResponse.map((item, i) => {
+        const pay = payResponse.find((pay) => item.date === pay.date);
+        return {
+          date: dayjs(item.date).format('MM/DD'),
+          userCount: item.count,
+          userIncrease: item.increase,
+          userIncreaseRate: item.increaseRate,
+          payCount: pay ? pay.count / PRICE_SCALE : 0
+        };
+      });
       setChatData(data);
     };
 
@@ -198,6 +201,9 @@ const CustomTooltip = ({ active, payload }: any) => {
           boxShadow: '2px 2px 5px rgba(0,0,0,0.2)'
         }}
       >
+        <p className="label">
+          日期: <strong>{data.date}</strong>
+        </p>
         <p className="label">
           用户总数: <strong>{data.userCount}</strong>
         </p>
