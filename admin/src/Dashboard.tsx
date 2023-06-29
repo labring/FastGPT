@@ -208,13 +208,10 @@ const CustomTooltip = ({ active, payload }: any) => {
           用户总数: <strong>{data.userCount}</strong>
         </p>
         <p className="label">
+          用户进入增长数量: <strong>{data.userIncrease}</strong>
+        </p>
+        <p className="label">
           60天累计支付: <strong>{data.payCount}</strong>元
-        </p>
-        <p className="label">
-          用户昨日增长数量: <strong>{data.userIncrease}</strong>
-        </p>
-        <p className="label">
-          用户昨日增长比例: <strong>{data.userIncreaseRate}</strong>
         </p>
       </div>
     );
