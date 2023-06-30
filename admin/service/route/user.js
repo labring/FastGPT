@@ -188,16 +188,21 @@ export const useUserRoute = (app) => {
           $match: {
             status: 'SUCCESS',
             createTime: {
-              $gte: new Date(Date.now() - day * 24 * 60 * 60 * 1000)
+              $gte: new Date(Date.now() - day * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000) // 补时差
             }
+          }
+        },
+        {
+          $addFields: {
+            adjustedCreateTime: { $add: ['$createTime', 8 * 60 * 60 * 1000] }
           }
         },
         {
           $group: {
             _id: {
-              year: { $year: '$createTime' },
-              month: { $month: '$createTime' },
-              day: { $dayOfMonth: '$createTime' }
+              year: { $year: '$adjustedCreateTime' },
+              month: { $month: '$adjustedCreateTime' },
+              day: { $dayOfMonth: '$adjustedCreateTime' }
             },
             count: { $sum: '$price' }
           }
@@ -216,7 +221,8 @@ export const useUserRoute = (app) => {
         startCount += item.count;
         return {
           date: item.date,
-          count: startCount
+          total: startCount,
+          count: item.count
         };
       });
 
