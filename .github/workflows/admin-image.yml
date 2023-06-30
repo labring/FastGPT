@@ -2,12 +2,14 @@ name: Build fastgpt-admin images and copy image to docker hub
 on:
   workflow_dispatch:
   push:
+    paths:
+      - 'admin/**'
     branches:
       - 'main'
     tags:
       - 'v*.*.*'
 jobs:
-  build-images:
+  build-admin-images:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -52,7 +54,7 @@ jobs:
           -f Dockerfile \
           .
   push-to-docker-hub:
-    needs: build-images
+    needs: build-admin-images
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
