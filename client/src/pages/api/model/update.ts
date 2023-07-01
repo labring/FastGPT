@@ -4,16 +4,16 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { Model } from '@/service/models/model';
 import type { ModelUpdateParams } from '@/types/model';
-import { authModel } from '@/service/utils/auth';
+import { authApp } from '@/service/utils/auth';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, avatar, chat, share, intro } = req.body as ModelUpdateParams;
-    const { modelId } = req.query as { modelId: string };
+    const { name, avatar, chat, share, intro, modules } = req.body as ModelUpdateParams;
+    const { appId } = req.query as { appId: string };
 
-    if (!modelId) {
-      throw new Error('参数错误');
+    if (!appId) {
+      throw new Error('appId is empty');
     }
 
     // 凭证校验
@@ -21,15 +21,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    await authModel({
-      modelId,
+    await authApp({
+      appId,
       userId
     });
 
     // 更新模型
     await Model.updateOne(
       {
-        _id: modelId,
+        _id: appId,
         userId
       },
       {
@@ -40,7 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...(share && {
           'share.isShare': share.isShare,
           'share.isShareDetail': share.isShareDetail
-        })
+        }),
+        ...(modules && { modules })
       }
     );
 

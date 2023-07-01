@@ -6,6 +6,12 @@ import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
+import type { AppModuleItemType } from '@/types/app';
+import type { FlowModuleItemType } from '@/types/flow';
+import type { Edge, Node } from 'reactflow';
+import { connectionLineStyle } from '@/constants/flow';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const adaptBill = (bill: BillSchema): UserBillType => {
   return {
@@ -74,4 +80,54 @@ export const parseStreamChunk = (value: BufferSource) => {
   });
 
   return chunkResponse;
+};
+
+export const appModule2FlowNode = ({
+  item,
+  onChangeNode,
+  onDelNode
+}: {
+  item: AppModuleItemType;
+  onChangeNode: FlowModuleItemType['onChangeNode'];
+  onDelNode: FlowModuleItemType['onDelNode'];
+}): Node<FlowModuleItemType> => {
+  return {
+    id: item.moduleId,
+    type: item.flowType,
+    data: {
+      ...item,
+      onChangeNode,
+      onDelNode
+    },
+    position: item.position || { x: 0, y: 0 }
+  };
+};
+export const appModule2FlowEdge = ({
+  modules,
+  onDelete
+}: {
+  modules: AppModuleItemType[];
+  onDelete: (id: string) => void;
+}) => {
+  console.log(modules);
+
+  const edges: Edge[] = [];
+  modules.forEach((module) =>
+    module.outputs.forEach((output) =>
+      output.targets.forEach((target) => {
+        edges.push({
+          style: connectionLineStyle,
+          source: module.moduleId,
+          target: target.moduleId,
+          sourceHandle: output.key,
+          targetHandle: target.key,
+          id: nanoid(),
+          animated: true,
+          type: 'buttonedge',
+          data: { onDelete }
+        });
+      })
+    )
+  );
+  return edges;
 };

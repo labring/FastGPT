@@ -4,8 +4,8 @@ import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import type { ChatItemType } from '@/types/chat';
-import type { ModelSchema } from '@/types/mongoSchema';
-import { authModel } from '@/service/utils/auth';
+import type { AppSchema } from '@/types/mongoSchema';
+import { authApp } from '@/service/utils/auth';
 import { ChatModelMap } from '@/constants/model';
 import { ChatRoleEnum } from '@/constants/chat';
 import { openaiEmbedding } from '../plugin/openaiEmbedding';
@@ -54,13 +54,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // auth model
-    const { model } = await authModel({
-      modelId: appId,
+    const { app } = await authApp({
+      appId,
       userId
     });
 
     const result = await appKbSearch({
-      model,
+      model: app,
       userId,
       fixedQuote: [],
       prompt: prompts[prompts.length - 1],
@@ -88,7 +88,7 @@ export async function appKbSearch({
   similarity = 0.8,
   limit = 5
 }: {
-  model: ModelSchema;
+  model: AppSchema;
   userId: string;
   fixedQuote?: QuoteItemType[];
   prompt: ChatItemType;

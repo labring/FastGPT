@@ -54,11 +54,8 @@ const PcSliderBar = ({
   }>();
 
   const { history, loadHistory } = useChatStore();
-  const { myModels, myCollectionModels, loadMyModels } = useUserStore();
-  const models = useMemo(
-    () => [...myModels, ...myCollectionModels],
-    [myCollectionModels, myModels]
-  );
+  const { myApps, myCollectionApps, loadMyModels } = useUserStore();
+  const models = useMemo(() => [...myApps, ...myCollectionApps], [myCollectionApps, myApps]);
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditInfo({

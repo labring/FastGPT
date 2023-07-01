@@ -3,6 +3,7 @@ import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/mo
 import type { DataType } from './data';
 import { BillTypeEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
+import type { AppModuleItemType } from './app';
 
 export interface UserModelSchema {
   _id: string;
@@ -30,7 +31,7 @@ export interface AuthCodeSchema {
   expiredTime: number;
 }
 
-export interface ModelSchema {
+export interface AppSchema {
   _id: string;
   userId: string;
   name: string;
@@ -53,9 +54,10 @@ export interface ModelSchema {
     isShareDetail: boolean;
     collection: number;
   };
+  modules: AppModuleItemType[];
 }
 
-export interface ModelPopulate extends ModelSchema {
+export interface ModelPopulate extends AppSchema {
   userId: UserModelSchema;
 }
 
@@ -93,7 +95,7 @@ export interface ChatSchema {
 }
 export interface ChatPopulate extends ChatSchema {
   userId: UserModelSchema;
-  modelId: ModelSchema;
+  modelId: AppSchema;
 }
 
 export interface BillSchema {

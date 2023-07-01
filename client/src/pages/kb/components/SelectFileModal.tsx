@@ -270,8 +270,8 @@ const SelectFileModal = ({
                     min={300}
                     max={1000}
                     step={50}
-                    activeVal={modeMap[TrainingModeEnum.index].maxLen}
-                    setVal={(val) => {
+                    value={modeMap[TrainingModeEnum.index].maxLen}
+                    onChange={(val) => {
                       setModeMap((state) => ({
                         ...state,
                         [TrainingModeEnum.index]: {

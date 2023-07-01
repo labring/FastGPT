@@ -96,7 +96,7 @@ export async function openaiEmbedding_system({ input }: Props) {
         input
       },
       {
-        timeout: 60000,
+        timeout: 20000,
         ...axiosConfig(apiKey)
       }
     )

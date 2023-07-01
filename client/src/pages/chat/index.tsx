@@ -175,7 +175,7 @@ const Chat = () => {
       const messages = adaptChatItem_openAI({ messages: prompts, reserveId: true });
 
       // 流请求，获取数据
-      const { newChatId, quoteLen, errMsg } = await streamFetch({
+      const { newChatId, errMsg } = await streamFetch({
         data: {
           messages,
           chatId,
@@ -203,6 +203,7 @@ const Chat = () => {
         return;
       }
 
+      // save chat
       if (newChatId) {
         setForbidLoadChatData(true);
         router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
@@ -219,7 +220,7 @@ const Chat = () => {
           return {
             ...item,
             status: 'finish',
-            quoteLen,
+            quoteLen: 0,
             systemPrompt: `${chatData.systemPrompt}${`${
               chatData.limitPrompt ? `\n\n${chatData.limitPrompt}` : ''
             }`}`

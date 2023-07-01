@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, ShareChat, User } from '@/service/mongo';
 import type { InitShareChatResponse } from '@/api/response/chat';
-import { authModel } from '@/service/utils/auth';
+import { authApp } from '@/service/utils/auth';
 import { hashPassword } from '@/service/utils/tools';
 import { HUMAN_ICON } from '@/constants/chat';
 
@@ -35,8 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 校验使用权限
-    const { model } = await authModel({
-      modelId: shareChat.modelId,
+    const { app } = await authApp({
+      appId: shareChat.modelId,
       userId: String(shareChat.userId),
       authOwner: false
     });
@@ -48,11 +48,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         maxContext: shareChat.maxContext,
         userAvatar: user?.avatar || HUMAN_ICON,
         model: {
-          name: model.name,
-          avatar: model.avatar,
-          intro: model.intro
+          name: app.name,
+          avatar: app.avatar,
+          intro: app.intro
         },
-        chatModel: model.chat.chatModel
+        chatModel: app.chat.chatModel
       }
     });
   } catch (err) {

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authModel, getApiKey, authShareChat } from '@/service/utils/auth';
+import { authUser, authApp, getApiKey, authShareChat } from '@/service/utils/auth';
 import { modelServiceToolMap, V2_StreamResponse } from '@/service/utils/chat';
 import { jsonRes } from '@/service/response';
 import { ChatModelMap } from '@/constants/model';
@@ -79,9 +79,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // auth app permission
-    const { model, showModelDetail } = await authModel({
+    const { app, showModelDetail } = await authApp({
       userId,
-      modelId: appId,
+      appId,
       authOwner: false,
       reserveDetail: true
     });
@@ -90,7 +90,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     /* get api key */
     const { systemAuthKey: apiKey, userOpenAiKey } = await getApiKey({
-      model: model.chat.chatModel,
+      model: app.chat.chatModel,
       userId,
       mustPay: authType !== 'token'
     });
@@ -112,14 +112,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       quotePrompt = []
     } = await (async () => {
       // 使用了知识库搜索
-      if (model.chat.relatedKbs?.length > 0) {
+      if (app.chat.relatedKbs?.length > 0) {
         const { rawSearch, quotePrompt, userSystemPrompt, userLimitPrompt } = await appKbSearch({
-          model,
+          model: app,
           userId,
           fixedQuote: history[history.length - 1]?.quote,
           prompt,
-          similarity: model.chat.searchSimilarity,
-          limit: model.chat.searchLimit
+          similarity: app.chat.searchSimilarity,
+          limit: app.chat.searchLimit
         });
 
         return {
@@ -130,19 +130,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         };
       }
       return {
-        userSystemPrompt: model.chat.systemPrompt
+        userSystemPrompt: app.chat.systemPrompt
           ? [
               {
                 obj: ChatRoleEnum.System,
-                value: model.chat.systemPrompt
+                value: app.chat.systemPrompt
               }
             ]
           : [],
-        userLimitPrompt: model.chat.limitPrompt
+        userLimitPrompt: app.chat.limitPrompt
           ? [
               {
                 obj: ChatRoleEnum.Human,
-                value: model.chat.limitPrompt
+                value: app.chat.limitPrompt
               }
             ]
           : []
@@ -150,15 +150,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     })();
 
     // search result is empty
-    if (model.chat.relatedKbs?.length > 0 && !quotePrompt[0]?.value && model.chat.searchEmptyText) {
-      const response = model.chat.searchEmptyText;
+    if (app.chat.relatedKbs?.length > 0 && !quotePrompt[0]?.value && app.chat.searchEmptyText) {
+      const response = app.chat.searchEmptyText;
       if (stream) {
         sseResponse({
           res,
           event: sseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             text: response,
-            model: model.chat.chatModel,
+            model: app.chat.chatModel,
             finish_reason: 'stop'
           })
         });
@@ -166,9 +166,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       } else {
         return res.json({
           id: chatId || '',
-          model: model.chat.chatModel,
           object: 'chat.completion',
           created: 1688608930,
+          model: app.chat.chatModel,
           usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
           choices: [
             { message: { role: 'assistant', content: response }, finish_reason: 'stop', index: 0 }
@@ -186,9 +186,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       prompt
     ];
     // chat temperature
-    const modelConstantsData = ChatModelMap[model.chat.chatModel];
+    const modelConstantsData = ChatModelMap[app.chat.chatModel];
     // FastGpt temperature range: 1~10
-    const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
+    const temperature = (modelConstantsData.maxTemperature * (app.chat.temperature / 10)).toFixed(
       2
     );
 
@@ -196,13 +196,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       input: `${userSystemPrompt[0]?.value}\n${userLimitPrompt[0]?.value}\n${prompt.value}`
     });
 
-    // start model api. responseText and totalTokens: valid only if stream = false
+    // start app api. responseText and totalTokens: valid only if stream = false
     const { streamResponse, responseMessages, responseText, totalTokens } =
       await modelServiceToolMap.chatCompletion({
-        model: model.chat.chatModel,
+        model: app.chat.chatModel,
         apiKey: userOpenAiKey || apiKey,
         temperature: +temperature,
-        maxToken: model.chat.maxToken,
+        maxToken: app.chat.maxToken,
         messages: completePrompts,
         stream,
         res
@@ -242,7 +242,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           });
           // response answer
           const { finishMessages, totalTokens, responseContent } = await V2_StreamResponse({
-            model: model.chat.chatModel,
+            model: app.chat.chatModel,
             res,
             chatResponse: streamResponse,
             prompts: responseMessages
@@ -300,7 +300,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         id: chatId || '',
         object: 'chat.completion',
         created: 1688608930,
-        model: model.chat.chatModel,
+        model: app.chat.chatModel,
         usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: tokens },
         choices: [
           { message: { role: 'assistant', content: answer }, finish_reason: 'stop', index: 0 }
@@ -310,7 +310,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     pushChatBill({
       isPay: !userOpenAiKey,
-      chatModel: model.chat.chatModel,
+      chatModel: app.chat.chatModel,
       userId,
       textLen,
       tokens,

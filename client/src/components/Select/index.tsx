@@ -1,5 +1,14 @@
 import React, { useRef } from 'react';
-import { Menu, MenuButton, MenuList, MenuItem, Button, useDisclosure } from '@chakra-ui/react';
+import {
+  Menu,
+  Box,
+  MenuList,
+  MenuItem,
+  MenuButton,
+  Button,
+  useDisclosure,
+  useOutsideClick
+} from '@chakra-ui/react';
 import type { ButtonProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 interface Props extends ButtonProps {
@@ -7,13 +16,14 @@ interface Props extends ButtonProps {
   placeholder?: string;
   list: {
     label: string;
-    id: string;
+    value: string;
   }[];
   onchange?: (val: string) => void;
 }
 
 const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
+  const SelectRef = useRef(null);
   const menuItemStyles = {
     borderRadius: 'sm',
     py: 2,
@@ -25,9 +35,16 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
   };
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  useOutsideClick({
+    ref: SelectRef,
+    handler: () => {
+      onClose();
+    }
+  });
+
   return (
-    <Menu autoSelect={false} onOpen={onOpen} onClose={onClose}>
-      <MenuButton style={{ width: '100%', position: 'relative' }} as={'span'}>
+    <Menu autoSelect={false} isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
+      <Box ref={SelectRef} position={'relative'} onClick={() => (isOpen ? onClose() : onOpen())}>
         <Button
           ref={ref}
           width={width}
@@ -36,6 +53,9 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
           display={'flex'}
           alignItems={'center'}
           justifyContent={'space-between'}
+          _active={{
+            transform: ''
+          }}
           {...(isOpen
             ? {
                 boxShadow: '0px 0px 4px #A8DBFF',
@@ -44,44 +64,48 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
             : {})}
           {...props}
         >
-          {list.find((item) => item.id === value)?.label || placeholder}
+          {list.find((item) => item.value === value)?.label || placeholder}
           <ChevronDownIcon />
         </Button>
-      </MenuButton>
-      <MenuList
-        minW={(() => {
-          const w = ref.current?.clientWidth;
-          if (w) {
-            return `${w}px !important`;
+
+        <MenuList
+          minW={(() => {
+            const w = ref.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
+            }
+            return Array.isArray(width)
+              ? width.map((item) => `${item} !important`)
+              : `${width} !important`;
+          })()}
+          p={'6px'}
+          border={'1px solid #fff'}
+          boxShadow={
+            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
           }
-          return Array.isArray(width)
-            ? width.map((item) => `${item} !important`)
-            : `${width} !important`;
-        })()}
-        p={'6px'}
-        border={'1px solid #fff'}
-        boxShadow={'0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'}
-        zIndex={99}
-      >
-        {list.map((item) => (
-          <MenuItem
-            key={item.id}
-            {...menuItemStyles}
-            {...(value === item.id
-              ? {
-                  color: 'myBlue.600'
+          zIndex={99}
+          transform={'translateY(35px) !important'}
+        >
+          {list.map((item) => (
+            <MenuItem
+              key={item.value}
+              {...menuItemStyles}
+              {...(value === item.value
+                ? {
+                    color: 'myBlue.600'
+                  }
+                : {})}
+              onClick={() => {
+                if (onchange && value !== item.value) {
+                  onchange(item.value);
                 }
-              : {})}
-            onClick={() => {
-              if (onchange && value !== item.id) {
-                onchange(item.id);
-              }
-            }}
-          >
-            {item.label}
-          </MenuItem>
-        ))}
-      </MenuList>
+              }}
+            >
+              {item.label}
+            </MenuItem>
+          ))}
+        </MenuList>
+      </Box>
     </Menu>
   );
 };

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { ChatItemType } from '@/types/chat';
 import { connectToDatabase, Chat, Model } from '@/service/mongo';
-import { authModel } from '@/service/utils/auth';
+import { authApp } from '@/service/utils/auth';
 import { authUser } from '@/service/utils/auth';
 import { Types } from 'mongoose';
 
@@ -49,7 +49,7 @@ export async function saveChat({
   userId
 }: Props & { newChatId?: Types.ObjectId; userId: string }): Promise<{ newChatId: string }> {
   await connectToDatabase();
-  const { model } = await authModel({ modelId, userId, authOwner: false });
+  const { app } = await authApp({ appId: modelId, userId, authOwner: false });
 
   const content = prompts.map((item) => ({
     _id: item._id,
@@ -59,7 +59,7 @@ export async function saveChat({
     quote: item.quote || []
   }));
 
-  if (String(model.userId) === userId) {
+  if (String(app.userId) === userId) {
     await Model.findByIdAndUpdate(modelId, {
       updateTime: new Date()
     });
@@ -93,8 +93,8 @@ export async function saveChat({
             newChatId: String(res._id)
           }))
         ]),
-    // update model
-    ...(String(model.userId) === userId
+    // update app
+    ...(String(app.userId) === userId
       ? [
           Model.findByIdAndUpdate(modelId, {
             updateTime: new Date()

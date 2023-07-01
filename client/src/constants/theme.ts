@@ -1,6 +1,6 @@
 import { extendTheme, defineStyleConfig, ComponentStyleConfig } from '@chakra-ui/react';
 // @ts-ignore
-import { modalAnatomy, switchAnatomy, selectAnatomy, checkboxAnatomy } from '@chakra-ui/anatomy';
+import { modalAnatomy, switchAnatomy, selectAnatomy, numberInputAnatomy } from '@chakra-ui/anatomy';
 // @ts-ignore
 import { createMultiStyleConfigHelpers } from '@chakra-ui/styled-system';
 
@@ -11,6 +11,8 @@ const { definePartsStyle: switchPart, defineMultiStyleConfig: switchMultiStyle }
   createMultiStyleConfigHelpers(switchAnatomy.keys);
 const { definePartsStyle: selectPart, defineMultiStyleConfig: selectMultiStyle } =
   createMultiStyleConfigHelpers(selectAnatomy.keys);
+const { definePartsStyle: numInputPart, defineMultiStyleConfig: numInputMultiStyle } =
+  createMultiStyleConfigHelpers(numberInputAnatomy.keys);
 
 // modal 弹窗
 const ModalTheme = defineMultiStyleConfig({
@@ -121,6 +123,39 @@ const Input: ComponentStyleConfig = {
     variant: 'outline'
   }
 };
+
+const NumberInput = numInputMultiStyle({
+  variants: {
+    outline: numInputPart({
+      field: {
+        bg: 'myWhite.300',
+        border: '1px solid',
+        borderRadius: 'base',
+        borderColor: 'myGray.200',
+        _focus: {
+          borderColor: 'myBlue.600 !important',
+          boxShadow: '0px 0px 4px #A8DBFF !important',
+          bg: 'transparent'
+        },
+        _disabled: {
+          color: 'myGray.400 !important',
+          bg: 'myWhite.300 !important'
+        }
+      },
+      stepper: {
+        bg: 'transparent',
+        border: 'none',
+        color: 'myGray.600',
+        _active: {
+          color: 'myBlue.600'
+        }
+      }
+    })
+  },
+  defaultProps: {
+    variant: 'outline'
+  }
+});
 
 const Textarea: ComponentStyleConfig = {
   variants: {
@@ -260,6 +295,7 @@ export const theme = extendTheme({
     Input,
     Textarea,
     Switch,
-    Select
+    Select,
+    NumberInput
   }
 });

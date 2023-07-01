@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authModel, getApiKey } from '@/service/utils/auth';
+import { authUser, authApp, getApiKey } from '@/service/utils/auth';
 import { modelServiceToolMap, resStreamResponse } from '@/service/utils/chat';
 import { ChatItemType } from '@/types/chat';
 import { jsonRes } from '@/service/response';
@@ -50,19 +50,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     /* 凭证校验 */
     const { userId } = await authUser({ req });
 
-    const { model } = await authModel({
+    const { app } = await authApp({
       userId,
-      modelId
+      appId: modelId
     });
 
     /* get api key */
     const { systemAuthKey: apiKey } = await getApiKey({
-      model: model.chat.chatModel,
+      model: app.chat.chatModel,
       userId,
       mustPay: true
     });
 
-    const modelConstantsData = ChatModelMap[model.chat.chatModel];
+    const modelConstantsData = ChatModelMap[app.chat.chatModel];
     const prompt = prompts[prompts.length - 1];
 
     const {
@@ -71,14 +71,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       quotePrompt = []
     } = await (async () => {
       // 使用了知识库搜索
-      if (model.chat.relatedKbs?.length > 0) {
+      if (app.chat.relatedKbs?.length > 0) {
         const { quotePrompt, userSystemPrompt, userLimitPrompt } = await appKbSearch({
-          model,
+          model: app,
           userId,
           fixedQuote: [],
           prompt: prompt,
-          similarity: model.chat.searchSimilarity,
-          limit: model.chat.searchLimit
+          similarity: app.chat.searchSimilarity,
+          limit: app.chat.searchLimit
         });
 
         return {
@@ -88,19 +88,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         };
       }
       return {
-        userSystemPrompt: model.chat.systemPrompt
+        userSystemPrompt: app.chat.systemPrompt
           ? [
               {
                 obj: ChatRoleEnum.System,
-                value: model.chat.systemPrompt
+                value: app.chat.systemPrompt
               }
             ]
           : [],
-        userLimitPrompt: model.chat.limitPrompt
+        userLimitPrompt: app.chat.limitPrompt
           ? [
               {
                 obj: ChatRoleEnum.Human,
-                value: model.chat.limitPrompt
+                value: app.chat.limitPrompt
               }
             ]
           : []
@@ -108,8 +108,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     })();
 
     // search result is empty
-    if (model.chat.relatedKbs?.length > 0 && !quotePrompt[0]?.value && model.chat.searchEmptyText) {
-      const response = model.chat.searchEmptyText;
+    if (app.chat.relatedKbs?.length > 0 && !quotePrompt[0]?.value && app.chat.searchEmptyText) {
+      const response = app.chat.searchEmptyText;
       return res.end(response);
     }
 
@@ -123,14 +123,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     ];
 
     // 计算温度
-    const temperature = (modelConstantsData.maxTemperature * (model.chat.temperature / 10)).toFixed(
+    const temperature = (modelConstantsData.maxTemperature * (app.chat.temperature / 10)).toFixed(
       2
     );
 
     // 发出请求
     const { streamResponse, responseMessages, responseText, totalTokens } =
       await modelServiceToolMap.chatCompletion({
-        model: model.chat.chatModel,
+        model: app.chat.chatModel,
         apiKey,
         temperature: +temperature,
         messages: completePrompts,
@@ -146,7 +146,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       if (isStream) {
         try {
           const { finishMessages, totalTokens } = await resStreamResponse({
-            model: model.chat.chatModel,
+            model: app.chat.chatModel,
             res,
             chatResponse: streamResponse,
             prompts: responseMessages
@@ -173,7 +173,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     pushChatBill({
       isPay: true,
-      chatModel: model.chat.chatModel,
+      chatModel: app.chat.chatModel,
       userId,
       textLen,
       tokens,

@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from './request';
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 import type { ModelUpdateParams } from '@/types/model';
 import { RequestPaging } from '../types/index';
 import type { ModelListResponse } from './response/model';
@@ -22,13 +22,13 @@ export const delModelById = (id: string) => DELETE(`/model/del?modelId=${id}`);
 /**
  * 根据 ID 获取模型
  */
-export const getModelById = (id: string) => GET<ModelSchema>(`/model/detail?modelId=${id}`);
+export const getModelById = (id: string) => GET<AppSchema>(`/model/detail?modelId=${id}`);
 
 /**
  * 根据 ID 更新模型
  */
-export const putModelById = (id: string, data: ModelUpdateParams) =>
-  PUT(`/model/update?modelId=${id}`, data);
+export const putAppById = (id: string, data: ModelUpdateParams) =>
+  PUT(`/model/update?appId=${id}`, data);
 
 /* 共享市场 */
 /**

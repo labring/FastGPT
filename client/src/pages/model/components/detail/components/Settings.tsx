@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
 import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
-import { delModelById, putModelById } from '@/api/model';
+import { delModelById, putAppById } from '@/api/app';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
@@ -24,7 +24,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { ChatModelMap, chatModelList } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 
 import Avatar from '@/components/Avatar';
 import MySelect from '@/components/Select';
@@ -39,7 +39,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { Loading, setIsLoading } = useLoading();
-  const { userInfo, modelDetail, myModels, loadModelDetail, refreshModel, setLastModelId } =
+  const { userInfo, appDetail, myApps, loadAppDetail, refreshModel, setLastModelId } =
     useUserStore();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -60,12 +60,12 @@ const Settings = ({ modelId }: { modelId: string }) => {
     reset,
     handleSubmit
   } = useForm({
-    defaultValues: modelDetail
+    defaultValues: appDetail
   });
 
   const isOwner = useMemo(
-    () => modelDetail.userId === userInfo?._id,
-    [modelDetail.userId, userInfo?._id]
+    () => appDetail.userId === userInfo?._id,
+    [appDetail.userId, userInfo?._id]
   );
   const tokenLimit = useMemo(() => {
     const max = ChatModelMap[getValues('chat.chatModel')]?.contextMaxToken || 4000;
@@ -79,10 +79,10 @@ const Settings = ({ modelId }: { modelId: string }) => {
 
   // 提交保存模型修改
   const saveSubmitSuccess = useCallback(
-    async (data: ModelSchema) => {
+    async (data: AppSchema) => {
       setBtnLoading(true);
       try {
-        await putModelById(data._id, {
+        await putAppById(data._id, {
           name: data.name,
           avatar: data.avatar,
           intro: data.intro,
@@ -126,16 +126,16 @@ const Settings = ({ modelId }: { modelId: string }) => {
 
   /* 点击删除 */
   const handleDelModel = useCallback(async () => {
-    if (!modelDetail) return;
+    if (!appDetail) return;
     setIsLoading(true);
     try {
-      await delModelById(modelDetail._id);
+      await delModelById(appDetail._id);
       toast({
         title: '删除成功',
         status: 'success'
       });
-      refreshModel.removeModelDetail(modelDetail._id);
-      router.replace(`/model?modelId=${myModels[1]?._id}`);
+      refreshModel.removeModelDetail(appDetail._id);
+      router.replace(`/model?modelId=${myApps[1]?._id}`);
     } catch (err: any) {
       toast({
         title: err?.message || '删除失败',
@@ -143,7 +143,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
       });
     }
     setIsLoading(false);
-  }, [modelDetail, setIsLoading, toast, refreshModel, router, myModels]);
+  }, [appDetail, setIsLoading, toast, refreshModel, router, myApps]);
 
   const onSelectFile = useCallback(
     async (e: File[]) => {
@@ -168,7 +168,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
   );
 
   // load model data
-  const { isLoading } = useQuery([modelId], () => loadModelDetail(modelId, true), {
+  const { isLoading } = useQuery([modelId], () => loadAppDetail(modelId, true), {
     onSuccess(res) {
       res && reset(res);
       modelId && setLastModelId(modelId);
@@ -241,7 +241,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
           width={['100%', '300px']}
           value={getValues('chat.chatModel')}
           list={chatModelList.map((item) => ({
-            id: item.chatModel,
+            value: item.chatModel,
             label: `${item.name} (${formatPrice(
               ChatModelMap[item.chatModel]?.price,
               1000
@@ -266,8 +266,8 @@ const Settings = ({ modelId }: { modelId: string }) => {
             width={['95%', '280px']}
             min={0}
             max={10}
-            activeVal={getValues('chat.temperature')}
-            setVal={(val) => {
+            value={getValues('chat.temperature')}
+            onChange={(val) => {
               setValue('chat.temperature', val);
               setRefresh(!refresh);
             }}
@@ -288,8 +288,8 @@ const Settings = ({ modelId }: { modelId: string }) => {
             min={100}
             max={tokenLimit}
             step={50}
-            activeVal={getValues('chat.maxToken')}
-            setVal={(val) => {
+            value={getValues('chat.maxToken')}
+            onChange={(val) => {
               setValue('chat.maxToken', val);
               setRefresh(!refresh);
             }}

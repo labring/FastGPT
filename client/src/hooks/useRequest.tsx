@@ -1,6 +1,7 @@
 import { useToast } from '@/hooks/useToast';
 import { useMutation } from '@tanstack/react-query';
 import type { UseMutationOptions } from '@tanstack/react-query';
+import { getErrText } from '@/utils/tools';
 
 interface Props extends UseMutationOptions<any, any, any, any> {
   successToast?: string;
@@ -23,7 +24,7 @@ export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...pr
       onError?.(err, variables, context);
       errorToast &&
         toast({
-          title: typeof err === 'string' ? err : err?.message || errorToast,
+          title: getErrText(err, errorToast),
           status: 'error'
         });
     }

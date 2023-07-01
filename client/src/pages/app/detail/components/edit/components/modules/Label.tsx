@@ -1,0 +1,29 @@
+import React from 'react';
+import { Box, Tooltip } from '@chakra-ui/react';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
+
+const Label = ({
+  required = false,
+  children,
+  description
+}: {
+  required?: boolean;
+  children: React.ReactNode | string;
+  description?: string;
+}) => (
+  <Box as={'label'} display={'inline-block'} position={'relative'}>
+    {children}
+    {required && (
+      <Box position={'absolute'} top={'-2px'} right={'-10px'} color={'red.500'} fontWeight={'bold'}>
+        *
+      </Box>
+    )}
+    {description && (
+      <Tooltip label={description}>
+        <QuestionOutlineIcon display={['none', 'inline']} fontSize={'12px'} mb={1} ml={1} />
+      </Tooltip>
+    )}
+  </Box>
+);
+
+export default Label;

@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // 根据 userId 获取模型信息
-    const [myModels, myCollections] = await Promise.all([
+    const [myApps, myCollections] = await Promise.all([
       Model.find(
         {
           userId
@@ -33,20 +33,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     jsonRes<ModelListResponse>(res, {
       data: {
-        myModels: myModels.map((item) => ({
+        myApps: myApps.map((item) => ({
           _id: item._id,
           name: item.name,
           avatar: item.avatar,
           intro: item.intro
         })),
-        myCollectionModels: myCollections
+        myCollectionApps: myCollections
           .map((item: any) => ({
             _id: item.modelId?._id,
             name: item.modelId?.name,
             avatar: item.modelId?.avatar,
             intro: item.modelId?.intro
           }))
-          .filter((item) => !myModels.find((model) => String(model._id) === String(item._id))) // 去重
+          .filter((item) => !myApps.find((model) => String(model._id) === String(item._id))) // 去重
       }
     });
   } catch (err) {

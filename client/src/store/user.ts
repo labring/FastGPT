@@ -2,15 +2,15 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import { getMyModels, getModelById } from '@/api/model';
+import { getMyModels, getModelById } from '@/api/app';
 import { formatPrice } from '@/utils/user';
 import { getTokenLogin } from '@/api/user';
-import { defaultModel } from '@/constants/model';
+import { defaultApp } from '@/constants/model';
 import { ModelListItemType } from '@/types/model';
 import { KbItemType } from '@/types/plugin';
 import { getKbList, getKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 
 type State = {
   userInfo: UserType | null;
@@ -20,14 +20,14 @@ type State = {
   // model
   lastModelId: string;
   setLastModelId: (id: string) => void;
-  myModels: ModelListItemType[];
-  myCollectionModels: ModelListItemType[];
+  myApps: ModelListItemType[];
+  myCollectionApps: ModelListItemType[];
   loadMyModels: (init?: boolean) => Promise<null>;
-  modelDetail: ModelSchema;
-  loadModelDetail: (id: string, init?: boolean) => Promise<ModelSchema>;
+  appDetail: AppSchema;
+  loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
   refreshModel: {
     freshMyModels(): void;
-    updateModelDetail(model: ModelSchema): void;
+    updateModelDetail(model: AppSchema): void;
     removeModelDetail(modelId: string): void;
   };
   // kb
@@ -74,24 +74,24 @@ export const useUserStore = create<State>()(
             state.lastModelId = id;
           });
         },
-        myModels: [],
-        myCollectionModels: [],
+        myApps: [],
+        myCollectionApps: [],
         async loadMyModels(init = false) {
-          if (get().myModels.length > 0 && !init) return null;
+          if (get().myApps.length > 0 && !init) return null;
           const res = await getMyModels();
           set((state) => {
-            state.myModels = res.myModels;
-            state.myCollectionModels = res.myCollectionModels;
+            state.myApps = res.myApps;
+            state.myCollectionApps = res.myCollectionApps;
           });
           return null;
         },
-        modelDetail: defaultModel,
-        async loadModelDetail(id: string, init = false) {
-          if (id === get().modelDetail._id && !init) return get().modelDetail;
+        appDetail: defaultApp,
+        async loadAppDetail(id: string, init = false) {
+          if (id === get().appDetail._id && !init) return get().appDetail;
 
           const res = await getModelById(id);
           set((state) => {
-            state.modelDetail = res;
+            state.appDetail = res;
           });
           return res;
         },
@@ -99,16 +99,16 @@ export const useUserStore = create<State>()(
           freshMyModels() {
             get().loadMyModels(true);
           },
-          updateModelDetail(model: ModelSchema) {
+          updateModelDetail(model: AppSchema) {
             set((state) => {
-              state.modelDetail = model;
+              state.appDetail = model;
             });
             get().loadMyModels(true);
           },
           removeModelDetail(modelId: string) {
-            if (modelId === get().modelDetail._id) {
+            if (modelId === get().appDetail._id) {
               set((state) => {
-                state.modelDetail = defaultModel;
+                state.appDetail = defaultApp;
                 state.lastModelId = '';
               });
             }
