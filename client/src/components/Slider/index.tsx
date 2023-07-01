@@ -10,8 +10,8 @@ import {
 
 const MySlider = ({
   markList = [],
-  setVal,
-  activeVal,
+  onChange,
+  value,
   max = 100,
   min = 0,
   step = 1,
@@ -21,8 +21,8 @@ const MySlider = ({
     label: string | number;
     value: number;
   }[];
-  activeVal: number;
-  setVal: (index: number) => void;
+  value: number;
+  onChange?: (index: number) => void;
   max?: number;
   min?: number;
   step?: number;
@@ -40,10 +40,6 @@ const MySlider = ({
     top: 0,
     transform: 'translateY(-3px)'
   };
-  const value = useMemo(() => {
-    const index = markList.findIndex((item) => item.value === activeVal);
-    return index > -1 ? index : 0;
-  }, [activeVal, markList]);
 
   return (
     <Slider
@@ -51,9 +47,9 @@ const MySlider = ({
       min={min}
       step={step}
       size={'lg'}
-      value={activeVal}
+      value={value}
       width={width}
-      onChange={setVal}
+      onChange={onChange}
     >
       {markList?.map((item, i) => (
         <SliderMark
@@ -71,7 +67,7 @@ const MySlider = ({
         </SliderMark>
       ))}
       <SliderMark
-        value={activeVal}
+        value={value}
         textAlign="center"
         bg="myBlue.600"
         color="white"
@@ -84,7 +80,7 @@ const MySlider = ({
         transform={'translate(-50%, -170%)'}
         boxSizing={'border-box'}
       >
-        {activeVal}
+        {value}
       </SliderMark>
       <SliderTrack
         bg={'#EAEDF3'}

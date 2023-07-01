@@ -1,8 +1,8 @@
 import { Schema, model, models, Model as MongoModel } from 'mongoose';
-import { ModelSchema as ModelType } from '@/types/mongoSchema';
+import { AppSchema as ModelType } from '@/types/mongoSchema';
 import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
 
-const ModelSchema = new Schema({
+const AppSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user',
@@ -91,14 +91,18 @@ const ModelSchema = new Schema({
       type: Number,
       default: 0
     }
+  },
+  modules: {
+    type: Array,
+    default: []
   }
 });
 
 try {
-  ModelSchema.index({ updateTime: -1 });
-  ModelSchema.index({ 'share.collection': -1 });
+  AppSchema.index({ updateTime: -1 });
+  AppSchema.index({ 'share.collection': -1 });
 } catch (error) {
   console.log(error);
 }
 
-export const Model: MongoModel<ModelType> = models['model'] || model('model', ModelSchema);
+export const Model: MongoModel<ModelType> = models['model'] || model('model', AppSchema);

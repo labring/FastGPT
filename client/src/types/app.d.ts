@@ -1,41 +1,7 @@
+import { FlowModuleTypeEnum } from '@/constants/flow';
+import { XYPosition } from 'reactflow';
 import { AppModuleItemTypeEnum, ModulesInputItemTypeEnum } from '../constants/app';
-
-/* input item */
-export type ModuleItemCommonType = {
-  key: string; // 字段名
-  formType: `${ModuleInputItemTypeEnum}`;
-  label: string;
-  description?: string;
-  placeholder?: string;
-  max?: number;
-  min?: number;
-  default?: any;
-  enum?: { label: string; value: any }[];
-};
-
-export type ModuleItemOutputItemType = {
-  key: string;
-  targets: { moduleId: string; key: string }[];
-};
-
-export type ModuleItemType = {
-  moduleId: string;
-  avatar: string;
-  name: string;
-  description: string;
-  url: string;
-  body: ModuleItemCommonType[];
-  inputs: ModuleItemCommonType[];
-  outputs: ModuleItemOutputItemType[];
-};
-
-/* input item */
-type FormItemCommonType = {
-  key: string; // 字段名
-  label: string;
-  description: string;
-  formType: `${ModulesInputItemTypeEnum}`;
-};
+import type { FlowInputItemType, FlowOutputItemType } from './flow';
 
 /* agent */
 /* question classify */
@@ -45,25 +11,44 @@ export type ClassifyQuestionAgentItemType = {
 };
 
 /* app module */
-export type AppModuleItemType = {
+export type AppModuleTemplateItemType = {
+  logo?: string;
+  name?: string;
+  intro?: string;
+
+  flowType: `${FlowModuleTypeEnum}`;
+  type: `${AppModuleItemTypeEnum}`;
+  url?: string;
+  inputs: FlowInputItemType[];
+  outputs: FlowOutputItemType[];
+};
+export type AppModuleItemType = AppModuleTemplateItemType & {
+  moduleId: string;
+  position?: XYPosition;
+};
+
+export type AppItemType = {
+  id: string;
+  name: string;
+  modules: AppModuleItemType[];
+};
+
+export type RunningModuleItemType = {
   moduleId: string;
   type: `${AppModuleItemTypeEnum}`;
   url?: string;
-  body: Record<string, any>;
-  inputs: { key: string; value: any }[];
-  outputs: {
+  inputs: {
     key: string;
     value?: any;
+  }[];
+  outputs: {
+    key: string;
+    answer?: boolean;
     response?: boolean;
-    answer?: boolean; // json response
+    value?: any;
     targets: {
       moduleId: string;
       key: string;
     }[];
   }[];
-};
-
-export type AppItemType = {
-  id: string;
-  modules: AppModuleItemType[];
 };

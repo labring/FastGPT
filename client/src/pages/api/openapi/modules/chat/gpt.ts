@@ -5,9 +5,8 @@ import { sseResponse } from '@/service/utils/tools';
 import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { modelToolMap } from '@/utils/plugin';
-import { ChatCompletionType, ChatContextFilter } from '@/service/utils/chat/index';
+import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatItemType } from '@/types/chat';
-import { getSystemOpenAiKey } from '@/service/utils/auth';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { parseStreamChunk, textAdaptGptResponse } from '@/utils/adapt';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
@@ -23,7 +22,7 @@ export type Props = {
   systemPrompt?: string;
   limitPrompt?: string;
 };
-export type Response = { history: ChatItemType[] };
+export type Response = { answer: string };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -89,7 +88,7 @@ export async function chatCompletion({
   userChatInput,
   systemPrompt,
   limitPrompt
-}: Props & { res: NextApiResponse }) {
+}: Props & { res: NextApiResponse }): Promise<Response> {
   const messages: ChatItemType[] = [
     ...(quotePrompt
       ? [
@@ -131,7 +130,6 @@ export async function chatCompletion({
 
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
   const chatAPI = getOpenAIApi();
-  console.log(adaptMessages);
 
   /* count response max token */
   const promptsToken = modelToolMap[model].countTokens({
@@ -156,37 +154,35 @@ export async function chatCompletion({
     }
   );
 
-  const { answer, totalTokens } = await (async () => {
+  const { answer } = await (async () => {
     if (stream) {
       // sse response
       const { answer } = await streamResponse({ res, response });
       // count tokens
-      const finishMessages = filterMessages.concat({
-        obj: ChatRoleEnum.AI,
-        value: answer
-      });
+      // const finishMessages = filterMessages.concat({
+      //   obj: ChatRoleEnum.AI,
+      //   value: answer
+      // });
 
-      const totalTokens = modelToolMap[model].countTokens({
-        messages: finishMessages
-      });
+      // const totalTokens = modelToolMap[model].countTokens({
+      //   messages: finishMessages
+      // });
 
       return {
-        answer,
-        totalTokens
+        answer
+        // totalTokens
       };
     } else {
       const answer = stream ? '' : response.data.choices?.[0].message?.content || '';
-      const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
+      // const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
 
       return {
-        answer,
-        totalTokens
+        answer
+        // totalTokens
       };
     }
   })();
 
-  // count price
-  const unitPrice = ChatModelMap[model]?.price || 3;
   return {
     answer
   };

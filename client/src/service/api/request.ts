@@ -12,6 +12,7 @@ interface Props {
 export const moduleFetch = ({ url, data, res }: Props) =>
   new Promise<Record<string, any>>(async (resolve, reject) => {
     try {
+      const abortSignal = new AbortController();
       const baseUrl = `http://localhost:3000/api`;
       const requestUrl = url.startsWith('/') ? `${baseUrl}${url}` : url;
       const response = await fetch(requestUrl, {
@@ -19,8 +20,14 @@ export const moduleFetch = ({ url, data, res }: Props) =>
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        signal: abortSignal.signal
       });
+
+      if (response.status >= 300 || response.status < 200) {
+        const err = await response.json();
+        return reject(err);
+      }
 
       if (!response?.body) {
         throw new Error('Request Error');
@@ -34,14 +41,19 @@ export const moduleFetch = ({ url, data, res }: Props) =>
 
       const reader = response.body?.getReader();
 
-      let chatResponse = {};
+      let chatResponse: Record<string, any> = {};
 
       const read = async () => {
         try {
           const { done, value } = await reader.read();
           if (done) {
             return resolve(chatResponse);
+          } else if (res.closed) {
+            resolve(chatResponse);
+            abortSignal.abort();
+            return;
           }
+
           const chunkResponse = parseStreamChunk(value);
 
           chunkResponse.forEach((item) => {
@@ -53,12 +65,25 @@ export const moduleFetch = ({ url, data, res }: Props) =>
                 return {};
               }
             })();
-            if (item.event === sseResponseEventEnum.moduleFetchResponse) {
+            if (!res.closed && item.event === sseResponseEventEnum.moduleFetchResponse) {
               chatResponse = {
                 ...chatResponse,
                 ...data
               };
-            } else if (item.event === sseResponseEventEnum.answer && data?.choices?.[0]?.delta) {
+            } else if (
+              !res.closed &&
+              item.event === sseResponseEventEnum.answer &&
+              data?.choices?.[0]?.delta
+            ) {
+              // save answer
+              const answer: string = data?.choices?.[0].delta.content || '';
+              if (answer) {
+                chatResponse = {
+                  ...chatResponse,
+                  answer: chatResponse.answer ? chatResponse.answer + answer : answer
+                };
+              }
+
               sseResponse({
                 res,
                 event: sseResponseEventEnum.answer,
@@ -68,6 +93,9 @@ export const moduleFetch = ({ url, data, res }: Props) =>
           });
           read();
         } catch (err: any) {
+          if (err?.message === 'The operation was aborted.') {
+            return;
+          }
           reject(getErrText(err, '请求异常'));
         }
       };

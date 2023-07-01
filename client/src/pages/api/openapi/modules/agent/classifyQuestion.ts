@@ -106,7 +106,7 @@ export async function classifyQuestion({
   if (!arg.type) {
     throw new Error('');
   }
-  console.log(adaptMessages, arg.type);
+  console.log(arg.type);
 
   return {
     [arg.type]: 1

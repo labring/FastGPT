@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Box, Flex, Card, Grid, Input } from '@chakra-ui/react';
 import { useLoading } from '@/hooks/useLoading';
-import { getShareModelList, triggerModelCollection } from '@/api/model';
+import { getShareModelList, triggerModelCollection } from '@/api/app';
 import { usePagination } from '@/hooks/usePagination';
 import type { ShareModelItem } from '@/types/model';
 import { useUserStore } from '@/store/user';

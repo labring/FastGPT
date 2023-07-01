@@ -1,4 +1,4 @@
-import type { ModelSchema, kbSchema } from './mongoSchema';
+import type { AppSchema, kbSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
 
 export type ModelListItemType = {
@@ -12,8 +12,9 @@ export interface ModelUpdateParams {
   name?: string;
   avatar?: string;
   intro?: string;
-  chat?: ModelSchema['chat'];
-  share?: ModelSchema['share'];
+  chat?: AppSchema['chat'];
+  share?: AppSchema['share'];
+  modules?: AppSchema['modules'];
 }
 
 export interface ShareModelItem {
@@ -22,7 +23,7 @@ export interface ShareModelItem {
   name: string;
   intro: string;
   userId: string;
-  share: ModelSchema['share'];
+  share: AppSchema['share'];
   isCollection: boolean;
 }
 

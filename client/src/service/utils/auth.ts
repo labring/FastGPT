@@ -2,10 +2,10 @@ import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
 import { Chat, Model, OpenApi, User, ShareChat, KB } from '../mongo';
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
 import mongoose from 'mongoose';
-import { defaultModel } from '@/constants/model';
+import { defaultApp } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
 import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
@@ -204,22 +204,22 @@ export const getApiKey = async ({
 };
 
 // 模型使用权校验
-export const authModel = async ({
-  modelId,
+export const authApp = async ({
+  appId,
   userId,
   authUser = true,
   authOwner = true,
   reserveDetail = false
 }: {
-  modelId: string;
+  appId: string;
   userId: string;
   authUser?: boolean;
   authOwner?: boolean;
   reserveDetail?: boolean; // focus reserve detail
 }) => {
   // 获取 model 数据
-  const model = await Model.findById<ModelSchema>(modelId);
-  if (!model) {
+  const app = await Model.findById<AppSchema>(appId);
+  if (!app) {
     return Promise.reject('模型不存在');
   }
 
@@ -228,21 +228,21 @@ export const authModel = async ({
     1. authOwner=true or authUser = true ,  just owner can use
     2. authUser = false and share, anyone can use
   */
-  if (authOwner || (authUser && !model.share.isShare)) {
-    if (userId !== String(model.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
+  if (authOwner || (authUser && !app.share.isShare)) {
+    if (userId !== String(app.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
   }
 
   // do not share detail info
-  if (!reserveDetail && !model.share.isShareDetail && userId !== String(model.userId)) {
-    model.chat = {
-      ...defaultModel.chat,
-      chatModel: model.chat.chatModel
+  if (!reserveDetail && !app.share.isShareDetail && userId !== String(app.userId)) {
+    app.chat = {
+      ...defaultApp.chat,
+      chatModel: app.chat.chatModel
     };
   }
 
   return {
-    model,
-    showModelDetail: userId === String(model.userId)
+    app,
+    showModelDetail: userId === String(app.userId)
   };
 };
 
@@ -270,9 +270,9 @@ export const authChat = async ({
 }) => {
   const { userId } = await authUser({ req, authToken: true });
 
-  // 获取 model 数据
-  const { model, showModelDetail } = await authModel({
-    modelId,
+  // 获取 app 数据
+  const { app, showModelDetail } = await authApp({
+    appId: modelId,
     userId,
     authOwner: false,
     reserveDetail: true
@@ -304,7 +304,7 @@ export const authChat = async ({
   }
   // 获取 user 的 apiKey
   const { userOpenAiKey, systemAuthKey } = await getApiKey({
-    model: model.chat.chatModel,
+    model: app.chat.chatModel,
     userId
   });
 
@@ -313,7 +313,7 @@ export const authChat = async ({
     systemAuthKey,
     content,
     userId,
-    model,
+    model: app,
     showModelDetail
   };
 };

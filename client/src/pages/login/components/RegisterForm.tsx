@@ -7,7 +7,7 @@ import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
-import { postCreateModel } from '@/api/model';
+import { postCreateModel } from '@/api/app';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;

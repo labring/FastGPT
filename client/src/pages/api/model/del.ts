@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { Chat, Model, connectToDatabase, Collection, ShareChat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { authModel } from '@/service/utils/auth';
+import { authApp } from '@/service/utils/auth';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -19,8 +19,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // 验证是否是该用户的 model
-    await authModel({
-      modelId,
+    await authApp({
+      appId: modelId,
       userId
     });
 

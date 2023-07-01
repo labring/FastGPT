@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { authModel } from '@/service/utils/auth';
+import { authApp } from '@/service/utils/auth';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -18,14 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    const { model } = await authModel({
-      modelId,
+    const { app } = await authApp({
+      appId: modelId,
       userId,
       authOwner: false
     });
 
     jsonRes(res, {
-      data: model
+      data: app
     });
   } catch (err) {
     jsonRes(res, {

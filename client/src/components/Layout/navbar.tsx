@@ -29,6 +29,12 @@ const Navbar = ({ unread }: { unread: number }) => {
       {
         label: '应用',
         icon: 'model',
+        link: `/app/list`,
+        activeLink: ['/app/list']
+      },
+      {
+        label: '旧应用',
+        icon: 'model',
         link: `/model?modelId=${lastModelId}`,
         activeLink: ['/model']
       },

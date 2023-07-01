@@ -25,7 +25,7 @@ type Props = {
 type Response = {
   rawSearch: QuoteItemType[];
   isEmpty?: boolean;
-  quotePrompt: string;
+  quotePrompt?: string;
 };
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -43,7 +43,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('params is error');
     }
 
-    const result = await appKbSearch({
+    const result = await kbSearch({
       kb_ids,
       history,
       similarity,
@@ -64,7 +64,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 });
 
-export async function appKbSearch({
+export async function kbSearch({
   kb_ids = [],
   history = [],
   similarity = 0.8,
@@ -108,8 +108,8 @@ export async function appKbSearch({
   const rawSearch = searchRes.slice(0, sliceResult.length);
 
   return {
-    isEmpty: rawSearch.length === 0,
+    isEmpty: rawSearch.length === 0 ? true : undefined,
     rawSearch,
-    quotePrompt: sliceResult ? `知识库:\n${sliceResult}` : ''
+    quotePrompt: sliceResult ? `知识库:\n${sliceResult}` : undefined
   };
 }

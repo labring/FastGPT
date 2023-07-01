@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import Tabs from '@/components/Tabs';
 
 import Settings from './components/Settings';
-import { defaultModel } from '@/constants/model';
+import { defaultApp } from '@/constants/model';
 
 const Kb = dynamic(() => import('./components/Kb'), {
   ssr: false
@@ -29,12 +29,12 @@ enum TabEnum {
 const ModelDetail = ({ modelId }: { modelId: string }) => {
   const router = useRouter();
   const { isPc } = useGlobalStore();
-  const { modelDetail = defaultModel, userInfo } = useUserStore();
+  const { appDetail = defaultApp, userInfo } = useUserStore();
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.settings);
 
   const isOwner = useMemo(
-    () => modelDetail.userId === userInfo?._id,
-    [modelDetail.userId, userInfo?._id]
+    () => appDetail.userId === userInfo?._id,
+    [appDetail.userId, userInfo?._id]
   );
 
   useEffect(() => {
@@ -65,7 +65,7 @@ const ModelDetail = ({ modelId }: { modelId: string }) => {
       {/* 头部 */}
       <Box textAlign={['center', 'left']} px={5} mb={4}>
         <Box className="textlg" display={['block', 'none']} fontSize={'3xl'} fontWeight={'bold'}>
-          {modelDetail.name}
+          {appDetail.name}
         </Box>
         <Tabs
           mx={['auto', '0']}

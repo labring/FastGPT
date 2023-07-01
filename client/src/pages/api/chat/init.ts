@@ -4,9 +4,9 @@ import { connectToDatabase, Chat, Model } from '@/service/mongo';
 import type { InitChatResponse } from '@/api/response/chat';
 import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
-import { authModel } from '@/service/utils/auth';
+import { authApp } from '@/service/utils/auth';
 import mongoose from 'mongoose';
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 没有 modelId 时，直接获取用户的第一个id
-    const model = await (async () => {
+    const app = await (async () => {
       if (!modelId) {
         const myModel = await Model.findOne({ userId });
         if (!myModel) {
@@ -29,23 +29,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name: '应用1',
             userId
           });
-          return (await Model.findById(_id)) as ModelSchema;
+          return (await Model.findById(_id)) as AppSchema;
         } else {
           return myModel;
         }
       } else {
         // 校验使用权限
-        const authRes = await authModel({
-          modelId,
+        const authRes = await authApp({
+          appId: modelId,
           userId,
           authUser: false,
           authOwner: false
         });
-        return authRes.model;
+        return authRes.app;
       }
     })();
 
-    modelId = modelId || model._id;
+    modelId = modelId || app._id;
 
     // 历史记录
     let history: ChatItemType[] = [];
@@ -87,21 +87,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ]);
     }
 
-    const isOwner = String(model.userId) === userId;
+    const isOwner = String(app.userId) === userId;
 
     jsonRes<InitChatResponse>(res, {
       data: {
         chatId: chatId || '',
         modelId: modelId,
         model: {
-          name: model.name,
-          avatar: model.avatar,
-          intro: model.intro,
-          canUse: model.share.isShare || isOwner
+          name: app.name,
+          avatar: app.avatar,
+          intro: app.intro,
+          canUse: app.share.isShare || isOwner
         },
-        chatModel: model.chat.chatModel,
-        systemPrompt: isOwner ? model.chat.systemPrompt : '',
-        limitPrompt: isOwner ? model.chat.limitPrompt : '',
+        chatModel: app.chat.chatModel,
+        systemPrompt: isOwner ? app.chat.systemPrompt : '',
+        limitPrompt: isOwner ? app.chat.limitPrompt : '',
         history
       }
     });

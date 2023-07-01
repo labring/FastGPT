@@ -1,5 +1,5 @@
 import type { ShareChatEditType } from '@/types/model';
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 
 export const embeddingModel = 'text-embedding-ada-002';
 export const embeddingPrice = 0.1;
@@ -64,8 +64,8 @@ export const chatModelList: ChatModelItemType[] = [
   ChatModelMap[OpenAiChatEnum.GPT4]
 ];
 
-export const defaultModel: ModelSchema = {
-  _id: 'modelId',
+export const defaultApp: AppSchema = {
+  _id: '',
   userId: 'userId',
   name: '模型名称',
   avatar: '/icon/logo.png',
@@ -86,7 +86,8 @@ export const defaultModel: ModelSchema = {
     isShare: false,
     isShareDetail: false,
     collection: 0
-  }
+  },
+  modules: []
 };
 
 export const defaultShareChat: ShareChatEditType = {

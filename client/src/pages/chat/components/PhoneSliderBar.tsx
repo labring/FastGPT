@@ -35,13 +35,10 @@ const PhoneSliderBar = ({
 }) => {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState(TabEnum.app);
-  const { myModels, myCollectionModels, loadMyModels } = useUserStore();
+  const { myApps, myCollectionApps, loadMyModels } = useUserStore();
   const { isOpen: isOpenWx, onOpen: onOpenWx, onClose: onCloseWx } = useDisclosure();
 
-  const models = useMemo(
-    () => [...myModels, ...myCollectionModels],
-    [myCollectionModels, myModels]
-  );
+  const models = useMemo(() => [...myApps, ...myCollectionApps], [myCollectionApps, myApps]);
   useQuery(['loadModels'], () => loadMyModels(false));
 
   const { history, loadHistory } = useChatStore();

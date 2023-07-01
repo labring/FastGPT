@@ -55,7 +55,7 @@ export const jsonRes = <T = any>(
     console.log(error);
   }
 
-  res.json({
+  res.status(code).json({
     code,
     statusText: '',
     message: msg,
@@ -92,7 +92,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   } else if (openaiError[error?.response?.statusText]) {
     msg = openaiError[error.response.statusText];
   }
-  console.log(error);
+  console.log('sse error', error);
 
   sseResponse({
     res,

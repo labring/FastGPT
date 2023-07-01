@@ -1,4 +1,4 @@
-import type { ChatPopulate, ModelSchema } from '@/types/mongoSchema';
+import type { ChatPopulate, AppSchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
 
 export interface InitChatResponse {
@@ -12,7 +12,7 @@ export interface InitChatResponse {
     intro: string;
     canUse: boolean;
   };
-  chatModel: ModelSchema['chat']['chatModel']; // 对话模型名
+  chatModel: AppSchema['chat']['chatModel']; // 对话模型名
   history: ChatItemType[];
 }
 
@@ -24,5 +24,5 @@ export interface InitShareChatResponse {
     avatar: string;
     intro: string;
   };
-  chatModel: ModelSchema['chat']['chatModel']; // 对话模型名
+  chatModel: AppSchema['chat']['chatModel']; // 对话模型名
 }

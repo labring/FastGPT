@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authModel, getApiKey, authShareChat } from '@/service/utils/auth';
+import { authUser, authApp, getApiKey, authShareChat } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { withNextCors } from '@/service/utils/tools';
@@ -13,14 +13,14 @@ import { type ChatCompletionRequestMessage } from 'openai';
 import {
   kbChatAppDemo,
   chatAppDemo,
-  lafClassifyQuestionDemo,
-  classifyQuestionDemo,
   SpecificInputEnum,
   AppModuleItemTypeEnum
 } from '@/constants/app';
-import { Types } from 'mongoose';
+import { model, Types } from 'mongoose';
 import { moduleFetch } from '@/service/api/request';
-import { AppModuleItemType } from '@/types/app';
+import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
+import { FlowInputItemTypeEnum, FlowOutputItemTypeEnum } from '@/constants/flow';
+import { SystemInputEnum } from '@/constants/app';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -82,8 +82,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('appId is empty');
     }
 
-    // get history
-    const { history } = await getChatHistory({ chatId, userId });
+    // auth app, get history
+    const [{ app }, { history }] = await Promise.all([
+      authApp({
+        appId,
+        userId
+      }),
+      getChatHistory({ chatId, userId })
+    ]);
+
     const prompts = history.concat(gptMessage2ChatType(messages));
     if (prompts[prompts.length - 1].obj === 'AI') {
       prompts.pop();
@@ -95,12 +102,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('Question is empty');
     }
 
-    /* start process */
-    const modules = JSON.parse(JSON.stringify(classifyQuestionDemo.modules));
+    const newChatId = chatId === '' ? new Types.ObjectId() : undefined;
+    if (stream && newChatId) {
+      res.setHeader('newChatId', String(newChatId));
+    }
 
+    /* start process */
     const { responseData, answerText } = await dispatchModules({
       res,
-      modules,
+      modules: app.modules,
       params: {
         history: prompts,
         userChatInput: prompt.value
@@ -110,8 +120,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // save chat
     if (typeof chatId === 'string') {
-      const { newChatId } = await saveChat({
+      await saveChat({
         chatId,
+        newChatId,
         modelId: appId,
         prompts: [
           prompt,
@@ -124,19 +135,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         ],
         userId
       });
-
-      if (newChatId) {
-        sseResponse({
-          res,
-          event: sseResponseEventEnum.chatResponse,
-          data: JSON.stringify({
-            newChatId
-          })
-        });
-      }
     }
 
     if (stream) {
+      sseResponse({
+        res,
+        event: sseResponseEventEnum.answer,
+        data: '[DONE]'
+      });
       sseResponse({
         res,
         event: sseResponseEventEnum.appStreamResponse,
@@ -145,7 +151,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res.end();
     } else {
       res.json({
-        data: responseData,
+        data: {
+          newChatId,
+          ...responseData
+        },
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
@@ -183,6 +192,7 @@ async function dispatchModules({
   params?: Record<string, any>;
   stream?: boolean;
 }) {
+  const runningModules = loadModules(modules);
   let storeData: Record<string, any> = {};
   let responseData: Record<string, any> = {};
   let answerText = '';
@@ -212,7 +222,10 @@ async function dispatchModules({
       ...data
     };
   }
-  function moduleInput(module: AppModuleItemType, data: Record<string, any> = {}): Promise<any> {
+  function moduleInput(
+    module: RunningModuleItemType,
+    data: Record<string, any> = {}
+  ): Promise<any> {
     const checkInputFinish = () => {
       return !module.inputs.find((item: any) => item.value === undefined);
     };
@@ -222,50 +235,58 @@ async function dispatchModules({
       module.inputs[index].value = value;
     };
 
+    const set = new Set();
+
     return Promise.all(
       Object.entries(data).map(([key, val]: any) => {
         updateInputValue(key, val);
-        if (checkInputFinish()) {
+
+        if (!set.has(module.moduleId) && checkInputFinish()) {
+          set.add(module.moduleId);
           return moduleRun(module);
         }
       })
     );
   }
-  function moduleOutput(module: AppModuleItemType, result: Record<string, any> = {}): Promise<any> {
+  function moduleOutput(
+    module: RunningModuleItemType,
+    result: Record<string, any> = {}
+  ): Promise<any> {
     return Promise.all(
-      module.outputs.map((item) => {
-        if (result[item.key] === undefined) return;
+      module.outputs.map((outputItem) => {
+        if (result[outputItem.key] === undefined) return;
         /* update output value */
-        item.value = result[item.key];
+        outputItem.value = result[outputItem.key];
 
         pushStore({
-          isResponse: item.response,
-          answer: item.answer ? item.value : '',
+          isResponse: outputItem.response,
+          answer: outputItem.answer ? outputItem.value : '',
           data: {
-            [item.key]: item.value
+            [outputItem.key]: outputItem.value
           }
         });
 
         /* update target */
         return Promise.all(
-          item.targets.map((target: any) => {
+          outputItem.targets.map((target: any) => {
             // find module
-            const targetModule = modules.find((item) => item.moduleId === target.moduleId);
+            const targetModule = runningModules.find((item) => item.moduleId === target.moduleId);
             if (!targetModule) return;
-            return moduleInput(targetModule, { [target.key]: item.value });
+            return moduleInput(targetModule, { [target.key]: outputItem.value });
           })
         );
       })
     );
   }
-  async function moduleRun(module: AppModuleItemType): Promise<any> {
+  async function moduleRun(module: RunningModuleItemType): Promise<any> {
+    if (res.closed) return Promise.resolve();
     console.log('run=========', module.type, module.url);
 
     if (module.type === AppModuleItemTypeEnum.answer) {
       pushStore({
-        answer: module.inputs[0].value
+        answer: module.inputs.find((item) => item.key === SpecificInputEnum.answerText)?.value || ''
       });
-      return AnswerResponse({
+      return StreamAnswer({
         res,
         stream,
         text: module.inputs.find((item) => item.key === SpecificInputEnum.answerText)?.value
@@ -276,16 +297,19 @@ async function dispatchModules({
       return moduleOutput(module, switchResponse(module));
     }
 
-    if (module.type === AppModuleItemTypeEnum.http && module.url) {
+    if (
+      (module.type === AppModuleItemTypeEnum.http ||
+        module.type === AppModuleItemTypeEnum.initInput) &&
+      module.url
+    ) {
       // get fetch params
-      const inputParams: Record<string, any> = {};
+      const params: Record<string, any> = {};
       module.inputs.forEach((item: any) => {
-        inputParams[item.key] = item.value;
+        params[item.key] = item.value;
       });
       const data = {
         stream,
-        ...module.body,
-        ...inputParams
+        ...params
       };
 
       // response data
@@ -299,8 +323,12 @@ async function dispatchModules({
     }
   }
 
-  // 从填充 params 开始进入递归
-  await Promise.all(modules.map((module) => moduleInput(module, params)));
+  // start process width initInput
+  const initModules = runningModules.filter(
+    (item) => item.type === AppModuleItemTypeEnum.initInput
+  );
+
+  await Promise.all(initModules.map((module) => moduleInput(module, params)));
 
   return {
     responseData,
@@ -308,7 +336,29 @@ async function dispatchModules({
   };
 }
 
-function AnswerResponse({
+function loadModules(modules: AppModuleItemType[]): RunningModuleItemType[] {
+  return modules.map((module) => {
+    return {
+      moduleId: module.moduleId,
+      type: module.type,
+      url: module.url,
+      inputs: module.inputs
+        .filter((item) => item.type !== FlowInputItemTypeEnum.target || item.connected) // filter unconnected target input
+        .map((item) => ({
+          key: item.key,
+          value: item.value
+        })),
+      outputs: module.outputs.map((item) => ({
+        key: item.key,
+        answer: item.type === FlowOutputItemTypeEnum.answer,
+        response: item.response,
+        value: undefined,
+        targets: item.targets
+      }))
+    };
+  });
+}
+function StreamAnswer({
   res,
   stream = false,
   text = ''
@@ -322,13 +372,13 @@ function AnswerResponse({
       res,
       event: sseResponseEventEnum.answer,
       data: textAdaptGptResponse({
-        text
+        text: text.replace(/\\n/g, '\n')
       })
     });
   }
   return text;
 }
-function switchResponse(module: any) {
+function switchResponse(module: RunningModuleItemType) {
   const val = module?.inputs?.[0]?.value;
 
   if (val) {

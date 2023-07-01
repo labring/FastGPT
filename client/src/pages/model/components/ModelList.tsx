@@ -3,7 +3,7 @@ import { Box, Flex, Input, IconButton, Tooltip, useTheme } from '@chakra-ui/reac
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
-import { postCreateModel } from '@/api/model';
+import { postCreateModel } from '@/api/app';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
@@ -25,7 +25,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
   const router = useRouter();
   const { toast } = useToast();
   const { Loading, setIsLoading } = useLoading();
-  const { myModels, myCollectionModels, loadMyModels, refreshModel } = useUserStore();
+  const { myApps, myCollectionApps, loadMyModels, refreshModel } = useUserStore();
   const [searchText, setSearchText] = useState('');
 
   /* 加载模型 */
@@ -35,7 +35,7 @@ const ModelList = ({ modelId }: { modelId: string }) => {
     setIsLoading(true);
     try {
       const id = await postCreateModel({
-        name: `AI应用${myModels.length + 1}`
+        name: `AI应用${myApps.length + 1}`
       });
       toast({
         title: '创建成功',
@@ -50,23 +50,23 @@ const ModelList = ({ modelId }: { modelId: string }) => {
       });
     }
     setIsLoading(false);
-  }, [myModels.length, refreshModel, router, setIsLoading, toast]);
+  }, [myApps.length, refreshModel, router, setIsLoading, toast]);
 
   const currentModels = useMemo(() => {
     const map = {
       [MyModelsTypeEnum.my]: {
-        list: myModels.filter((item) => new RegExp(searchText, 'ig').test(item.name + item.intro)),
+        list: myApps.filter((item) => new RegExp(searchText, 'ig').test(item.name + item.intro)),
         emptyText: '还没有 AI 应用~\n快来创建一个吧'
       },
       [MyModelsTypeEnum.collection]: {
-        list: myCollectionModels.filter((item) =>
+        list: myCollectionApps.filter((item) =>
           new RegExp(searchText, 'ig').test(item.name + item.intro)
         ),
         emptyText: '收藏的 AI 应用为空~\n快去市场找一个吧'
       }
     };
     return map[currentTab];
-  }, [currentTab, myCollectionModels, myModels, searchText]);
+  }, [currentTab, myCollectionApps, myApps, searchText]);
 
   return (
     <Flex

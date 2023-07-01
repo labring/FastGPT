@@ -1,4 +1,4 @@
-import { Props, ChatResponseType } from '@/pages/api/openapi/v1/chat/completions';
+import { Props } from '@/pages/api/openapi/v1/chat/completions';
 import { sseResponseEventEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
 import { parseStreamChunk } from '@/utils/adapt';
@@ -9,10 +9,10 @@ interface StreamFetchProps {
   abortSignal: AbortController;
 }
 export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) =>
-  new Promise<ChatResponseType & { responseText: string; errMsg: string }>(
+  new Promise<{ responseText: string; errMsg: string; newChatId: string | null }>(
     async (resolve, reject) => {
       try {
-        const response = await window.fetch('/api/openapi/v1/chat/test', {
+        const response = await window.fetch('/api/openapi/v1/chat/completions2', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -37,9 +37,8 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
 
         // response data
         let responseText = '';
-        let newChatId = '';
-        let quoteLen = 0;
         let errMsg = '';
+        const newChatId = response.headers.get('newChatId');
 
         const read = async () => {
           try {
@@ -48,9 +47,8 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
               if (response.status === 200) {
                 return resolve({
                   responseText,
-                  newChatId,
-                  quoteLen,
-                  errMsg
+                  errMsg,
+                  newChatId
                 });
               } else {
                 return reject('响应过程出现异常~');
@@ -72,11 +70,6 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
                 const answer: string = data?.choices?.[0].delta.content || '';
                 onMessage(answer);
                 responseText += answer;
-              } else if (item.event === sseResponseEventEnum.chatResponse) {
-                const chatResponse = data as ChatResponseType;
-                newChatId =
-                  chatResponse.newChatId !== undefined ? chatResponse.newChatId : newChatId;
-                quoteLen = chatResponse.quoteLen !== undefined ? chatResponse.quoteLen : quoteLen;
               } else if (item.event === sseResponseEventEnum.error) {
                 errMsg = getErrText(data, '流响应错误');
               }
@@ -86,9 +79,8 @@ export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) 
             if (err?.message === 'The user aborted a request.') {
               return resolve({
                 responseText,
-                newChatId,
-                quoteLen,
-                errMsg
+                errMsg,
+                newChatId
               });
             }
             reject(getErrText(err, '请求异常'));
