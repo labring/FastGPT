@@ -81,19 +81,19 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
-        注册 FastGPT 账号
+        注册账号
       </Box>
       <form onSubmit={handleSubmit(onclickRegister)}>
         <FormControl mt={5} isInvalid={!!errors.username}>
           <Input
-            placeholder="邮箱/手机号"
+            placeholder="仅支持邮箱注册"
             size={['md', 'lg']}
             {...register('username', {
-              required: '邮箱/手机号不能为空',
+              required: '邮箱不能为空',
               pattern: {
                 value:
                   /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
-                message: '邮箱/手机号格式错误'
+                message: '邮箱格式错误'
               }
             })}
           ></Input>

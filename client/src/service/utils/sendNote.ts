@@ -19,12 +19,12 @@ const mailTransport = nodemailer.createTransport({
 
 const emailMap: { [key: string]: any } = {
   [UserAuthTypeEnum.register]: {
-    subject: '注册 FastGPT 账号',
-    html: (code: string) => `<div>您正在注册 FastGPT 账号，验证码为：${code}</div>`
+    subject: '注册账号',
+    html: (code: string) => `<div>您正在注册账号，验证码为：${code}</div>`
   },
   [UserAuthTypeEnum.findPassword]: {
-    subject: '修改 FastGPT 密码',
-    html: (code: string) => `<div>您正在修改 FastGPT 账号密码，验证码为：${code}</div>`
+    subject: '修改密码',
+    html: (code: string) => `<div>您正在修改账号密码，验证码为：${code}</div>`
   }
 };
 
@@ -66,6 +66,6 @@ export const sendPhoneCode = async (phone: string, code: string) => {
   const runtime = new Util.RuntimeOptions({});
   const res = await client.sendSmsWithOptions(sendSmsRequest, runtime);
   if (res.body.code !== 'OK') {
-    return Promise.reject(res.body.message || '发送短信失败');
+    return Promise.reject(res.body.message || '目前不支持短信注册');
   }
 };
