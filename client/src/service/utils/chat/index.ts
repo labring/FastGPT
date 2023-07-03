@@ -189,16 +189,16 @@ export const V2_StreamResponse = async ({
   let truncateData = '';
   const clientRes = async (data: string) => {
     //部分代理会导致流式传输时的数据被截断，不为json格式，这里做一个兼容
-
     const { content = '' } = (() => {
       try {
         if (truncateData) {
           try {
+            //判断是否为json，如果是的话直接跳过后续拼装操作，注意极端情况下可能出现截断成3截以上情况也可以兼容
             JSON.parse(data);
           } catch (e) {
             data = truncateData + data;
-            truncateData = '';
           }
+          truncateData = '';
         }
         const json = JSON.parse(data);
         const content: string = json?.choices?.[0].delta.content || '';
