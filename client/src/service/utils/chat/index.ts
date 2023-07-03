@@ -186,16 +186,28 @@ export const V2_StreamResponse = async ({
 }) => {
   let responseContent = '';
   let error: any = null;
-
+  let truncateData = '';
   const clientRes = async (data: string) => {
+    //部分代理会导致流式传输时的数据被截断，不为json格式，这里做一个兼容
+
     const { content = '' } = (() => {
       try {
+        if (truncateData) {
+          try {
+            JSON.parse(data);
+          } catch (e) {
+            data = truncateData + data;
+            truncateData = '';
+          }
+        }
         const json = JSON.parse(data);
         const content: string = json?.choices?.[0].delta.content || '';
         error = json.error;
         responseContent += content;
         return { content };
       } catch (error) {
+        truncateData = data;
+        console.log(error);
         return {};
       }
     })();
