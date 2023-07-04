@@ -154,7 +154,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
             mr={[2, 4]}
             size={'sm'}
             onClick={() => {
-              refetchData(pageNum);
+              getData(pageNum);
               getTrainingData({ kbId, init: true });
             }}
           />
