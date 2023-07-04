@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, ShareChat } from '@/service/mongo';
 import { authApp, authUser } from '@/service/utils/auth';
-import type { ShareChatEditType } from '@/types/model';
+import type { ShareChatEditType } from '@/types/app';
 
 /* create a shareChat */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

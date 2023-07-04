@@ -2,6 +2,40 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import { XYPosition } from 'reactflow';
 import { AppModuleItemTypeEnum, ModulesInputItemTypeEnum } from '../constants/app';
 import type { FlowInputItemType, FlowOutputItemType } from './flow';
+import type { AppSchema, kbSchema } from './mongoSchema';
+import { ChatModelType } from '@/constants/model';
+
+export type AppListItemType = {
+  _id: string;
+  name: string;
+  avatar: string;
+  intro: string;
+};
+
+export interface AppUpdateParams {
+  name?: string;
+  avatar?: string;
+  intro?: string;
+  chat?: AppSchema['chat'];
+  share?: AppSchema['share'];
+  modules?: AppSchema['modules'];
+}
+
+export interface ShareAppItem {
+  _id: string;
+  avatar: string;
+  name: string;
+  intro: string;
+  userId: string;
+  share: AppSchema['share'];
+  isCollection: boolean;
+}
+
+export type ShareChatEditType = {
+  name: string;
+  password: string;
+  maxContext: number;
+};
 
 /* agent */
 /* question classify */

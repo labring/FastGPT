@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
-import { Chat, Model, OpenApi, User, ShareChat, KB } from '../mongo';
+import { Chat, App, OpenApi, User, ShareChat, KB } from '../mongo';
 import type { AppSchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
 import mongoose from 'mongoose';
@@ -218,7 +218,7 @@ export const authApp = async ({
   reserveDetail?: boolean; // focus reserve detail
 }) => {
   // 获取 model 数据
-  const app = await Model.findById<AppSchema>(appId);
+  const app = await App.findById<AppSchema>(appId);
   if (!app) {
     return Promise.reject('模型不存在');
   }

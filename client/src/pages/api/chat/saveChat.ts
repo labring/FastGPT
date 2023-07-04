@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { ChatItemType } from '@/types/chat';
-import { connectToDatabase, Chat, Model } from '@/service/mongo';
+import { connectToDatabase, Chat, App } from '@/service/mongo';
 import { authApp } from '@/service/utils/auth';
 import { authUser } from '@/service/utils/auth';
 import { Types } from 'mongoose';
@@ -60,7 +60,7 @@ export async function saveChat({
   }));
 
   if (String(app.userId) === userId) {
-    await Model.findByIdAndUpdate(modelId, {
+    await App.findByIdAndUpdate(modelId, {
       updateTime: new Date()
     });
   }
@@ -96,7 +96,7 @@ export async function saveChat({
     // update app
     ...(String(app.userId) === userId
       ? [
-          Model.findByIdAndUpdate(modelId, {
+          App.findByIdAndUpdate(modelId, {
             updateTime: new Date()
           })
         ]

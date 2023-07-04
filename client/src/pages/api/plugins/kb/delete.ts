@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB, Model, TrainingData } from '@/service/mongo';
+import { connectToDatabase, KB, App, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { Types } from 'mongoose';
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // delete related model
-    await Model.updateMany(
+    await App.updateMany(
       {
         userId
       },

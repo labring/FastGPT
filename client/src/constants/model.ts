@@ -1,4 +1,5 @@
-import type { ShareChatEditType } from '@/types/model';
+import { getSystemModelList } from '@/api/system';
+import type { ShareChatEditType } from '@/types/app';
 import type { AppSchema } from '@/types/mongoSchema';
 
 export const embeddingModel = 'text-embedding-ada-002';

@@ -3,7 +3,7 @@ import type { HistoryItemType } from '@/types/chat';
 import type { InitChatResponse, InitShareChatResponse } from './response/chat';
 import { RequestPaging } from '../types/index';
 import type { ShareChatSchema } from '@/types/mongoSchema';
-import type { ShareChatEditType } from '@/types/model';
+import type { ShareChatEditType } from '@/types/app';
 import { Obj2Query } from '@/utils/tools';
 import type { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';

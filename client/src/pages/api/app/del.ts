@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, Model, connectToDatabase, Collection, ShareChat } from '@/service/mongo';
+import { Chat, App, connectToDatabase, Collection, ShareChat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { authApp } from '@/service/utils/auth';
 
@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 删除模型
-    await Model.deleteOne({
+    await App.deleteOne({
       _id: modelId,
       userId
     });

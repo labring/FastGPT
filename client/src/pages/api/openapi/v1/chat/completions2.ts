@@ -117,6 +117,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       },
       stream
     });
+    console.log(responseData, answerText);
 
     // save chat
     if (typeof chatId === 'string') {
@@ -282,14 +283,17 @@ async function dispatchModules({
     if (res.closed) return Promise.resolve();
     console.log('run=========', module.type, module.url);
 
+    // direct answer
     if (module.type === AppModuleItemTypeEnum.answer) {
+      const text =
+        module.inputs.find((item) => item.key === SpecificInputEnum.answerText)?.value || '';
       pushStore({
-        answer: module.inputs.find((item) => item.key === SpecificInputEnum.answerText)?.value || ''
+        answer: text
       });
       return StreamAnswer({
         res,
         stream,
-        text: module.inputs.find((item) => item.key === SpecificInputEnum.answerText)?.value
+        text: text
       });
     }
 
@@ -365,9 +369,9 @@ function StreamAnswer({
 }: {
   res: NextApiResponse;
   stream?: boolean;
-  text?: '';
+  text?: string;
 }) {
-  if (stream) {
+  if (stream && text) {
     return sseResponse({
       res,
       event: sseResponseEventEnum.answer,

@@ -3,7 +3,7 @@ import { Box, Flex, Card, Grid, Input } from '@chakra-ui/react';
 import { useLoading } from '@/hooks/useLoading';
 import { getShareModelList, triggerModelCollection } from '@/api/app';
 import { usePagination } from '@/hooks/usePagination';
-import type { ShareModelItem } from '@/types/model';
+import type { ShareAppItem } from '@/types/app';
 import { useUserStore } from '@/store/user';
 import ShareModelList from './components/list';
 import styles from './index.module.scss';
@@ -21,7 +21,7 @@ const modelList = () => {
     Pagination,
     getData,
     pageNum
-  } = usePagination<ShareModelItem>({
+  } = usePagination<ShareAppItem>({
     api: getShareModelList,
     pageSize: 24,
     params: {

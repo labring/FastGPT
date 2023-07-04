@@ -6,7 +6,7 @@ import { getMyModels, getModelById } from '@/api/app';
 import { formatPrice } from '@/utils/user';
 import { getTokenLogin } from '@/api/user';
 import { defaultApp } from '@/constants/model';
-import { ModelListItemType } from '@/types/model';
+import { AppListItemType } from '@/types/app';
 import { KbItemType } from '@/types/plugin';
 import { getKbList, getKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
@@ -20,8 +20,8 @@ type State = {
   // model
   lastModelId: string;
   setLastModelId: (id: string) => void;
-  myApps: ModelListItemType[];
-  myCollectionApps: ModelListItemType[];
+  myApps: AppListItemType[];
+  myCollectionApps: AppListItemType[];
   loadMyModels: (init?: boolean) => Promise<null>;
   appDetail: AppSchema;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
