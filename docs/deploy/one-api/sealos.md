@@ -30,7 +30,7 @@ https://cloud.sealos.io/
 
 ```
 # 下面的地址是 Sealos 提供的，务必写上 v1
-OPENAI_BASE_URL=https://xxxx.cloud.sealos.io/v1
+ONEAPI_URL=https://xxxx.cloud.sealos.io/v1
 # 下面的 key 由 one-api 提供
-OPENAIKEY=sk-xxxxxx
+ONEAPI_KEY=sk-xxxxxx
 ```
