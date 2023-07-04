@@ -34,20 +34,23 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 添加 wx 进入：  
 ![Demo](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
 
-## 👀 其他
-
-- [FastGpt 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
-- [docker 部署教程](https://www.bilibili.com/video/BV1jo4y147fT/)
-- [公众号接入](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGpt V3.4 更新集合](https://www.bilibili.com/video/BV1Lo4y147Qh/?vd_source=92041a1a395f852f9d89158eaa3f61b4)
-- [FastGpt 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
-
 ## Powered by
 
 - [TuShan: 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
 - [Laf: 3 分钟快速接入三方应用](https://github.com/labring/laf)
 - [Sealos: 快速部署集群应用](https://github.com/labring/sealos)
 - [One API: 令牌管理 & 二次分发，支持 Azure](https://github.com/songquanpeng/one-api)
+
+## 👀 其他
+
+- [FastGpt 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
+- [docker 部署教程视频](https://www.bilibili.com/video/BV1jo4y147fT/)
+- [公众号接入视频教程](https://www.bilibili.com/video/BV1xh4y1t7fy/)
+- [FastGpt 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
+
+## 第三方生态
+
+- [luolinAI: 企微机器人，开箱即用](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
 
 ## 🌟 Star History
 
