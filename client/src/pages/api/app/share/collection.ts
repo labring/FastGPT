@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Collection, Model } from '@/service/mongo';
+import { connectToDatabase, Collection, App } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 
 /* 模型收藏切换 */
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
     }
 
-    await Model.findByIdAndUpdate(modelId, {
+    await App.findByIdAndUpdate(modelId, {
       'share.collection': await Collection.countDocuments({ modelId })
     });
 

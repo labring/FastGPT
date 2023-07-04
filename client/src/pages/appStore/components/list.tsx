@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Button, Tooltip, Card } from '@chakra-ui/react';
-import type { ShareModelItem } from '@/types/model';
+import type { ShareAppItem } from '@/types/app';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import styles from '../index.module.scss';
@@ -10,7 +10,7 @@ const ShareModelList = ({
   models = [],
   onclickCollection
 }: {
-  models: ShareModelItem[];
+  models: ShareAppItem[];
   onclickCollection: (modelId: string) => void;
 }) => {
   const router = useRouter();

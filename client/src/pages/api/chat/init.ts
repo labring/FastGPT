@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Chat, Model } from '@/service/mongo';
+import { connectToDatabase, Chat, App } from '@/service/mongo';
 import type { InitChatResponse } from '@/api/response/chat';
 import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
@@ -23,13 +23,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 没有 modelId 时，直接获取用户的第一个id
     const app = await (async () => {
       if (!modelId) {
-        const myModel = await Model.findOne({ userId });
+        const myModel = await App.findOne({ userId });
         if (!myModel) {
-          const { _id } = await Model.create({
+          const { _id } = await App.create({
             name: '应用1',
             userId
           });
-          return (await Model.findById(_id)) as AppSchema;
+          return (await App.findById(_id)) as AppSchema;
         } else {
           return myModel;
         }

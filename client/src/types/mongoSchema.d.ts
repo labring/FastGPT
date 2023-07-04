@@ -57,16 +57,10 @@ export interface AppSchema {
   modules: AppModuleItemType[];
 }
 
-export interface ModelPopulate extends AppSchema {
-  userId: UserModelSchema;
-}
-
 export interface CollectionSchema {
   modelId: string;
   userId: string;
 }
-
-export type ModelDataType = 0 | 1;
 
 export interface TrainingDataSchema {
   _id: string;

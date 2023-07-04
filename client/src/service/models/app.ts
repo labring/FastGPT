@@ -1,5 +1,5 @@
-import { Schema, model, models, Model as MongoModel } from 'mongoose';
-import { AppSchema as ModelType } from '@/types/mongoSchema';
+import { Schema, model, models, Model } from 'mongoose';
+import { AppSchema as AppType } from '@/types/mongoSchema';
 import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
 
 const AppSchema = new Schema({
@@ -105,4 +105,4 @@ try {
   console.log(error);
 }
 
-export const Model: MongoModel<ModelType> = models['model'] || model('model', AppSchema);
+export const App: Model<AppType> = models['model'] || model('model', AppSchema);

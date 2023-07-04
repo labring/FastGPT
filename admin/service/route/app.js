@@ -1,4 +1,4 @@
-import { Model, Kb } from '../schema.js';
+import { App, Kb } from '../schema.js';
 import { auth } from './system.js';
 
 export const useAppRoute = (app) => {
@@ -17,7 +17,7 @@ export const useAppRoute = (app) => {
         ...(id && { _id: id })
       };
 
-      const modelsRaw = await Model.find(where)
+      const modelsRaw = await App.find(where)
         .skip(start)
         .limit(end - start)
         .sort({ [sort]: order, 'share.isShare': -1, 'share.collection': -1 });
@@ -50,7 +50,7 @@ export const useAppRoute = (app) => {
 
         models.push(orderedModel);
       }
-      const totalCount = await Model.countDocuments(where);
+      const totalCount = await App.countDocuments(where);
       res.header('Access-Control-Expose-Headers', 'X-Total-Count');
       res.header('X-Total-Count', totalCount);
       res.json(models);
@@ -70,7 +70,7 @@ export const useAppRoute = (app) => {
         intro
       } = req.body;
 
-      await Model.findByIdAndUpdate(_id, {
+      await App.findByIdAndUpdate(_id, {
         $set: {
           intro: intro,
           'share.topNum': Number(topNum),

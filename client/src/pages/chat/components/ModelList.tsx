@@ -1,10 +1,10 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { ModelListItemType } from '@/types/model';
+import { AppListItemType } from '@/types/app';
 import Avatar from '@/components/Avatar';
 
-const ModelList = ({ models, modelId }: { models: ModelListItemType[]; modelId: string }) => {
+const ModelList = ({ models, modelId }: { models: AppListItemType[]; modelId: string }) => {
   const router = useRouter();
 
   return (

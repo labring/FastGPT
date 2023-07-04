@@ -4,8 +4,8 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useGlobalStore } from '@/store/global';
 import dynamic from 'next/dynamic';
-import Tabs from '@/components/Tabs';
 
+import Tabs from '@/components/Tabs';
 import Settings from './components/Settings';
 import { defaultApp } from '@/constants/model';
 

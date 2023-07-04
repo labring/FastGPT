@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { Model } from '@/service/models/model';
+import { App } from '@/service/models/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // 上限校验
-    const authCount = await Model.countDocuments({
+    const authCount = await App.countDocuments({
       userId
     });
     if (authCount >= 50) {
@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 创建模型
-    const response = await Model.create({
+    const response = await App.create({
       name,
       userId
     });

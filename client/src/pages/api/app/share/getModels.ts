@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Model } from '@/service/mongo';
+import { connectToDatabase, App } from '@/service/mongo';
 import type { PagingData } from '@/types';
-import type { ShareModelItem } from '@/types/model';
+import type { ShareAppItem } from '@/types/app';
 import { parseCookie } from '@/service/utils/auth';
 import { Types } from 'mongoose';
 
@@ -91,11 +91,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 获取被分享的模型
     const [models, total] = await Promise.all([
       // @ts-ignore
-      Model.aggregate(pipeline),
-      Model.countDocuments(where)
+      App.aggregate(pipeline),
+      App.countDocuments(where)
     ]);
 
-    jsonRes<PagingData<ShareModelItem>>(res, {
+    jsonRes<PagingData<ShareAppItem>>(res, {
       data: {
         pageNum,
         pageSize,

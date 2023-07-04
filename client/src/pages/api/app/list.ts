@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Collection, Model } from '@/service/mongo';
+import { connectToDatabase, Collection, App } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import type { ModelListResponse } from '@/api/response/model';
+import type { AppListResponse } from '@/api/response/app';
 
 /* 获取模型列表 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 根据 userId 获取模型信息
     const [myApps, myCollections] = await Promise.all([
-      Model.find(
+      App.find(
         {
           userId
         },
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .then((res) => res.filter((item) => item.modelId))
     ]);
 
-    jsonRes<ModelListResponse>(res, {
+    jsonRes<AppListResponse>(res, {
       data: {
         myApps: myApps.map((item) => ({
           _id: item._id,

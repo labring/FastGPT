@@ -36,7 +36,7 @@ import { getShareChatList, delShareChatById, createShareChat } from '@/api/chat'
 import { formatTimeToChatTime, useCopyData, getErrText } from '@/utils/tools';
 import { useForm } from 'react-hook-form';
 import { defaultShareChat } from '@/constants/model';
-import type { ShareChatEditType } from '@/types/model';
+import type { ShareChatEditType } from '@/types/app';
 
 const Share = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();

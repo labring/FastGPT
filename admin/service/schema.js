@@ -56,7 +56,7 @@ const kbSchema = new mongoose.Schema({
   __v: Number
 });
 
-const modelSchema = new mongoose.Schema({
+const appSchema = new mongoose.Schema({
   userId: mongoose.Schema.Types.ObjectId,
   name: String,
   avatar: String,
@@ -104,7 +104,7 @@ const SystemSchema = new mongoose.Schema({
   }
 });
 
-export const Model = mongoose.models['model'] || mongoose.model('model', modelSchema);
+export const App = mongoose.models['model'] || mongoose.model('model', appSchema);
 export const Kb = mongoose.models['kb'] || mongoose.model('kb', kbSchema);
 export const User = mongoose.models['user'] || mongoose.model('user', userSchema);
 export const Pay = mongoose.models['pay'] || mongoose.model('pay', paySchema);

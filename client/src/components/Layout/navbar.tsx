@@ -33,12 +33,6 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/app/list']
       },
       {
-        label: '旧应用',
-        icon: 'model',
-        link: `/model?modelId=${lastModelId}`,
-        activeLink: ['/model']
-      },
-      {
         label: '知识库',
         icon: 'kb',
         link: `/kb`,
@@ -47,8 +41,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       {
         label: '市场',
         icon: 'appStore',
-        link: '/model/share',
-        activeLink: ['/model/share']
+        link: '/appStore',
+        activeLink: ['/appStore']
       },
       {
         label: '账号',
@@ -57,7 +51,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/number']
       }
     ],
-    [lastChatId, lastChatModelId, lastModelId]
+    [lastChatId, lastChatModelId]
   );
 
   const itemStyles: any = {

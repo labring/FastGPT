@@ -2,14 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { Model } from '@/service/models/model';
-import type { ModelUpdateParams } from '@/types/model';
+import { App } from '@/service/models/model';
+import type { AppUpdateParams } from '@/types/app';
 import { authApp } from '@/service/utils/auth';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, avatar, chat, share, intro, modules } = req.body as ModelUpdateParams;
+    const { name, avatar, chat, share, intro, modules } = req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
     if (!appId) {
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 更新模型
-    await Model.updateOne(
+    await App.updateOne(
       {
         _id: appId,
         userId
