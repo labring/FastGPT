@@ -30,7 +30,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         label: '应用',
         icon: 'model',
         link: `/app/list`,
-        activeLink: ['/app/list']
+        activeLink: ['/app/list', '/app/detail']
       },
       {
         label: '知识库',

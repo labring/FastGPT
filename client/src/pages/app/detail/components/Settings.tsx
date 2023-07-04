@@ -1,15 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  FormControl,
-  Input,
-  Textarea,
-  Divider,
-  Tooltip
-} from '@chakra-ui/react';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { Box, Flex, Button, FormControl, Input, Textarea, Divider } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
@@ -21,19 +11,10 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { useConfirm } from '@/hooks/useConfirm';
-import { ChatModelMap, getChatModelList } from '@/constants/model';
-import { formatPrice } from '@/utils/user';
 
 import type { AppSchema } from '@/types/mongoSchema';
 
 import Avatar from '@/components/Avatar';
-import MySelect from '@/components/Select';
-import MySlider from '@/components/Slider';
-
-const systemPromptTip =
-  '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。';
-const limitPromptTip =
-  '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"';
 
 const Settings = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
@@ -67,15 +48,6 @@ const Settings = ({ modelId }: { modelId: string }) => {
     () => appDetail.userId === userInfo?._id,
     [appDetail.userId, userInfo?._id]
   );
-  const tokenLimit = useMemo(() => {
-    const max = ChatModelMap[getValues('chat.chatModel')]?.contextMaxToken || 4000;
-
-    if (max < getValues('chat.maxToken')) {
-      setValue('chat.maxToken', max);
-    }
-
-    return max;
-  }, [getValues, setValue, refresh]);
 
   // 提交保存模型修改
   const saveSubmitSuccess = useCallback(
@@ -185,17 +157,17 @@ const Settings = ({ modelId }: { modelId: string }) => {
     }
   });
 
-  const { data: chatModelList = [] } = useQuery(['initChatModelList'], getChatModelList);
-
   return (
     <Box
+      pt={[0, 5]}
       pb={3}
       px={[5, '25px', '50px']}
       fontSize={['sm', 'lg']}
-      maxW={['auto', '800px']}
       position={'relative'}
+      maxW={['auto', '800px']}
     >
-      <Flex alignItems={'center'}>
+      <Box fontSize={['md', 'xl']}>基本信息</Box>
+      <Flex mt={5} alignItems={'center'}>
         <Box w={['60px', '100px', '140px']} flexShrink={0}>
           头像
         </Box>
@@ -234,96 +206,6 @@ const Settings = ({ modelId }: { modelId: string }) => {
       </Flex>
 
       <Divider mt={5} />
-
-      <Flex alignItems={'center'} mt={5}>
-        <Box w={['60px', '100px', '140px']} flexShrink={0}>
-          对话模型
-        </Box>
-        <MySelect
-          width={['90%', '280px']}
-          value={getValues('chat.chatModel')}
-          list={chatModelList.map((item) => ({
-            value: item.chatModel,
-            label: `${item.name} (${formatPrice(
-              ChatModelMap[item.chatModel]?.price,
-              1000
-            )} 元/1k tokens)`
-          }))}
-          onchange={(val: any) => {
-            setValue('chat.chatModel', val);
-            setRefresh(!refresh);
-          }}
-        />
-      </Flex>
-      <Flex alignItems={'center'} my={10}>
-        <Box w={['60px', '100px', '140px']} flexShrink={0}>
-          温度
-        </Box>
-        <Box flex={1} ml={'10px'}>
-          <MySlider
-            markList={[
-              { label: '严谨', value: 0 },
-              { label: '发散', value: 10 }
-            ]}
-            width={['90%', '260px']}
-            min={0}
-            max={10}
-            value={getValues('chat.temperature')}
-            onChange={(val) => {
-              setValue('chat.temperature', val);
-              setRefresh(!refresh);
-            }}
-          />
-        </Box>
-      </Flex>
-      <Flex alignItems={'center'} mt={12} mb={10}>
-        <Box w={['60px', '100px', '140px']} flexShrink={0}>
-          回复上限
-        </Box>
-        <Box flex={1} ml={'10px'}>
-          <MySlider
-            markList={[
-              { label: '100', value: 100 },
-              { label: `${tokenLimit}`, value: tokenLimit }
-            ]}
-            width={['90%', '260px']}
-            min={100}
-            max={tokenLimit}
-            step={50}
-            value={getValues('chat.maxToken')}
-            onChange={(val) => {
-              setValue('chat.maxToken', val);
-              setRefresh(!refresh);
-            }}
-          />
-        </Box>
-      </Flex>
-      <Flex mt={10} alignItems={'flex-start'}>
-        <Box w={['60px', '100px', '140px']} flexShrink={0}>
-          提示词
-          <Tooltip label={systemPromptTip}>
-            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-          </Tooltip>
-        </Box>
-        <Textarea
-          rows={8}
-          placeholder={systemPromptTip}
-          {...register('chat.systemPrompt')}
-        ></Textarea>
-      </Flex>
-      <Flex mt={5} alignItems={'flex-start'}>
-        <Box w={['60px', '100px', '140px']} flexShrink={0}>
-          限定词
-          <Tooltip label={limitPromptTip}>
-            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-          </Tooltip>
-        </Box>
-        <Textarea
-          rows={5}
-          placeholder={limitPromptTip}
-          {...register('chat.limitPrompt')}
-        ></Textarea>
-      </Flex>
 
       <Flex mt={5} alignItems={'center'}>
         <Box w={['60px', '100px', '140px']} flexShrink={0}></Box>

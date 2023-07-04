@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
-import { useGlobalStore } from '@/store/global';
 import dynamic from 'next/dynamic';
 
 import Tabs from '@/components/Tabs';
+import SlideTabs from '@/components/SlideTabs';
 import Settings from './components/Settings';
 import { defaultApp } from '@/constants/model';
+import Avatar from '@/components/Avatar';
 
 const EditApp = dynamic(() => import('./components/edit'), {
   ssr: false
@@ -28,8 +29,8 @@ enum TabEnum {
 
 const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const router = useRouter();
+  const theme = useTheme();
   const { appId } = router.query as { appId: string };
-  const { isPc } = useGlobalStore();
   const { appDetail = defaultApp, loadAppDetail, userInfo } = useUserStore();
 
   const isOwner = useMemo(
@@ -50,6 +51,17 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     [appId, router]
   );
 
+  const tabList = useMemo(
+    () => [
+      { label: '基础信息', id: TabEnum.settings, icon: 'text' },
+      ...(isOwner ? [{ label: '编排', id: TabEnum.edit, icon: 'edit' }] : []),
+      { label: '分享', id: TabEnum.share, icon: 'edit' },
+      { label: 'API', id: TabEnum.API, icon: 'edit' },
+      { label: '立即对话', id: 'startChat', icon: 'chat' }
+    ],
+    [isOwner]
+  );
+
   useEffect(() => {
     window.onbeforeunload = (e) => {
       e.preventDefault();
@@ -66,51 +78,68 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   }, [appId, loadAppDetail]);
 
   return (
-    <Flex
-      flexDirection={'column'}
-      h={'100%'}
-      maxW={'100vw'}
-      pt={4}
-      overflow={'overlay'}
-      position={'relative'}
-      bg={'white'}
-    >
-      {/* 头部 */}
-      <Box textAlign={['center', 'left']} px={5} mb={4}>
-        <Box className="textlg" display={['block', 'none']} fontSize={'3xl'} fontWeight={'bold'}>
-          {appDetail.name}
+    <Flex flexDirection={'column'} bg={'myGray.100'} h={'100%'} p={[0, 5]}>
+      <Box
+        display={['block', 'flex']}
+        flex={1}
+        bg={'white'}
+        borderRadius={['', '2xl']}
+        border={['', theme.borders.lg]}
+      >
+        {/* pc tab */}
+        <Box display={['none', 'block']} p={4} w={'200px'} borderRight={theme.borders.base}>
+          <Flex mb={4}>
+            <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'lg'} />
+            <Box ml={2} fontWeight={'bold'}>
+              {appDetail.name}
+            </Box>
+          </Flex>
+          <SlideTabs
+            mx={'auto'}
+            mt={2}
+            w={'100%'}
+            list={tabList}
+            activeId={currentTab}
+            onChange={(e: any) => {
+              if (e === 'startChat') {
+                router.push(`/chat?modelId=${appId}`);
+              } else {
+                setCurrentTab(e);
+              }
+            }}
+          />
         </Box>
-        <Tabs
-          mx={['auto', '0']}
-          mt={2}
-          w={['300px', '360px']}
-          list={[
-            { label: '配置', id: TabEnum.settings },
-            ...(isOwner ? [{ label: '编排', id: TabEnum.edit }] : []),
-            { label: '分享', id: TabEnum.share },
-            { label: 'API', id: TabEnum.API },
-            { label: '立即对话', id: 'startChat' }
-          ]}
-          size={isPc ? 'md' : 'sm'}
-          activeId={currentTab}
-          onChange={(e: any) => {
-            if (e === 'startChat') {
-              router.push(`/chat?modelId=${appId}`);
-            } else {
-              setCurrentTab(e);
-            }
-          }}
-        />
-      </Box>
-      <Box flex={1}>
-        {currentTab === TabEnum.settings && <Settings modelId={appId} />}
-        {currentTab === TabEnum.edit && (
-          <Box position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
-            <EditApp app={appDetail} onBack={() => setCurrentTab(TabEnum.settings)} />
+        {/* phone tab */}
+        <Box display={['block', 'none']} textAlign={'center'} px={5} py={3}>
+          <Box className="textlg" fontSize={'3xl'} fontWeight={'bold'}>
+            {appDetail.name}
           </Box>
-        )}
-        {currentTab === TabEnum.API && <API modelId={appId} />}
-        {currentTab === TabEnum.share && <Share modelId={appId} />}
+          <Tabs
+            mx={'auto'}
+            mt={2}
+            w={'300px'}
+            list={tabList}
+            size={'sm'}
+            activeId={currentTab}
+            onChange={(e: any) => {
+              if (e === 'startChat') {
+                router.push(`/chat?modelId=${appId}`);
+              } else {
+                setCurrentTab(e);
+              }
+            }}
+          />
+        </Box>
+        <Box flex={1}>
+          {currentTab === TabEnum.settings && <Settings modelId={appId} />}
+          {currentTab === TabEnum.edit && (
+            <Box position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
+              <EditApp app={appDetail} onBack={() => setCurrentTab(TabEnum.settings)} />
+            </Box>
+          )}
+          {currentTab === TabEnum.API && <API modelId={appId} />}
+          {currentTab === TabEnum.share && <Share modelId={appId} />}
+        </Box>
       </Box>
     </Flex>
   );
