@@ -150,13 +150,15 @@ export async function appKbSearch({
     }
   ];
 
-  const fixedSystemTokens = modelToolMap[model.chat.chatModel].countTokens({
+  const fixedSystemTokens = modelToolMap.countTokens({
+    model: model.chat.chatModel,
     messages: [...userSystemPrompt, ...userLimitPrompt]
   });
 
   // filter part quote by maxToken
-  const sliceResult = modelToolMap[model.chat.chatModel]
+  const sliceResult = modelToolMap
     .tokenSlice({
+      model: model.chat.chatModel,
       maxToken: modelConstantsData.systemMaxToken - fixedSystemTokens,
       messages: filterSearch.map((item, i) => ({
         obj: ChatRoleEnum.System,

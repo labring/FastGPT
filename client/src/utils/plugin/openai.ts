@@ -4,7 +4,6 @@ import { ChatRoleEnum } from '@/constants/chat';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { OpenAiChatEnum } from '@/constants/model';
 import axios from 'axios';
-import dayjs from 'dayjs';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 
 export const getOpenAiEncMap = () => {
@@ -14,28 +13,11 @@ export const getOpenAiEncMap = () => {
   if (typeof global !== 'undefined' && global.OpenAiEncMap) {
     return global.OpenAiEncMap;
   }
-  const enc = {
-    [OpenAiChatEnum.GPT35]: encoding_for_model('gpt-3.5-turbo', {
-      '<|im_start|>': 100264,
-      '<|im_end|>': 100265,
-      '<|im_sep|>': 100266
-    }),
-    [OpenAiChatEnum.GPT3516k]: encoding_for_model('gpt-3.5-turbo', {
-      '<|im_start|>': 100264,
-      '<|im_end|>': 100265,
-      '<|im_sep|>': 100266
-    }),
-    [OpenAiChatEnum.GPT4]: encoding_for_model('gpt-4', {
-      '<|im_start|>': 100264,
-      '<|im_end|>': 100265,
-      '<|im_sep|>': 100266
-    }),
-    [OpenAiChatEnum.GPT432k]: encoding_for_model('gpt-4-32k', {
-      '<|im_start|>': 100264,
-      '<|im_end|>': 100265,
-      '<|im_sep|>': 100266
-    })
-  };
+  const enc = encoding_for_model('gpt-3.5-turbo', {
+    '<|im_start|>': 100264,
+    '<|im_end|>': 100265,
+    '<|im_sep|>': 100266
+  });
 
   if (typeof window !== 'undefined') {
     window.OpenAiEncMap = enc;
@@ -78,7 +60,7 @@ export function countOpenAIToken({
   const adaptMessages = adaptChatItem_openAI({ messages, reserveId: true });
   const token = adaptMessages.reduce((sum, item) => {
     const text = `${item.role}\n${item.content}`;
-    const enc = getOpenAiEncMap()[model];
+    const enc = getOpenAiEncMap();
     const encodeText = enc.encode(text);
     const tokens = encodeText.length + diffVal;
     return sum + tokens;
@@ -96,7 +78,7 @@ export const openAiSliceTextByToken = ({
   text: string;
   length: number;
 }) => {
-  const enc = getOpenAiEncMap()[model];
+  const enc = getOpenAiEncMap();
   const encodeText = enc.encode(text);
   const decoder = new TextDecoder();
   return decoder.decode(enc.decode(encodeText.slice(0, length)));

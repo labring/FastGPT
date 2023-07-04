@@ -152,7 +152,7 @@ export const splitText_token = ({ text, maxLen }: { text: string; maxLen: number
   const slideLen = Math.floor(maxLen * 0.3);
 
   try {
-    const enc = getOpenAiEncMap()[OpenAiChatEnum.GPT35];
+    const enc = getOpenAiEncMap();
     // filter empty text. encode sentence
     const encodeText = enc.encode(text);
 

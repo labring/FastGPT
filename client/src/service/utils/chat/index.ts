@@ -27,6 +27,7 @@ export type StreamResponseType = {
   chatResponse: any;
   prompts: ChatItemType[];
   res: NextApiResponse;
+  model: `${OpenAiChatEnum}`;
   [key: string]: any;
 };
 export type StreamResponseReturnType = {
@@ -35,49 +36,9 @@ export type StreamResponseReturnType = {
   finishMessages: ChatItemType[];
 };
 
-export const modelServiceToolMap: Record<
-  ChatModelType,
-  {
-    chatCompletion: (data: ChatCompletionType) => Promise<ChatCompletionResponseType>;
-    streamResponse: (data: StreamResponseType) => Promise<StreamResponseReturnType>;
-  }
-> = {
-  [OpenAiChatEnum.GPT35]: {
-    chatCompletion: (data: ChatCompletionType) =>
-      chatResponse({ model: OpenAiChatEnum.GPT35, ...data }),
-    streamResponse: (data: StreamResponseType) =>
-      openAiStreamResponse({
-        model: OpenAiChatEnum.GPT35,
-        ...data
-      })
-  },
-  [OpenAiChatEnum.GPT3516k]: {
-    chatCompletion: (data: ChatCompletionType) =>
-      chatResponse({ model: OpenAiChatEnum.GPT3516k, ...data }),
-    streamResponse: (data: StreamResponseType) =>
-      openAiStreamResponse({
-        model: OpenAiChatEnum.GPT3516k,
-        ...data
-      })
-  },
-  [OpenAiChatEnum.GPT4]: {
-    chatCompletion: (data: ChatCompletionType) =>
-      chatResponse({ model: OpenAiChatEnum.GPT4, ...data }),
-    streamResponse: (data: StreamResponseType) =>
-      openAiStreamResponse({
-        model: OpenAiChatEnum.GPT4,
-        ...data
-      })
-  },
-  [OpenAiChatEnum.GPT432k]: {
-    chatCompletion: (data: ChatCompletionType) =>
-      chatResponse({ model: OpenAiChatEnum.GPT432k, ...data }),
-    streamResponse: (data: StreamResponseType) =>
-      openAiStreamResponse({
-        model: OpenAiChatEnum.GPT432k,
-        ...data
-      })
-  }
+export const modelServiceToolMap = {
+  chatCompletion: chatResponse,
+  streamResponse: openAiStreamResponse
 };
 
 /* delete invalid symbol */
@@ -124,7 +85,8 @@ export const ChatContextFilter = ({
   }
 
   // 去掉 system 的 token
-  maxTokens -= modelToolMap[model].countTokens({
+  maxTokens -= modelToolMap.countTokens({
+    model,
     messages: systemPrompts
   });
 
@@ -135,7 +97,8 @@ export const ChatContextFilter = ({
   for (let i = chatPrompts.length - 1; i >= 0; i--) {
     chats.unshift(chatPrompts[i]);
 
-    const tokens = modelToolMap[model].countTokens({
+    const tokens = modelToolMap.countTokens({
+      model,
       messages: chats
     });
 
@@ -164,13 +127,14 @@ export const resStreamResponse = async ({
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
 
-  const { responseContent, totalTokens, finishMessages } = await modelServiceToolMap[
-    model
-  ].streamResponse({
-    chatResponse,
-    prompts,
-    res
-  });
+  const { responseContent, totalTokens, finishMessages } = await modelServiceToolMap.streamResponse(
+    {
+      chatResponse,
+      prompts,
+      res,
+      model
+    }
+  );
 
   return { responseContent, totalTokens, finishMessages };
 };
@@ -259,7 +223,8 @@ export const V2_StreamResponse = async ({
     value: responseContent
   });
 
-  const totalTokens = modelToolMap[model].countTokens({
+  const totalTokens = modelToolMap.countTokens({
+    model,
     messages: finishMessages
   });
 

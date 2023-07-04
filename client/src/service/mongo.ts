@@ -20,6 +20,8 @@ export async function connectToDatabase(): Promise<void> {
     pgIvfflatProbe: 10,
     sensitiveCheck: false
   };
+  global.sendInformQueue = [];
+  global.sendInformQueueLen = 0;
   // proxy obj
   if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {
     global.httpsAgent = tunnel.httpsOverHttp({

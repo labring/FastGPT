@@ -78,7 +78,8 @@ export async function pushDataToKb({
 
     if (mode === TrainingModeEnum.qa) {
       // count token
-      const token = modelToolMap[OpenAiChatEnum.GPT3516k].countTokens({
+      const token = modelToolMap.countTokens({
+        model: OpenAiChatEnum.GPT3516k,
         messages: [{ obj: 'System', value: item.q }]
       });
       if (token > modeMaxToken[TrainingModeEnum.qa]) {

@@ -181,33 +181,13 @@ export const getApiKey = async ({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
-  const keyMap = {
-    [OpenAiChatEnum.GPT35]: {
-      userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey()
-    },
-    [OpenAiChatEnum.GPT3516k]: {
-      userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey()
-    },
-    [OpenAiChatEnum.GPT4]: {
-      userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey()
-    },
-    [OpenAiChatEnum.GPT432k]: {
-      userOpenAiKey: user.openaiKey || '',
-      systemAuthKey: getSystemOpenAiKey()
-    }
-  };
-
-  if (!keyMap[model]) {
-    return Promise.reject('App  model is exists');
-  }
+  const userOpenAiKey = user.openaiKey || '';
+  const systemAuthKey = getSystemOpenAiKey();
 
   // 有自己的key
-  if (!mustPay && keyMap[model].userOpenAiKey) {
+  if (!mustPay && userOpenAiKey) {
     return {
-      userOpenAiKey: keyMap[model].userOpenAiKey,
+      userOpenAiKey,
       systemAuthKey: ''
     };
   }
@@ -219,7 +199,7 @@ export const getApiKey = async ({
 
   return {
     userOpenAiKey: '',
-    systemAuthKey: keyMap[model].systemAuthKey
+    systemAuthKey
   };
 };
 

@@ -21,7 +21,9 @@ declare global {
   var QRCode: any;
   var qaQueueLen: number;
   var vectorQueueLen: number;
-  var OpenAiEncMap: Record<string, Tiktoken>;
+  var OpenAiEncMap: Tiktoken;
+  var sendInformQueue: (() => Promise<void>)[];
+  var sendInformQueueLen: number;
   var systemEnv: {
     vectorMaxProcess: number;
     qaMaxProcess: number;

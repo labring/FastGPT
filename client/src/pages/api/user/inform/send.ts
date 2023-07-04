@@ -4,6 +4,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Inform, User } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { InformTypeEnum } from '@/constants/user';
+import { startSendInform } from '@/service/events/sendInform';
 
 export type Props = {
   type: `${InformTypeEnum}`;
@@ -37,25 +38,26 @@ export async function sendInform({ type, title, content, userId }: Props) {
 
   try {
     if (userId) {
-      // skip it if have same inform within 5 minutes
-      const inform = await Inform.findOne({
-        type,
-        title,
-        content,
-        userId,
-        read: false,
-        time: { $lte: new Date(Date.now() + 5 * 60 * 1000) }
+      global.sendInformQueue.push(async () => {
+        // skip it if have same inform within 5 minutes
+        const inform = await Inform.findOne({
+          type,
+          title,
+          content,
+          userId,
+          time: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+        });
+
+        if (inform) return;
+
+        await Inform.create({
+          type,
+          title,
+          content,
+          userId
+        });
       });
-
-      if (inform) return;
-
-      await Inform.create({
-        type,
-        title,
-        content,
-        userId
-      });
-
+      startSendInform();
       return;
     }
 

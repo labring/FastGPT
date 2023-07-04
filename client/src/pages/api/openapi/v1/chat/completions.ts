@@ -196,7 +196,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // start model api. responseText and totalTokens: valid only if stream = false
     const { streamResponse, responseMessages, responseText, totalTokens } =
-      await modelServiceToolMap[model.chat.chatModel].chatCompletion({
+      await modelServiceToolMap.chatCompletion({
+        model: model.chat.chatModel,
         apiKey: userOpenAiKey || apiKey,
         temperature: +temperature,
         maxToken: model.chat.maxToken,
