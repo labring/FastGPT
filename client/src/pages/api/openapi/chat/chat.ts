@@ -129,7 +129,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // 发出请求
     const { streamResponse, responseMessages, responseText, totalTokens } =
-      await modelServiceToolMap[model.chat.chatModel].chatCompletion({
+      await modelServiceToolMap.chatCompletion({
+        model: model.chat.chatModel,
         apiKey,
         temperature: +temperature,
         messages: completePrompts,

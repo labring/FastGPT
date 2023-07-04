@@ -35,7 +35,8 @@ export const chatResponse = async ({
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
   const chatAPI = getOpenAIApi(apiKey);
 
-  const promptsToken = modelToolMap[model].countTokens({
+  const promptsToken = modelToolMap.countTokens({
+    model,
     messages: filterMessages
   });
 
@@ -116,7 +117,8 @@ export const openAiStreamResponse = async ({
       value: responseContent
     });
 
-    const totalTokens = modelToolMap[model].countTokens({
+    const totalTokens = modelToolMap.countTokens({
+      model,
       messages: finishMessages
     });
 

@@ -63,8 +63,9 @@ export async function generateQA(): Promise<any> {
     // 请求 chatgpt 获取回答
     const response = await Promise.all(
       [data.q].map((text) =>
-        modelServiceToolMap[OpenAiChatEnum.GPT3516k]
+        modelServiceToolMap
           .chatCompletion({
+            model: OpenAiChatEnum.GPT3516k,
             apiKey: systemAuthKey,
             temperature: 0.8,
             messages: [
