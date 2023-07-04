@@ -274,7 +274,8 @@ export const theme = extendTheme({
   borders: {
     sm: '1px solid #EFF0F1',
     base: '1px solid #DEE0E2',
-    md: '1px solid #DAE0E2'
+    md: '1px solid #DAE0E2',
+    lg: '1px solid #D0E0E2'
   },
   breakpoints: {
     sm: '900px',
