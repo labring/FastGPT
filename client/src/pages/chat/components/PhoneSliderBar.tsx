@@ -39,7 +39,7 @@ const PhoneSliderBar = ({
   const { isOpen: isOpenWx, onOpen: onOpenWx, onClose: onCloseWx } = useDisclosure();
 
   const models = useMemo(() => [...myApps, ...myCollectionApps], [myCollectionApps, myApps]);
-  useQuery(['loadModels'], () => loadMyModels(false));
+  useQuery(['loadModels'], loadMyModels);
 
   const { history, loadHistory } = useChatStore();
   useQuery(['loadingHistory'], () => loadHistory({ pageNum: 1 }));

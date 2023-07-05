@@ -17,7 +17,7 @@ const Login = () => {
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { isPc } = useGlobalStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
-  const { setUserInfo, setLastModelId, loadMyModels, loadKbList, setLastKbId } = useUserStore();
+  const { setUserInfo, setLastModelId, loadKbList, setLastKbId } = useUserStore();
   const { setLastChatId, setLastChatModelId, loadHistory } = useChatStore();
 
   const loginSuccess = useCallback(
@@ -27,7 +27,6 @@ const Login = () => {
       setLastModelId('');
       setLastChatModelId('');
       setLastKbId('');
-      loadMyModels(true);
       loadKbList(true);
       loadHistory({ pageNum: 1, init: true });
 
@@ -40,7 +39,6 @@ const Login = () => {
       lastRoute,
       loadHistory,
       loadKbList,
-      loadMyModels,
       router,
       setLastChatId,
       setLastChatModelId,

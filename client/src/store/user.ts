@@ -22,14 +22,9 @@ type State = {
   setLastModelId: (id: string) => void;
   myApps: AppListItemType[];
   myCollectionApps: AppListItemType[];
-  loadMyModels: (init?: boolean) => Promise<null>;
+  loadMyModels: () => Promise<null>;
   appDetail: AppSchema;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
-  refreshModel: {
-    freshMyModels(): void;
-    updateModelDetail(model: AppSchema): void;
-    removeModelDetail(modelId: string): void;
-  };
   // kb
   lastKbId: string;
   setLastKbId: (id: string) => void;
@@ -76,8 +71,7 @@ export const useUserStore = create<State>()(
         },
         myApps: [],
         myCollectionApps: [],
-        async loadMyModels(init = false) {
-          if (get().myApps.length > 0 && !init) return null;
+        async loadMyModels() {
           const res = await getMyModels();
           set((state) => {
             state.myApps = res.myApps;
@@ -94,26 +88,6 @@ export const useUserStore = create<State>()(
             state.appDetail = res;
           });
           return res;
-        },
-        refreshModel: {
-          freshMyModels() {
-            get().loadMyModels(true);
-          },
-          updateModelDetail(model: AppSchema) {
-            set((state) => {
-              state.appDetail = model;
-            });
-            get().loadMyModels(true);
-          },
-          removeModelDetail(modelId: string) {
-            if (modelId === get().appDetail._id) {
-              set((state) => {
-                state.appDetail = defaultApp;
-                state.lastModelId = '';
-              });
-            }
-            get().loadMyModels(true);
-          }
         },
         lastKbId: '',
         setLastKbId(id: string) {

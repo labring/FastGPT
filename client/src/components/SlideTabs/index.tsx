@@ -42,20 +42,19 @@ const SlideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =
           px={3}
           mb={2}
           alignItems={'center'}
-          _hover={{
-            bg: 'myWhite.600'
-          }}
           {...(activeId === item.id
             ? {
-                // backgroundImage: 'linear-gradient(to right, #85b1ff 0%, #EBF7FD 100%)',
-                bg: ' myBlue.300',
+                bg: ' myBlue.300 !important',
                 fontWeight: 'bold',
-                color: 'myBlue.700',
+                color: 'myBlue.700 ',
                 cursor: 'default'
               }
             : {
                 cursor: 'pointer'
               })}
+          _hover={{
+            bg: 'myWhite.600'
+          }}
           onClick={() => {
             if (activeId === item.id) return;
             onChange(item.id);

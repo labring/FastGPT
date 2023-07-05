@@ -94,7 +94,7 @@ const PcSliderBar = ({
     [isPc]
   );
 
-  useQuery(['loadModels'], () => loadMyModels(false));
+  useQuery(['loadModels'], loadMyModels);
 
   const { isLoading: isLoadingHistory } = useQuery(['loadingHistory'], () =>
     loadHistory({ pageNum: 1 })
