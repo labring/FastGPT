@@ -20,8 +20,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { Loading, setIsLoading } = useLoading();
-  const { userInfo, appDetail, myApps, loadAppDetail, refreshModel, setLastModelId } =
-    useUserStore();
+  const { userInfo, appDetail, myApps, loadAppDetail, setLastModelId } = useUserStore();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
@@ -61,8 +60,6 @@ const Settings = ({ modelId }: { modelId: string }) => {
           chat: data.chat,
           share: data.share
         });
-
-        refreshModel.updateModelDetail(data);
       } catch (err: any) {
         toast({
           title: err?.message || '更新失败',
@@ -71,7 +68,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
       }
       setBtnLoading(false);
     },
-    [refreshModel, toast]
+    [toast]
   );
   // 提交保存表单失败
   const saveSubmitError = useCallback(() => {
@@ -106,8 +103,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
         title: '删除成功',
         status: 'success'
       });
-      refreshModel.removeModelDetail(appDetail._id);
-      router.replace(`/model?modelId=${myApps[1]?._id}`);
+      router.replace(`/app/list`);
     } catch (err: any) {
       toast({
         title: err?.message || '删除失败',
@@ -115,7 +111,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
       });
     }
     setIsLoading(false);
-  }, [appDetail, setIsLoading, toast, refreshModel, router, myApps]);
+  }, [appDetail, setIsLoading, toast, router]);
 
   const onSelectFile = useCallback(
     async (e: File[]) => {
@@ -152,7 +148,6 @@ const Settings = ({ modelId }: { modelId: string }) => {
         status: 'error'
       });
       setLastModelId('');
-      refreshModel.freshMyModels();
       router.replace('/model');
     }
   });

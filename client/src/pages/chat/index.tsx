@@ -106,7 +106,7 @@ const Chat = () => {
   const { copyData } = useCopyData();
   const { isPc } = useGlobalStore();
   const { Loading, setIsLoading } = useLoading();
-  const { userInfo, loadMyModels } = useUserStore();
+  const { userInfo } = useUserStore();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
 
   // close contextMenu
@@ -232,7 +232,6 @@ const Chat = () => {
       setTimeout(() => {
         generatingMessage();
         loadHistory({ pageNum: 1, init: true });
-        loadMyModels(true);
       }, 100);
 
       if (errMsg) {
@@ -252,7 +251,6 @@ const Chat = () => {
       chatData.systemPrompt,
       chatData.limitPrompt,
       loadHistory,
-      loadMyModels,
       toast
     ]
   );

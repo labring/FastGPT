@@ -9,6 +9,7 @@ import SlideTabs from '@/components/SlideTabs';
 import Settings from './components/Settings';
 import { defaultApp } from '@/constants/model';
 import Avatar from '@/components/Avatar';
+import PageContainer from '@/components/PageContainer';
 
 const EditApp = dynamic(() => import('./components/edit'), {
   ssr: false
@@ -78,14 +79,8 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   }, [appId, loadAppDetail]);
 
   return (
-    <Flex flexDirection={'column'} bg={'myGray.100'} h={'100%'} p={[0, 5]}>
-      <Box
-        display={['block', 'flex']}
-        flex={1}
-        bg={'white'}
-        borderRadius={['', '2xl']}
-        border={['', theme.borders.lg]}
-      >
+    <PageContainer>
+      <Box display={['block', 'flex']} h={'100%'}>
         {/* pc tab */}
         <Box display={['none', 'block']} p={4} w={'200px'} borderRight={theme.borders.base}>
           <Flex mb={4}>
@@ -141,7 +136,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           {currentTab === TabEnum.share && <Share modelId={appId} />}
         </Box>
       </Box>
-    </Flex>
+    </PageContainer>
   );
 };
 

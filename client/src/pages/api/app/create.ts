@@ -4,14 +4,19 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { App } from '@/service/models/app';
+import { AppModuleItemType } from '@/types/app';
+
+export type Props = {
+  name: string;
+  avatar?: string;
+  modules: AppModuleItemType[];
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name } = req.body as {
-      name: string;
-    };
+    const { name, avatar, modules } = req.body as Props;
 
-    if (!name) {
+    if (!name || !Array.isArray(modules)) {
       throw new Error('缺少参数');
     }
 
@@ -30,8 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 创建模型
     const response = await App.create({
+      avatar,
       name,
-      userId
+      userId,
+      modules
     });
 
     jsonRes(res, {

@@ -205,7 +205,7 @@ const Home = () => {
             fontSize={['xl', '3xl']}
             h={'auto'}
             py={[2, 3]}
-            onClick={() => router.push(`/model`)}
+            onClick={() => router.push(`/app/list`)}
           >
             立即开始
           </Button>

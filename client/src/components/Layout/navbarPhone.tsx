@@ -20,8 +20,8 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       {
         label: '应用',
         icon: 'tabbarModel',
-        link: `/model`,
-        activeLink: ['/model'],
+        link: `/app/list`,
+        activeLink: ['/app/list'],
         unread: 0
       },
       {

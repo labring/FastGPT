@@ -7,7 +7,8 @@ import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
-import { postCreateModel } from '@/api/app';
+import { postCreateApp } from '@/api/app';
+import { chatAppDemo } from '@/constants/app';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -64,8 +65,9 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           status: 'success'
         });
         // aut register a model
-        postCreateModel({
-          name: '应用1'
+        postCreateApp({
+          name: '应用1',
+          modules: chatAppDemo.modules
         });
       } catch (error: any) {
         toast({
