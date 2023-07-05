@@ -1,17 +1,17 @@
 import { formatPrice } from './user';
-import dayjs from 'dayjs';
 import type { BillSchema } from '../types/mongoSchema';
 import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
+import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
 
 export const adaptBill = (bill: BillSchema): UserBillType => {
   return {
     id: bill._id,
     type: bill.type,
-    modelName: bill.modelName,
+    modelName: ChatModelMap[bill.modelName as `${OpenAiChatEnum}`]?.name || bill.modelName,
     time: bill.time,
     textLen: bill.textLen,
     tokenLen: bill.tokenLen,

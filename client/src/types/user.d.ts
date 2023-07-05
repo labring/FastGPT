@@ -19,7 +19,7 @@ export interface UserUpdateParams {
 export interface UserBillType {
   id: string;
   time: Date;
-  modelName: BillSchema['modelName'];
+  modelName: string;
   type: BillSchema['type'];
   textLen: number;
   tokenLen: number;
