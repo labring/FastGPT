@@ -220,7 +220,8 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
           {[
             { label: '佣金比例', value: `${userInfo?.promotion.rate || 15}%` },
             { label: '已注册用户数', value: `${invitedAmount}人` },
-            { label: '累计佣金', value: `￥${historyAmount}` }
+            { label: '累计佣金', value: `￥${historyAmount}` },
+            { label: '可用佣金', value: `￥${residueAmount}` }
           ].map((item) => (
             <Flex key={item.label} alignItems={'center'} mt={4} justifyContent={'space-between'}>
               <Box w={'120px'}>{item.label}</Box>
