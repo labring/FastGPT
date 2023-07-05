@@ -21,7 +21,7 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { useConfirm } from '@/hooks/useConfirm';
-import { ChatModelMap, getChatModelList } from '@/constants/model';
+import { ChatModelMap, chatModelList } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 
 import type { ModelSchema } from '@/types/mongoSchema';
@@ -185,8 +185,6 @@ const Settings = ({ modelId }: { modelId: string }) => {
     }
   });
 
-  const { data: chatModelList = [] } = useQuery(['initChatModelList'], getChatModelList);
-
   return (
     <Box
       pb={3}
@@ -240,7 +238,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
           对话模型
         </Box>
         <MySelect
-          width={['90%', '280px']}
+          width={['100%', '300px']}
           value={getValues('chat.chatModel')}
           list={chatModelList.map((item) => ({
             id: item.chatModel,
@@ -265,7 +263,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
               { label: '严谨', value: 0 },
               { label: '发散', value: 10 }
             ]}
-            width={['90%', '260px']}
+            width={['95%', '280px']}
             min={0}
             max={10}
             activeVal={getValues('chat.temperature')}
@@ -286,7 +284,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
               { label: '100', value: 100 },
               { label: `${tokenLimit}`, value: tokenLimit }
             ]}
-            width={['90%', '260px']}
+            width={['95%', '280px']}
             min={100}
             max={tokenLimit}
             step={50}

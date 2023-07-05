@@ -40,7 +40,7 @@ const BillTable = () => {
             <Tr>
               <Th>时间</Th>
               <Th>类型</Th>
-              <Th>底层模型</Th>
+              <Th>模型</Th>
               <Th>内容长度</Th>
               <Th>Tokens 长度</Th>
               <Th>金额</Th>
