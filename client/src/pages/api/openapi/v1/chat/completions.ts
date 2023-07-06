@@ -167,6 +167,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         return res.json({
           id: chatId || '',
           model: model.chat.chatModel,
+          object: 'chat.completion',
+          created: 1688608930,
           usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
           choices: [
             { message: { role: 'assistant', content: response }, finish_reason: 'stop', index: 0 }
@@ -296,6 +298,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           : {}),
         newChatId,
         id: chatId || '',
+        object: 'chat.completion',
+        created: 1688608930,
         model: model.chat.chatModel,
         usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: tokens },
         choices: [
