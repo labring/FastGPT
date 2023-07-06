@@ -120,7 +120,13 @@ const MyApps = () => {
                 }}
               />
             </Flex>
-            <Box className={styles.intro} py={2} fontSize={'sm'} color={'myGray.600'}>
+            <Box
+              className={styles.intro}
+              py={2}
+              wordBreak={'break-all'}
+              fontSize={'sm'}
+              color={'myGray.600'}
+            >
               {app.intro || '这个应用还没写介绍~'}
             </Box>
           </Card>

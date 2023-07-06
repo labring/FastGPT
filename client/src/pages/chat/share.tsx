@@ -22,7 +22,6 @@ import {
   DrawerOverlay,
   DrawerContent,
   Card,
-  Tooltip,
   useOutsideClick,
   useTheme,
   Input,
@@ -49,6 +48,7 @@ import SideBar from '@/components/SideBar';
 import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
 import { HUMAN_ICON } from '@/constants/chat';
+import MyTooltip from '@/components/MyTooltip';
 
 const ShareHistory = dynamic(() => import('./components/ShareHistory'), {
   loading: () => <Loading fixed={false} />,
@@ -619,7 +619,7 @@ const Chat = () => {
                 {item.obj === 'Human' && <Box flex={1} />}
                 {/* avatar */}
                 <Menu autoSelect={false} isLazy>
-                  <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                  <MyTooltip label={item.obj === 'AI' ? '应用详情' : ''}>
                     <MenuButton
                       as={Box}
                       {...(item.obj === 'AI'
@@ -642,7 +642,7 @@ const Chat = () => {
                         h={['20px', '34px']}
                       />
                     </MenuButton>
-                  </Tooltip>
+                  </MyTooltip>
                   {!isPc && <RenderContextMenu history={item} index={index} />}
                 </Menu>
                 {/* message */}

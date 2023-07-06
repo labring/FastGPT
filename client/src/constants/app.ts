@@ -155,145 +155,145 @@ export const chatAppDemo: AppItemType = {
   modules: [chatModule({ id: 'chat' })]
 };
 
-export const kbChatAppDemo: AppItemType = {
-  id: 'kbchat',
-  name: 'kbchat',
-  // 标记字段
-  modules: [
-    {
-      moduleId: 'kbsearch',
-      flowType: FlowModuleTypeEnum.kbSearchNode,
-      type: AppModuleItemTypeEnum.http,
-      url: '/openapi/modules/kb/search',
-      position: { x: -500, y: 0 },
-      inputs: [
-        {
-          key: 'kb_ids',
-          type: FlowInputItemTypeEnum.custom,
-          label: '关联的知识库',
-          value: ['646627f4f7b896cfd8910e38'],
-          list: []
-        },
+// export const kbChatAppDemo: AppItemType = {
+//   id: 'kbchat',
+//   name: 'kbchat',
+//   // 标记字段
+//   modules: [
+//     {
+//       moduleId: 'kbsearch',
+//       flowType: FlowModuleTypeEnum.kbSearchNode,
+//       type: AppModuleItemTypeEnum.http,
+//       url: '/openapi/modules/kb/search',
+//       position: { x: -500, y: 0 },
+//       inputs: [
+//         {
+//           key: 'kb_ids',
+//           type: FlowInputItemTypeEnum.custom,
+//           label: '关联的知识库',
+//           value: ['646627f4f7b896cfd8910e38'],
+//           list: []
+//         },
 
-        {
-          key: 'similarity',
-          type: FlowInputItemTypeEnum.slider,
-          label: '相似度',
-          value: 0.8,
-          min: 0,
-          max: 1,
-          step: 0.01,
-          markList: [
-            { label: '0', value: 0 },
-            { label: '1', value: 1 }
-          ]
-        },
-        {
-          key: 'limit',
-          type: FlowInputItemTypeEnum.slider,
-          label: '单次搜索上限',
-          value: 5,
-          min: 1,
-          max: 20,
-          step: 1,
-          markList: [
-            { label: '1', value: 1 },
-            { label: '20', value: 20 }
-          ]
-        },
-        {
-          key: SystemInputEnum.history,
-          type: FlowInputItemTypeEnum.hidden,
-          label: '引用复用数量',
-          value: 1
-        },
-        {
-          key: SystemInputEnum.userChatInput,
-          type: FlowInputItemTypeEnum.none,
-          label: '用户输入(系统自动填写)',
-          description: ''
-        }
-      ],
-      outputs: [
-        {
-          key: 'rawSearch',
-          label: '源搜索数据',
-          type: FlowOutputItemTypeEnum.none,
-          response: true,
-          targets: []
-        },
-        {
-          key: 'isEmpty',
-          label: '无搜索结果',
-          type: FlowOutputItemTypeEnum.source,
-          targets: [
-            {
-              moduleId: 'tfswitch',
-              key: SystemInputEnum.switch
-            }
-          ]
-        },
-        {
-          key: 'quotePrompt',
-          label: '引用内容（字符串）',
-          type: FlowOutputItemTypeEnum.source,
-          targets: [
-            {
-              moduleId: 'chat',
-              key: 'quotePrompt'
-            }
-          ]
-        }
-      ]
-    },
-    {
-      moduleId: 'tfswitch',
-      type: AppModuleItemTypeEnum.switch,
-      flowType: FlowModuleTypeEnum.tfSwitchNode,
-      position: { x: 0, y: 510 },
-      inputs: [
-        {
-          key: SystemInputEnum.switch,
-          type: FlowInputItemTypeEnum.target,
-          label: '触发器',
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'true',
-          label: '无搜索数据',
-          type: FlowOutputItemTypeEnum.source,
-          targets: [
-            {
-              moduleId: 'answer',
-              key: SystemInputEnum.switch
-            }
-          ]
-        },
-        {
-          key: 'false',
-          label: '有搜索数据',
-          type: FlowOutputItemTypeEnum.source,
-          targets: [
-            {
-              moduleId: 'chat',
-              key: SystemInputEnum.switch
-            }
-          ]
-        }
-      ]
-    },
-    {
-      ...chatModule({ id: 'chat', limitPrompt: '参考知识库内容进行回答', history: 5 }),
-      position: { x: 300, y: 240 }
-    },
-    {
-      ...answerModule({ id: 'answer' }),
-      position: { x: 300, y: 0 }
-    }
-  ]
-};
+//         {
+//           key: 'similarity',
+//           type: FlowInputItemTypeEnum.slider,
+//           label: '相似度',
+//           value: 0.8,
+//           min: 0,
+//           max: 1,
+//           step: 0.01,
+//           markList: [
+//             { label: '0', value: 0 },
+//             { label: '1', value: 1 }
+//           ]
+//         },
+//         {
+//           key: 'limit',
+//           type: FlowInputItemTypeEnum.slider,
+//           label: '单次搜索上限',
+//           value: 5,
+//           min: 1,
+//           max: 20,
+//           step: 1,
+//           markList: [
+//             { label: '1', value: 1 },
+//             { label: '20', value: 20 }
+//           ]
+//         },
+//         {
+//           key: SystemInputEnum.history,
+//           type: FlowInputItemTypeEnum.hidden,
+//           label: '引用复用数量',
+//           value: 1
+//         },
+//         {
+//           key: SystemInputEnum.userChatInput,
+//           type: FlowInputItemTypeEnum.none,
+//           label: '用户输入(系统自动填写)',
+//           description: ''
+//         }
+//       ],
+//       outputs: [
+//         {
+//           key: 'rawSearch',
+//           label: '源搜索数据',
+//           type: FlowOutputItemTypeEnum.none,
+//           response: true,
+//           targets: []
+//         },
+//         {
+//           key: 'isEmpty',
+//           label: '无搜索结果',
+//           type: FlowOutputItemTypeEnum.source,
+//           targets: [
+//             {
+//               moduleId: 'tfswitch',
+//               key: SystemInputEnum.switch
+//             }
+//           ]
+//         },
+//         {
+//           key: 'quotePrompt',
+//           label: '引用内容（字符串）',
+//           type: FlowOutputItemTypeEnum.source,
+//           targets: [
+//             {
+//               moduleId: 'chat',
+//               key: 'quotePrompt'
+//             }
+//           ]
+//         }
+//       ]
+//     },
+//     {
+//       moduleId: 'tfswitch',
+//       type: AppModuleItemTypeEnum.switch,
+//       flowType: FlowModuleTypeEnum.tfSwitchNode,
+//       position: { x: 0, y: 510 },
+//       inputs: [
+//         {
+//           key: SystemInputEnum.switch,
+//           type: FlowInputItemTypeEnum.target,
+//           label: '触发器',
+//           connected: true
+//         }
+//       ],
+//       outputs: [
+//         {
+//           key: 'true',
+//           label: '无搜索数据',
+//           type: FlowOutputItemTypeEnum.source,
+//           targets: [
+//             {
+//               moduleId: 'answer',
+//               key: SystemInputEnum.switch
+//             }
+//           ]
+//         },
+//         {
+//           key: 'false',
+//           label: '有搜索数据',
+//           type: FlowOutputItemTypeEnum.source,
+//           targets: [
+//             {
+//               moduleId: 'chat',
+//               key: SystemInputEnum.switch
+//             }
+//           ]
+//         }
+//       ]
+//     },
+//     {
+//       ...chatModule({ id: 'chat', limitPrompt: '参考知识库内容进行回答', history: 5 }),
+//       position: { x: 300, y: 240 }
+//     },
+//     {
+//       ...answerModule({ id: 'answer' }),
+//       position: { x: 300, y: 0 }
+//     }
+//   ]
+// };
 
 // export const classifyQuestionDemo: AppItemType = {
 //   id: 'classifyQuestionDemo',

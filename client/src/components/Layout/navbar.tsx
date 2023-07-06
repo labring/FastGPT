@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Tooltip, Link } from '@chakra-ui/react';
+import { Box, Flex, Link } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '../Icon';
 import { useUserStore } from '@/store/user';

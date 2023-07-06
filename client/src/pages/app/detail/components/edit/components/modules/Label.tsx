@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Tooltip } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@/components/MyTooltip';
 
 const Label = ({
   required = false,
@@ -19,9 +20,9 @@ const Label = ({
       </Box>
     )}
     {description && (
-      <Tooltip label={description}>
+      <MyTooltip label={description}>
         <QuestionOutlineIcon display={['none', 'inline']} fontSize={'12px'} mb={1} ml={1} />
-      </Tooltip>
+      </MyTooltip>
     )}
   </Box>
 );

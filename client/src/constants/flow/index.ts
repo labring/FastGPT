@@ -24,7 +24,8 @@ export enum FlowModuleTypeEnum {
   chatNode = 'chatNode',
   kbSearchNode = 'kbSearchNode',
   tfSwitchNode = 'tfSwitchNode',
-  answerNode = 'answerNode'
+  answerNode = 'answerNode',
+  classifyQuestionNode = 'classifyQuestionNode'
 }
 
 export const edgeOptions = {

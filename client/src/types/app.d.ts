@@ -40,7 +40,7 @@ export type ShareChatEditType = {
 /* agent */
 /* question classify */
 export type ClassifyQuestionAgentItemType = {
-  desc: string;
+  value: string;
   key: string;
 };
 

@@ -37,6 +37,7 @@ export type FlowOutputItemType = {
 
 export type FlowModuleItemChangeProps = {
   moduleId: string;
+  type?: 'inputs' | 'outputs';
   key: string;
   value: any;
   valueKey?: keyof FlowInputItemType & keyof FlowBodyItemType;

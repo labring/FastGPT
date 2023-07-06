@@ -10,6 +10,7 @@ import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { parseStreamChunk, textAdaptGptResponse } from '@/utils/adapt';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
+import { SpecificInputEnum } from '@/constants/app';
 
 export type Props = {
   model: `${OpenAiChatEnum}`;
@@ -22,7 +23,7 @@ export type Props = {
   systemPrompt?: string;
   limitPrompt?: string;
 };
-export type Response = { answer: string };
+export type Response = { [SpecificInputEnum.answerText]: string };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -132,7 +133,8 @@ export async function chatCompletion({
   const chatAPI = getOpenAIApi();
 
   /* count response max token */
-  const promptsToken = modelToolMap[model].countTokens({
+  const promptsToken = modelToolMap.countTokens({
+    model,
     messages: filterMessages
   });
   maxToken = maxToken + promptsToken > modelTokenLimit ? modelTokenLimit - promptsToken : maxToken;
@@ -143,8 +145,8 @@ export async function chatCompletion({
       temperature: Number(temperature || 0),
       max_tokens: maxToken,
       messages: adaptMessages,
-      frequency_penalty: 0.5, // 越大，重复内容越少
-      presence_penalty: -0.5, // 越大，越容易出现新内容
+      // frequency_penalty: 0.5, // 越大，重复内容越少
+      // presence_penalty: -0.5, // 越大，越容易出现新内容
       stream
     },
     {
@@ -184,7 +186,7 @@ export async function chatCompletion({
   })();
 
   return {
-    answer
+    answerText: answer
   };
 }
 

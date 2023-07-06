@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import {
   Flex,
   Box,
-  Tooltip,
   Button,
   TableContainer,
   Table,
@@ -37,6 +36,7 @@ import { formatTimeToChatTime, useCopyData, getErrText } from '@/utils/tools';
 import { useForm } from 'react-hook-form';
 import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/app';
+import MyTooltip from '@/components/MyTooltip';
 
 const Share = ({ modelId }: { modelId: string }) => {
   const { toast } = useToast();
@@ -112,9 +112,9 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'}>
           免登录聊天窗口
-          <Tooltip label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的tokens。请保管好链接和密码。">
+          <MyTooltip label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的tokens。请保管好链接和密码。">
             <QuestionOutlineIcon ml={1} />
-          </Tooltip>
+          </MyTooltip>
         </Box>
         <Button
           variant={'base'}

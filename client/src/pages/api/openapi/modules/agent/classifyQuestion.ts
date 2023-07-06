@@ -79,7 +79,7 @@ export async function classifyQuestion({
       properties: {
         type: {
           type: 'string',
-          description: agents.map((item) => `${item.desc}，返回: '${item.key}'`).join('; '),
+          description: agents.map((item) => `${item.value}，返回: '${item.key}'`).join('; '),
           enum: agents.map((item) => item.key)
         }
       },
@@ -106,7 +106,10 @@ export async function classifyQuestion({
   if (!arg.type) {
     throw new Error('');
   }
-  console.log(arg.type);
+  console.log(
+    '意图结果',
+    agents.findIndex((item) => item.key === arg.type)
+  );
 
   return {
     [arg.type]: 1

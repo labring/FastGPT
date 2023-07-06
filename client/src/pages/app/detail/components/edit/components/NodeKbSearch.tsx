@@ -26,7 +26,7 @@ const NodeKbSearch = ({
           onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
-            kb_ids: ({ key, value, onChangeNode }) => (
+            kb_ids: ({ key, value }) => (
               <KBSelect
                 relatedKbs={value}
                 onChange={(e) => {
