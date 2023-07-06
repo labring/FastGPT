@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -7,7 +7,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   XYPosition,
-  Connection
+  Connection,
+  useViewport
 } from 'reactflow';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
@@ -47,6 +48,9 @@ const NodeQuestionInput = dynamic(() => import('./components/NodeQuestionInput')
 const TemplateList = dynamic(() => import('./components/TemplateList'), {
   ssr: false
 });
+const NodeCQNode = dynamic(() => import('./components/NodeCQNode'), {
+  ssr: false
+});
 
 import 'reactflow/dist/style.css';
 import styles from './index.module.scss';
@@ -60,14 +64,18 @@ const nodeTypes = {
   [FlowModuleTypeEnum.chatNode]: NodeChat,
   [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
-  [FlowModuleTypeEnum.answerNode]: NodeAnswer
+  [FlowModuleTypeEnum.answerNode]: NodeAnswer,
+  [FlowModuleTypeEnum.classifyQuestionNode]: NodeCQNode
 };
 const edgeTypes = {
   buttonedge: ButtonEdge
 };
+type Props = { app: AppSchema; onBack: () => void };
 
-const AppEdit = ({ app, onBack }: { app: AppSchema; onBack: () => void }) => {
+const AppEdit = ({ app, onBack }: Props) => {
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const theme = useTheme();
+  const { x, y, zoom } = useViewport();
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const {
@@ -77,24 +85,33 @@ const AppEdit = ({ app, onBack }: { app: AppSchema; onBack: () => void }) => {
   } = useDisclosure();
 
   const onChangeNode = useCallback(
-    ({ moduleId, key, value, valueKey = 'value' }: FlowModuleItemChangeProps) => {
+    ({ moduleId, key, type = 'inputs', value, valueKey = 'value' }: FlowModuleItemChangeProps) => {
       setNodes((nodes) =>
         nodes.map((node) => {
           if (node.id !== moduleId) return node;
+          if (type === 'inputs') {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                inputs: node.data.inputs.map((item) => {
+                  if (item.key === key) {
+                    return {
+                      ...item,
+                      [valueKey]: value
+                    };
+                  }
+                  return item;
+                })
+              }
+            };
+          }
 
           return {
             ...node,
             data: {
               ...node.data,
-              inputs: node.data.inputs.map((item) => {
-                if (item.key === key) {
-                  return {
-                    ...item,
-                    [valueKey]: value
-                  };
-                }
-                return item;
-              })
+              outputs: value
             }
           };
         })
@@ -111,12 +128,17 @@ const AppEdit = ({ app, onBack }: { app: AppSchema; onBack: () => void }) => {
   );
   const onAddNode = useCallback(
     ({ template, position }: { template: AppModuleTemplateItemType; position: XYPosition }) => {
+      if (!reactFlowWrapper.current) return;
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
+      const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
+
       setNodes((state) =>
         state.concat(
           appModule2FlowNode({
             item: {
               ...template,
-              position,
+              position: { x: mouseX, y: mouseY },
               moduleId: nanoid()
             },
             onChangeNode,
@@ -125,7 +147,7 @@ const AppEdit = ({ app, onBack }: { app: AppSchema; onBack: () => void }) => {
         )
       );
     },
-    [onChangeNode, onDelNode, setNodes]
+    [onChangeNode, onDelNode, setNodes, x, y, zoom]
   );
 
   const onDelConnect = useCallback(
@@ -245,6 +267,13 @@ const AppEdit = ({ app, onBack }: { app: AppSchema; onBack: () => void }) => {
           borderRadius={'lg'}
           isLoading={isLoading}
           aria-label={'save'}
+          bg={'myBlue.200'}
+          variant={'base'}
+          border={'none'}
+          color={'myGray.900'}
+          _hover={{
+            bg: 'myBlue.300'
+          }}
           onClick={onclickSave}
         />
       </Flex>
@@ -270,43 +299,50 @@ const AppEdit = ({ app, onBack }: { app: AppSchema; onBack: () => void }) => {
           transition={'0.2s ease'}
           aria-label={''}
           zIndex={1}
-          boxShadow={'1px 1px 6px #4e83fd'}
-          onClick={() => (isOpenTemplate ? onCloseTemplate() : onOpenTemplate())}
+          boxShadow={'2px 2px 6px #85b1ff'}
+          onClick={() => {
+            isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
+          }}
         />
-        <ReactFlowProvider>
-          <ReactFlow
-            className={styles.panel}
-            nodes={nodes}
-            edges={edges}
-            minZoom={0.4}
-            maxZoom={1.5}
-            fitView
-            defaultEdgeOptions={edgeOptions}
-            connectionLineStyle={connectionLineStyle}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={(connect) => {
-              connect.sourceHandle &&
-                connect.targetHandle &&
-                onConnect({
-                  connect
-                });
-            }}
-          >
-            <Background />
-            <Controls
-              position={'bottom-center'}
-              style={{ display: 'flex' }}
-              showInteractive={false}
-            />
-          </ReactFlow>
-        </ReactFlowProvider>
-        <TemplateList isOpen={isOpenTemplate} onAddNode={onAddNode} />
+        <ReactFlow
+          ref={reactFlowWrapper}
+          className={styles.panel}
+          nodes={nodes}
+          edges={edges}
+          minZoom={0.4}
+          maxZoom={1.5}
+          fitView
+          defaultEdgeOptions={edgeOptions}
+          connectionLineStyle={connectionLineStyle}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={(connect) => {
+            connect.sourceHandle &&
+              connect.targetHandle &&
+              onConnect({
+                connect
+              });
+          }}
+        >
+          <Background />
+          <Controls
+            position={'bottom-center'}
+            style={{ display: 'flex' }}
+            showInteractive={false}
+          />
+        </ReactFlow>
+        <TemplateList isOpen={isOpenTemplate} onAddNode={onAddNode} onClose={onCloseTemplate} />
       </Box>
     </Flex>
   );
 };
 
-export default AppEdit;
+const Flow = (data: Props) => (
+  <ReactFlowProvider>
+    <AppEdit {...data} />
+  </ReactFlowProvider>
+);
+
+export default Flow;

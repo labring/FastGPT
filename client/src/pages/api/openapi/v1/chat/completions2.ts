@@ -10,12 +10,7 @@ import { getChatHistory } from './getHistory';
 import { saveChat } from '@/pages/api/chat/saveChat';
 import { sseResponse } from '@/service/utils/tools';
 import { type ChatCompletionRequestMessage } from 'openai';
-import {
-  kbChatAppDemo,
-  chatAppDemo,
-  SpecificInputEnum,
-  AppModuleItemTypeEnum
-} from '@/constants/app';
+import { SpecificInputEnum, AppModuleItemTypeEnum } from '@/constants/app';
 import { model, Types } from 'mongoose';
 import { moduleFetch } from '@/service/api/request';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
@@ -42,7 +37,6 @@ export type ChatResponseType = {
   quoteLen?: number;
 };
 
-/* 发送提示词 */
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.on('close', () => {
     res.end();
@@ -117,7 +111,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       },
       stream
     });
-    console.log(responseData, answerText);
 
     // save chat
     if (typeof chatId === 'string') {
@@ -354,7 +347,7 @@ function loadModules(modules: AppModuleItemType[]): RunningModuleItemType[] {
         })),
       outputs: module.outputs.map((item) => ({
         key: item.key,
-        answer: item.type === FlowOutputItemTypeEnum.answer,
+        answer: item.key === SpecificInputEnum.answerText,
         response: item.response,
         value: undefined,
         targets: item.targets

@@ -202,6 +202,16 @@ const Select = selectMultiStyle({
   }
 });
 
+const Tooltip = defineStyleConfig({
+  baseStyle: {
+    p: 3,
+    bg: 'white',
+    color: 'blackAlpha.800',
+    borderRadius: '8px',
+    boxShadow: '1px 1px 10px rgba(0,0,0,0.2)'
+  }
+});
+
 // 全局主题
 export const theme = extendTheme({
   styles: {
@@ -297,6 +307,7 @@ export const theme = extendTheme({
     Textarea,
     Switch,
     Select,
+    Tooltip,
     NumberInput
   }
 });

@@ -23,7 +23,6 @@ import {
   DrawerOverlay,
   DrawerContent,
   Card,
-  Tooltip,
   useOutsideClick,
   useTheme
 } from '@chakra-ui/react';
@@ -48,6 +47,7 @@ import Avatar from '@/components/Avatar';
 import Empty from './components/Empty';
 import QuoteModal from './components/QuoteModal';
 import { HUMAN_ICON } from '@/constants/chat';
+import MyTooltip from '@/components/MyTooltip';
 
 const Markdown = dynamic(async () => await import('@/components/Markdown'));
 const PhoneSliderBar = dynamic(() => import('./components/PhoneSliderBar'), {
@@ -701,7 +701,7 @@ const Chat = () => {
                   {item.obj === 'Human' && <Box flex={1} />}
                   {/* avatar */}
                   <Menu autoSelect={false} isLazy>
-                    <Tooltip label={item.obj === 'AI' ? '应用详情' : ''}>
+                    <MyTooltip label={item.obj === 'AI' ? '应用详情' : ''}>
                       <MenuButton
                         as={Box}
                         {...(item.obj === 'AI'
@@ -730,7 +730,7 @@ const Chat = () => {
                           h={['20px', '34px']}
                         />
                       </MenuButton>
-                    </Tooltip>
+                    </MyTooltip>
                     {!isPc && <RenderContextMenu history={item} index={index} AiDetail />}
                   </Menu>
                   {/* message */}

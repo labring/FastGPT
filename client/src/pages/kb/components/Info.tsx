@@ -7,7 +7,7 @@ import React, {
   ForwardedRef
 } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Button, FormControl, IconButton, Tooltip, Input, Card } from '@chakra-ui/react';
+import { Box, Flex, Button, FormControl, IconButton, Input, Card } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
 import { delKbById, putKbById } from '@/api/plugins/kb';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -19,6 +19,7 @@ import { compressImg } from '@/utils/file';
 import type { KbItemType } from '@/types/plugin';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
+import MyTooltip from '@/components/MyTooltip';
 
 export interface ComponentRef {
   initInput: (tags: string) => void;
@@ -173,9 +174,9 @@ const Info = (
       <Flex mt={8} alignItems={'center'} w={'100%'} maxW={'350px'} flexWrap={'wrap'}>
         <Box flex={'0 0 90px'} w={0}>
           分类标签
-          <Tooltip label={'用空格隔开多个标签，便于搜索'}>
+          <MyTooltip label={'用空格隔开多个标签，便于搜索'}>
             <QuestionOutlineIcon ml={1} />
-          </Tooltip>
+          </MyTooltip>
         </Box>
         <Input
           flex={1}

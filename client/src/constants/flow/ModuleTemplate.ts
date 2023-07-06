@@ -1,4 +1,4 @@
-import { AppModuleItemTypeEnum, SystemInputEnum } from '../app';
+import { AppModuleItemTypeEnum, SystemInputEnum, SpecificInputEnum } from '../app';
 import { FlowModuleTypeEnum, FlowInputItemTypeEnum, FlowOutputItemTypeEnum } from './index';
 import type { AppModuleTemplateItemType } from '@/types/app';
 import { chatModelList } from '../data';
@@ -9,7 +9,7 @@ import {
 } from './inputTemplate';
 
 export const UserInputModule: AppModuleTemplateItemType = {
-  logo: '',
+  logo: '/imgs/module/userChatInput.png',
   name: '用户问题',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   type: AppModuleItemTypeEnum.initInput,
@@ -32,7 +32,7 @@ export const UserInputModule: AppModuleTemplateItemType = {
   ]
 };
 export const HistoryModule: AppModuleTemplateItemType = {
-  logo: '',
+  logo: '/imgs/module/history.png',
   name: '聊天记录',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   type: AppModuleItemTypeEnum.initInput,
@@ -64,7 +64,7 @@ export const HistoryModule: AppModuleTemplateItemType = {
 };
 
 export const ChatModule: AppModuleTemplateItemType = {
-  logo: '',
+  logo: '/imgs/module/AI.png',
   name: 'AI 对话',
   intro: 'OpenAI GPT 大模型对话。',
   flowType: FlowModuleTypeEnum.chatNode,
@@ -135,7 +135,7 @@ export const ChatModule: AppModuleTemplateItemType = {
   ],
   outputs: [
     {
-      key: 'answer',
+      key: SpecificInputEnum.answerText,
       label: '模型回复',
       description: '直接响应，无需配置',
       type: FlowOutputItemTypeEnum.hidden,
@@ -145,7 +145,7 @@ export const ChatModule: AppModuleTemplateItemType = {
 };
 
 export const KBSearchModule: AppModuleTemplateItemType = {
-  logo: '',
+  logo: '/imgs/module/db.png',
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
   flowType: FlowModuleTypeEnum.kbSearchNode,
@@ -205,7 +205,7 @@ export const KBSearchModule: AppModuleTemplateItemType = {
     {
       key: 'quotePrompt',
       label: '引用内容',
-      description: '搜索结果为空时不触发',
+      description: '搜索结果为空时不返回',
       type: FlowOutputItemTypeEnum.source,
       targets: []
     }
@@ -213,7 +213,7 @@ export const KBSearchModule: AppModuleTemplateItemType = {
 };
 
 export const AnswerModule: AppModuleTemplateItemType = {
-  logo: '',
+  logo: '/imgs/module/reply.png',
   name: '指定回复',
   intro: '该模块可以直接回复一段指定的内容。常用于引导、提示。',
   type: AppModuleItemTypeEnum.answer,
@@ -221,7 +221,7 @@ export const AnswerModule: AppModuleTemplateItemType = {
   inputs: [
     Input_Template_TFSwitch,
     {
-      key: 'answerText',
+      key: SpecificInputEnum.answerText,
       value: '',
       type: FlowInputItemTypeEnum.input,
       label: '回复的内容'
@@ -257,31 +257,52 @@ export const TFSwitchModule: AppModuleTemplateItemType = {
     }
   ]
 };
-
 export const ClassifyQuestionModule: AppModuleTemplateItemType = {
-  logo: '',
+  logo: '/imgs/module/cq.png',
   name: '意图识别',
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
-  type: AppModuleItemTypeEnum.switch,
-  flowType: FlowModuleTypeEnum.tfSwitchNode,
+  type: AppModuleItemTypeEnum.http,
+  url: '/openapi/modules/agent/classifyQuestion',
+  flowType: FlowModuleTypeEnum.classifyQuestionNode,
   inputs: [
     {
-      key: SystemInputEnum.switch,
-      type: FlowInputItemTypeEnum.target,
-      label: '输入'
+      key: 'systemPrompt',
+      type: FlowInputItemTypeEnum.textarea,
+      label: '系统提示词',
+      description:
+        '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
+      placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统',
+      value: ''
+    },
+    Input_Template_History,
+    Input_Template_UserChatInput,
+    {
+      key: 'agents',
+      type: FlowInputItemTypeEnum.custom,
+      label: '',
+      value: [
+        {
+          value: '',
+          key: 'a'
+        },
+        {
+          value: '',
+          key: 'b'
+        }
+      ]
     }
   ],
   outputs: [
     {
-      key: 'true',
-      label: 'True',
-      type: FlowOutputItemTypeEnum.source,
+      key: 'a',
+      label: '',
+      type: FlowOutputItemTypeEnum.hidden,
       targets: []
     },
     {
-      key: 'false',
-      label: 'False',
-      type: FlowOutputItemTypeEnum.source,
+      key: 'b',
+      label: '',
+      type: FlowOutputItemTypeEnum.hidden,
       targets: []
     }
   ]
@@ -302,7 +323,7 @@ export const ModuleTemplates = [
   },
   {
     label: '工具',
-    list: [AnswerModule, TFSwitchModule]
+    list: [AnswerModule]
   },
   {
     label: 'Agent',

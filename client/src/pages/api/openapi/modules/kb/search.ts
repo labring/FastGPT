@@ -92,8 +92,9 @@ export async function kbSearch({
   const searchRes: QuoteItemType[] = res?.[2]?.rows || [];
 
   // filter part quote by maxToken
-  const sliceResult = modelToolMap['gpt-3.5-turbo']
+  const sliceResult = modelToolMap
     .tokenSlice({
+      model: 'gpt-3.5-turbo',
       maxToken,
       messages: searchRes.map((item, i) => ({
         obj: ChatRoleEnum.System,

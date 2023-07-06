@@ -4,7 +4,6 @@ import {
   Box,
   Textarea,
   Input,
-  Tooltip,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
@@ -16,6 +15,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Handle, Position } from 'reactflow';
 import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
+import MyTooltip from '@/components/MyTooltip';
 
 const Label = ({
   required = false,
@@ -34,9 +34,9 @@ const Label = ({
       </Box>
     )}
     {description && (
-      <Tooltip label={description}>
+      <MyTooltip label={description}>
         <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-      </Tooltip>
+      </MyTooltip>
     )}
   </Box>
 );
@@ -49,14 +49,7 @@ const RenderBody = ({
 }: {
   flowInputList: FlowInputItemType[];
   moduleId: string;
-  CustomComponent?: Record<
-    string,
-    (e: {
-      key: string;
-      value: any;
-      onChangeNode: FlowModuleItemType['onChangeNode'];
-    }) => React.ReactNode
-  >;
+  CustomComponent?: Record<string, (e: FlowInputItemType) => React.ReactNode>;
   onChangeNode: FlowModuleItemType['onChangeNode'];
 }) => {
   return (
@@ -65,9 +58,11 @@ const RenderBody = ({
         (item) =>
           item.type !== FlowInputItemTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
-              <Label required={item.required} description={item.description}>
-                {item.label}
-              </Label>
+              {!!item.label && (
+                <Label required={item.required} description={item.description}>
+                  {item.label}
+                </Label>
+              )}
               <Box mt={2} className={'nodrag'}>
                 {item.type === FlowInputItemTypeEnum.numberInput && (
                   <NumberInput
@@ -151,9 +146,7 @@ const RenderBody = ({
                   </Box>
                 )}
                 {item.type === FlowInputItemTypeEnum.custom && CustomComponent[item.key] && (
-                  <>
-                    {CustomComponent[item.key]({ key: item.key, value: item.value, onChangeNode })}
-                  </>
+                  <>{CustomComponent[item.key]({ ...item })}</>
                 )}
                 {item.type === FlowInputItemTypeEnum.target && (
                   <Handle

@@ -25,4 +25,4 @@ export const ChatRoleMap = {
 };
 
 export const HUMAN_ICON = `https://fastgpt.run/icon/human.png`;
-export const LOGO_ICON = `https://fastgpt.run/imgs/modelAvatar.png`;
+export const LOGO_ICON = `https://fastgpt.run/icon/logo.png`;

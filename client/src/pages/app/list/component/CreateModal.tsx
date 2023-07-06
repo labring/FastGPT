@@ -173,7 +173,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                 boxShadow={'sm'}
                 {...(getValues('templateId') === item.id
                   ? {
-                      bg: 'myBlue.300'
+                      bg: 'myWhite.600'
                     }
                   : {
                       _hover: {

@@ -109,8 +109,6 @@ export const appModule2FlowEdge = ({
   modules: AppModuleItemType[];
   onDelete: (id: string) => void;
 }) => {
-  console.log(modules);
-
   const edges: Edge[] = [];
   modules.forEach((module) =>
     module.outputs.forEach((output) =>

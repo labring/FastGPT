@@ -1,9 +1,10 @@
 import React from 'react';
 import type { FlowOutputItemType } from '@/types/flow';
-import { Box, Tooltip, Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Handle, Position } from 'reactflow';
+import MyTooltip from '@/components/MyTooltip';
 
 const Label = ({
   children,
@@ -14,9 +15,9 @@ const Label = ({
 }) => (
   <Flex as={'label'} justifyContent={'right'} alignItems={'center'} position={'relative'}>
     {description && (
-      <Tooltip label={description}>
+      <MyTooltip label={description}>
         <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
-      </Tooltip>
+      </MyTooltip>
     )}
     {children}
   </Flex>

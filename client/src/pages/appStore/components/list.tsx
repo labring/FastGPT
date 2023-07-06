@@ -1,10 +1,11 @@
 import React from 'react';
-import { Box, Flex, Button, Tooltip, Card } from '@chakra-ui/react';
+import { Box, Flex, Button, Card } from '@chakra-ui/react';
 import type { ShareAppItem } from '@/types/app';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import styles from '../index.module.scss';
 import Avatar from '@/components/Avatar';
+import MyTooltip from '@/components/MyTooltip';
 
 const ShareModelList = ({
   models = [],
@@ -44,7 +45,7 @@ const ShareModelList = ({
               {model.name}
             </Box>
           </Flex>
-          <Tooltip label={model.intro}>
+          <MyTooltip label={model.intro}>
             <Box
               className={styles.intro}
               flex={1}
@@ -55,7 +56,7 @@ const ShareModelList = ({
             >
               {model.intro || '这个应用还没有介绍~'}
             </Box>
-          </Tooltip>
+          </MyTooltip>
 
           <Flex justifyContent={'space-between'}>
             <Flex

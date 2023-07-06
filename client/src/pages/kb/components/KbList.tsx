@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { Box, Flex, useTheme, Input, IconButton, Tooltip } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Input, IconButton } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { useRouter } from 'next/router';
 import { postCreateKb } from '@/api/plugins/kb';
@@ -10,6 +10,7 @@ import { useUserStore } from '@/store/user';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
+import MyTooltip from '@/components/MyTooltip';
 
 const KbList = ({ kbId }: { kbId: string }) => {
   const theme = useTheme();
@@ -78,7 +79,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
             />
           )}
         </Flex>
-        <Tooltip label={'新建一个知识库'}>
+        <MyTooltip label={'新建一个知识库'}>
           <IconButton
             h={'32px'}
             icon={<AddIcon />}
@@ -86,7 +87,7 @@ const KbList = ({ kbId }: { kbId: string }) => {
             variant={'base'}
             onClick={handleCreateModel}
           />
-        </Tooltip>
+        </MyTooltip>
       </Flex>
       <Box flex={'1 0 0'} h={0} pl={[0, 2]} overflowY={'scroll'} userSelect={'none'}>
         {kbs.map((item) => (
