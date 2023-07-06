@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -50,11 +50,11 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   } = usePagination<KbDataItemType>({
     api: getKbDataList,
     pageSize: 24,
+    defaultRequest: false,
     params: {
       kbId,
       searchText
-    },
-    defaultRequest: false
+    }
   });
 
   const [editInputData, setEditInputData] = useState<InputDataType>();
@@ -133,11 +133,11 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     refetchInterval: 5000,
     enabled: qaListLen > 0 || vectorListLen > 0
   });
-  useQuery(['getKbData', kbId], () => {
+
+  useEffect(() => {
     setSearchText('');
     getData(1);
-    return null;
-  });
+  }, [kbId]);
 
   return (
     <Box position={'relative'} px={5} pb={[1, 5]}>
@@ -314,4 +314,4 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   );
 };
 
-export default DataCard;
+export default React.memo(DataCard);

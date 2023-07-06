@@ -8,12 +8,15 @@ import { useUserStore } from '@/store/user';
 import { KbItemType } from '@/types/plugin';
 import { useScreen } from '@/hooks/useScreen';
 import { getErrText } from '@/utils/tools';
-import Info, { type ComponentRef } from './Info';
+import { type ComponentRef } from './Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
 import DataCard from './DataCard';
 
 const Test = dynamic(() => import('./Test'), {
+  ssr: false
+});
+const Info = dynamic(() => import('./Info'), {
   ssr: false
 });
 
@@ -28,7 +31,7 @@ const Detail = ({ kbId }: { kbId: string }) => {
   const router = useRouter();
   const { isPc } = useScreen();
   const BasicInfo = useRef<ComponentRef>(null);
-  const { setLastKbId, kbDetail, getKbDetail, loadKbList, myKbList } = useUserStore();
+  const { setLastKbId, kbDetail, getKbDetail, loadKbList } = useUserStore();
   const [currentTab, setCurrentTab] = useState(TabEnum.data);
 
   const form = useForm<KbItemType>({
@@ -36,25 +39,30 @@ const Detail = ({ kbId }: { kbId: string }) => {
   });
   const { reset } = form;
 
-  useQuery([kbId], () => getKbDetail(kbId), {
-    onSuccess(res) {
-      kbId && setLastKbId(kbId);
-      if (res) {
-        setCurrentTab(TabEnum.data);
+  useQuery(
+    [kbId],
+    () => {
+      setCurrentTab(TabEnum.data);
+      return getKbDetail(kbId);
+    },
+    {
+      onSuccess(res) {
+        if (!res) return;
+        kbId && setLastKbId(kbId);
         reset(res);
         BasicInfo.current?.initInput?.(res.tags);
+      },
+      onError(err: any) {
+        loadKbList(true);
+        setLastKbId('');
+        router.replace(`/kb`);
+        toast({
+          title: getErrText(err, '获取知识库异常'),
+          status: 'error'
+        });
       }
-    },
-    onError(err: any) {
-      loadKbList(true);
-      setLastKbId('');
-      router.replace(`/kb`);
-      toast({
-        title: getErrText(err, '获取知识库异常'),
-        status: 'error'
-      });
     }
-  });
+  );
 
   return (
     <Flex
@@ -88,4 +96,4 @@ const Detail = ({ kbId }: { kbId: string }) => {
   );
 };
 
-export default Detail;
+export default React.memo(Detail);

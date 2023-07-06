@@ -28,9 +28,11 @@ const Kb = () => {
           <KbList kbId={kbId} />
         </SideBar>
       )}
-      <Box flex={'1 0 0'} w={0} h={'100%'} position={'relative'}>
-        {kbId && <KbDetail kbId={kbId} />}
-      </Box>
+      {!!kbId && (
+        <Box flex={'1 0 0'} w={0} h={'100%'} position={'relative'}>
+          <KbDetail kbId={kbId} />
+        </Box>
+      )}
     </Flex>
   );
 };
