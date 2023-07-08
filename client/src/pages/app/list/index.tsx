@@ -89,22 +89,27 @@ const MyApps = () => {
             border={theme.borders.md}
             boxShadow={'none'}
             userSelect={'none'}
+            position={'relative'}
             _hover={{
               boxShadow: '1px 1px 10px rgba(0,0,0,0.2)',
               borderColor: 'transparent',
               '& .delete': {
                 display: 'block'
+              },
+              '& .chat': {
+                display: 'block'
               }
             }}
             onClick={() => router.push(`/app/detail?appId=${app._id}`)}
           >
-            <Flex alignItems={'center'} h={'38px'} position={'relative'}>
+            <Flex alignItems={'center'} h={'38px'}>
               <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
               <Box ml={3}>{app.name}</Box>
               <IconButton
                 className="delete"
                 position={'absolute'}
-                right={0}
+                top={4}
+                right={4}
                 size={'sm'}
                 icon={<MyIcon name={'delete'} w={'14px'} />}
                 variant={'base'}
@@ -129,6 +134,25 @@ const MyApps = () => {
             >
               {app.intro || '这个应用还没写介绍~'}
             </Box>
+            <IconButton
+              className="chat"
+              position={'absolute'}
+              right={4}
+              bottom={4}
+              size={'sm'}
+              icon={<MyIcon name={'chatLight'} w={'14px'} />}
+              variant={'base'}
+              borderRadius={'md'}
+              aria-label={'delete'}
+              display={['', 'none']}
+              _hover={{
+                bg: 'myGray.100'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/chat?appId=${app._id}`);
+              }}
+            />
           </Card>
         ))}
       </Grid>

@@ -238,7 +238,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
               router.prefetch('/chat');
               await saveUpdateModel();
             } catch (error) {}
-            router.push(`/chat?modelId=${modelId}`);
+            router.push(`/chat?appId=${modelId}`);
           }}
         >
           对话

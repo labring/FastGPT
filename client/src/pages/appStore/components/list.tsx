@@ -77,7 +77,7 @@ const ShareModelList = ({
                 size={'sm'}
                 variant={'base'}
                 w={['60px', '70px']}
-                onClick={() => router.push(`/chat?modelId=${model._id}`)}
+                onClick={() => router.push(`/chat?appId=${model._id}`)}
               >
                 体验
               </Button>

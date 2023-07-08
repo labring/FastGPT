@@ -95,7 +95,7 @@ const PhoneSliderBar = ({
             color={'white'}
             leftIcon={<AddIcon />}
             onClick={() => {
-              router.replace(`/chat?modelId=${modelId}`);
+              router.replace(`/chat?appId=${modelId}`);
               onClose();
             }}
           >
@@ -128,7 +128,7 @@ const PhoneSliderBar = ({
                   : {})}
                 onClick={async () => {
                   if (item._id === modelId) return;
-                  router.replace(`/chat?modelId=${item._id}`);
+                  router.replace(`/chat?appId=${item._id}`);
                   onClose();
                 }}
               >
@@ -159,7 +159,7 @@ const PhoneSliderBar = ({
                   : {})}
                 onClick={() => {
                   if (item._id === chatId) return;
-                  router.replace(`/chat?modelId=${item.modelId}&chatId=${item._id}`);
+                  router.replace(`/chat?appId=${item.modelId}&chatId=${item._id}`);
                   onClose();
                 }}
               >
@@ -177,7 +177,7 @@ const PhoneSliderBar = ({
                       await delChatHistoryById(item._id);
                       loadHistory({ pageNum: 1, init: true });
                       if (item._id === chatId) {
-                        router.replace(`/chat?modelId=${modelId}`);
+                        router.replace(`/chat?appId=${modelId}`);
                       }
                     }}
                   />

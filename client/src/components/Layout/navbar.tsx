@@ -23,7 +23,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       {
         label: '聊天',
         icon: 'chat',
-        link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
+        link: `/chat?appId=${lastChatModelId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
       },
       {

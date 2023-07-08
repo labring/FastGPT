@@ -31,8 +31,8 @@ const ModuleStoreList = ({
         position={'fixed'}
         top={0}
         left={0}
-        right={0}
         bottom={0}
+        w={'360px'}
       ></Box>
       <Flex
         zIndex={3}
@@ -66,7 +66,7 @@ const ModuleStoreList = ({
                 borderRadius={'md'}
                 draggable
                 onDragEnd={(e) => {
-                  // if (e.clientX < 400) return;
+                  if (e.clientX < 360) return;
                   onAddNode({
                     template: item,
                     position: { x: e.clientX, y: e.clientY }

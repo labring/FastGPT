@@ -30,7 +30,7 @@ const ModelList = ({ models, modelId }: { models: AppListItemType[]; modelId: st
                 }
               : {})}
             onClick={() => {
-              router.replace(`/chat?modelId=${item._id}`);
+              router.replace(`/chat?appId=${item._id}`);
             }}
           >
             <Avatar src={item.avatar} w={'34px'} h={'34px'} />

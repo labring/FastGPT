@@ -125,7 +125,7 @@ const PcSliderBar = ({
             w={'100%'}
             h={'100%'}
             leftIcon={<AddIcon />}
-            onClick={() => router.replace(`/chat?modelId=${modelId}`)}
+            onClick={() => router.replace(`/chat?appId=${modelId}`)}
           >
             新对话
           </Button>
@@ -176,9 +176,9 @@ const PcSliderBar = ({
             onClick={() => {
               if (item._id === chatId) return;
               if (isPc) {
-                router.replace(`/chat?modelId=${item.modelId}&chatId=${item._id}`);
+                router.replace(`/chat?appId=${item.modelId}&chatId=${item._id}`);
               } else {
-                router.push(`/chat?modelId=${item.modelId}&chatId=${item._id}`);
+                router.push(`/chat?appId=${item.modelId}&chatId=${item._id}`);
               }
             }}
             onContextMenu={(e) => onclickContextMenu(e, item)}
@@ -251,7 +251,7 @@ const PcSliderBar = ({
                   try {
                     await onclickDelHistory(contextMenuData.history._id);
                     if (contextMenuData.history._id === chatId) {
-                      router.replace(`/chat?modelId=${modelId}`);
+                      router.replace(`/chat?appId=${modelId}`);
                     }
                   } catch (error) {
                     console.log(error);

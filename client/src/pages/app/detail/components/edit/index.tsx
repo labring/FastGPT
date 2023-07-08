@@ -187,6 +187,7 @@ const AppEdit = ({ app, onBack }: Props) => {
           targets: [] as FlowOutputTargetItemType[]
         }))
       }));
+      console.log(modules);
 
       // update inputs and outputs
       modules.forEach((module) => {

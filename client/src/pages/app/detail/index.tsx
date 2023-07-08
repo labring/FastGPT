@@ -83,7 +83,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       <Box display={['block', 'flex']} h={'100%'}>
         {/* pc tab */}
         <Box display={['none', 'block']} p={4} w={'200px'} borderRight={theme.borders.base}>
-          <Flex mb={4}>
+          <Flex mb={4} alignItems={'center'}>
             <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'lg'} />
             <Box ml={2} fontWeight={'bold'}>
               {appDetail.name}
@@ -97,7 +97,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             activeId={currentTab}
             onChange={(e: any) => {
               if (e === 'startChat') {
-                router.push(`/chat?modelId=${appId}`);
+                router.push(`/chat?appId=${appId}`);
               } else {
                 setCurrentTab(e);
               }
@@ -118,7 +118,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             activeId={currentTab}
             onChange={(e: any) => {
               if (e === 'startChat') {
-                router.push(`/chat?modelId=${appId}`);
+                router.push(`/chat?appId=${appId}`);
               } else {
                 setCurrentTab(e);
               }

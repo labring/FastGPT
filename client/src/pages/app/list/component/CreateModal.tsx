@@ -21,46 +21,15 @@ import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
 import { postCreateApp } from '@/api/app';
 import { useRouter } from 'next/router';
-import { chatAppDemo } from '@/constants/app';
+import { appTemplates } from '@/constants/app';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 
 type FormType = {
   avatar: string;
   name: string;
-  templateId: number;
+  templateId: string;
 };
-
-const templates = [
-  {
-    id: 0,
-    icon: 'settings',
-    name: '简单的对话',
-    intro: '一个极其简单的 AI 对话应用',
-    modules: chatAppDemo.modules
-  },
-  {
-    id: 1,
-    icon: 'settings',
-    name: '基础知识库',
-    intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
-    modules: chatAppDemo.modules
-  },
-  {
-    id: 2,
-    icon: 'settings',
-    name: '问答前引导',
-    intro: '可以在每次对话开始前提示用户填写一些内容，作为本次对话的永久内容',
-    modules: chatAppDemo.modules
-  },
-  {
-    id: 3,
-    icon: 'settings',
-    name: '意图识别 + 知识库',
-    intro: '先对用户的问题进行分类，再根据不同类型问题，执行不同的操作',
-    modules: chatAppDemo.modules
-  }
-];
 
 const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [refresh, setRefresh] = useState(false);
@@ -72,7 +41,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     defaultValues: {
       avatar: '/icon/logo.png',
       name: '',
-      templateId: 0
+      templateId: appTemplates[0].id
     }
   });
 
@@ -110,7 +79,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         const id = await postCreateApp({
           avatar: data.avatar,
           name: data.name,
-          modules: templates.find((item) => item.id === data.templateId)?.modules || []
+          modules: appTemplates.find((item) => item.id === data.templateId)?.modules || []
         });
         toast({
           title: '创建成功',
@@ -163,7 +132,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
             gridGap={4}
           >
-            {templates.map((item) => (
+            {appTemplates.map((item) => (
               <Card
                 key={item.id}
                 border={theme.borders.base}
@@ -186,7 +155,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                 }}
               >
                 <Flex alignItems={'center'}>
-                  <MyIcon name={'apikey'} w={'16px'} />
+                  <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
                   <Box ml={3} fontWeight={'bold'}>
                     {item.name}
                   </Box>
