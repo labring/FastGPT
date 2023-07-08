@@ -65,7 +65,7 @@ const textareaMinH = '22px';
 
 const Chat = () => {
   const router = useRouter();
-  const { modelId = '', chatId = '' } = router.query as { modelId: string; chatId: string };
+  const { appId = '', chatId = '' } = router.query as { appId: string; chatId: string };
   const theme = useTheme();
 
   const ChatBox = useRef<HTMLDivElement>(null);
@@ -179,7 +179,7 @@ const Chat = () => {
         data: {
           messages,
           chatId,
-          appId: modelId,
+          appId,
           model: ''
         },
         onMessage: (text: string) => {
@@ -206,7 +206,7 @@ const Chat = () => {
       // save chat
       if (newChatId) {
         setForbidLoadChatData(true);
-        router.replace(`/chat?modelId=${modelId}&chatId=${newChatId}`);
+        router.replace(`/chat?appId=${appId}&chatId=${newChatId}`);
       }
 
       abortSignal.signal.aborted && (await delay(500));
@@ -243,7 +243,7 @@ const Chat = () => {
     },
     [
       chatId,
-      modelId,
+      appId,
       setChatData,
       generatingMessage,
       setForbidLoadChatData,
@@ -474,17 +474,17 @@ const Chat = () => {
   // 获取对话信息
   const loadChatInfo = useCallback(
     async ({
-      modelId,
+      appId,
       chatId,
       loading = false
     }: {
-      modelId: string;
+      appId: string;
       chatId: string;
       loading?: boolean;
     }) => {
       try {
         loading && setIsLoading(true);
-        const res = await getInitChatSiteInfo(modelId, chatId);
+        const res = await getInitChatSiteInfo(appId, chatId);
 
         setChatData({
           ...res,
@@ -502,9 +502,9 @@ const Chat = () => {
         }
 
         // 空 modelId 请求, 重定向到新的 model 聊天
-        if (res.modelId !== modelId) {
+        if (res.modelId !== appId) {
           setForbidLoadChatData(true);
-          router.replace(`/chat?modelId=${res.modelId}`);
+          router.replace(`/chat?appId=${res.modelId}`);
         }
       } catch (e: any) {
         // reset all chat tore
@@ -529,15 +529,15 @@ const Chat = () => {
     ]
   );
   // 初始化聊天框
-  useQuery(['init', modelId, chatId], () => {
+  useQuery(['init', appId, chatId], () => {
     // pc: redirect to latest model chat
-    if (!modelId && lastChatModelId) {
-      router.replace(`/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`);
+    if (!appId && lastChatModelId) {
+      router.replace(`/chat?appId=${lastChatModelId}&chatId=${lastChatId}`);
       return null;
     }
 
     // store id
-    modelId && setLastChatModelId(modelId);
+    appId && setLastChatModelId(appId);
     setLastChatId(chatId);
 
     if (forbidLoadChatData) {
@@ -546,7 +546,7 @@ const Chat = () => {
     }
 
     return loadChatInfo({
-      modelId,
+      appId,
       chatId,
       loading: true
     });
@@ -559,7 +559,7 @@ const Chat = () => {
       isLeavePage.current = true;
       controller.current?.abort();
     };
-  }, [modelId, chatId]);
+  }, [appId, chatId]);
 
   // context menu component
   const RenderContextMenu = useCallback(
@@ -611,14 +611,14 @@ const Chat = () => {
       backgroundColor={useColorModeValue('#fdfdfd', '')}
     >
       {/* pc always show history.  */}
-      {(isPc || !modelId) && (
+      {(isPc || !appId) && (
         <SideBar>
           <History onclickDelHistory={onclickDelHistory} onclickExportChat={onclickExportChat} />
         </SideBar>
       )}
 
       {/* 聊天内容 */}
-      {modelId && (
+      {appId && (
         <Flex
           position={'relative'}
           h={[0, '100%']}
@@ -667,15 +667,13 @@ const Chat = () => {
                   />
                 </MenuButton>
                 <MenuList minW={`90px !important`}>
-                  <MenuItem onClick={() => router.replace(`/chat?modelId=${modelId}`)}>
-                    新对话
-                  </MenuItem>
+                  <MenuItem onClick={() => router.replace(`/chat?appId=${appId}`)}>新对话</MenuItem>
                   <MenuItem
                     onClick={async () => {
                       try {
                         setIsLoading(true);
                         await onclickDelHistory(chatData.chatId);
-                        router.replace(`/chat?modelId=${modelId}`);
+                        router.replace(`/chat?appId=${appId}`);
                       } catch (err) {
                         console.log(err);
                       }
@@ -901,7 +899,7 @@ const Chat = () => {
         <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
           <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
           <DrawerContent maxW={'70%'}>
-            <PhoneSliderBar chatId={chatId} modelId={modelId} onClose={onCloseSlider} />
+            <PhoneSliderBar chatId={chatId} modelId={appId} onClose={onCloseSlider} />
           </DrawerContent>
         </Drawer>
       )}

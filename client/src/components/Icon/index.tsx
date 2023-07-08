@@ -36,7 +36,8 @@ const map = {
   date: require('./icons/date.svg').default,
   apikey: require('./icons/apikey.svg').default,
   save: require('./icons/save.svg').default,
-  minus: require('./icons/minus.svg').default
+  minus: require('./icons/minus.svg').default,
+  chatLight: require('./icons/light/chat.svg').default
 };
 
 export type IconName = keyof typeof map;

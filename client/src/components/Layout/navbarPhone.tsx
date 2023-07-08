@@ -13,7 +13,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       {
         label: '聊天',
         icon: 'tabbarChat',
-        link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
+        link: `/chat?appId=${lastChatModelId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
       },

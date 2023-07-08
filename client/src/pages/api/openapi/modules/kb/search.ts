@@ -72,6 +72,12 @@ export async function kbSearch({
   maxToken = 2500,
   userChatInput
 }: Props): Promise<Response> {
+  if (kb_ids.length === 0)
+    return {
+      isEmpty: true,
+      rawSearch: [],
+      quotePrompt: undefined
+    };
   // get vector
   const promptVector = await openaiEmbedding_system({
     input: [userChatInput]
