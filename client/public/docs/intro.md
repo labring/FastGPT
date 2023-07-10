@@ -2,7 +2,7 @@
 
 ### 项目开源
 
-FastGpt 项目完全开源，可随意私有化部署，去除平台风险忧虑。项目地址：[Git 仓库](https://github.com/c121914yu/FastGPT)
+FastGpt 项目完全开源，可随意私有化部署，去除平台风险忧虑。项目地址：[Git 仓库](https://github.com/labring/FastGPT)
 
 ### 开始使用知识库
 
