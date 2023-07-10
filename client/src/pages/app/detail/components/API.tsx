@@ -24,7 +24,7 @@ const API = ({ modelId }: { modelId: string }) => {
   }, []);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
+    <Flex flexDirection={'column'} pt={[0, 5]} h={'100%'}>
       <Box display={['none', 'flex']} px={5} alignItems={'center'}>
         <Box flex={1}>
           AppId:

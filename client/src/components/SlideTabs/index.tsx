@@ -60,7 +60,7 @@ const SlideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =
             onChange(item.id);
           }}
         >
-          <MyIcon mr={2} name={item.icon as IconName} w={'14px'} />
+          <MyIcon mr={2} name={item.icon as IconName} w={'16px'} />
           {item.label}
         </Flex>
       ))}

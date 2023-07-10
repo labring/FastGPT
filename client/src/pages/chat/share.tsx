@@ -57,6 +57,7 @@ const ShareHistory = dynamic(() => import('./components/ShareHistory'), {
 
 import styles from './index.module.scss';
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
+import { useChat } from '@/hooks/useChat';
 
 const textareaMinH = '22px';
 
@@ -65,16 +66,9 @@ const Chat = () => {
   const { shareId = '', historyId } = router.query as { shareId: string; historyId: string };
   const theme = useTheme();
 
-  const ChatBox = useRef<HTMLDivElement>(null);
-  const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const ContextMenuRef = useRef(null);
   const PhoneContextShow = useRef(false);
 
-  // 中断请求
-  const controller = useRef(new AbortController());
-  const isLeavePage = useRef(false);
-
-  const [inputVal, setInputVal] = useState(''); // user input prompt
   const [messageContextMenuData, setMessageContextMenuData] = useState<{
     // message messageContextMenuData
     left: number;
@@ -98,6 +92,10 @@ const Chat = () => {
     () => shareChatData.history[shareChatData.history.length - 1]?.status === 'loading',
     [shareChatData.history]
   );
+
+  const { ChatBox, ChatInput, ChatBoxParentRef, setChatHistory, scrollToBottom } = useChat({
+    appId: shareChatData.appId
+  });
 
   const { toast } = useToast();
   const { copyData } = useCopyData();
@@ -128,220 +126,6 @@ const Chat = () => {
       }
     }
   });
-
-  // 滚动到底部
-  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
-    if (!ChatBox.current) return;
-    ChatBox.current.scrollTo({
-      top: ChatBox.current.scrollHeight,
-      behavior
-    });
-  }, []);
-
-  // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const generatingMessage = useCallback(
-    throttle(() => {
-      if (!ChatBox.current) return;
-      const isBottom =
-        ChatBox.current.scrollTop + ChatBox.current.clientHeight + 150 >=
-        ChatBox.current.scrollHeight;
-
-      isBottom && scrollToBottom('auto');
-    }, 100),
-    []
-  );
-
-  // 重置输入内容
-  const resetInputVal = useCallback((val: string) => {
-    setInputVal(val);
-    setTimeout(() => {
-      /* 回到最小高度 */
-      if (TextareaDom.current) {
-        TextareaDom.current.style.height =
-          val === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
-      }
-    }, 100);
-  }, []);
-
-  // gpt 对话
-  const gptChatPrompt = useCallback(
-    async (prompts: ChatSiteItemType[]) => {
-      // create abort obj
-      const abortSignal = new AbortController();
-      controller.current = abortSignal;
-      isLeavePage.current = false;
-
-      const messages = adaptChatItem_openAI({ messages: prompts, reserveId: true });
-
-      // 流请求，获取数据
-      const { responseText } = await streamFetch({
-        data: {
-          messages: messages.slice(-shareChatData.maxContext - 1, -1),
-          password,
-          shareId,
-          model: ''
-        },
-        onMessage: (text: string) => {
-          setShareChatData((state) => ({
-            ...state,
-            history: state.history.map((item, index) => {
-              if (index !== state.history.length - 1) return item;
-              return {
-                ...item,
-                value: item.value + text
-              };
-            })
-          }));
-          generatingMessage();
-        },
-        abortSignal
-      });
-
-      // 重置了页面，说明退出了当前聊天, 不缓存任何内容
-      if (isLeavePage.current) {
-        return;
-      }
-
-      let responseHistory: ChatSiteItemType[] = [];
-
-      // 设置聊天内容为完成状态
-      setShareChatData((state) => {
-        responseHistory = state.history.map((item, index) => {
-          if (index !== state.history.length - 1) return item;
-          return {
-            ...item,
-            status: 'finish'
-          };
-        });
-
-        return {
-          ...state,
-          history: responseHistory
-        };
-      });
-
-      setShareChatHistory({
-        historyId,
-        shareId,
-        title: prompts[prompts.length - 2].value,
-        latestChat: responseText,
-        chats: responseHistory
-      });
-
-      window.top?.postMessage(
-        {
-          type: 'shareChatFinish',
-          data: {
-            question: prompts[prompts.length - 2].value,
-            answer: responseText
-          }
-        },
-        '*'
-      );
-
-      setTimeout(() => {
-        generatingMessage();
-      }, 100);
-    },
-    [
-      generatingMessage,
-      historyId,
-      password,
-      setShareChatData,
-      setShareChatHistory,
-      shareChatData.maxContext,
-      shareId
-    ]
-  );
-
-  /**
-   * 发送一个内容
-   */
-  const sendPrompt = useCallback(async () => {
-    if (isChatting) {
-      toast({
-        title: '正在聊天中...请等待结束',
-        status: 'warning'
-      });
-      return;
-    }
-    const storeInput = inputVal;
-    // 去除空行
-    const val = inputVal.trim().replace(/\n\s*/g, '\n');
-
-    if (!val) {
-      toast({
-        title: '内容为空',
-        status: 'warning'
-      });
-      return;
-    }
-
-    const newChatList: ChatSiteItemType[] = [
-      ...shareChatData.history,
-      {
-        _id: String(new Types.ObjectId()),
-        obj: 'Human',
-        value: val,
-        status: 'finish'
-      },
-      {
-        _id: String(new Types.ObjectId()),
-        obj: 'AI',
-        value: '',
-        status: 'loading'
-      }
-    ];
-
-    // 插入内容
-    setShareChatData((state) => ({
-      ...state,
-      history: newChatList
-    }));
-
-    // 清空输入内容
-    resetInputVal('');
-    setTimeout(() => {
-      scrollToBottom();
-    }, 100);
-
-    try {
-      await gptChatPrompt(newChatList);
-    } catch (err: any) {
-      toast({
-        title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true
-      });
-
-      resetInputVal(storeInput);
-
-      setShareChatData((state) => ({
-        ...state,
-        history: newChatList.slice(0, newChatList.length - 2)
-      }));
-    }
-  }, [
-    isChatting,
-    inputVal,
-    shareChatData.history,
-    setShareChatData,
-    resetInputVal,
-    toast,
-    scrollToBottom,
-    gptChatPrompt
-  ]);
-
-  // 复制内容
-  const onclickCopy = useCallback(
-    (value: string) => {
-      const val = value.replace(/\n+/g, '\n');
-      copyData(val);
-    },
-    [copyData]
-  );
 
   // export chat data
   const onclickExportChat = useCallback(
@@ -411,34 +195,6 @@ const Chat = () => {
     [shareChatData.history]
   );
 
-  // onclick chat message context
-  const onclickContextMenu = useCallback(
-    (e: MouseEvent<HTMLDivElement>, message: ChatSiteItemType) => {
-      e.preventDefault(); // 阻止默认右键菜单
-
-      // select all text
-      const range = document.createRange();
-      range.selectNodeContents(e.currentTarget as HTMLDivElement);
-      window.getSelection()?.removeAllRanges();
-      window.getSelection()?.addRange(range);
-
-      navigator.vibrate?.(50); // 震动 50 毫秒
-
-      if (!isPc) {
-        PhoneContextShow.current = true;
-      }
-
-      setMessageContextMenuData({
-        left: e.clientX - 20,
-        top: e.clientY,
-        message
-      });
-
-      return false;
-    },
-    [isPc]
-  );
-
   // 获取对话信息
   const loadChatInfo = useCallback(async () => {
     setIsLoading(true);
@@ -503,41 +259,8 @@ const Chat = () => {
     return loadChatInfo();
   });
 
-  // abort stream
-  useEffect(() => {
-    return () => {
-      window.speechSynthesis?.cancel();
-      isLeavePage.current = true;
-      controller.current?.abort();
-    };
-  }, [shareId, historyId]);
-
-  // context menu component
-  const RenderContextMenu = useCallback(
-    ({ history, index }: { history: ChatSiteItemType; index: number }) => (
-      <MenuList fontSize={'sm'} minW={'100px !important'}>
-        <MenuItem onClick={() => onclickCopy(history.value)}>复制</MenuItem>
-        {hasVoiceApi && (
-          <MenuItem
-            borderBottom={theme.borders.base}
-            onClick={() => voiceBroadcast({ text: history.value })}
-          >
-            语音播报
-          </MenuItem>
-        )}
-
-        <MenuItem onClick={() => delShareChatHistoryItemById(historyId, index)}>删除</MenuItem>
-      </MenuList>
-    ),
-    [delShareChatHistoryItemById, historyId, onclickCopy, theme.borders.base]
-  );
-
   return (
-    <Flex
-      h={'100%'}
-      flexDirection={['column', 'row']}
-      backgroundColor={useColorModeValue('#fdfdfd', '')}
-    >
+    <Flex h={'100%'} flexDirection={['column', 'row']} backgroundColor={'#fdfdfd'}>
       {/* pc always show history.  */}
       {isPc && (
         <SideBar>
@@ -612,164 +335,11 @@ const Chat = () => {
           )}
         </Flex>
         {/* chat content box */}
-        <Box ref={ChatBox} pb={[4, 0]} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'}>
-          <Box id={'history'}>
-            {shareChatData.history.map((item, index) => (
-              <Flex key={item._id} alignItems={'flex-start'} py={2} px={[2, 6, 8]}>
-                {item.obj === 'Human' && <Box flex={1} />}
-                {/* avatar */}
-                <Menu autoSelect={false} isLazy>
-                  <MyTooltip label={item.obj === 'AI' ? '应用详情' : ''}>
-                    <MenuButton
-                      as={Box}
-                      {...(item.obj === 'AI'
-                        ? {
-                            order: 1,
-                            mr: ['6px', 2]
-                          }
-                        : {
-                            order: 3,
-                            ml: ['6px', 2]
-                          })}
-                    >
-                      <Avatar
-                        src={
-                          item.obj === 'Human'
-                            ? shareChatData.userAvatar || HUMAN_ICON
-                            : shareChatData.model.avatar
-                        }
-                        w={['20px', '34px']}
-                        h={['20px', '34px']}
-                      />
-                    </MenuButton>
-                  </MyTooltip>
-                  {!isPc && <RenderContextMenu history={item} index={index} />}
-                </Menu>
-                {/* message */}
-                <Flex order={2} pt={2} maxW={['calc(100% - 50px)', '80%']}>
-                  {item.obj === 'AI' ? (
-                    <Box w={'100%'}>
-                      <Card
-                        bg={'white'}
-                        px={4}
-                        py={3}
-                        borderRadius={'0 8px 8px 8px'}
-                        onContextMenu={(e) => onclickContextMenu(e, item)}
-                      >
-                        <Markdown
-                          source={item.value}
-                          isChatting={isChatting && index === shareChatData.history.length - 1}
-                        />
-                      </Card>
-                    </Box>
-                  ) : (
-                    <Box>
-                      <Card
-                        className="markdown"
-                        whiteSpace={'pre-wrap'}
-                        px={4}
-                        py={3}
-                        borderRadius={'8px 0 8px 8px'}
-                        bg={'myBlue.300'}
-                        onContextMenu={(e) => onclickContextMenu(e, item)}
-                      >
-                        <Box as={'p'}>{item.value}</Box>
-                      </Card>
-                    </Box>
-                  )}
-                </Flex>
-              </Flex>
-            ))}
-            {shareChatData.history.length === 0 && (
-              <Empty model={shareChatData.model} showChatProblem={false} />
-            )}
-          </Box>
+        <Box ref={ChatBoxParentRef} flex={1}>
+          <ChatBox appAvatar={shareChatData.model.avatar} />
         </Box>
         {/* 发送区 */}
-        <Box m={['0 auto', '20px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']}>
-          <Box
-            py={'18px'}
-            position={'relative'}
-            boxShadow={`0 0 10px rgba(0,0,0,0.1)`}
-            borderTop={['1px solid', 0]}
-            borderTopColor={useColorModeValue('gray.200', 'gray.700')}
-            borderRadius={['none', 'md']}
-            backgroundColor={useColorModeValue('white', 'gray.700')}
-          >
-            {/* 输入框 */}
-            <Textarea
-              ref={TextareaDom}
-              py={0}
-              pr={['45px', '55px']}
-              border={'none'}
-              _focusVisible={{
-                border: 'none'
-              }}
-              placeholder="提问"
-              resize={'none'}
-              value={inputVal}
-              rows={1}
-              height={'22px'}
-              lineHeight={'22px'}
-              maxHeight={'150px'}
-              maxLength={-1}
-              overflowY={'auto'}
-              whiteSpace={'pre-wrap'}
-              wordBreak={'break-all'}
-              boxShadow={'none !important'}
-              color={useColorModeValue('blackAlpha.700', 'white')}
-              onChange={(e) => {
-                const textarea = e.target;
-                setInputVal(textarea.value);
-                textarea.style.height = textareaMinH;
-                textarea.style.height = `${textarea.scrollHeight}px`;
-              }}
-              onKeyDown={(e) => {
-                // 触发快捷发送
-                if (isPc && e.keyCode === 13 && !e.shiftKey) {
-                  sendPrompt();
-                  e.preventDefault();
-                }
-                // 全选内容
-                // @ts-ignore
-                e.key === 'a' && e.ctrlKey && e.target?.select();
-              }}
-            />
-            {/* 发送和等待按键 */}
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              h={'25px'}
-              w={'25px'}
-              position={'absolute'}
-              right={['12px', '20px']}
-              bottom={'15px'}
-            >
-              {isChatting ? (
-                <MyIcon
-                  className={styles.stopIcon}
-                  width={['22px', '25px']}
-                  height={['22px', '25px']}
-                  cursor={'pointer'}
-                  name={'stop'}
-                  color={useColorModeValue('gray.500', 'white')}
-                  onClick={() => {
-                    controller.current?.abort();
-                  }}
-                />
-              ) : (
-                <MyIcon
-                  name={'chatSend'}
-                  width={['18px', '20px']}
-                  height={['18px', '20px']}
-                  cursor={'pointer'}
-                  color={useColorModeValue('gray.500', 'white')}
-                  onClick={sendPrompt}
-                />
-              )}
-            </Flex>
-          </Box>
-        </Box>
+        <ChatInput />
 
         <Loading fixed={false} />
       </Flex>
@@ -786,25 +356,6 @@ const Chat = () => {
             />
           </DrawerContent>
         </Drawer>
-      )}
-      {/* context menu */}
-      {messageContextMenuData && (
-        <Box
-          zIndex={10}
-          position={'fixed'}
-          top={messageContextMenuData.top}
-          left={messageContextMenuData.left}
-        >
-          <Box ref={ContextMenuRef}></Box>
-          <Menu isOpen>
-            <RenderContextMenu
-              history={messageContextMenuData.message}
-              index={shareChatData.history.findIndex(
-                (item) => item._id === messageContextMenuData.message._id
-              )}
-            />
-          </Menu>
-        </Box>
       )}
       {/* password input */}
       {

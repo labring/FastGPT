@@ -22,31 +22,36 @@ const Navbar = ({ unread }: { unread: number }) => {
     () => [
       {
         label: '聊天',
-        icon: 'chat',
+        icon: 'chatLight',
+        activeIcon: 'chatFill',
         link: `/chat?appId=${lastChatModelId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
       },
       {
         label: '应用',
-        icon: 'model',
+        icon: 'tabbarModel',
+        activeIcon: 'model',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail']
       },
       {
         label: '知识库',
-        icon: 'kb',
+        icon: 'dbLight',
+        activeIcon: 'dbFill',
         link: `/kb`,
         activeLink: ['/kb']
       },
       {
         label: '市场',
-        icon: 'appStore',
+        icon: 'appLight',
+        activeIcon: 'appFill',
         link: '/appStore',
         activeLink: ['/appStore']
       },
       {
         label: '账号',
-        icon: 'user',
+        icon: 'meLight',
+        activeIcon: 'meFill',
         link: '/number',
         activeLink: ['/number']
       }
@@ -65,7 +70,7 @@ const Navbar = ({ unread }: { unread: number }) => {
     h: '54px',
     borderRadius: 'md',
     _hover: {
-      color: '#ffffff'
+      bg: 'myWhite.600'
     }
   };
 
@@ -74,17 +79,17 @@ const Navbar = ({ unread }: { unread: number }) => {
       flexDirection={'column'}
       alignItems={'center'}
       pt={6}
-      backgroundImage={'linear-gradient(to bottom right,#465069,#000000)'}
+      bg={'white'}
       h={'100%'}
       w={'100%'}
-      boxShadow={'4px 0px 4px 0px rgba(43, 45, 55, 0.01)'}
+      boxShadow={'2px 0px 8px 0px rgba(0,0,0,0.1)'}
       userSelect={'none'}
     >
       {/* logo */}
       <Box
         mb={5}
         border={'2px solid #fff'}
-        borderRadius={'36px'}
+        borderRadius={'50%'}
         overflow={'hidden'}
         cursor={'pointer'}
         onClick={() => router.push('/number')}
@@ -101,15 +106,24 @@ const Navbar = ({ unread }: { unread: number }) => {
             {...itemStyles}
             {...(item.activeLink.includes(router.pathname)
               ? {
-                  color: '#ffffff ',
-                  backgroundImage: 'linear-gradient(to bottom right, #2152d9 0%, #4e83fd 100%)'
+                  color: 'myBlue.700',
+                  bg: 'white !important',
+                  boxShadow: '1px 1px 10px rgba(0,0,0,0.2)'
                 }
               : {
-                  color: '#9096a5',
+                  color: 'myGray.500',
                   backgroundColor: 'transparent'
                 })}
           >
-            <MyIcon name={item.icon as any} width={'20px'} height={'20px'} />
+            <MyIcon
+              name={
+                item.activeLink.includes(router.pathname)
+                  ? (item.activeIcon as any)
+                  : (item.icon as any)
+              }
+              width={'20px'}
+              height={'20px'}
+            />
             <Box fontSize={'12px'} transform={'scale(0.9)'} mt={'5px'} lineHeight={1}>
               {item.label}
             </Box>

@@ -161,7 +161,9 @@ const Settings = ({ modelId }: { modelId: string }) => {
       position={'relative'}
       maxW={['auto', '800px']}
     >
-      <Box fontSize={['md', 'xl']}>基本信息</Box>
+      <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
+        基本信息
+      </Box>
       <Flex mt={5} alignItems={'center'}>
         <Box w={['60px', '100px', '140px']} flexShrink={0}>
           头像

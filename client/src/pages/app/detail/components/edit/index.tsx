@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -27,6 +27,7 @@ import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
 import ButtonEdge from './components/modules/ButtonEdge';
+import MyTooltip from '@/components/MyTooltip';
 const NodeChat = dynamic(() => import('./components/NodeChat'), {
   ssr: false
 });
@@ -48,13 +49,16 @@ const NodeQuestionInput = dynamic(() => import('./components/NodeQuestionInput')
 const TemplateList = dynamic(() => import('./components/TemplateList'), {
   ssr: false
 });
+const ChatTest = dynamic(() => import('./components/ChatTest'), {
+  ssr: false
+});
 const NodeCQNode = dynamic(() => import('./components/NodeCQNode'), {
   ssr: false
 });
 
 import 'reactflow/dist/style.css';
 import styles from './index.module.scss';
-import { AppModuleTemplateItemType } from '@/types/app';
+import { AppModuleItemType, AppModuleTemplateItemType } from '@/types/app';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
@@ -83,6 +87,7 @@ const AppEdit = ({ app, onBack }: Props) => {
     onOpen: onOpenTemplate,
     onClose: onCloseTemplate
   } = useDisclosure();
+  const [testModules, setTestModules] = useState<AppModuleItemType[]>();
 
   const onChangeNode = useCallback(
     ({ moduleId, key, type = 'inputs', value, valueKey = 'value' }: FlowModuleItemChangeProps) => {
@@ -149,6 +154,41 @@ const AppEdit = ({ app, onBack }: Props) => {
     },
     [onChangeNode, onDelNode, setNodes, x, y, zoom]
   );
+  const flow2Modules = useCallback(() => {
+    const modules: AppModuleItemType[] = nodes.map((item) => ({
+      ...item.data,
+      position: item.position,
+      onChangeNode: undefined,
+      onDelNode: undefined,
+      outputs: item.data.outputs.map((output) => ({
+        ...output,
+        targets: [] as FlowOutputTargetItemType[]
+      }))
+    }));
+
+    // update inputs and outputs
+    modules.forEach((module) => {
+      module.inputs.forEach((input) => {
+        input.connected = !!edges.find(
+          (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
+        );
+      });
+      module.outputs.forEach((output) => {
+        output.targets = edges
+          .filter(
+            (edge) =>
+              edge.source === module.moduleId &&
+              edge.sourceHandle === output.key &&
+              edge.targetHandle
+          )
+          .map((edge) => ({
+            moduleId: edge.target,
+            key: edge.targetHandle || ''
+          }));
+      });
+    });
+    return modules;
+  }, [edges, nodes]);
 
   const onDelConnect = useCallback(
     (id: string) => {
@@ -177,42 +217,8 @@ const AppEdit = ({ app, onBack }: Props) => {
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
-      const modules = nodes.map((item) => ({
-        ...item.data,
-        position: item.position,
-        onChangeNode: undefined,
-        onDelNode: undefined,
-        outputs: item.data.outputs.map((output) => ({
-          ...output,
-          targets: [] as FlowOutputTargetItemType[]
-        }))
-      }));
-      console.log(modules);
-
-      // update inputs and outputs
-      modules.forEach((module) => {
-        module.inputs.forEach((input) => {
-          input.connected = !!edges.find(
-            (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
-          );
-        });
-        module.outputs.forEach((output) => {
-          output.targets = edges
-            .filter(
-              (edge) =>
-                edge.source === module.moduleId &&
-                edge.sourceHandle === output.key &&
-                edge.targetHandle
-            )
-            .map((edge) => ({
-              moduleId: edge.target,
-              key: edge.targetHandle || ''
-            }));
-        });
-      });
-
       return putAppById(app._id, {
-        modules
+        modules: flow2Modules()
       });
     },
     successToast: '保存配置成功',
@@ -244,10 +250,11 @@ const AppEdit = ({ app, onBack }: Props) => {
 
   useEffect(() => {
     initData(JSON.parse(JSON.stringify(app)));
-  }, [app]);
+  }, [app, initData]);
 
   return (
     <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
+      {/* header */}
       <Flex py={3} px={5} borderBottom={theme.borders.base} alignItems={'center'}>
         <IconButton
           size={'sm'}
@@ -263,20 +270,42 @@ const AppEdit = ({ app, onBack }: Props) => {
         <Box ml={5} fontSize={'xl'} flex={1}>
           {app.name}
         </Box>
-        <IconButton
-          icon={<MyIcon name={'save'} w={'16px'} />}
-          borderRadius={'lg'}
-          isLoading={isLoading}
-          aria-label={'save'}
-          bg={'myBlue.200'}
-          variant={'base'}
-          border={'none'}
-          color={'myGray.900'}
-          _hover={{
-            bg: 'myBlue.300'
-          }}
-          onClick={onclickSave}
-        />
+        {testModules ? (
+          <IconButton
+            mr={6}
+            icon={<SmallCloseIcon fontSize={'25px'} />}
+            variant={'base'}
+            color={'myGray.600'}
+            borderRadius={'lg'}
+            aria-label={''}
+            onClick={() => setTestModules(undefined)}
+          />
+        ) : (
+          <MyTooltip label={'测试对话'}>
+            <IconButton
+              mr={6}
+              icon={<MyIcon name={'chatLight'} w={'16px'} />}
+              borderRadius={'lg'}
+              aria-label={'save'}
+              variant={'base'}
+              onClick={() => {
+                // @ts-ignore
+                onclickSave();
+                setTestModules(flow2Modules());
+              }}
+            />
+          </MyTooltip>
+        )}
+
+        <MyTooltip label={'保存配置'}>
+          <IconButton
+            icon={<MyIcon name={'save'} w={'16px'} />}
+            borderRadius={'lg'}
+            isLoading={isLoading}
+            aria-label={'save'}
+            onClick={onclickSave}
+          />
+        </MyTooltip>
       </Flex>
       <Box
         flex={'1 0 0'}
@@ -288,6 +317,7 @@ const AppEdit = ({ app, onBack }: Props) => {
           return false;
         }}
       >
+        {/* open module template */}
         <IconButton
           position={'absolute'}
           top={5}
@@ -334,7 +364,9 @@ const AppEdit = ({ app, onBack }: Props) => {
             showInteractive={false}
           />
         </ReactFlow>
+
         <TemplateList isOpen={isOpenTemplate} onAddNode={onAddNode} onClose={onCloseTemplate} />
+        <ChatTest modules={testModules} app={app} onClose={() => setTestModules(undefined)} />
       </Box>
     </Flex>
   );

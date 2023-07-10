@@ -108,7 +108,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
   };
 
   return (
-    <Box position={'relative'} px={5} minH={'50vh'}>
+    <Box position={'relative'} pt={[0, 5]} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'}>
           免登录聊天窗口

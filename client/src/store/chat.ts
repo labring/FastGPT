@@ -57,6 +57,7 @@ const defaultChatData: ChatType = {
   history: []
 };
 const defaultShareChatData: ShareChatType = {
+  appId: '',
   maxContext: 5,
   userAvatar: HUMAN_ICON,
   model: {

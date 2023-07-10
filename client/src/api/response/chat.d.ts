@@ -19,6 +19,7 @@ export interface InitChatResponse {
 export interface InitShareChatResponse {
   maxContext: number;
   userAvatar: string;
+  appId: string;
   model: {
     name: string;
     avatar: string;
