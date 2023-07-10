@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import dynamic from 'next/dynamic';
+import { defaultApp } from '@/constants/model';
 
 import Tabs from '@/components/Tabs';
 import SlideTabs from '@/components/SlideTabs';
 import Settings from './components/Settings';
-import { defaultApp } from '@/constants/model';
 import Avatar from '@/components/Avatar';
+import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 
 const EditApp = dynamic(() => import('./components/edit'), {
@@ -54,11 +55,11 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '基础信息', id: TabEnum.settings, icon: 'text' },
-      ...(isOwner ? [{ label: '编排', id: TabEnum.edit, icon: 'edit' }] : []),
-      { label: '分享', id: TabEnum.share, icon: 'edit' },
-      { label: 'API', id: TabEnum.API, icon: 'edit' },
-      { label: '立即对话', id: 'startChat', icon: 'chat' }
+      { label: '概览', id: TabEnum.settings, icon: 'overviewLight' },
+      ...(isOwner ? [{ label: '高级设置', id: TabEnum.edit, icon: 'settingLight' }] : []),
+      { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
+      { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
+      { label: '立即对话', id: 'startChat', icon: 'chatLight' }
     ],
     [isOwner]
   );
@@ -82,7 +83,13 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     <PageContainer>
       <Box display={['block', 'flex']} h={'100%'}>
         {/* pc tab */}
-        <Box display={['none', 'block']} p={4} w={'200px'} borderRight={theme.borders.base}>
+        <Box
+          display={['none', 'flex']}
+          flexDirection={'column'}
+          p={4}
+          w={'200px'}
+          borderRight={theme.borders.base}
+        >
           <Flex mb={4} alignItems={'center'}>
             <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'lg'} />
             <Box ml={2} fontWeight={'bold'}>
@@ -90,6 +97,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             </Box>
           </Flex>
           <SlideTabs
+            flex={1}
             mx={'auto'}
             mt={2}
             w={'100%'}
@@ -103,6 +111,27 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
               }
             }}
           />
+          <Flex
+            alignItems={'center'}
+            cursor={'pointer'}
+            py={2}
+            px={3}
+            borderRadius={'md'}
+            _hover={{ bg: 'myGray.100' }}
+            onClick={() => router.replace('/app/list')}
+          >
+            <IconButton
+              mr={3}
+              icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+              bg={'white'}
+              boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+              h={'28px'}
+              size={'sm'}
+              borderRadius={'50%'}
+              aria-label={''}
+            />
+            我的应用
+          </Flex>
         </Box>
         {/* phone tab */}
         <Box display={['block', 'none']} textAlign={'center'} px={5} py={3}>

@@ -61,16 +61,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   return (
     <>
-      <Box h={'100%'} bg={'#F3F4F5E0'}>
+      <Box h={'100%'} bg={'myWhite.600'}>
         <Box h={'100%'} display={['none', 'block']}>
           {pcUnShowLayoutRoute[router.pathname] ? (
             <Auth>{children}</Auth>
           ) : (
             <>
-              <Box h={'100%'} position={'fixed'} left={0} top={0} w={'60px'}>
+              <Box h={'100%'} position={'fixed'} left={0} top={0} w={'70px'}>
                 <Navbar unread={unread} />
               </Box>
-              <Box h={'100%'} ml={'60px'} overflow={'overlay'}>
+              <Box h={'100%'} ml={'70px'} overflow={'overlay'}>
                 <Auth>{children}</Auth>
               </Box>
             </>

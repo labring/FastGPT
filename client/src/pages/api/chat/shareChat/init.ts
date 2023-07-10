@@ -45,6 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     jsonRes<InitShareChatResponse>(res, {
       data: {
+        appId: shareChat.modelId,
         maxContext: shareChat.maxContext,
         userAvatar: user?.avatar || HUMAN_ICON,
         model: {
