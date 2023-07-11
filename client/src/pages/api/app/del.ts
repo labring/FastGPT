@@ -7,9 +7,9 @@ import { authApp } from '@/service/utils/auth';
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { modelId } = req.query as { modelId: string };
+    const { appId } = req.query as { appId: string };
 
-    if (!modelId) {
+    if (!appId) {
       throw new Error('参数错误');
     }
 
@@ -20,28 +20,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 验证是否是该用户的 model
     await authApp({
-      appId: modelId,
+      appId,
       userId
     });
 
     // 删除对应的聊天
     await Chat.deleteMany({
-      modelId
+      appId
     });
 
     // 删除收藏列表
     await Collection.deleteMany({
-      modelId
+      modelId: appId
     });
 
     // 删除分享链接
     await ShareChat.deleteMany({
-      modelId
+      appId
     });
 
     // 删除模型
     await App.deleteOne({
-      _id: modelId,
+      _id: appId,
       userId
     });
 

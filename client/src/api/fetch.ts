@@ -9,12 +9,12 @@ interface StreamFetchProps {
   abortSignal: AbortController;
 }
 export const streamFetch = ({
-  url = '/api/openapi/v1/chat/completions2',
+  url = '/api/openapi/v1/chat/completions',
   data,
   onMessage,
   abortSignal
 }: StreamFetchProps) =>
-  new Promise<{ responseText: string; errMsg: string; newChatId: string | null }>(
+  new Promise<{ responseText: string; errMsg: string; newHistoryId: string | null }>(
     async (resolve, reject) => {
       try {
         const response = await window.fetch(url, {
@@ -43,7 +43,7 @@ export const streamFetch = ({
         // response data
         let responseText = '';
         let errMsg = '';
-        const newChatId = response.headers.get('newChatId');
+        const newHistoryId = response.headers.get('newHistoryId');
 
         const read = async () => {
           try {
@@ -53,7 +53,7 @@ export const streamFetch = ({
                 return resolve({
                   responseText,
                   errMsg,
-                  newChatId
+                  newHistoryId
                 });
               } else {
                 return reject('响应过程出现异常~');
@@ -85,7 +85,7 @@ export const streamFetch = ({
               return resolve({
                 responseText,
                 errMsg,
-                newChatId
+                newHistoryId
               });
             }
             reject(getErrText(err, '请求异常'));

@@ -18,17 +18,16 @@ const Login = () => {
   const { isPc } = useGlobalStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo, setLastModelId, loadKbList, setLastKbId } = useUserStore();
-  const { setLastChatId, setLastChatModelId, loadHistory } = useChatStore();
+  const { setLastChatId, setLastChatAppId } = useChatStore();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       // init store
       setLastChatId('');
       setLastModelId('');
-      setLastChatModelId('');
+      setLastChatAppId('');
       setLastKbId('');
       loadKbList(true);
-      loadHistory({ pageNum: 1, init: true });
 
       setUserInfo(res.user);
       setTimeout(() => {
@@ -37,11 +36,10 @@ const Login = () => {
     },
     [
       lastRoute,
-      loadHistory,
       loadKbList,
       router,
       setLastChatId,
-      setLastChatModelId,
+      setLastChatAppId,
       setLastKbId,
       setLastModelId,
       setUserInfo

@@ -92,8 +92,8 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
       baseURL: '/api',
       url,
       method,
-      data: method === 'GET' ? null : data,
-      params: method === 'GET' ? data : null, // get请求不携带data，params放在url上
+      data: ['POST', 'PUT'].includes(method) ? data : null,
+      params: !['POST', 'PUT'].includes(method) ? data : null,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))
@@ -119,6 +119,6 @@ export function PUT<T>(url: string, data = {}, config: ConfigType = {}): Promise
   return request(url, data, config, 'PUT');
 }
 
-export function DELETE<T>(url: string, config: ConfigType = {}): Promise<T> {
-  return request(url, {}, config, 'DELETE');
+export function DELETE<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+  return request(url, data, config, 'DELETE');
 }

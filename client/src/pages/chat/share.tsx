@@ -18,13 +18,13 @@ import { streamFetch } from '@/api/fetch';
 import { useShareChatStore, defaultHistory } from '@/store/shareChat';
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';
-import ChatHistorySlider from './components/ChatHistorySlider';
 import { getErrText } from '@/utils/tools';
 
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import MyIcon from '@/components/Icon';
 import Tag from '@/components/Tag';
 import PageContainer from '@/components/PageContainer';
+import ChatHistorySlider from './components/ChatHistorySlider';
 
 const ShareChat = () => {
   const theme = useTheme();
@@ -134,6 +134,10 @@ const ShareChat = () => {
         }
       }
 
+      if (history.chats.length > 0) {
+        ChatBoxRef.current?.scrollToBottom('auto');
+      }
+
       return history;
     },
     [
@@ -152,7 +156,7 @@ const ShareChat = () => {
 
   return (
     <PageContainer>
-      <Flex h={'100%'} flexDirection={['column', 'row']} backgroundColor={'#fdfdfd'}>
+      <Flex h={'100%'} flexDirection={['column', 'row']}>
         {/*  slider */}
         {isPc ? (
           <SideBar>
@@ -243,14 +247,7 @@ const ShareChat = () => {
             )}
           </Flex>
           {/* chat box */}
-          <Box
-            pt={[0, 5]}
-            flex={1}
-            maxW={['100%', '1000px', '1200px']}
-            px={[0, 5]}
-            w={'100%'}
-            mx={'auto'}
-          >
+          <Box flex={1}>
             <ChatBox
               ref={ChatBoxRef}
               appAvatar={shareChatData.app.avatar}

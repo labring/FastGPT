@@ -7,7 +7,7 @@ interface Props extends BoxProps {}
 
 const SideBar = (e?: Props) => {
   const {
-    w = ['100%', '0 0 250px', '0 0 280px', '0 0 310px', '0 0 340px'],
+    w = ['100%', '0 0 250px', '0 0 270px', '0 0 290px', '0 0 310px'],
     children,
     ...props
   } = e || {};

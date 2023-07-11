@@ -7,15 +7,16 @@ import { authUser } from '@/service/utils/auth';
 import { Types } from 'mongoose';
 
 type Props = {
-  chatId?: string;
-  modelId: string;
+  historyId?: string;
+  appId: string;
+  variables?: Record<string, any>;
   prompts: [ChatItemType, ChatItemType];
 };
 
 /* 聊天内容存存储 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { chatId, modelId, prompts } = req.body as Props;
+    const { historyId, appId, prompts } = req.body as Props;
 
     if (!prompts) {
       throw new Error('缺少参数');
@@ -24,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId } = await authUser({ req, authToken: true });
 
     const response = await saveChat({
-      chatId,
-      modelId,
+      historyId,
+      appId,
       prompts,
       userId
     });
@@ -42,14 +43,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 export async function saveChat({
-  newChatId,
-  chatId,
-  modelId,
+  newHistoryId,
+  historyId,
+  appId,
   prompts,
+  variables,
   userId
-}: Props & { newChatId?: Types.ObjectId; userId: string }): Promise<{ newChatId: string }> {
+}: Props & { newHistoryId?: Types.ObjectId; userId: string }): Promise<{ newHistoryId: string }> {
   await connectToDatabase();
-  const { app } = await authApp({ appId: modelId, userId, authOwner: false });
+  const { app } = await authApp({ appId, userId, authOwner: false });
 
   const content = prompts.map((item) => ({
     _id: item._id,
@@ -60,43 +62,45 @@ export async function saveChat({
   }));
 
   if (String(app.userId) === userId) {
-    await App.findByIdAndUpdate(modelId, {
+    await App.findByIdAndUpdate(appId, {
       updateTime: new Date()
     });
   }
 
   const [response] = await Promise.all([
-    ...(chatId
+    ...(historyId
       ? [
-          Chat.findByIdAndUpdate(chatId, {
+          Chat.findByIdAndUpdate(historyId, {
             $push: {
               content: {
                 $each: content
               }
             },
+            variables,
             title: content[0].value.slice(0, 20),
             latestChat: content[1].value,
             updateTime: new Date()
           }).then(() => ({
-            newChatId: ''
+            newHistoryId: ''
           }))
         ]
       : [
           Chat.create({
-            _id: newChatId,
+            _id: newHistoryId,
             userId,
-            modelId,
+            appId,
+            variables,
             content,
             title: content[0].value.slice(0, 20),
             latestChat: content[1].value
           }).then((res) => ({
-            newChatId: String(res._id)
+            newHistoryId: String(res._id)
           }))
         ]),
     // update app
     ...(String(app.userId) === userId
       ? [
-          App.findByIdAndUpdate(modelId, {
+          App.findByIdAndUpdate(appId, {
             updateTime: new Date()
           })
         ]
@@ -105,6 +109,6 @@ export async function saveChat({
 
   return {
     // @ts-ignore
-    newChatId: response?.newChatId || ''
+    newHistoryId: response?.newHistoryId || ''
   };
 }

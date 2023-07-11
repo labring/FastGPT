@@ -58,7 +58,6 @@ const ChatTest = (
           ?.find((item) => item.flowType === FlowModuleTypeEnum.historyNode)
           ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
       const history = messages.slice(-historyMaxLen - 2, -2);
-      console.log(history, 'history====');
 
       // 流请求，获取数据
       const { responseText } = await streamFetch({
@@ -87,8 +86,6 @@ const ChatTest = (
 
   useImperativeHandle(ref, () => ({
     resetChatTest() {
-      console.log(ChatBoxRef.current, '===');
-
       ChatBoxRef.current?.resetHistory([]);
       ChatBoxRef.current?.resetVariables();
     }
@@ -147,6 +144,7 @@ const ChatTest = (
             variableModules={variableModules}
             welcomeText={welcomeText}
             onStartChat={startChat}
+            onDelMessage={() => {}}
           />
         </Box>
       </Flex>

@@ -6,9 +6,9 @@ import { authUser } from '@/service/utils/auth';
 /* 模型收藏切换 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { modelId } = req.query as { modelId: string };
+    const { appId } = req.query as { appId: string };
 
-    if (!modelId) {
+    if (!appId) {
       throw new Error('缺少参数');
     }
     // 凭证校验
@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const collectionRecord = await Collection.findOne({
       userId,
-      modelId
+      modelId: appId
     });
 
     if (collectionRecord) {
@@ -26,12 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     } else {
       await Collection.create({
         userId,
-        modelId
+        modelId: appId
       });
     }
 
-    await App.findByIdAndUpdate(modelId, {
-      'share.collection': await Collection.countDocuments({ modelId })
+    await App.findByIdAndUpdate(appId, {
+      'share.collection': await Collection.countDocuments({ modelId: appId })
     });
 
     jsonRes(res);

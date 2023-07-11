@@ -3,6 +3,7 @@ import { getErrText } from '@/utils/tools';
 import { parseStreamChunk } from '@/utils/adapt';
 import { NextApiResponse } from 'next';
 import { sseResponse } from '../utils/tools';
+import { SpecificInputEnum } from '@/constants/app';
 
 interface Props {
   res: NextApiResponse; // 用于流转发
@@ -13,7 +14,7 @@ export const moduleFetch = ({ url, data, res }: Props) =>
   new Promise<Record<string, any>>(async (resolve, reject) => {
     try {
       const abortSignal = new AbortController();
-      const baseUrl = `http://localhost:3000/api`;
+      const baseUrl = `http://localhost:${process.env.PORT || 3000}/api`;
       const requestUrl = url.startsWith('/') ? `${baseUrl}${url}` : url;
       const response = await fetch(requestUrl, {
         method: 'POST',
@@ -41,7 +42,9 @@ export const moduleFetch = ({ url, data, res }: Props) =>
 
       const reader = response.body?.getReader();
 
-      let chatResponse: Record<string, any> = {};
+      let chatResponse: Record<string, any> = {
+        [SpecificInputEnum.answerText]: ''
+      };
 
       const read = async () => {
         try {
@@ -80,7 +83,8 @@ export const moduleFetch = ({ url, data, res }: Props) =>
               if (answer) {
                 chatResponse = {
                   ...chatResponse,
-                  answer: chatResponse.answer ? chatResponse.answer + answer : answer
+                  [SpecificInputEnum.answerText]:
+                    chatResponse[SpecificInputEnum.answerText] + answer
                 };
               }
 

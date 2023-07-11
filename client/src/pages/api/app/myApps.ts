@@ -1,31 +1,28 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase } from '@/service/mongo';
+import { connectToDatabase, App } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { authApp } from '@/service/utils/auth';
+import { AppListItemType } from '@/types/app';
 
-/* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { appId } = req.query as { appId: string };
-
-    if (!appId) {
-      throw new Error('参数错误');
-    }
-
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 
-    const { app } = await authApp({
-      appId,
-      userId,
-      authOwner: false
+    // 根据 userId 获取模型信息
+    const myApps = await App.find(
+      {
+        userId
+      },
+      '_id avatar name intro'
+    ).sort({
+      updateTime: -1
     });
 
-    jsonRes(res, {
-      data: app
+    jsonRes<AppListItemType[]>(res, {
+      data: myApps
     });
   } catch (err) {
     jsonRes(res, {

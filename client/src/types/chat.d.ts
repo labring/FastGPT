@@ -18,10 +18,6 @@ export type ChatSiteItemType = {
   status: 'loading' | 'finish';
 } & ChatItemType;
 
-export interface ChatType extends InitChatResponse {
-  history: ChatSiteItemType[];
-}
-
 export type HistoryItemType = {
   _id: string;
   updateTime: Date;

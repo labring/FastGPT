@@ -7,7 +7,7 @@ import { Types } from 'mongoose';
 import type { ChatItemType } from '@/types/chat';
 
 export type Props = {
-  chatId?: string;
+  historyId?: string;
   limit?: number;
 };
 export type Response = { history: ChatItemType[] };
@@ -16,11 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
     const { userId } = await authUser({ req });
-    const { chatId, limit } = req.body as Props;
+    const { historyId, limit } = req.body as Props;
 
     jsonRes<Response>(res, {
       data: await getChatHistory({
-        chatId,
+        historyId,
         userId,
         limit
       })
@@ -34,16 +34,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 export async function getChatHistory({
-  chatId,
+  historyId,
   userId,
   limit = 50
 }: Props & { userId: string }): Promise<Response> {
-  if (!chatId) {
+  if (!historyId) {
     return { history: [] };
   }
 
   const history = await Chat.aggregate([
-    { $match: { _id: new Types.ObjectId(chatId), userId: new Types.ObjectId(userId) } },
+    { $match: { _id: new Types.ObjectId(historyId), userId: new Types.ObjectId(userId) } },
     {
       $project: {
         content: {

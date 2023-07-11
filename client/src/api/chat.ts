@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from './request';
-import type { HistoryItemType } from '@/types/chat';
+import type { ChatHistoryItemType } from '@/types/chat';
 import type { InitChatResponse, InitShareChatResponse } from './response/chat';
 import { RequestPaging } from '../types/index';
 import type { ShareChatSchema } from '@/types/mongoSchema';
@@ -11,14 +11,14 @@ import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updat
 /**
  * 获取初始化聊天内容
  */
-export const getInitChatSiteInfo = (modelId: '' | string, chatId: '' | string) =>
-  GET<InitChatResponse>(`/chat/init?modelId=${modelId}&chatId=${chatId}`);
+export const getInitChatSiteInfo = (data: { appId: string; historyId?: string }) =>
+  GET<InitChatResponse>(`/chat/init`, data);
 
 /**
  * 获取历史记录
  */
-export const getChatHistory = (data: RequestPaging) =>
-  POST<HistoryItemType[]>('/chat/history/getHistory', data);
+export const getChatHistory = (data: RequestPaging & { appId?: string }) =>
+  POST<ChatHistoryItemType[]>('/chat/history/getHistory', data);
 
 /**
  * 删除一条历史记录
@@ -44,8 +44,8 @@ export const updateHistoryQuote = (params: {
 /**
  * 删除一句对话
  */
-export const delChatRecordByIndex = (chatId: string, contentId: string) =>
-  DELETE(`/chat/delChatRecordByContentId?chatId=${chatId}&contentId=${contentId}`);
+export const delChatRecordByIndex = (data: { historyId: string; contentId: string }) =>
+  DELETE(`/chat/delChatRecordByContentId`, data);
 
 /**
  * 修改历史记录: 标题/置顶

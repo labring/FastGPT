@@ -8,20 +8,10 @@ const ChatSchema = new Schema({
     ref: 'user',
     required: true
   },
-  modelId: {
+  appId: {
     type: Schema.Types.ObjectId,
     ref: 'model',
     required: true
-  },
-  expiredTime: {
-    // 过期时间
-    type: Number,
-    default: () => new Date()
-  },
-  loadAmount: {
-    // 剩余加载次数
-    type: Number,
-    default: -1
   },
   updateTime: {
     type: Date,
@@ -35,12 +25,12 @@ const ChatSchema = new Schema({
     type: String,
     default: ''
   },
-  latestChat: {
-    type: String,
-    default: ''
-  },
   top: {
     type: Boolean
+  },
+  variables: {
+    type: Object,
+    default: {}
   },
   content: {
     type: [

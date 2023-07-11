@@ -6,14 +6,15 @@ import { sseResponseEventEnum } from '@/constants/chat';
 import { sseResponse } from '@/service/utils/tools';
 import { type ChatCompletionRequestMessage } from 'openai';
 import { AppModuleItemType } from '@/types/app';
-import { dispatchModules } from '../openapi/v1/chat/completions2';
+import { dispatchModules } from '../openapi/v1/chat/completions';
+import { gptMessage2ChatType } from '@/utils/adapt';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 export type Props = {
   history: MessageItemType[];
   prompt: string;
   modules: AppModuleItemType[];
-  variable: Record<string, any>;
+  variables: Record<string, any>;
 };
 export type ChatResponseType = {
   newChatId: string;
@@ -29,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   });
 
-  let { modules = [], history = [], prompt, variable = {} } = req.body as Props;
+  let { modules = [], history = [], prompt, variables = {} } = req.body as Props;
 
   try {
     if (!history || !modules || !prompt) {
@@ -48,9 +49,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { responseData } = await dispatchModules({
       res,
       modules: modules,
-      variable,
+      variables,
       params: {
-        history,
+        history: gptMessage2ChatType(history),
         userChatInput: prompt
       },
       stream: true
