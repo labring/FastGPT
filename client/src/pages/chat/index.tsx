@@ -32,12 +32,13 @@ import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
 
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import { ChatHistoryItemType } from '@/types/chat';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import SliderApps from './components/SliderApps';
 import Tag from '@/components/Tag';
-import { ChatHistoryItemType } from '@/types/chat';
+import ToolMenu from './components/ToolMenu';
 
 const Chat = () => {
   const router = useRouter();
@@ -316,6 +317,8 @@ const Chat = () => {
                   />
                 </>
               )}
+              <Box flex={1} />
+              <ToolMenu history={chatData.history} />
             </Flex>
             {/* chat box */}
             <Box flex={1}>

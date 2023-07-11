@@ -124,6 +124,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         historyId,
         newHistoryId,
         appId,
+        variables,
         prompts: [
           prompt,
           {
