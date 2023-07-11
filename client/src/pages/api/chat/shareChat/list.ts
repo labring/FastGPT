@@ -4,11 +4,11 @@ import { connectToDatabase, ShareChat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { hashPassword } from '@/service/utils/tools';
 
-/* get shareChat list by modelId */
+/* get shareChat list by appId */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { modelId } = req.query as {
-      modelId: string;
+    const { appId } = req.query as {
+      appId: string;
     };
 
     await connectToDatabase();
@@ -16,19 +16,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId } = await authUser({ req, authToken: true });
 
     const data = await ShareChat.find({
-      modelId,
+      appId,
       userId
     }).sort({
       _id: -1
     });
 
-    const blankPassword = hashPassword('');
-
     jsonRes(res, {
       data: data.map((item) => ({
         _id: item._id,
+        shareId: item.shareId,
         name: item.name,
-        password: item.password === blankPassword ? '' : '1',
         tokens: item.tokens,
         maxContext: item.maxContext,
         lastTime: item.lastTime

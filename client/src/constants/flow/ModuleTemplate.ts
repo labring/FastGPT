@@ -8,6 +8,27 @@ import {
   Input_Template_UserChatInput
 } from './inputTemplate';
 
+export const VariableInputModule: AppModuleTemplateItemType = {
+  logo: '/imgs/module/userGuide.png',
+  name: '开场引导',
+  intro: '可以在每个新对话开始前，给用户发送一段开场白，或要求用户填写一些内容作为本轮对话的变量。',
+  type: AppModuleItemTypeEnum.userGuide,
+  flowType: FlowModuleTypeEnum.userGuide,
+  inputs: [
+    {
+      key: SystemInputEnum.welcomeText,
+      type: FlowInputItemTypeEnum.input,
+      label: '开场白'
+    },
+    {
+      key: SystemInputEnum.variables,
+      type: FlowInputItemTypeEnum.systemInput,
+      label: '变量输入',
+      value: []
+    }
+  ],
+  outputs: []
+};
 export const UserInputModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/userChatInput.png',
   name: '用户问题',
@@ -311,7 +332,7 @@ export const ClassifyQuestionModule: AppModuleTemplateItemType = {
 export const ModuleTemplates = [
   {
     label: '输入模块',
-    list: [UserInputModule, HistoryModule]
+    list: [UserInputModule, HistoryModule, VariableInputModule]
   },
   {
     label: '对话模块',

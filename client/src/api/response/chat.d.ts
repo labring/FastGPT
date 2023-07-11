@@ -1,5 +1,6 @@
 import type { ChatPopulate, AppSchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
+import { VariableItemType } from '@/types/app';
 
 export interface InitChatResponse {
   chatId: string;
@@ -17,13 +18,13 @@ export interface InitChatResponse {
 }
 
 export interface InitShareChatResponse {
-  maxContext: number;
   userAvatar: string;
-  appId: string;
-  model: {
+  maxContext: number;
+  app: {
+    variableModules?: VariableItemType[];
+    welcomeText?: string;
     name: string;
     avatar: string;
     intro: string;
   };
-  chatModel: AppSchema['chat']['chatModel']; // 对话模型名
 }

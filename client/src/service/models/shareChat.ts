@@ -1,14 +1,17 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { ShareChatSchema as ShareChatSchemaType } from '@/types/mongoSchema';
-import { hashPassword } from '@/service/utils/tools';
 
 const ShareChatSchema = new Schema({
+  shareId: {
+    type: String,
+    required: true
+  },
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user',
     required: true
   },
-  modelId: {
+  appId: {
     type: Schema.Types.ObjectId,
     ref: 'model',
     required: true
@@ -16,10 +19,6 @@ const ShareChatSchema = new Schema({
   name: {
     type: String,
     required: true
-  },
-  password: {
-    type: String,
-    set: (val: string) => hashPassword(val)
   },
   tokens: {
     type: Number,

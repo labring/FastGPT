@@ -28,6 +28,9 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import ButtonEdge from './components/modules/ButtonEdge';
 import MyTooltip from '@/components/MyTooltip';
+import TemplateList from './components/TemplateList';
+import ChatTest, { type ChatTestComponentRef } from './components/ChatTest';
+
 const NodeChat = dynamic(() => import('./components/NodeChat'), {
   ssr: false
 });
@@ -46,13 +49,10 @@ const NodeAnswer = dynamic(() => import('./components/NodeAnswer'), {
 const NodeQuestionInput = dynamic(() => import('./components/NodeQuestionInput'), {
   ssr: false
 });
-const TemplateList = dynamic(() => import('./components/TemplateList'), {
-  ssr: false
-});
-const ChatTest = dynamic(() => import('./components/ChatTest'), {
-  ssr: false
-});
 const NodeCQNode = dynamic(() => import('./components/NodeCQNode'), {
+  ssr: false
+});
+const NodeUserGuide = dynamic(() => import('./components/NodeUserGuide'), {
   ssr: false
 });
 
@@ -63,6 +63,7 @@ import { AppModuleItemType, AppModuleTemplateItemType } from '@/types/app';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const nodeTypes = {
+  [FlowModuleTypeEnum.userGuide]: NodeUserGuide,
   [FlowModuleTypeEnum.questionInputNode]: NodeQuestionInput,
   [FlowModuleTypeEnum.historyNode]: NodeHistory,
   [FlowModuleTypeEnum.chatNode]: NodeChat,
@@ -78,6 +79,7 @@ type Props = { app: AppSchema; onBack: () => void };
 
 const AppEdit = ({ app, onBack }: Props) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const ChatTestRef = useRef<ChatTestComponentRef>(null);
   const theme = useTheme();
   const { x, y, zoom } = useViewport();
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
@@ -222,7 +224,10 @@ const AppEdit = ({ app, onBack }: Props) => {
       });
     },
     successToast: '保存配置成功',
-    errorToast: '保存配置异常'
+    errorToast: '保存配置异常',
+    onSuccess() {
+      ChatTestRef.current?.resetChatTest();
+    }
   });
 
   const initData = useCallback(
@@ -289,8 +294,6 @@ const AppEdit = ({ app, onBack }: Props) => {
               aria-label={'save'}
               variant={'base'}
               onClick={() => {
-                // @ts-ignore
-                onclickSave();
                 setTestModules(flow2Modules());
               }}
             />
@@ -366,7 +369,12 @@ const AppEdit = ({ app, onBack }: Props) => {
         </ReactFlow>
 
         <TemplateList isOpen={isOpenTemplate} onAddNode={onAddNode} onClose={onCloseTemplate} />
-        <ChatTest modules={testModules} app={app} onClose={() => setTestModules(undefined)} />
+        <ChatTest
+          ref={ChatTestRef}
+          modules={testModules}
+          app={app}
+          onClose={() => setTestModules(undefined)}
+        />
       </Box>
     </Flex>
   );
@@ -378,4 +386,4 @@ const Flow = (data: Props) => (
   </ReactFlowProvider>
 );
 
-export default Flow;
+export default React.memo(Flow);

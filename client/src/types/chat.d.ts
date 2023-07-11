@@ -22,24 +22,22 @@ export interface ChatType extends InitChatResponse {
   history: ChatSiteItemType[];
 }
 
-export interface ShareChatType extends InitShareChatResponse {
-  history: ChatSiteItemType[];
-}
-
 export type HistoryItemType = {
   _id: string;
   updateTime: Date;
-  modelId: string;
   title: string;
-  latestChat: string;
+};
+export type ChatHistoryItemType = HistoryItemType & {
+  appId: string;
   top: boolean;
 };
 
-export type ShareChatHistoryItemType = {
-  _id: string;
+export type ShareChatHistoryItemType = HistoryItemType & {
   shareId: string;
-  updateTime: Date;
-  title: string;
-  latestChat: string;
+  variables?: Record<string, any>;
   chats: ChatSiteItemType[];
+};
+
+export type ShareChatType = InitShareChatResponse & {
+  history: ShareChatHistoryItemType;
 };

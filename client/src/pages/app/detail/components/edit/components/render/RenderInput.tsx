@@ -17,7 +17,7 @@ import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 
-const Label = ({
+export const Label = ({
   required = false,
   children,
   description

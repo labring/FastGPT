@@ -3,33 +3,36 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, ShareChat } from '@/service/mongo';
 import { authApp, authUser } from '@/service/utils/auth';
 import type { ShareChatEditType } from '@/types/app';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 /* create a shareChat */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { modelId, name, maxContext, password } = req.body as ShareChatEditType & {
-      modelId: string;
+    const { appId, name, maxContext } = req.body as ShareChatEditType & {
+      appId: string;
     };
 
     await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
     await authApp({
-      appId: modelId,
+      appId,
       userId,
       authOwner: false
     });
 
-    const { _id } = await ShareChat.create({
+    const shareId = nanoid();
+    await ShareChat.create({
+      shareId,
       userId,
-      modelId,
+      appId,
       name,
-      password,
       maxContext
     });
 
     jsonRes(res, {
-      data: _id
+      data: shareId
     });
   } catch (err) {
     jsonRes(res, {

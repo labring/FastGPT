@@ -317,30 +317,17 @@ export const authChat = async ({
     showModelDetail
   };
 };
-export const authShareChat = async ({
-  shareId,
-  password
-}: {
-  shareId: string;
-  password: string;
-}) => {
+export const authShareChat = async ({ shareId }: { shareId: string }) => {
   // get shareChat
-  const shareChat = await ShareChat.findById(shareId);
+  const shareChat = await ShareChat.findOne({ shareId });
 
   if (!shareChat) {
     return Promise.reject('分享链接已失效');
   }
 
-  if (shareChat.password !== hashPassword(password)) {
-    return Promise.reject({
-      code: 501,
-      message: '密码不正确'
-    });
-  }
-
   return {
     userId: String(shareChat.userId),
-    appId: String(shareChat.modelId),
+    appId: String(shareChat.appId),
     authType: 'token' as AuthType
   };
 };

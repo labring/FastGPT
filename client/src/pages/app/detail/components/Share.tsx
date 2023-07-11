@@ -38,7 +38,7 @@ import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/app';
 import MyTooltip from '@/components/MyTooltip';
 
-const Share = ({ modelId }: { modelId: string }) => {
+const Share = ({ appId }: { appId: string }) => {
   const { toast } = useToast();
   const { Loading, setIsLoading } = useLoading();
   const { copyData } = useCopyData();
@@ -63,7 +63,7 @@ const Share = ({ modelId }: { modelId: string }) => {
     isFetching,
     data: shareChatList = [],
     refetch: refetchShareChatList
-  } = useQuery(['initShareChatList', modelId], () => getShareChatList(modelId));
+  } = useQuery(['initShareChatList', appId], () => getShareChatList(appId));
 
   const onclickCreateShareChat = useCallback(
     async (e: ShareChatEditType) => {
@@ -71,13 +71,12 @@ const Share = ({ modelId }: { modelId: string }) => {
         setIsLoading(true);
         const id = await createShareChat({
           ...e,
-          modelId
+          appId
         });
         onCloseCreateShareChat();
         refetchShareChatList();
 
-        const url = `对话地址为：${location.origin}/chat/share?shareId=${id}
-${e.password ? `密码为: ${e.password}` : ''}`;
+        const url = `对话地址为：${location.origin}/chat/share?shareId=${id}`;
         copyData(url, '已复制分享地址');
 
         resetShareChat(defaultShareChat);
@@ -91,8 +90,8 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
       setIsLoading(false);
     },
     [
+      appId,
       copyData,
-      modelId,
       onCloseCreateShareChat,
       refetchShareChatList,
       resetShareChat,
@@ -136,7 +135,6 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
           <Thead>
             <Tr>
               <Th>名称</Th>
-              <Th>密码</Th>
               <Th>最大上下文</Th>
               <Th>tokens消耗</Th>
               <Th>最后使用时间</Th>
@@ -147,7 +145,6 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                <Td>{item.password === '1' ? '已开启' : '未使用'}</Td>
                 <Td>{item.maxContext}</Td>
                 <Td>{formatTokens(item.tokens)}</Td>
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
@@ -160,7 +157,7 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                       cursor={'pointer'}
                       _hover={{ color: 'myBlue.600' }}
                       onClick={() => {
-                        const url = `${location.origin}/chat/share?shareId=${item._id}`;
+                        const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
                         copyData(url, '已复制分享地址');
                       }}
                     />
@@ -215,17 +212,6 @@ ${e.password ? `密码为: ${e.password}` : ''}`;
                   })}
                 />
               </Flex>
-            </FormControl>
-            <FormControl mt={4}>
-              <Flex alignItems={'center'}>
-                <Box flex={'0 0 60px'} w={0}>
-                  密码:
-                </Box>
-                <Input placeholder={'不设置密码，可直接访问'} {...registerShareChat('password')} />
-              </Flex>
-              <Box fontSize={'xs'} ml={'60px'} color={'myGray.600'}>
-                密码不会再次展示，请记住你的密码
-              </Box>
             </FormControl>
             <FormControl mt={9}>
               <Flex alignItems={'center'}>

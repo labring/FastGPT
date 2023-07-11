@@ -4,7 +4,6 @@ import {
   Box,
   MenuList,
   MenuItem,
-  MenuButton,
   Button,
   useDisclosure,
   useOutsideClick
@@ -44,7 +43,13 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
 
   return (
     <Menu autoSelect={false} isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
-      <Box ref={SelectRef} position={'relative'} onClick={() => (isOpen ? onClose() : onOpen())}>
+      <Box
+        ref={SelectRef}
+        position={'relative'}
+        onClick={() => {
+          isOpen ? onClose() : onOpen();
+        }}
+      >
         <Button
           ref={ref}
           width={width}
@@ -65,6 +70,7 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
           {...props}
         >
           {list.find((item) => item.value === value)?.label || placeholder}
+          <Box flex={1} />
           <ChevronDownIcon />
         </Button>
 

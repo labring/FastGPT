@@ -8,7 +8,7 @@ const APIKeyModal = dynamic(() => import('@/components/APIKeyModal'), {
   ssr: false
 });
 
-const API = ({ modelId }: { modelId: string }) => {
+const API = ({ appId }: { appId: string }) => {
   const theme = useTheme();
   const { copyData } = useCopyData();
   const [baseUrl, setBaseUrl] = useState('https://fastgpt.run/api/openapi');
@@ -33,9 +33,9 @@ const API = ({ modelId }: { modelId: string }) => {
             ml={2}
             fontWeight={'bold'}
             cursor={'pointer'}
-            onClick={() => copyData(modelId, '已复制 AppId')}
+            onClick={() => copyData(appId, '已复制 AppId')}
           >
-            {modelId}
+            {appId}
           </Box>
         </Box>
         <Flex
