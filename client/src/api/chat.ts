@@ -58,15 +58,15 @@ export const putChatHistory = (data: UpdateHistoryProps) =>
  */
 export const createShareChat = (
   data: ShareChatEditType & {
-    modelId: string;
+    appId: string;
   }
 ) => POST<string>(`/chat/shareChat/create`, data);
 
 /**
  * get shareChat
  */
-export const getShareChatList = (modelId: string) =>
-  GET<ShareChatSchema[]>(`/chat/shareChat/list?modelId=${modelId}`);
+export const getShareChatList = (appId: string) =>
+  GET<ShareChatSchema[]>(`/chat/shareChat/list`, { appId });
 
 /**
  * delete a  shareChat
@@ -76,5 +76,5 @@ export const delShareChatById = (id: string) => DELETE(`/chat/shareChat/delete?i
 /**
  * 初始化分享聊天
  */
-export const initShareChatInfo = (data: { shareId: string; password: string }) =>
-  GET<InitShareChatResponse>(`/chat/shareChat/init?${Obj2Query(data)}`);
+export const initShareChatInfo = (data: { shareId: string }) =>
+  GET<InitShareChatResponse>(`/chat/shareChat/init`, data);

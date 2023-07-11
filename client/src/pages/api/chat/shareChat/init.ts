@@ -5,13 +5,14 @@ import type { InitShareChatResponse } from '@/api/response/chat';
 import { authApp } from '@/service/utils/auth';
 import { hashPassword } from '@/service/utils/tools';
 import { HUMAN_ICON } from '@/constants/chat';
+import { FlowModuleTypeEnum } from '@/constants/flow';
+import { SystemInputEnum } from '@/constants/app';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { shareId, password = '' } = req.query as {
+    let { shareId } = req.query as {
       shareId: string;
-      password: string;
     };
 
     if (!shareId) {
@@ -21,22 +22,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // get shareChat
-    const shareChat = await ShareChat.findById(shareId);
+    const shareChat = await ShareChat.findOne({ shareId });
 
     if (!shareChat) {
-      throw new Error('分享链接已失效');
-    }
-
-    if (shareChat.password !== hashPassword(password)) {
       return jsonRes(res, {
         code: 501,
-        message: '密码不正确'
+        error: '分享链接已失效'
       });
     }
 
     // 校验使用权限
     const { app } = await authApp({
-      appId: shareChat.modelId,
+      appId: shareChat.appId,
       userId: String(shareChat.userId),
       authOwner: false
     });
@@ -45,15 +42,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     jsonRes<InitShareChatResponse>(res, {
       data: {
-        appId: shareChat.modelId,
-        maxContext: shareChat.maxContext,
         userAvatar: user?.avatar || HUMAN_ICON,
-        model: {
+        maxContext:
+          app.modules
+            ?.find((item) => item.flowType === FlowModuleTypeEnum.historyNode)
+            ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0,
+        app: {
+          variableModules: app.modules
+            .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
+            ?.inputs?.find((item) => item.key === SystemInputEnum.variables)?.value,
+          welcomeText: app.modules
+            .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
+            ?.inputs?.find((item) => item.key === SystemInputEnum.welcomeText)?.value,
           name: app.name,
           avatar: app.avatar,
           intro: app.intro
-        },
-        chatModel: app.chat.chatModel
+        }
       }
     });
   } catch (err) {

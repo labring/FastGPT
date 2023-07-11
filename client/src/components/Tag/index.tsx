@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 
 interface Props extends BoxProps {
-  children: string;
+  children: React.ReactNode | React.ReactNode[];
   colorSchema?: 'blue' | 'green' | 'gray';
 }
 
@@ -33,7 +33,7 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
       border={'1px solid'}
       px={2}
       lineHeight={1}
-      py={'2px'}
+      py={1}
       borderRadius={'md'}
       fontSize={'xs'}
       {...theme}

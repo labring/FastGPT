@@ -23,7 +23,6 @@ type FastGptWebChatProps = {
   appId?: string;
 };
 type FastGptShareChatProps = {
-  password?: string;
   shareId?: string;
 };
 export type Props = CreateChatCompletionRequest &
@@ -31,6 +30,7 @@ export type Props = CreateChatCompletionRequest &
   FastGptShareChatProps & {
     messages: MessageItemType[];
     stream?: boolean;
+    variables: Record<string, any>;
   };
 export type ChatResponseType = {
   newChatId: string;
@@ -46,7 +46,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     res.end();
   });
 
-  let { chatId, appId, shareId, password = '', stream = false, messages = [] } = req.body as Props;
+  let { chatId, appId, shareId, stream = false, messages = [], variables = {} } = req.body as Props;
 
   try {
     if (!messages) {
@@ -66,8 +66,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       authType
     } = await (shareId
       ? authShareChat({
-          shareId,
-          password
+          shareId
         })
       : authUser({ req }));
 
@@ -105,6 +104,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { responseData, answerText } = await dispatchModules({
       res,
       modules: app.modules,
+      variables,
       params: {
         history: prompts,
         userChatInput: prompt.value
@@ -175,18 +175,20 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 });
 
-async function dispatchModules({
+export async function dispatchModules({
   res,
   modules,
   params = {},
+  variables = {},
   stream = false
 }: {
   res: NextApiResponse;
   modules: AppModuleItemType[];
   params?: Record<string, any>;
+  variables?: Record<string, any>;
   stream?: boolean;
 }) {
-  const runningModules = loadModules(modules);
+  const runningModules = loadModules(modules, variables);
   let storeData: Record<string, any> = {};
   let responseData: Record<string, any> = {};
   let answerText = '';
@@ -333,7 +335,10 @@ async function dispatchModules({
   };
 }
 
-function loadModules(modules: AppModuleItemType[]): RunningModuleItemType[] {
+function loadModules(
+  modules: AppModuleItemType[],
+  variables: Record<string, any>
+): RunningModuleItemType[] {
   return modules.map((module) => {
     return {
       moduleId: module.moduleId,
@@ -341,10 +346,25 @@ function loadModules(modules: AppModuleItemType[]): RunningModuleItemType[] {
       url: module.url,
       inputs: module.inputs
         .filter((item) => item.type !== FlowInputItemTypeEnum.target || item.connected) // filter unconnected target input
-        .map((item) => ({
-          key: item.key,
-          value: item.value
-        })),
+        .map((item) => {
+          if (typeof item.value !== 'string') {
+            return {
+              key: item.key,
+              value: item.value
+            };
+          }
+
+          // variables replace
+          const replacedVal = item.value.replace(
+            /{{(.*?)}}/g,
+            (match, key) => variables[key.trim()] || match
+          );
+
+          return {
+            key: item.key,
+            value: replacedVal
+          };
+        }),
       outputs: module.outputs.map((item) => ({
         key: item.key,
         answer: item.key === SpecificInputEnum.answerText,

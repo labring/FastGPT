@@ -14,6 +14,7 @@ const MyTooltip = ({ children, ...props }: TooltipProps) => {
       py={2}
       borderRadius={'8px'}
       whiteSpace={'pre-wrap'}
+      shouldWrapChildren
       {...props}
     >
       {children}

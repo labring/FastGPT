@@ -12,13 +12,7 @@ const NodeKbSearch = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
 }: NodeProps<FlowModuleItemType>) => {
   return (
-    <NodeCard
-      minW={'400px'}
-      logo={'/icon/logo.png'}
-      name={'知识库搜索'}
-      moduleId={moduleId}
-      {...props}
-    >
+    <NodeCard minW={'400px'} moduleId={moduleId} {...props}>
       <Divider text="Input" />
       <Container>
         <RenderInput

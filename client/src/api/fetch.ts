@@ -1,18 +1,23 @@
-import { Props } from '@/pages/api/openapi/v1/chat/completions';
 import { sseResponseEventEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
 import { parseStreamChunk } from '@/utils/adapt';
 
 interface StreamFetchProps {
-  data: Props;
+  url?: string;
+  data: Record<string, any>;
   onMessage: (text: string) => void;
   abortSignal: AbortController;
 }
-export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) =>
+export const streamFetch = ({
+  url = '/api/openapi/v1/chat/completions2',
+  data,
+  onMessage,
+  abortSignal
+}: StreamFetchProps) =>
   new Promise<{ responseText: string; errMsg: string; newChatId: string | null }>(
     async (resolve, reject) => {
       try {
-        const response = await window.fetch('/api/openapi/v1/chat/completions2', {
+        const response = await window.fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

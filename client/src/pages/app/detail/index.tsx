@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
@@ -155,14 +155,14 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           />
         </Box>
         <Box flex={1}>
-          {currentTab === TabEnum.settings && <Settings modelId={appId} />}
+          {currentTab === TabEnum.settings && <Settings appId={appId} />}
           {currentTab === TabEnum.edit && (
             <Box position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
               <EditApp app={appDetail} onBack={() => setCurrentTab(TabEnum.settings)} />
             </Box>
           )}
-          {currentTab === TabEnum.API && <API modelId={appId} />}
-          {currentTab === TabEnum.share && <Share modelId={appId} />}
+          {currentTab === TabEnum.API && <API appId={appId} />}
+          {currentTab === TabEnum.share && <Share appId={appId} />}
         </Box>
       </Box>
     </PageContainer>

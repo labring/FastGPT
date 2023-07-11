@@ -132,9 +132,9 @@ export interface PromotionRecordSchema {
 
 export interface ShareChatSchema {
   _id: string;
+  shareId: string;
   userId: string;
-  modelId: string;
-  password: string;
+  appId: string;
   name: string;
   tokens: number;
   maxContext: number;

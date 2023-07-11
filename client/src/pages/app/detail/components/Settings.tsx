@@ -16,7 +16,7 @@ import type { AppSchema } from '@/types/mongoSchema';
 
 import Avatar from '@/components/Avatar';
 
-const Settings = ({ modelId }: { modelId: string }) => {
+const Settings = ({ appId }: { appId: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { Loading, setIsLoading } = useLoading();
@@ -136,10 +136,10 @@ const Settings = ({ modelId }: { modelId: string }) => {
   );
 
   // load model data
-  const { isLoading } = useQuery([modelId], () => loadAppDetail(modelId, true), {
+  const { isLoading } = useQuery([appId], () => loadAppDetail(appId, true), {
     onSuccess(res) {
       res && reset(res);
-      modelId && setLastModelId(modelId);
+      appId && setLastModelId(appId);
       setRefresh(!refresh);
     },
     onError(err: any) {
@@ -240,7 +240,7 @@ const Settings = ({ modelId }: { modelId: string }) => {
               router.prefetch('/chat');
               await saveUpdateModel();
             } catch (error) {}
-            router.push(`/chat?appId=${modelId}`);
+            router.push(`/chat?appId=${appId}`);
           }}
         >
           对话

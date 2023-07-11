@@ -46,12 +46,19 @@ const map = {
   appLight: require('./icons/light/app.svg').default,
   appFill: require('./icons/fill/app.svg').default,
   meLight: require('./icons/light/me.svg').default,
-  meFill: require('./icons/fill/me.svg').default
+  meFill: require('./icons/fill/me.svg').default,
+  welcomeText: require('./icons/modules/welcomeText.svg').default,
+  variable: require('./icons/modules/variable.svg').default,
+  setTop: require('./icons/light/setTop.svg').default,
+  voice: require('./icons/voice.svg').default
 };
 
 export type IconName = keyof typeof map;
 
-const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconName } & IconProps) => {
+const MyIcon = (
+  { name, w = 'auto', h = 'auto', ...props }: { name: IconName } & IconProps,
+  ref: any
+) => {
   return map[name] ? (
     <Icon
       as={map[name]}
@@ -65,4 +72,4 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconName } &
   ) : null;
 };
 
-export default MyIcon;
+export default React.forwardRef(MyIcon);

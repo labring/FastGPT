@@ -1,6 +1,10 @@
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { XYPosition } from 'reactflow';
-import { AppModuleItemTypeEnum, ModulesInputItemTypeEnum } from '../constants/app';
+import {
+  AppModuleItemTypeEnum,
+  ModulesInputItemTypeEnum,
+  VariableInputEnum
+} from '../constants/app';
 import type { FlowInputItemType, FlowOutputItemType } from './flow';
 import type { AppSchema, kbSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
@@ -33,7 +37,6 @@ export interface ShareAppItem {
 
 export type ShareChatEditType = {
   name: string;
-  password: string;
   maxContext: number;
 };
 
@@ -44,11 +47,22 @@ export type ClassifyQuestionAgentItemType = {
   key: string;
 };
 
+export type VariableItemType = {
+  id: string;
+  key: string;
+  label: string;
+  type: `${VariableInputEnum}`;
+  required: boolean;
+  maxLen: number;
+  enums: { value: string }[];
+};
+
 /* app module */
 export type AppModuleTemplateItemType = {
-  logo?: string;
-  name?: string;
-  intro?: string;
+  logo: string;
+  name: string;
+  description?: string;
+  intro: string;
 
   flowType: `${FlowModuleTypeEnum}`;
   type: `${AppModuleItemTypeEnum}`;

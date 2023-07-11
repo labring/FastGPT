@@ -1,5 +1,5 @@
 export enum FlowInputItemTypeEnum {
-  systemInput = 'systemInput', // history, userChatInput
+  systemInput = 'systemInput', // history, userChatInput, variableInput
   input = 'input',
   textarea = 'textarea',
   numberInput = 'numberInput',
@@ -19,6 +19,7 @@ export enum FlowOutputItemTypeEnum {
 }
 
 export enum FlowModuleTypeEnum {
+  userGuide = 'userGuide',
   questionInputNode = 'questionInput',
   historyNode = 'historyNode',
   chatNode = 'chatNode',

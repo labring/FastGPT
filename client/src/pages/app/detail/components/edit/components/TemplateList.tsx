@@ -14,10 +14,10 @@ const ModuleStoreList = ({
   onAddNode: (e: { template: AppModuleTemplateItemType; position: XYPosition }) => void;
   onClose: () => void;
 }) => {
-  const ContextMenuRef = useRef(null);
+  const BoxRef = useRef(null);
 
   useOutsideClick({
-    ref: ContextMenuRef,
+    ref: BoxRef,
     handler: () => {
       onClose();
     }
@@ -36,7 +36,7 @@ const ModuleStoreList = ({
       ></Box>
       <Flex
         zIndex={3}
-        ref={ContextMenuRef}
+        ref={BoxRef}
         flexDirection={'column'}
         position={'absolute'}
         top={'65px'}
@@ -52,7 +52,7 @@ const ModuleStoreList = ({
         userSelect={'none'}
       >
         <Box w={'330px'} py={4} fontSize={'xl'} fontWeight={'bold'}>
-          添加模块
+          系统模块
         </Box>
         <Box w={'330px'} flex={'1 0 0'} overflow={'overlay'}>
           {ModuleTemplates.map((item) =>

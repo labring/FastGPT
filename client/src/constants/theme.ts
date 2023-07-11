@@ -165,7 +165,8 @@ const Textarea: ComponentStyleConfig = {
       borderColor: 'myGray.200',
       _focus: {
         borderColor: 'myBlue.600',
-        boxShadow: '0px 0px 4px #A8DBFF'
+        boxShadow: '0px 0px 4px #A8DBFF',
+        bg: 'white'
       }
     }
   },
