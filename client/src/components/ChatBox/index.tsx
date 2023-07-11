@@ -8,7 +8,7 @@ import React, {
   ForwardedRef
 } from 'react';
 import { throttle } from 'lodash';
-import { ChatSiteItemType } from '@/types/chat';
+import { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
 import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/react';
@@ -28,6 +28,8 @@ import MySelect from '@/components/Select';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 import styles from './index.module.scss';
 import MyTooltip from '../MyTooltip';
+import { fileDownload } from '@/utils/file';
+import { htmlTemplate } from '@/constants/common';
 
 const textareaMinH = '22px';
 export type StartChatFnProps = {
@@ -607,3 +609,76 @@ const ChatBox = (
 };
 
 export default React.memo(forwardRef(ChatBox));
+
+export const useChatBox = () => {
+  const onExportChat = useCallback(
+    ({ type, history }: { type: ExportChatType; history: ChatItemType[] }) => {
+      const getHistoryHtml = () => {
+        const historyDom = document.getElementById('history');
+        if (!historyDom) return;
+        const dom = Array.from(historyDom.children).map((child, i) => {
+          const avatar = `<img src="${
+            child.querySelector<HTMLImageElement>('.avatar')?.src
+          }" alt="" />`;
+
+          const chatContent = child.querySelector<HTMLDivElement>('.markdown');
+
+          if (!chatContent) {
+            return '';
+          }
+
+          const chatContentClone = chatContent.cloneNode(true) as HTMLDivElement;
+
+          const codeHeader = chatContentClone.querySelectorAll('.code-header');
+          codeHeader.forEach((childElement: any) => {
+            childElement.remove();
+          });
+
+          return `<div class="chat-item">
+          ${avatar}
+          ${chatContentClone.outerHTML}
+        </div>`;
+        });
+
+        const html = htmlTemplate.replace('{{CHAT_CONTENT}}', dom.join('\n'));
+        return html;
+      };
+
+      const map: Record<ExportChatType, () => void> = {
+        md: () => {
+          fileDownload({
+            text: history.map((item) => item.value).join('\n\n'),
+            type: 'text/markdown',
+            filename: 'chat.md'
+          });
+        },
+        html: () => {
+          const html = getHistoryHtml();
+          html &&
+            fileDownload({
+              text: html,
+              type: 'text/html',
+              filename: '聊天记录.html'
+            });
+        },
+        pdf: () => {
+          const html = getHistoryHtml();
+
+          html &&
+            // @ts-ignore
+            html2pdf(html, {
+              margin: 0,
+              filename: `聊天记录.pdf`
+            });
+        }
+      };
+
+      map[type]();
+    },
+    []
+  );
+
+  return {
+    onExportChat
+  };
+};
