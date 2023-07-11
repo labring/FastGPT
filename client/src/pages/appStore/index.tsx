@@ -12,8 +12,6 @@ const modelList = () => {
   const { Loading } = useLoading();
   const lastSearch = useRef('');
   const [searchText, setSearchText] = useState('');
-  const { refreshModel } = useUserStore();
-
   /* 加载模型 */
   const {
     data: models,
@@ -30,16 +28,15 @@ const modelList = () => {
   });
 
   const onclickCollection = useCallback(
-    async (modelId: string) => {
+    async (appId: string) => {
       try {
-        await triggerModelCollection(modelId);
+        await triggerModelCollection(appId);
         getData(pageNum);
-        refreshModel.removeModelDetail(modelId);
       } catch (error) {
         console.log(error);
       }
     },
-    [getData, pageNum, refreshModel]
+    [getData, pageNum]
   );
 
   return (

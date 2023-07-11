@@ -74,8 +74,7 @@ export const useUserStore = create<State>()(
         async loadMyModels() {
           const res = await getMyModels();
           set((state) => {
-            state.myApps = res.myApps;
-            state.myCollectionApps = res.myCollectionApps;
+            state.myApps = res;
           });
           return null;
         },

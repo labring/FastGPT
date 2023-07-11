@@ -38,8 +38,10 @@ export type StartChatFnProps = {
 };
 
 export type ComponentRef = {
+  getChatHistory: () => ChatSiteItemType[];
   resetVariables: (data?: Record<string, any>) => void;
   resetHistory: (history: ChatSiteItemType[]) => void;
+  scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };
 
 const VariableLabel = ({
@@ -73,7 +75,7 @@ const ChatBox = (
     welcomeText?: string;
     onUpdateVariable?: (e: Record<string, any>) => void;
     onStartChat: (e: StartChatFnProps) => Promise<{ responseText: string }>;
-    onDelMessage?: (e: { id?: string; index: number }) => void;
+    onDelMessage?: (e: { contentId?: string; index: number }) => void;
   },
   ref: ForwardedRef<ComponentRef>
 ) => {
@@ -279,6 +281,7 @@ const ChatBox = (
   );
 
   useImperativeHandle(ref, () => ({
+    getChatHistory: () => chatHistory,
     resetVariables(e) {
       const defaultVal: Record<string, any> = {};
       variableModules?.forEach((item) => {
@@ -290,7 +293,8 @@ const ChatBox = (
     },
     resetHistory(e) {
       setChatHistory(e);
-    }
+    },
+    scrollToBottom
   }));
 
   const controlIconStyle = {
@@ -305,210 +309,215 @@ const ChatBox = (
   };
   const controlContainerStyle = {
     className: 'control',
-    display: ['flex', 'none'],
+    display: isChatting ? 'none' : ['flex', 'none'],
     color: 'myGray.400',
     pl: 1,
     mt: 2,
     position: 'absolute' as any,
-    zIndex: 1
+    zIndex: 1,
+    w: '100%'
   };
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box ref={ChatBoxRef} flex={'1 0 0'} overflow={'overlay'} px={[2, 5]}>
-        {/* variable input */}
-        {(variableModules || welcomeText) && (
-          <Flex alignItems={'flex-start'} py={2}>
-            {/* avatar */}
-            <Avatar
-              src={appAvatar}
-              w={isLargeWidth ? '34px' : '24px'}
-              h={isLargeWidth ? '34px' : '24px'}
-              order={1}
-              mr={['6px', 2]}
-            />
-            {/* message */}
-            <Flex order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
-              <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
-                {welcomeText && (
-                  <Box mb={2} pb={2} borderBottom={theme.borders.base}>
-                    {welcomeText}
-                  </Box>
-                )}
-                {variableModules && (
-                  <Box>
-                    {variableModules.map((item) => (
-                      <Box w={'min(100%,300px)'} key={item.id} mb={4}>
-                        <VariableLabel required={item.required}>{item.label}</VariableLabel>
-                        {item.type === VariableInputEnum.input && (
-                          <Input
-                            {...register(item.key, {
-                              required: item.required
-                            })}
-                          />
-                        )}
-                        {item.type === VariableInputEnum.select && (
-                          <MySelect
-                            width={'100%'}
-                            list={(item.enums || []).map((item) => ({
-                              label: item.value,
-                              value: item.value
-                            }))}
-                            {...register(item.key, {
-                              required: item.required
-                            })}
-                            onchange={(e) => {
-                              setValue(item.key, e);
-                              //   setRefresh((state) => !state);
-                            }}
-                          />
-                        )}
-                      </Box>
-                    ))}
-                    {!variableIsFinish && (
-                      <Button
-                        leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
-                        size={'sm'}
-                        maxW={'100px'}
-                        borderRadius={'lg'}
-                        onClick={handleSubmit((data) => {
-                          onUpdateVariable?.(data);
-                          setVariables(data);
-                        })}
-                      >
-                        {'开始对话'}
-                      </Button>
-                    )}
-                  </Box>
-                )}
-              </Card>
-            </Flex>
-          </Flex>
-        )}
-        {/* chat history */}
-        <Box id={'history'}>
-          {chatHistory.map((item, index) => (
-            <Flex
-              key={item._id}
-              alignItems={'flex-start'}
-              py={2}
-              _hover={{
-                '& .control': {
-                  display: 'flex'
-                }
-              }}
-            >
-              {item.obj === 'Human' && <Box flex={1} />}
+      <Box ref={ChatBoxRef} flex={'1 0 0'} overflow={'overlay'} px={[2, 5, 8]} py={5}>
+        <Box maxW={['100%', '1000px', '1200px']} mx={'auto'}>
+          {/* variable input */}
+          {(variableModules || welcomeText) && (
+            <Flex alignItems={'flex-start'} py={2}>
               {/* avatar */}
               <Avatar
-                src={item.obj === 'Human' ? userInfo?.avatar || HUMAN_ICON : appAvatar}
-                w={isLargeWidth ? '34px' : '24px'}
-                h={isLargeWidth ? '34px' : '24px'}
-                {...(item.obj === 'AI'
-                  ? {
-                      order: 1,
-                      mr: ['6px', 2]
-                    }
-                  : {
-                      order: 3,
-                      ml: ['6px', 2]
-                    })}
+                src={appAvatar}
+                w={['24px', '34px']}
+                h={['24px', '34px']}
+                order={1}
+                mr={['6px', 2]}
               />
               {/* message */}
-              <Box order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
-                {item.obj === 'AI' ? (
-                  <Box w={'100%'}>
-                    <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
-                      <Markdown
-                        source={item.value}
-                        isChatting={index === chatHistory.length - 1 && isChatting}
-                      />
-                    </Card>
-                    <Flex {...controlContainerStyle}>
-                      <MyTooltip label={'复制'}>
-                        <MyIcon
-                          {...controlIconStyle}
-                          name={'copy'}
-                          _hover={{ color: 'myBlue.700' }}
-                          onClick={() => onclickCopy(item.value)}
-                        />
-                      </MyTooltip>
-                      {onDelMessage && (
-                        <MyTooltip label={'删除'}>
-                          <MyIcon
-                            {...controlIconStyle}
-                            name={'delete'}
-                            _hover={{ color: 'red.600' }}
-                            onClick={() => {
-                              setChatHistory((state) =>
-                                state.filter((chat) => chat._id !== item._id)
-                              );
-                              onDelMessage({
-                                id: item._id,
-                                index
-                              });
-                            }}
-                          />
-                        </MyTooltip>
+              <Flex order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
+                <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
+                  {welcomeText && (
+                    <Box mb={2} pb={2} borderBottom={theme.borders.base}>
+                      {welcomeText}
+                    </Box>
+                  )}
+                  {variableModules && (
+                    <Box>
+                      {variableModules.map((item) => (
+                        <Box w={'min(100%,300px)'} key={item.id} mb={4}>
+                          <VariableLabel required={item.required}>{item.label}</VariableLabel>
+                          {item.type === VariableInputEnum.input && (
+                            <Input
+                              isDisabled={variableIsFinish}
+                              {...register(item.key, {
+                                required: item.required
+                              })}
+                            />
+                          )}
+                          {item.type === VariableInputEnum.select && (
+                            <MySelect
+                              width={'100%'}
+                              isDisabled={variableIsFinish}
+                              list={(item.enums || []).map((item) => ({
+                                label: item.value,
+                                value: item.value
+                              }))}
+                              {...register(item.key, {
+                                required: item.required
+                              })}
+                              onchange={(e) => {
+                                setValue(item.key, e);
+                                //   setRefresh((state) => !state);
+                              }}
+                            />
+                          )}
+                        </Box>
+                      ))}
+                      {!variableIsFinish && (
+                        <Button
+                          leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                          size={'sm'}
+                          maxW={'100px'}
+                          borderRadius={'lg'}
+                          onClick={handleSubmit((data) => {
+                            onUpdateVariable?.(data);
+                            setVariables(data);
+                          })}
+                        >
+                          {'开始对话'}
+                        </Button>
                       )}
-                      {hasVoiceApi && (
-                        <MyTooltip label={'语音播报'}>
-                          <MyIcon
-                            {...controlIconStyle}
-                            name={'voice'}
-                            _hover={{ color: '#E74694' }}
-                            onClick={() => voiceBroadcast({ text: item.value })}
-                          />
-                        </MyTooltip>
-                      )}
-                    </Flex>
-                  </Box>
-                ) : (
-                  <Box position={'relative'}>
-                    <Card
-                      className="markdown"
-                      whiteSpace={'pre-wrap'}
-                      px={4}
-                      py={3}
-                      borderRadius={'8px 0 8px 8px'}
-                      bg={'myBlue.300'}
-                    >
-                      <Box as={'p'}>{item.value}</Box>
-                    </Card>
-                    <Flex {...controlContainerStyle} right={0}>
-                      <MyTooltip label={'复制'}>
-                        <MyIcon
-                          {...controlIconStyle}
-                          name={'copy'}
-                          _hover={{ color: 'myBlue.700' }}
-                          onClick={() => onclickCopy(item.value)}
-                        />
-                      </MyTooltip>
-                      {onDelMessage && (
-                        <MyTooltip label={'删除'}>
-                          <MyIcon
-                            {...controlIconStyle}
-                            mr={0}
-                            name={'delete'}
-                            _hover={{ color: 'red.600' }}
-                            onClick={() => {
-                              setChatHistory((state) =>
-                                state.filter((chat) => chat._id !== item._id)
-                              );
-                              onDelMessage({
-                                id: item._id,
-                                index
-                              });
-                            }}
-                          />
-                        </MyTooltip>
-                      )}
-                    </Flex>
-                  </Box>
-                )}
-              </Box>
+                    </Box>
+                  )}
+                </Card>
+              </Flex>
             </Flex>
-          ))}
+          )}
+          {/* chat history */}
+          <Box id={'history'}>
+            {chatHistory.map((item, index) => (
+              <Flex
+                key={item._id}
+                alignItems={'flex-start'}
+                py={4}
+                _hover={{
+                  '& .control': {
+                    display: 'flex'
+                  }
+                }}
+              >
+                {item.obj === 'Human' && <Box flex={1} />}
+                {/* avatar */}
+                <Avatar
+                  src={item.obj === 'Human' ? userInfo?.avatar || HUMAN_ICON : appAvatar}
+                  w={['24px', '34px']}
+                  h={['24px', '34px']}
+                  {...(item.obj === 'AI'
+                    ? {
+                        order: 1,
+                        mr: ['6px', 2]
+                      }
+                    : {
+                        order: 3,
+                        ml: ['6px', 2]
+                      })}
+                />
+                {/* message */}
+                <Box order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
+                  {item.obj === 'AI' ? (
+                    <Box w={'100%'} position={'relative'}>
+                      <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
+                        <Markdown
+                          source={item.value}
+                          isChatting={index === chatHistory.length - 1 && isChatting}
+                        />
+                      </Card>
+                      <Flex {...controlContainerStyle}>
+                        <MyTooltip label={'复制'}>
+                          <MyIcon
+                            {...controlIconStyle}
+                            name={'copy'}
+                            _hover={{ color: 'myBlue.700' }}
+                            onClick={() => onclickCopy(item.value)}
+                          />
+                        </MyTooltip>
+                        {onDelMessage && (
+                          <MyTooltip label={'删除'}>
+                            <MyIcon
+                              {...controlIconStyle}
+                              name={'delete'}
+                              _hover={{ color: 'red.600' }}
+                              onClick={() => {
+                                setChatHistory((state) =>
+                                  state.filter((chat) => chat._id !== item._id)
+                                );
+                                onDelMessage({
+                                  contentId: item._id,
+                                  index
+                                });
+                              }}
+                            />
+                          </MyTooltip>
+                        )}
+                        {hasVoiceApi && (
+                          <MyTooltip label={'语音播报'}>
+                            <MyIcon
+                              {...controlIconStyle}
+                              name={'voice'}
+                              _hover={{ color: '#E74694' }}
+                              onClick={() => voiceBroadcast({ text: item.value })}
+                            />
+                          </MyTooltip>
+                        )}
+                      </Flex>
+                    </Box>
+                  ) : (
+                    <Box position={'relative'}>
+                      <Card
+                        className="markdown"
+                        whiteSpace={'pre-wrap'}
+                        px={4}
+                        py={3}
+                        borderRadius={'8px 0 8px 8px'}
+                        bg={'myBlue.300'}
+                      >
+                        <Box as={'p'}>{item.value}</Box>
+                      </Card>
+                      <Flex {...controlContainerStyle} right={0}>
+                        <MyTooltip label={'复制'}>
+                          <MyIcon
+                            {...controlIconStyle}
+                            name={'copy'}
+                            _hover={{ color: 'myBlue.700' }}
+                            onClick={() => onclickCopy(item.value)}
+                          />
+                        </MyTooltip>
+                        {onDelMessage && (
+                          <MyTooltip label={'删除'}>
+                            <MyIcon
+                              {...controlIconStyle}
+                              mr={0}
+                              name={'delete'}
+                              _hover={{ color: 'red.600' }}
+                              onClick={() => {
+                                setChatHistory((state) =>
+                                  state.filter((chat) => chat._id !== item._id)
+                                );
+                                onDelMessage({
+                                  contentId: item._id,
+                                  index
+                                });
+                              }}
+                            />
+                          </MyTooltip>
+                        )}
+                      </Flex>
+                    </Box>
+                  )}
+                </Box>
+              </Flex>
+            ))}
+          </Box>
         </Box>
       </Box>
       {variableIsFinish ? (
@@ -531,7 +540,6 @@ const ChatBox = (
               _focusVisible={{
                 border: 'none'
               }}
-              isDisabled={isChatting}
               placeholder="提问"
               resize={'none'}
               rows={1}

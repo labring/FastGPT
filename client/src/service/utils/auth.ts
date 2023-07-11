@@ -258,65 +258,6 @@ export const authKb = async ({ kbId, userId }: { kbId: string; userId: string })
   return Promise.reject(ERROR_ENUM.unAuthKb);
 };
 
-// 获取对话校验
-export const authChat = async ({
-  modelId,
-  chatId,
-  req
-}: {
-  modelId: string;
-  chatId?: string;
-  req: NextApiRequest;
-}) => {
-  const { userId } = await authUser({ req, authToken: true });
-
-  // 获取 app 数据
-  const { app, showModelDetail } = await authApp({
-    appId: modelId,
-    userId,
-    authOwner: false,
-    reserveDetail: true
-  });
-
-  // 聊天内容
-  let content: ChatItemType[] = [];
-
-  if (chatId) {
-    // 获取 chat 数据
-    content = await Chat.aggregate([
-      { $match: { _id: new mongoose.Types.ObjectId(chatId) } },
-      {
-        $project: {
-          content: {
-            $slice: ['$content', -50] // 返回 content 数组的最后50个元素
-          }
-        }
-      },
-      { $unwind: '$content' },
-      {
-        $project: {
-          obj: '$content.obj',
-          value: '$content.value',
-          quote: '$content.quote'
-        }
-      }
-    ]);
-  }
-  // 获取 user 的 apiKey
-  const { userOpenAiKey, systemAuthKey } = await getApiKey({
-    model: app.chat.chatModel,
-    userId
-  });
-
-  return {
-    userOpenAiKey,
-    systemAuthKey,
-    content,
-    userId,
-    model: app,
-    showModelDetail
-  };
-};
 export const authShareChat = async ({ shareId }: { shareId: string }) => {
   // get shareChat
   const shareChat = await ShareChat.findOne({ shareId });

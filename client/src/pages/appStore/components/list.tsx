@@ -12,7 +12,7 @@ const ShareModelList = ({
   onclickCollection
 }: {
   models: ShareAppItem[];
-  onclickCollection: (modelId: string) => void;
+  onclickCollection: (appId: string) => void;
 }) => {
   const router = useRouter();
 

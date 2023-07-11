@@ -17,14 +17,14 @@ export enum NavbarTypeEnum {
 const Navbar = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { userInfo, lastModelId } = useUserStore();
-  const { lastChatModelId, lastChatId } = useChatStore();
+  const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(
     () => [
       {
         label: '聊天',
         icon: 'chatLight',
         activeIcon: 'chatFill',
-        link: `/chat?appId=${lastChatModelId}&chatId=${lastChatId}`,
+        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
       },
       {
@@ -56,7 +56,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/number']
       }
     ],
-    [lastChatId, lastChatModelId]
+    [lastChatId, lastChatAppId]
   );
 
   const itemStyles: any = {

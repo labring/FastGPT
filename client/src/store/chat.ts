@@ -1,43 +1,35 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { OpenAiChatEnum } from '@/constants/model';
 
-import { ChatSiteItemType, HistoryItemType, ChatType } from '@/types/chat';
+import { ChatHistoryItemType } from '@/types/chat';
+import type { InitChatResponse } from '@/api/response/chat';
 import { getChatHistory } from '@/api/chat';
 import { HUMAN_ICON } from '@/constants/chat';
 
-type SetShareChatHistoryItem = {
-  historyId: string;
-  shareId: string;
-  title: string;
-  latestChat: string;
-  chats: ChatSiteItemType[];
-};
-
 type State = {
-  history: HistoryItemType[];
-  loadHistory: (data: { pageNum: number; init?: boolean }) => Promise<null>;
-  forbidLoadChatData: boolean;
-  setForbidLoadChatData: (val: boolean) => void;
-  chatData: ChatType;
-  setChatData: (e?: ChatType | ((e: ChatType) => ChatType)) => void;
-  lastChatModelId: string;
-  setLastChatModelId: (id: string) => void;
+  history: ChatHistoryItemType[];
+  loadHistory: (data: { appId?: string }) => Promise<null>;
+  updateHistory: (history: ChatHistoryItemType) => void;
+  chatData: InitChatResponse;
+  setChatData: (e: InitChatResponse | ((e: InitChatResponse) => InitChatResponse)) => void;
+  lastChatAppId: string;
+  setLastChatAppId: (id: string) => void;
   lastChatId: string;
   setLastChatId: (id: string) => void;
 };
 
-const defaultChatData: ChatType = {
-  chatId: 'chatId',
-  modelId: 'modelId',
-  model: {
+const defaultChatData: InitChatResponse = {
+  historyId: '',
+  appId: '',
+  app: {
     name: '',
     avatar: '/icon/logo.png',
     intro: '',
     canUse: false
   },
-  chatModel: OpenAiChatEnum.GPT3516k,
+  title: '新对话',
+  variables: {},
   history: []
 };
 
@@ -45,10 +37,10 @@ export const useChatStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
-        lastChatModelId: '',
-        setLastChatModelId(id: string) {
+        lastChatAppId: '',
+        setLastChatAppId(id: string) {
           set((state) => {
-            state.lastChatModelId = id;
+            state.lastChatAppId = id;
           });
         },
         lastChatId: '',
@@ -58,10 +50,12 @@ export const useChatStore = create<State>()(
           });
         },
         history: [],
-        async loadHistory({ pageNum, init = false }: { pageNum: number; init?: boolean }) {
-          if (get().history.length > 0 && !init) return null;
+        async loadHistory({ appId }) {
+          const oneHistory = get().history[0];
+          if (oneHistory && oneHistory.appId === appId) return null;
           const data = await getChatHistory({
-            pageNum,
+            appId,
+            pageNum: 1,
             pageSize: 20
           });
           set((state) => {
@@ -69,14 +63,23 @@ export const useChatStore = create<State>()(
           });
           return null;
         },
-        forbidLoadChatData: false,
-        setForbidLoadChatData(val: boolean) {
+        updateHistory(history) {
+          const index = get().history.findIndex((item) => item._id === history._id);
           set((state) => {
-            state.forbidLoadChatData = val;
+            if (index > -1) {
+              const newHistory = [
+                history,
+                ...get().history.slice(0, index),
+                ...get().history.slice(index + 1)
+              ];
+              state.history = newHistory;
+            } else {
+              state.history = [history, ...state.history];
+            }
           });
         },
         chatData: defaultChatData,
-        setChatData(e: ChatType | ((e: ChatType) => ChatType) = defaultChatData) {
+        setChatData(e = defaultChatData) {
           if (typeof e === 'function') {
             set((state) => {
               state.chatData = e(state.chatData);
@@ -91,7 +94,7 @@ export const useChatStore = create<State>()(
       {
         name: 'chatStore',
         partialize: (state) => ({
-          lastChatModelId: state.lastChatModelId,
+          lastChatAppId: state.lastChatAppId,
           lastChatId: state.lastChatId
         })
       }

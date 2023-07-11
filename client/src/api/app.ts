@@ -1,14 +1,13 @@
 import { GET, POST, DELETE, PUT } from './request';
 import type { AppSchema } from '@/types/mongoSchema';
-import type { AppModuleItemType, AppUpdateParams } from '@/types/app';
+import type { AppListItemType, AppUpdateParams } from '@/types/app';
 import { RequestPaging } from '../types/index';
-import type { AppListResponse } from './response/app';
 import type { Props as CreateAppProps } from '@/pages/api/app/create';
 
 /**
  * 获取模型列表
  */
-export const getMyModels = () => GET<AppListResponse>('/app/list');
+export const getMyModels = () => GET<AppListItemType[]>('/app/myApps');
 
 /**
  * 创建一个模型
@@ -18,12 +17,12 @@ export const postCreateApp = (data: CreateAppProps) => POST<string>('/app/create
 /**
  * 根据 ID 删除模型
  */
-export const delModelById = (id: string) => DELETE(`/app/del?modelId=${id}`);
+export const delModelById = (id: string) => DELETE(`/app/del?appId=${id}`);
 
 /**
  * 根据 ID 获取模型
  */
-export const getModelById = (id: string) => GET<AppSchema>(`/app/detail?modelId=${id}`);
+export const getModelById = (id: string) => GET<AppSchema>(`/app/detail?appId=${id}`);
 
 /**
  * 根据 ID 更新模型
@@ -41,5 +40,5 @@ export const getShareModelList = (data: { searchText?: string } & RequestPaging)
 /**
  * 收藏/取消收藏模型
  */
-export const triggerModelCollection = (modelId: string) =>
-  POST<number>(`/app/share/collection?modelId=${modelId}`);
+export const triggerModelCollection = (appId: string) =>
+  POST<number>(`/app/share/collection?appId=${appId}`);

@@ -1,5 +1,4 @@
-import React from 'react';
-import { AddIcon } from '@chakra-ui/icons';
+import React, { useMemo } from 'react';
 import {
   Box,
   Button,
@@ -10,12 +9,15 @@ import {
   MenuList,
   MenuItem
 } from '@chakra-ui/react';
-import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
-import type { ShareChatHistoryItemType, ExportChatType } from '@/types/chat';
-import { useChatStore } from '@/store/chat';
 import { useGlobalStore } from '@/store/global';
 import Avatar from '@/components/Avatar';
+
+type HistoryItemType = {
+  id: string;
+  title: string;
+  top?: boolean;
+};
 
 const ChatHistorySlider = ({
   appName,
@@ -24,22 +26,25 @@ const ChatHistorySlider = ({
   activeHistoryId,
   onChangeChat,
   onDelHistory,
+  onSetHistoryTop,
   onCloseSlider
 }: {
   appName: string;
   appAvatar: string;
-  history: {
-    id: string;
-    title: string;
-  }[];
+  history: HistoryItemType[];
   activeHistoryId: string;
   onChangeChat: (historyId?: string) => void;
   onDelHistory: (historyId: string) => void;
+  onSetHistoryTop?: (e: { historyId: string; top: boolean }) => void;
   onCloseSlider: () => void;
 }) => {
-  const router = useRouter();
   const theme = useTheme();
   const { isPc } = useGlobalStore();
+
+  const concatHistory = useMemo<HistoryItemType[]>(
+    () => (!activeHistoryId ? [{ id: activeHistoryId, title: '新对话' }].concat(history) : history),
+    [activeHistoryId, history]
+  );
 
   return (
     <Flex
@@ -48,11 +53,11 @@ const ChatHistorySlider = ({
       w={'100%'}
       h={'100%'}
       bg={'white'}
-      px={[2, 5]}
       borderRight={['', theme.borders.base]}
+      whiteSpace={'nowrap'}
     >
       {isPc && (
-        <Flex pt={5} pb={2} alignItems={'center'} whiteSpace={'nowrap'}>
+        <Flex pt={5} pb={2} px={[2, 5]} alignItems={'center'}>
           <Avatar src={appAvatar} />
           <Box ml={2} fontWeight={'bold'} className={'textEllipsis'}>
             {appName}
@@ -60,7 +65,7 @@ const ChatHistorySlider = ({
         </Flex>
       )}
       {/* 新对话 */}
-      <Box w={'100%'} h={'36px'} my={5}>
+      <Box w={'100%'} px={[2, 5]} h={'36px'} my={5}>
         <Button
           variant={'base'}
           w={'100%'}
@@ -76,8 +81,8 @@ const ChatHistorySlider = ({
       </Box>
 
       {/* chat history */}
-      <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
-        {history.map((item) => (
+      <Box flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
+        {concatHistory.map((item) => (
           <Flex
             position={'relative'}
             key={item.id}
@@ -94,6 +99,7 @@ const ChatHistorySlider = ({
                 display: 'block'
               }
             }}
+            bg={item.top ? '#E6F6F6 !important' : ''}
             {...(item.id === activeHistoryId
               ? {
                   backgroundColor: 'myBlue.100 !important',
@@ -109,49 +115,50 @@ const ChatHistorySlider = ({
             <Box flex={'1 0 0'} ml={3} className="textEllipsis">
               {item.title}
             </Box>
-            <Box className="more" display={['block', 'none']}>
-              <Menu autoSelect={false} isLazy offset={[0, 5]}>
-                <MenuButton
-                  _hover={{ bg: 'white' }}
-                  cursor={'pointer'}
-                  borderRadius={'md'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <MyIcon name={'more'} w={'14px'} p={1} />
-                </MenuButton>
-                <MenuList color={'myGray.700'} minW={`90px !important`}>
-                  <MenuItem>
-                    <MyIcon mr={2} name={'setTop'} w={'16px'}></MyIcon>
-                    置顶
-                  </MenuItem>
-                  <MenuItem
-                    _hover={{ color: 'red.500' }}
+            {!!item.id && (
+              <Box className="more" display={['block', 'none']}>
+                <Menu autoSelect={false} isLazy offset={[0, 5]}>
+                  <MenuButton
+                    _hover={{ bg: 'white' }}
+                    cursor={'pointer'}
+                    borderRadius={'md'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDelHistory(item.id);
-                      if (item.id === activeHistoryId) {
-                        onChangeChat();
-                      }
                     }}
                   >
-                    <MyIcon mr={2} name={'delete'} w={'16px'}></MyIcon>
-                    删除
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-            </Box>
+                    <MyIcon name={'more'} w={'14px'} p={1} />
+                  </MenuButton>
+                  <MenuList color={'myGray.700'} minW={`90px !important`}>
+                    {onSetHistoryTop && (
+                      <MenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetHistoryTop({ historyId: item.id, top: !item.top });
+                        }}
+                      >
+                        <MyIcon mr={2} name={'setTop'} w={'16px'}></MyIcon>
+                        {item.top ? '取消置顶' : '置顶'}
+                      </MenuItem>
+                    )}
+                    <MenuItem
+                      _hover={{ color: 'red.500' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelHistory(item.id);
+                        if (item.id === activeHistoryId) {
+                          onChangeChat();
+                        }
+                      }}
+                    >
+                      <MyIcon mr={2} name={'delete'} w={'16px'}></MyIcon>
+                      删除
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </Box>
+            )}
           </Flex>
         ))}
-        {history.length === 0 && (
-          <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'30vh'}>
-            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-            <Box mt={2} color={'myGray.500'}>
-              还没有聊天记录
-            </Box>
-          </Flex>
-        )}
       </Box>
     </Flex>
   );

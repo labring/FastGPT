@@ -10,7 +10,7 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
   const theme = useMemo(() => {
     const map = {
       blue: {
-        borderColor: 'myBlue.700',
+        borderColor: 'myBlue.600',
         bg: '#F2FBFF',
         color: 'myBlue.700'
       },

@@ -1,19 +1,20 @@
-import type { ChatPopulate, AppSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
 import { VariableItemType } from '@/types/app';
 
 export interface InitChatResponse {
-  chatId: string;
-  modelId: string;
-  systemPrompt?: string;
-  limitPrompt?: string;
-  model: {
+  historyId: string;
+  appId: string;
+  app: {
+    variableModules?: VariableItemType[];
+    welcomeText?: string;
     name: string;
     avatar: string;
     intro: string;
     canUse: boolean;
   };
-  chatModel: AppSchema['chat']['chatModel']; // 对话模型名
+  title: string;
+  variables: Record<string, any>;
   history: ChatItemType[];
 }
 

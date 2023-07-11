@@ -7,7 +7,7 @@ const CollectionSchema = new Schema({
     ref: 'user',
     required: true
   },
-  modelId: {
+  appId: {
     type: Schema.Types.ObjectId,
     ref: 'model',
     required: true

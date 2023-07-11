@@ -7,13 +7,13 @@ import Badge from '../Badge';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
-  const { lastChatModelId, lastChatId } = useChatStore();
+  const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(
     () => [
       {
         label: '聊天',
         icon: 'tabbarChat',
-        link: `/chat?appId=${lastChatModelId}&chatId=${lastChatId}`,
+        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
       },
@@ -39,7 +39,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread
       }
     ],
-    [lastChatId, lastChatModelId, unread]
+    [lastChatId, lastChatAppId, unread]
   );
 
   return (

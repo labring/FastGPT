@@ -58,7 +58,7 @@ export interface AppSchema {
 }
 
 export interface CollectionSchema {
-  modelId: string;
+  appId: string;
   userId: string;
 }
 
@@ -78,18 +78,13 @@ export interface TrainingDataSchema {
 export interface ChatSchema {
   _id: string;
   userId: string;
-  modelId: string;
-  expiredTime: number;
+  appId: string;
   updateTime: Date;
   title: string;
   customTitle: string;
-  latestChat: string;
   top: boolean;
+  variables: Record<string, any>;
   content: ChatItemType[];
-}
-export interface ChatPopulate extends ChatSchema {
-  userId: UserModelSchema;
-  modelId: AppSchema;
 }
 
 export interface BillSchema {
