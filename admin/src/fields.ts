@@ -24,11 +24,11 @@ export const kbFields = [
   createTextField('tags', { label: 'Tags' })
 ];
 
-export const ModelFields = [
+export const AppFields = [
   createTextField('id', { label: 'ID' }),
   createTextField('userId', { label: '所属用户', list: { hidden: true }, edit: { hidden: true } }),
   createTextField('name', { label: '名字' }),
-  createTextField('model', { label: '模型', edit: { hidden: true } }),
+  createTextField('app', { label: '应用', edit: { hidden: true } }),
   createTextField('share.collection', { label: '收藏数', list: { sort: true } }),
   createTextField('share.topNum', { label: '置顶等级', list: { sort: true } }),
   createTextField('share.isShare', { label: '是否分享(true,false)' }),

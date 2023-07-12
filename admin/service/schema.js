@@ -104,7 +104,7 @@ const SystemSchema = new mongoose.Schema({
   }
 });
 
-export const App = mongoose.models['model'] || mongoose.model('model', appSchema);
+export const App = mongoose.models['app'] || mongoose.model('app', appSchema);
 export const Kb = mongoose.models['kb'] || mongoose.model('kb', kbSchema);
 export const User = mongoose.models['user'] || mongoose.model('user', userSchema);
 export const Pay = mongoose.models['pay'] || mongoose.model('pay', paySchema);
