@@ -46,6 +46,9 @@ aliSignName=xxx
 aliTemplateCode=SMS_xxx
 # token
 TOKEN_KEY=sswada
+# 使用 oneapi 
+ONEAPI_URL=[https://api.xyz.com/v1](https://xxxxx.cloud.sealos.io/v1)
+ONEAPI_KEY=sk-xxxxxx
 # openai
 OPENAIKEY=sk-xxx # 对话用的key
 OPENAI_TRAINING_KEY=sk-xxx # 训练用的key
@@ -55,7 +58,7 @@ PG_HOST=0.0.0.0
 PG_PORT=8100
 PG_USER=xxx
 PG_PASSWORD=xxx
-PG_DB_NAME=xxx
+PG_DB_NAME=fastgpt
 ```
 
 **2、部署 mongo**
@@ -75,21 +78,23 @@ docker run -it --name pg -e "POSTGRES_DB=fastgpt" -e "POSTGRES_PASSWORD=xxx" -e 
 ```
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
 
-CREATE EXTENSION vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 -- init table
-CREATE TABLE modelData (
+CREATE TABLE IF NOT EXISTS modeldata (
     id BIGSERIAL PRIMARY KEY,
-    vector VECTOR(1536),
-    status VARCHAR(50) NOT NULL,
+    vector VECTOR(1536) NOT NULL,
     user_id VARCHAR(50) NOT NULL,
     kb_id VARCHAR(50) NOT NULL,
+    source VARCHAR(100),
     q TEXT NOT NULL,
     a TEXT NOT NULL
 );
--- create index
-CREATE INDEX modelData_status_index ON modelData (status);
-CREATE INDEX modelData_kbId_index ON modelData (kb_id);
-CREATE INDEX modelData_userId_index ON modelData (user_id);
+-- 索引设置，按需取
+-- CREATE INDEX IF NOT EXISTS modeldata_userId_index ON modeldata USING HASH (user_id);
+-- CREATE INDEX IF NOT EXISTS modeldata_kbId_index ON modeldata USING HASH (kb_id);
+-- CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON modeldata (md5(q), md5(a), user_id, kb_id);
+-- CREATE INDEX modeldata_id_desc_idx ON modeldata (id DESC);
+-- vector 索引，可以参考 [pg vector](https://github.com/pgvector/pgvector) 去配置，根据数据量去配置
 EOSQL
 ```
 
