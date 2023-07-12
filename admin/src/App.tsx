@@ -9,7 +9,7 @@ import {
   HTTPClient
 } from 'tushan';
 import { authProvider } from './auth';
-import { userFields, payFields, kbFields, ModelFields, SystemFields } from './fields';
+import { userFields, payFields, kbFields, AppFields, SystemFields } from './fields';
 import { Dashboard } from './Dashboard';
 import { IconUser, IconApps, IconBook, IconStamp } from 'tushan/icon';
 import { i18nZhTranslation } from 'tushan/client/i18n/resources/zh';
@@ -69,7 +69,7 @@ function App() {
         }
       />
       <Resource
-        name="models"
+        name="apps"
         icon={<IconApps />}
         label="应用"
         list={
@@ -82,7 +82,7 @@ function App() {
                 label: 'name'
               })
             ]}
-            fields={ModelFields}
+            fields={AppFields}
             action={{ detail: true, edit: true }}
           />
         }

@@ -3,7 +3,7 @@ import { auth } from './system.js';
 
 export const useAppRoute = (app) => {
   // 获取AI助手列表
-  app.get('/models', auth(), async (req, res) => {
+  app.get('/apps', auth(), async (req, res) => {
     try {
       const start = parseInt(req.query._start) || 0;
       const end = parseInt(req.query._end) || 20;
@@ -25,27 +25,27 @@ export const useAppRoute = (app) => {
       const models = [];
 
       for (const modelRaw of modelsRaw) {
-        const model = modelRaw.toObject();
+        const app = modelRaw.toObject();
 
         // 获取与模型关联的知识库名称
         const kbNames = [];
-        for (const kbId of model.chat.relatedKbs) {
+        for (const kbId of app.chat.relatedKbs) {
           const kb = await Kb.findById(kbId);
           kbNames.push(kb.name);
         }
 
         const orderedModel = {
-          id: model._id.toString(),
-          userId: model.userId,
-          name: model.name,
-          intro: model.intro,
-          model: model.chat?.chatModel,
+          id: app._id.toString(),
+          userId: app.userId,
+          name: app.name,
+          intro: app.intro,
+          app: app.chat?.chatModel,
           relatedKbs: kbNames, // 将relatedKbs的id转换为相应的Kb名称
-          systemPrompt: model.chat?.systemPrompt || '',
-          temperature: model.chat?.temperature || 0,
-          'share.topNum': model.share?.topNum || 0,
-          'share.isShare': model.share?.isShare || false,
-          'share.collection': model.share?.collection || 0
+          systemPrompt: app.chat?.systemPrompt || '',
+          temperature: app.chat?.temperature || 0,
+          'share.topNum': app.share?.topNum || 0,
+          'share.isShare': app.share?.isShare || false,
+          'share.collection': app.share?.collection || 0
         };
 
         models.push(orderedModel);
@@ -61,7 +61,7 @@ export const useAppRoute = (app) => {
   });
 
   // 修改 app 信息
-  app.put('/models/:id', auth(), async (req, res) => {
+  app.put('/apps/:id', auth(), async (req, res) => {
     try {
       const _id = req.params.id;
 
