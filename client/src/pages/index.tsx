@@ -141,7 +141,7 @@ const Home = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data: git } = await axios.get('https://api.github.com/repos/c121914yu/FastGPT');
+        const { data: git } = await axios.get('https://api.github.com/repos/labring/FastGPT');
         setStar(git.stargazers_count);
       } catch (error) {}
     })();
@@ -197,7 +197,7 @@ const Home = () => {
               color: 'white'
             }}
             leftIcon={<MyIcon name={'git'} w={'20px'} />}
-            onClick={() => window.open('https://github.com/c121914yu/FastGPT', '_blank')}
+            onClick={() => window.open('https://github.com/labring/FastGPT', '_blank')}
           >
             Stars {(star / 1000).toFixed(1)}k
           </Button>

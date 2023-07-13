@@ -54,4 +54,4 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 
 ## 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=c121914yu/FastGPT&type=Date)](https://star-history.com/#c121914yu/FastGPT&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=labring/FastGPT&type=Date)](https://star-history.com/#labring/FastGPT&Date)

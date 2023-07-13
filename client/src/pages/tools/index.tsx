@@ -18,7 +18,7 @@ const list = [
   {
     icon: 'git',
     label: 'Git项目地址',
-    link: 'https://github.com/c121914yu/FastGPT'
+    link: 'https://github.com/labring/FastGPT'
   }
 ];
 
