@@ -11,6 +11,7 @@ from transformers import AutoTokenizer, AutoModel
 from sse_starlette.sse import ServerSentEvent, EventSourceResponse
 from fastapi import Depends, HTTPException, Request
 from starlette.status import HTTP_401_UNAUTHORIZED
+import argparse
 
 
 @asynccontextmanager
@@ -154,8 +155,20 @@ async def predict(query: str, history: List[List[str]], model_id: str):
 
 
 if __name__ == "__main__":
-    tokenizer = AutoTokenizer.from_pretrained("THUDM/chatglm2-6b", trust_remote_code=True)
-    model = AutoModel.from_pretrained("THUDM/chatglm2-6b", trust_remote_code=True).cuda()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_name", default="16", type=str, help="Model name")
+    args = parser.parse_args()
+
+    model_dict = {
+        "4": "THUDM/chatglm2-6b-int4",
+        "8": "THUDM/chatglm2-6b-int8",
+        "16": "THUDM/chatglm2-6b"
+    }
+
+    model_name = model_dict.get(args.model_name, "THUDM/chatglm2-6b")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModel.from_pretrained(model_name, trust_remote_code=True).cuda()
     model.eval()
 
     uvicorn.run(app, host='0.0.0.0', port=6006, workers=1)
