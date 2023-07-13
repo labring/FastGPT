@@ -15,6 +15,8 @@ import { Types } from 'mongoose';
 import { moduleFetch } from '@/service/api/request';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { FlowInputItemTypeEnum } from '@/constants/flow';
+import { pushChatBill } from '@/service/events/pushBill';
+import { BillTypeEnum } from '@/constants/user';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -168,6 +170,16 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         ]
       });
     }
+
+    pushChatBill({
+      isPay: true,
+      chatModel: 'gpt-3.5-turbo',
+      userId,
+      appId,
+      textLen: 1,
+      tokens: 100,
+      type: BillTypeEnum.chat
+    });
   } catch (err: any) {
     if (stream) {
       res.status(500);

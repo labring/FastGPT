@@ -53,14 +53,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('params is error');
     }
 
-    // auth model
+    // auth app
     const { app } = await authApp({
       appId,
       userId
     });
 
     const result = await appKbSearch({
-      model: app,
+      app,
       userId,
       fixedQuote: [],
       prompt: prompts[prompts.length - 1],
@@ -81,21 +81,21 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 });
 
 export async function appKbSearch({
-  model,
+  app,
   userId,
   fixedQuote = [],
   prompt,
   similarity = 0.8,
   limit = 5
 }: {
-  model: AppSchema;
+  app: AppSchema;
   userId: string;
   fixedQuote?: QuoteItemType[];
   prompt: ChatItemType;
   similarity: number;
   limit: number;
 }): Promise<Response> {
-  const modelConstantsData = ChatModelMap[model.chat.chatModel];
+  const modelConstantsData = ChatModelMap[app.chat.chatModel];
 
   // get vector
   const promptVector = await openaiEmbedding({
@@ -107,7 +107,7 @@ export async function appKbSearch({
   const res: any = await PgClient.query(
     `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
-    select id,q,a,source from modelData where kb_id IN (${model.chat.relatedKbs
+    select id,q,a,source from modelData where kb_id IN (${app.chat.relatedKbs
       .map((item) => `'${item}'`)
       .join(',')}) AND vector <#> '[${promptVector[0]}]' < -${similarity} order by vector <#> '[${
       promptVector[0]
@@ -133,32 +133,32 @@ export async function appKbSearch({
   });
 
   // 计算固定提示词的 token 数量
-  const userSystemPrompt = model.chat.systemPrompt // user system prompt
+  const userSystemPrompt = app.chat.systemPrompt // user system prompt
     ? [
         {
           obj: ChatRoleEnum.System,
-          value: model.chat.systemPrompt
+          value: app.chat.systemPrompt
         }
       ]
     : [];
   const userLimitPrompt = [
     {
       obj: ChatRoleEnum.Human,
-      value: model.chat.limitPrompt
-        ? model.chat.limitPrompt
-        : `知识库是关于 ${model.name} 的内容，参考知识库回答问题。与 "${model.name}" 无关内容，直接回复: "我不知道"。`
+      value: app.chat.limitPrompt
+        ? app.chat.limitPrompt
+        : `知识库是关于 ${app.name} 的内容，参考知识库回答问题。与 "${app.name}" 无关内容，直接回复: "我不知道"。`
     }
   ];
 
   const fixedSystemTokens = modelToolMap.countTokens({
-    model: model.chat.chatModel,
+    model: app.chat.chatModel,
     messages: [...userSystemPrompt, ...userLimitPrompt]
   });
 
   // filter part quote by maxToken
   const sliceResult = modelToolMap
     .tokenSlice({
-      model: model.chat.chatModel,
+      model: app.chat.chatModel,
       maxToken: modelConstantsData.systemMaxToken - fixedSystemTokens,
       messages: filterSearch.map((item, i) => ({
         obj: ChatRoleEnum.System,

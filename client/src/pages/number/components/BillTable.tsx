@@ -69,19 +69,17 @@ const BillTable = () => {
           </Box>
         </Flex>
       )}
-      {total > pageSize && (
-        <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
-          <DateRangePicker
-            defaultDate={dateRange}
-            position="top"
-            onChange={setDateRange}
-            onSuccess={() => getData(1)}
-          />
-          <Box ml={2}>
-            <Pagination />
-          </Box>
-        </Flex>
-      )}
+      <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
+        <DateRangePicker
+          defaultDate={dateRange}
+          position="top"
+          onChange={setDateRange}
+          onSuccess={() => getData(1)}
+        />
+        <Box ml={2}>
+          <Pagination />
+        </Box>
+      </Flex>
       <Loading loading={isLoading} fixed={false} />
     </>
   );

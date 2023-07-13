@@ -93,6 +93,5 @@ export const defaultApp: AppSchema = {
 
 export const defaultShareChat: ShareChatEditType = {
   name: '',
-  password: '',
   maxContext: 5
 };

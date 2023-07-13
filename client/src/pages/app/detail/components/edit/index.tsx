@@ -75,12 +75,12 @@ const nodeTypes = {
 const edgeTypes = {
   buttonedge: ButtonEdge
 };
-type Props = { app: AppSchema; onBack: () => void };
+type Props = { app: AppSchema; fullScreen: boolean; onFullScreen: (val: boolean) => void };
 
-const AppEdit = ({ app, onBack }: Props) => {
+const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
+  const theme = useTheme();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const ChatTestRef = useRef<ChatTestComponentRef>(null);
-  const theme = useTheme();
   const { x, y, zoom } = useViewport();
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -90,6 +90,14 @@ const AppEdit = ({ app, onBack }: Props) => {
     onClose: onCloseTemplate
   } = useDisclosure();
   const [testModules, setTestModules] = useState<AppModuleItemType[]>();
+
+  const onFixView = useCallback(() => {
+    const btn = document.querySelector('.react-flow__controls-fitview') as HTMLButtonElement;
+
+    setTimeout(() => {
+      btn && btn.click();
+    }, 100);
+  }, []);
 
   const onChangeNode = useCallback(
     ({ moduleId, key, type = 'inputs', value, valueKey = 'value' }: FlowModuleItemChangeProps) => {
@@ -258,23 +266,57 @@ const AppEdit = ({ app, onBack }: Props) => {
   }, [app, initData]);
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
+    <>
       {/* header */}
-      <Flex py={3} px={5} borderBottom={theme.borders.base} alignItems={'center'}>
-        <IconButton
-          size={'sm'}
-          icon={<MyIcon name={'back'} w={'14px'} />}
-          w={'28px'}
-          h={'28px'}
-          borderRadius={'md'}
-          borderColor={'myGray.300'}
-          variant={'base'}
-          aria-label={''}
-          onClick={onBack}
-        />
-        <Box ml={5} fontSize={'xl'} flex={1}>
-          {app.name}
-        </Box>
+      <Flex
+        py={3}
+        px={[2, 5, 8]}
+        borderBottom={theme.borders.base}
+        alignItems={'center'}
+        userSelect={'none'}
+      >
+        {fullScreen ? (
+          <>
+            <MyTooltip label={'取消全屏'} offset={[10, 10]}>
+              <IconButton
+                size={'sm'}
+                w={'28px'}
+                h={'28px'}
+                icon={<MyIcon name={'fullScreenLight'} w={'16px'} />}
+                borderRadius={'md'}
+                borderColor={'myGray.300'}
+                variant={'base'}
+                aria-label={''}
+                onClick={() => {
+                  onFullScreen(false);
+                  onFixView();
+                }}
+              />
+            </MyTooltip>
+            <Box ml={5} fontSize={['lg', '2xl']} flex={1}>
+              {app.name}
+            </Box>
+          </>
+        ) : (
+          <>
+            <Box fontSize={['lg', '2xl']} flex={1}>
+              应用编排
+            </Box>
+            <MyTooltip label={'全屏'}>
+              <IconButton
+                mr={6}
+                icon={<MyIcon name={'fullScreenLight'} w={'16px'} />}
+                borderRadius={'lg'}
+                variant={'base'}
+                aria-label={'fullScreenLight'}
+                onClick={() => {
+                  onFullScreen(true);
+                  onFixView();
+                }}
+              />
+            </MyTooltip>
+          </>
+        )}
         {testModules ? (
           <IconButton
             mr={6}
@@ -361,11 +403,7 @@ const AppEdit = ({ app, onBack }: Props) => {
           }}
         >
           <Background />
-          <Controls
-            position={'bottom-center'}
-            style={{ display: 'flex' }}
-            showInteractive={false}
-          />
+          <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
         </ReactFlow>
 
         <TemplateList isOpen={isOpenTemplate} onAddNode={onAddNode} onClose={onCloseTemplate} />
@@ -376,14 +414,26 @@ const AppEdit = ({ app, onBack }: Props) => {
           onClose={() => setTestModules(undefined)}
         />
       </Box>
-    </Flex>
+    </>
   );
 };
 
 const Flow = (data: Props) => (
-  <ReactFlowProvider>
-    <AppEdit {...data} />
-  </ReactFlowProvider>
+  <Box
+    h={'100%'}
+    position={data.fullScreen ? 'fixed' : 'relative'}
+    zIndex={999}
+    top={0}
+    left={0}
+    right={0}
+    bottom={0}
+  >
+    <ReactFlowProvider>
+      <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
+        {!!data.app._id && <AppEdit {...data} />}
+      </Flex>
+    </ReactFlowProvider>
+  </Box>
 );
 
 export default React.memo(Flow);

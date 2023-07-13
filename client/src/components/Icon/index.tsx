@@ -3,7 +3,7 @@ import type { IconProps } from '@chakra-ui/react';
 import { Icon } from '@chakra-ui/react';
 
 const map = {
-  model: require('./icons/model.svg').default,
+  app: require('./icons/app.svg').default,
   copy: require('./icons/copy.svg').default,
   chatSend: require('./icons/chatSend.svg').default,
   delete: require('./icons/delete.svg').default,
@@ -16,7 +16,7 @@ const map = {
   backFill: require('./icons/fill/back.svg').default,
   more: require('./icons/more.svg').default,
   tabbarChat: require('./icons/phoneTabbar/chat.svg').default,
-  tabbarModel: require('./icons/phoneTabbar/model.svg').default,
+  tabbarModel: require('./icons/phoneTabbar/app.svg').default,
   tabbarMore: require('./icons/phoneTabbar/more.svg').default,
   tabbarMe: require('./icons/phoneTabbar/me.svg').default,
   closeSolid: require('./icons/closeSolid.svg').default,
@@ -50,6 +50,7 @@ const map = {
   welcomeText: require('./icons/modules/welcomeText.svg').default,
   variable: require('./icons/modules/variable.svg').default,
   setTop: require('./icons/light/setTop.svg').default,
+  fullScreenLight: require('./icons/light/fullScreen.svg').default,
   voice: require('./icons/voice.svg').default
 };
 

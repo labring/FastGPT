@@ -12,7 +12,7 @@ export const pushChatBill = async ({
   isPay,
   chatModel,
   userId,
-  chatId,
+  appId,
   textLen,
   tokens,
   type
@@ -20,7 +20,7 @@ export const pushChatBill = async ({
   isPay: boolean;
   chatModel: ChatModelType;
   userId: string;
-  chatId?: '' | string;
+  appId: string;
   textLen: number;
   tokens: number;
   type: BillTypeEnum.chat | BillTypeEnum.openapiChat;
@@ -43,7 +43,7 @@ export const pushChatBill = async ({
         userId,
         type,
         modelName: chatModel,
-        chatId: chatId ? chatId : undefined,
+        appId,
         textLen,
         tokenLen: tokens,
         price

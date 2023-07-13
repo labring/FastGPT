@@ -61,7 +61,7 @@ export async function extract({ agents, history = [], userChatInput, description
   agents.forEach((item) => {
     properties[item.key] = {
       type: 'string',
-      description: item.desc
+      description: item.value
     };
   });
 

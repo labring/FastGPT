@@ -54,8 +54,8 @@ const Chat = () => {
   const {
     lastChatAppId,
     setLastChatAppId,
-    lastChatId,
-    setLastChatId,
+    lastHistoryId,
+    setLastHistoryId,
     history,
     loadHistory,
     updateHistory,
@@ -192,13 +192,13 @@ const Chat = () => {
       } catch (e: any) {
         // reset all chat tore
         setLastChatAppId('');
-        setLastChatId('');
+        setLastHistoryId('');
         router.replace('/chat');
       }
       setIsLoading(false);
       return null;
     },
-    [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId]
+    [setIsLoading, setChatData, router, setLastChatAppId, setLastHistoryId]
   );
   // 初始化聊天框
   useQuery(['init', appId, historyId], () => {
@@ -207,7 +207,7 @@ const Chat = () => {
       router.replace({
         query: {
           appId: lastChatAppId,
-          historyId: lastChatId
+          historyId: lastHistoryId
         }
       });
       return null;
@@ -215,7 +215,7 @@ const Chat = () => {
 
     // store id
     appId && setLastChatAppId(appId);
-    setLastChatId(historyId);
+    setLastHistoryId(historyId);
 
     if (forbidRefresh.current) {
       forbidRefresh.current = false;
@@ -254,6 +254,7 @@ const Chat = () => {
             );
           })(
             <ChatHistorySlider
+              appId={appId}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
               activeHistoryId={historyId}

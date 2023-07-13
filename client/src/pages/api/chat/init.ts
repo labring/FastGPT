@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { chat, history = [] }: { chat?: ChatSchema; history?: ChatItemType[] } =
       await (async () => {
         if (historyId) {
-          // auth chatId
+          // auth historyId
           const chat = await Chat.findOne({
             _id: historyId,
             userId

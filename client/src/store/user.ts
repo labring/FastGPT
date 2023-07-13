@@ -17,9 +17,6 @@ type State = {
   initUserInfo: () => Promise<UserType>;
   setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => void;
-  // model
-  lastModelId: string;
-  setLastModelId: (id: string) => void;
   myApps: AppListItemType[];
   myCollectionApps: AppListItemType[];
   loadMyModels: () => Promise<null>;
@@ -61,12 +58,6 @@ export const useUserStore = create<State>()(
               ...state.userInfo,
               ...user
             };
-          });
-        },
-        lastModelId: '',
-        setLastModelId(id: string) {
-          set((state) => {
-            state.lastModelId = id;
           });
         },
         myApps: [],
@@ -119,7 +110,6 @@ export const useUserStore = create<State>()(
       {
         name: 'userStore',
         partialize: (state) => ({
-          lastModelId: state.lastModelId,
           lastKbId: state.lastKbId
         })
       }

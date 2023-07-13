@@ -9,9 +9,11 @@ import {
   MenuList,
   MenuItem
 } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
 import { useGlobalStore } from '@/store/global';
+import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
+import MyTooltip from '@/components/MyTooltip';
+import MyIcon from '@/components/Icon';
 
 type HistoryItemType = {
   id: string;
@@ -20,6 +22,7 @@ type HistoryItemType = {
 };
 
 const ChatHistorySlider = ({
+  appId,
   appName,
   appAvatar,
   history,
@@ -29,6 +32,7 @@ const ChatHistorySlider = ({
   onSetHistoryTop,
   onCloseSlider
 }: {
+  appId?: string;
   appName: string;
   appAvatar: string;
   history: HistoryItemType[];
@@ -39,6 +43,7 @@ const ChatHistorySlider = ({
   onCloseSlider: () => void;
 }) => {
   const theme = useTheme();
+  const router = useRouter();
   const { isPc } = useGlobalStore();
 
   const concatHistory = useMemo<HistoryItemType[]>(
@@ -57,12 +62,27 @@ const ChatHistorySlider = ({
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <Flex pt={5} pb={2} px={[2, 5]} alignItems={'center'}>
-          <Avatar src={appAvatar} />
-          <Box ml={2} fontWeight={'bold'} className={'textEllipsis'}>
-            {appName}
-          </Box>
-        </Flex>
+        <MyTooltip label={appId ? '应用详情' : ''} offset={[0, 0]}>
+          <Flex
+            pt={5}
+            pb={2}
+            px={[2, 5]}
+            alignItems={'center'}
+            cursor={appId ? 'pointer' : 'default'}
+            onClick={() =>
+              appId &&
+              router.push({
+                pathname: '/app/detail',
+                query: { appId }
+              })
+            }
+          >
+            <Avatar src={appAvatar} />
+            <Box ml={2} fontWeight={'bold'} className={'textEllipsis'}>
+              {appName}
+            </Box>
+          </Flex>
+        </MyTooltip>
       )}
       {/* 新对话 */}
       <Box w={'100%'} px={[2, 5]} h={'36px'} my={5}>

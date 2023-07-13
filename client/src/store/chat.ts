@@ -15,8 +15,8 @@ type State = {
   setChatData: (e: InitChatResponse | ((e: InitChatResponse) => InitChatResponse)) => void;
   lastChatAppId: string;
   setLastChatAppId: (id: string) => void;
-  lastChatId: string;
-  setLastChatId: (id: string) => void;
+  lastHistoryId: string;
+  setLastHistoryId: (id: string) => void;
 };
 
 const defaultChatData: InitChatResponse = {
@@ -43,10 +43,10 @@ export const useChatStore = create<State>()(
             state.lastChatAppId = id;
           });
         },
-        lastChatId: '',
-        setLastChatId(id: string) {
+        lastHistoryId: '',
+        setLastHistoryId(id: string) {
           set((state) => {
-            state.lastChatId = id;
+            state.lastHistoryId = id;
           });
         },
         history: [],
@@ -95,7 +95,7 @@ export const useChatStore = create<State>()(
         name: 'chatStore',
         partialize: (state) => ({
           lastChatAppId: state.lastChatAppId,
-          lastChatId: state.lastChatId
+          lastHistoryId: state.lastHistoryId
         })
       }
     )

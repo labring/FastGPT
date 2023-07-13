@@ -17,14 +17,13 @@ const Login = () => {
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { isPc } = useGlobalStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
-  const { setUserInfo, setLastModelId, loadKbList, setLastKbId } = useUserStore();
-  const { setLastChatId, setLastChatAppId } = useChatStore();
+  const { setUserInfo, loadKbList, setLastKbId } = useUserStore();
+  const { setLastHistoryId, setLastChatAppId } = useChatStore();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       // init store
-      setLastChatId('');
-      setLastModelId('');
+      setLastHistoryId('');
       setLastChatAppId('');
       setLastKbId('');
       loadKbList(true);
@@ -34,16 +33,7 @@ const Login = () => {
         router.push(lastRoute ? decodeURIComponent(lastRoute) : '/model');
       }, 100);
     },
-    [
-      lastRoute,
-      loadKbList,
-      router,
-      setLastChatId,
-      setLastChatAppId,
-      setLastKbId,
-      setLastModelId,
-      setUserInfo
-    ]
+    [lastRoute, loadKbList, router, setLastHistoryId, setLastChatAppId, setLastKbId, setUserInfo]
   );
 
   function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {

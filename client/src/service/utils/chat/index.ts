@@ -14,7 +14,7 @@ export type ChatCompletionType = {
   temperature: number;
   maxToken?: number;
   messages: ChatItemType[];
-  chatId?: string;
+  historyId?: string;
   [key: string]: any;
 };
 export type ChatCompletionResponseType = {
