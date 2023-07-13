@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex, Box } from '@chakra-ui/react';
-import { BillTypeMap } from '@/constants/user';
+import { BillSourceMap } from '@/constants/user';
 import { getUserBills } from '@/api/user';
 import type { UserBillType } from '@/types/user';
 import { usePagination } from '@/hooks/usePagination';
@@ -39,10 +39,8 @@ const BillTable = () => {
           <Thead>
             <Tr>
               <Th>时间</Th>
-              <Th>类型</Th>
-              <Th>模型</Th>
-              <Th>内容长度</Th>
-              <Th>Tokens 长度</Th>
+              <Th>来源</Th>
+              <Th>应用名</Th>
               <Th>金额</Th>
             </Tr>
           </Thead>
@@ -50,11 +48,9 @@ const BillTable = () => {
             {bills.map((item) => (
               <Tr key={item.id}>
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                <Td>{BillTypeMap[item.type] || '-'}</Td>
-                <Td>{item.modelName}</Td>
-                <Td>{item.textLen}</Td>
-                <Td>{item.tokenLen}</Td>
-                <Td>{item.price}元</Td>
+                <Td>{BillSourceMap[item.source]}</Td>
+                <Td>{item.appName || '-'}</Td>
+                <Td>{item.total}元</Td>
               </Tr>
             ))}
           </Tbody>

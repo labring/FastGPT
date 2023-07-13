@@ -2,7 +2,6 @@ import { GET, POST, PUT, DELETE } from '../request';
 import type { KbItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
 import { TrainingModeEnum } from '@/constants/plugin';
-import { type QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 import {
   Props as PushDataProps,
   Response as PushDateResponse
@@ -60,7 +59,7 @@ export const getTrainingData = (data: { kbId: string; init: boolean }) =>
   }>(`/plugins/kb/data/getTrainingData`, data);
 
 export const getKbDataItemById = (dataId: string) =>
-  GET<QuoteItemType>(`/plugins/kb/data/getDataById`, { dataId });
+  GET(`/plugins/kb/data/getDataById`, { dataId });
 
 /**
  * 直接push数据

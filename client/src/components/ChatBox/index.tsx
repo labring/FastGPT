@@ -10,7 +10,7 @@ import React, {
 import { throttle } from 'lodash';
 import { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
-import { useCopyData, voiceBroadcast, hasVoiceApi } from '@/utils/tools';
+import { useCopyData, voiceBroadcast, hasVoiceApi, getErrText } from '@/utils/tools';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 
@@ -241,33 +241,34 @@ const ChatBox = (
           variables: data
         });
 
-        // 设置聊天内容为完成状态
-        setChatHistory((state) =>
-          state.map((item, index) => {
-            if (index !== state.length - 1) return item;
-            return {
-              ...item,
-              status: 'finish'
-            };
-          })
-        );
-
         setTimeout(() => {
           generatingScroll();
           TextareaDom.current?.focus();
         }, 100);
       } catch (err: any) {
         toast({
-          title: typeof err === 'string' ? err : err?.message || '聊天出错了~',
-          status: 'warning',
+          title: getErrText(err, '聊天出错了~'),
+          status: 'error',
           duration: 5000,
           isClosable: true
         });
 
-        resetInputVal(value);
-
-        setChatHistory(newChatList.slice(0, newChatList.length - 2));
+        if (!err?.responseText) {
+          resetInputVal(value);
+          setChatHistory(newChatList.slice(0, newChatList.length - 2));
+        }
       }
+
+      // set finish status
+      setChatHistory((state) =>
+        state.map((item, index) => {
+          if (index !== state.length - 1) return item;
+          return {
+            ...item,
+            status: 'finish'
+          };
+        })
+      );
     },
     [
       isChatting,
@@ -404,7 +405,7 @@ const ChatBox = (
                 py={4}
                 _hover={{
                   '& .control': {
-                    display: 'flex'
+                    display: item.status === 'finish' ? 'flex' : 'none'
                   }
                 }}
               >

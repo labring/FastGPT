@@ -53,14 +53,6 @@ export async function saveChat({
   await connectToDatabase();
   const { app } = await authApp({ appId, userId, authOwner: false });
 
-  const content = prompts.map((item) => ({
-    _id: item._id,
-    obj: item.obj,
-    value: item.value,
-    systemPrompt: item.systemPrompt || '',
-    quote: item.quote || []
-  }));
-
   if (String(app.userId) === userId) {
     await App.findByIdAndUpdate(appId, {
       updateTime: new Date()
@@ -73,12 +65,11 @@ export async function saveChat({
           Chat.findByIdAndUpdate(historyId, {
             $push: {
               content: {
-                $each: content
+                $each: prompts
               }
             },
             variables,
-            title: content[0].value.slice(0, 20),
-            latestChat: content[1].value,
+            title: prompts[0].value.slice(0, 20),
             updateTime: new Date()
           }).then(() => ({
             newHistoryId: ''
@@ -90,9 +81,8 @@ export async function saveChat({
             userId,
             appId,
             variables,
-            content,
-            title: content[0].value.slice(0, 20),
-            latestChat: content[1].value
+            content: prompts,
+            title: prompts[0].value.slice(0, 20)
           }).then((res) => ({
             newHistoryId: String(res._id)
           }))

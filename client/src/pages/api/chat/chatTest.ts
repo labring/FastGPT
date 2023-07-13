@@ -8,6 +8,8 @@ import { type ChatCompletionRequestMessage } from 'openai';
 import { AppModuleItemType } from '@/types/app';
 import { dispatchModules } from '../openapi/v1/chat/completions';
 import { gptMessage2ChatType } from '@/utils/adapt';
+import { createTaskBill, delTaskBill, finishTaskBill } from '@/service/events/pushBill';
+import { BillSourceEnum } from '@/constants/user';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 export type Props = {
@@ -15,10 +17,8 @@ export type Props = {
   prompt: string;
   modules: AppModuleItemType[];
   variables: Record<string, any>;
-};
-export type ChatResponseType = {
-  newChatId: string;
-  quoteLen?: number;
+  appId: string;
+  appName: string;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -30,8 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   });
 
-  let { modules = [], history = [], prompt, variables = {} } = req.body as Props;
-
+  let { modules = [], history = [], prompt, variables = {}, appName, appId } = req.body as Props;
+  let billId = '';
   try {
     if (!history || !modules || !prompt) {
       throw new Error('Prams Error');
@@ -45,6 +45,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     /* user auth */
     const { userId } = await authUser({ req });
 
+    billId = await createTaskBill({
+      userId,
+      appName,
+      appId,
+      source: BillSourceEnum.fastgpt
+    });
+
     /* start process */
     const { responseData } = await dispatchModules({
       res,
@@ -54,7 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         history: gptMessage2ChatType(history),
         userChatInput: prompt
       },
-      stream: true
+      stream: true,
+      billId
     });
 
     sseResponse({
@@ -70,7 +78,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
 
     // bill
+    finishTaskBill({
+      billId
+    });
   } catch (err: any) {
+    delTaskBill(billId);
     res.status(500);
     sseErrRes(res, err);
     res.end();

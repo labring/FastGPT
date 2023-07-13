@@ -28,13 +28,16 @@ const TrainingDataSchema = new Schema({
     enum: Object.keys(TrainingTypeMap),
     required: true
   },
+  model: {
+    type: String,
+    required: true
+  },
   prompt: {
-    // 拆分时的提示词
+    // qa split prompt
     type: String,
     default: ''
   },
   q: {
-    // 如果是
     type: String,
     default: ''
   },

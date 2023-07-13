@@ -5,7 +5,6 @@ import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
-import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
 import type { AppModuleItemType } from '@/types/app';
 import type { FlowModuleItemType } from '@/types/flow';
 import type { Edge, Node } from 'reactflow';
@@ -16,12 +15,10 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 export const adaptBill = (bill: BillSchema): UserBillType => {
   return {
     id: bill._id,
-    type: bill.type,
-    modelName: ChatModelMap[bill.modelName as `${OpenAiChatEnum}`]?.name || bill.modelName,
+    source: bill.source,
     time: bill.time,
-    textLen: bill.textLen,
-    tokenLen: bill.tokenLen,
-    price: formatPrice(bill.price)
+    total: formatPrice(bill.total),
+    appName: bill.appName
   };
 };
 

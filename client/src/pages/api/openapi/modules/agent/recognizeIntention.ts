@@ -6,29 +6,30 @@ import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
-import type { ClassifyQuestionAgentItemType } from '@/types/app';
+import type { RecognizeIntentionAgentItemType } from '@/types/app';
+import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
 
 export type Props = {
   systemPrompt?: string;
   history?: ChatItemType[];
   userChatInput: string;
-  agents: ClassifyQuestionAgentItemType[];
+  agents: RecognizeIntentionAgentItemType[];
+  billId?: string;
 };
 export type Response = { history: ChatItemType[] };
 
-const agentModel = 'gpt-3.5-turbo-16k';
+const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_user_question';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { systemPrompt, agents, history = [], userChatInput } = req.body as Props;
+    let { userChatInput } = req.body as Props;
 
-    const response = await classifyQuestion({
-      systemPrompt,
-      history,
-      userChatInput,
-      agents
-    });
+    if (!userChatInput) {
+      throw new Error('userChatInput is empty');
+    }
+
+    const response = await classifyQuestion(req.body);
 
     jsonRes(res, {
       data: response
@@ -46,7 +47,8 @@ export async function classifyQuestion({
   agents,
   systemPrompt,
   history = [],
-  userChatInput
+  userChatInput,
+  billId
 }: Props) {
   const messages: ChatItemType[] = [
     ...(systemPrompt
@@ -106,8 +108,19 @@ export async function classifyQuestion({
   if (!arg.type) {
     throw new Error('');
   }
+
+  const totalTokens = response.data.usage?.total_tokens || 0;
+
+  await pushTaskBillListItem({
+    billId,
+    moduleName: 'Recognize Intention',
+    amount: countModelPrice({ model: agentModel, tokens: totalTokens }),
+    model: agentModel,
+    tokenLen: totalTokens
+  });
+
   console.log(
-    '意图结果',
+    'CQ',
     agents.findIndex((item) => item.key === arg.type)
   );
 

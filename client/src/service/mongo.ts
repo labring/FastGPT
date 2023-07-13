@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import tunnel from 'tunnel';
 import { startQueue } from './utils/tools';
 import { updateSystemEnv } from '@/pages/api/system/updateEnv';
+import { initSystemModels } from '@/pages/api/system/getInitData';
 
 /**
  * 连接 MongoDB 数据库
@@ -10,6 +11,7 @@ export async function connectToDatabase(): Promise<void> {
   if (global.mongodb) {
     return;
   }
+  global.mongodb = 'connecting';
 
   // init global data
   global.qaQueueLen = 0;
@@ -31,8 +33,9 @@ export async function connectToDatabase(): Promise<void> {
       }
     });
   }
+  initSystemModels();
+  updateSystemEnv();
 
-  global.mongodb = 'connecting';
   try {
     mongoose.set('strictQuery', true);
     global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
@@ -49,7 +52,6 @@ export async function connectToDatabase(): Promise<void> {
   }
 
   // init function
-  updateSystemEnv();
   startQueue();
 }
 
@@ -66,5 +68,4 @@ export * from './models/collection';
 export * from './models/shareChat';
 export * from './models/kb';
 export * from './models/inform';
-export * from './models/system';
 export * from './models/image';

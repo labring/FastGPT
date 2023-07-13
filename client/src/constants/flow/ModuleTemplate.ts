@@ -1,7 +1,7 @@
 import { AppModuleItemTypeEnum, SystemInputEnum, SpecificInputEnum } from '../app';
 import { FlowModuleTypeEnum, FlowInputItemTypeEnum, FlowOutputItemTypeEnum } from './index';
 import type { AppModuleTemplateItemType } from '@/types/app';
-import { chatModelList } from '../data';
+import { chatModelList } from '@/store/static';
 import {
   Input_Template_History,
   Input_Template_TFSwitch,
@@ -96,8 +96,8 @@ export const ChatModule: AppModuleTemplateItemType = {
       key: 'model',
       type: FlowInputItemTypeEnum.select,
       label: '对话模型',
-      value: chatModelList[0].value,
-      list: chatModelList
+      value: chatModelList[0]?.model,
+      list: chatModelList.map((item) => ({ label: item.name, value: item.model }))
     },
     {
       key: 'temperature',
@@ -278,13 +278,13 @@ export const TFSwitchModule: AppModuleTemplateItemType = {
     }
   ]
 };
-export const ClassifyQuestionModule: AppModuleTemplateItemType = {
+export const RecognizeIntentionModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/cq.png',
   name: '意图识别',
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
   type: AppModuleItemTypeEnum.http,
-  url: '/openapi/modules/agent/classifyQuestion',
-  flowType: FlowModuleTypeEnum.classifyQuestionNode,
+  url: '/openapi/modules/agent/recognizeIntention',
+  flowType: FlowModuleTypeEnum.recognizeIntention,
   inputs: [
     {
       key: 'systemPrompt',
@@ -348,6 +348,6 @@ export const ModuleTemplates = [
   },
   {
     label: 'Agent',
-    list: [ClassifyQuestionModule]
+    list: [RecognizeIntentionModule]
   }
 ];

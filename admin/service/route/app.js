@@ -39,7 +39,6 @@ export const useAppRoute = (app) => {
           userId: app.userId,
           name: app.name,
           intro: app.intro,
-          app: app.chat?.chatModel,
           relatedKbs: kbNames, // 将relatedKbs的id转换为相应的Kb名称
           systemPrompt: app.chat?.systemPrompt || '',
           temperature: app.chat?.temperature || 0,

@@ -965,8 +965,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         name: '意图识别',
         intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
         type: 'http',
-        url: '/openapi/modules/agent/classifyQuestion',
-        flowType: 'classifyQuestionNode',
+        url: '/openapi/modules/agent/recognizeIntention',
+        flowType: 'recognizeIntention',
         inputs: [
           {
             key: 'systemPrompt',

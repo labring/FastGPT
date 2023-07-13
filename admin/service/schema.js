@@ -62,12 +62,6 @@ const appSchema = new mongoose.Schema({
   avatar: String,
   status: String,
   intro: String,
-  chat: {
-    relatedKbs: [mongoose.Schema.Types.ObjectId],
-    systemPrompt: String,
-    temperature: Number,
-    chatModel: String
-  },
   share: {
     topNum: Number,
     isShare: Boolean,

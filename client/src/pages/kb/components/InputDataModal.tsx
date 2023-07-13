@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/useToast';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
+import { vectorModelList } from '@/store/static';
 
 export type FormData = { dataId?: string; a: string; q: string };
 
@@ -65,6 +66,7 @@ const InputDataModal = ({
         };
         const { insertLen } = await postKbDataFromList({
           kbId,
+          model: vectorModelList[0].model,
           mode: TrainingModeEnum.index,
           data: [data]
         });

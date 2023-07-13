@@ -1,15 +1,16 @@
 import { TrainingData } from '@/service/mongo';
-import { getApiKey } from '../utils/auth';
 import { OpenAiChatEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
 import { openaiAccountError } from '../errorCode';
-import { modelServiceToolMap } from '../utils/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { BillTypeEnum } from '@/constants/user';
+import { BillSourceEnum } from '@/constants/user';
 import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
+import { authBalanceByUid } from '../utils/auth';
+import { axiosConfig, getOpenAIApi } from '../ai/openai';
+import { ChatCompletionRequestMessage } from 'openai';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -37,7 +38,8 @@ export async function generateQA(): Promise<any> {
       kbId: 1,
       prompt: 1,
       q: 1,
-      source: 1
+      source: 1,
+      model: 1
     });
 
     // task preemption
@@ -51,54 +53,59 @@ export async function generateQA(): Promise<any> {
     userId = String(data.userId);
     const kbId = String(data.kbId);
 
-    // 余额校验并获取 openapi Key
-    const { systemAuthKey } = await getApiKey({
-      model: OpenAiChatEnum.GPT35,
-      userId,
-      mustPay: true
-    });
+    await authBalanceByUid(userId);
 
     const startTime = Date.now();
 
+    const chatAPI = getOpenAIApi();
+
     // 请求 chatgpt 获取回答
     const response = await Promise.all(
-      [data.q].map((text) =>
-        modelServiceToolMap
-          .chatCompletion({
-            model: OpenAiChatEnum.GPT3516k,
-            apiKey: systemAuthKey,
-            temperature: 0.8,
-            messages: [
-              {
-                obj: ChatRoleEnum.System,
-                value: `你是出题人.
+      [data.q].map((text) => {
+        const messages: ChatCompletionRequestMessage[] = [
+          {
+            role: 'system',
+            content: `你是出题人.
 ${data.prompt || '用户会发送一段长文本'}.
 从中选出 25 个问题和答案. 答案详细完整. 按格式回答: Q1:
 A1:
 Q2:
 A2:
 ...`
-              },
-              {
-                obj: 'Human',
-                value: text
-              }
-            ],
-            stream: false
-          })
-          .then(({ totalTokens, responseText, responseMessages }) => {
-            const result = formatSplitText(responseText); // 格式化后的QA对
+          },
+          {
+            role: 'user',
+            content: text
+          }
+        ];
+        return chatAPI
+          .createChatCompletion(
+            {
+              model: data.model,
+              temperature: 0.8,
+              messages,
+              stream: false
+            },
+            {
+              timeout: 480000,
+              ...axiosConfig()
+            }
+          )
+          .then((res) => {
+            const answer = res.data.choices?.[0].message?.content;
+            const totalTokens = res.data.usage?.total_tokens || 0;
+
+            const result = formatSplitText(answer || ''); // 格式化后的QA对
             console.log(`split result length: `, result.length);
             // 计费
             pushSplitDataBill({
-              isPay: result.length > 0,
               userId: data.userId,
-              type: BillTypeEnum.QA,
-              textLen: responseMessages.map((item) => item.value).join('').length,
-              totalTokens
+              totalTokens,
+              model: data.model,
+              appName: 'QA 拆分'
             });
             return {
-              rawContent: responseText,
+              rawContent: answer,
               result
             };
           })
@@ -106,8 +113,8 @@ A2:
             console.log('QA拆分错误');
             console.log(err.response?.status, err.response?.statusText, err.response?.data);
             return Promise.reject(err);
-          })
-      )
+          });
+      })
     );
 
     const responseList = response.map((item) => item.result).flat();
@@ -120,6 +127,7 @@ A2:
         source: data.source
       })),
       userId,
+      model: global.vectorModels[0].model,
       mode: TrainingModeEnum.index
     });
 

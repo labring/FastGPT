@@ -1,15 +1,11 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
-import { Chat, App, OpenApi, User, ShareChat, KB } from '../mongo';
+import { App, OpenApi, User, ShareChat, KB } from '../mongo';
 import type { AppSchema } from '@/types/mongoSchema';
-import type { ChatItemType } from '@/types/chat';
-import mongoose from 'mongoose';
 import { defaultApp } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
-import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
-import { hashPassword } from '@/service/utils/tools';
 
 export type AuthType = 'token' | 'root' | 'apikey';
 
@@ -33,6 +29,19 @@ export const parseCookie = (cookie?: string): Promise<string> => {
       resolve(decoded.userId);
     });
   });
+};
+
+/* auth balance */
+export const authBalanceByUid = async (uid: string) => {
+  const user = await User.findById(uid);
+  if (!user) {
+    return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
+
+  if (!user.openaiKey && formatPrice(user.balance) <= 0) {
+    return Promise.reject(ERROR_ENUM.insufficientQuota);
+  }
+  return user;
 };
 
 /* uniform auth user */
@@ -144,14 +153,7 @@ export const authUser = async ({
 
   // balance check
   if (authBalance) {
-    const user = await User.findById(uid);
-    if (!user) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-
-    if (!user.openaiKey && formatPrice(user.balance) <= 0) {
-      return Promise.reject(ERROR_ENUM.insufficientQuota);
-    }
+    await authBalanceByUid(uid);
   }
 
   return {
@@ -164,43 +166,6 @@ export const authUser = async ({
 /* random get openai api key */
 export const getSystemOpenAiKey = () => {
   return process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
-};
-
-/* 获取 api 请求的 key */
-export const getApiKey = async ({
-  model,
-  userId,
-  mustPay = false
-}: {
-  model: ChatModelType;
-  userId: string;
-  mustPay?: boolean;
-}) => {
-  const user = await User.findById(userId, 'openaiKey balance');
-  if (!user) {
-    return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
-
-  const userOpenAiKey = user.openaiKey || '';
-  const systemAuthKey = getSystemOpenAiKey();
-
-  // 有自己的key
-  if (!mustPay && userOpenAiKey) {
-    return {
-      userOpenAiKey,
-      systemAuthKey: ''
-    };
-  }
-
-  // 平台账号余额校验
-  if (formatPrice(user.balance) <= 0) {
-    return Promise.reject(ERROR_ENUM.insufficientQuota);
-  }
-
-  return {
-    userOpenAiKey: '',
-    systemAuthKey
-  };
 };
 
 // 模型使用权校验
@@ -230,14 +195,6 @@ export const authApp = async ({
   */
   if (authOwner || (authUser && !app.share.isShare)) {
     if (userId !== String(app.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
-  }
-
-  // do not share detail info
-  if (!reserveDetail && !app.share.isShareDetail && userId !== String(app.userId)) {
-    app.chat = {
-      ...defaultApp.chat,
-      chatModel: app.chat.chatModel
-    };
   }
 
   return {

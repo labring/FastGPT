@@ -1,9 +1,6 @@
-export enum BillTypeEnum {
-  chat = 'chat',
-  openapiChat = 'openapiChat',
-  QA = 'QA',
-  vector = 'vector',
-  return = 'return'
+export enum BillSourceEnum {
+  fastgpt = 'fastgpt',
+  api = 'api'
 }
 export enum PageTypeEnum {
   login = 'login',
@@ -11,12 +8,9 @@ export enum PageTypeEnum {
   forgetPassword = 'forgetPassword'
 }
 
-export const BillTypeMap: Record<`${BillTypeEnum}`, string> = {
-  [BillTypeEnum.chat]: '对话',
-  [BillTypeEnum.openapiChat]: 'api 对话',
-  [BillTypeEnum.QA]: 'QA拆分',
-  [BillTypeEnum.vector]: '索引生成',
-  [BillTypeEnum.return]: '退款'
+export const BillSourceMap: Record<`${BillSourceEnum}`, string> = {
+  [BillSourceEnum.fastgpt]: 'FastGpt 平台',
+  [BillSourceEnum.api]: 'Api'
 };
 
 export enum PromotionEnum {

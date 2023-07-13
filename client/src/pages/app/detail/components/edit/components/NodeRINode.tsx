@@ -6,14 +6,14 @@ import { FlowModuleItemType } from '@/types/flow';
 import Divider from './modules/Divider';
 import Container from './modules/Container';
 import RenderInput from './render/RenderInput';
-import type { ClassifyQuestionAgentItemType } from '@/types/app';
+import type { RecognizeIntentionAgentItemType } from '@/types/app';
 import { Handle, Position } from 'reactflow';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 
-const NodeCQNode = ({
+const NodeRINode = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
 }: NodeProps<FlowModuleItemType>) => {
   return (
@@ -30,7 +30,7 @@ const NodeCQNode = ({
               value: agents = []
             }: {
               key: string;
-              value?: ClassifyQuestionAgentItemType[];
+              value?: RecognizeIntentionAgentItemType[];
             }) => (
               <Box>
                 {agents.map((item, i) => (
@@ -133,4 +133,4 @@ const NodeCQNode = ({
     </NodeCard>
   );
 };
-export default React.memo(NodeCQNode);
+export default React.memo(NodeRINode);

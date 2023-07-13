@@ -9,7 +9,6 @@ import {
   Box,
   useTheme
 } from '@chakra-ui/react';
-import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 import MyIcon from '@/components/Icon';
 import InputDataModal from '@/pages/kb/components/InputDataModal';
 import { getKbDataItemById } from '@/api/plugins/kb';
