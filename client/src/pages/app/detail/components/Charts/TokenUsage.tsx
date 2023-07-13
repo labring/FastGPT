@@ -110,8 +110,6 @@ const TokenUsage = ({ appId }: { appId: string }) => {
       },
       yAxis: {
         type: 'value',
-        boundaryGap: false,
-        splitNumber: 5,
         max: Math.max(...data.map((item) => item.tokenLen)),
         min: 0
       },
@@ -179,12 +177,6 @@ const TokenUsage = ({ appId }: { appId: string }) => {
     if (!myChart.current || !myChart?.current?.getOption()) return;
     myChart.current.setOption(option);
   }, [data, option]);
-
-  // limit changed, update
-  useEffect(() => {
-    if (!myChart.current || !myChart?.current?.getOption()) return;
-    myChart.current.setOption(option);
-  }, [option]);
 
   // resize chart
   useEffect(() => {

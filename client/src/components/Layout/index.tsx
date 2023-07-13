@@ -57,7 +57,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   const { data: unread = 0 } = useQuery(['getUnreadCount'], getUnreadCount, {
     enabled: !!userInfo,
-    refetchInterval: 5000
+    refetchInterval: 10000
   });
 
   return (

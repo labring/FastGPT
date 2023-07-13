@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { defaultApp } from '@/constants/model';
 
 import Tabs from '@/components/Tabs';
-import SlideTabs from '@/components/SlideTabs';
+import SideTabs from '@/components/SideTabs';
 import Settings from './components/Settings';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -81,7 +81,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
               {appDetail.name}
             </Box>
           </Flex>
-          <SlideTabs
+          <SideTabs
             flex={1}
             mx={'auto'}
             mt={2}
