@@ -23,6 +23,7 @@ import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 const CreateModal = dynamic(() => import('./component/CreateModal'));
 import styles from './index.module.scss';
+import MyTooltip from '@/components/MyTooltip';
 
 const MyApps = () => {
   const { toast } = useToast();
@@ -117,7 +118,7 @@ const MyApps = () => {
                 aria-label={'delete'}
                 display={['', 'none']}
                 _hover={{
-                  bg: 'myGray.100'
+                  bg: 'red.100'
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -140,7 +141,11 @@ const MyApps = () => {
               right={4}
               bottom={4}
               size={'sm'}
-              icon={<MyIcon name={'chatLight'} w={'14px'} />}
+              icon={
+                <MyTooltip label={'去聊天'}>
+                  <MyIcon name={'chatLight'} w={'14px'} />
+                </MyTooltip>
+              }
               variant={'base'}
               borderRadius={'md'}
               aria-label={'delete'}

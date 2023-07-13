@@ -11,7 +11,7 @@ export interface Props extends GridProps {
   onChange: (id: string) => void;
 }
 
-const SlideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
+const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
   const sizeMap = useMemo(() => {
     switch (size) {
       case 'sm':
@@ -68,4 +68,4 @@ const SlideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =
   );
 };
 
-export default React.memo(SlideTabs);
+export default React.memo(SideTabs);
