@@ -21,11 +21,11 @@ import { getErrText } from '@/utils/tools';
 
 const QuoteModal = ({
   historyId,
-  chatId,
+  contentId,
   onClose
 }: {
   historyId: string;
-  chatId: string;
+  contentId: string;
   onClose: () => void;
 }) => {
   const theme = useTheme();
@@ -41,7 +41,7 @@ const QuoteModal = ({
     data: quote = [],
     refetch,
     isLoading
-  } = useQuery(['getHistoryQuote'], () => getHistoryQuote({ historyId, chatId }));
+  } = useQuery(['getHistoryQuote'], () => getHistoryQuote({ historyId, contentId }));
 
   /**
    * update kbData, update mongo status and reload quotes
@@ -51,7 +51,7 @@ const QuoteModal = ({
       setIsLoading(true);
       try {
         await updateHistoryQuote({
-          chatId,
+          contentId,
           historyId,
           quoteId,
           sourceText
@@ -66,7 +66,7 @@ const QuoteModal = ({
       }
       setIsLoading(false);
     },
-    [chatId, historyId, refetch, setIsLoading, toast]
+    [contentId, historyId, refetch, setIsLoading, toast]
   );
 
   /**

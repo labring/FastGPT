@@ -28,15 +28,15 @@ export const delChatHistoryById = (id: string) => GET(`/chat/removeHistory?id=${
 /**
  * get history quotes
  */
-export const getHistoryQuote = (params: { chatId: string; historyId: string }) =>
+export const getHistoryQuote = (params: { historyId: string; contentId: string }) =>
   GET<(QuoteItemType & { _id: string })[]>(`/chat/history/getHistoryQuote`, params);
 
 /**
  * update history quote status
  */
 export const updateHistoryQuote = (params: {
-  chatId: string;
   historyId: string;
+  contentId: string;
   quoteId: string;
   sourceText: string;
 }) => GET(`/chat/history/updateHistoryQuote`, params);

@@ -91,8 +91,8 @@ export interface BillSchema {
   _id: string;
   userId: string;
   type: `${BillTypeEnum}`;
-  modelName: ChatModelType | EmbeddingModelType;
-  chatId: string;
+  modelName?: ChatModelType | EmbeddingModelType;
+  appId?: string;
   time: Date;
   textLen: number;
   tokenLen: number;

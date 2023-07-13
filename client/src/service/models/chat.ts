@@ -10,7 +10,7 @@ const ChatSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: 'model',
+    ref: 'app',
     required: true
   },
   updateTime: {

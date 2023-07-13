@@ -6,22 +6,22 @@ import { Types } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { chatId, historyId } = req.query as {
-      chatId: string;
+    const { historyId, contentId } = req.query as {
       historyId: string;
+      contentId: string;
     };
     await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
 
-    if (!chatId || !historyId) {
+    if (!historyId || !contentId) {
       throw new Error('params is error');
     }
 
     const history = await Chat.aggregate([
       {
         $match: {
-          _id: new Types.ObjectId(chatId),
+          _id: new Types.ObjectId(historyId),
           userId: new Types.ObjectId(userId)
         }
       },
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       {
         $match: {
-          'content._id': new Types.ObjectId(historyId)
+          'content._id': new Types.ObjectId(contentId)
         }
       },
       {

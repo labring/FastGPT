@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    // 验证是否是该用户的 model
+    // 验证是否是该用户的 app
     await authApp({
       appId,
       userId

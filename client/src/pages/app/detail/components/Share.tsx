@@ -107,7 +107,7 @@ const Share = ({ appId }: { appId: string }) => {
   };
 
   return (
-    <Box position={'relative'} pt={[0, 5]} px={5} minH={'50vh'}>
+    <Box position={'relative'} pt={[0, 5, 8]} px={[5, 8]} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'}>
           免登录聊天窗口
@@ -150,33 +150,37 @@ const Share = ({ appId }: { appId: string }) => {
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
                 <Td>
                   <Flex>
-                    <MyIcon
-                      mr={3}
-                      name="copy"
-                      w={'14px'}
-                      cursor={'pointer'}
-                      _hover={{ color: 'myBlue.600' }}
-                      onClick={() => {
-                        const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
-                        copyData(url, '已复制分享地址');
-                      }}
-                    />
-                    <MyIcon
-                      name="delete"
-                      w={'14px'}
-                      cursor={'pointer'}
-                      _hover={{ color: 'red' }}
-                      onClick={async () => {
-                        setIsLoading(true);
-                        try {
-                          await delShareChatById(item._id);
-                          refetchShareChatList();
-                        } catch (error) {
-                          console.log(error);
-                        }
-                        setIsLoading(false);
-                      }}
-                    />
+                    <MyTooltip label={'复制分享地址'}>
+                      <MyIcon
+                        mr={3}
+                        name="copy"
+                        w={'14px'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'myBlue.600' }}
+                        onClick={() => {
+                          const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
+                          copyData(url, '已复制分享地址');
+                        }}
+                      />
+                    </MyTooltip>
+                    <MyTooltip label={'删除链接'}>
+                      <MyIcon
+                        name="delete"
+                        w={'14px'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'red' }}
+                        onClick={async () => {
+                          setIsLoading(true);
+                          try {
+                            await delShareChatById(item._id);
+                            refetchShareChatList();
+                          } catch (error) {
+                            console.log(error);
+                          }
+                          setIsLoading(false);
+                        }}
+                      />
+                    </MyTooltip>
                   </Flex>
                 </Td>
               </Tr>

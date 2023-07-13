@@ -3,6 +3,7 @@ import type { AppSchema } from '@/types/mongoSchema';
 import type { AppListItemType, AppUpdateParams } from '@/types/app';
 import { RequestPaging } from '../types/index';
 import type { Props as CreateAppProps } from '@/pages/api/app/create';
+import { addDays } from 'date-fns';
 
 /**
  * 获取模型列表
@@ -42,3 +43,11 @@ export const getShareModelList = (data: { searchText?: string } & RequestPaging)
  */
 export const triggerModelCollection = (appId: string) =>
   POST<number>(`/app/share/collection?appId=${appId}`);
+
+// ====================== data
+export const getTokenUsage = (data: { appId: string }) =>
+  POST<{ tokenLen: number; date: Date }[]>(`/app/data/tokenUsage`, {
+    ...data,
+    start: addDays(new Date(), -7),
+    end: new Date()
+  });

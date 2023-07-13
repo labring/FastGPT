@@ -16,21 +16,21 @@ export enum NavbarTypeEnum {
 
 const Navbar = ({ unread }: { unread: number }) => {
   const router = useRouter();
-  const { userInfo, lastModelId } = useUserStore();
-  const { lastChatAppId, lastChatId } = useChatStore();
+  const { userInfo } = useUserStore();
+  const { lastChatAppId, lastHistoryId } = useChatStore();
   const navbarList = useMemo(
     () => [
       {
         label: '聊天',
         icon: 'chatLight',
         activeIcon: 'chatFill',
-        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+        link: `/chat?appId=${lastChatAppId}&historyId=${lastHistoryId}`,
         activeLink: ['/chat']
       },
       {
         label: '应用',
         icon: 'tabbarModel',
-        activeIcon: 'model',
+        activeIcon: 'app',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail']
       },
@@ -56,7 +56,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/number']
       }
     ],
-    [lastChatId, lastChatAppId]
+    [lastHistoryId, lastChatAppId]
   );
 
   const itemStyles: any = {
@@ -99,10 +99,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       {/* 导航列表 */}
       <Box flex={1}>
         {navbarList.map((item) => (
-          <Link
+          <Box
             key={item.link}
-            as={NextLink}
-            href={item.link}
             {...itemStyles}
             {...(item.activeLink.includes(router.pathname)
               ? {
@@ -114,6 +112,7 @@ const Navbar = ({ unread }: { unread: number }) => {
                   color: 'myGray.500',
                   backgroundColor: 'transparent'
                 })}
+            onClick={() => router.push(item.link)}
           >
             <MyIcon
               name={
@@ -127,7 +126,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             <Box fontSize={'12px'} transform={'scale(0.9)'} mt={'5px'} lineHeight={1}>
               {item.label}
             </Box>
-          </Link>
+          </Box>
         ))}
       </Box>
       {unread > 0 && (

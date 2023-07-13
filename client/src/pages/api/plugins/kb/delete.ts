@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       kbId: id
     });
 
-    // delete related model
+    // delete related app
     await App.updateMany(
       {
         userId

@@ -16,12 +16,11 @@ const BillSchema = new Schema({
   },
   modelName: {
     type: String,
-    enum: [...Object.keys(ChatModelMap), embeddingModel],
-    required: true
+    enum: [...Object.keys(ChatModelMap), embeddingModel]
   },
-  chatId: {
+  appId: {
     type: Schema.Types.ObjectId,
-    ref: 'chat'
+    ref: 'app'
   },
   time: {
     type: Date,
@@ -44,8 +43,9 @@ const BillSchema = new Schema({
 });
 
 try {
-  BillSchema.index({ time: -1 });
   BillSchema.index({ userId: 1 });
+  // BillSchema.index({ time: -1 });
+  // BillSchema.index({ time: 1 }, { expireAfterSeconds: 90 * 24 * 60 });
 } catch (error) {
   console.log(error);
 }

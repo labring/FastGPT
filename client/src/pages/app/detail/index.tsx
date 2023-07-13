@@ -12,9 +12,6 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 
-const EditApp = dynamic(() => import('./components/edit'), {
-  ssr: false
-});
 const Share = dynamic(() => import('./components/Share'), {
   ssr: false
 });
@@ -24,7 +21,6 @@ const API = dynamic(() => import('./components/API'), {
 
 enum TabEnum {
   'settings' = 'settings',
-  'edit' = 'edit',
   'share' = 'share',
   'API' = 'API'
 }
@@ -33,17 +29,11 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const router = useRouter();
   const theme = useTheme();
   const { appId } = router.query as { appId: string };
-  const { appDetail = defaultApp, loadAppDetail, userInfo } = useUserStore();
-
-  const isOwner = useMemo(
-    () => appDetail.userId === userInfo?._id,
-    [appDetail.userId, userInfo?._id]
-  );
+  const { appDetail = defaultApp } = useUserStore();
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
       router.replace({
-        pathname: router.pathname,
         query: {
           appId,
           currentTab: tab
@@ -56,28 +46,23 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const tabList = useMemo(
     () => [
       { label: '概览', id: TabEnum.settings, icon: 'overviewLight' },
-      ...(isOwner ? [{ label: '高级设置', id: TabEnum.edit, icon: 'settingLight' }] : []),
       { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
       { label: '立即对话', id: 'startChat', icon: 'chatLight' }
     ],
-    [isOwner]
+    []
   );
 
-  useEffect(() => {
-    window.onbeforeunload = (e) => {
-      e.preventDefault();
-      e.returnValue = '内容已修改，确认离开页面吗？';
-    };
+  // useEffect(() => {
+  //   window.onbeforeunload = (e) => {
+  //     e.preventDefault();
+  //     e.returnValue = '内容已修改，确认离开页面吗？';
+  //   };
 
-    return () => {
-      window.onbeforeunload = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    loadAppDetail(appId);
-  }, [appId, loadAppDetail]);
+  //   return () => {
+  //     window.onbeforeunload = null;
+  //   };
+  // }, []);
 
   return (
     <PageContainer>
@@ -156,11 +141,6 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         </Box>
         <Box flex={1}>
           {currentTab === TabEnum.settings && <Settings appId={appId} />}
-          {currentTab === TabEnum.edit && (
-            <Box position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
-              <EditApp app={appDetail} onBack={() => setCurrentTab(TabEnum.settings)} />
-            </Box>
-          )}
           {currentTab === TabEnum.API && <API appId={appId} />}
           {currentTab === TabEnum.share && <Share appId={appId} />}
         </Box>

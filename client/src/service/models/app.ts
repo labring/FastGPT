@@ -105,4 +105,4 @@ try {
   console.log(error);
 }
 
-export const App: Model<AppType> = models['model'] || model('model', AppSchema);
+export const App: Model<AppType> = models['app'] || model('app', AppSchema);
