@@ -4,6 +4,7 @@ import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
+import { beianText } from '@/store/static';
 
 import styles from './index.module.scss';
 import axios from 'axios';
@@ -13,10 +14,7 @@ const Home = () => {
   const router = useRouter();
   const { inviterId } = router.query as { inviterId: string };
   const { data } = useMarkdown({ url: '/intro.md' });
-  const {
-    isPc,
-    initData: { beianText }
-  } = useGlobalStore();
+  const { isPc } = useGlobalStore();
   const [star, setStar] = useState(1500);
 
   useEffect(() => {

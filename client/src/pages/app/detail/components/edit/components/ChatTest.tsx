@@ -15,6 +15,8 @@ import { SystemInputEnum } from '@/constants/app';
 import { streamFetch } from '@/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import { useToast } from '@/hooks/useToast';
+import { getErrText } from '@/utils/tools';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -34,6 +36,7 @@ const ChatTest = (
 ) => {
   const BoxRef = useRef(null);
   const ChatBoxRef = useRef<ComponentRef>(null);
+  const { toast } = useToast();
   const isOpen = useMemo(() => modules && modules.length > 0, [modules]);
 
   const variableModules = useMemo(
@@ -60,21 +63,30 @@ const ChatTest = (
       const history = messages.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
-      const { responseText } = await streamFetch({
+      const { responseText, errMsg } = await streamFetch({
         url: '/api/chat/chatTest',
         data: {
           history,
           prompt: messages[messages.length - 2].content,
           modules,
-          variables
+          variables,
+          appId: app._id,
+          appName: `调试-${app.name}`
         },
         onMessage: generatingMessage,
         abortSignal: controller
       });
 
+      if (errMsg) {
+        return Promise.reject({
+          message: errMsg,
+          responseText
+        });
+      }
+
       return { responseText };
     },
-    [modules]
+    [app._id, app.name, modules]
   );
 
   useOutsideClick({

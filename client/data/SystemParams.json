@@ -1,0 +1,6 @@
+{
+  "vectorMaxProcess": 10,
+  "qaMaxProcess": 10,
+  "pgIvfflatProbe": 10,
+  "sensitiveCheck": false
+}

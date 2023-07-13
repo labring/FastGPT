@@ -93,6 +93,8 @@ export const moduleFetch = ({ url, data, res }: Props) =>
                 event: sseResponseEventEnum.answer,
                 data: JSON.stringify(data)
               });
+            } else if (item.event === sseResponseEventEnum.error) {
+              return reject(getErrText(data, '流响应错误'));
             }
           });
           read();

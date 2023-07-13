@@ -50,10 +50,10 @@ export const adaptChatItem_openAI = ({
 
 export function countOpenAIToken({
   messages,
-  model
+  model = 'gpt-3.5-turbo'
 }: {
   messages: ChatItemType[];
-  model: `${OpenAiChatEnum}`;
+  model?: string;
 }) {
   const diffVal = model.startsWith('gpt-3.5-turbo') ? 3 : 2;
 
@@ -74,7 +74,7 @@ export const openAiSliceTextByToken = ({
   text,
   length
 }: {
-  model: `${OpenAiChatEnum}`;
+  model: string;
   text: string;
   length: number;
 }) => {

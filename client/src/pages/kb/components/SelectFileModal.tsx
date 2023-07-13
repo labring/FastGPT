@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Flex,
@@ -22,9 +22,9 @@ import Radio from '@/components/Radio';
 import { splitText_token } from '@/utils/file';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
-import { ChatModelMap, OpenAiChatEnum, embeddingPrice } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import MySlider from '@/components/Slider';
+import { qaModelList, vectorModelList } from '@/store/static';
 
 const fileExtension = '.txt,.doc,.docx,.pdf,.md';
 
@@ -39,12 +39,14 @@ const SelectFileModal = ({
 }) => {
   const [modeMap, setModeMap] = useState({
     [TrainingModeEnum.qa]: {
-      maxLen: 8000,
-      price: ChatModelMap[OpenAiChatEnum.GPT3516k].price
+      model: qaModelList[0].model,
+      maxLen: (qaModelList[0]?.maxToken || 16000) * 0.5,
+      price: qaModelList[0]?.price || 3
     },
     [TrainingModeEnum.index]: {
+      model: vectorModelList[0].model,
       maxLen: 600,
-      price: embeddingPrice
+      price: vectorModelList[0]?.price || 0.2
     }
   });
   const [btnLoading, setBtnLoading] = useState(false);
@@ -111,6 +113,7 @@ const SelectFileModal = ({
     },
     [toast]
   );
+  console.log({ model: modeMap[mode].model });
 
   const { mutate, isLoading: uploading } = useMutation({
     mutationFn: async () => {
@@ -122,6 +125,7 @@ const SelectFileModal = ({
       for (let i = 0; i < splitRes.chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
+          model: modeMap[mode].model,
           data: splitRes.chunks
             .slice(i, i + step)
             .map((item) => ({ q: item.value, a: '', source: item.filename })),
@@ -275,8 +279,8 @@ const SelectFileModal = ({
                       setModeMap((state) => ({
                         ...state,
                         [TrainingModeEnum.index]: {
-                          maxLen: val,
-                          price: embeddingPrice
+                          ...modeMap[TrainingModeEnum.index],
+                          maxLen: val
                         }
                       }));
                     }}

@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
-import { openaiEmbedding } from '../plugin/openaiEmbedding';
+import { getVector } from '../plugin/vector';
 import type { KbTestItemType } from '@/types/plugin';
 
 export type Props = {
@@ -27,7 +27,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('缺少用户ID');
     }
 
-    const vector = await openaiEmbedding({
+    const vector = await getVector({
       userId,
       input: [text]
     });

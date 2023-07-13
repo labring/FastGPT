@@ -1,66 +1,85 @@
 import { connectToDatabase, Bill, User, ShareChat } from '../mongo';
-import {
-  ChatModelMap,
-  OpenAiChatEnum,
-  ChatModelType,
-  embeddingModel,
-  embeddingPrice
-} from '@/constants/model';
-import { BillTypeEnum } from '@/constants/user';
+import { BillSourceEnum } from '@/constants/user';
+import { getModel } from '../utils/data';
+import type { BillListItemType } from '@/types/mongoSchema';
 
-export const pushChatBill = async ({
-  isPay,
-  chatModel,
-  userId,
+export const createTaskBill = async ({
+  appName,
   appId,
-  textLen,
-  tokens,
-  type
+  userId,
+  source
 }: {
-  isPay: boolean;
-  chatModel: ChatModelType;
-  userId: string;
+  appName: string;
   appId: string;
-  textLen: number;
-  tokens: number;
-  type: BillTypeEnum.chat | BillTypeEnum.openapiChat;
+  userId: string;
+  source: `${BillSourceEnum}`;
 }) => {
-  console.log(`chat generate success. text len: ${textLen}. token len: ${tokens}. pay:${isPay}`);
-  if (!isPay) return;
+  const res = await Bill.create({
+    userId,
+    appName,
+    appId,
+    total: 0,
+    source,
+    list: []
+  });
+  return String(res._id);
+};
 
-  let billId = '';
+export const pushTaskBillListItem = async ({
+  billId,
+  moduleName,
+  amount,
+  model,
+  tokenLen
+}: { billId?: string } & BillListItemType) => {
+  if (!billId) return;
+  try {
+    await Bill.findByIdAndUpdate(billId, {
+      $push: {
+        list: {
+          moduleName,
+          amount,
+          model,
+          tokenLen
+        }
+      }
+    });
+  } catch (error) {}
+};
+export const finishTaskBill = async ({ billId }: { billId: string }) => {
+  try {
+    // update bill
+    const res = await Bill.findByIdAndUpdate(billId, [
+      {
+        $set: {
+          total: {
+            $sum: '$list.amount'
+          },
+          time: new Date()
+        }
+      }
+    ]);
+    if (!res) return;
+    const total = res.list.reduce((sum, item) => sum + item.amount, 0) || 0;
+
+    console.log('finish bill:', total);
+
+    // 账号扣费
+    await User.findByIdAndUpdate(res.userId, {
+      $inc: { balance: -total }
+    });
+  } catch (error) {
+    console.log('Finish bill failed:', error);
+    billId && Bill.findByIdAndDelete(billId);
+  }
+};
+
+export const delTaskBill = async (billId?: string) => {
+  if (!billId) return;
 
   try {
-    await connectToDatabase();
-
-    // 计算价格
-    const unitPrice = ChatModelMap[chatModel]?.price || 3;
-    const price = unitPrice * tokens;
-
-    try {
-      // 插入 Bill 记录
-      const res = await Bill.create({
-        userId,
-        type,
-        modelName: chatModel,
-        appId,
-        textLen,
-        tokenLen: tokens,
-        price
-      });
-      billId = res._id;
-
-      // 账号扣费
-      await User.findByIdAndUpdate(userId, {
-        $inc: { balance: -price }
-      });
-    } catch (error) {
-      console.log('创建账单失败:', error);
-      billId && Bill.findByIdAndDelete(billId);
-    }
-  } catch (error) {
-    console.log(error);
-  }
+    await Bill.findByIdAndRemove(billId);
+  } catch (error) {}
 };
 
 export const updateShareChatBill = async ({
@@ -81,22 +100,17 @@ export const updateShareChatBill = async ({
 };
 
 export const pushSplitDataBill = async ({
-  isPay,
   userId,
   totalTokens,
-  textLen,
-  type
+  model,
+  appName
 }: {
-  isPay: boolean;
+  model: string;
   userId: string;
   totalTokens: number;
-  textLen: number;
-  type: BillTypeEnum.QA;
+  appName: string;
 }) => {
-  console.log(
-    `splitData generate success. text len: ${textLen}. token len: ${totalTokens}. pay:${isPay}`
-  );
-  if (!isPay) return;
+  console.log(`splitData generate success. token len: ${totalTokens}.`);
 
   let billId;
 
@@ -104,24 +118,22 @@ export const pushSplitDataBill = async ({
     await connectToDatabase();
 
     // 获取模型单价格, 都是用 gpt35 拆分
-    const unitPrice = ChatModelMap[OpenAiChatEnum.GPT3516k].price || 3;
+    const unitPrice = global.chatModels.find((item) => item.model === model)?.price || 3;
     // 计算价格
-    const price = unitPrice * totalTokens;
+    const total = unitPrice * totalTokens;
 
     // 插入 Bill 记录
     const res = await Bill.create({
       userId,
-      type,
-      modelName: OpenAiChatEnum.GPT3516k,
-      textLen,
+      appName,
       tokenLen: totalTokens,
-      price
+      total
     });
     billId = res._id;
 
     // 账号扣费
     await User.findByIdAndUpdate(userId, {
-      $inc: { balance: -price }
+      $inc: { balance: -total }
     });
   } catch (error) {
     console.log('创建账单失败:', error);
@@ -130,21 +142,14 @@ export const pushSplitDataBill = async ({
 };
 
 export const pushGenerateVectorBill = async ({
-  isPay,
   userId,
-  text,
-  tokenLen
+  tokenLen,
+  model
 }: {
-  isPay: boolean;
   userId: string;
-  text: string;
   tokenLen: number;
+  model: string;
 }) => {
-  // console.log(
-  //   `vector generate success. text len: ${text.length}. token len: ${tokenLen}. pay:${isPay}`
-  // );
-  if (!isPay) return;
-
   let billId;
 
   try {
@@ -152,23 +157,22 @@ export const pushGenerateVectorBill = async ({
 
     try {
       // 计算价格. 至少为1
-      let price = embeddingPrice * tokenLen;
-      price = price > 1 ? price : 1;
+      const unitPrice = global.vectorModels.find((item) => item.model === model)?.price || 0.2;
+      let total = unitPrice * tokenLen;
+      total = total > 1 ? total : 1;
 
       // 插入 Bill 记录
       const res = await Bill.create({
         userId,
-        type: BillTypeEnum.vector,
-        modelName: embeddingModel,
-        textLen: text.length,
-        tokenLen,
-        price
+        model,
+        appName: '索引生成',
+        total
       });
       billId = res._id;
 
       // 账号扣费
       await User.findByIdAndUpdate(userId, {
-        $inc: { balance: -price }
+        $inc: { balance: -total }
       });
     } catch (error) {
       console.log('创建账单失败:', error);
@@ -177,4 +181,10 @@ export const pushGenerateVectorBill = async ({
   } catch (error) {
     console.log(error);
   }
+};
+
+export const countModelPrice = ({ model, tokens }: { model: string; tokens: number }) => {
+  const modelData = getModel(model);
+  if (!modelData) return 0;
+  return modelData.price * tokens;
 };

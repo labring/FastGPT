@@ -8,9 +8,6 @@ export type ChatItemType = {
   _id?: string;
   obj: `${ChatRoleEnum}`;
   value: string;
-  quoteLen?: number;
-  quote?: QuoteItemType[];
-  systemPrompt?: string;
   [key: string]: any;
 };
 

@@ -15,8 +15,8 @@ import { Types } from 'mongoose';
 import { moduleFetch } from '@/service/api/request';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { FlowInputItemTypeEnum } from '@/constants/flow';
-import { pushChatBill } from '@/service/events/pushBill';
-import { BillTypeEnum } from '@/constants/user';
+import { finishTaskBill, createTaskBill } from '@/service/events/pushBill';
+import { BillSourceEnum } from '@/constants/user';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -108,6 +108,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res.setHeader('newHistoryId', String(newHistoryId));
     }
 
+    const billId = await createTaskBill({
+      userId,
+      appName: app.name,
+      appId,
+      source: BillSourceEnum.fastgpt
+    });
+
     /* start process */
     const { responseData, answerText } = await dispatchModules({
       res,
@@ -117,7 +124,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         history: prompts,
         userChatInput: prompt.value
       },
-      stream
+      stream,
+      billId: ''
     });
 
     // save chat
@@ -171,14 +179,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
     }
 
-    pushChatBill({
-      isPay: true,
-      chatModel: 'gpt-3.5-turbo',
-      userId,
-      appId,
-      textLen: 1,
-      tokens: 100,
-      type: BillTypeEnum.chat
+    // bill
+    finishTaskBill({
+      billId
     });
   } catch (err: any) {
     if (stream) {
@@ -199,18 +202,21 @@ export async function dispatchModules({
   modules,
   params = {},
   variables = {},
-  stream = false
+  stream = false,
+  billId
 }: {
   res: NextApiResponse;
   modules: AppModuleItemType[];
   params?: Record<string, any>;
   variables?: Record<string, any>;
+  billId: string;
   stream?: boolean;
 }) {
   const runningModules = loadModules(modules, variables);
-  let storeData: Record<string, any> = {};
-  let responseData: Record<string, any> = {};
-  let answerText = '';
+
+  let storeData: Record<string, any> = {}; // after module used
+  let responseData: Record<string, any> = {}; // response request and save to database
+  let answerText = ''; // AI answer
 
   function pushStore({
     isResponse = false,
@@ -327,6 +333,7 @@ export async function dispatchModules({
       });
       const data = {
         stream,
+        billId,
         ...params
       };
 

@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
-import { openaiEmbedding } from '../plugin/openaiEmbedding';
+import { getVector } from '../plugin/vector';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -19,7 +19,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // get vector
     const vector = await (async () => {
       if (q) {
-        return openaiEmbedding({
+        return getVector({
           userId,
           input: [q]
         });

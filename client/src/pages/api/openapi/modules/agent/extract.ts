@@ -6,12 +6,12 @@ import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
-import type { ClassifyQuestionAgentItemType } from '@/types/app';
+import type { RecognizeIntentionAgentItemType } from '@/types/app';
 
 export type Props = {
   history?: ChatItemType[];
   userChatInput: string;
-  agents: ClassifyQuestionAgentItemType[];
+  agents: RecognizeIntentionAgentItemType[];
   description: string;
 };
 export type Response = { history: ChatItemType[] };

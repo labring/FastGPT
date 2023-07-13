@@ -49,7 +49,7 @@ const NodeAnswer = dynamic(() => import('./components/NodeAnswer'), {
 const NodeQuestionInput = dynamic(() => import('./components/NodeQuestionInput'), {
   ssr: false
 });
-const NodeCQNode = dynamic(() => import('./components/NodeCQNode'), {
+const NodeRINode = dynamic(() => import('./components/NodeRINode'), {
   ssr: false
 });
 const NodeUserGuide = dynamic(() => import('./components/NodeUserGuide'), {
@@ -70,7 +70,7 @@ const nodeTypes = {
   [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
-  [FlowModuleTypeEnum.classifyQuestionNode]: NodeCQNode
+  [FlowModuleTypeEnum.recognizeIntention]: NodeRINode
 };
 const edgeTypes = {
   buttonedge: ButtonEdge

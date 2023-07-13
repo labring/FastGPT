@@ -1,6 +1,6 @@
 import { openaiAccountError } from '../errorCode';
 import { insertKbItem } from '@/service/pg';
-import { openaiEmbedding } from '@/pages/api/openapi/plugin/openaiEmbedding';
+import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { TrainingData } from '../models/trainingData';
 import { ERROR_ENUM } from '../errorCode';
 import { TrainingModeEnum } from '@/constants/plugin';
@@ -33,7 +33,8 @@ export async function generateVector(): Promise<any> {
       kbId: 1,
       q: 1,
       a: 1,
-      source: 1
+      source: 1,
+      model: 1
     });
 
     // task preemption
@@ -55,10 +56,10 @@ export async function generateVector(): Promise<any> {
     ];
 
     // 生成词向量
-    const vectors = await openaiEmbedding({
+    const vectors = await getVector({
+      model: data.model,
       input: dataItems.map((item) => item.q),
-      userId,
-      mustPay: true
+      userId
     });
 
     // 生成结果插入到 pg

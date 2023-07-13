@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useLayoutEffect, useMemo, useEffect } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import type { PagingData } from '../types/index';
 import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
@@ -144,7 +144,7 @@ export const usePagination = <T = any,>({
     [data.length, isLoading, mutate, pageNum, total]
   );
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!elementRef.current || type !== 'scroll') return;
 
     const scrolling = throttle((e: Event) => {

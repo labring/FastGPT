@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { AppProps } from 'next/app';
 import Script from 'next/script';
 import Head from 'next/head';
@@ -8,9 +8,9 @@ import { theme } from '@/constants/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
-import { useGlobalStore } from '@/store/global';
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
+import { clientInitData } from '@/store/static';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());
@@ -29,13 +29,15 @@ const queryClient = new QueryClient({
 });
 
 function App({ Component, pageProps }: AppProps) {
-  const {
-    loadInitData,
-    initData: { googleVerKey, baiduTongji }
-  } = useGlobalStore();
+  const [googleVerKey, setGoogleVerKey] = useState<string>();
+  const [baiduTongji, setBaiduTongji] = useState<string>();
 
   useEffect(() => {
-    loadInitData();
+    (async () => {
+      const { googleVerKey, baiduTongji } = await clientInitData();
+      setGoogleVerKey(googleVerKey);
+      setBaiduTongji(baiduTongji);
+    })();
   }, []);
 
   return (
@@ -53,7 +55,7 @@ function App({ Component, pageProps }: AppProps) {
       <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
       <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
-      {baiduTongji && <Script src="/js/baidutongji.js" strategy="lazyOnload"></Script>}
+      {baiduTongji && <Script src={baiduTongji} strategy="lazyOnload"></Script>}
       {googleVerKey && (
         <>
           <Script
@@ -75,5 +77,4 @@ function App({ Component, pageProps }: AppProps) {
   );
 }
 
-// @ts-ignore
 export default App;

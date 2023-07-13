@@ -1,7 +1,7 @@
 import type { ChatItemType } from './chat';
 import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/model';
 import type { DataType } from './data';
-import { BillTypeEnum, InformTypeEnum } from '@/constants/user';
+import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
 
@@ -38,17 +38,6 @@ export interface AppSchema {
   avatar: string;
   intro: string;
   updateTime: number;
-  chat: {
-    relatedKbs: string[];
-    searchSimilarity: number;
-    searchLimit: number;
-    searchEmptyText: string;
-    systemPrompt: string;
-    limitPrompt: string;
-    temperature: number;
-    maxToken: number;
-    chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
-  };
   share: {
     isShare: boolean;
     isShareDetail: boolean;
@@ -68,6 +57,7 @@ export interface TrainingDataSchema {
   kbId: string;
   expireAt: Date;
   lockTime: Date;
+  model: string;
   mode: `${TrainingModeEnum}`;
   prompt: string;
   q: string;
@@ -87,16 +77,21 @@ export interface ChatSchema {
   content: ChatItemType[];
 }
 
+export type BillListItemType = {
+  moduleName: string;
+  amount: number;
+  model?: string;
+  tokenLen?: number;
+};
 export interface BillSchema {
   _id: string;
   userId: string;
-  type: `${BillTypeEnum}`;
-  modelName?: ChatModelType | EmbeddingModelType;
+  appName: string;
   appId?: string;
+  source: `${BillSourceEnum}`;
   time: Date;
-  textLen: number;
-  tokenLen: number;
-  price: number;
+  total: number;
+  list: BillListItemType[];
 }
 
 export interface PaySchema {

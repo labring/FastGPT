@@ -1,3 +1,4 @@
+import { BillSourceEnum } from '@/constants/user';
 import type { BillSchema } from './mongoSchema';
 export interface UserType {
   _id: string;
@@ -19,9 +20,7 @@ export interface UserUpdateParams {
 export interface UserBillType {
   id: string;
   time: Date;
-  modelName: string;
-  type: BillSchema['type'];
-  textLen: number;
-  tokenLen: number;
-  price: number;
+  appName: string;
+  source: BillSchema['source'];
+  total: number;
 }

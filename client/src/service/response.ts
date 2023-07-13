@@ -92,7 +92,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   } else if (openaiError[error?.response?.statusText]) {
     msg = openaiError[error.response.statusText];
   }
-  console.log('sse error', error);
+  console.log('sse error => ', error);
 
   sseResponse({
     res,

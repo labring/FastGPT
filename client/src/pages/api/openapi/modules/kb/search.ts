@@ -4,8 +4,9 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { openaiEmbedding_system } from '../../plugin/openaiEmbedding';
 import { modelToolMap } from '@/utils/plugin';
+import { getVector } from '../../plugin/vector';
+import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
 
 export type QuoteItemType = {
   id: string;
@@ -21,6 +22,7 @@ type Props = {
   maxToken: number;
   userChatInput: string;
   stream?: boolean;
+  billId?: string;
 };
 type Response = {
   rawSearch: QuoteItemType[];
@@ -30,25 +32,15 @@ type Response = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const {
-      kb_ids = [],
-      history = [],
-      similarity,
-      limit,
-      maxToken,
-      userChatInput
-    } = req.body as Props;
+    const { kb_ids = [], userChatInput } = req.body as Props;
 
-    if (!similarity || !Array.isArray(kb_ids)) {
+    if (!userChatInput || !Array.isArray(kb_ids)) {
       throw new Error('params is error');
     }
 
     const result = await kbSearch({
+      ...req.body,
       kb_ids,
-      history,
-      similarity,
-      limit,
-      maxToken,
       userChatInput
     });
 
@@ -70,7 +62,8 @@ export async function kbSearch({
   similarity = 0.8,
   limit = 5,
   maxToken = 2500,
-  userChatInput
+  userChatInput,
+  billId
 }: Props): Promise<Response> {
   if (kb_ids.length === 0)
     return {
@@ -78,22 +71,34 @@ export async function kbSearch({
       rawSearch: [],
       quotePrompt: undefined
     };
+
   // get vector
-  const promptVector = await openaiEmbedding_system({
+  const vectorModel = global.vectorModels[0].model;
+  const { vectors, tokenLen } = await getVector({
+    model: vectorModel,
     input: [userChatInput]
   });
 
   // search kb
-  const res: any = await PgClient.query(
-    `BEGIN;
+  const [res]: any = await Promise.all([
+    PgClient.query(
+      `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
     select id,q,a,source from modelData where kb_id IN (${kb_ids
       .map((item) => `'${item}'`)
-      .join(',')}) AND vector <#> '[${promptVector[0]}]' < -${similarity} order by vector <#> '[${
-      promptVector[0]
-    }]' limit ${limit};
+      .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
+        vectors[0]
+      }]' limit ${limit};
     COMMIT;`
-  );
+    ),
+    pushTaskBillListItem({
+      billId,
+      moduleName: 'Vector Generate',
+      amount: countModelPrice({ model: vectorModel, tokens: tokenLen }),
+      model: vectorModel,
+      tokenLen
+    })
+  ]);
 
   const searchRes: QuoteItemType[] = res?.[2]?.rows || [];
 
