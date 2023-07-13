@@ -7,9 +7,9 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 ## 推荐配置
 依据官方数据，同样是生成 8192 长度，量化等级为FP16要占用12.8GB  显存、INT8为8.1GB显存、INT4为5.1GB显存，量化后会稍微影响性能，但不多。
 因此推荐配置如下：
-fp16:内存>=16GB,显存>=16GB,硬盘空间>=25GB,启动时选择openai_api.py
-int8:内存>=16GB,显存>=9GB,硬盘空间>=25GB,启动时选择openai_api_int8.py
-int4:内存>=16GB,显存>=6GB,硬盘空间>=25GB,启动时选择openai_api_int4.py
+fp16:内存>=16GB,显存>=16GB,硬盘空间>=25GB,启动时使用命令python openai_api.py 16
+int8:内存>=16GB,显存>=9GB,硬盘空间>=25GB,启动时选择python openai_api.py 8
+int4:内存>=16GB,显存>=6GB,硬盘空间>=25GB,启动时选择python openai_api.py 4
 ## 环境配置
 Python 3.8.10
 CUDA 11.8
@@ -18,7 +18,7 @@ CUDA 11.8
 1. 根据上面的环境配置配置好环境，具体教程自行GPT；
 1. 在命令行输入pip install -r requirments.txt
 2. 打开你需要启动的py文件，在代码的第76行配置token，这里的token只是加一层验证，防止接口被人盗用
-2. python openai_api.py //这里的文件根据上面的配置进行选择
+2. python openai_api.py 16//这里的数字根据上面的配置进行选择
 
 然后等待模型下载，直到模型加载完毕，出现报错先问GPT  
 上面两个文件在本文档的同目录
