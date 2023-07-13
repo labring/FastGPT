@@ -90,11 +90,7 @@ export async function generateVector(): Promise<any> {
     }
 
     // message error or openai account error
-    if (
-      err?.message === 'invalid message format' ||
-      err.response?.statusText === 'Unauthorized' ||
-      openaiAccountError[err?.response?.data?.error?.code || err?.response?.data?.error?.type]
-    ) {
+    if (err?.message === 'invalid message format') {
       console.log('删除一个任务');
       await TrainingData.findByIdAndRemove(trainingId);
     }
