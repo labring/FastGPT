@@ -45,8 +45,8 @@ export const triggerModelCollection = (appId: string) =>
   POST<number>(`/app/share/collection?appId=${appId}`);
 
 // ====================== data
-export const getTokenUsage = (data: { appId: string }) =>
-  POST<{ tokenLen: number; date: Date }[]>(`/app/data/tokenUsage`, {
+export const getAppTotalUsage = (data: { appId: string }) =>
+  POST<{ total: number; date: Date }[]>(`/app/data/totalUsage`, {
     ...data,
     start: addDays(new Date(), -7),
     end: new Date()

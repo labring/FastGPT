@@ -84,6 +84,7 @@ export const HistoryModule: AppModuleTemplateItemType = {
   ]
 };
 
+const defaultModel = chatModelList[0];
 export const ChatModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/AI.png',
   name: 'AI 对话',
@@ -94,9 +95,9 @@ export const ChatModule: AppModuleTemplateItemType = {
   inputs: [
     {
       key: 'model',
-      type: FlowInputItemTypeEnum.select,
+      type: FlowInputItemTypeEnum.custom,
       label: '对话模型',
-      value: chatModelList[0]?.model,
+      value: defaultModel?.model,
       list: chatModelList.map((item) => ({ label: item.name, value: item.model }))
     },
     {
@@ -116,13 +117,16 @@ export const ChatModule: AppModuleTemplateItemType = {
       key: 'maxToken',
       type: FlowInputItemTypeEnum.slider,
       label: '回复上限',
-      value: 3000,
+      value: defaultModel ? defaultModel.contextMaxToken / 2 : 2000,
       min: 0,
-      max: 4000,
+      max: defaultModel?.contextMaxToken || 4000,
       step: 50,
       markList: [
         { label: '0', value: 0 },
-        { label: '4000', value: 4000 }
+        {
+          label: `${defaultModel?.contextMaxToken || 4000}`,
+          value: defaultModel?.contextMaxToken || 4000
+        }
       ]
     },
     {

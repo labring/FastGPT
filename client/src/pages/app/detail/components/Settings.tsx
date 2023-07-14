@@ -14,8 +14,8 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
-const TokenUsage = dynamic(() => import('./Charts/TokenUsage'));
-const AppEdit = dynamic(() => import('./edit'));
+const TotalUsage = dynamic(() => import('./Charts/TotalUsage'), { ssr: false });
+const AppEdit = dynamic(() => import('./edit'), { ssr: false });
 import styles from '../../list/index.module.scss';
 
 const Settings = ({ appId }: { appId: string }) => {
@@ -143,10 +143,10 @@ const Settings = ({ appId }: { appId: string }) => {
           </Box>
           <Box>
             <Box mb={2} fontSize={['md', 'xl']}>
-              近 7 日 Tokens 消耗
+              近 7 日消费
             </Box>
-            <Box h={'150px'}>
-              <TokenUsage appId={appId} />
+            <Box h={'150px'} w={'100%'}>
+              <TotalUsage appId={appId} />
             </Box>
           </Box>
         </Grid>

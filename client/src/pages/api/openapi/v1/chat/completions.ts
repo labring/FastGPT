@@ -15,7 +15,7 @@ import { Types } from 'mongoose';
 import { moduleFetch } from '@/service/api/request';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { FlowInputItemTypeEnum } from '@/constants/flow';
-import { finishTaskBill, createTaskBill } from '@/service/events/pushBill';
+import { finishTaskBill, createTaskBill, delTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
@@ -55,6 +55,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     messages = [],
     variables = {}
   } = req.body as Props;
+
+  let billId = '';
 
   try {
     if (!messages) {
@@ -108,11 +110,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res.setHeader('newHistoryId', String(newHistoryId));
     }
 
-    const billId = await createTaskBill({
+    billId = await createTaskBill({
       userId,
       appName: app.name,
       appId,
-      source: BillSourceEnum.fastgpt
+      source: authType === 'apikey' ? BillSourceEnum.api : BillSourceEnum.fastgpt
     });
 
     /* start process */
@@ -125,7 +127,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         userChatInput: prompt.value
       },
       stream,
-      billId: ''
+      billId
     });
 
     // save chat
@@ -184,6 +186,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       billId
     });
   } catch (err: any) {
+    delTaskBill(billId);
+
     if (stream) {
       res.status(500);
       sseErrRes(res, err);
