@@ -51,7 +51,10 @@ const map = {
   variable: require('./icons/modules/variable.svg').default,
   setTop: require('./icons/light/setTop.svg').default,
   fullScreenLight: require('./icons/light/fullScreen.svg').default,
-  voice: require('./icons/voice.svg').default
+  voice: require('./icons/voice.svg').default,
+  html: require('./icons/file/html.svg').default,
+  pdf: require('./icons/file/pdf.svg').default,
+  markdown: require('./icons/file/markdown.svg').default
 };
 
 export type IconName = keyof typeof map;

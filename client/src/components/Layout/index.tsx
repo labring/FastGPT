@@ -63,34 +63,39 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   return (
     <>
       <Box h={'100%'} bg={'myWhite.600'}>
-        <Box h={'100%'} display={['none', 'block']}>
-          {pcUnShowLayoutRoute[router.pathname] ? (
-            <Auth>{children}</Auth>
-          ) : (
-            <>
-              <Box h={'100%'} position={'fixed'} left={0} top={0} w={'70px'}>
-                <Navbar unread={unread} />
-              </Box>
-              <Box h={'100%'} ml={'70px'} overflow={'overlay'}>
+        {isPc ? (
+          <>
+            {pcUnShowLayoutRoute[router.pathname] ? (
+              <Auth>{children}</Auth>
+            ) : (
+              <>
+                <Box h={'100%'} position={'fixed'} left={0} top={0} w={'70px'}>
+                  <Navbar unread={unread} />
+                </Box>
+                <Box h={'100%'} ml={'70px'} overflow={'overlay'}>
+                  <Auth>{children}</Auth>
+                </Box>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <Box h={'100%'} display={['block', 'none']}>
+              {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
                 <Auth>{children}</Auth>
-              </Box>
-            </>
-          )}
-        </Box>
-        <Box h={'100%'} display={['block', 'none']}>
-          {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
-            <Auth>{children}</Auth>
-          ) : (
-            <Flex h={'100%'} flexDirection={'column'}>
-              <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
-                <Auth>{children}</Auth>
-              </Box>
-              <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-                <NavbarPhone unread={unread} />
-              </Box>
-            </Flex>
-          )}
-        </Box>
+              ) : (
+                <Flex h={'100%'} flexDirection={'column'}>
+                  <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
+                    <Auth>{children}</Auth>
+                  </Box>
+                  <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
+                    <NavbarPhone unread={unread} />
+                  </Box>
+                </Flex>
+              )}
+            </Box>
+          </>
+        )}
       </Box>
       <Loading loading={loading} />
     </>
