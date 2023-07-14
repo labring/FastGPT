@@ -5,6 +5,8 @@ import { getAppTotalUsage } from '@/api/app';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { formatPrice } from '@/utils/user';
+import Loading from '@/components/Loading';
+import { Box } from '@chakra-ui/react';
 
 const map = {
   blue: {
@@ -185,7 +187,11 @@ const TokenUsage = ({ appId }: { appId: string }) => {
     myChart.current.resize();
   }, [screenWidth]);
 
-  return <div ref={Dom} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <Box ref={Dom} w={'100%'} h={'100%'} position={'relative'}>
+      <Loading fixed={false} />
+    </Box>
+  );
 };
 
 export default React.memo(TokenUsage);

@@ -280,9 +280,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
             <MyTooltip label={'取消全屏'} offset={[10, 10]}>
               <IconButton
                 size={'sm'}
-                w={'28px'}
-                h={'28px'}
-                icon={<MyIcon name={'fullScreenLight'} w={'16px'} />}
+                icon={<MyIcon name={'fullScreenLight'} w={['14px', '16px']} />}
                 borderRadius={'md'}
                 borderColor={'myGray.300'}
                 variant={'base'}
@@ -305,7 +303,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
             <MyTooltip label={'全屏'}>
               <IconButton
                 mr={6}
-                icon={<MyIcon name={'fullScreenLight'} w={'16px'} />}
+                icon={<MyIcon name={'fullScreenLight'} w={['14px', '16px']} />}
                 borderRadius={'lg'}
                 variant={'base'}
                 aria-label={'fullScreenLight'}
@@ -331,7 +329,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           <MyTooltip label={'测试对话'}>
             <IconButton
               mr={6}
-              icon={<MyIcon name={'chatLight'} w={'16px'} />}
+              icon={<MyIcon name={'chatLight'} w={['14px', '16px']} />}
               borderRadius={'lg'}
               aria-label={'save'}
               variant={'base'}
@@ -344,7 +342,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
 
         <MyTooltip label={'保存配置'}>
           <IconButton
-            icon={<MyIcon name={'save'} w={'16px'} />}
+            icon={<MyIcon name={'save'} w={['14px', '16px']} />}
             borderRadius={'lg'}
             isLoading={isLoading}
             aria-label={'save'}
@@ -353,6 +351,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         </MyTooltip>
       </Flex>
       <Box
+        minH={'400px'}
         flex={'1 0 0'}
         w={'100%'}
         h={0}
