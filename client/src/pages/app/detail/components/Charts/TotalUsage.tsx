@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as echarts from 'echarts';
 import { useGlobalStore } from '@/store/global';
-import { getTokenUsage } from '@/api/app';
+import { getAppTotalUsage } from '@/api/app';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import { formatPrice } from '@/utils/user';
 
 const map = {
   blue: {
@@ -98,7 +99,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
 
   const Dom = useRef<HTMLDivElement>(null);
   const myChart = useRef<echarts.ECharts>();
-  const { data = [] } = useQuery(['init'], () => getTokenUsage({ appId }));
+  const { data = [] } = useQuery(['init'], () => getAppTotalUsage({ appId }));
 
   const option = useMemo(
     () => ({
@@ -110,7 +111,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
       },
       yAxis: {
         type: 'value',
-        max: Math.max(...data.map((item) => item.tokenLen)),
+        max: Math.max(...data.map((item) => item.total)),
         min: 0
       },
       grid: {
@@ -132,14 +133,14 @@ const TokenUsage = ({ appId }: { appId: string }) => {
           return `
           <div>
             <div>${dayjs(data.axisValue).format('YYYY/MM/DD')}</div>
-            <div>${((e[0]?.value || 0) / 1000).toFixed(2)}k Tokens</div>
+            <div>${formatPrice(e[0]?.value || 0)}元</div>
           </div>
 `;
         }
       },
       series: [
         {
-          data: data.map((item) => item.tokenLen),
+          data: data.map((item) => item.total),
           type: 'line',
           showSymbol: true,
           animationDuration: 300,
@@ -170,7 +171,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
     if (!Dom.current || myChart?.current?.getOption()) return;
     myChart.current = echarts.init(Dom.current);
     myChart.current && myChart.current.setOption(option);
-  }, [Dom]);
+  }, []);
 
   // data changed, update
   useEffect(() => {

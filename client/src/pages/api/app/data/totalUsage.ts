@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import type { ChatHistoryItemType } from '@/types/chat';
 import { Types } from 'mongoose';
 
 /* get one app chat history content number. */
@@ -28,14 +27,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             month: { $month: '$time' },
             day: { $dayOfMonth: '$time' }
           },
-          tokenLen: { $sum: '$tokenLen' } // 对tokenLen的值求和
+          total: { $sum: '$total' }
         }
       },
       {
         $project: {
           _id: 0,
           date: { $dateFromParts: { year: '$_id.year', month: '$_id.month', day: '$_id.day' } },
-          tokenLen: 1
+          total: 1
         }
       },
       { $sort: { date: 1 } }
