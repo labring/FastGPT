@@ -5,6 +5,13 @@ import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import type { KbDataItemType } from '@/types/plugin';
 
+export type Response = {
+  id: string;
+  q: string;
+  a: string;
+  source: string;
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     let { dataId } = req.query as {

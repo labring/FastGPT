@@ -7,7 +7,7 @@ import { formatPrice } from '@/utils/user';
 import { getTokenLogin } from '@/api/user';
 import { defaultApp } from '@/constants/model';
 import { AppListItemType } from '@/types/app';
-import { KbItemType } from '@/types/plugin';
+import type { KbItemType, KbListItemType } from '@/types/plugin';
 import { getKbList, getKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
 import type { AppSchema } from '@/types/mongoSchema';
@@ -23,10 +23,9 @@ type State = {
   appDetail: AppSchema;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
   // kb
-  lastKbId: string;
-  setLastKbId: (id: string) => void;
-  myKbList: KbItemType[];
-  loadKbList: (init?: boolean) => Promise<KbItemType[]>;
+  myKbList: KbListItemType[];
+  loadKbList: () => Promise<any>;
+  setKbList(val: KbListItemType[]): void;
   kbDetail: KbItemType;
   getKbDetail: (id: string, init?: boolean) => Promise<KbItemType>;
 };
@@ -79,20 +78,18 @@ export const useUserStore = create<State>()(
           });
           return res;
         },
-        lastKbId: '',
-        setLastKbId(id: string) {
-          set((state) => {
-            state.lastKbId = id;
-          });
-        },
         myKbList: [],
-        async loadKbList(init = false) {
-          if (get().myKbList.length > 0 && !init) return get().myKbList;
+        async loadKbList() {
           const res = await getKbList();
           set((state) => {
             state.myKbList = res;
           });
           return res;
+        },
+        setKbList(val: KbListItemType[]) {
+          set((state) => {
+            state.myKbList = val;
+          });
         },
         kbDetail: defaultKbDetail,
         async getKbDetail(id: string, init = false) {
@@ -109,9 +106,7 @@ export const useUserStore = create<State>()(
       })),
       {
         name: 'userStore',
-        partialize: (state) => ({
-          lastKbId: state.lastKbId
-        })
+        partialize: (state) => ({})
       }
     )
   )

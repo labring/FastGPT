@@ -38,8 +38,8 @@ const Navbar = ({ unread }: { unread: number }) => {
         label: '知识库',
         icon: 'dbLight',
         activeIcon: 'dbFill',
-        link: `/kb`,
-        activeLink: ['/kb']
+        link: `/kb/list`,
+        activeLink: ['/kb/list', '/kb/detail']
       },
       {
         label: '市场',

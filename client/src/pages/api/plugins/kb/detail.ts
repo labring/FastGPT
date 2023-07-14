@@ -18,10 +18,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    const data = await KB.findOne({
-      _id: id,
-      userId
-    });
+    const data = await KB.findOne(
+      {
+        _id: id,
+        userId
+      },
+      '_id avatar name userId tags'
+    );
 
     if (!data) {
       throw new Error('kb is not exist');
@@ -33,7 +36,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         avatar: data.avatar,
         name: data.name,
         userId: data.userId,
-        updateTime: data.updateTime,
         tags: data.tags.join(' ')
       }
     });
