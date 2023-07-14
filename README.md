@@ -21,9 +21,9 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 
 ## 🚀 私有化部署
 
-- [Sealos 部署](https://sealos.io/docs/examples/ai-applications/install-fastgpt-on-desktop) 无需服务器，代理和域名。
-- [docker-compose 部署](docs/deploy/docker.md)
-- [由社区贡献的宝塔部署和本地运行教程](https://www.bilibili.com/video/BV1tV4y1y7Mj/?vd_source=92041a1a395f852f9d89158eaa3f61b4)
+- [官方推荐 Sealos 部署](https://sealos.io/docs/examples/ai-applications/install-fastgpt-on-desktop) 无需服务器，代理和域名，高可用。
+- [docker-compose 部署](docs/deploy/docker.md) 单机版。
+- [由社区贡献的宝塔部署和本地运行教程](https://www.bilibili.com/video/BV1tV4y1y7Mj/?vd_source=92041a1a395f852f9d89158eaa3f61b4) 单机版。
 
 ## :point_right: RoadMap
 
