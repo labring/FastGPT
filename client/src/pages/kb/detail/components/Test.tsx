@@ -11,7 +11,10 @@ import InputDataModal, { type FormData } from './InputDataModal';
 import { useGlobalStore } from '@/store/global';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
+import { vectorModelList } from '@/store/static';
 import { customAlphabet } from 'nanoid';
+import MyTooltip from '@/components/MyTooltip';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = () => {
@@ -30,7 +33,7 @@ const Test = () => {
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => searchText({ kbId, text: inputText.trim() }),
+    mutationFn: () => searchText({ model: vectorModelList[0].model, kbId, text: inputText.trim() }),
     onSuccess(res) {
       const testItem = {
         id: nanoid(),
@@ -40,7 +43,6 @@ const Test = () => {
         results: res
       };
       pushKbTestItem(testItem);
-      setInputText('');
       setKbTestItem(testItem);
     },
     onError(err) {
@@ -59,13 +61,14 @@ const Test = () => {
     <Box h={'100%'} display={['block', 'flex']}>
       <Box
         h={['auto', '100%']}
-        overflow={'overlay'}
+        display={['block', 'flex']}
+        flexDirection={'column'}
         flex={1}
         maxW={'500px'}
-        px={4}
+        py={4}
         borderRight={['none', theme.borders.base]}
       >
-        <Box border={'2px solid'} borderColor={'myBlue.600'} p={3} borderRadius={'md'}>
+        <Box border={'2px solid'} borderColor={'myBlue.600'} p={3} mx={4} borderRadius={'md'}>
           <Box fontSize={'sm'} fontWeight={'bold'}>
             <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'myBlue.700'} />
             测试文本
@@ -85,13 +88,13 @@ const Test = () => {
             </Button>
           </Flex>
         </Box>
-        <Box mt={5} display={['none', 'block']}>
+        <Box mt={5} flex={'1 0 0'} px={4} overflow={'overlay'} display={['none', 'block']}>
           <Flex alignItems={'center'} color={'myGray.600'}>
             <MyIcon mr={2} name={'history'} w={'16px'} h={'16px'} />
             <Box fontSize={'2xl'}>测试历史</Box>
           </Flex>
           <Box mt={2}>
-            <Flex py={1} fontWeight={'bold'} borderBottom={theme.borders.base}>
+            <Flex py={2} fontWeight={'bold'} borderBottom={theme.borders.sm}>
               <Box flex={1}>测试文本</Box>
               <Box w={'80px'}>时间</Box>
               <Box w={'14px'}></Box>
@@ -115,26 +118,28 @@ const Test = () => {
                   {item.text}
                 </Box>
                 <Box w={'80px'}>{formatTimeToChatTime(item.time)}</Box>
-                <Box w={'14px'} h={'14px'}>
-                  <MyIcon
-                    className="delete"
-                    name={'delete'}
-                    w={'14px'}
-                    display={'none'}
-                    _hover={{ color: 'red.600' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      delKbTestItemById(item.id);
-                      kbTestItem?.id === item.id && setKbTestItem(undefined);
-                    }}
-                  />
-                </Box>
+                <MyTooltip label={'删除该测试记录'}>
+                  <Box w={'14px'} h={'14px'}>
+                    <MyIcon
+                      className="delete"
+                      name={'delete'}
+                      w={'14px'}
+                      display={'none'}
+                      _hover={{ color: 'red.600' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        delKbTestItemById(item.id);
+                        kbTestItem?.id === item.id && setKbTestItem(undefined);
+                      }}
+                    />
+                  </Box>
+                </MyTooltip>
               </Flex>
             ))}
           </Box>
         </Box>
       </Box>
-      <Box px={4} pb={4} mt={[8, 0]} h={['auto', '100%']} overflow={'overlay'} flex={1}>
+      <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={1}>
         {!kbTestItem?.results || kbTestItem.results.length === 0 ? (
           <Flex
             mt={[10, 0]}
@@ -154,9 +159,18 @@ const Test = () => {
               <Box fontSize={'3xl'} color={'myGray.600'}>
                 测试结果
               </Box>
-              <Box fontSize={'xs'} color={'myGray.500'} ml={1}>
-                QA内容可能不是最新
-              </Box>
+              <MyTooltip
+                label={
+                  '根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。'
+                }
+              >
+                <QuestionOutlineIcon
+                  ml={2}
+                  color={'myGray.600'}
+                  cursor={'pointer'}
+                  fontSize={'lg'}
+                />
+              </MyTooltip>
             </Flex>
             <Grid
               mt={1}

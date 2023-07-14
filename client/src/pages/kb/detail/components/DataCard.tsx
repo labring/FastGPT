@@ -31,8 +31,8 @@ import InputModal, { FormData as InputDataType } from './InputDataModal';
 import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
 
-const SelectFileModal = dynamic(() => import('./SelectFileModal'));
-const SelectCsvModal = dynamic(() => import('./SelectCsvModal'));
+const SelectFileModal = dynamic(() => import('./SelectFileModal'), { ssr: true });
+const SelectCsvModal = dynamic(() => import('./SelectCsvModal'), { ssr: true });
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const lastSearch = useRef('');
@@ -140,7 +140,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   }, [kbId]);
 
   return (
-    <Box position={'relative'} px={5} pb={[1, 5]}>
+    <Box position={'relative'} px={5} py={[1, 5]}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
           知识库数据: {total}组

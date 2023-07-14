@@ -1,0 +1,160 @@
+import React, { useCallback, useMemo, useRef } from 'react';
+import { useRouter } from 'next/router';
+import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
+import { useToast } from '@/hooks/useToast';
+import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
+import { useUserStore } from '@/store/user';
+import { KbItemType } from '@/types/plugin';
+import { useScreen } from '@/hooks/useScreen';
+import { getErrText } from '@/utils/tools';
+import { type ComponentRef } from './components/Info';
+import Tabs from '@/components/Tabs';
+import dynamic from 'next/dynamic';
+import DataCard from './components/DataCard';
+import MyIcon from '@/components/Icon';
+import SideTabs from '@/components/SideTabs';
+import PageContainer from '@/components/PageContainer';
+import Avatar from '@/components/Avatar';
+import Info from './components/Info';
+const Test = dynamic(() => import('./components/Test'), {
+  ssr: false
+});
+
+enum TabEnum {
+  data = 'data',
+  test = 'test',
+  info = 'info'
+}
+
+const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }) => {
+  const InfoRef = useRef<ComponentRef>(null);
+  const theme = useTheme();
+  const { toast } = useToast();
+  const router = useRouter();
+  const { isPc } = useScreen();
+  const { kbDetail, getKbDetail } = useUserStore();
+
+  const tabList = useMemo(
+    () => [
+      { label: '数据集', id: TabEnum.data, icon: 'overviewLight' },
+      { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
+      { label: '基本信息', id: TabEnum.info, icon: 'settingLight' }
+    ],
+    []
+  );
+
+  const setCurrentTab = useCallback(
+    (tab: `${TabEnum}`) => {
+      router.replace({
+        query: {
+          kbId,
+          currentTab: tab
+        }
+      });
+    },
+    [kbId, router]
+  );
+
+  const form = useForm<KbItemType>({
+    defaultValues: kbDetail
+  });
+
+  useQuery([kbId], () => getKbDetail(kbId), {
+    onSuccess(res) {
+      InfoRef.current?.initInput(res.tags);
+      form.reset(res);
+    },
+    onError(err: any) {
+      router.replace(`/kb/list`);
+      toast({
+        title: getErrText(err, '获取知识库异常'),
+        status: 'error'
+      });
+    }
+  });
+
+  return (
+    <PageContainer>
+      <Box display={['block', 'flex']} h={'100%'} pt={[4, 0]}>
+        {/* pc tab */}
+        <Box
+          display={['none', 'flex']}
+          flexDirection={'column'}
+          p={4}
+          w={'200px'}
+          borderRight={theme.borders.base}
+        >
+          <Flex mb={4} alignItems={'center'}>
+            <Avatar src={kbDetail.avatar} w={'34px'} borderRadius={'lg'} />
+            <Box ml={2} fontWeight={'bold'}>
+              {kbDetail.name}
+            </Box>
+          </Flex>
+          <SideTabs
+            flex={1}
+            mx={'auto'}
+            mt={2}
+            w={'100%'}
+            list={tabList}
+            activeId={currentTab}
+            onChange={(e: any) => {
+              setCurrentTab(e);
+            }}
+          />
+          <Flex
+            alignItems={'center'}
+            cursor={'pointer'}
+            py={2}
+            px={3}
+            borderRadius={'md'}
+            _hover={{ bg: 'myGray.100' }}
+            onClick={() => router.replace('/kb/list')}
+          >
+            <IconButton
+              mr={3}
+              icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+              bg={'white'}
+              boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+              h={'28px'}
+              size={'sm'}
+              borderRadius={'50%'}
+              aria-label={''}
+            />
+            全部知识库
+          </Flex>
+        </Box>
+        <Box mb={3} display={['block', 'none']}>
+          <Tabs
+            m={'auto'}
+            w={'260px'}
+            size={isPc ? 'md' : 'sm'}
+            list={[
+              { id: TabEnum.data, label: '数据管理' },
+              { id: TabEnum.test, label: '搜索测试' },
+              { id: TabEnum.info, label: '基本信息' }
+            ]}
+            activeId={currentTab}
+            onChange={(e: any) => setCurrentTab(e)}
+          />
+        </Box>
+        <Box flex={'1 0 0'} overflow={'overlay'} pb={[4, 0]}>
+          {currentTab === TabEnum.data && <DataCard kbId={kbId} />}
+          {currentTab === TabEnum.test && <Test />}
+          {currentTab === TabEnum.info && <Info ref={InfoRef} kbId={kbId} form={form} />}
+        </Box>
+      </Box>
+    </PageContainer>
+  );
+};
+
+export async function getServerSideProps(context: any) {
+  const currentTab = context?.query?.currentTab || TabEnum.data;
+  const kbId = context?.query?.kbId;
+
+  return {
+    props: { currentTab, kbId }
+  };
+}
+
+export default React.memo(Detail);

@@ -7,6 +7,7 @@ import { getVector } from '../plugin/vector';
 import type { KbTestItemType } from '@/types/plugin';
 
 export type Props = {
+  model: string;
   kbId: string;
   text: string;
 };
@@ -14,9 +15,9 @@ export type Response = KbTestItemType['results'];
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { kbId, text } = req.body as Props;
+    const { kbId, text, model } = req.body as Props;
 
-    if (!kbId || !text) {
+    if (!kbId || !text || !model) {
       throw new Error('缺少参数');
     }
 
@@ -27,7 +28,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('缺少用户ID');
     }
 
-    const vector = await getVector({
+    const { vectors } = await getVector({
+      model,
       userId,
       input: [text]
     });
@@ -36,9 +38,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       `BEGIN;
         SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
         select id,q,a,source,(vector <#> '[${
-          vector[0]
+          vectors[0]
         }]') * -1 AS score from modelData where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
-        vector[0]
+        vectors[0]
       }]' limit 12;
         COMMIT;`
     );

@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { PgClient } from '@/service/pg';
-import { KbItemType } from '@/types/plugin';
+import { KbListItemType } from '@/types/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -12,25 +11,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    const kbList = await KB.find({
-      userId
-    }).sort({ updateTime: -1 });
+    const kbList = await KB.find(
+      {
+        userId
+      },
+      '_id avatar name tags'
+    ).sort({ updateTime: -1 });
 
     const data = await Promise.all(
       kbList.map(async (item) => ({
         _id: item._id,
         avatar: item.avatar,
         name: item.name,
-        userId: item.userId,
-        updateTime: item.updateTime,
-        tags: item.tags.join(' '),
-        totalData: await PgClient.count('modelData', {
-          where: [['user_id', userId], 'AND', ['kb_id', item._id]]
-        })
+        tags: item.tags
       }))
     );
 
-    jsonRes<KbItemType[]>(res, {
+    jsonRes<KbListItemType[]>(res, {
       data
     });
   } catch (err) {

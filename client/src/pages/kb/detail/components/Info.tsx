@@ -59,7 +59,7 @@ const Info = (
         status: 'success'
       });
       router.replace(`/kb?kbId=${myKbList.find((item) => item._id !== kbId)?._id || ''}`);
-      await loadKbList(true);
+      await loadKbList();
     } catch (err: any) {
       toast({
         title: err?.message || '删除失败',
@@ -82,7 +82,7 @@ const Info = (
           title: '更新成功',
           status: 'success'
         });
-        loadKbList(true);
+        loadKbList();
       } catch (err: any) {
         toast({
           title: err?.message || '更新失败',
@@ -136,6 +136,7 @@ const Info = (
 
   useImperativeHandle(ref, () => ({
     initInput: (tags: string) => {
+      console.log(tags);
       if (InputRef.current) {
         InputRef.current.value = tags;
       }
@@ -143,7 +144,7 @@ const Info = (
   }));
 
   return (
-    <Flex px={5} flexDirection={'column'} alignItems={'center'}>
+    <Flex p={5} flexDirection={'column'} alignItems={'center'}>
       <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'center'}>
         <Box flex={'0 0 90px'} w={0}>
           知识库头像
@@ -200,31 +201,29 @@ const Info = (
             ))}
         </Box>
       </Flex>
-      {kbDetail._id && (
-        <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'flex-end'}>
-          <Box flex={'0 0 90px'} w={0}></Box>
-          <Button
-            isLoading={btnLoading}
-            mr={4}
-            w={'100px'}
-            onClick={handleSubmit(saveSubmitSuccess, saveSubmitError)}
-          >
-            保存
-          </Button>
-          <IconButton
-            isLoading={btnLoading}
-            icon={<DeleteIcon />}
-            aria-label={''}
-            variant={'outline'}
-            size={'sm'}
-            _hover={{
-              color: 'red.600',
-              borderColor: 'red.600'
-            }}
-            onClick={openConfirm(onclickDelKb)}
-          />
-        </Flex>
-      )}
+      <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'flex-end'}>
+        <Box flex={'0 0 90px'} w={0}></Box>
+        <Button
+          isLoading={btnLoading}
+          mr={4}
+          w={'100px'}
+          onClick={handleSubmit(saveSubmitSuccess, saveSubmitError)}
+        >
+          保存
+        </Button>
+        <IconButton
+          isLoading={btnLoading}
+          icon={<DeleteIcon />}
+          aria-label={''}
+          variant={'outline'}
+          size={'sm'}
+          _hover={{
+            color: 'red.600',
+            borderColor: 'red.600'
+          }}
+          onClick={openConfirm(onclickDelKb)}
+        />
+      </Flex>
       <File onSelect={onSelectFile} />
       <ConfirmChild />
     </Flex>

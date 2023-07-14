@@ -10,7 +10,7 @@ import {
   useTheme
 } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
-import InputDataModal from '@/pages/kb/components/InputDataModal';
+import InputDataModal from '@/pages/kb/detail/components/InputDataModal';
 import { getKbDataItemById } from '@/api/plugins/kb';
 import { useLoading } from '@/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
