@@ -4,12 +4,12 @@ import { immer } from 'zustand/middleware/immer';
 
 import { ChatHistoryItemType } from '@/types/chat';
 import type { InitChatResponse } from '@/api/response/chat';
-import { getChatHistory } from '@/api/chat';
-import { HUMAN_ICON } from '@/constants/chat';
+import { delChatHistoryById, getChatHistory } from '@/api/chat';
 
 type State = {
   history: ChatHistoryItemType[];
   loadHistory: (data: { appId?: string }) => Promise<null>;
+  delHistory(history: string): Promise<void>;
   updateHistory: (history: ChatHistoryItemType) => void;
   chatData: InitChatResponse;
   setChatData: (e: InitChatResponse | ((e: InitChatResponse) => InitChatResponse)) => void;
@@ -62,6 +62,12 @@ export const useChatStore = create<State>()(
             state.history = data;
           });
           return null;
+        },
+        async delHistory(historyId) {
+          set((state) => {
+            state.history = state.history.filter((item) => item._id !== historyId);
+          });
+          await delChatHistoryById(historyId);
         },
         updateHistory(history) {
           const index = get().history.findIndex((item) => item._id === history._id);

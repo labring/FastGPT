@@ -312,8 +312,8 @@ const ChatBox = (
   };
   const controlContainerStyle = {
     className: 'control',
-    display: isChatting ? 'none' : ['flex', 'none'],
     color: 'myGray.400',
+    display: ['flex', 'none'],
     pl: 1,
     mt: 2,
     position: 'absolute' as any,
@@ -321,12 +321,17 @@ const ChatBox = (
     w: '100%'
   };
 
+  const hasVariableInput = useMemo(
+    () => variableModules || welcomeText,
+    [variableModules, welcomeText]
+  );
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box ref={ChatBoxRef} flex={'1 0 0'} overflow={'overlay'} px={[2, 5, 8]} py={5}>
-        <Box maxW={['100%', '1000px', '1200px']} mx={'auto'}>
+      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} overflow={'overlay'} px={[2, 5, 8]} py={[0, 5]}>
+        <Box maxW={['100%', '1000px', '1200px']} h={'100%'} mx={'auto'}>
           {/* variable input */}
-          {(variableModules || welcomeText) && (
+          {hasVariableInput && (
             <Flex alignItems={'flex-start'} py={2}>
               {/* avatar */}
               <Avatar
@@ -396,8 +401,10 @@ const ChatBox = (
               </Flex>
             </Flex>
           )}
+          {/* empty guide */}
+
           {/* chat history */}
-          <Box id={'history'}>
+          <Box id={'history'} pb={[8, 2]}>
             {chatHistory.map((item, index) => (
               <Flex
                 key={item._id}
@@ -486,7 +493,7 @@ const ChatBox = (
                       >
                         <Box as={'p'}>{item.value}</Box>
                       </Card>
-                      <Flex {...controlContainerStyle} right={0}>
+                      <Flex {...controlContainerStyle} justifyContent={'flex-end'}>
                         <MyTooltip label={'复制'}>
                           <MyIcon
                             {...controlIconStyle}
@@ -523,6 +530,7 @@ const ChatBox = (
           </Box>
         </Box>
       </Box>
+      {/* input */}
       {variableIsFinish ? (
         <Box m={['0 auto', '20px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
           <Box

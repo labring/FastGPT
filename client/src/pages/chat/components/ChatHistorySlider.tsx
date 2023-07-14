@@ -7,7 +7,8 @@ import {
   Menu,
   MenuButton,
   MenuList,
-  MenuItem
+  MenuItem,
+  IconButton
 } from '@chakra-ui/react';
 import { useGlobalStore } from '@/store/global';
 import { useRouter } from 'next/router';
@@ -29,8 +30,7 @@ const ChatHistorySlider = ({
   activeHistoryId,
   onChangeChat,
   onDelHistory,
-  onSetHistoryTop,
-  onCloseSlider
+  onSetHistoryTop
 }: {
   appId?: string;
   appName: string;
@@ -40,7 +40,6 @@ const ChatHistorySlider = ({
   onChangeChat: (historyId?: string) => void;
   onDelHistory: (historyId: string) => void;
   onSetHistoryTop?: (e: { historyId: string; top: boolean }) => void;
-  onCloseSlider: () => void;
 }) => {
   const theme = useTheme();
   const router = useRouter();
@@ -180,6 +179,29 @@ const ChatHistorySlider = ({
           </Flex>
         ))}
       </Box>
+
+      {!isPc && appId && (
+        <Flex
+          mt={2}
+          borderTop={theme.borders.base}
+          alignItems={'center'}
+          cursor={'pointer'}
+          p={3}
+          onClick={() => router.push('/app/list')}
+        >
+          <IconButton
+            mr={3}
+            icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+            bg={'white'}
+            boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+            h={'28px'}
+            size={'sm'}
+            borderRadius={'50%'}
+            aria-label={''}
+          />
+          切换应用
+        </Flex>
+      )}
     </Flex>
   );
 };

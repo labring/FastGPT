@@ -1,11 +1,6 @@
 import React, { useCallback, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
-import {
-  getInitChatSiteInfo,
-  delChatRecordByIndex,
-  delChatHistoryById,
-  putChatHistory
-} from '@/api/chat';
+import { getInitChatSiteInfo, delChatRecordByIndex, putChatHistory } from '@/api/chat';
 import {
   Box,
   Flex,
@@ -39,6 +34,7 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import SliderApps from './components/SliderApps';
 import Tag from '@/components/Tag';
 import ToolMenu from './components/ToolMenu';
+import ChatHeader from './components/ChatHeader';
 
 const Chat = () => {
   const router = useRouter();
@@ -59,6 +55,7 @@ const Chat = () => {
     history,
     loadHistory,
     updateHistory,
+    delHistory,
     chatData,
     setChatData
   } = useChatStore();
@@ -137,14 +134,6 @@ const Chat = () => {
       }
     },
     [historyId, setChatData]
-  );
-  // delete a history
-  const delHistoryById = useCallback(
-    async (historyId: string) => {
-      await delChatHistoryById(historyId);
-      loadHistory({ appId });
-    },
-    [appId, loadHistory]
   );
 
   // get chat app info
@@ -232,7 +221,7 @@ const Chat = () => {
   useQuery(['loadHistory', appId], () => (appId ? loadHistory({ appId }) : null));
 
   return (
-    <Flex h={'100%'} flexDirection={['column', 'row']}>
+    <Flex h={'100%'}>
       {/* pc show myself apps */}
       {isPc && (
         <Box p={5} borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
@@ -270,15 +259,22 @@ const Chat = () => {
                     appId
                   }
                 });
+                if (!isPc) {
+                  onCloseSlider();
+                }
               }}
-              onDelHistory={delHistoryById}
+              onDelHistory={delHistory}
               onSetHistoryTop={async (e) => {
                 try {
                   await putChatHistory(e);
-                  loadHistory({ appId });
+                  const historyItem = history.find((item) => item._id === e.historyId);
+                  if (!historyItem) return;
+                  updateHistory({
+                    ...historyItem,
+                    top: e.top
+                  });
                 } catch (error) {}
               }}
-              onCloseSlider={onCloseSlider}
             />
           )}
           {/* chat container */}
@@ -289,38 +285,14 @@ const Chat = () => {
             flex={'1 0 0'}
             flexDirection={'column'}
           >
-            <Flex
-              alignItems={'center'}
-              py={[3, 5]}
-              px={5}
-              borderBottom={theme.borders.base}
-              borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
-              color={useColorModeValue('myGray.900', 'white')}
-            >
-              {isPc ? (
-                <>
-                  <Box mr={3} color={'myGray.1000'}>
-                    {chatData.title}
-                  </Box>
-                  <Tag display={'flex'}>
-                    <MyIcon name={'history'} w={'14px'} />
-                    <Box ml={1}>{chatData.history.length}条记录</Box>
-                  </Tag>
-                </>
-              ) : (
-                <>
-                  <MyIcon
-                    name={'menu'}
-                    w={'20px'}
-                    h={'20px'}
-                    color={useColorModeValue('blackAlpha.700', 'white')}
-                    onClick={onOpenSlider}
-                  />
-                </>
-              )}
-              <Box flex={1} />
-              <ToolMenu history={chatData.history} />
-            </Flex>
+            {/* header */}
+            <ChatHeader
+              appAvatar={chatData.app.avatar}
+              title={chatData.app.name}
+              history={chatData.history}
+              onOpenSlider={onOpenSlider}
+            />
+
             {/* chat box */}
             <Box flex={1}>
               <ChatBox

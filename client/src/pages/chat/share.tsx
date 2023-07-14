@@ -1,16 +1,7 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { initShareChatInfo } from '@/api/chat';
-import {
-  Box,
-  Flex,
-  useColorModeValue,
-  useDisclosure,
-  Drawer,
-  DrawerOverlay,
-  DrawerContent,
-  useTheme
-} from '@chakra-ui/react';
+import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
@@ -21,15 +12,12 @@ import { gptMessage2ChatType } from '@/utils/adapt';
 import { getErrText } from '@/utils/tools';
 
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import MyIcon from '@/components/Icon';
-import Tag from '@/components/Tag';
 import PageContainer from '@/components/PageContainer';
 import ChatHistorySlider from './components/ChatHistorySlider';
+import ChatHeader from './components/ChatHeader';
 
-const ShareChat = () => {
-  const theme = useTheme();
+const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string }) => {
   const router = useRouter();
-  const { shareId = '', historyId } = router.query as { shareId: string; historyId: string };
   const { toast } = useToast();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const { isPc } = useGlobalStore();
@@ -48,8 +36,6 @@ const ShareChat = () => {
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      console.log(messages, variables);
-
       const prompts = messages.slice(-shareChatData.maxContext - 2);
       const { responseText } = await streamFetch({
         data: {
@@ -103,8 +89,8 @@ const ShareChat = () => {
   );
 
   const loadAppInfo = useCallback(
-    async (shareId?: string) => {
-      if (!shareId) return null;
+    async (shareId: string, historyId: string) => {
+      if (!shareId || !historyId) return null;
       const history = shareChatHistory.find((item) => item._id === historyId) || defaultHistory;
 
       ChatBoxRef.current?.resetHistory(history.chats);
@@ -140,74 +126,52 @@ const ShareChat = () => {
 
       return history;
     },
-    [
-      delManyShareChatHistoryByShareId,
-      historyId,
-      setShareChatData,
-      shareChatData,
-      shareChatHistory,
-      toast
-    ]
+    [delManyShareChatHistoryByShareId, setShareChatData, shareChatData, shareChatHistory, toast]
   );
 
-  useQuery(['init', shareId, historyId], () => {
-    return loadAppInfo(shareId);
-  });
+  useEffect(() => {
+    loadAppInfo(shareId, historyId);
+  }, [shareId, historyId]);
 
   return (
     <PageContainer>
       <Flex h={'100%'} flexDirection={['column', 'row']}>
-        {/*  slider */}
-        {isPc ? (
-          <SideBar>
-            <ChatHistorySlider
-              appName={shareChatData.app.name}
-              appAvatar={shareChatData.app.avatar}
-              activeHistoryId={historyId}
-              history={shareChatHistory
-                .filter((item) => item.shareId === shareId)
-                .map((item) => ({
-                  id: item._id,
-                  title: item.title
-                }))}
-              onChangeChat={(historyId) => {
-                router.push({
-                  query: {
-                    historyId: historyId || '',
-                    shareId
-                  }
-                });
-              }}
-              onDelHistory={delOneShareHistoryByHistoryId}
-              onCloseSlider={onCloseSlider}
-            />
-          </SideBar>
-        ) : (
-          <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
-            <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-            <DrawerContent maxWidth={'250px'}>
-              <ChatHistorySlider
-                appName={shareChatData.app.name}
-                appAvatar={shareChatData.app.avatar}
-                activeHistoryId={historyId}
-                history={shareChatHistory.map((item) => ({
-                  id: item._id,
-                  title: item.title
-                }))}
-                onChangeChat={(historyId) => {
-                  router.push({
-                    query: {
-                      historyId: historyId || '',
-                      shareId
-                    }
-                  });
-                }}
-                onDelHistory={delOneShareHistoryByHistoryId}
-                onCloseSlider={onCloseSlider}
-              />
-            </DrawerContent>
-          </Drawer>
+        {((children: React.ReactNode) => {
+          return isPc ? (
+            <SideBar>{children}</SideBar>
+          ) : (
+            <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
+              <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+              <DrawerContent maxWidth={'250px'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
+                {children}
+              </DrawerContent>
+            </Drawer>
+          );
+        })(
+          <ChatHistorySlider
+            appName={shareChatData.app.name}
+            appAvatar={shareChatData.app.avatar}
+            activeHistoryId={historyId}
+            history={shareChatHistory.map((item) => ({
+              id: item._id,
+              title: item.title
+            }))}
+            onChangeChat={(historyId) => {
+              router.push({
+                query: {
+                  historyId: historyId || '',
+                  shareId
+                }
+              });
+              if (!isPc) {
+                onCloseSlider();
+              }
+            }}
+            onDelHistory={delOneShareHistoryByHistoryId}
+            onCloseSlider={onCloseSlider}
+          />
         )}
+
         {/* chat container */}
         <Flex
           position={'relative'}
@@ -216,36 +180,13 @@ const ShareChat = () => {
           flex={'1 0 0'}
           flexDirection={'column'}
         >
-          <Flex
-            alignItems={'center'}
-            py={[3, 5]}
-            px={5}
-            borderBottom={theme.borders.base}
-            borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
-            color={useColorModeValue('myGray.900', 'white')}
-          >
-            {isPc ? (
-              <>
-                <Box mr={3} color={'myGray.1000'}>
-                  {shareChatData.history.title}
-                </Box>
-                <Tag display={'flex'}>
-                  <MyIcon name={'history'} w={'14px'} />
-                  <Box ml={1}>{shareChatData.history.chats.length}条记录</Box>
-                </Tag>
-              </>
-            ) : (
-              <>
-                <MyIcon
-                  name={'menu'}
-                  w={'20px'}
-                  h={'20px'}
-                  color={useColorModeValue('blackAlpha.700', 'white')}
-                  onClick={onOpenSlider}
-                />
-              </>
-            )}
-          </Flex>
+          {/* header */}
+          <ChatHeader
+            appAvatar={shareChatData.app.avatar}
+            title={shareChatData.history.title}
+            history={shareChatData.history.chats}
+            onOpenSlider={onOpenSlider}
+          />
           {/* chat box */}
           <Box flex={1}>
             <ChatBox
@@ -271,5 +212,14 @@ const ShareChat = () => {
     </PageContainer>
   );
 };
+
+export async function getServerSideProps(context: any) {
+  const shareId = context?.query?.shareId || '';
+  const historyId = context?.query?.historyId || '';
+
+  return {
+    props: { shareId, historyId }
+  };
+}
 
 export default ShareChat;
