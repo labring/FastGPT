@@ -139,7 +139,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             }}
           />
         </Box>
-        <Box flex={1}>
+        <Box flex={1} h={'100%'}>
           {currentTab === TabEnum.settings && <Settings appId={appId} />}
           {currentTab === TabEnum.API && <API appId={appId} />}
           {currentTab === TabEnum.share && <Share appId={appId} />}

@@ -37,6 +37,7 @@ import { useForm } from 'react-hook-form';
 import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/app';
 import MyTooltip from '@/components/MyTooltip';
+import { useRequest } from '@/hooks/useRequest';
 
 const Share = ({ appId }: { appId: string }) => {
   const { toast } = useToast();
@@ -65,40 +66,21 @@ const Share = ({ appId }: { appId: string }) => {
     refetch: refetchShareChatList
   } = useQuery(['initShareChatList', appId], () => getShareChatList(appId));
 
-  const onclickCreateShareChat = useCallback(
-    async (e: ShareChatEditType) => {
-      try {
-        setIsLoading(true);
-        const id = await createShareChat({
-          ...e,
-          appId
-        });
-        onCloseCreateShareChat();
-        refetchShareChatList();
-
-        const url = `对话地址为：${location.origin}/chat/share?shareId=${id}`;
-        copyData(url, '已复制分享地址');
-
-        resetShareChat(defaultShareChat);
-      } catch (err) {
-        toast({
-          title: getErrText(err, '创建分享链接异常'),
-          status: 'warning'
-        });
-        console.log(err);
-      }
-      setIsLoading(false);
-    },
-    [
-      appId,
-      copyData,
-      onCloseCreateShareChat,
-      refetchShareChatList,
-      resetShareChat,
-      setIsLoading,
-      toast
-    ]
-  );
+  const { mutate: onclickCreateShareChat, isLoading: creating } = useRequest({
+    mutationFn: async (e: ShareChatEditType) =>
+      createShareChat({
+        ...e,
+        appId
+      }),
+    errorToast: '创建分享链接异常',
+    onSuccess(id) {
+      onCloseCreateShareChat();
+      refetchShareChatList();
+      const url = `对话地址为：${location.origin}/chat/share?shareId=${id}`;
+      copyData(url, '已复制分享地址');
+      resetShareChat(defaultShareChat);
+    }
+  });
 
   // format share used token
   const formatTokens = (tokens: number) => {
@@ -199,7 +181,7 @@ const Share = ({ appId }: { appId: string }) => {
       {/* create shareChat modal */}
       <Modal isOpen={isOpenCreateShareChat} onClose={onCloseCreateShareChat}>
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent maxW={'min(90vw,500px)'}>
           <ModalHeader>创建免登录窗口</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
@@ -259,7 +241,13 @@ const Share = ({ appId }: { appId: string }) => {
             <Button variant={'base'} mr={3} onClick={onCloseCreateShareChat}>
               取消
             </Button>
-            <Button onClick={submitShareChat(onclickCreateShareChat)}>确认</Button>
+
+            <Button
+              isLoading={creating}
+              onClick={submitShareChat((data) => onclickCreateShareChat(data))}
+            >
+              确认
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

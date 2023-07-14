@@ -105,15 +105,6 @@ const ChatTest = (
 
   return (
     <>
-      <Box
-        zIndex={2}
-        display={isOpen ? 'block' : 'none'}
-        position={'fixed'}
-        top={0}
-        left={0}
-        bottom={0}
-        right={0}
-      />
       <Flex
         ref={BoxRef}
         zIndex={3}
@@ -122,7 +113,7 @@ const ChatTest = (
         top={5}
         right={0}
         h={isOpen ? '95%' : '0'}
-        w={isOpen ? '460px' : '0'}
+        w={isOpen ? ['100%', '460px'] : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -160,6 +151,15 @@ const ChatTest = (
           />
         </Box>
       </Flex>
+      <Box
+        zIndex={2}
+        display={isOpen ? 'block' : 'none'}
+        position={'fixed'}
+        top={0}
+        left={0}
+        bottom={0}
+        right={0}
+      />
     </>
   );
 };
