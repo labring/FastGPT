@@ -90,7 +90,9 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
 
   const loadAppInfo = useCallback(
     async (shareId: string, historyId: string) => {
-      if (!shareId || !historyId) return null;
+      console.log(shareId, historyId);
+
+      if (!shareId) return null;
       const history = shareChatHistory.find((item) => item._id === historyId) || defaultHistory;
 
       ChatBoxRef.current?.resetHistory(history.chats);
@@ -129,9 +131,9 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
     [delManyShareChatHistoryByShareId, setShareChatData, shareChatData, shareChatHistory, toast]
   );
 
-  useEffect(() => {
-    loadAppInfo(shareId, historyId);
-  }, [shareId, historyId]);
+  useQuery(['init', shareId, historyId], () => {
+    return loadAppInfo(shareId, historyId);
+  });
 
   return (
     <PageContainer>
@@ -168,7 +170,6 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
               }
             }}
             onDelHistory={delOneShareHistoryByHistoryId}
-            onCloseSlider={onCloseSlider}
           />
         )}
 

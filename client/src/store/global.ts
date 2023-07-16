@@ -7,7 +7,8 @@ type State = {
   setLoading: (val: boolean) => null;
   screenWidth: number;
   setScreenWidth: (val: number) => void;
-  isPc: boolean;
+  isPc?: boolean;
+  initIsPc(val: boolean): void;
 };
 
 export const useGlobalStore = create<State>()(
@@ -27,7 +28,14 @@ export const useGlobalStore = create<State>()(
           state.isPc = val < 900 ? false : true;
         });
       },
-      isPc: false
+      isPc: undefined,
+      initIsPc(val: boolean) {
+        if (get().isPc !== undefined) return;
+
+        set((state) => {
+          state.isPc = val;
+        });
+      }
     }))
   )
 );
