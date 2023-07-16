@@ -147,6 +147,12 @@ const Info = (
     <Flex p={5} flexDirection={'column'} alignItems={'center'}>
       <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'center'}>
         <Box flex={'0 0 90px'} w={0}>
+          知识库 ID
+        </Box>
+        <Box flex={1}>{kbDetail._id}</Box>
+      </Flex>
+      <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'center'}>
+        <Box flex={'0 0 90px'} w={0}>
           知识库头像
         </Box>
         <Box flex={1}>

@@ -63,7 +63,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   return (
     <>
       <Box h={'100%'} bg={'myWhite.600'}>
-        {isPc ? (
+        {isPc === true && (
           <>
             {pcUnShowLayoutRoute[router.pathname] ? (
               <Auth>{children}</Auth>
@@ -78,7 +78,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               </>
             )}
           </>
-        ) : (
+        )}
+        {isPc === false && (
           <>
             <Box h={'100%'} display={['block', 'none']}>
               {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (

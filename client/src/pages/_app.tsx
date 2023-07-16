@@ -11,6 +11,9 @@ import Router from 'next/router';
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
 import { clientInitData } from '@/store/static';
+import { NextPageContext } from 'next';
+import { useGlobalStore } from '@/store/global';
+import { GET } from '@/service/api/axios';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());
@@ -28,9 +31,14 @@ const queryClient = new QueryClient({
   }
 });
 
-function App({ Component, pageProps }: AppProps) {
+function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; response: any }) {
   const [googleVerKey, setGoogleVerKey] = useState<string>();
   const [baiduTongji, setBaiduTongji] = useState<string>();
+  const { initIsPc } = useGlobalStore();
+
+  if (isPc !== undefined) {
+    initIsPc(isPc);
+  }
 
   useEffect(() => {
     (async () => {
@@ -75,5 +83,13 @@ function App({ Component, pageProps }: AppProps) {
     </>
   );
 }
+
+App.getInitialProps = async ({ ctx }: { ctx: NextPageContext }) => {
+  const reg = /mobile/gi;
+
+  const isPc = !reg.test(ctx.req?.headers?.['user-agent'] || '');
+
+  return { isPc };
+};
 
 export default App;
