@@ -17,7 +17,7 @@ const Login = () => {
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { isPc } = useGlobalStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
-  const { setUserInfo, loadKbList, setLastKbId } = useUserStore();
+  const { setUserInfo } = useUserStore();
   const { setLastHistoryId, setLastChatAppId } = useChatStore();
 
   const loginSuccess = useCallback(
@@ -25,15 +25,13 @@ const Login = () => {
       // init store
       setLastHistoryId('');
       setLastChatAppId('');
-      setLastKbId('');
-      loadKbList(true);
 
       setUserInfo(res.user);
       setTimeout(() => {
-        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/model');
+        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/list');
       }, 100);
     },
-    [lastRoute, loadKbList, router, setLastHistoryId, setLastChatAppId, setLastKbId, setUserInfo]
+    [lastRoute, router, setLastHistoryId, setLastChatAppId, setUserInfo]
   );
 
   function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {
@@ -47,10 +45,6 @@ const Login = () => {
 
     return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
   }
-
-  useEffect(() => {
-    router.prefetch('/model');
-  }, [router]);
 
   return (
     <Flex

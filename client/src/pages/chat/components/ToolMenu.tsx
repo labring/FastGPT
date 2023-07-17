@@ -7,11 +7,11 @@ import MyIcon from '@/components/Icon';
 const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const { onExportChat } = useChatBox();
   const menuList = useRef([
-    {
-      icon: 'shareLight',
-      label: '分享对话',
-      onClick: () => {}
-    },
+    // {
+    //   icon: 'shareLight',
+    //   label: '分享对话',
+    //   onClick: () => {}
+    // },
     {
       icon: 'apiLight',
       label: 'HTML导出',

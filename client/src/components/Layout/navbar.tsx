@@ -29,8 +29,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       },
       {
         label: '应用',
-        icon: 'tabbarModel',
-        activeIcon: 'app',
+        icon: 'appLight',
+        activeIcon: 'appFill',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail']
       },
@@ -43,8 +43,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       },
       {
         label: '市场',
-        icon: 'appLight',
-        activeIcon: 'appFill',
+        icon: 'appStoreLight',
+        activeIcon: 'appStoreFill',
         link: '/appStore',
         activeLink: ['/appStore']
       },
