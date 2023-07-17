@@ -96,7 +96,7 @@ export const moduleFetch = ({ url, data, res }: Props) =>
                 data: JSON.stringify(data)
               });
             } else if (item.event === sseResponseEventEnum.error) {
-              return reject(getErrText(data, '流响应错误'));
+              return reject(data);
             }
           });
           read();

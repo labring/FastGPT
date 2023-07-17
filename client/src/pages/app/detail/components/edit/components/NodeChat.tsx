@@ -9,6 +9,8 @@ import RenderOutput from './render/RenderOutput';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 import MySelect from '@/components/Select';
 import { chatModelList } from '@/store/static';
+import MySlider from '@/components/Slider';
+import { Box } from '@chakra-ui/react';
 
 const NodeChat = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
@@ -47,7 +49,7 @@ const NodeChat = ({
                     key: 'maxToken',
                     valueKey: 'markList',
                     value: [
-                      { label: '0', value: 0 },
+                      { label: '100', value: 100 },
                       { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
                     ]
                   });
@@ -65,7 +67,35 @@ const NodeChat = ({
                   });
                 }}
               />
-            )
+            ),
+            maxToken: (inputItem) => {
+              const model = inputs.find((item) => item.key === 'model')?.value;
+              const modelData = chatModelList.find((item) => item.model === model);
+              const maxToken = modelData ? modelData.contextMaxToken : 4000;
+              const markList = [
+                { label: '100', value: 100 },
+                { label: `${maxToken}`, value: maxToken }
+              ];
+              return (
+                <Box pt={5} pb={4} px={2}>
+                  <MySlider
+                    markList={markList}
+                    width={'100%'}
+                    min={inputItem.min || 100}
+                    max={maxToken}
+                    step={inputItem.step || 1}
+                    value={inputItem.value}
+                    onChange={(e) => {
+                      onChangeNode({
+                        moduleId,
+                        key: inputItem.key,
+                        value: e
+                      });
+                    }}
+                  />
+                </Box>
+              );
+            }
           }}
         />
       </Container>

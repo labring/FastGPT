@@ -464,7 +464,7 @@ const ChatBox = (
                           source={item.value}
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
-                        {(item[quoteLenKey] || item[rawSearchKey]?.length) && (
+                        {(!!item[quoteLenKey] || !!item[rawSearchKey]?.length) && (
                           <Button
                             size={'xs'}
                             variant={'base'}

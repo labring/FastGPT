@@ -260,6 +260,20 @@ const Chat = () => {
                   });
                 } catch (error) {}
               }}
+              onUpdateTitle={async (e) => {
+                try {
+                  await putChatHistory({
+                    historyId: e.historyId,
+                    customTitle: e.title
+                  });
+                  const historyItem = history.find((item) => item._id === e.historyId);
+                  if (!historyItem) return;
+                  updateHistory({
+                    ...historyItem,
+                    title: e.title
+                  });
+                } catch (error) {}
+              }}
             />
           )}
           {/* chat container */}

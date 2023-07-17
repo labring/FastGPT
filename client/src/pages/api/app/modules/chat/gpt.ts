@@ -30,7 +30,7 @@ export type Props = {
 export type Response = { [SpecificInputEnum.answerText]: string; totalTokens: number };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let { model, temperature = 0, stream } = req.body as Props;
+  let { model, stream } = req.body as Props;
   try {
     await authUser({ req, authRoot: true });
 
@@ -54,7 +54,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } catch (err) {
     if (stream) {
-      res.status(500);
       sseErrRes(res, err);
       res.end();
     } else {

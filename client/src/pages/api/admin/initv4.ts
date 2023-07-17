@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, App } from '@/service/mongo';
-import { appTemplates } from '@/constants/app';
 import { rawSearchKey } from '@/constants/chat';
 
 const chatTemplate = ({
@@ -85,7 +84,7 @@ const chatTemplate = ({
         },
         {
           key: 'temperature',
-          type: 'slider',
+          type: 'custom',
           label: '温度',
           value: temperature,
           min: 0,
@@ -105,10 +104,10 @@ const chatTemplate = ({
         },
         {
           key: 'maxToken',
-          type: 'slider',
+          type: 'custom',
           label: '回复上限',
           value: maxToken,
-          min: 0,
+          min: 100,
           max: 16000,
           step: 50,
           markList: [
@@ -328,8 +327,8 @@ const kbTemplate = ({
         }
       ],
       position: {
-        x: 211.58250540918442,
-        y: 611.8700401034965
+        x: -196.84632684738483,
+        y: 797.3401378431948
       },
       moduleId: 'k9y3jm'
     },
@@ -364,7 +363,7 @@ const kbTemplate = ({
         },
         {
           key: 'temperature',
-          type: 'slider',
+          type: 'custom',
           label: '温度',
           value: temperature,
           min: 0,
@@ -384,10 +383,10 @@ const kbTemplate = ({
         },
         {
           key: 'maxToken',
-          type: 'slider',
+          type: 'custom',
           label: '回复上限',
           value: maxToken,
-          min: 0,
+          min: 100,
           max: 16000,
           step: 50,
           markList: [
@@ -459,8 +458,8 @@ const kbTemplate = ({
         }
       ],
       position: {
-        x: 830.725790038998,
-        y: 201.0790739617387
+        x: 745.484449528062,
+        y: 259.9361900288137
       },
       moduleId: 'qbf8td'
     },
@@ -482,7 +481,7 @@ const kbTemplate = ({
         },
         {
           key: 'similarity',
-          type: 'slider',
+          type: 'custom',
           label: '相似度',
           value: searchSimilarity,
           min: 0,
@@ -502,8 +501,9 @@ const kbTemplate = ({
         },
         {
           key: 'limit',
-          type: 'slider',
+          type: 'custom',
           label: '单次搜索上限',
+          description: '最多取 n 条记录作为本次问题引用',
           value: searchLimit,
           min: 1,
           max: 20,
@@ -575,7 +575,7 @@ const kbTemplate = ({
       },
       moduleId: 'q9v14m'
     },
-    searchEmptyText
+    ...(searchEmptyText
       ? [
           {
             logo: '/imgs/module/reply.png',
@@ -600,13 +600,13 @@ const kbTemplate = ({
             ],
             outputs: [],
             position: {
-              x: 827.8570503787319,
-              y: -63.837994077710675
+              x: 673.6108151684664,
+              y: -84.13355134221933
             },
             moduleId: 'w8av9y'
           }
         ]
-      : []
+      : [])
   ];
 };
 
@@ -619,13 +619,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const apps = await App.find(
       {
         chat: { $ne: null },
-        modules: { $ne: null }
+        modules: { $exists: false }
+        // userId: '63f9a14228d2a688d8dc9e1b'
       },
       '_id chat'
-    ).limit(2);
+    );
 
-    const result = await Promise.all(
+    await Promise.all(
       apps.map(async (app) => {
+        if (!app.chat) return app;
         const modules = (() => {
           if (app.chat.relatedKbs.length === 0) {
             return chatTemplate({
@@ -650,17 +652,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         })();
 
+        await App.findByIdAndUpdate(app.id, {
+          modules
+        });
         return modules;
       })
     );
 
-    console.log(apps);
-
     jsonRes(res, {
-      data: {
-        apps,
-        result
-      }
+      data: apps.length
     });
   } catch (error) {
     jsonRes(res, {
