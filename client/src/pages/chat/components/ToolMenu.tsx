@@ -24,7 +24,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
     },
     { icon: 'pdf', label: 'PDF导出', onClick: () => onExportChat({ type: 'pdf', history }) }
   ]);
-  return (
+  return history.length > 0 ? (
     <Menu autoSelect={false} isLazy>
       <MenuButton
         _hover={{ bg: 'myWhite.600  ' }}
@@ -45,7 +45,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         ))}
       </MenuList>
     </Menu>
-  );
+  ) : null;
 };
 
 export default ToolMenu;

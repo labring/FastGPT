@@ -62,7 +62,8 @@ const map = {
   csvImport: require('./icons/file/csv.svg').default,
   qaImport: require('./icons/file/qaImport.svg').default,
   uploadFile: require('./icons/file/uploadFile.svg').default,
-  closeLight: require('./icons/light/close.svg').default
+  closeLight: require('./icons/light/close.svg').default,
+  customTitle: require('./icons/light/customTitle.svg').default
 };
 
 export type IconName = keyof typeof map;

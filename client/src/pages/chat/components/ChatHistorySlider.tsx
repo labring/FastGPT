@@ -30,7 +30,8 @@ const ChatHistorySlider = ({
   activeHistoryId,
   onChangeChat,
   onDelHistory,
-  onSetHistoryTop
+  onSetHistoryTop,
+  onUpdateTitle
 }: {
   appId?: string;
   appName: string;
@@ -40,6 +41,7 @@ const ChatHistorySlider = ({
   onChangeChat: (historyId?: string) => void;
   onDelHistory: (historyId: string) => void;
   onSetHistoryTop?: (e: { historyId: string; top: boolean }) => void;
+  onUpdateTitle?: (e: { historyId: string; title: string }) => void;
 }) => {
   const theme = useTheme();
   const router = useRouter();
@@ -159,6 +161,20 @@ const ChatHistorySlider = ({
                         {item.top ? '取消置顶' : '置顶'}
                       </MenuItem>
                     )}
+                    {/* {onUpdateTitle && (
+                      <MenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateTitle({
+                            historyId: item.id,
+                            title: '是是是'
+                          });
+                        }}
+                      >
+                        <MyIcon mr={2} name={'customTitle'} w={'16px'}></MyIcon>
+                        自定义标题
+                      </MenuItem>
+                    )} */}
                     <MenuItem
                       _hover={{ color: 'red.500' }}
                       onClick={(e) => {

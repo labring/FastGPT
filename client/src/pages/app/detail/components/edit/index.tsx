@@ -84,6 +84,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const { x, y, zoom } = useViewport();
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [loaded, setLoaded] = useState(false);
   const {
     isOpen: isOpenTemplate,
     onOpen: onOpenTemplate,
@@ -255,6 +256,9 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           })
         )
       );
+
+      setLoaded(true);
+      onFixView();
     },
     [onDelConnect, setEdges, setNodes, onChangeNode, onDelNode]
   );
@@ -377,14 +381,15 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
             isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
           }}
         />
+
         <ReactFlow
           ref={reactFlowWrapper}
           className={styles.panel}
+          fitView
           nodes={nodes}
           edges={edges}
           minZoom={0.4}
           maxZoom={1.5}
-          fitView
           defaultEdgeOptions={edgeOptions}
           connectionLineStyle={connectionLineStyle}
           nodeTypes={nodeTypes}

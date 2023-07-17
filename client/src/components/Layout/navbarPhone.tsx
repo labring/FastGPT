@@ -21,7 +21,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         label: '应用',
         icon: 'tabbarModel',
         link: `/app/list`,
-        activeLink: ['/app/list'],
+        activeLink: ['/app/list', '/app/detail'],
         unread: 0
       },
       {
@@ -64,7 +64,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
             pt={1}
             px={3}
             transform={'scale(0.9)'}
-            {...(item.activeLink.includes(router.asPath)
+            {...(item.activeLink.includes(router.pathname)
               ? {
                   color: '#7089f1'
                 }
@@ -72,7 +72,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
                   color: 'myGray.500'
                 })}
             _after={
-              item.activeLink.includes(router.asPath)
+              item.activeLink.includes(router.pathname)
                 ? {
                     content: '""',
                     position: 'absolute',

@@ -21,9 +21,8 @@ import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
 import { postCreateApp } from '@/api/app';
 import { useRouter } from 'next/router';
-import { appTemplates } from '@/constants/app';
+import { appTemplates } from '@/constants/flow/ModuleTemplate';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
 
 type FormType = {
   avatar: string;

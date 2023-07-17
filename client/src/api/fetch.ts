@@ -89,6 +89,8 @@ export const streamFetch = ({
           });
           read();
         } catch (err: any) {
+          console.log(111111111111111111);
+
           if (err?.message === 'The user aborted a request.') {
             return resolve({
               responseText,
@@ -102,7 +104,7 @@ export const streamFetch = ({
       };
       read();
     } catch (err: any) {
-      console.log(err);
+      console.log(err, 'fetch error');
 
       reject(getErrText(err, '请求异常'));
     }
