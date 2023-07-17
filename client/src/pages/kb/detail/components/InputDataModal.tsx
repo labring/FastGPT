@@ -108,12 +108,18 @@ const InputDataModal = ({
         try {
           const data = {
             dataId: e.dataId,
+            kbId,
             a: e.a,
             q: e.q === defaultValues.q ? '' : e.q
           };
           await putKbDataById(data);
           onSuccess(data);
-        } catch (error) {}
+        } catch (err) {
+          toast({
+            status: 'error',
+            title: getErrText(err, '更新数据失败')
+          });
+        }
         setLoading(false);
       }
 
@@ -123,7 +129,7 @@ const InputDataModal = ({
       });
       onClose();
     },
-    [defaultValues, onClose, onSuccess, toast]
+    [defaultValues.a, defaultValues.q, kbId, onClose, onSuccess, toast]
   );
 
   return (
@@ -194,6 +200,10 @@ const InputDataModal = ({
                     await delOneKbDataByDataId(defaultValues.dataId);
                     onDelete();
                     onClose();
+                    toast({
+                      status: 'success',
+                      title: '记录已删除'
+                    });
                   } catch (error) {
                     toast({
                       status: 'warning',

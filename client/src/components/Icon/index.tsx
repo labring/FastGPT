@@ -54,7 +54,14 @@ const map = {
   voice: require('./icons/voice.svg').default,
   html: require('./icons/file/html.svg').default,
   pdf: require('./icons/file/pdf.svg').default,
-  markdown: require('./icons/file/markdown.svg').default
+  markdown: require('./icons/file/markdown.svg').default,
+  importLight: require('./icons/light/import.svg').default,
+  manualImport: require('./icons/file/manualImport.svg').default,
+  indexImport: require('./icons/file/indexImport.svg').default,
+  csvImport: require('./icons/file/csv.svg').default,
+  qaImport: require('./icons/file/qaImport.svg').default,
+  uploadFile: require('./icons/file/uploadFile.svg').default,
+  closeLight: require('./icons/light/close.svg').default
 };
 
 export type IconName = keyof typeof map;

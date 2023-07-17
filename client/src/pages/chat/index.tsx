@@ -288,7 +288,7 @@ const Chat = () => {
             {/* header */}
             <ChatHeader
               appAvatar={chatData.app.avatar}
-              title={chatData.app.name}
+              appName={chatData.app.name}
               history={chatData.history}
               onOpenSlider={onOpenSlider}
             />

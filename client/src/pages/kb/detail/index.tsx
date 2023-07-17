@@ -17,12 +17,17 @@ import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import Info from './components/Info';
+
+const ImportData = dynamic(() => import('./components/Import'), {
+  ssr: false
+});
 const Test = dynamic(() => import('./components/Test'), {
   ssr: false
 });
 
 enum TabEnum {
   data = 'data',
+  import = 'import',
   test = 'test',
   info = 'info'
 }
@@ -35,14 +40,12 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
   const { isPc } = useScreen();
   const { kbDetail, getKbDetail } = useUserStore();
 
-  const tabList = useMemo(
-    () => [
-      { label: '数据集', id: TabEnum.data, icon: 'overviewLight' },
-      { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
-      { label: '基本信息', id: TabEnum.info, icon: 'settingLight' }
-    ],
-    []
-  );
+  const tabList = useRef([
+    { label: '数据集', id: TabEnum.data, icon: 'overviewLight' },
+    { label: '导入数据', id: TabEnum.import, icon: 'importLight' },
+    { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
+    { label: '配置', id: TabEnum.info, icon: 'settingLight' }
+  ]);
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -77,70 +80,73 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
   return (
     <PageContainer>
       <Box display={['block', 'flex']} h={'100%'} pt={[4, 0]}>
-        {/* pc tab */}
-        <Box
-          display={['none', 'flex']}
-          flexDirection={'column'}
-          p={4}
-          w={'200px'}
-          borderRight={theme.borders.base}
-        >
-          <Flex mb={4} alignItems={'center'}>
-            <Avatar src={kbDetail.avatar} w={'34px'} borderRadius={'lg'} />
-            <Box ml={2} fontWeight={'bold'}>
-              {kbDetail.name}
-            </Box>
-          </Flex>
-          <SideTabs
-            flex={1}
-            mx={'auto'}
-            mt={2}
-            w={'100%'}
-            list={tabList}
-            activeId={currentTab}
-            onChange={(e: any) => {
-              setCurrentTab(e);
-            }}
-          />
+        {isPc ? (
           <Flex
-            alignItems={'center'}
-            cursor={'pointer'}
-            py={2}
-            px={3}
-            borderRadius={'md'}
-            _hover={{ bg: 'myGray.100' }}
-            onClick={() => router.replace('/kb/list')}
+            flexDirection={'column'}
+            p={4}
+            h={'100%'}
+            flex={'0 0 200px'}
+            borderRight={theme.borders.base}
           >
-            <IconButton
-              mr={3}
-              icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
-              bg={'white'}
-              boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-              h={'28px'}
-              size={'sm'}
-              borderRadius={'50%'}
-              aria-label={''}
+            <Flex mb={4} alignItems={'center'}>
+              <Avatar src={kbDetail.avatar} w={'34px'} borderRadius={'lg'} />
+              <Box ml={2} fontWeight={'bold'}>
+                {kbDetail.name}
+              </Box>
+            </Flex>
+            <SideTabs
+              flex={1}
+              mx={'auto'}
+              mt={2}
+              w={'100%'}
+              list={tabList.current}
+              activeId={currentTab}
+              onChange={(e: any) => {
+                setCurrentTab(e);
+              }}
             />
-            全部知识库
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              py={2}
+              px={3}
+              borderRadius={'md'}
+              _hover={{ bg: 'myGray.100' }}
+              onClick={() => router.replace('/kb/list')}
+            >
+              <IconButton
+                mr={3}
+                icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+                bg={'white'}
+                boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+                h={'28px'}
+                size={'sm'}
+                borderRadius={'50%'}
+                aria-label={''}
+              />
+              全部知识库
+            </Flex>
           </Flex>
-        </Box>
-        <Box mb={3} display={['block', 'none']}>
-          <Tabs
-            m={'auto'}
-            w={'260px'}
-            size={isPc ? 'md' : 'sm'}
-            list={[
-              { id: TabEnum.data, label: '数据管理' },
-              { id: TabEnum.test, label: '搜索测试' },
-              { id: TabEnum.info, label: '基本信息' }
-            ]}
-            activeId={currentTab}
-            onChange={(e: any) => setCurrentTab(e)}
-          />
-        </Box>
-        <Box flex={'1 0 0'} overflow={'overlay'} pb={[4, 0]}>
+        ) : (
+          <Box mb={3}>
+            <Tabs
+              m={'auto'}
+              w={'260px'}
+              size={isPc ? 'md' : 'sm'}
+              list={tabList.current.map((item) => ({
+                id: item.id,
+                label: item.label
+              }))}
+              activeId={currentTab}
+              onChange={(e: any) => setCurrentTab(e)}
+            />
+          </Box>
+        )}
+
+        <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
           {currentTab === TabEnum.data && <DataCard kbId={kbId} />}
-          {currentTab === TabEnum.test && <Test />}
+          {currentTab === TabEnum.import && <ImportData kbId={kbId} />}
+          {currentTab === TabEnum.test && <Test kbId={kbId} />}
           {currentTab === TabEnum.info && <Info ref={InfoRef} kbId={kbId} form={form} />}
         </Box>
       </Box>

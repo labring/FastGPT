@@ -137,6 +137,7 @@ export interface kbSchema {
   updateTime: Date;
   avatar: string;
   name: string;
+  model: string;
   tags: string[];
 }
 

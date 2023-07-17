@@ -11,6 +11,7 @@ import {
   Response as SearchTestResponse
 } from '@/pages/api/openapi/kb/searchTest';
 import { Response as KbDataItemType } from '@/pages/api/plugins/kb/data/getDataById';
+import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
 
 export type KbUpdateParams = {
   id: string;
@@ -71,8 +72,7 @@ export const postKbDataFromList = (data: PushDataProps) =>
 /**
  * 更新一条数据
  */
-export const putKbDataById = (data: { dataId: string; a: string; q?: string }) =>
-  PUT('/openapi/kb/updateData', data);
+export const putKbDataById = (data: UpdateDataProps) => PUT('/openapi/kb/updateData', data);
 /**
  * 删除一条知识库数据
  */

@@ -5,6 +5,14 @@ export enum UserAuthTypeEnum {
 
 export const PRICE_SCALE = 100000;
 
+export const fileImgs = [
+  { reg: /pdf/gi, src: '/imgs/files/pdf.svg' },
+  { reg: /csv/gi, src: '/imgs/files/csv.svg' },
+  { reg: /(doc|docs)/gi, src: '/imgs/files/doc.svg' },
+  { reg: /txt/gi, src: '/imgs/files/txt.svg' },
+  { reg: /md/gi, src: '/imgs/files/markdown.svg' }
+];
+
 export const htmlTemplate = `<!DOCTYPE html>
 <html lang="en">
   <head>

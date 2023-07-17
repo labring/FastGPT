@@ -2,7 +2,6 @@ import { encoding_for_model } from '@dqbd/tiktoken';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
-import { OpenAiChatEnum } from '@/constants/model';
 import axios from 'axios';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 
@@ -69,15 +68,7 @@ export function countOpenAIToken({
   return token;
 }
 
-export const openAiSliceTextByToken = ({
-  model = OpenAiChatEnum.GPT35,
-  text,
-  length
-}: {
-  model: string;
-  text: string;
-  length: number;
-}) => {
+export const openAiSliceTextByToken = ({ text, length }: { text: string; length: number }) => {
   const enc = getOpenAiEncMap();
   const encodeText = enc.encode(text);
   const decoder = new TextDecoder();

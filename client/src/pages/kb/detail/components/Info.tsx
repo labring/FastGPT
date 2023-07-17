@@ -17,6 +17,8 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
 import { compressImg } from '@/utils/file';
 import type { KbItemType } from '@/types/plugin';
+import { vectorModelList } from '@/store/static';
+import MySelect from '@/components/Select';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
@@ -144,18 +146,18 @@ const Info = (
   }));
 
   return (
-    <Flex p={5} flexDirection={'column'} alignItems={'center'}>
-      <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'center'}>
-        <Box flex={'0 0 90px'} w={0}>
+    <Box py={5} px={[5, 10]}>
+      <Flex mt={5} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           知识库 ID
         </Box>
         <Box flex={1}>{kbDetail._id}</Box>
       </Flex>
-      <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'center'}>
-        <Box flex={'0 0 90px'} w={0}>
+      <Flex mt={5} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           知识库头像
         </Box>
-        <Box flex={1}>
+        <Box flex={[1, '0 0 300px']}>
           <Avatar
             m={'auto'}
             src={getValues('avatar')}
@@ -167,27 +169,44 @@ const Info = (
           />
         </Box>
       </Flex>
-      <FormControl mt={8} w={'100%'} maxW={'350px'} display={'flex'} alignItems={'center'}>
-        <Box flex={'0 0 90px'} w={0}>
+      <FormControl mt={8} w={'100%'} display={'flex'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           知识库名称
         </Box>
         <Input
-          flex={1}
+          flex={[1, '0 0 300px']}
           {...register('name', {
             required: '知识库名称不能为空'
           })}
         />
       </FormControl>
-      <Flex mt={8} alignItems={'center'} w={'100%'} maxW={'350px'} flexWrap={'wrap'}>
-        <Box flex={'0 0 90px'} w={0}>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          索引模型
+        </Box>
+        <Box flex={[1, '0 0 300px']}>
+          <MySelect
+            w={'100%'}
+            value={getValues('model')}
+            list={vectorModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onchange={(res) => {
+              setValue('model', res);
+            }}
+          />
+        </Box>
+      </Flex>
+      <Flex mt={8} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           分类标签
           <MyTooltip label={'用空格隔开多个标签，便于搜索'}>
             <QuestionOutlineIcon ml={1} />
           </MyTooltip>
         </Box>
         <Input
-          flex={1}
-          maxW={'300px'}
+          flex={[1, '0 0 300px']}
           ref={InputRef}
           placeholder={'标签,使用空格分割。'}
           maxLength={30}
@@ -196,7 +215,7 @@ const Info = (
             setRefresh(!refresh);
           }}
         />
-        <Box pl={'90px'} mt={2} w="100%">
+        <Box w={'100%'} pl={['90px', '160px']} mt={2}>
           {getValues('tags')
             .split(' ')
             .filter((item) => item)
@@ -207,8 +226,9 @@ const Info = (
             ))}
         </Box>
       </Flex>
-      <Flex mt={5} w={'100%'} maxW={'350px'} alignItems={'flex-end'}>
-        <Box flex={'0 0 90px'} w={0}></Box>
+
+      <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}></Box>
         <Button
           isLoading={btnLoading}
           mr={4}
@@ -232,7 +252,7 @@ const Info = (
       </Flex>
       <File onSelect={onSelectFile} />
       <ConfirmChild />
-    </Flex>
+    </Box>
   );
 };
 
