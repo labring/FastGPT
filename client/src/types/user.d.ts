@@ -4,7 +4,6 @@ export interface UserType {
   _id: string;
   username: string;
   avatar: string;
-  openaiKey: string;
   balance: number;
   promotion: {
     rate: number;
@@ -14,7 +13,6 @@ export interface UserType {
 export interface UserUpdateParams {
   balance?: number;
   avatar?: string;
-  openaiKey?: string;
 }
 
 export interface UserBillType {
@@ -23,4 +21,5 @@ export interface UserBillType {
   appName: string;
   source: BillSchema['source'];
   total: number;
+  list: BillSchema['list'];
 }

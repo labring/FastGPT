@@ -31,21 +31,10 @@ export type Response = { [SpecificInputEnum.answerText]: string; totalTokens: nu
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { model, temperature = 0, stream } = req.body as Props;
   try {
-    // temperature adapt
-    const modelConstantsData = getChatModel(model);
-
-    if (!modelConstantsData) {
-      throw new Error('The chat model is undefined');
-    }
-
-    // FastGpt temperature range: 1~10
-    temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
-
     const response = await chatCompletion({
       ...req.body,
       res,
-      model,
-      temperature
+      model
     });
 
     if (stream) {
@@ -88,6 +77,16 @@ export async function chatCompletion({
   limitPrompt = '',
   billId
 }: Props & { res: NextApiResponse }): Promise<Response> {
+  // temperature adapt
+  const modelConstantsData = getChatModel(model);
+
+  if (!modelConstantsData) {
+    return Promise.reject('The chat model is undefined');
+  }
+
+  // FastGpt temperature range: 1~10
+  temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
+
   const messages: ChatItemType[] = [
     ...(quotePrompt
       ? [
@@ -189,7 +188,7 @@ export async function chatCompletion({
     billId,
     moduleName: 'AI Chat',
     amount: countModelPrice({ model, tokens: totalTokens }),
-    model,
+    model: modelConstantsData.name,
     tokenLen: totalTokens
   });
 

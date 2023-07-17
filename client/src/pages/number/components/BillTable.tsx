@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex, Box } from '@chakra-ui/react';
+import {
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  Flex,
+  Box,
+  Button
+} from '@chakra-ui/react';
 import { BillSourceMap } from '@/constants/user';
 import { getUserBills } from '@/api/user';
 import type { UserBillType } from '@/types/user';
@@ -9,6 +20,9 @@ import dayjs from 'dayjs';
 import MyIcon from '@/components/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
+import dynamic from 'next/dynamic';
+
+const BillDetail = dynamic(() => import('./BillDetail'));
 
 const BillTable = () => {
   const { Loading } = useLoading();
@@ -30,6 +44,8 @@ const BillTable = () => {
     }
   });
 
+  const [billDetail, setBillDetail] = useState<UserBillType>();
+
   return (
     <>
       <TableContainer position={'relative'} minH={'100px'}>
@@ -39,7 +55,8 @@ const BillTable = () => {
               <Th>时间</Th>
               <Th>来源</Th>
               <Th>应用名</Th>
-              <Th>金额</Th>
+              <Th>总金额</Th>
+              <Th></Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
@@ -49,6 +66,11 @@ const BillTable = () => {
                 <Td>{BillSourceMap[item.source]}</Td>
                 <Td>{item.appName || '-'}</Td>
                 <Td>{item.total}元</Td>
+                <Td>
+                  <Button size={'sm'} variant={'base'} onClick={() => setBillDetail(item)}>
+                    详情
+                  </Button>
+                </Td>
               </Tr>
             ))}
           </Tbody>
@@ -75,6 +97,7 @@ const BillTable = () => {
         </Box>
       </Flex>
       <Loading loading={isLoading} fixed={false} />
+      {!!billDetail && <BillDetail bill={billDetail} onClose={() => setBillDetail(undefined)} />}
     </>
   );
 };
