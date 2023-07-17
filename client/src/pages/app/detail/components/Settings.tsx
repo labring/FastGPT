@@ -73,11 +73,11 @@ const Settings = ({ appId }: { appId: string }) => {
               概览
             </Box>
             <Box
-              border={theme.borders.sm}
+              border={theme.borders.base}
               borderRadius={'lg'}
               px={5}
               py={4}
-              bg={'rgba(235,245,255,0.4)'}
+              bg={'myBlue.100'}
               position={'relative'}
             >
               <Flex alignItems={'center'} py={2}>

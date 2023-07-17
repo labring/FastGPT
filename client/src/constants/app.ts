@@ -53,85 +53,42 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'source',
             targets: [
               {
-                moduleId: '3n49vn',
+                moduleId: '7pacf0',
                 key: 'userChatInput'
               }
             ]
           }
         ],
         position: {
-          x: 481.4684021933373,
-          y: 741.252592445572
+          x: 477.9074315528994,
+          y: 1604.2106242223683
         },
-        moduleId: 'xzj0oo'
-      },
-      {
-        logo: '/imgs/module/history.png',
-        name: '聊天记录',
-        intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-        type: 'initInput',
-        flowType: 'historyNode',
-        url: '/openapi/modules/init/history',
-        inputs: [
-          {
-            key: 'maxContext',
-            type: 'numberInput',
-            label: '最长记录数',
-            value: 4,
-            min: 0,
-            max: 50,
-            connected: false
-          },
-          {
-            key: 'history',
-            type: 'hidden',
-            label: '聊天记录',
-            connected: false
-          }
-        ],
-        outputs: [
-          {
-            key: 'history',
-            label: '聊天记录',
-            type: 'source',
-            targets: [
-              {
-                moduleId: '3n49vn',
-                key: 'history'
-              }
-            ]
-          }
-        ],
-        position: {
-          x: 405.6002299937601,
-          y: 374.16606887857023
-        },
-        moduleId: 'hh6of9'
+        moduleId: '7z5g5h'
       },
       {
         logo: '/imgs/module/AI.png',
         name: 'AI 对话',
-        intro: 'OpenAI GPT 大模型对话。',
+        intro: 'AI 大模型对话',
         flowType: 'chatNode',
         type: 'http',
         url: '/openapi/modules/chat/gpt',
         inputs: [
           {
             key: 'model',
-            type: 'select',
+            type: 'custom',
             label: '对话模型',
             value: 'gpt-3.5-turbo-16k',
             list: [
-              {
-                label: 'Gpt35-16k',
-                value: 'gpt-3.5-turbo-16k'
-              },
               {
                 label: 'Gpt35-4k',
                 value: 'gpt-3.5-turbo'
               },
               {
-                label: 'Gpt4-8k',
+                label: 'Gpt35-16k',
+                value: 'gpt-3.5-turbo-16k'
+              },
+              {
+                label: 'Gpt4',
                 value: 'gpt-4'
               }
             ],
@@ -161,9 +118,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxToken',
             type: 'slider',
             label: '回复上限',
-            value: 3000,
+            value: 8000,
             min: 0,
-            max: 4000,
+            max: 16000,
             step: 50,
             markList: [
               {
@@ -171,8 +128,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 value: 0
               },
               {
-                label: '4000',
-                value: 4000
+                label: '16000',
+                value: 16000
               }
             ],
             connected: false
@@ -234,10 +191,53 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           }
         ],
         position: {
-          x: 965.5863241865428,
-          y: -29.569293606933797
+          x: 981.9682828103937,
+          y: 890.014595014464
         },
-        moduleId: '3n49vn'
+        moduleId: '7pacf0'
+      },
+      {
+        logo: '/imgs/module/history.png',
+        name: '聊天记录',
+        intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
+        type: 'initInput',
+        flowType: 'historyNode',
+        url: '/openapi/modules/init/history',
+        inputs: [
+          {
+            key: 'maxContext',
+            type: 'numberInput',
+            label: '最长记录数',
+            value: 4,
+            min: 0,
+            max: 50,
+            connected: false
+          },
+          {
+            key: 'history',
+            type: 'hidden',
+            label: '聊天记录',
+            connected: false
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            label: '聊天记录',
+            type: 'source',
+            targets: [
+              {
+                moduleId: '7pacf0',
+                key: 'history'
+              }
+            ]
+          }
+        ],
+        position: {
+          x: 452.5466249541586,
+          y: 1276.3930310334215
+        },
+        moduleId: 'xj0c9p'
       }
     ]
   },
@@ -269,21 +269,21 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'source',
             targets: [
               {
-                moduleId: '3n49vn',
+                moduleId: 'q9v14m',
                 key: 'userChatInput'
               },
               {
-                moduleId: 'zid0fj',
+                moduleId: 'qbf8td',
                 key: 'userChatInput'
               }
             ]
           }
         ],
         position: {
-          x: 447.0165784462213,
-          y: 748.7421193471189
+          x: -210.24817109253843,
+          y: 665.7922967022607
         },
-        moduleId: 'xzj0oo'
+        moduleId: 'v0nc1s'
       },
       {
         logo: '/imgs/module/history.png',
@@ -316,42 +316,42 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'source',
             targets: [
               {
-                moduleId: '3n49vn',
+                moduleId: 'qbf8td',
                 key: 'history'
               }
             ]
           }
         ],
         position: {
-          x: 1182.3679138395933,
-          y: 882.21575235563
+          x: 211.58250540918442,
+          y: 611.8700401034965
         },
-        moduleId: 'hh6of9'
+        moduleId: 'k9y3jm'
       },
       {
         logo: '/imgs/module/AI.png',
         name: 'AI 对话',
-        intro: 'OpenAI GPT 大模型对话。',
+        intro: 'AI 大模型对话',
         flowType: 'chatNode',
         type: 'http',
         url: '/openapi/modules/chat/gpt',
         inputs: [
           {
             key: 'model',
-            type: 'select',
+            type: 'custom',
             label: '对话模型',
             value: 'gpt-3.5-turbo-16k',
             list: [
-              {
-                label: 'Gpt35-16k',
-                value: 'gpt-3.5-turbo-16k'
-              },
               {
                 label: 'Gpt35-4k',
                 value: 'gpt-3.5-turbo'
               },
               {
-                label: 'Gpt4-8k',
+                label: 'Gpt35-16k',
+                value: 'gpt-3.5-turbo-16k'
+              },
+              {
+                label: 'Gpt4',
                 value: 'gpt-4'
               }
             ],
@@ -381,9 +381,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxToken',
             type: 'slider',
             label: '回复上限',
-            value: 3000,
+            value: 8000,
             min: 0,
-            max: 4000,
+            max: 16000,
             step: 50,
             markList: [
               {
@@ -391,8 +391,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 value: 0
               },
               {
-                label: '4000',
-                value: 4000
+                label: '16000',
+                value: 16000
               }
             ],
             connected: false
@@ -416,14 +416,14 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
               '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
             placeholder:
               '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value: '',
+            value: '知识库是关于 Laf 的内容，参考知识库回答我的问题。',
             connected: false
           },
           {
             key: 'switch',
             type: 'target',
             label: '触发器',
-            connected: false
+            connected: true
           },
           {
             key: 'quotePrompt',
@@ -454,10 +454,10 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           }
         ],
         position: {
-          x: 1611.18354309989,
-          y: -56.531590452502826
+          x: 830.725790038998,
+          y: 201.0790739617387
         },
-        moduleId: '3n49vn'
+        moduleId: 'qbf8td'
       },
       {
         logo: '/imgs/module/db.png',
@@ -519,7 +519,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'switch',
             type: 'target',
             label: '触发器',
-            connected: false
+            connected: true
           },
           {
             key: 'userChatInput',
@@ -542,7 +542,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'source',
             targets: [
               {
-                moduleId: 'gbnzif',
+                moduleId: 'w8av9y',
                 key: 'switch'
               }
             ]
@@ -554,17 +554,17 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'source',
             targets: [
               {
-                moduleId: '3n49vn',
+                moduleId: 'qbf8td',
                 key: 'quotePrompt'
               }
             ]
           }
         ],
         position: {
-          x: 718.7528704477357,
-          y: 112.64438442321625
+          x: 101.2612930583856,
+          y: -31.342317423453437
         },
-        moduleId: 'zid0fj'
+        moduleId: 'q9v14m'
       },
       {
         logo: '/imgs/module/reply.png',
@@ -581,7 +581,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'answerText',
-            value: '对不起，你的问题不在知识库中。',
+            value: '对不起，我没有找到你的问题',
             type: 'input',
             label: '回复的内容',
             connected: false
@@ -589,19 +589,288 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ],
         outputs: [],
         position: {
-          x: 1171.1202953011716,
-          y: 213.00404490394536
+          x: 827.8570503787319,
+          y: -63.837994077710675
         },
-        moduleId: 'gbnzif'
+        moduleId: 'w8av9y'
       }
     ]
   },
   {
     id: 'chatGuide',
-    avatar: '/imgs/module/db.png',
-    name: '问答前引导',
+    avatar: '/imgs/module/userGuide.png',
+    name: '对话前引导',
     intro: '可以在每次对话开始前提示用户填写一些内容，作为本次对话的永久内容',
-    modules: []
+    modules: [
+      {
+        logo: '/imgs/module/userChatInput.png',
+        name: '用户问题',
+        intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
+        type: 'initInput',
+        flowType: 'questionInput',
+        url: '/openapi/modules/init/userChatInput',
+        inputs: [
+          {
+            key: 'userChatInput',
+            type: 'systemInput',
+            label: '用户问题',
+            connected: false
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: '用户问题',
+            type: 'source',
+            targets: [
+              {
+                moduleId: '7pacf0',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ],
+        position: {
+          x: 485.8457451202796,
+          y: 1601.0352987954163
+        },
+        moduleId: '7z5g5h'
+      },
+      {
+        logo: '/imgs/module/AI.png',
+        name: 'AI 对话',
+        intro: 'OpenAI GPT 大模型对话。',
+        flowType: 'chatNode',
+        type: 'http',
+        url: '/openapi/modules/chat/gpt',
+        inputs: [
+          {
+            key: 'model',
+            type: 'custom',
+            label: '对话模型',
+            value: 'gpt-3.5-turbo-16k',
+            list: [
+              {
+                label: 'Gpt35-4k',
+                value: 'gpt-3.5-turbo'
+              },
+              {
+                label: 'Gpt35-16k',
+                value: 'gpt-3.5-turbo-16k'
+              },
+              {
+                label: 'Gpt4',
+                value: 'gpt-4'
+              }
+            ],
+            connected: false
+          },
+          {
+            key: 'temperature',
+            type: 'slider',
+            label: '温度',
+            value: 0,
+            min: 0,
+            max: 10,
+            step: 1,
+            markList: [
+              {
+                label: '严谨',
+                value: 0
+              },
+              {
+                label: '发散',
+                value: 10
+              }
+            ],
+            connected: false
+          },
+          {
+            key: 'maxToken',
+            type: 'slider',
+            label: '回复上限',
+            value: 8000,
+            min: 0,
+            max: 16000,
+            step: 50,
+            markList: [
+              {
+                label: '0',
+                value: 0
+              },
+              {
+                label: '16000',
+                value: 16000
+              }
+            ],
+            connected: false
+          },
+          {
+            key: 'systemPrompt',
+            type: 'textarea',
+            label: '系统提示词',
+            description:
+              '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
+            placeholder:
+              '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
+            value: '将我发送的任何内容，直接翻译成{{test}}',
+            connected: false
+          },
+          {
+            key: 'limitPrompt',
+            type: 'textarea',
+            label: '限定词',
+            description:
+              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
+            placeholder:
+              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
+            value: '将我发送的任何内容，直接翻译成{{language}}',
+            connected: false
+          },
+          {
+            key: 'switch',
+            type: 'target',
+            label: '触发器',
+            connected: false
+          },
+          {
+            key: 'quotePrompt',
+            type: 'target',
+            label: '引用内容',
+            connected: false
+          },
+          {
+            key: 'history',
+            type: 'target',
+            label: '聊天记录',
+            connected: true
+          },
+          {
+            key: 'userChatInput',
+            type: 'target',
+            label: '用户问题',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'answerText',
+            label: '模型回复',
+            description: '直接响应，无需配置',
+            type: 'hidden',
+            targets: []
+          }
+        ],
+        position: {
+          x: 981.9682828103937,
+          y: 890.014595014464
+        },
+        moduleId: '7pacf0'
+      },
+      {
+        logo: '/imgs/module/history.png',
+        name: '聊天记录',
+        intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
+        type: 'initInput',
+        flowType: 'historyNode',
+        url: '/openapi/modules/init/history',
+        inputs: [
+          {
+            key: 'maxContext',
+            type: 'numberInput',
+            label: '最长记录数',
+            value: 4,
+            min: 0,
+            max: 50,
+            connected: false
+          },
+          {
+            key: 'history',
+            type: 'hidden',
+            label: '聊天记录',
+            connected: false
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            label: '聊天记录',
+            type: 'source',
+            targets: [
+              {
+                moduleId: '7pacf0',
+                key: 'history'
+              }
+            ]
+          }
+        ],
+        position: {
+          x: 446.2698477029736,
+          y: 1281.1006139718102
+        },
+        moduleId: 'xj0c9p'
+      },
+      {
+        logo: '/imgs/module/userGuide.png',
+        name: '开场引导',
+        intro:
+          '可以在每个新对话开始前，给用户发送一段开场白，或要求用户填写一些内容作为本轮对话的变量。',
+        type: 'userGuide',
+        flowType: 'userGuide',
+        inputs: [
+          {
+            key: 'welcomeText',
+            type: 'input',
+            label: '开场白',
+            value: '你好，我是翻译助手，可以帮你翻译任何语言，请告诉我，你需要翻译成什么语言？',
+            connected: false
+          },
+          {
+            key: 'variables',
+            type: 'systemInput',
+            label: '变量输入',
+            value: [
+              {
+                id: 'z3bs2f',
+                key: 'language',
+                label: '目标语言',
+                type: 'input',
+                required: true,
+                maxLen: 50,
+                enums: [
+                  {
+                    value: ''
+                  }
+                ]
+              },
+              {
+                id: 'lg4p31',
+                key: 'test',
+                label: '单选测试',
+                type: 'select',
+                required: false,
+                maxLen: 50,
+                enums: [
+                  {
+                    value: '英语'
+                  },
+                  {
+                    value: '法语'
+                  }
+                ]
+              }
+            ],
+            connected: false
+          }
+        ],
+        outputs: [],
+        position: {
+          x: 421.82048705763134,
+          y: 879.3868698959807
+        },
+        moduleId: '7blchb'
+      }
+    ]
   },
   {
     id: 'CQ',
@@ -635,19 +904,19 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 key: 'userChatInput'
               },
               {
-                moduleId: 'zid0fj',
+                moduleId: 's7qnhf',
                 key: 'userChatInput'
               },
               {
-                moduleId: 'gm15of',
+                moduleId: '15c9bv',
                 key: 'userChatInput'
               }
             ]
           }
         ],
         position: {
-          x: -33.86673792997432,
-          y: 874.685676808633
+          x: -216.08819066976912,
+          y: 585.9302721518841
         },
         moduleId: 'xzj0oo'
       },
@@ -689,8 +958,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           }
         ],
         position: {
-          x: 1388.8842960266352,
-          y: 854.1553026226809
+          x: 1146.0216647621794,
+          y: 236.92269104756855
         },
         moduleId: 'hh6of9'
       },
@@ -706,7 +975,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'model',
             type: 'select',
             label: '对话模型',
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             list: [
               {
                 label: 'Gpt35-16k',
@@ -771,7 +1040,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-            value: '知识库是关于 Laf 的介绍，根据知识库内容回答问题。',
+            value: '你是 Laf 助手，可以回答 Laf 相关问题。',
             connected: false
           },
           {
@@ -782,7 +1051,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
               '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
             placeholder:
               '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value: '',
+            value: '知识库是 Laf 的内容，参考知识库回答问题。',
             connected: false
           },
           {
@@ -820,8 +1089,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           }
         ],
         position: {
-          x: 1827.0428559231655,
-          y: 446.8058354748067
+          x: 1494.4843114348841,
+          y: -13.57201521210618
         },
         moduleId: '3n49vn'
       },
@@ -908,7 +1177,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'source',
             targets: [
               {
-                moduleId: 'gbnzif',
+                moduleId: 'phwr0u',
                 key: 'switch'
               }
             ]
@@ -927,10 +1196,53 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           }
         ],
         position: {
-          x: 850.3203039824494,
-          y: 919.7043887997417
+          x: 690.1930900957847,
+          y: 102.10119978743109
         },
-        moduleId: 'zid0fj'
+        moduleId: 's7qnhf'
+      },
+      {
+        logo: '/imgs/module/history.png',
+        name: '聊天记录',
+        intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
+        type: 'initInput',
+        flowType: 'historyNode',
+        url: '/openapi/modules/init/history',
+        inputs: [
+          {
+            key: 'maxContext',
+            type: 'numberInput',
+            label: '最长记录数',
+            value: 2,
+            min: 0,
+            max: 50,
+            connected: false
+          },
+          {
+            key: 'history',
+            type: 'hidden',
+            label: '聊天记录',
+            connected: false
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            label: '聊天记录',
+            type: 'source',
+            targets: [
+              {
+                moduleId: '15c9bv',
+                key: 'history'
+              }
+            ]
+          }
+        ],
+        position: {
+          x: -274.2362185453961,
+          y: 152.19755525696058
+        },
+        moduleId: 'qiwrjt'
       },
       {
         logo: '/imgs/module/reply.png',
@@ -947,7 +1259,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'answerText',
-            value: '对不起，我找不到你的问题。',
+            value: '你好，我是 Laf 助手，有什么可以帮助你的么？',
             type: 'input',
             label: '回复的内容',
             connected: false
@@ -955,10 +1267,38 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ],
         outputs: [],
         position: {
-          x: 1392.0649222586217,
-          y: 553.0130337399224
+          x: 686.1260929408212,
+          y: -142.16731465682332
         },
-        moduleId: 'gbnzif'
+        moduleId: 'l4e36k'
+      },
+      {
+        logo: '/imgs/module/reply.png',
+        name: '指定回复',
+        intro: '该模块可以直接回复一段指定的内容。常用于引导、提示。',
+        type: 'answer',
+        flowType: 'answerNode',
+        inputs: [
+          {
+            key: 'switch',
+            type: 'target',
+            label: '触发器',
+            connected: true
+          },
+          {
+            key: 'answerText',
+            value: '对不起，我无法回答你的问题，请问有什么关于 Laf 的问题么？',
+            type: 'input',
+            label: '回复的内容',
+            connected: false
+          }
+        ],
+        outputs: [],
+        position: {
+          x: 1469.3636235179692,
+          y: 937.5555811306511
+        },
+        moduleId: 'phwr0u'
       },
       {
         logo: '/imgs/module/cq.png',
@@ -976,14 +1316,14 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
               '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
             placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统',
             value:
-              'Laf 一个云函数开发平台，提供了基于 Node 的 serveless 的快速开发和部署。是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台。支持云函数、云数据库、在线编程 IDE、触发器、云存储和静态网站托管等功能。',
+              ' laf 是什么\nlaf 是云开发平台，可以快速的开发应用\nlaf 是一个开源的 BaaS 开发平台（Backend as a Service)\nlaf 是一个开箱即用的 serverless 开发平台\nlaf 是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台\nlaf 可以是开源版的腾讯云开发、开源版的 Google Firebase、开源版的 UniCloud\nlaf 让每个开发团队都可以随时拥有一个自己的云开发平台！',
             connected: false
           },
           {
             key: 'history',
             type: 'target',
             label: '聊天记录',
-            connected: false
+            connected: true
           },
           {
             key: 'userChatInput',
@@ -997,20 +1337,16 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             label: '',
             value: [
               {
-                value: '打招呼、问候、身份询问等问题',
-                key: 'a'
+                value: '打招呼、问候等',
+                key: 'fasw'
               },
               {
-                value: '商务类、联系方式问题',
-                key: 'b'
+                value: '关于 laf 云函数的问题',
+                key: 'fqsw'
               },
               {
                 value: '其他问题',
-                key: 'ek3f'
-              },
-              {
-                value: '关于 Laf 云函数问题',
-                key: 'psau'
+                key: 'q73b'
               }
             ],
             connected: false
@@ -1018,111 +1354,44 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ],
         outputs: [
           {
-            key: 'a',
+            key: 'fasw',
             label: '',
             type: 'hidden',
             targets: [
               {
-                moduleId: '6jnrp5',
+                moduleId: 'l4e36k',
                 key: 'switch'
               }
             ]
           },
           {
-            key: 'b',
+            key: 'fqsw',
             label: '',
             type: 'hidden',
             targets: [
               {
-                moduleId: 'g13ipe',
+                moduleId: 's7qnhf',
                 key: 'switch'
               }
             ]
           },
           {
-            key: 'ek3f',
+            key: 'q73b',
             label: '',
             type: 'hidden',
             targets: [
               {
-                moduleId: 'gbnzif',
-                key: 'switch'
-              }
-            ]
-          },
-          {
-            key: 'psau',
-            label: '',
-            type: 'hidden',
-            targets: [
-              {
-                moduleId: 'zid0fj',
+                moduleId: 'phwr0u',
                 key: 'switch'
               }
             ]
           }
         ],
         position: {
-          x: 366.0894497581114,
-          y: 250.81741383805945
+          x: 154.9724540917009,
+          y: -37.48714632270105
         },
-        moduleId: 'gm15of'
-      },
-      {
-        logo: '/imgs/module/reply.png',
-        name: '指定回复',
-        intro: '该模块可以直接回复一段指定的内容。常用于引导、提示。',
-        type: 'answer',
-        flowType: 'answerNode',
-        inputs: [
-          {
-            key: 'switch',
-            type: 'target',
-            label: '触发器',
-            connected: true
-          },
-          {
-            key: 'answerText',
-            value: '你好，我是 Laf 助手，可以回答你 Laf 相关问题。',
-            type: 'input',
-            label: '回复的内容',
-            connected: false
-          }
-        ],
-        outputs: [],
-        position: {
-          x: 855.9439119466947,
-          y: 15.463108315267931
-        },
-        moduleId: '6jnrp5'
-      },
-      {
-        logo: '/imgs/module/reply.png',
-        name: '指定回复',
-        intro: '该模块可以直接回复一段指定的内容。常用于引导、提示。',
-        type: 'answer',
-        flowType: 'answerNode',
-        inputs: [
-          {
-            key: 'switch',
-            type: 'target',
-            label: '触发器',
-            connected: true
-          },
-          {
-            key: 'answerText',
-            value: '联系方式：xxxxx',
-            type: 'input',
-            label: '回复的内容',
-            connected: false
-          }
-        ],
-        outputs: [],
-        position: {
-          x: 854.0492662385566,
-          y: 320.5010673254856
-        },
-        moduleId: 'g13ipe'
+        moduleId: '15c9bv'
       }
     ]
   }

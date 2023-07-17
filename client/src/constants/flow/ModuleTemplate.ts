@@ -88,7 +88,7 @@ const defaultModel = chatModelList[0];
 export const ChatModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/AI.png',
   name: 'AI 对话',
-  intro: 'OpenAI GPT 大模型对话。',
+  intro: 'AI 大模型对话',
   flowType: FlowModuleTypeEnum.chatNode,
   type: AppModuleItemTypeEnum.http,
   url: '/openapi/modules/chat/gpt',
@@ -308,24 +308,24 @@ export const RecognizeIntentionModule: AppModuleTemplateItemType = {
       value: [
         {
           value: '',
-          key: 'a'
+          key: 'fasw'
         },
         {
           value: '',
-          key: 'b'
+          key: 'fqsw'
         }
       ]
     }
   ],
   outputs: [
     {
-      key: 'a',
+      key: 'fasw',
       label: '',
       type: FlowOutputItemTypeEnum.hidden,
       targets: []
     },
     {
-      key: 'b',
+      key: 'fqsw',
       label: '',
       type: FlowOutputItemTypeEnum.hidden,
       targets: []

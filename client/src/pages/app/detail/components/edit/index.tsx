@@ -227,6 +227,8 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
+      console.log(flow2Modules());
+
       return putAppById(app._id, {
         modules: flow2Modules()
       });
@@ -240,8 +242,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
 
   const initData = useCallback(
     (app: AppSchema) => {
-      console.log('init');
-
       const edges = appModule2FlowEdge({
         modules: app.modules,
         onDelete: onDelConnect

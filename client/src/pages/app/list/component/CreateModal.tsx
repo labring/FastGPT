@@ -105,7 +105,9 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       <ModalContent w={'700px'} maxW={'90vw'}>
         <ModalHeader fontSize={'2xl'}>开始创建你的 AI 应用</ModalHeader>
         <ModalBody>
-          <Box color={'myGray.800'}>取个响亮的名字</Box>
+          <Box color={'myGray.800'} fontWeight={'bold'}>
+            取个响亮的名字
+          </Box>
           <Flex mt={3} alignItems={'center'}>
             <Avatar
               src={getValues('avatar')}
@@ -124,7 +126,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
               })}
             />
           </Flex>
-          <Box mt={7} mb={3} color={'myGray.800'}>
+          <Box mt={7} mb={3} color={'myGray.800'} fontWeight={'bold'}>
             从模板中选择
           </Box>
           <Grid
