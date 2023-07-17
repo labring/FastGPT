@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 import type { AppSchema, ChatSchema } from '@/types/mongoSchema';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
+import { quoteLenKey, rawSearchKey } from '@/constants/chat';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -82,8 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 _id: '$content._id',
                 obj: '$content.obj',
                 value: '$content.value',
-                systemPrompt: '$content.systemPrompt',
-                quoteLen: { $size: { $ifNull: ['$content.quote', []] } }
+                [quoteLenKey]: { $size: { $ifNull: [`$content.${rawSearchKey}`, []] } }
               }
             }
           ]);

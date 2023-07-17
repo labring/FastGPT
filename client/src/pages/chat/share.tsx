@@ -184,7 +184,7 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
           {/* header */}
           <ChatHeader
             appAvatar={shareChatData.app.avatar}
-            appName={shareChatData.history.title}
+            appName={shareChatData.app.name}
             history={shareChatData.history.chats}
             onOpenSlider={onOpenSlider}
           />

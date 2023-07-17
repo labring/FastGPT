@@ -128,7 +128,6 @@ export async function chatCompletion({
 
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
   const chatAPI = getOpenAIApi();
-  console.log(adaptMessages);
 
   /* count response max token */
   const promptsToken = modelToolMap.countTokens({

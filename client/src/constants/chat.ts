@@ -24,5 +24,8 @@ export const ChatRoleMap = {
   }
 };
 
+export const rawSearchKey = 'rawSearch';
+export const quoteLenKey = 'quoteLen';
+
 export const HUMAN_ICON = `https://fastgpt.run/icon/human.png`;
 export const LOGO_ICON = `https://fastgpt.run/icon/logo.png`;

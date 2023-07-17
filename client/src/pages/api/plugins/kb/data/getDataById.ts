@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const where: any = [['user_id', userId], 'AND', ['id', dataId]];
 
     const searchRes = await PgClient.select<KbDataItemType>('modelData', {
-      fields: ['id', 'q', 'a', 'source'],
+      fields: ['kb_id', 'id', 'q', 'a', 'source'],
       where,
       limit: 1
     });

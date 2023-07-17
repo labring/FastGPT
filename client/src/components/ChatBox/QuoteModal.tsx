@@ -17,20 +17,24 @@ import { useQuery } from '@tanstack/react-query';
 import { getHistoryQuote, updateHistoryQuote } from '@/api/chat';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
+import { QuoteItemType } from '@/pages/api/openapi/modules/kb/search';
 
 const QuoteModal = ({
   historyId,
   contentId,
+  rawSearch = [],
   onClose
 }: {
-  historyId: string;
-  contentId: string;
+  historyId?: string;
+  contentId?: string;
+  rawSearch?: QuoteItemType[];
   onClose: () => void;
 }) => {
   const theme = useTheme();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
   const [editDataItem, setEditDataItem] = useState<{
+    kbId: string;
     dataId: string;
     a: string;
     q: string;
@@ -40,13 +44,22 @@ const QuoteModal = ({
     data: quote = [],
     refetch,
     isLoading
-  } = useQuery(['getHistoryQuote'], () => getHistoryQuote({ historyId, contentId }));
+  } = useQuery(['getHistoryQuote'], () => {
+    if (historyId && contentId) {
+      return getHistoryQuote({ historyId, contentId });
+    }
+    if (rawSearch.length > 0) {
+      return rawSearch;
+    }
+    return [];
+  });
 
   /**
    * update kbData, update mongo status and reload quotes
    */
   const updateQuoteStatus = useCallback(
     async (quoteId: string, sourceText: string) => {
+      if (!historyId || !contentId) return;
       setIsLoading(true);
       try {
         await updateHistoryQuote({
@@ -83,6 +96,7 @@ const QuoteModal = ({
         }
 
         setEditDataItem({
+          kbId: data.kb_id,
           dataId: data.id,
           q: data.q,
           a: data.a
@@ -166,7 +180,7 @@ const QuoteModal = ({
           onClose={() => setEditDataItem(undefined)}
           onSuccess={() => updateQuoteStatus(editDataItem.dataId, '手动修改')}
           onDelete={() => updateQuoteStatus(editDataItem.dataId, '已删除')}
-          kbId=""
+          kbId={editDataItem.kbId}
           defaultValues={editDataItem}
         />
       )}

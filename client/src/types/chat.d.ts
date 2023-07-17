@@ -1,4 +1,4 @@
-import { ChatRoleEnum } from '@/constants/chat';
+import { ChatRoleEnum, rawSearchKey } from '@/constants/chat';
 import type { InitChatResponse, InitShareChatResponse } from '@/api/response/chat';
 import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 
@@ -8,6 +8,8 @@ export type ChatItemType = {
   _id?: string;
   obj: `${ChatRoleEnum}`;
   value: string;
+  [rawSearchKey]?: QuoteItemType[];
+  quoteLen?: number;
   [key: string]: any;
 };
 

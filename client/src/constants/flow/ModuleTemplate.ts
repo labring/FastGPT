@@ -7,6 +7,7 @@ import {
   Input_Template_TFSwitch,
   Input_Template_UserChatInput
 } from './inputTemplate';
+import { rawSearchKey } from '../chat';
 
 export const VariableInputModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/userGuide.png',
@@ -215,7 +216,7 @@ export const KBSearchModule: AppModuleTemplateItemType = {
   ],
   outputs: [
     {
-      key: 'rawSearch',
+      key: rawSearchKey,
       label: '源搜索数据',
       type: FlowOutputItemTypeEnum.hidden,
       response: true,

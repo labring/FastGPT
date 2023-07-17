@@ -4,8 +4,7 @@ import type { InitChatResponse, InitShareChatResponse } from './response/chat';
 import { RequestPaging } from '../types/index';
 import type { ShareChatSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/app';
-import { Obj2Query } from '@/utils/tools';
-import type { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
+import type { QuoteItemType } from '@/pages/api/openapi/modules/kb/search';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
 
 /**
@@ -39,7 +38,7 @@ export const updateHistoryQuote = (params: {
   contentId: string;
   quoteId: string;
   sourceText: string;
-}) => GET(`/chat/history/updateHistoryQuote`, params);
+}) => PUT(`/chat/history/updateHistoryQuote`, params);
 
 /**
  * 删除一句对话

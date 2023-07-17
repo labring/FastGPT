@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       contentId,
       quoteId,
       sourceText = ''
-    } = req.query as {
+    } = req.body as {
       historyId: string;
       contentId: string;
       quoteId: string;
@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       {
         $set: {
-          'content.$.quote.$[quoteElem].source': sourceText
+          'content.$.rawSearch.$[quoteElem].source': sourceText
         }
       },
       {
