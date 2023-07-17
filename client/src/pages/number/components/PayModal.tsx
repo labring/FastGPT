@@ -32,13 +32,13 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
     try {
       // 获取支付二维码
       const res = await getPayCode(inputVal);
-      new QRCode(document.getElementById('payQRCode'), {
+      new window.QRCode(document.getElementById('payQRCode'), {
         text: res.codeUrl,
         width: 128,
         height: 128,
         colorDark: '#000000',
         colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H
+        correctLevel: window.QRCode.CorrectLevel.H
       });
       setPayId(res.payId);
     } catch (err) {
@@ -114,9 +114,9 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
 | 计费项 | 价格: 元/ 1K tokens(包含上下文)|
 | --- | --- |
 | 知识库 - 索引 | 0.001 |
-| chatgpt - 对话 | 0.015 |
-| chatgpt16K - 对话 | 0.03 |
-| gpt4 - 对话 | 0.45 |
+| FastAI4k - 对话 | 0.015 |
+| FastAI16k - 对话 | 0.03 |
+| FastAI-Plus - 对话 | 0.45 |
 | 文件拆分 | 0.03 |`}
                 />
               </>

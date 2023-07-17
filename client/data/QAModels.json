@@ -1,7 +1,7 @@
 {
-  "Gpt35-16k": {
+  "FastAI-16k": {
     "model": "gpt-3.5-turbo-16k",
-    "name": "Gpt35-16k",
+    "name": "FastAI-16k",
     "maxToken": 16000,
     "price": 3
   }

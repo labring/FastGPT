@@ -249,7 +249,7 @@ export const AnswerModule: AppModuleTemplateItemType = {
     {
       key: SpecificInputEnum.answerText,
       value: '',
-      type: FlowInputItemTypeEnum.input,
+      type: FlowInputItemTypeEnum.textarea,
       label: '回复的内容'
     }
   ],

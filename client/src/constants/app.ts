@@ -81,15 +81,15 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             value: 'gpt-3.5-turbo-16k',
             list: [
               {
-                label: 'Gpt35-4k',
+                label: 'FastAI-4k',
                 value: 'gpt-3.5-turbo'
               },
               {
-                label: 'Gpt35-16k',
+                label: 'FastAI-16k',
                 value: 'gpt-3.5-turbo-16k'
               },
               {
-                label: 'Gpt4',
+                label: 'FastAI-Plus',
                 value: 'gpt-4'
               }
             ],
@@ -344,15 +344,15 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             value: 'gpt-3.5-turbo-16k',
             list: [
               {
-                label: 'Gpt35-4k',
+                label: 'FastAI-4k',
                 value: 'gpt-3.5-turbo'
               },
               {
-                label: 'Gpt35-16k',
+                label: 'FastAI-16k',
                 value: 'gpt-3.5-turbo-16k'
               },
               {
-                label: 'Gpt4',
+                label: 'FastAI-Plus',
                 value: 'gpt-4'
               }
             ],
@@ -652,15 +652,15 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             value: 'gpt-3.5-turbo-16k',
             list: [
               {
-                label: 'Gpt35-4k',
+                label: 'FastAI-4k',
                 value: 'gpt-3.5-turbo'
               },
               {
-                label: 'Gpt35-16k',
+                label: 'FastAI-16k',
                 value: 'gpt-3.5-turbo-16k'
               },
               {
-                label: 'Gpt4',
+                label: 'FastAI-Plus',
                 value: 'gpt-4'
               }
             ],
@@ -979,15 +979,15 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             value: 'gpt-3.5-turbo',
             list: [
               {
-                label: 'Gpt35-16k',
+                label: 'FastAI-16k',
                 value: 'gpt-3.5-turbo-16k'
               },
               {
-                label: 'Gpt35-4k',
+                label: 'FastAI-4k',
                 value: 'gpt-3.5-turbo'
               },
               {
-                label: 'Gpt4-8k',
+                label: 'FastAI-Plus-8k',
                 value: 'gpt-4'
               }
             ],
