@@ -3,11 +3,27 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { Types } from 'mongoose';
+import dayjs from 'dayjs';
+import { addDays, isSameDay } from 'date-fns';
 
-/* get one app chat history content number. */
+const fillMissingDates = (start: number, end: number, data: { date: Date; total: number }[]) => {
+  const result: { date: Date; total: number }[] = [];
+  const dayStart = dayjs(start);
+  const dayEnd = dayjs(end);
+  const diff = +dayEnd.diff(dayStart, 'day');
+
+  for (let i = 0; i < diff; i++) {
+    const date = addDays(start, i);
+    const dataItem = data.find((item) => isSameDay(date, item.date));
+    result[i] = { date, total: dataItem?.total || 0 };
+  }
+
+  return result;
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { appId, start, end } = req.body as { appId: string; start: Date; end: Date };
+    const { appId, start, end } = req.body as { appId: string; start: number; end: number };
     const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
@@ -41,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     jsonRes(res, {
-      data: result
+      data: fillMissingDates(start, end, result)
     });
   } catch (err) {
     jsonRes(res, {

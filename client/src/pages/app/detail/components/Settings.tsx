@@ -1,5 +1,5 @@
-import React, { useCallback, useState, useMemo } from 'react';
-import { Box, Flex, Button, Grid, useTheme, BoxProps, IconButton } from '@chakra-ui/react';
+import React, { useCallback, useState } from 'react';
+import { Box, Flex, Button, Grid, useTheme, IconButton } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
@@ -12,10 +12,10 @@ import { AppSchema } from '@/types/mongoSchema';
 
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
+import TotalUsage from './Charts/TotalUsage';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
-const TotalUsage = dynamic(() => import('./Charts/TotalUsage'), { ssr: false });
-const AppEdit = dynamic(() => import('./edit'), { ssr: false });
+const AppEdit = dynamic(() => import('./edit'), { ssr: true });
 import styles from '../../list/index.module.scss';
 
 const Settings = ({ appId }: { appId: string }) => {

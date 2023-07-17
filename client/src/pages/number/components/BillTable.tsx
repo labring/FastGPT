@@ -21,8 +21,6 @@ const BillTable = () => {
     data: bills,
     isLoading,
     Pagination,
-    pageSize,
-    total,
     getData
   } = usePagination<UserBillType>({
     api: getUserBills,

@@ -113,7 +113,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
       },
       yAxis: {
         type: 'value',
-        max: Math.max(...data.map((item) => item.total)),
+        splitNumber: 3,
         min: 0
       },
       grid: {
@@ -145,7 +145,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
           data: data.map((item) => item.total),
           type: 'line',
           showSymbol: true,
-          animationDuration: 300,
+          animationDuration: 1000,
           animationEasingUpdate: 'linear',
           areaStyle: {
             color: map['blue'].backgroundColor
