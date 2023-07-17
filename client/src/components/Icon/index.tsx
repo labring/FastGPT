@@ -3,7 +3,8 @@ import type { IconProps } from '@chakra-ui/react';
 import { Icon } from '@chakra-ui/react';
 
 const map = {
-  app: require('./icons/app.svg').default,
+  appFill: require('./icons/fill/app.svg').default,
+  appLight: require('./icons/light/app.svg').default,
   copy: require('./icons/copy.svg').default,
   chatSend: require('./icons/chatSend.svg').default,
   delete: require('./icons/delete.svg').default,
@@ -43,8 +44,8 @@ const map = {
   shareLight: require('./icons/light/share.svg').default,
   dbLight: require('./icons/light/db.svg').default,
   dbFill: require('./icons/fill/db.svg').default,
-  appLight: require('./icons/light/app.svg').default,
-  appFill: require('./icons/fill/app.svg').default,
+  appStoreLight: require('./icons/light/appStore.svg').default,
+  appStoreFill: require('./icons/fill/appStore.svg').default,
   meLight: require('./icons/light/me.svg').default,
   meFill: require('./icons/fill/me.svg').default,
   welcomeText: require('./icons/modules/welcomeText.svg').default,

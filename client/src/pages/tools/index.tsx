@@ -6,14 +6,14 @@ import { useRouter } from 'next/router';
 
 const list = [
   {
-    icon: 'kb',
+    icon: 'dbLight',
     label: '我的知识库',
-    link: '/kb'
+    link: '/kb/list'
   },
   {
-    icon: 'appStore',
+    icon: 'appStoreLight',
     label: 'AI应用市场',
-    link: '/model/share'
+    link: '/appStore'
   },
   {
     icon: 'git',

@@ -10,11 +10,14 @@ import { useShareChatStore, defaultHistory } from '@/store/shareChat';
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';
 import { getErrText } from '@/utils/tools';
-
+import dynamic from 'next/dynamic';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import PageContainer from '@/components/PageContainer';
-import ChatHistorySlider from './components/ChatHistorySlider';
 import ChatHeader from './components/ChatHeader';
+
+const ChatHistorySlider = dynamic(() => import('./components/ChatHistorySlider'), {
+  ssr: false
+});
 
 const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string }) => {
   const router = useRouter();
