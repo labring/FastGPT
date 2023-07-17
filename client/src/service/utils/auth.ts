@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
 import { App, OpenApi, User, ShareChat, KB } from '../mongo';
 import type { AppSchema } from '@/types/mongoSchema';
-import { defaultApp } from '@/constants/model';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
 

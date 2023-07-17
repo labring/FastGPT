@@ -13,6 +13,7 @@ import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
 import { SpecificInputEnum } from '@/constants/app';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
+import { authUser } from '@/service/utils/auth';
 
 export type Props = {
   model: `${OpenAiChatEnum}`;
@@ -31,6 +32,8 @@ export type Response = { [SpecificInputEnum.answerText]: string; totalTokens: nu
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { model, temperature = 0, stream } = req.body as Props;
   try {
+    await authUser({ req, authRoot: true });
+
     const response = await chatCompletion({
       ...req.body,
       res,

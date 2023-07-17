@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getHistoryQuote, updateHistoryQuote } from '@/api/chat';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
-import { QuoteItemType } from '@/pages/api/openapi/modules/kb/search';
+import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
 
 const QuoteModal = ({
   historyId,

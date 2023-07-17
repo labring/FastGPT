@@ -26,7 +26,7 @@ export enum FlowModuleTypeEnum {
   kbSearchNode = 'kbSearchNode',
   tfSwitchNode = 'tfSwitchNode',
   answerNode = 'answerNode',
-  recognizeIntention = 'recognizeIntention'
+  classifyQuestion = 'classifyQuestion'
 }
 
 export const edgeOptions = {

@@ -42,7 +42,7 @@ export type ShareChatEditType = {
 
 /* agent */
 /* question classify */
-export type RecognizeIntentionAgentItemType = {
+export type ClassifyQuestionAgentItemType = {
   value: string;
   key: string;
 };

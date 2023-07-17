@@ -38,7 +38,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'questionInput',
-        url: '/openapi/modules/init/userChatInput',
+        url: '/app/modules/init/userChatInput',
         inputs: [
           {
             key: 'userChatInput',
@@ -72,7 +72,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: 'AI 大模型对话',
         flowType: 'chatNode',
         type: 'http',
-        url: '/openapi/modules/chat/gpt',
+        url: '/app/modules/chat/gpt',
         inputs: [
           {
             key: 'model',
@@ -203,7 +203,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'historyNode',
-        url: '/openapi/modules/init/history',
+        url: '/app/modules/init/history',
         inputs: [
           {
             key: 'maxContext',
@@ -254,7 +254,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'questionInput',
-        url: '/openapi/modules/init/userChatInput',
+        url: '/app/modules/init/userChatInput',
         inputs: [
           {
             key: 'userChatInput',
@@ -292,7 +292,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'historyNode',
-        url: '/openapi/modules/init/history',
+        url: '/app/modules/init/history',
         inputs: [
           {
             key: 'maxContext',
@@ -335,7 +335,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: 'AI 大模型对话',
         flowType: 'chatNode',
         type: 'http',
-        url: '/openapi/modules/chat/gpt',
+        url: '/app/modules/chat/gpt',
         inputs: [
           {
             key: 'model',
@@ -466,7 +466,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
         flowType: 'kbSearchNode',
         type: 'http',
-        url: '/openapi/modules/kb/search',
+        url: '/app/modules/kb/search',
         inputs: [
           {
             key: 'kb_ids',
@@ -609,7 +609,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'questionInput',
-        url: '/openapi/modules/init/userChatInput',
+        url: '/app/modules/init/userChatInput',
         inputs: [
           {
             key: 'userChatInput',
@@ -643,7 +643,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: 'OpenAI GPT 大模型对话。',
         flowType: 'chatNode',
         type: 'http',
-        url: '/openapi/modules/chat/gpt',
+        url: '/app/modules/chat/gpt',
         inputs: [
           {
             key: 'model',
@@ -774,7 +774,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'historyNode',
-        url: '/openapi/modules/init/history',
+        url: '/app/modules/init/history',
         inputs: [
           {
             key: 'maxContext',
@@ -876,7 +876,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
   {
     id: 'CQ',
     avatar: '/imgs/module/cq.png',
-    name: '意图识别 + 知识库',
+    name: '问题分类 + 知识库',
     intro: '先对用户的问题进行分类，再根据不同类型问题，执行不同的操作',
     modules: [
       {
@@ -885,7 +885,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'questionInput',
-        url: '/openapi/modules/init/userChatInput',
+        url: '/app/modules/init/userChatInput',
         inputs: [
           {
             key: 'userChatInput',
@@ -927,7 +927,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'historyNode',
-        url: '/openapi/modules/init/history',
+        url: '/app/modules/init/history',
         inputs: [
           {
             key: 'maxContext',
@@ -970,7 +970,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: 'OpenAI GPT 大模型对话。',
         flowType: 'chatNode',
         type: 'http',
-        url: '/openapi/modules/chat/gpt',
+        url: '/app/modules/chat/gpt',
         inputs: [
           {
             key: 'model',
@@ -1101,7 +1101,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
         flowType: 'kbSearchNode',
         type: 'http',
-        url: '/openapi/modules/kb/search',
+        url: '/app/modules/kb/search',
         inputs: [
           {
             key: 'kb_ids',
@@ -1208,7 +1208,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
         type: 'initInput',
         flowType: 'historyNode',
-        url: '/openapi/modules/init/history',
+        url: '/app/modules/init/history',
         inputs: [
           {
             key: 'maxContext',
@@ -1303,11 +1303,11 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         logo: '/imgs/module/cq.png',
-        name: '意图识别',
+        name: '问题分类',
         intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
         type: 'http',
-        url: '/openapi/modules/agent/recognizeIntention',
-        flowType: 'recognizeIntention',
+        url: '/app/modules/agent/classifyQuestion',
+        flowType: 'classifyQuestion',
         inputs: [
           {
             key: 'systemPrompt',
