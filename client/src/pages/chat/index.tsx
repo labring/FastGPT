@@ -1,28 +1,18 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { getInitChatSiteInfo, delChatRecordByIndex, putChatHistory } from '@/api/chat';
 import {
   Box,
   Flex,
-  useColorModeValue,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalBody,
-  ModalCloseButton,
-  ModalHeader,
   useDisclosure,
   Drawer,
   DrawerOverlay,
   DrawerContent,
   useTheme
 } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
-import dynamic from 'next/dynamic';
 import { streamFetch } from '@/api/fetch';
-import MyIcon from '@/components/Icon';
 import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
 
@@ -32,8 +22,6 @@ import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import SliderApps from './components/SliderApps';
-import Tag from '@/components/Tag';
-import ToolMenu from './components/ToolMenu';
 import ChatHeader from './components/ChatHeader';
 
 const Chat = () => {
@@ -43,9 +31,6 @@ const Chat = () => {
 
   const ChatBoxRef = useRef<ComponentRef>(null);
   const forbidRefresh = useRef(false);
-
-  const [showHistoryQuote, setShowHistoryQuote] = useState<string>();
-  const [showSystemPrompt, setShowSystemPrompt] = useState('');
 
   const {
     lastChatAppId,
@@ -67,7 +52,7 @@ const Chat = () => {
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       const prompts = messages.slice(-2);
-      const { responseText, newHistoryId } = await streamFetch({
+      const { responseText, newHistoryId, rawSearch } = await streamFetch({
         data: {
           messages: prompts,
           variables,
@@ -113,7 +98,7 @@ const Chat = () => {
         history: ChatBoxRef.current?.getChatHistory() || state.history
       }));
 
-      return { responseText };
+      return { responseText, rawSearch };
     },
     [appId, history, historyId, router, setChatData, updateHistory]
   );
@@ -297,6 +282,7 @@ const Chat = () => {
             <Box flex={1}>
               <ChatBox
                 ref={ChatBoxRef}
+                historyId={historyId}
                 appAvatar={chatData.app.avatar}
                 variableModules={chatData.app.variableModules}
                 welcomeText={chatData.app.welcomeText}
@@ -311,27 +297,6 @@ const Chat = () => {
         </Flex>
         <Loading fixed={false} />
       </PageContainer>
-
-      {/* quote modal*/}
-      {/* {showHistoryQuote && historyId && (
-        <QuoteModal
-          historyId={historyId}
-          onClose={() => setShowHistoryQuote(undefined)}
-        />
-      )} */}
-      {/* system prompt show modal */}
-      {
-        <Modal isOpen={!!showSystemPrompt} onClose={() => setShowSystemPrompt('')}>
-          <ModalOverlay />
-          <ModalContent maxW={'min(90vw, 600px)'} maxH={'80vh'} minH={'50vh'} overflow={'overlay'}>
-            <ModalCloseButton />
-            <ModalHeader>提示词</ModalHeader>
-            <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'xs'}>
-              {showSystemPrompt}
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-      }
     </Flex>
   );
 };

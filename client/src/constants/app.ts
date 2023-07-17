@@ -1,4 +1,5 @@
 import type { AppItemType } from '@/types/app';
+import { rawSearchKey } from './chat';
 
 /* app */
 export enum AppModuleItemTypeEnum {
@@ -530,7 +531,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ],
         outputs: [
           {
-            key: 'rawSearch',
+            key: rawSearchKey,
             label: '源搜索数据',
             type: 'hidden',
             response: true,
@@ -1165,7 +1166,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ],
         outputs: [
           {
-            key: 'rawSearch',
+            key: rawSearchKey,
             label: '源搜索数据',
             type: 'hidden',
             response: true,

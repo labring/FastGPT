@@ -94,6 +94,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       getChatHistory({ historyId, userId })
     ]);
 
+    const isOwner = !shareId && userId === String(app.userId);
+
     const prompts = history.concat(gptMessage2ChatType(messages));
     if (prompts[prompts.length - 1].obj === 'AI') {
       prompts.pop();
@@ -143,12 +145,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             _id: messages[messages.length - 1]._id,
             obj: ChatRoleEnum.AI,
             value: answerText,
-            responseData
+            ...responseData
           }
         ],
         userId
       });
     }
+
+    console.log(`finish time: ${(Date.now() - startTime) / 100}s`);
 
     if (stream) {
       sseResponse({
@@ -156,11 +160,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         event: sseResponseEventEnum.answer,
         data: '[DONE]'
       });
-      sseResponse({
-        res,
-        event: sseResponseEventEnum.appStreamResponse,
-        data: JSON.stringify(responseData)
-      });
+
+      if (isOwner) {
+        sseResponse({
+          res,
+          event: sseResponseEventEnum.appStreamResponse,
+          data: JSON.stringify(responseData)
+        });
+      }
+
       res.end();
     } else {
       res.json({
@@ -189,7 +197,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     delTaskBill(billId);
 
     if (stream) {
-      res.status(500);
       sseErrRes(res, err);
       res.end();
     } else {

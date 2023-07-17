@@ -3,13 +3,14 @@ import { jsonRes } from '@/service/response';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import type { ChatItemType } from '@/types/chat';
-import { ChatRoleEnum } from '@/constants/chat';
+import { ChatRoleEnum, rawSearchKey } from '@/constants/chat';
 import { modelToolMap } from '@/utils/plugin';
 import { getVector } from '../../plugin/vector';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
 import { getModel } from '@/service/utils/data';
 
 export type QuoteItemType = {
+  kb_id: string;
   id: string;
   q: string;
   a: string;
@@ -26,7 +27,7 @@ type Props = {
   billId?: string;
 };
 type Response = {
-  rawSearch: QuoteItemType[];
+  [rawSearchKey]: QuoteItemType[];
   isEmpty?: boolean;
   quotePrompt?: string;
 };
@@ -85,7 +86,7 @@ export async function kbSearch({
     PgClient.query(
       `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
-    select id,q,a,source from modelData where kb_id IN (${kb_ids
+    select kb_id,id,q,a,source from modelData where kb_id IN (${kb_ids
       .map((item) => `'${item}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
         vectors[0]

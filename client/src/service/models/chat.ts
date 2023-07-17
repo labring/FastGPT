@@ -44,20 +44,17 @@ const ChatSchema = new Schema({
           type: String,
           default: ''
         },
-        quote: {
+        rawSearch: {
           type: [
             {
               id: String,
               q: String,
               a: String,
+              kb_id: String,
               source: String
             }
           ],
           default: []
-        },
-        systemPrompt: {
-          type: String,
-          default: ''
         }
       }
     ],

@@ -15,7 +15,7 @@ import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/r
 import { useUserStore } from '@/store/user';
 
 import { Types } from 'mongoose';
-import { HUMAN_ICON } from '@/constants/chat';
+import { HUMAN_ICON, quoteLenKey, rawSearchKey } from '@/constants/chat';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -26,10 +26,15 @@ import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import MySelect from '@/components/Select';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
-import styles from './index.module.scss';
 import MyTooltip from '../MyTooltip';
 import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
+import dynamic from 'next/dynamic';
+
+const QuoteModal = dynamic(() => import('./QuoteModal'));
+
+import styles from './index.module.scss';
+import { QuoteItemType } from '@/pages/api/openapi/modules/kb/search';
 
 const textareaMinH = '22px';
 export type StartChatFnProps = {
@@ -65,6 +70,7 @@ const VariableLabel = ({
 
 const ChatBox = (
   {
+    historyId,
     appAvatar,
     variableModules,
     welcomeText,
@@ -72,11 +78,14 @@ const ChatBox = (
     onStartChat,
     onDelMessage
   }: {
+    historyId?: string;
     appAvatar: string;
     variableModules?: VariableItemType[];
     welcomeText?: string;
     onUpdateVariable?: (e: Record<string, any>) => void;
-    onStartChat: (e: StartChatFnProps) => Promise<{ responseText: string }>;
+    onStartChat: (
+      e: StartChatFnProps
+    ) => Promise<{ responseText?: string; rawSearch?: QuoteItemType[] }>;
     onDelMessage?: (e: { contentId?: string; index: number }) => void;
   },
   ref: ForwardedRef<ComponentRef>
@@ -92,6 +101,10 @@ const ChatBox = (
   const [refresh, setRefresh] = useState(false);
   const [variables, setVariables] = useState<Record<string, any>>({});
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
+  const [quoteModalData, setQuoteModalData] = useState<{
+    contentId?: string;
+    rawSearch?: QuoteItemType[];
+  }>();
 
   const isChatting = useMemo(
     () => chatHistory[chatHistory.length - 1]?.status === 'loading',
@@ -235,12 +248,24 @@ const ChatBox = (
 
         const messages = adaptChatItem_openAI({ messages: newChatList, reserveId: true });
 
-        await onStartChat({
+        const { rawSearch } = await onStartChat({
           messages,
           controller: abortSignal,
           generatingMessage,
           variables: data
         });
+
+        // set finish status
+        setChatHistory((state) =>
+          state.map((item, index) => {
+            if (index !== state.length - 1) return item;
+            return {
+              ...item,
+              status: 'finish',
+              rawSearch
+            };
+          })
+        );
 
         setTimeout(() => {
           generatingScroll();
@@ -258,18 +283,18 @@ const ChatBox = (
           resetInputVal(value);
           setChatHistory(newChatList.slice(0, newChatList.length - 2));
         }
-      }
 
-      // set finish status
-      setChatHistory((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
-          return {
-            ...item,
-            status: 'finish'
-          };
-        })
-      );
+        // set finish status
+        setChatHistory((state) =>
+          state.map((item, index) => {
+            if (index !== state.length - 1) return item;
+            return {
+              ...item,
+              status: 'finish'
+            };
+          })
+        );
+      }
     },
     [
       isChatting,
@@ -439,7 +464,24 @@ const ChatBox = (
                           source={item.value}
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
+                        {(item[quoteLenKey] || item[rawSearchKey]?.length) && (
+                          <Button
+                            size={'xs'}
+                            variant={'base'}
+                            mt={2}
+                            w={'80px'}
+                            onClick={() => {
+                              setQuoteModalData({
+                                contentId: item._id,
+                                rawSearch: item[rawSearchKey]
+                              });
+                            }}
+                          >
+                            {item[quoteLenKey] || item[rawSearchKey]?.length}条引用
+                          </Button>
+                        )}
                       </Card>
+
                       <Flex {...controlContainerStyle}>
                         <MyTooltip label={'复制'}>
                           <MyIcon
@@ -611,6 +653,15 @@ const ChatBox = (
           </Box>
         </Box>
       ) : null}
+      {/* quote modal */}
+      {!!quoteModalData && (
+        <QuoteModal
+          historyId={historyId}
+          {...quoteModalData}
+          onClose={() => setQuoteModalData(undefined)}
+        />
+      )}
+      {/* quote modal */}
     </Flex>
   );
 };

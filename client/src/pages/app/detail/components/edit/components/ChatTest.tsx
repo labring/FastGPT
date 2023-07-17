@@ -63,7 +63,7 @@ const ChatTest = (
       const history = messages.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
-      const { responseText, errMsg } = await streamFetch({
+      const { responseText, rawSearch } = await streamFetch({
         url: '/api/chat/chatTest',
         data: {
           history,
@@ -77,14 +77,7 @@ const ChatTest = (
         abortSignal: controller
       });
 
-      if (errMsg) {
-        return Promise.reject({
-          message: errMsg,
-          responseText
-        });
-      }
-
-      return { responseText };
+      return { responseText, rawSearch };
     },
     [app._id, app.name, modules]
   );

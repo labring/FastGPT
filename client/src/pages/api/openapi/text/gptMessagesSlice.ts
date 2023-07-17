@@ -42,11 +42,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export function gpt_chatItemTokenSlice({
   messages,
-  model,
+  model = 'gpt-3.5-turbo',
   maxToken
 }: {
   messages: ChatItemType[];
-  model: ModelType;
+  model?: ModelType;
   maxToken: number;
 }) {
   let result: ChatItemType[] = [];
