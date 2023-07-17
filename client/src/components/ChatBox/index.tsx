@@ -21,6 +21,7 @@ import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
 
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
+import { useMarkdown } from '@/hooks/useMarkdown';
 import { VariableItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
@@ -68,8 +69,34 @@ const VariableLabel = ({
   </Box>
 );
 
+const Empty = () => {
+  const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
+  const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
+
+  return (
+    <Box
+      minH={'100%'}
+      w={'85%'}
+      maxW={'600px'}
+      m={'auto'}
+      py={'5vh'}
+      alignItems={'center'}
+      justifyContent={'center'}
+    >
+      {/* version intro */}
+      <Card p={4} mb={10}>
+        <Markdown source={versionIntro} />
+      </Card>
+      <Card p={4}>
+        <Markdown source={chatProblem} />
+      </Card>
+    </Box>
+  );
+};
+
 const ChatBox = (
   {
+    showEmptyIntro = false,
     historyId,
     appAvatar,
     variableModules,
@@ -78,6 +105,7 @@ const ChatBox = (
     onStartChat,
     onDelMessage
   }: {
+    showEmptyIntro?: boolean;
     historyId?: string;
     appAvatar: string;
     variableModules?: VariableItemType[];
@@ -568,6 +596,8 @@ const ChatBox = (
               </Flex>
             ))}
           </Box>
+
+          {showEmptyIntro && chatHistory.length === 0 && !hasVariableInput && <Empty />}
         </Box>
       </Box>
       {/* input */}

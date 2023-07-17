@@ -13,7 +13,6 @@ import MyIcon from '@/components/Icon';
 const Home = () => {
   const router = useRouter();
   const { inviterId } = router.query as { inviterId: string };
-  const { data } = useMarkdown({ url: '/intro.md' });
   const { isPc } = useGlobalStore();
   const [star, setStar] = useState(1500);
 
@@ -211,10 +210,6 @@ const Home = () => {
       </Flex>
 
       <Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>
-        <Card p={5} lineHeight={2}>
-          <Markdown source={data} isChatting={false} />
-        </Card>
-
         <Card p={5} mt={4} textAlign={'center'}>
           {beianText && (
             <Link href="https://beian.miit.gov.cn/" target="_blank">
