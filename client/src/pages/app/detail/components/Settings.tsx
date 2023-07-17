@@ -15,7 +15,7 @@ import MyIcon from '@/components/Icon';
 import TotalUsage from './Charts/TotalUsage';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
-const AppEdit = dynamic(() => import('./edit'), { ssr: true });
+import AppEdit from './edit';
 import styles from '../../list/index.module.scss';
 
 const Settings = ({ appId }: { appId: string }) => {

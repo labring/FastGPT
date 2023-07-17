@@ -296,6 +296,7 @@ const Chat = () => {
             <Box flex={1}>
               <ChatBox
                 ref={ChatBoxRef}
+                showEmptyIntro
                 historyId={historyId}
                 appAvatar={chatData.app.avatar}
                 variableModules={chatData.app.variableModules}

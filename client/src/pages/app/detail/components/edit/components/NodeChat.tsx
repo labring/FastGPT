@@ -11,6 +11,7 @@ import MySelect from '@/components/Select';
 import { chatModelList } from '@/store/static';
 import MySlider from '@/components/Slider';
 import { Box } from '@chakra-ui/react';
+import { formatPrice } from '@/utils/user';
 
 const NodeChat = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
@@ -29,45 +30,56 @@ const NodeChat = ({
           onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
-            model: (inputItem) => (
-              <MySelect
-                width={'100%'}
-                value={inputItem.value}
-                list={inputItem.list || []}
-                onchange={(e) => {
-                  onChangeNode({
-                    moduleId,
-                    key: inputItem.key,
-                    value: e
-                  });
-                  // update max tokens
-                  const model = chatModelList.find((item) => item.model === e);
-                  if (!model) return;
+            model: (inputItem) => {
+              const list = chatModelList.map((item) => {
+                const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
 
-                  onChangeNode({
-                    moduleId,
-                    key: 'maxToken',
-                    valueKey: 'markList',
-                    value: [
-                      { label: '100', value: 100 },
-                      { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
-                    ]
-                  });
-                  onChangeNode({
-                    moduleId,
-                    key: 'maxToken',
-                    valueKey: 'max',
-                    value: model.contextMaxToken
-                  });
-                  onChangeNode({
-                    moduleId,
-                    key: 'maxToken',
-                    valueKey: 'value',
-                    value: model.contextMaxToken / 2
-                  });
-                }}
-              />
-            ),
+                return {
+                  value: item.model,
+                  label: `${item.name}${priceStr}`
+                };
+              });
+
+              return (
+                <MySelect
+                  width={'100%'}
+                  value={inputItem.value}
+                  list={list}
+                  onchange={(e) => {
+                    onChangeNode({
+                      moduleId,
+                      key: inputItem.key,
+                      value: e
+                    });
+                    // update max tokens
+                    const model = chatModelList.find((item) => item.model === e);
+                    if (!model) return;
+
+                    onChangeNode({
+                      moduleId,
+                      key: 'maxToken',
+                      valueKey: 'markList',
+                      value: [
+                        { label: '100', value: 100 },
+                        { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
+                      ]
+                    });
+                    onChangeNode({
+                      moduleId,
+                      key: 'maxToken',
+                      valueKey: 'max',
+                      value: model.contextMaxToken
+                    });
+                    onChangeNode({
+                      moduleId,
+                      key: 'maxToken',
+                      valueKey: 'value',
+                      value: model.contextMaxToken / 2
+                    });
+                  }}
+                />
+              );
+            },
             maxToken: (inputItem) => {
               const model = inputs.find((item) => item.key === 'model')?.value;
               const modelData = chatModelList.find((item) => item.model === model);

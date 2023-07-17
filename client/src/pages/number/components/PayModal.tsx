@@ -113,7 +113,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                   source={`
 | 计费项 | 价格: 元/ 1K tokens(包含上下文)|
 | --- | --- |
-| 知识库 - 索引 | 0.001 |
+| 知识库 - 索引 | 0.002 |
 | FastAI4k - 对话 | 0.015 |
 | FastAI16k - 对话 | 0.03 |
 | FastAI-Plus - 对话 | 0.45 |
