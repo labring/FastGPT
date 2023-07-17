@@ -6,12 +6,13 @@ import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
-import type { RecognizeIntentionAgentItemType } from '@/types/app';
+import type { ClassifyQuestionAgentItemType } from '@/types/app';
+import { authUser } from '@/service/utils/auth';
 
 export type Props = {
   history?: ChatItemType[];
   userChatInput: string;
-  agents: RecognizeIntentionAgentItemType[];
+  agents: ClassifyQuestionAgentItemType[];
   description: string;
 };
 export type Response = { history: ChatItemType[] };
@@ -21,6 +22,8 @@ const agentFunName = 'agent_extract_data';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await authUser({ req, authRoot: true });
+
     const response = await extract(req.body);
 
     jsonRes(res, {

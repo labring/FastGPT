@@ -34,7 +34,7 @@ import dynamic from 'next/dynamic';
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 
 import styles from './index.module.scss';
-import { QuoteItemType } from '@/pages/api/openapi/modules/kb/search';
+import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
 
 const textareaMinH = '22px';
 export type StartChatFnProps = {

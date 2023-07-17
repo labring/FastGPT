@@ -1,7 +1,7 @@
 import { sseResponseEventEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
 import { parseStreamChunk } from '@/utils/adapt';
-import { QuoteItemType } from '@/pages/api/openapi/modules/kb/search';
+import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
 import { rawSearchKey } from '@/constants/chat';
 
 interface StreamFetchProps {

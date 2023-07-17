@@ -36,7 +36,7 @@ export const UserInputModule: AppModuleTemplateItemType = {
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   type: AppModuleItemTypeEnum.initInput,
   flowType: FlowModuleTypeEnum.questionInputNode,
-  url: '/openapi/modules/init/userChatInput',
+  url: '/app/modules/init/userChatInput',
   inputs: [
     {
       key: SystemInputEnum.userChatInput,
@@ -59,7 +59,7 @@ export const HistoryModule: AppModuleTemplateItemType = {
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   type: AppModuleItemTypeEnum.initInput,
   flowType: FlowModuleTypeEnum.historyNode,
-  url: '/openapi/modules/init/history',
+  url: '/app/modules/init/history',
   inputs: [
     {
       key: 'maxContext',
@@ -92,7 +92,7 @@ export const ChatModule: AppModuleTemplateItemType = {
   intro: 'AI 大模型对话',
   flowType: FlowModuleTypeEnum.chatNode,
   type: AppModuleItemTypeEnum.http,
-  url: '/openapi/modules/chat/gpt',
+  url: '/app/modules/chat/gpt',
   inputs: [
     {
       key: 'model',
@@ -176,7 +176,7 @@ export const KBSearchModule: AppModuleTemplateItemType = {
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
   flowType: FlowModuleTypeEnum.kbSearchNode,
   type: AppModuleItemTypeEnum.http,
-  url: '/openapi/modules/kb/search',
+  url: '/app/modules/kb/search',
   inputs: [
     {
       key: 'kb_ids',
@@ -283,13 +283,13 @@ export const TFSwitchModule: AppModuleTemplateItemType = {
     }
   ]
 };
-export const RecognizeIntentionModule: AppModuleTemplateItemType = {
+export const ClassifyQuestionModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/cq.png',
-  name: '意图识别',
+  name: '问题分类',
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
   type: AppModuleItemTypeEnum.http,
-  url: '/openapi/modules/agent/recognizeIntention',
-  flowType: FlowModuleTypeEnum.recognizeIntention,
+  url: '/app/modules/agent/classifyQuestion',
+  flowType: FlowModuleTypeEnum.classifyQuestion,
   inputs: [
     {
       key: 'systemPrompt',
@@ -353,6 +353,6 @@ export const ModuleTemplates = [
   },
   {
     label: 'Agent',
-    list: [RecognizeIntentionModule]
+    list: [ClassifyQuestionModule]
   }
 ];

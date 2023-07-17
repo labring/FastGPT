@@ -70,7 +70,7 @@ const nodeTypes = {
   [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
-  [FlowModuleTypeEnum.recognizeIntention]: NodeRINode
+  [FlowModuleTypeEnum.classifyQuestion]: NodeRINode
 };
 const edgeTypes = {
   buttonedge: ButtonEdge

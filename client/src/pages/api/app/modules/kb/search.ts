@@ -5,9 +5,10 @@ import { withNextCors } from '@/service/utils/tools';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, rawSearchKey } from '@/constants/chat';
 import { modelToolMap } from '@/utils/plugin';
-import { getVector } from '../../plugin/vector';
+import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
 import { getModel } from '@/service/utils/data';
+import { authUser } from '@/service/utils/auth';
 
 export type QuoteItemType = {
   kb_id: string;
@@ -34,6 +35,8 @@ type Response = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await authUser({ req, authRoot: true });
+
     const { kb_ids = [], userChatInput } = req.body as Props;
 
     if (!userChatInput || !Array.isArray(kb_ids)) {

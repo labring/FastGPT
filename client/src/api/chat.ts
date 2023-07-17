@@ -4,7 +4,7 @@ import type { InitChatResponse, InitShareChatResponse } from './response/chat';
 import { RequestPaging } from '../types/index';
 import type { ShareChatSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/app';
-import type { QuoteItemType } from '@/pages/api/openapi/modules/kb/search';
+import type { QuoteItemType } from '@/pages/api/app/modules/kb/search';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
 
 /**

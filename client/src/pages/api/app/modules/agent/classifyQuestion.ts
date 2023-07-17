@@ -6,15 +6,16 @@ import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
-import type { RecognizeIntentionAgentItemType } from '@/types/app';
+import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
 import { getModel } from '@/service/utils/data';
+import { authUser } from '@/service/utils/auth';
 
 export type Props = {
   systemPrompt?: string;
   history?: ChatItemType[];
   userChatInput: string;
-  agents: RecognizeIntentionAgentItemType[];
+  agents: ClassifyQuestionAgentItemType[];
   billId?: string;
 };
 export type Response = { history: ChatItemType[] };
@@ -24,6 +25,7 @@ const agentFunName = 'agent_user_question';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await authUser({ req, authRoot: true });
     let { userChatInput } = req.body as Props;
 
     if (!userChatInput) {
@@ -114,7 +116,7 @@ export async function classifyQuestion({
 
   await pushTaskBillListItem({
     billId,
-    moduleName: 'Recognize Intention',
+    moduleName: 'Classify Question',
     amount: countModelPrice({ model: agentModel, tokens: totalTokens }),
     model: getModel(agentModel)?.name,
     tokenLen: totalTokens

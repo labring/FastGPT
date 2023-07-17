@@ -18,8 +18,10 @@ export const moduleFetch = ({ url, data, res }: Props) =>
       const requestUrl = url.startsWith('/') ? `${baseUrl}${url}` : url;
       const response = await fetch(requestUrl, {
         method: 'POST',
+        // @ts-ignore
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          rootkey: process.env.ROOT_KEY
         },
         body: JSON.stringify(data),
         signal: abortSignal.signal

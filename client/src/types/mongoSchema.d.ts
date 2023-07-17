@@ -44,6 +44,17 @@ export interface AppSchema {
     collection: number;
   };
   modules: AppModuleItemType[];
+  chat: {
+    relatedKbs: string[];
+    searchSimilarity: number;
+    searchLimit: number;
+    searchEmptyText: string;
+    systemPrompt: string;
+    limitPrompt: string;
+    temperature: number;
+    maxToken: number;
+    chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
+  };
 }
 
 export interface CollectionSchema {

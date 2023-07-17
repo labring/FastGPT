@@ -6,7 +6,7 @@ import { FlowModuleItemType } from '@/types/flow';
 import Divider from './modules/Divider';
 import Container from './modules/Container';
 import RenderInput from './render/RenderInput';
-import type { RecognizeIntentionAgentItemType } from '@/types/app';
+import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { Handle, Position } from 'reactflow';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
@@ -30,7 +30,7 @@ const NodeRINode = ({
               value: agents = []
             }: {
               key: string;
-              value?: RecognizeIntentionAgentItemType[];
+              value?: ClassifyQuestionAgentItemType[];
             }) => (
               <Box>
                 {agents.map((item, i) => (
