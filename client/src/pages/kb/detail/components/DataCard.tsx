@@ -1,18 +1,5 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react';
-import {
-  Box,
-  Card,
-  IconButton,
-  Flex,
-  Button,
-  useDisclosure,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Input,
-  Grid
-} from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Button, Input, Grid } from '@chakra-ui/react';
 import type { KbDataItemType } from '@/types/plugin';
 import { usePagination } from '@/hooks/usePagination';
 import {
@@ -26,15 +13,14 @@ import { fileDownload } from '@/utils/file';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
 import Papa from 'papaparse';
-import dynamic from 'next/dynamic';
 import InputModal, { FormData as InputDataType } from './InputDataModal';
 import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
-
-const SelectFileModal = dynamic(() => import('./SelectFileModal'), { ssr: true });
-const SelectCsvModal = dynamic(() => import('./SelectCsvModal'), { ssr: true });
+import MyIcon from '@/components/Icon';
+import MyTooltip from '@/components/MyTooltip';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
+  const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
@@ -46,74 +32,61 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     Pagination,
     total,
     getData,
-    pageNum
+    pageNum,
+    pageSize
   } = usePagination<KbDataItemType>({
     api: getKbDataList,
     pageSize: 24,
-    defaultRequest: false,
     params: {
       kbId,
       searchText
+    },
+    onChange() {
+      if (BoxRef.current) {
+        BoxRef.current.scrollTop = 0;
+      }
     }
   });
 
   const [editInputData, setEditInputData] = useState<InputDataType>();
 
-  const {
-    isOpen: isOpenSelectFileModal,
-    onOpen: onOpenSelectFileModal,
-    onClose: onCloseSelectFileModal
-  } = useDisclosure();
-  const {
-    isOpen: isOpenSelectCsvModal,
-    onOpen: onOpenSelectCsvModal,
-    onClose: onCloseSelectCsvModal
-  } = useDisclosure();
-
-  const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch } = useQuery(
-    ['getModelSplitDataList', kbId],
-    () => getTrainingData({ kbId, init: false }),
-    {
+  const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch: refetchTrainingData } =
+    useQuery(['getModelSplitDataList', kbId], () => getTrainingData({ kbId, init: false }), {
       onError(err) {
         console.log(err);
       }
-    }
-  );
+    });
 
   const refetchData = useCallback(
     (num = pageNum) => {
       getData(num);
-      refetch();
+      refetchTrainingData();
       return null;
     },
-    [getData, pageNum, refetch]
+    [getData, pageNum, refetchTrainingData]
   );
 
   // get al data and export csv
   const { mutate: onclickExport, isLoading: isLoadingExport = false } = useMutation({
     mutationFn: () => getExportDataList(kbId),
     onSuccess(res) {
-      try {
-        const text = Papa.unparse({
-          fields: ['question', 'answer', 'source'],
-          data: res
-        });
-        fileDownload({
-          text,
-          type: 'text/csv',
-          filename: 'data.csv'
-        });
-        toast({
-          title: '导出成功，下次导出需要半小时后',
-          status: 'success'
-        });
-      } catch (error) {
-        error;
-      }
+      const text = Papa.unparse({
+        fields: ['question', 'answer', 'source'],
+        data: res
+      });
+      fileDownload({
+        text,
+        type: 'text/csv',
+        filename: 'data.csv'
+      });
+      toast({
+        title: '导出成功，下次导出需要半小时后',
+        status: 'success'
+      });
     },
     onError(err: any) {
       toast({
-        title: typeof err === 'string' ? err : err?.message || '导出异常',
+        title: getErrText(err, '导出异常'),
         status: 'error'
       });
       console.log(err);
@@ -134,59 +107,39 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     enabled: qaListLen > 0 || vectorListLen > 0
   });
 
-  useEffect(() => {
-    setSearchText('');
-    getData(1);
-  }, [kbId]);
-
   return (
-    <Box position={'relative'} px={5} py={[1, 5]}>
+    <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
           知识库数据: {total}组
         </Box>
         <Box>
-          <IconButton
-            icon={<RepeatIcon />}
-            aria-label={'refresh'}
-            variant={'base'}
-            isLoading={isLoading}
-            mr={[2, 4]}
-            size={'sm'}
-            onClick={() => {
-              getData(pageNum);
-              getTrainingData({ kbId, init: true });
-            }}
-          />
+          <MyTooltip label={'刷新'}>
+            <IconButton
+              icon={<RepeatIcon />}
+              aria-label={'refresh'}
+              variant={'base'}
+              isLoading={isLoading}
+              mr={[2, 4]}
+              size={'sm'}
+              onClick={() => {
+                getData(pageNum);
+                getTrainingData({ kbId, init: true });
+              }}
+            />
+          </MyTooltip>
           <Button
-            variant={'base'}
             mr={2}
             size={'sm'}
+            variant={'base'}
+            borderColor={'myBlue.600'}
+            color={'myBlue.600'}
             isLoading={isLoadingExport || isLoading}
             title={'半小时仅能导出1次'}
             onClick={() => onclickExport()}
           >
-            导出csv
+            导出数据
           </Button>
-          <Menu autoSelect={false}>
-            <MenuButton as={Button} size={'sm'} isLoading={isLoading}>
-              导入
-            </MenuButton>
-            <MenuList>
-              <MenuItem
-                onClick={() =>
-                  setEditInputData({
-                    a: '',
-                    q: ''
-                  })
-                }
-              >
-                手动输入
-              </MenuItem>
-              <MenuItem onClick={onOpenSelectFileModal}>文本/文件拆分</MenuItem>
-              <MenuItem onClick={onOpenSelectCsvModal}>csv 问答对导入</MenuItem>
-            </MenuList>
-          </Menu>
         </Box>
       </Flex>
       <Flex my={4}>
@@ -204,7 +157,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           maxW={['60%', '300px']}
           size={'sm'}
           value={searchText}
-          placeholder="根据匹配知识，补充知识和来源搜索"
+          placeholder="根据匹配知识，补充知识和来源进行搜索"
           onChange={(e) => {
             setSearchText(e.target.value);
             getFirstData();
@@ -245,7 +198,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
             }
           >
             <Box
-              h={'100px'}
+              h={'95px'}
               overflow={'hidden'}
               wordBreak={'break-all'}
               px={3}
@@ -255,7 +208,9 @@ const DataCard = ({ kbId }: { kbId: string }) => {
               <Box color={'myGray.1000'} mb={2}>
                 {item.q}
               </Box>
-              <Box color={'myGray.600'}>{item.a}</Box>
+              <Box color={'myGray.600'} className={'textEllipsis3'}>
+                {item.a}
+              </Box>
             </Box>
             <Flex py={2} px={4} h={'36px'} alignItems={'flex-end'} fontSize={'sm'}>
               <Box className={'textEllipsis'} flex={1}>
@@ -292,9 +247,19 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         ))}
       </Grid>
 
-      <Flex mt={2} justifyContent={'center'}>
-        <Pagination />
-      </Flex>
+      {total > pageSize && (
+        <Flex mt={2} justifyContent={'center'}>
+          <Pagination />
+        </Flex>
+      )}
+      {total === 0 && (
+        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
+          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+          <Box mt={2} color={'myGray.500'}>
+            知识库空空如也
+          </Box>
+        </Flex>
+      )}
 
       {editInputData !== undefined && (
         <InputModal
@@ -303,12 +268,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => refetchData()}
         />
-      )}
-      {isOpenSelectFileModal && (
-        <SelectFileModal kbId={kbId} onClose={onCloseSelectFileModal} onSuccess={refetchData} />
-      )}
-      {isOpenSelectCsvModal && (
-        <SelectCsvModal kbId={kbId} onClose={onCloseSelectCsvModal} onSuccess={refetchData} />
       )}
     </Box>
   );

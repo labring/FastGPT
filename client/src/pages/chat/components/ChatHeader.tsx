@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Flex, useTheme, Box } from '@chakra-ui/react';
 import { useGlobalStore } from '@/store/global';
 import MyIcon from '@/components/Icon';
@@ -8,18 +8,20 @@ import ToolMenu from './ToolMenu';
 import { ChatItemType } from '@/types/chat';
 
 const ChatHeader = ({
-  title,
   history,
+  appName,
   appAvatar,
   onOpenSlider
 }: {
-  title: string;
   history: ChatItemType[];
+  appName: string;
   appAvatar: string;
   onOpenSlider: () => void;
 }) => {
   const theme = useTheme();
   const { isPc } = useGlobalStore();
+  const title = useMemo(() => {}, []);
+
   return (
     <Flex
       alignItems={'center'}
@@ -32,11 +34,11 @@ const ChatHeader = ({
       {isPc ? (
         <>
           <Box mr={3} color={'myGray.1000'}>
-            {title}
+            {appName}
           </Box>
           <Tag display={'flex'}>
             <MyIcon name={'history'} w={'14px'} />
-            <Box ml={1}>{history.length}条记录</Box>
+            <Box ml={1}>{history.length === 0 ? '新的对话' : `${history.length}条记录`}</Box>
           </Tag>
           <Box flex={1} />
         </>
@@ -46,7 +48,7 @@ const ChatHeader = ({
           <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
             <Avatar src={appAvatar} w={'16px'} />
             <Box ml={1} className="textEllipsis">
-              {title}
+              {appName}
             </Box>
           </Flex>
         </>

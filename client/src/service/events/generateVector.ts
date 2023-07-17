@@ -56,7 +56,7 @@ export async function generateVector(): Promise<any> {
     ];
 
     // 生成词向量
-    const vectors = await getVector({
+    const { vectors } = await getVector({
       model: data.model,
       input: dataItems.map((item) => item.q),
       userId

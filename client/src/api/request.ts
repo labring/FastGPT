@@ -63,6 +63,9 @@ function responseError(err: any) {
     );
     return Promise.reject({ message: 'token过期，重新登录' });
   }
+  if (err?.response?.data) {
+    return Promise.reject(err?.response?.data);
+  }
   return Promise.reject(err);
 }
 

@@ -19,6 +19,11 @@ const kbSchema = new Schema({
     type: String,
     required: true
   },
+  model: {
+    type: String,
+    required: true,
+    default: 'text-embedding-ada-002'
+  },
   tags: {
     type: [String],
     default: []

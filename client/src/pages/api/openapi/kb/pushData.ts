@@ -8,9 +8,8 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
 import { modelToolMap } from '@/utils/plugin';
-import { OpenAiChatEnum } from '@/constants/model';
 
-type DateItemType = { a: string; q: string; source?: string };
+export type DateItemType = { a: string; q: string; source?: string };
 
 export type Props = {
   kbId: string;

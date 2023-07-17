@@ -13,13 +13,15 @@ export const usePagination = <T = any,>({
   pageSize = 10,
   params = {},
   defaultRequest = true,
-  type = 'button'
+  type = 'button',
+  onChange
 }: {
   api: (data: any) => any;
   pageSize?: number;
   params?: Record<string, any>;
   defaultRequest?: boolean;
   type?: 'button' | 'scroll';
+  onChange?: (pageNum: number) => void;
 }) => {
   const elementRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -39,6 +41,7 @@ export const usePagination = <T = any,>({
         setPageNum(num);
         res.total !== undefined && setTotal(res.total);
         setData(res.data);
+        onChange && onChange(num);
       } catch (error: any) {
         toast({
           title: error?.message || '获取数据异常',

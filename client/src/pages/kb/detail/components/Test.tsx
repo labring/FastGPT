@@ -5,7 +5,6 @@ import type { KbTestItemType } from '@/types/plugin';
 import { searchText, getKbDataItemById } from '@/api/plugins/kb';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/hooks/useRequest';
-import { useRouter } from 'next/router';
 import { formatTimeToChatTime } from '@/utils/tools';
 import InputDataModal, { type FormData } from './InputDataModal';
 import { useGlobalStore } from '@/store/global';
@@ -17,8 +16,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-const Test = () => {
-  const { kbId } = useRouter().query as { kbId: string };
+const Test = ({ kbId }: { kbId: string }) => {
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useGlobalStore();

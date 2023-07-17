@@ -30,7 +30,7 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
       () => (
         <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
           <AlertDialogOverlay>
-            <AlertDialogContent>
+            <AlertDialogContent maxW={'min(90vw,400px)'}>
               <AlertDialogHeader fontSize="lg" fontWeight="bold">
                 {title}
               </AlertDialogHeader>
