@@ -89,6 +89,7 @@ const ChatBox = (
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const controller = useRef(new AbortController());
 
+  const [refresh, setRefresh] = useState(false);
   const [variables, setVariables] = useState<Record<string, any>>({});
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
 
@@ -111,7 +112,7 @@ const ChatBox = (
 
   const isLargeWidth = ChatBoxRef?.current?.clientWidth && ChatBoxRef?.current?.clientWidth >= 900;
 
-  const { register, reset, setValue, handleSubmit } = useForm<Record<string, any>>({
+  const { register, reset, getValues, setValue, handleSubmit } = useForm<Record<string, any>>({
     defaultValues: variables
   });
 
@@ -370,12 +371,10 @@ const ChatBox = (
                                 label: item.value,
                                 value: item.value
                               }))}
-                              {...register(item.key, {
-                                required: item.required
-                              })}
+                              value={getValues(item.key)}
                               onchange={(e) => {
                                 setValue(item.key, e);
-                                //   setRefresh((state) => !state);
+                                setRefresh(!refresh);
                               }}
                             />
                           )}
@@ -401,7 +400,6 @@ const ChatBox = (
               </Flex>
             </Flex>
           )}
-          {/* empty guide */}
 
           {/* chat history */}
           <Box id={'history'} pb={[8, 2]}>

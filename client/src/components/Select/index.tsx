@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, forwardRef } from 'react';
 import {
   Menu,
   Box,
@@ -20,9 +20,12 @@ interface Props extends ButtonProps {
   onchange?: (val: string) => void;
 }
 
-const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props }: Props) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const SelectRef = useRef(null);
+const MySelect = (
+  { placeholder, value, width = 'auto', list, onchange, ...props }: Props,
+  selectRef: any
+) => {
+  const ref = useRef<HTMLButtonElement>(null);
+  const SelectRef = useRef<HTMLDivElement>(null);
   const menuItemStyles = {
     borderRadius: 'sm',
     py: 2,
@@ -116,4 +119,4 @@ const MySelect = ({ placeholder, value, width = 'auto', list, onchange, ...props
   );
 };
 
-export default React.memo(MySelect);
+export default React.memo(forwardRef(MySelect));
