@@ -278,10 +278,12 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
   );
 };
 
-export default NumberSetting;
-
-NumberSetting.getInitialProps = ({ query, req }: any) => {
+export async function getServerSideProps({ query }: any) {
   return {
-    tableType: query?.type || TableEnum.bill
+    props: {
+      tableType: query?.type || TableEnum.bill
+    }
   };
-};
+}
+
+export default NumberSetting;

@@ -48,6 +48,6 @@ export const triggerModelCollection = (appId: string) =>
 export const getAppTotalUsage = (data: { appId: string }) =>
   POST<{ total: number; date: Date }[]>(`/app/data/totalUsage`, {
     ...data,
-    start: addDays(new Date(), -7),
-    end: new Date()
+    start: addDays(new Date(), -13).setHours(0, 0, 0, 0),
+    end: addDays(new Date(), 1).setHours(0, 0, 0, 0)
   });
