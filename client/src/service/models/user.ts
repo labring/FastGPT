@@ -42,10 +42,6 @@ const UserSchema = new Schema({
       default: 15
     }
   },
-  openaiKey: {
-    type: String,
-    default: ''
-  },
   limit: {
     exportKbTime: {
       // Every half hour

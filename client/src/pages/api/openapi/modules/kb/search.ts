@@ -7,6 +7,7 @@ import { ChatRoleEnum } from '@/constants/chat';
 import { modelToolMap } from '@/utils/plugin';
 import { getVector } from '../../plugin/vector';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
+import { getModel } from '@/service/utils/data';
 
 export type QuoteItemType = {
   id: string;
@@ -95,7 +96,7 @@ export async function kbSearch({
       billId,
       moduleName: 'Vector Generate',
       amount: countModelPrice({ model: vectorModel, tokens: tokenLen }),
-      model: vectorModel,
+      model: getModel(vectorModel)?.name,
       tokenLen
     })
   ]);

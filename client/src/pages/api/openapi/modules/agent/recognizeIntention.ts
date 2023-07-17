@@ -8,6 +8,7 @@ import { ChatRoleEnum } from '@/constants/chat';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
 import type { RecognizeIntentionAgentItemType } from '@/types/app';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
+import { getModel } from '@/service/utils/data';
 
 export type Props = {
   systemPrompt?: string;
@@ -115,7 +116,7 @@ export async function classifyQuestion({
     billId,
     moduleName: 'Recognize Intention',
     amount: countModelPrice({ model: agentModel, tokens: totalTokens }),
-    model: agentModel,
+    model: getModel(agentModel)?.name,
     tokenLen: totalTokens
   });
 

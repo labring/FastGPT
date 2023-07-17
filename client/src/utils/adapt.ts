@@ -18,7 +18,8 @@ export const adaptBill = (bill: BillSchema): UserBillType => {
     source: bill.source,
     time: bill.time,
     total: formatPrice(bill.total),
-    appName: bill.appName
+    appName: bill.appName,
+    list: bill.list
   };
 };
 

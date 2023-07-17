@@ -83,20 +83,10 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
     async (data: UserUpdateParams) => {
       setLoading(true);
       try {
-        if (data.openaiKey) {
-          const text = await authOpenAiKey(data.openaiKey);
-          text &&
-            toast({
-              title: text,
-              status: 'warning'
-            });
-        }
         await putUserInfo({
-          openaiKey: data.openaiKey,
           avatar: data.avatar
         });
         updateUserInfo({
-          openaiKey: data.openaiKey,
           avatar: data.avatar
         });
         reset(data);
@@ -193,25 +183,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
                 充值
               </Button>
             </Flex>
-            <Box fontSize={'xs'} color={'blackAlpha.500'}>
-              如果填写了自己的 openai 账号，网页上 openai 模型对话不会计费。
-            </Box>
           </Box>
-          <Flex mt={6} alignItems={'center'}>
-            <Box flex={'0 0 85px'}>openaiKey:</Box>
-            <Input
-              {...register(`openaiKey`)}
-              maxW={'350px'}
-              placeholder={'openai账号。回车或失去焦点保存'}
-              size={'sm'}
-              onBlur={handleSubmit(onclickSave)}
-              onKeyDown={(e) => {
-                if (e.keyCode === 13) {
-                  handleSubmit(onclickSave)();
-                }
-              }}
-            ></Input>
-          </Flex>
         </Card>
         <Card px={6} py={4}>
           <Box fontSize={'xl'} fontWeight={'bold'}>
@@ -220,7 +192,6 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
           {[
             { label: '佣金比例', value: `${userInfo?.promotion.rate || 15}%` },
             { label: '已注册用户数', value: `${invitedAmount}人` },
-            { label: '累计佣金', value: `￥${historyAmount}` },
             { label: '可用佣金', value: `￥${residueAmount}` }
           ].map((item) => (
             <Flex key={item.label} alignItems={'center'} mt={4} justifyContent={'space-between'}>
