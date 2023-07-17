@@ -44,7 +44,7 @@ export interface AppSchema {
     collection: number;
   };
   modules: AppModuleItemType[];
-  chat: {
+  chat?: {
     relatedKbs: string[];
     searchSimilarity: number;
     searchLimit: number;

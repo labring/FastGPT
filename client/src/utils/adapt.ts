@@ -10,6 +10,7 @@ import type { FlowModuleItemType } from '@/types/flow';
 import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
+import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const adaptBill = (bill: BillSchema): UserBillType => {
@@ -89,11 +90,36 @@ export const appModule2FlowNode = ({
   onChangeNode: FlowModuleItemType['onChangeNode'];
   onDelNode: FlowModuleItemType['onDelNode'];
 }): Node<FlowModuleItemType> => {
+  // init some static data
+  const template =
+    ModuleTemplates.map((templates) => templates.list)
+      ?.flat()
+      .find((template) => template.flowType === item.flowType) || item;
+
+  // replace item data
+  const moduleItem = {
+    ...item,
+    logo: template.logo,
+    name: template.name,
+    intro: template.intro,
+    type: template.type,
+    url: template.url,
+    inputs: template.inputs.map((templateInput) => ({
+      ...templateInput,
+      value:
+        item.inputs.find((item) => item.key === templateInput.key)?.value || templateInput.value
+    })),
+    outputs: template.outputs.map((templateOutput) => ({
+      ...templateOutput,
+      targets: item.outputs.find((item) => item.key === templateOutput.key)?.targets || []
+    }))
+  };
+
   return {
     id: item.moduleId,
     type: item.flowType,
     data: {
-      ...item,
+      ...moduleItem,
       onChangeNode,
       onDelNode
     },

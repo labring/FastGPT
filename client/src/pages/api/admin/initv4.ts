@@ -69,15 +69,15 @@ const chatTemplate = ({
           value: model,
           list: [
             {
-              label: 'Gpt35-4k',
+              label: 'FastAI-4k',
               value: 'gpt-3.5-turbo'
             },
             {
-              label: 'Gpt35-16k',
+              label: 'FastAI-16k',
               value: 'gpt-3.5-turbo-16k'
             },
             {
-              label: 'Gpt4',
+              label: 'FastAI-Plus',
               value: 'gpt-4'
             }
           ],
@@ -348,15 +348,15 @@ const kbTemplate = ({
           value: model,
           list: [
             {
-              label: 'Gpt35-4k',
+              label: 'FastAI-4k',
               value: 'gpt-3.5-turbo'
             },
             {
-              label: 'Gpt35-16k',
+              label: 'FastAI-16k',
               value: 'gpt-3.5-turbo-16k'
             },
             {
-              label: 'Gpt4',
+              label: 'FastAI-Plus',
               value: 'gpt-4'
             }
           ],

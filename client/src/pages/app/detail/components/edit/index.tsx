@@ -227,8 +227,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
-      console.log(flow2Modules());
-
       return putAppById(app._id, {
         modules: flow2Modules()
       });

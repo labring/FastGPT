@@ -4,8 +4,8 @@ import type { AppSchema } from '@/types/mongoSchema';
 export enum OpenAiChatEnum {
   'GPT35' = 'gpt-3.5-turbo',
   'GPT3516k' = 'gpt-3.5-turbo-16k',
-  'GPT4' = 'gpt-4',
-  'GPT432k' = 'gpt-4-32k'
+  'FastAI-Plus' = 'gpt-4',
+  'FastAI-Plus32k' = 'gpt-4-32k'
 }
 
 export const defaultApp: AppSchema = {
