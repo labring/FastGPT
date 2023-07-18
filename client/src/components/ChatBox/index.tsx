@@ -17,6 +17,7 @@ import { useUserStore } from '@/store/user';
 import { Types } from 'mongoose';
 import { HUMAN_ICON, quoteLenKey, rawSearchKey } from '@/constants/chat';
 import Markdown from '@/components/Markdown';
+import { EventNameEnum } from '../Markdown/constant';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
 
@@ -236,7 +237,7 @@ const ChatBox = (
    * user confirm send prompt
    */
   const sendPrompt = useCallback(
-    async (data: Record<string, any> = {}) => {
+    async (data: Record<string, any> = {}, inputVal = '') => {
       if (isChatting) {
         toast({
           title: '正在聊天中...请等待结束',
@@ -245,8 +246,7 @@ const ChatBox = (
         return;
       }
       // get input value
-      const value = TextareaDom.current?.value || '';
-      const val = value.trim().replace(/\n\s*/g, '\n');
+      const val = inputVal.trim().replace(/\n\s*/g, '\n');
 
       if (!val) {
         toast({
@@ -320,7 +320,7 @@ const ChatBox = (
         });
 
         if (!err?.responseText) {
-          resetInputVal(value);
+          resetInputVal(inputVal);
           setChatHistory(newChatList.slice(0, newChatList.length - 2));
         }
 
@@ -403,11 +403,25 @@ const ChatBox = (
               {/* avatar */}
               <ChatAvatar src={appAvatar} order={1} mr={['6px', 2]} />
               {/* message */}
-              <Flex order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
-                <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
-                  {welcomeText}
-                </Card>
-              </Flex>
+              <Card
+                order={2}
+                mt={2}
+                px={4}
+                py={3}
+                bg={'white'}
+                maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}
+                borderRadius={'0 8px 8px 8px'}
+              >
+                <Markdown
+                  source={`~~~guide \n${welcomeText}`}
+                  isChatting={false}
+                  onClick={(e) => {
+                    const val = e?.data;
+                    if (e?.event !== EventNameEnum.guideClick || !val) return;
+                    handleSubmit((data) => sendPrompt(data, val))();
+                  }}
+                />
+              </Card>
             </Flex>
           )}
           {/* variable input */}
@@ -416,54 +430,59 @@ const ChatBox = (
               {/* avatar */}
               <ChatAvatar src={appAvatar} order={1} mr={['6px', 2]} />
               {/* message */}
-              <Flex order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
-                <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
-                  <Box>
-                    {variableModules.map((item) => (
-                      <Box w={'min(100%,300px)'} key={item.id} mb={4}>
-                        <VariableLabel required={item.required}>{item.label}</VariableLabel>
-                        {item.type === VariableInputEnum.input && (
-                          <Input
-                            isDisabled={variableIsFinish}
-                            {...register(item.key, {
-                              required: item.required
-                            })}
-                          />
-                        )}
-                        {item.type === VariableInputEnum.select && (
-                          <MySelect
-                            width={'100%'}
-                            isDisabled={variableIsFinish}
-                            list={(item.enums || []).map((item) => ({
-                              label: item.value,
-                              value: item.value
-                            }))}
-                            value={getValues(item.key)}
-                            onchange={(e) => {
-                              setValue(item.key, e);
-                              setRefresh(!refresh);
-                            }}
-                          />
-                        )}
-                      </Box>
-                    ))}
-                    {!variableIsFinish && (
-                      <Button
-                        leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
-                        size={'sm'}
-                        maxW={'100px'}
-                        borderRadius={'lg'}
-                        onClick={handleSubmit((data) => {
-                          onUpdateVariable?.(data);
-                          setVariables(data);
+              <Card
+                order={2}
+                mt={2}
+                flex={1}
+                bg={'white'}
+                px={4}
+                py={3}
+                borderRadius={'0 8px 8px 8px'}
+                maxW={'min(100%,400px)'}
+              >
+                {variableModules.map((item) => (
+                  <Box key={item.id} mb={4}>
+                    <VariableLabel required={item.required}>{item.label}</VariableLabel>
+                    {item.type === VariableInputEnum.input && (
+                      <Input
+                        isDisabled={variableIsFinish}
+                        {...register(item.key, {
+                          required: item.required
                         })}
-                      >
-                        {'开始对话'}
-                      </Button>
+                      />
+                    )}
+                    {item.type === VariableInputEnum.select && (
+                      <MySelect
+                        width={'100%'}
+                        isDisabled={variableIsFinish}
+                        list={(item.enums || []).map((item) => ({
+                          label: item.value,
+                          value: item.value
+                        }))}
+                        value={getValues(item.key)}
+                        onchange={(e) => {
+                          setValue(item.key, e);
+                          setRefresh(!refresh);
+                        }}
+                      />
                     )}
                   </Box>
-                </Card>
-              </Flex>
+                ))}
+                {!variableIsFinish && (
+                  <Button
+                    leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                    size={'sm'}
+                    maxW={'100px'}
+                    borderRadius={'lg'}
+                    onClick={handleSubmit((data) => {
+                      onUpdateVariable?.(data);
+                      setVariables(data);
+                    })}
+                  >
+                    {'开始对话'}
+                  </Button>
+                )}
+              </Card>
             </Flex>
           )}
 
@@ -650,7 +669,7 @@ const ChatBox = (
               onKeyDown={(e) => {
                 // 触发快捷发送
                 if (e.keyCode === 13 && !e.shiftKey) {
-                  handleSubmit(sendPrompt)();
+                  handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
                   e.preventDefault();
                 }
                 // 全选内容
@@ -685,7 +704,9 @@ const ChatBox = (
                   height={['18px', '20px']}
                   cursor={'pointer'}
                   color={'gray.500'}
-                  onClick={handleSubmit(sendPrompt)}
+                  onClick={() => {
+                    handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
+                  }}
                 />
               )}
             </Flex>

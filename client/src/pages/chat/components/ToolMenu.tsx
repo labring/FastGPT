@@ -3,15 +3,23 @@ import { useChatBox } from '@/components/ChatBox';
 import { ChatItemType } from '@/types/chat';
 import { Menu, MenuButton, MenuList, MenuItem, Box } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
+import { useRouter } from 'next/router';
 
 const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const { onExportChat } = useChatBox();
+  const router = useRouter();
   const menuList = useRef([
-    // {
-    //   icon: 'shareLight',
-    //   label: '分享对话',
-    //   onClick: () => {}
-    // },
+    {
+      icon: 'chatLight',
+      label: '新对话',
+      onClick: () => {
+        router.push({
+          query: {
+            appId: router.query?.appId
+          }
+        });
+      }
+    },
     {
       icon: 'apiLight',
       label: 'HTML导出',
