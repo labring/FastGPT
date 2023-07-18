@@ -27,8 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const where = {
       userId,
       time: {
-        $gte: new Date(dateStart).setHours(0, 0, 0, 0),
-        $lte: new Date(dateEnd).setHours(23, 59, 59, 999)
+        $gte: dateStart,
+        $lte: dateEnd
       }
     };
 

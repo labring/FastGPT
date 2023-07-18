@@ -6,12 +6,11 @@ const PageContainer = ({ children, ...props }: BoxProps) => {
   return (
     <Box bg={'myGray.100'} h={'100%'} p={[0, 5]} px={[0, 6]} {...props}>
       <Box
-        flex={1}
         h={'100%'}
         bg={'white'}
-        borderRadius={['', '2xl']}
-        border={['', theme.borders.lg]}
-        overflowY={'auto'}
+        borderRadius={[0, '2xl']}
+        border={['none', theme.borders.lg]}
+        overflow={'overlay'}
       >
         {children}
       </Box>
