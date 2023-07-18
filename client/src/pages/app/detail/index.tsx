@@ -67,7 +67,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   return (
     <PageContainer>
-      <Box display={['block', 'flex']} h={'100%'}>
+      <Flex flexDirection={['column', 'row']} h={'100%'}>
         {/* pc tab */}
         <Box
           display={['none', 'flex']}
@@ -121,7 +121,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         </Box>
         {/* phone tab */}
         <Box display={['block', 'none']} textAlign={'center'} px={5} py={3}>
-          <Box className="textlg" fontSize={'3xl'} fontWeight={'bold'}>
+          <Box className="textlg" fontSize={'xl'} fontWeight={'bold'}>
             {appDetail.name}
           </Box>
           <Tabs
@@ -140,12 +140,12 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             }}
           />
         </Box>
-        <Box flex={1} h={'100%'}>
+        <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
           {currentTab === TabEnum.settings && <Settings appId={appId} />}
           {currentTab === TabEnum.API && <API appId={appId} />}
           {currentTab === TabEnum.share && <Share appId={appId} />}
         </Box>
-      </Box>
+      </Flex>
     </PageContainer>
   );
 };

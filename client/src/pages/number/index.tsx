@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Card, Box, Flex, Button, Input, Grid, useDisclosure } from '@chakra-ui/react';
+import React, { useCallback, useRef } from 'react';
+import { Card, Box, Flex, Button, Grid, useDisclosure } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { putUserInfo, getPromotionInitData } from '@/api/user';
@@ -14,7 +14,6 @@ import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { getErrText, useCopyData } from '@/utils/tools';
-import { authOpenAiKey } from '@/utils/plugin/openai';
 
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';

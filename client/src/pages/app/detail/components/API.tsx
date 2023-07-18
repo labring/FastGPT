@@ -3,6 +3,7 @@ import { Box, Divider, Flex, useTheme, Button, Skeleton, useDisclosure } from '@
 import { useCopyData } from '@/utils/tools';
 import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
+import { useGlobalStore } from '@/store/global';
 
 const APIKeyModal = dynamic(() => import('@/components/APIKeyModal'), {
   ssr: false
@@ -19,13 +20,15 @@ const API = ({ appId }: { appId: string }) => {
   } = useDisclosure();
   const [isLoaded, setIsLoaded] = useState(false);
 
+  const { isPc } = useGlobalStore();
+
   useEffect(() => {
     setBaseUrl(`${location.origin}/api/openapi`);
   }, []);
 
   return (
     <Flex flexDirection={'column'} pt={[0, 5]} h={'100%'}>
-      <Box display={['none', 'flex']} px={5} alignItems={'center'}>
+      <Flex px={5} alignItems={'center'}>
         <Box flex={1}>
           AppId:
           <Box
@@ -38,32 +41,36 @@ const API = ({ appId }: { appId: string }) => {
             {appId}
           </Box>
         </Box>
-        <Flex
-          bg={'myWhite.600'}
-          py={2}
-          px={4}
-          borderRadius={'md'}
-          cursor={'pointer'}
-          onClick={() => copyData(baseUrl, '已复制 API 地址')}
-        >
-          <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'sm'}>
-            API服务器
-          </Box>
-          <Box ml={2} color={'myGray.900'} fontSize={['sm', 'md']}>
-            {baseUrl}
-          </Box>
-        </Flex>
-        <Button
-          ml={3}
-          leftIcon={<MyIcon name={'apikey'} w={'16px'} color={''} />}
-          variant={'base'}
-          onClick={onOpenAPIModal}
-        >
-          API 秘钥
-        </Button>
-      </Box>
+        {isPc && (
+          <>
+            <Flex
+              bg={'myWhite.600'}
+              py={2}
+              px={4}
+              borderRadius={'md'}
+              cursor={'pointer'}
+              onClick={() => copyData(baseUrl, '已复制 API 地址')}
+            >
+              <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'sm'}>
+                API服务器
+              </Box>
+              <Box ml={2} color={'myGray.900'} fontSize={['sm', 'md']}>
+                {baseUrl}
+              </Box>
+            </Flex>
+            <Button
+              ml={3}
+              leftIcon={<MyIcon name={'apikey'} w={'16px'} color={''} />}
+              variant={'base'}
+              onClick={onOpenAPIModal}
+            >
+              API 秘钥
+            </Button>
+          </>
+        )}
+      </Flex>
       <Divider mt={3} />
-      <Box flex={1}>
+      <Box flex={'1 0 0'} h={0}>
         <Skeleton h="100%" isLoaded={isLoaded} fadeDuration={2}>
           <iframe
             style={{

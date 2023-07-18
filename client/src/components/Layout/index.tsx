@@ -86,7 +86,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
                 <Auth>{children}</Auth>
               ) : (
                 <Flex h={'100%'} flexDirection={'column'}>
-                  <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
+                  <Box flex={'1 0 0'} h={0}>
                     <Auth>{children}</Auth>
                   </Box>
                   <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>

@@ -8,7 +8,7 @@ import React, {
   useImperativeHandle,
   ForwardedRef
 } from 'react';
-import { Box, Flex, IconButton, useOutsideClick } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { streamFetch } from '@/api/fetch';
@@ -35,7 +35,6 @@ const ChatTest = (
   },
   ref: ForwardedRef<ChatTestComponentRef>
 ) => {
-  const BoxRef = useRef(null);
   const ChatBoxRef = useRef<ComponentRef>(null);
   const isOpen = useMemo(() => modules && modules.length > 0, [modules]);
 
@@ -67,13 +66,6 @@ const ChatTest = (
     [app._id, app.name, modules]
   );
 
-  useOutsideClick({
-    ref: BoxRef,
-    handler: () => {
-      onClose();
-    }
-  });
-
   useImperativeHandle(ref, () => ({
     resetChatTest() {
       ChatBoxRef.current?.resetHistory([]);
@@ -84,7 +76,6 @@ const ChatTest = (
   return (
     <>
       <Flex
-        ref={BoxRef}
         zIndex={3}
         flexDirection={'column'}
         position={'absolute'}
@@ -136,6 +127,7 @@ const ChatTest = (
         left={0}
         bottom={0}
         right={0}
+        onClick={onClose}
       />
     </>
   );

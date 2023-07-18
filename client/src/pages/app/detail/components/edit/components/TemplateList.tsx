@@ -3,6 +3,7 @@ import { Box, Flex, useOutsideClick } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
 import type { AppModuleTemplateItemType } from '@/types/app';
 import type { XYPosition } from 'reactflow';
+import { useGlobalStore } from '@/store/global';
 import Avatar from '@/components/Avatar';
 
 const ModuleStoreList = ({
@@ -14,15 +15,7 @@ const ModuleStoreList = ({
   onAddNode: (e: { template: AppModuleTemplateItemType; position: XYPosition }) => void;
   onClose: () => void;
 }) => {
-  const BoxRef = useRef(null);
-
-  useOutsideClick({
-    ref: BoxRef,
-    handler: () => {
-      onClose();
-    }
-  });
-
+  const { isPc } = useGlobalStore();
   return (
     <>
       <Box
@@ -33,17 +26,17 @@ const ModuleStoreList = ({
         left={0}
         bottom={0}
         w={'360px'}
-      ></Box>
+        onClick={onClose}
+      />
       <Flex
         zIndex={3}
-        ref={BoxRef}
         flexDirection={'column'}
         position={'absolute'}
         top={'65px'}
         left={0}
         pb={4}
         h={isOpen ? 'calc(100% - 100px)' : '0'}
-        w={isOpen ? '360px' : '0'}
+        w={isOpen ? ['100%', '360px'] : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'20px'}
@@ -51,11 +44,11 @@ const ModuleStoreList = ({
         transition={'.2s ease'}
         userSelect={'none'}
       >
-        <Box w={'330px'} py={4} px={5} fontSize={'xl'} fontWeight={'bold'}>
+        <Box w={['100%', '330px']} py={4} px={5} fontSize={'xl'} fontWeight={'bold'}>
           系统模块
         </Box>
         <Box flex={'1 0 0'} overflow={'overlay'}>
-          <Box w={'330px'} mx={'auto'}>
+          <Box w={['100%', '330px']} mx={'auto'}>
             {ModuleTemplates.map((item) =>
               item.list.map((item) => (
                 <Flex
@@ -72,6 +65,14 @@ const ModuleStoreList = ({
                       template: item,
                       position: { x: e.clientX, y: e.clientY }
                     });
+                  }}
+                  onClick={(e) => {
+                    if (isPc) return;
+                    onAddNode({
+                      template: item,
+                      position: { x: e.clientX, y: e.clientY }
+                    });
+                    onClose();
                   }}
                 >
                   <Avatar src={item.logo} w={'34px'} objectFit={'contain'} borderRadius={'0'} />

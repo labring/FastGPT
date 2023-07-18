@@ -66,7 +66,7 @@ const Settings = ({ appId }: { appId: string }) => {
 
   return (
     <Flex h={'100%'} flexDirection={'column'} position={'relative'}>
-      <Box w={'100%'} pt={[0, 7]} px={[2, 5, 8]}>
+      <Box w={'100%'} pt={[0, 7]} px={[3, 5, 8]}>
         <Grid gridTemplateColumns={['1fr', 'repeat(2,1fr)']} gridGap={[2, 4, 6]}>
           <Box>
             <Box mb={2} fontSize={['md', 'xl']}>

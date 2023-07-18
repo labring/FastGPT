@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/useToast';
 import { postCreateApp } from '@/api/app';
 import { useRouter } from 'next/router';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
+import { useGlobalStore } from '@/store/global';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 
@@ -37,6 +38,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   const { toast } = useToast();
   const router = useRouter();
   const theme = useTheme();
+  const { isPc } = useGlobalStore();
   const { register, setValue, getValues, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: '/icon/logo.png',
@@ -100,9 +102,9 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   );
 
   return (
-    <Modal isOpen onClose={onClose}>
+    <Modal isOpen onClose={onClose} isCentered={!isPc}>
       <ModalOverlay />
-      <ModalContent w={'700px'} maxW={'90vw'}>
+      <ModalContent maxW={'min(700px,90vw)'}>
         <ModalHeader fontSize={'2xl'}>创建属于你的 AI 应用</ModalHeader>
         <ModalBody>
           <Box color={'myGray.800'} fontWeight={'bold'}>
@@ -121,19 +123,20 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             </MyTooltip>
             <Input
               ml={4}
+              autoFocus
               bg={'myWhite.600'}
               {...register('name', {
                 required: '应用名不能为空~'
               })}
             />
           </Flex>
-          <Box mt={7} mb={3} color={'myGray.800'} fontWeight={'bold'}>
+          <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
             从模板中选择
           </Box>
           <Grid
             userSelect={'none'}
             gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
-            gridGap={4}
+            gridGap={[2, 4]}
           >
             {appTemplates.map((item) => (
               <Card

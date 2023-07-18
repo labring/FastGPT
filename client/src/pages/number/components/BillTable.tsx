@@ -39,8 +39,8 @@ const BillTable = () => {
   } = usePagination<UserBillType>({
     api: getUserBills,
     params: {
-      dateStart: dateRange.from,
-      dateEnd: dateRange.to
+      dateStart: new Date(dateRange.from || new Date()).setHours(0, 0, 0, 0),
+      dateEnd: new Date(dateRange.to || new Date()).setHours(23, 59, 59, 999)
     }
   });
 
@@ -85,14 +85,14 @@ const BillTable = () => {
           </Box>
         </Flex>
       )}
-      <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
+      <Flex w={'100%'} mt={4} justifyContent={'flex-end'} flexWrap={'wrap'}>
         <DateRangePicker
           defaultDate={dateRange}
           position="top"
           onChange={setDateRange}
           onSuccess={() => getData(1)}
         />
-        <Box ml={2}>
+        <Box ml={[0, 2]} mt={[3, 0]} w={['100%', 'auto']}>
           <Pagination />
         </Box>
       </Flex>

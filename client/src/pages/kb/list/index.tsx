@@ -141,6 +141,14 @@ const Kb = () => {
           </Card>
         ))}
       </Grid>
+      {myKbList.length === 0 && (
+        <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
+          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+          <Box mt={2} color={'myGray.500'}>
+            还没有知识库，快去创建一个吧！
+          </Box>
+        </Flex>
+      )}
       <ConfirmChild />
     </PageContainer>
   );
