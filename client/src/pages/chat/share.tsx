@@ -69,7 +69,7 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
         shareId
       });
 
-      if (newChatId) {
+      if (newChatId && !controller.signal.aborted) {
         router.replace({
           query: {
             shareId,

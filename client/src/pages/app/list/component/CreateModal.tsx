@@ -23,6 +23,7 @@ import { postCreateApp } from '@/api/app';
 import { useRouter } from 'next/router';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
 import Avatar from '@/components/Avatar';
+import MyTooltip from '@/components/MyTooltip';
 
 type FormType = {
   avatar: string;
@@ -102,21 +103,22 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     <Modal isOpen onClose={onClose}>
       <ModalOverlay />
       <ModalContent w={'700px'} maxW={'90vw'}>
-        <ModalHeader fontSize={'2xl'}>开始创建你的 AI 应用</ModalHeader>
+        <ModalHeader fontSize={'2xl'}>创建属于你的 AI 应用</ModalHeader>
         <ModalBody>
           <Box color={'myGray.800'} fontWeight={'bold'}>
             取个响亮的名字
           </Box>
           <Flex mt={3} alignItems={'center'}>
-            <Avatar
-              src={getValues('avatar')}
-              w={['32px', '36px']}
-              h={['32px', '36px']}
-              cursor={'pointer'}
-              title={'点击选择头像'}
-              borderRadius={'md'}
-              onClick={onOpenSelectFile}
-            />
+            <MyTooltip label={'点击设置头像'}>
+              <Avatar
+                src={getValues('avatar')}
+                w={['32px', '36px']}
+                h={['32px', '36px']}
+                cursor={'pointer'}
+                borderRadius={'md'}
+                onClick={onOpenSelectFile}
+              />
+            </MyTooltip>
             <Input
               ml={4}
               bg={'myWhite.600'}

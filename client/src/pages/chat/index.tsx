@@ -66,7 +66,7 @@ const Chat = () => {
       const newTitle = prompts[0].content?.slice(0, 20) || '新对话';
 
       // update history
-      if (newChatId) {
+      if (newChatId && !controller.signal.aborted) {
         forbidRefresh.current = true;
         const newHistory: ChatHistoryItemType = {
           _id: newChatId,
