@@ -4,7 +4,7 @@ import { connectToDatabase, Chat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 
 export type Props = {
-  historyId: string;
+  chatId: string;
   customTitle?: string;
   top?: boolean;
 };
@@ -12,7 +12,7 @@ export type Props = {
 /* 更新聊天标题 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { historyId, customTitle, top } = req.body as Props;
+    const { chatId, customTitle, top } = req.body as Props;
 
     const { userId } = await authUser({ req, authToken: true });
 
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await Chat.findOneAndUpdate(
       {
-        _id: historyId,
+        _id: chatId,
         userId
       },
       {

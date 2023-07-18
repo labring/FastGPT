@@ -7,22 +7,22 @@ import { rawSearchKey } from '@/constants/chat';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { historyId, contentId } = req.query as {
-      historyId: string;
+    const { chatId, contentId } = req.query as {
+      chatId: string;
       contentId: string;
     };
     await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
 
-    if (!historyId || !contentId) {
+    if (!chatId || !contentId) {
       throw new Error('params is error');
     }
 
     const history = await Chat.aggregate([
       {
         $match: {
-          _id: new Types.ObjectId(historyId),
+          _id: new Types.ObjectId(chatId),
           userId: new Types.ObjectId(userId)
         }
       },

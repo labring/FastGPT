@@ -15,12 +15,12 @@ type State = {
   setChatData: (e: InitChatResponse | ((e: InitChatResponse) => InitChatResponse)) => void;
   lastChatAppId: string;
   setLastChatAppId: (id: string) => void;
-  lastHistoryId: string;
-  setLastHistoryId: (id: string) => void;
+  lastChatId: string;
+  setLastChatId: (id: string) => void;
 };
 
 const defaultChatData: InitChatResponse = {
-  historyId: '',
+  chatId: '',
   appId: '',
   app: {
     name: '',
@@ -43,10 +43,10 @@ export const useChatStore = create<State>()(
             state.lastChatAppId = id;
           });
         },
-        lastHistoryId: '',
-        setLastHistoryId(id: string) {
+        lastChatId: '',
+        setLastChatId(id: string) {
           set((state) => {
-            state.lastHistoryId = id;
+            state.lastChatId = id;
           });
         },
         history: [],
@@ -63,25 +63,36 @@ export const useChatStore = create<State>()(
           });
           return null;
         },
-        async delHistory(historyId) {
+        async delHistory(chatId) {
           set((state) => {
-            state.history = state.history.filter((item) => item._id !== historyId);
+            state.history = state.history.filter((item) => item._id !== chatId);
           });
-          await delChatHistoryById(historyId);
+          await delChatHistoryById(chatId);
         },
         updateHistory(history) {
           const index = get().history.findIndex((item) => item._id === history._id);
           set((state) => {
-            if (index > -1) {
-              const newHistory = [
-                history,
-                ...get().history.slice(0, index),
-                ...get().history.slice(index + 1)
-              ];
-              state.history = newHistory;
-            } else {
-              state.history = [history, ...state.history];
-            }
+            const newHistory = (() => {
+              if (index > -1) {
+                return [
+                  history,
+                  ...get().history.slice(0, index),
+                  ...get().history.slice(index + 1)
+                ];
+              } else {
+                return [history, ...state.history];
+              }
+            })();
+            // newHistory.sort(function (a, b) {
+            //   if (a.top === true && b.top === false) {
+            //     return -1;
+            //   } else if (a.top === false && b.top === true) {
+            //     return 1;
+            //   } else {
+            //     return 0;
+            //   }
+            // });
+            state.history = newHistory;
           });
         },
         chatData: defaultChatData,
@@ -101,7 +112,7 @@ export const useChatStore = create<State>()(
         name: 'chatStore',
         partialize: (state) => ({
           lastChatAppId: state.lastChatAppId,
-          lastHistoryId: state.lastHistoryId
+          lastChatId: state.lastChatId
         })
       }
     )

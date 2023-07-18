@@ -20,6 +20,7 @@ export type ChatSiteItemType = {
 export type HistoryItemType = {
   _id: string;
   updateTime: Date;
+  customTitle?: string;
   title: string;
 };
 export type ChatHistoryItemType = HistoryItemType & {

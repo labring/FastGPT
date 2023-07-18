@@ -20,12 +20,12 @@ import { getErrText } from '@/utils/tools';
 import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
 
 const QuoteModal = ({
-  historyId,
+  chatId,
   contentId,
   rawSearch = [],
   onClose
 }: {
-  historyId?: string;
+  chatId?: string;
   contentId?: string;
   rawSearch?: QuoteItemType[];
   onClose: () => void;
@@ -45,8 +45,8 @@ const QuoteModal = ({
     refetch,
     isLoading
   } = useQuery(['getHistoryQuote'], () => {
-    if (historyId && contentId) {
-      return getHistoryQuote({ historyId, contentId });
+    if (chatId && contentId) {
+      return getHistoryQuote({ chatId, contentId });
     }
     if (rawSearch.length > 0) {
       return rawSearch;
@@ -59,12 +59,12 @@ const QuoteModal = ({
    */
   const updateQuoteStatus = useCallback(
     async (quoteId: string, sourceText: string) => {
-      if (!historyId || !contentId) return;
+      if (!chatId || !contentId) return;
       setIsLoading(true);
       try {
         await updateHistoryQuote({
           contentId,
-          historyId,
+          chatId,
           quoteId,
           sourceText
         });
@@ -78,7 +78,7 @@ const QuoteModal = ({
       }
       setIsLoading(false);
     },
-    [contentId, historyId, refetch, setIsLoading, toast]
+    [contentId, chatId, refetch, setIsLoading, toast]
   );
 
   /**

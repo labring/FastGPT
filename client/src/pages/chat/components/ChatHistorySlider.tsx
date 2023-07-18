@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -11,6 +11,7 @@ import {
   IconButton
 } from '@chakra-ui/react';
 import { useGlobalStore } from '@/store/global';
+import { useEditInfo } from '@/hooks/useEditInfo';
 import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
@@ -19,6 +20,7 @@ import MyIcon from '@/components/Icon';
 type HistoryItemType = {
   id: string;
   title: string;
+  customTitle?: string;
   top?: boolean;
 };
 
@@ -27,29 +29,34 @@ const ChatHistorySlider = ({
   appName,
   appAvatar,
   history,
-  activeHistoryId,
+  activeChatId,
   onChangeChat,
   onDelHistory,
   onSetHistoryTop,
-  onUpdateTitle
+  onSetCustomTitle
 }: {
   appId?: string;
   appName: string;
   appAvatar: string;
   history: HistoryItemType[];
-  activeHistoryId: string;
-  onChangeChat: (historyId?: string) => void;
-  onDelHistory: (historyId: string) => void;
-  onSetHistoryTop?: (e: { historyId: string; top: boolean }) => void;
-  onUpdateTitle?: (e: { historyId: string; title: string }) => void;
+  activeChatId: string;
+  onChangeChat: (chatId?: string) => void;
+  onDelHistory: (chatId: string) => void;
+  onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
+  onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
 }) => {
   const theme = useTheme();
   const router = useRouter();
   const { isPc } = useGlobalStore();
+  // custom title edit
+  const { onOpenModal, EditModal: EditTitleModal } = useEditInfo({
+    title: '自定义历史记录标题',
+    placeholder: '如果设置为空，会自动跟随聊天记录。'
+  });
 
   const concatHistory = useMemo<HistoryItemType[]>(
-    () => (!activeHistoryId ? [{ id: activeHistoryId, title: '新对话' }].concat(history) : history),
-    [activeHistoryId, history]
+    () => (!activeChatId ? [{ id: activeChatId, title: '新对话' }].concat(history) : history),
+    [activeChatId, history]
   );
 
   return (
@@ -121,7 +128,7 @@ const ChatHistorySlider = ({
               }
             }}
             bg={item.top ? '#E6F6F6 !important' : ''}
-            {...(item.id === activeHistoryId
+            {...(item.id === activeChatId
               ? {
                   backgroundColor: 'myBlue.100 !important',
                   color: 'myBlue.700'
@@ -132,9 +139,9 @@ const ChatHistorySlider = ({
                   }
                 })}
           >
-            <MyIcon name={item.id === activeHistoryId ? 'chatFill' : 'chatLight'} w={'16px'} />
+            <MyIcon name={item.id === activeChatId ? 'chatFill' : 'chatLight'} w={'16px'} />
             <Box flex={'1 0 0'} ml={3} className="textEllipsis">
-              {item.title}
+              {item.customTitle || item.title}
             </Box>
             {!!item.id && (
               <Box className="more" display={['block', 'none']}>
@@ -154,20 +161,24 @@ const ChatHistorySlider = ({
                       <MenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          onSetHistoryTop({ historyId: item.id, top: !item.top });
+                          onSetHistoryTop({ chatId: item.id, top: !item.top });
                         }}
                       >
                         <MyIcon mr={2} name={'setTop'} w={'16px'}></MyIcon>
                         {item.top ? '取消置顶' : '置顶'}
                       </MenuItem>
                     )}
-                    {onUpdateTitle && (
+                    {onSetCustomTitle && (
                       <MenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          onUpdateTitle({
-                            historyId: item.id,
-                            title: '是是是'
+                          onOpenModal({
+                            defaultVal: item.customTitle || item.title,
+                            onSuccess: (e) =>
+                              onSetCustomTitle({
+                                chatId: item.id,
+                                title: e
+                              })
                           });
                         }}
                       >
@@ -180,7 +191,7 @@ const ChatHistorySlider = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         onDelHistory(item.id);
-                        if (item.id === activeHistoryId) {
+                        if (item.id === activeChatId) {
                           onChangeChat();
                         }
                       }}
@@ -218,6 +229,7 @@ const ChatHistorySlider = ({
           切换应用
         </Flex>
       )}
+      <EditTitleModal />
     </Flex>
   );
 };

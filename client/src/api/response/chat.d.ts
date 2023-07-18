@@ -13,7 +13,6 @@ export interface InitChatResponse {
     intro: string;
     canUse: boolean;
   };
-  customTitle?: string;
   title: string;
   variables: Record<string, any>;
   history: ChatItemType[];

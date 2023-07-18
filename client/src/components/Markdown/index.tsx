@@ -43,6 +43,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
         a: Link,
         img: Image,
         pre: 'div',
+        p: 'div',
         code: Code
       }}
     >
