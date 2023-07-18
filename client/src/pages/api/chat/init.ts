@@ -7,18 +7,17 @@ import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';
 import mongoose from 'mongoose';
 import type { AppSchema, ChatSchema } from '@/types/mongoSchema';
-import { FlowModuleTypeEnum } from '@/constants/flow';
-import { SystemInputEnum } from '@/constants/app';
 import { quoteLenKey, rawSearchKey } from '@/constants/chat';
+import { getSpecialModule } from '@/components/ChatBox';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { userId } = await authUser({ req, authToken: true });
 
-    let { appId, historyId } = req.query as {
+    let { appId, chatId } = req.query as {
       appId: '' | string;
-      historyId: '' | string;
+      chatId: '' | string;
     };
 
     await connectToDatabase();
@@ -53,10 +52,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 历史记录
     const { chat, history = [] }: { chat?: ChatSchema; history?: ChatItemType[] } =
       await (async () => {
-        if (historyId) {
+        if (chatId) {
           // auth historyId
           const chat = await Chat.findOne({
-            _id: historyId,
+            _id: chatId,
             userId
           });
           if (!chat) {
@@ -66,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const history = await Chat.aggregate([
             {
               $match: {
-                _id: new mongoose.Types.ObjectId(historyId),
+                _id: new mongoose.Types.ObjectId(chatId),
                 userId: new mongoose.Types.ObjectId(userId)
               }
             },
@@ -96,20 +95,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     jsonRes<InitChatResponse>(res, {
       data: {
-        historyId,
+        chatId,
         appId,
         app: {
-          variableModules: app.modules
-            .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
-            ?.inputs?.find((item) => item.key === SystemInputEnum.variables)?.value,
-          welcomeText: app.modules
-            .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
-            ?.inputs?.find((item) => item.key === SystemInputEnum.welcomeText)?.value,
+          ...getSpecialModule(app.modules),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro,
           canUse: app.share.isShare || isOwner
         },
+        customTitle: chat?.customTitle,
         title: chat?.title || '新对话',
         variables: chat?.variables || {},
         history

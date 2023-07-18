@@ -31,7 +31,7 @@ const NodeCard = ({
   return (
     <Box minW={minW} bg={'white'} border={theme.borders.md} borderRadius={'md'} boxShadow={'sm'}>
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
-        <Avatar src={logo} borderRadius={'md'} w={'30px'} h={'30px'} />
+        <Avatar src={logo} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
           {name}
         </Box>

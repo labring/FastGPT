@@ -161,7 +161,7 @@ const ChatHistorySlider = ({
                         {item.top ? '取消置顶' : '置顶'}
                       </MenuItem>
                     )}
-                    {/* {onUpdateTitle && (
+                    {onUpdateTitle && (
                       <MenuItem
                         onClick={(e) => {
                           e.stopPropagation();
@@ -174,7 +174,7 @@ const ChatHistorySlider = ({
                         <MyIcon mr={2} name={'customTitle'} w={'16px'}></MyIcon>
                         自定义标题
                       </MenuItem>
-                    )} */}
+                    )}
                     <MenuItem
                       _hover={{ color: 'red.500' }}
                       onClick={(e) => {

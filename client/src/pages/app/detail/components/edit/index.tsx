@@ -31,28 +31,31 @@ import MyTooltip from '@/components/MyTooltip';
 import TemplateList from './components/TemplateList';
 import ChatTest, { type ChatTestComponentRef } from './components/ChatTest';
 
-const NodeChat = dynamic(() => import('./components/NodeChat'), {
+const NodeChat = dynamic(() => import('./components/Nodes/NodeChat'), {
   ssr: false
 });
-const NodeKbSearch = dynamic(() => import('./components/NodeKbSearch'), {
+const NodeKbSearch = dynamic(() => import('./components/Nodes/NodeKbSearch'), {
   ssr: false
 });
-const NodeHistory = dynamic(() => import('./components/NodeHistory'), {
+const NodeHistory = dynamic(() => import('./components/Nodes/NodeHistory'), {
   ssr: false
 });
-const NodeTFSwitch = dynamic(() => import('./components/NodeTFSwitch'), {
+const NodeTFSwitch = dynamic(() => import('./components/Nodes/NodeTFSwitch'), {
   ssr: false
 });
-const NodeAnswer = dynamic(() => import('./components/NodeAnswer'), {
+const NodeAnswer = dynamic(() => import('./components/Nodes/NodeAnswer'), {
   ssr: false
 });
-const NodeQuestionInput = dynamic(() => import('./components/NodeQuestionInput'), {
+const NodeQuestionInput = dynamic(() => import('./components/Nodes/NodeQuestionInput'), {
   ssr: false
 });
-const NodeRINode = dynamic(() => import('./components/NodeRINode'), {
+const NodeCQNode = dynamic(() => import('./components/Nodes/NodeCQNode'), {
   ssr: false
 });
-const NodeUserGuide = dynamic(() => import('./components/NodeUserGuide'), {
+const NodeVariable = dynamic(() => import('./components/Nodes/NodeVariable'), {
+  ssr: false
+});
+const NodeUserGuide = dynamic(() => import('./components/Nodes/NodeUserGuide'), {
   ssr: false
 });
 
@@ -64,13 +67,14 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const nodeTypes = {
   [FlowModuleTypeEnum.userGuide]: NodeUserGuide,
+  [FlowModuleTypeEnum.variable]: NodeVariable,
   [FlowModuleTypeEnum.questionInputNode]: NodeQuestionInput,
   [FlowModuleTypeEnum.historyNode]: NodeHistory,
   [FlowModuleTypeEnum.chatNode]: NodeChat,
   [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
-  [FlowModuleTypeEnum.classifyQuestion]: NodeRINode
+  [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode
 };
 const edgeTypes = {
   buttonedge: ButtonEdge

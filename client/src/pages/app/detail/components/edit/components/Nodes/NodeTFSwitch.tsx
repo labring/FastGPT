@@ -1,16 +1,16 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Flex, Box } from '@chakra-ui/react';
-import NodeCard from './modules/NodeCard';
+import NodeCard from '../modules/NodeCard';
 import { SystemInputEnum } from '@/constants/app';
 import { FlowModuleItemType } from '@/types/flow';
-import Divider from './modules/Divider';
-import Container from './modules/Container';
-import Label from './modules/Label';
+import Divider from '../modules/Divider';
+import Container from '../modules/Container';
+import Label from '../modules/Label';
 
 const NodeTFSwitch = ({ data: { inputs, outputs, ...props } }: NodeProps<FlowModuleItemType>) => {
   return (
-    <NodeCard minW={'220px'} logo={'/icon/logo.png'} name={'TF 开关'} {...props}>
+    <NodeCard minW={'220px'} {...props}>
       <Divider text="输入输出" />
       <Container h={'100px'} py={0} px={0} display={'flex'} alignItems={'center'}>
         <Box flex={1} pl={'12px'}>

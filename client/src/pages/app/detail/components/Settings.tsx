@@ -28,7 +28,7 @@ const Settings = ({ appId }: { appId: string }) => {
     content: '确认删除该应用?'
   });
   const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
-  const [fullScreen, setFullScreen] = useState(false);
+  const [fullScreen, setFullScreen] = useState(true);
 
   /* 点击删除 */
   const handleDelModel = useCallback(async () => {

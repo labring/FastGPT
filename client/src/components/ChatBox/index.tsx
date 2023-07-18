@@ -22,8 +22,8 @@ import Avatar from '@/components/Avatar';
 
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { useMarkdown } from '@/hooks/useMarkdown';
-import { VariableItemType } from '@/types/app';
-import { VariableInputEnum } from '@/constants/app';
+import { AppModuleItemType, VariableItemType } from '@/types/app';
+import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import MySelect from '@/components/Select';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
@@ -36,6 +36,7 @@ const QuoteModal = dynamic(() => import('./QuoteModal'));
 
 import styles from './index.module.scss';
 import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 const textareaMinH = '22px';
 export type StartChatFnProps = {
@@ -93,6 +94,18 @@ const Empty = () => {
     </Box>
   );
 };
+
+const ChatAvatar = ({
+  src,
+  order,
+  ml,
+  mr
+}: {
+  src: string;
+  order: number;
+  ml?: (string | number) | (string | number)[];
+  mr?: (string | number) | (string | number)[];
+}) => <Avatar src={src} w={['24px', '34px']} h={['24px', '34px']} order={order} ml={ml} mr={mr} />;
 
 const ChatBox = (
   {
@@ -375,80 +388,79 @@ const ChatBox = (
     w: '100%'
   };
 
-  const hasVariableInput = useMemo(
-    () => variableModules || welcomeText,
-    [variableModules, welcomeText]
+  const showEmpty = useMemo(
+    () => showEmptyIntro && chatHistory.length === 0 && !(variableModules || welcomeText),
+    [chatHistory.length, showEmptyIntro, variableModules, welcomeText]
   );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} overflow={'overlay'} px={[2, 5, 8]} py={[0, 5]}>
+      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} overflow={'overlay'} px={[2, 5, 7]} py={[0, 5]}>
         <Box maxW={['100%', '1000px', '1200px']} h={'100%'} mx={'auto'}>
-          {/* variable input */}
-          {hasVariableInput && (
+          {!!welcomeText && (
             <Flex alignItems={'flex-start'} py={2}>
               {/* avatar */}
-              <Avatar
-                src={appAvatar}
-                w={['24px', '34px']}
-                h={['24px', '34px']}
-                order={1}
-                mr={['6px', 2]}
-              />
+              <ChatAvatar src={appAvatar} order={1} mr={['6px', 2]} />
               {/* message */}
               <Flex order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
                 <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
-                  {welcomeText && (
-                    <Box mb={2} pb={2} borderBottom={theme.borders.base}>
-                      {welcomeText}
-                    </Box>
-                  )}
-                  {variableModules && (
-                    <Box>
-                      {variableModules.map((item) => (
-                        <Box w={'min(100%,300px)'} key={item.id} mb={4}>
-                          <VariableLabel required={item.required}>{item.label}</VariableLabel>
-                          {item.type === VariableInputEnum.input && (
-                            <Input
-                              isDisabled={variableIsFinish}
-                              {...register(item.key, {
-                                required: item.required
-                              })}
-                            />
-                          )}
-                          {item.type === VariableInputEnum.select && (
-                            <MySelect
-                              width={'100%'}
-                              isDisabled={variableIsFinish}
-                              list={(item.enums || []).map((item) => ({
-                                label: item.value,
-                                value: item.value
-                              }))}
-                              value={getValues(item.key)}
-                              onchange={(e) => {
-                                setValue(item.key, e);
-                                setRefresh(!refresh);
-                              }}
-                            />
-                          )}
-                        </Box>
-                      ))}
-                      {!variableIsFinish && (
-                        <Button
-                          leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
-                          size={'sm'}
-                          maxW={'100px'}
-                          borderRadius={'lg'}
-                          onClick={handleSubmit((data) => {
-                            onUpdateVariable?.(data);
-                            setVariables(data);
-                          })}
-                        >
-                          {'开始对话'}
-                        </Button>
-                      )}
-                    </Box>
-                  )}
+                  {welcomeText}
+                </Card>
+              </Flex>
+            </Flex>
+          )}
+          {/* variable input */}
+          {variableModules && (
+            <Flex alignItems={'flex-start'} py={2}>
+              {/* avatar */}
+              <ChatAvatar src={appAvatar} order={1} mr={['6px', 2]} />
+              {/* message */}
+              <Flex order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
+                <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
+                  <Box>
+                    {variableModules.map((item) => (
+                      <Box w={'min(100%,300px)'} key={item.id} mb={4}>
+                        <VariableLabel required={item.required}>{item.label}</VariableLabel>
+                        {item.type === VariableInputEnum.input && (
+                          <Input
+                            isDisabled={variableIsFinish}
+                            {...register(item.key, {
+                              required: item.required
+                            })}
+                          />
+                        )}
+                        {item.type === VariableInputEnum.select && (
+                          <MySelect
+                            width={'100%'}
+                            isDisabled={variableIsFinish}
+                            list={(item.enums || []).map((item) => ({
+                              label: item.value,
+                              value: item.value
+                            }))}
+                            value={getValues(item.key)}
+                            onchange={(e) => {
+                              setValue(item.key, e);
+                              setRefresh(!refresh);
+                            }}
+                          />
+                        )}
+                      </Box>
+                    ))}
+                    {!variableIsFinish && (
+                      <Button
+                        leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                        size={'sm'}
+                        maxW={'100px'}
+                        borderRadius={'lg'}
+                        onClick={handleSubmit((data) => {
+                          onUpdateVariable?.(data);
+                          setVariables(data);
+                        })}
+                      >
+                        {'开始对话'}
+                      </Button>
+                    )}
+                  </Box>
                 </Card>
               </Flex>
             </Flex>
@@ -469,10 +481,8 @@ const ChatBox = (
               >
                 {item.obj === 'Human' && <Box flex={1} />}
                 {/* avatar */}
-                <Avatar
+                <ChatAvatar
                   src={item.obj === 'Human' ? userInfo?.avatar || HUMAN_ICON : appAvatar}
-                  w={['24px', '34px']}
-                  h={['24px', '34px']}
                   {...(item.obj === 'AI'
                     ? {
                         order: 1,
@@ -597,7 +607,7 @@ const ChatBox = (
             ))}
           </Box>
 
-          {showEmptyIntro && chatHistory.length === 0 && !hasVariableInput && <Empty />}
+          {showEmpty && <Empty />}
         </Box>
       </Box>
       {/* input */}
@@ -768,5 +778,22 @@ export const useChatBox = () => {
 
   return {
     onExportChat
+  };
+};
+
+export const getSpecialModule = (modules: AppModuleItemType[]) => {
+  const welcomeText: string =
+    modules
+      .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
+      ?.inputs?.find((item) => item.key === SystemInputEnum.welcomeText)?.value || '';
+
+  const variableModules: VariableItemType[] =
+    modules
+      .find((item) => item.flowType === FlowModuleTypeEnum.variable)
+      ?.inputs.find((item) => item.key === SystemInputEnum.variables)?.value || [];
+
+  return {
+    welcomeText,
+    variableModules
   };
 };

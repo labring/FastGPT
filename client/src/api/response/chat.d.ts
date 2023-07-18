@@ -3,7 +3,7 @@ import type { ChatItemType } from '@/types/chat';
 import { VariableItemType } from '@/types/app';
 
 export interface InitChatResponse {
-  historyId: string;
+  chatId: string;
   appId: string;
   app: {
     variableModules?: VariableItemType[];
@@ -13,6 +13,7 @@ export interface InitChatResponse {
     intro: string;
     canUse: boolean;
   };
+  customTitle?: string;
   title: string;
   variables: Record<string, any>;
   history: ChatItemType[];
