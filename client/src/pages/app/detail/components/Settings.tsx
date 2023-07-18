@@ -143,7 +143,7 @@ const Settings = ({ appId }: { appId: string }) => {
           </Box>
           <Box>
             <Box mb={2} fontSize={['md', 'xl']}>
-              近 7 日消费
+              近 14 日消费
             </Box>
             <Box h={'150px'} w={'100%'}>
               <TotalUsage appId={appId} />
