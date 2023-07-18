@@ -433,12 +433,12 @@ const ChatBox = (
               <Card
                 order={2}
                 mt={2}
-                flex={1}
                 bg={'white'}
                 px={4}
                 py={3}
                 borderRadius={'0 8px 8px 8px'}
-                maxW={'min(100%,400px)'}
+                flex={'0 0 400px'}
+                maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}
               >
                 {variableModules.map((item) => (
                   <Box key={item.id} mb={4}>

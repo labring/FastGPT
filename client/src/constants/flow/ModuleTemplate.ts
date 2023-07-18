@@ -584,7 +584,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
   {
     id: 'simpleKbChat',
     avatar: '/imgs/module/db.png',
-    name: '基础知识库',
+    name: '知识库 + 对话引导',
     intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
     modules: [
       {
@@ -910,14 +910,33 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           y: -84.13355134221933
         },
         moduleId: 'w8av9y'
+      },
+      {
+        ...UserGuideModule,
+        inputs: [
+          {
+            key: 'welcomeText',
+            type: 'input',
+            label: '开场白',
+            value:
+              '你好，我是 Laf 助手，请问有什么可以帮助你的么？\n[laf 是什么？]\n[官网是多少？]',
+            connected: false
+          }
+        ],
+        outputs: [],
+        position: {
+          x: -338.02984747117785,
+          y: 203.21398144017178
+        },
+        moduleId: 'v7lq0x'
       }
     ]
   },
   {
     id: 'chatGuide',
     avatar: '/imgs/module/userGuide.png',
-    name: '对话前引导',
-    intro: '可以在每次对话开始前提示用户填写一些内容，作为本次对话的永久内容',
+    name: '对话引导 + 变量',
+    intro: '可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量',
     modules: [
       {
         ...UserInputModule,
@@ -1020,7 +1039,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-            value: '将我发送的任何内容，直接翻译成{{test}}',
+            value: '',
             connected: false
           },
           {
@@ -1116,13 +1135,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ...VariableModule,
         inputs: [
           {
-            key: 'welcomeText',
-            type: 'input',
-            label: '开场白',
-            value: '你好，我是翻译助手，可以帮你翻译任何语言，请告诉我，你需要翻译成什么语言？',
-            connected: false
-          },
-          {
             key: 'variables',
             type: 'systemInput',
             label: '变量输入',
@@ -1131,21 +1143,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 id: 'z3bs2f',
                 key: 'language',
                 label: '目标语言',
-                type: 'input',
-                required: true,
-                maxLen: 50,
-                enums: [
-                  {
-                    value: ''
-                  }
-                ]
-              },
-              {
-                id: 'lg4p31',
-                key: 'test',
-                label: '单选测试',
                 type: 'select',
-                required: false,
+                required: true,
                 maxLen: 50,
                 enums: [
                   {
@@ -1153,6 +1152,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                   },
                   {
                     value: '法语'
+                  },
+                  {
+                    value: '日语'
                   }
                 ]
               }
@@ -1162,10 +1164,28 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ],
         outputs: [],
         position: {
-          x: 421.82048705763134,
-          y: 879.3868698959807
+          x: 513.9049244392417,
+          y: 996.8739106932076
         },
         moduleId: '7blchb'
+      },
+      {
+        ...UserGuideModule,
+        inputs: [
+          {
+            key: 'welcomeText',
+            type: 'input',
+            label: '开场白',
+            value: '你好，我是翻译助手，可以帮你翻译任何语言。请告诉我，你需要翻译成什么语言？',
+            connected: false
+          }
+        ],
+        outputs: [],
+        position: {
+          x: 173.17995039750167,
+          y: 982.945778706804
+        },
+        moduleId: 'w35iml'
       }
     ]
   },
