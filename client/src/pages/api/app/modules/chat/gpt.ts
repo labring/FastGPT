@@ -110,7 +110,7 @@ export async function chatCompletion({
     ...(limitPrompt
       ? [
           {
-            obj: ChatRoleEnum.Human,
+            obj: ChatRoleEnum.System,
             value: limitPrompt
           }
         ]
