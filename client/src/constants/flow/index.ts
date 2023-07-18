@@ -19,6 +19,7 @@ export enum FlowOutputItemTypeEnum {
 }
 
 export enum FlowModuleTypeEnum {
+  variable = 'variable',
   userGuide = 'userGuide',
   questionInputNode = 'questionInput',
   historyNode = 'historyNode',

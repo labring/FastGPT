@@ -1,9 +1,9 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Box } from '@chakra-ui/react';
-import NodeCard from './modules/NodeCard';
+import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@/types/flow';
-import Container from './modules/Container';
+import Container from '../modules/Container';
 import { SystemInputEnum } from '@/constants/app';
 
 const QuestionInputNode = ({

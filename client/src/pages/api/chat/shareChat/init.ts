@@ -7,6 +7,7 @@ import { hashPassword } from '@/service/utils/tools';
 import { HUMAN_ICON } from '@/constants/chat';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
+import { getSpecialModule } from '@/components/ChatBox';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -48,12 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ?.find((item) => item.flowType === FlowModuleTypeEnum.historyNode)
             ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0,
         app: {
-          variableModules: app.modules
-            .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
-            ?.inputs?.find((item) => item.key === SystemInputEnum.variables)?.value,
-          welcomeText: app.modules
-            .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
-            ?.inputs?.find((item) => item.key === SystemInputEnum.welcomeText)?.value,
+          ...getSpecialModule(app.modules),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro

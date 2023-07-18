@@ -301,9 +301,7 @@ const Chat = () => {
                 appAvatar={chatData.app.avatar}
                 variableModules={chatData.app.variableModules}
                 welcomeText={chatData.app.welcomeText}
-                onUpdateVariable={(e) => {
-                  console.log(e);
-                }}
+                onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
                 onDelMessage={delOneHistoryItem}
               />

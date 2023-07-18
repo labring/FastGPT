@@ -9,10 +9,28 @@ import {
 } from './inputTemplate';
 import { rawSearchKey } from '../chat';
 
-export const VariableInputModule: AppModuleTemplateItemType = {
+export const VariableModule: AppModuleTemplateItemType = {
+  logo: '/imgs/module/variable.png',
+  name: '全局变量',
+  intro: '可以在对话开始前，要求用户填写一些内容作为本轮对话的变量。该模块位于开场引导之后。',
+  description:
+    '全局变量可以通过 {{变量key}} 的形式注入到其他模块的文本中。目前支持：提示词、限定词。',
+  type: AppModuleItemTypeEnum.variable,
+  flowType: FlowModuleTypeEnum.variable,
+  inputs: [
+    {
+      key: SystemInputEnum.variables,
+      type: FlowInputItemTypeEnum.systemInput,
+      label: '变量输入',
+      value: []
+    }
+  ],
+  outputs: []
+};
+export const UserGuideModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/userGuide.png',
-  name: '开场引导',
-  intro: '可以在每个新对话开始前，给用户发送一段开场白，或要求用户填写一些内容作为本轮对话的变量。',
+  name: '用户引导',
+  intro: '可以添加特殊的对话前后引导模块，更好的让用户进行对话',
   type: AppModuleItemTypeEnum.userGuide,
   flowType: FlowModuleTypeEnum.userGuide,
   inputs: [
@@ -20,12 +38,6 @@ export const VariableInputModule: AppModuleTemplateItemType = {
       key: SystemInputEnum.welcomeText,
       type: FlowInputItemTypeEnum.input,
       label: '开场白'
-    },
-    {
-      key: SystemInputEnum.variables,
-      type: FlowInputItemTypeEnum.systemInput,
-      label: '变量输入',
-      value: []
     }
   ],
   outputs: []
@@ -350,19 +362,15 @@ export const ClassifyQuestionModule: AppModuleTemplateItemType = {
 export const ModuleTemplates = [
   {
     label: '输入模块',
-    list: [UserInputModule, HistoryModule, VariableInputModule]
+    list: [UserInputModule, HistoryModule, VariableModule, UserGuideModule]
   },
   {
-    label: '对话模块',
-    list: [ChatModule]
+    label: '内容生成',
+    list: [ChatModule, AnswerModule]
   },
   {
     label: '知识库模块',
     list: [KBSearchModule]
-  },
-  {
-    label: '工具',
-    list: [AnswerModule]
   },
   {
     label: 'Agent',
@@ -1105,7 +1113,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         moduleId: 'xj0c9p'
       },
       {
-        ...VariableInputModule,
+        ...VariableModule,
         inputs: [
           {
             key: 'welcomeText',

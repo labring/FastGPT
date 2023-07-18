@@ -11,12 +11,13 @@ import React, {
 import { Box, Flex, IconButton, useOutsideClick } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { SystemInputEnum } from '@/constants/app';
 import { streamFetch } from '@/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
-import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import { useToast } from '@/hooks/useToast';
-import { getErrText } from '@/utils/tools';
+import ChatBox, {
+  getSpecialModule,
+  type ComponentRef,
+  type StartChatFnProps
+} from '@/components/ChatBox';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -36,23 +37,7 @@ const ChatTest = (
 ) => {
   const BoxRef = useRef(null);
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const { toast } = useToast();
   const isOpen = useMemo(() => modules && modules.length > 0, [modules]);
-
-  const variableModules = useMemo(
-    () =>
-      modules
-        .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
-        ?.inputs.find((item) => item.key === SystemInputEnum.variables)?.value,
-    [modules]
-  );
-  const welcomeText = useMemo(
-    () =>
-      modules
-        .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
-        ?.inputs?.find((item) => item.key === SystemInputEnum.welcomeText)?.value,
-    [modules]
-  );
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -137,8 +122,7 @@ const ChatTest = (
           <ChatBox
             ref={ChatBoxRef}
             appAvatar={app.avatar}
-            variableModules={variableModules}
-            welcomeText={welcomeText}
+            {...getSpecialModule(modules)}
             onStartChat={startChat}
             onDelMessage={() => {}}
           />

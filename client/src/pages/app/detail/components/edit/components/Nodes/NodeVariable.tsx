@@ -27,13 +27,12 @@ import {
   useDisclosure,
   useTheme,
   Grid,
-  FormControl,
-  Textarea
+  FormControl
 } from '@chakra-ui/react';
-import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
-import NodeCard from './modules/NodeCard';
+import { AddIcon, SmallAddIcon } from '@chakra-ui/icons';
+import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@/types/flow';
-import Container from './modules/Container';
+import Container from '../modules/Container';
 import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
 import type { VariableItemType } from '@/types/app';
 import MyIcon from '@/components/Icon';
@@ -41,8 +40,6 @@ import { useForm } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import { Label } from './render/RenderInput';
-import MyTooltip from '@/components/MyTooltip';
 
 const VariableTypeList = [
   { label: '文本', icon: 'settingLight', key: VariableInputEnum.input },
@@ -118,91 +115,60 @@ const NodeUserGuide = ({
     <>
       <NodeCard minW={'300px'} {...props}>
         <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
-          <>
-            <Flex mb={1} alignItems={'center'}>
-              <MyIcon name={'welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
-              <Box>对话开场白</Box>
-            </Flex>
-            <Textarea
-              className="nodrag"
-              rows={3}
-              resize={'both'}
-              defaultValue={welcomeText}
-              bg={'myWhite.600'}
-              onChange={(e) => {
-                onChangeNode({
-                  moduleId: props.moduleId,
-                  key: SystemInputEnum.welcomeText,
-                  type: 'inputs',
-                  value: e.target.value
-                });
-              }}
-            />
-          </>
-          <Box mt={4}>
-            <Flex alignItems={'center'}>
-              <MyIcon name={'variable'} mr={2} w={'20px'} color={'#FF8A4C'} />
-              <Box>变量</Box>
-              <MyTooltip
-                label={`变量会在开始对话前输入，仅会在本次对话中生效。\n你可以在任何字符串模块（系统提示词、限定词等）中使用 {{变量key}} 来代表变量输入。`}
-              >
-                <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-              </MyTooltip>
-            </Flex>
-            <TableContainer>
-              <Table>
-                <Thead>
-                  <Tr>
-                    <Th>变量名</Th>
-                    <Th>变量 key</Th>
-                    <Th>必填</Th>
-                    <Th></Th>
+          <TableContainer>
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>变量名</Th>
+                  <Th>变量 key</Th>
+                  <Th>必填</Th>
+                  <Th></Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {variables.map((item, index) => (
+                  <Tr key={index}>
+                    <Td>{item.label} </Td>
+                    <Td>{item.key}</Td>
+                    <Td>{item.required ? '✔' : ''}</Td>
+                    <Td>
+                      <MyIcon
+                        mr={3}
+                        name={'settingLight'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() => {
+                          onOpen();
+                          reset({ variable: item });
+                        }}
+                      />
+                      <MyIcon
+                        name={'delete'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() =>
+                          updateVariables(variables.filter((variable) => variable.id !== item.id))
+                        }
+                      />
+                    </Td>
                   </Tr>
-                </Thead>
-                <Tbody>
-                  {variables.map((item, index) => (
-                    <Tr key={index}>
-                      <Td>{item.label} </Td>
-                      <Td>{item.key}</Td>
-                      <Td>{item.required ? '✔' : ''}</Td>
-                      <Td>
-                        <MyIcon
-                          mr={3}
-                          name={'settingLight'}
-                          w={'16px'}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            onOpen();
-                            reset({ variable: item });
-                          }}
-                        />
-                        <MyIcon
-                          name={'delete'}
-                          w={'16px'}
-                          cursor={'pointer'}
-                          onClick={() =>
-                            updateVariables(variables.filter((variable) => variable.id !== item.id))
-                          }
-                        />
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-            <Box mt={2} textAlign={'right'}>
-              <Button
-                variant={'base'}
-                onClick={() => {
-                  const newVariable = { ...defaultVariable, id: nanoid() };
-                  updateVariables(variables.concat(newVariable));
-                  reset({ variable: newVariable });
-                  onOpen();
-                }}
-              >
-                + 新增
-              </Button>
-            </Box>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
+          <Box mt={2} textAlign={'right'}>
+            <Button
+              variant={'base'}
+              leftIcon={<AddIcon fontSize={'10px'} />}
+              onClick={() => {
+                const newVariable = { ...defaultVariable, id: nanoid() };
+                updateVariables(variables.concat(newVariable));
+                reset({ variable: newVariable });
+                onOpen();
+              }}
+            >
+              新增
+            </Button>
           </Box>
         </Container>
       </NodeCard>

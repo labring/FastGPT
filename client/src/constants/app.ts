@@ -1,10 +1,8 @@
-import type { AppItemType } from '@/types/app';
-import { rawSearchKey } from './chat';
-
 /* app */
 export enum AppModuleItemTypeEnum {
-  'userGuide' = 'userGuide', // default chat input: userChatInput, history
-  'initInput' = 'initInput', // default chat input: userChatInput, history
+  'variable' = 'variable',
+  'userGuide' = 'userGuide',
+  'initInput' = 'initInput',
   'http' = 'http', // send a http request
   'switch' = 'switch', // one input and two outputs
   'answer' = 'answer' // redirect response

@@ -1,11 +1,11 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Input, Button, Flex } from '@chakra-ui/react';
-import NodeCard from './modules/NodeCard';
+import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@/types/flow';
-import Divider from './modules/Divider';
-import Container from './modules/Container';
-import RenderInput from './render/RenderInput';
+import Divider from '../modules/Divider';
+import Container from '../modules/Container';
+import RenderInput from '../render/RenderInput';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { Handle, Position } from 'reactflow';
 import { customAlphabet } from 'nanoid';
@@ -13,7 +13,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 
-const NodeRINode = ({
+const NodeCQNode = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
 }: NodeProps<FlowModuleItemType>) => {
   return (
@@ -133,4 +133,4 @@ const NodeRINode = ({
     </NodeCard>
   );
 };
-export default React.memo(NodeRINode);
+export default React.memo(NodeCQNode);
