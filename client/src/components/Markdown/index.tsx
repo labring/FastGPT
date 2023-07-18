@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
@@ -7,17 +7,25 @@ import RemarkBreaks from 'remark-breaks';
 
 import 'katex/dist/katex.min.css';
 import styles from './index.module.scss';
+import dynamic from 'next/dynamic';
 
 import Link from './Link';
 import CodeLight from './CodeLight';
-import MermaidCodeBlock from './img/MermaidCodeBlock';
-import MdImage from './img/Image';
 
-function Code({ inline, className, children }: any) {
+const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
+const MdImage = dynamic(() => import('./img/Image'));
+const ChatGuide = dynamic(() => import('./chat/Guide'));
+
+function Code({ inline, className, children, onClick }: any) {
   const match = /language-(\w+)/.exec(className || '');
+  const codeType = match?.[1];
 
-  if (match?.[1] === 'mermaid') {
+  if (codeType === 'mermaid') {
     return <MermaidCodeBlock code={String(children)} />;
+  }
+
+  if (codeType === 'guide') {
+    return <ChatGuide text={String(children)} onClick={onClick} />;
   }
 
   return (
@@ -31,7 +39,23 @@ function Image({ src }: { src?: string }) {
   return <MdImage src={src} />;
 }
 
-const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
+const Markdown = ({
+  source,
+  isChatting = false,
+  onClick
+}: {
+  source: string;
+  isChatting?: boolean;
+  onClick?: (e: any) => void;
+}) => {
+  const components = useRef({
+    a: Link,
+    img: Image,
+    pre: 'div',
+    p: 'div',
+    code: (props: any) => <Code {...props} onClick={onClick} />
+  });
+
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}
@@ -39,13 +63,8 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
     `}
       remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
-      components={{
-        a: Link,
-        img: Image,
-        pre: 'div',
-        p: 'div',
-        code: Code
-      }}
+      // @ts-ignore
+      components={components.current}
     >
       {source}
     </ReactMarkdown>

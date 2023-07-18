@@ -89,8 +89,6 @@ export const streamFetch = ({
           });
           read();
         } catch (err: any) {
-          console.log(111111111111111111);
-
           if (err?.message === 'The user aborted a request.') {
             return resolve({
               responseText,

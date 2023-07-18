@@ -12,7 +12,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyTooltip from '@/components/MyTooltip';
 
 const welcomePlaceholder =
-  '每次对话开始前，发送一个初始内容。可使用的特殊标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
+  '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
 
 const NodeUserGuide = ({
   data: { inputs, outputs, onChangeNode, ...props }
