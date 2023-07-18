@@ -61,7 +61,7 @@ const NodeRINode = ({
                       }}
                     />
                     <Box flex={1}>
-                      <Box flex={1}>意图{i + 1}</Box>
+                      <Box flex={1}>类型{i + 1}</Box>
                       <Box position={'relative'}>
                         <Input
                           mt={1}
@@ -123,7 +123,7 @@ const NodeRINode = ({
                     });
                   }}
                 >
-                  添加意图
+                  添加问题类型
                 </Button>
               </Box>
             )

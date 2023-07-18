@@ -14,7 +14,7 @@ const BillSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: 'app',
+    ref: 'model',
     required: false
   },
   time: {

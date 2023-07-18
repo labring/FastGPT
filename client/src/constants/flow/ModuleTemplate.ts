@@ -288,6 +288,8 @@ export const ClassifyQuestionModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/cq.png',
   name: '问题分类',
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
+  description:
+    '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',
   type: AppModuleItemTypeEnum.http,
   url: '/app/modules/agent/classifyQuestion',
   flowType: FlowModuleTypeEnum.classifyQuestion,
@@ -309,12 +311,16 @@ export const ClassifyQuestionModule: AppModuleTemplateItemType = {
       label: '',
       value: [
         {
-          value: '',
+          value: '打招呼',
           key: 'fasw'
         },
         {
-          value: '',
+          value: '关于 xxx 的问题',
           key: 'fqsw'
+        },
+        {
+          value: '其他问题',
+          key: 'fesw'
         }
       ]
     }
@@ -328,6 +334,12 @@ export const ClassifyQuestionModule: AppModuleTemplateItemType = {
     },
     {
       key: 'fqsw',
+      label: '',
+      type: FlowOutputItemTypeEnum.hidden,
+      targets: []
+    },
+    {
+      key: 'fesw',
       label: '',
       type: FlowOutputItemTypeEnum.hidden,
       targets: []
