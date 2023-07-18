@@ -615,6 +615,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authUser({ req, authRoot: true });
     await connectToDatabase();
 
+    const { limit = 1000 } = req.body as { limit: number };
+
     // 遍历所有的 app
     const apps = await App.find(
       {
@@ -623,7 +625,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // userId: '63f9a14228d2a688d8dc9e1b'
       },
       '_id chat'
-    );
+    ).limit(limit);
 
     await Promise.all(
       apps.map(async (app) => {

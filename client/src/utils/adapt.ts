@@ -104,15 +104,26 @@ export const appModule2FlowNode = ({
     intro: template.intro,
     type: template.type,
     url: template.url,
-    inputs: template.inputs.map((templateInput) => ({
-      ...templateInput,
-      value:
-        item.inputs.find((item) => item.key === templateInput.key)?.value || templateInput.value
-    })),
-    outputs: template.outputs.map((templateOutput) => ({
-      ...templateOutput,
-      targets: item.outputs.find((item) => item.key === templateOutput.key)?.targets || []
-    }))
+    inputs: template.inputs.map((templateInput) => {
+      // use latest inputs
+      const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;
+      return {
+        ...templateInput,
+        key: itemInput.key,
+        value: itemInput.value
+      };
+    }),
+    outputs: item.outputs.map((itemOutput) => {
+      // unChange outputs
+      const templateOutput =
+        template.outputs.find((item) => item.key === itemOutput.key) || itemOutput;
+
+      return {
+        ...templateOutput,
+        key: itemOutput.key,
+        targets: itemOutput.targets || []
+      };
+    })
   };
 
   return {

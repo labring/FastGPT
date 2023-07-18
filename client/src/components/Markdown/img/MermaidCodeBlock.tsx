@@ -57,7 +57,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
         const { svg } = await mermaid.render(`mermaid-${Date.now()}`, formatCode);
         setSvg(svg);
       } catch (e: any) {
-        console.log('[Mermaid] ', e?.message);
+        // console.log('[Mermaid] ', e?.message);
       }
     })();
   }, [code]);
