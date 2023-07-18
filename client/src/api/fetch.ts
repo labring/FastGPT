@@ -19,7 +19,7 @@ export const streamFetch = ({
   new Promise<{
     responseText: string;
     errMsg: string;
-    newHistoryId: string | null;
+    newChatId: string | null;
     [rawSearchKey]: QuoteItemType[];
   }>(async (resolve, reject) => {
     try {
@@ -45,7 +45,7 @@ export const streamFetch = ({
       let responseText = '';
       let rawSearch: QuoteItemType[] = [];
       let errMsg = '';
-      const newHistoryId = response.headers.get('newHistoryId');
+      const newChatId = response.headers.get('newChatId');
 
       const read = async () => {
         try {
@@ -55,7 +55,7 @@ export const streamFetch = ({
               return resolve({
                 responseText,
                 errMsg,
-                newHistoryId,
+                newChatId,
                 rawSearch
               });
             } else {
@@ -95,7 +95,7 @@ export const streamFetch = ({
             return resolve({
               responseText,
               errMsg,
-              newHistoryId,
+              newChatId,
               rawSearch
             });
           }

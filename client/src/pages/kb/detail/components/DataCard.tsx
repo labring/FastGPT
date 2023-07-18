@@ -253,7 +253,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         </Flex>
       )}
       {total === 0 && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
+        <Flex flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
             知识库空空如也

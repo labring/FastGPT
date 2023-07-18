@@ -5,10 +5,9 @@ import { authUser } from '@/service/utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { historyId, contentId } = req.query as { historyId: string; contentId: string };
-    console.log(historyId, contentId);
+    const { chatId, contentId } = req.query as { chatId: string; contentId: string };
 
-    if (!historyId || !contentId) {
+    if (!chatId || !contentId) {
       throw new Error('缺少参数');
     }
 
@@ -17,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    const chatRecord = await Chat.findById(historyId);
+    const chatRecord = await Chat.findById(chatId);
 
     if (!chatRecord) {
       throw new Error('找不到对话');
@@ -26,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 删除一条数据库记录
     await Chat.updateOne(
       {
-        _id: historyId,
+        _id: chatId,
         userId
       },
       { $pull: { content: { _id: contentId } } }

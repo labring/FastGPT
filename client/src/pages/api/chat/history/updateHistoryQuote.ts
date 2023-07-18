@@ -7,12 +7,12 @@ import { Types } from 'mongoose';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     let {
-      historyId,
+      chatId,
       contentId,
       quoteId,
       sourceText = ''
     } = req.body as {
-      historyId: string;
+      chatId: string;
       contentId: string;
       quoteId: string;
       sourceText: string;
@@ -21,13 +21,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
 
-    if (!contentId || !historyId || !quoteId) {
+    if (!contentId || !chatId || !quoteId) {
       throw new Error('params is error');
     }
 
     await Chat.updateOne(
       {
-        _id: new Types.ObjectId(historyId),
+        _id: new Types.ObjectId(chatId),
         userId: new Types.ObjectId(userId),
         'content._id': new Types.ObjectId(contentId)
       },

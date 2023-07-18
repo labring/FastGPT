@@ -12,13 +12,13 @@ type State = {
   setShareChatData: (e: ShareChatType | ((e: ShareChatType) => ShareChatType)) => void;
   shareChatHistory: ShareChatHistoryItemType[];
   saveChatResponse: (e: {
-    historyId: string;
+    chatId: string;
     prompts: ChatSiteItemType[];
     variables: Record<string, any>;
     shareId: string;
   }) => { newChatId: string };
-  delOneShareHistoryByHistoryId: (historyId: string) => void;
-  delShareChatHistoryItemById: (e: { historyId: string; index: number }) => void;
+  delOneShareHistoryByChatId: (chatId: string) => void;
+  delShareChatHistoryItemById: (e: { chatId: string; index: number }) => void;
   delManyShareChatHistoryByShareId: (shareId?: string) => void;
 };
 
@@ -62,15 +62,15 @@ export const useShareChatStore = create<State>()(
           });
         },
         shareChatHistory: [],
-        saveChatResponse({ historyId, prompts, variables, shareId }) {
-          const history = get().shareChatHistory.find((item) => item._id === historyId);
+        saveChatResponse({ chatId, prompts, variables, shareId }) {
+          const history = get().shareChatHistory.find((item) => item._id === chatId);
 
           const newChatId = history ? '' : nanoid();
 
           const historyList = (() => {
             if (history) {
               return get().shareChatHistory.map((item) =>
-                item._id === historyId
+                item._id === chatId
                   ? {
                       ...item,
                       title: prompts[prompts.length - 2]?.value,
@@ -102,18 +102,16 @@ export const useShareChatStore = create<State>()(
             newChatId
           };
         },
-        delOneShareHistoryByHistoryId(historyId: string) {
+        delOneShareHistoryByChatId(chatId: string) {
           set((state) => {
-            state.shareChatHistory = state.shareChatHistory.filter(
-              (item) => item._id !== historyId
-            );
+            state.shareChatHistory = state.shareChatHistory.filter((item) => item._id !== chatId);
           });
         },
-        delShareChatHistoryItemById({ historyId, index }) {
+        delShareChatHistoryItemById({ chatId, index }) {
           set((state) => {
             // update history store
             const newHistoryList = state.shareChatHistory.map((item) =>
-              item._id === historyId
+              item._id === chatId
                 ? {
                     ...item,
                     chats: [...item.chats.slice(0, index), ...item.chats.slice(index + 1)]

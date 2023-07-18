@@ -10,7 +10,7 @@ import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updat
 /**
  * 获取初始化聊天内容
  */
-export const getInitChatSiteInfo = (data: { appId: string; historyId?: string }) =>
+export const getInitChatSiteInfo = (data: { appId: string; chatId?: string }) =>
   GET<InitChatResponse>(`/chat/init`, data);
 
 /**
@@ -27,14 +27,14 @@ export const delChatHistoryById = (id: string) => GET(`/chat/removeHistory?id=${
 /**
  * get history quotes
  */
-export const getHistoryQuote = (params: { historyId: string; contentId: string }) =>
+export const getHistoryQuote = (params: { chatId: string; contentId: string }) =>
   GET<(QuoteItemType & { _id: string })[]>(`/chat/history/getHistoryQuote`, params);
 
 /**
  * update history quote status
  */
 export const updateHistoryQuote = (params: {
-  historyId: string;
+  chatId: string;
   contentId: string;
   quoteId: string;
   sourceText: string;
@@ -43,7 +43,7 @@ export const updateHistoryQuote = (params: {
 /**
  * 删除一句对话
  */
-export const delChatRecordByIndex = (data: { historyId: string; contentId: string }) =>
+export const delChatRecordByIndex = (data: { chatId: string; contentId: string }) =>
   DELETE(`/chat/delChatRecordByContentId`, data);
 
 /**

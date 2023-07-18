@@ -18,12 +18,12 @@ const Login = () => {
   const { isPc } = useGlobalStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo } = useUserStore();
-  const { setLastHistoryId, setLastChatAppId } = useChatStore();
+  const { setLastChatId, setLastChatAppId } = useChatStore();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       // init store
-      setLastHistoryId('');
+      setLastChatId('');
       setLastChatAppId('');
 
       setUserInfo(res.user);
@@ -31,7 +31,7 @@ const Login = () => {
         router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/list');
       }, 100);
     },
-    [lastRoute, router, setLastHistoryId, setLastChatAppId, setUserInfo]
+    [lastRoute, router, setLastChatId, setLastChatAppId, setUserInfo]
   );
 
   function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {

@@ -19,7 +19,7 @@ const ChatHistorySlider = dynamic(() => import('./components/ChatHistorySlider')
   ssr: false
 });
 
-const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string }) => {
+const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
   const router = useRouter();
   const { toast } = useToast();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
@@ -33,7 +33,7 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
     shareChatHistory,
     saveChatResponse,
     delShareChatHistoryItemById,
-    delOneShareHistoryByHistoryId,
+    delOneShareHistoryByChatId,
     delManyShareChatHistoryByShareId
   } = useShareChatStore();
 
@@ -60,7 +60,7 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
 
       /* save chat */
       const { newChatId } = saveChatResponse({
-        historyId,
+        chatId,
         prompts: gptMessage2ChatType(prompts).map((item) => ({
           ...item,
           status: 'finish'
@@ -73,7 +73,7 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
         router.replace({
           query: {
             shareId,
-            historyId: newChatId
+            chatId: newChatId
           }
         });
       }
@@ -88,15 +88,15 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
 
       return { responseText };
     },
-    [historyId, router, saveChatResponse, shareChatData.maxContext, shareId]
+    [chatId, router, saveChatResponse, shareChatData.maxContext, shareId]
   );
 
   const loadAppInfo = useCallback(
-    async (shareId: string, historyId: string) => {
-      console.log(shareId, historyId);
+    async (shareId: string, chatId: string) => {
+      console.log(shareId, chatId);
 
       if (!shareId) return null;
-      const history = shareChatHistory.find((item) => item._id === historyId) || defaultHistory;
+      const history = shareChatHistory.find((item) => item._id === chatId) || defaultHistory;
 
       ChatBoxRef.current?.resetHistory(history.chats);
       ChatBoxRef.current?.resetVariables(history.variables);
@@ -134,8 +134,8 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
     [delManyShareChatHistoryByShareId, setShareChatData, shareChatData, shareChatHistory, toast]
   );
 
-  useQuery(['init', shareId, historyId], () => {
-    return loadAppInfo(shareId, historyId);
+  useQuery(['init', shareId, chatId], () => {
+    return loadAppInfo(shareId, chatId);
   });
 
   return (
@@ -156,15 +156,15 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
           <ChatHistorySlider
             appName={shareChatData.app.name}
             appAvatar={shareChatData.app.avatar}
-            activeHistoryId={historyId}
+            activeChatId={chatId}
             history={shareChatHistory.map((item) => ({
               id: item._id,
               title: item.title
             }))}
-            onChangeChat={(historyId) => {
+            onChangeChat={(chatId) => {
               router.push({
                 query: {
-                  historyId: historyId || '',
+                  chatId: chatId || '',
                   shareId
                 }
               });
@@ -172,7 +172,7 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
                 onCloseSlider();
               }
             }}
-            onDelHistory={delOneShareHistoryByHistoryId}
+            onDelHistory={delOneShareHistoryByChatId}
           />
         )}
 
@@ -208,7 +208,7 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
                 }));
               }}
               onStartChat={startChat}
-              onDelMessage={({ index }) => delShareChatHistoryItemById({ historyId, index })}
+              onDelMessage={({ index }) => delShareChatHistoryItemById({ chatId, index })}
             />
           </Box>
         </Flex>
@@ -219,10 +219,10 @@ const ShareChat = ({ shareId, historyId }: { shareId: string; historyId: string 
 
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
-  const historyId = context?.query?.historyId || '';
+  const chatId = context?.query?.chatId || '';
 
   return {
-    props: { shareId, historyId }
+    props: { shareId, chatId }
   };
 }
 

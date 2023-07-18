@@ -27,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         _id: item._id,
         updateTime: item.updateTime,
         appId: item.appId,
-        title: item.customTitle || item.title,
+        customTitle: item.customTitle,
+        title: item.title,
         top: item.top
       }))
     });

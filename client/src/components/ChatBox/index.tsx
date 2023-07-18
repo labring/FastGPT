@@ -49,7 +49,7 @@ export type StartChatFnProps = {
 export type ComponentRef = {
   getChatHistory: () => ChatSiteItemType[];
   resetVariables: (data?: Record<string, any>) => void;
-  resetHistory: (history: ChatSiteItemType[]) => void;
+  resetHistory: (chatId: ChatSiteItemType[]) => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };
 
@@ -76,11 +76,10 @@ const Empty = () => {
 
   return (
     <Box
-      minH={'100%'}
+      pt={[6, 0]}
       w={'85%'}
       maxW={'600px'}
       m={'auto'}
-      py={'5vh'}
       alignItems={'center'}
       justifyContent={'center'}
     >
@@ -110,7 +109,7 @@ const ChatAvatar = ({
 const ChatBox = (
   {
     showEmptyIntro = false,
-    historyId,
+    chatId,
     appAvatar,
     variableModules,
     welcomeText,
@@ -119,7 +118,7 @@ const ChatBox = (
     onDelMessage
   }: {
     showEmptyIntro?: boolean;
-    historyId?: string;
+    chatId?: string;
     appAvatar: string;
     variableModules?: VariableItemType[];
     welcomeText?: string;
@@ -389,14 +388,16 @@ const ChatBox = (
   };
 
   const showEmpty = useMemo(
-    () => showEmptyIntro && chatHistory.length === 0 && !(variableModules || welcomeText),
+    () => showEmptyIntro && chatHistory.length === 0 && !variableModules?.length && !welcomeText,
     [chatHistory.length, showEmptyIntro, variableModules, welcomeText]
   );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} overflow={'overlay'} px={[2, 5, 7]} py={[0, 5]}>
+      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} overflow={'overlay'} px={[2, 5, 7]} pt={[0, 5]}>
         <Box maxW={['100%', '1000px', '1200px']} h={'100%'} mx={'auto'}>
+          {showEmpty && <Empty />}
+
           {!!welcomeText && (
             <Flex alignItems={'flex-start'} py={2}>
               {/* avatar */}
@@ -410,7 +411,7 @@ const ChatBox = (
             </Flex>
           )}
           {/* variable input */}
-          {variableModules && (
+          {!!variableModules?.length && (
             <Flex alignItems={'flex-start'} py={2}>
               {/* avatar */}
               <ChatAvatar src={appAvatar} order={1} mr={['6px', 2]} />
@@ -467,7 +468,7 @@ const ChatBox = (
           )}
 
           {/* chat history */}
-          <Box id={'history'} pb={[8, 2]}>
+          <Box id={'history'} pb={8}>
             {chatHistory.map((item, index) => (
               <Flex
                 key={item._id}
@@ -606,13 +607,11 @@ const ChatBox = (
               </Flex>
             ))}
           </Box>
-
-          {showEmpty && <Empty />}
         </Box>
       </Box>
       {/* input */}
       {variableIsFinish ? (
-        <Box m={['0 auto', '20px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
+        <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
           <Box
             py={'18px'}
             position={'relative'}
@@ -696,12 +695,11 @@ const ChatBox = (
       {/* quote modal */}
       {!!quoteModalData && (
         <QuoteModal
-          historyId={historyId}
+          chatId={chatId}
           {...quoteModalData}
           onClose={() => setQuoteModalData(undefined)}
         />
       )}
-      {/* quote modal */}
     </Flex>
   );
 };

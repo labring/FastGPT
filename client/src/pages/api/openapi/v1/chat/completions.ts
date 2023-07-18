@@ -20,7 +20,7 @@ import { BillSourceEnum } from '@/constants/user';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
-  historyId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
+  chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
   appId?: string;
 };
 type FastGptShareChatProps = {
@@ -47,14 +47,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     res.end();
   });
 
-  let {
-    historyId,
-    appId,
-    shareId,
-    stream = false,
-    messages = [],
-    variables = {}
-  } = req.body as Props;
+  let { chatId, appId, shareId, stream = false, messages = [], variables = {} } = req.body as Props;
 
   let billId = '';
 
@@ -91,7 +84,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId
       }),
-      getChatHistory({ historyId, userId })
+      getChatHistory({ chatId, userId })
     ]);
 
     const isOwner = !shareId && userId === String(app.userId);
@@ -107,9 +100,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('Question is empty');
     }
 
-    const newHistoryId = historyId === '' ? new Types.ObjectId() : undefined;
-    if (stream && newHistoryId) {
-      res.setHeader('newHistoryId', String(newHistoryId));
+    const newChatId = chatId === '' ? new Types.ObjectId() : undefined;
+    if (stream && newChatId) {
+      res.setHeader('newChatId', String(newChatId));
     }
 
     billId = await createTaskBill({
@@ -133,10 +126,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     // save chat
-    if (typeof historyId === 'string') {
+    if (typeof chatId === 'string') {
       await saveChat({
-        historyId,
-        newHistoryId,
+        chatId,
+        newChatId,
         appId,
         variables,
         prompts: [
@@ -173,10 +166,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     } else {
       res.json({
         data: {
-          newHistoryId,
+          newChatId,
           ...responseData
         },
-        id: historyId || '',
+        id: chatId || '',
         model: '',
         usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         choices: [

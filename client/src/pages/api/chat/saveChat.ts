@@ -7,7 +7,7 @@ import { authUser } from '@/service/utils/auth';
 import { Types } from 'mongoose';
 
 type Props = {
-  historyId?: string;
+  chatId?: string;
   appId: string;
   variables?: Record<string, any>;
   prompts: [ChatItemType, ChatItemType];
@@ -16,7 +16,7 @@ type Props = {
 /* 聊天内容存存储 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { historyId, appId, prompts } = req.body as Props;
+    const { chatId, appId, prompts } = req.body as Props;
 
     if (!prompts) {
       throw new Error('缺少参数');
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId } = await authUser({ req, authToken: true });
 
     const response = await saveChat({
-      historyId,
+      chatId,
       appId,
       prompts,
       userId
@@ -43,13 +43,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 export async function saveChat({
-  newHistoryId,
-  historyId,
+  newChatId,
+  chatId,
   appId,
   prompts,
   variables,
   userId
-}: Props & { newHistoryId?: Types.ObjectId; userId: string }): Promise<{ newHistoryId: string }> {
+}: Props & { newChatId?: Types.ObjectId; userId: string }): Promise<{ newChatId: string }> {
   await connectToDatabase();
   const { app } = await authApp({ appId, userId, authOwner: false });
 
@@ -60,9 +60,9 @@ export async function saveChat({
   }
 
   const [response] = await Promise.all([
-    ...(historyId
+    ...(chatId
       ? [
-          Chat.findByIdAndUpdate(historyId, {
+          Chat.findByIdAndUpdate(chatId, {
             $push: {
               content: {
                 $each: prompts
@@ -72,19 +72,19 @@ export async function saveChat({
             title: prompts[0].value.slice(0, 20),
             updateTime: new Date()
           }).then(() => ({
-            newHistoryId: ''
+            newChatId: ''
           }))
         ]
       : [
           Chat.create({
-            _id: newHistoryId,
+            _id: newChatId,
             userId,
             appId,
             variables,
             content: prompts,
             title: prompts[0].value.slice(0, 20)
           }).then((res) => ({
-            newHistoryId: String(res._id)
+            newChatId: String(res._id)
           }))
         ]),
     // update app
@@ -99,6 +99,6 @@ export async function saveChat({
 
   return {
     // @ts-ignore
-    newHistoryId: response?.newHistoryId || ''
+    newChatId: response?.newChatId || ''
   };
 }

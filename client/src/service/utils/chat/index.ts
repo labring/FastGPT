@@ -1,17 +1,10 @@
 import { ChatItemType } from '@/types/chat';
 import { modelToolMap } from '@/utils/plugin';
-import { ChatRoleEnum } from '@/constants/chat';
+import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
+import { sseResponse } from '../tools';
 import { OpenAiChatEnum } from '@/constants/model';
 import type { NextApiResponse } from 'next';
 
-export type ChatCompletionType = {
-  apiKey: string;
-  temperature: number;
-  maxToken?: number;
-  messages: ChatItemType[];
-  historyId?: string;
-  [key: string]: any;
-};
 export type ChatCompletionResponseType = {
   streamResponse: any;
   responseMessages: ChatItemType[];
