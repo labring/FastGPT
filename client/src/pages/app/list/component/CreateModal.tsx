@@ -113,6 +113,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
           <Flex mt={3} alignItems={'center'}>
             <MyTooltip label={'点击设置头像'}>
               <Avatar
+                flexShrink={0}
                 src={getValues('avatar')}
                 w={['32px', '36px']}
                 h={['32px', '36px']}
@@ -122,6 +123,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
               />
             </MyTooltip>
             <Input
+              flex={1}
               ml={4}
               autoFocus
               bg={'myWhite.600'}

@@ -169,13 +169,13 @@ const Home = () => {
           fontSize={['40px', '70px']}
           letterSpacing={'5px'}
         >
-          FastGpt
+          FastAI
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
-          三分钟
+          可视化 AI 编排
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
-          搭建 AI 知识库
+          快速搭建 AI 问答库
         </Box>
 
         <Flex flexDirection={['column', 'row']} my={5}>

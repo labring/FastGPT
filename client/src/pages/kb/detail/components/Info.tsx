@@ -60,7 +60,7 @@ const Info = (
         title: '删除成功',
         status: 'success'
       });
-      router.replace(`/kb?kbId=${myKbList.find((item) => item._id !== kbId)?._id || ''}`);
+      router.replace(`/kb/list`);
       await loadKbList();
     } catch (err: any) {
       toast({
@@ -69,7 +69,7 @@ const Info = (
       });
     }
     setBtnLoading(false);
-  }, [setBtnLoading, kbId, toast, router, myKbList, loadKbList]);
+  }, [setBtnLoading, kbId, toast, router, loadKbList]);
 
   const saveSubmitSuccess = useCallback(
     async (data: KbItemType) => {

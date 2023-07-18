@@ -20,7 +20,7 @@ export type Props = {
 };
 export type Response = { history: ChatItemType[] };
 
-const agentModel = 'gpt-3.5-turbo-16k';
+const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_user_question';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -78,13 +78,13 @@ export async function classifyQuestion({
   //   function body
   const agentFunction = {
     name: agentFunName,
-    description: '判断用户问题的类型，并返回不同的值',
+    description: '判断用户问题的类型，并返回指定值',
     parameters: {
       type: 'object',
       properties: {
         type: {
           type: 'string',
-          description: agents.map((item) => `${item.value}，返回: '${item.key}'`).join('\n'),
+          description: agents.map((item) => `${item.value}，返回：'${item.key}'`).join('；'),
           enum: agents.map((item) => item.key)
         }
       },
@@ -122,12 +122,17 @@ export async function classifyQuestion({
     tokenLen: totalTokens
   });
 
-  console.log(
-    'CQ',
-    agents.findIndex((item) => item.key === arg.type)
-  );
+  console.log(agents.map((item) => `${item.value}，返回: '${item.key}'`).join('；'), arg);
+
+  const result = agents.find((item) => item.key === arg.type);
+
+  if (result) {
+    return {
+      [arg.type]: 1
+    };
+  }
 
   return {
-    [arg.type]: 1
+    [agents[0].key]: 1
   };
 }
