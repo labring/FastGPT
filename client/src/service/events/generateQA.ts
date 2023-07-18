@@ -1,9 +1,5 @@
 import { TrainingData } from '@/service/mongo';
-import { OpenAiChatEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
-import { openaiAccountError } from '../errorCode';
-import { ChatRoleEnum } from '@/constants/chat';
-import { BillSourceEnum } from '@/constants/user';
 import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';

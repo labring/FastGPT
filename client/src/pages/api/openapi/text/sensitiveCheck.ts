@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser, getSystemOpenAiKey } from '@/service/utils/auth';
 import axios from 'axios';
-import { axiosConfig } from '@/service/utils/tools';
+import { axiosConfig } from '@/service/ai/openai';
 
 export type Props = {
   input: string;
@@ -33,7 +33,7 @@ export async function sensitiveCheck({ input }: Props) {
   }
 
   const response = await axios({
-    ...axiosConfig(getSystemOpenAiKey()),
+    ...axiosConfig(),
     method: 'POST',
     url: `/moderations`,
     data: {

@@ -1,6 +1,7 @@
 ### 常见问题
 
-**Git 地址**: [项目地址。V4-beta 暂为开源，在正式版发布后会开源。](https://github.com/c121914yu/FastGPT)
+**反馈问卷**: 如果你遇到任何使用问题或有期望的功能，可以[填写该问卷](https://www.wjx.cn/vm/rLIw1uD.aspx#)
+**Git 地址**: [项目地址。V4-preview 暂为开源，在正式版发布后会开源。](https://github.com/c121914yu/FastGPT)
 **问题文档**: [先看文档，再提问](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)  
 **价格表**
 | 计费项 | 价格: 元/ 1K tokens（包含上下文）|

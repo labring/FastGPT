@@ -29,7 +29,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const router = useRouter();
   const theme = useTheme();
   const { appId } = router.query as { appId: string };
-  const { appDetail = defaultApp } = useUserStore();
+  const { appDetail = defaultApp, clearAppModules } = useUserStore();
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -53,16 +53,17 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     []
   );
 
-  // useEffect(() => {
-  //   window.onbeforeunload = (e) => {
-  //     e.preventDefault();
-  //     e.returnValue = '内容已修改，确认离开页面吗？';
-  //   };
+  useEffect(() => {
+    window.onbeforeunload = (e) => {
+      e.preventDefault();
+      e.returnValue = '内容已修改，确认离开页面吗？';
+    };
 
-  //   return () => {
-  //     window.onbeforeunload = null;
-  //   };
-  // }, []);
+    return () => {
+      window.onbeforeunload = null;
+      clearAppModules();
+    };
+  }, []);
 
   return (
     <PageContainer>

@@ -1,13 +1,15 @@
 import { Configuration, OpenAIApi } from 'openai';
 
+const baseUrl = process.env.ONEAPI_URL || process.env.OPENAI_BASE_URL || 'api.openai.com';
+
 export const getSystemOpenAiKey = () => {
-  return process.env.ONEAPI_KEY || '';
+  return process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
 };
 
 export const getOpenAIApi = () => {
   return new OpenAIApi(
     new Configuration({
-      basePath: process.env.ONEAPI_URL
+      basePath: baseUrl
     })
   );
 };
@@ -15,7 +17,7 @@ export const getOpenAIApi = () => {
 /* openai axios config */
 export const axiosConfig = () => {
   return {
-    baseURL: process.env.ONEAPI_URL, // 此处仅对非 npm 模块有效
+    baseURL: baseUrl, // 此处仅对非 npm 模块有效
     httpsAgent: global.httpsAgent,
     headers: {
       Authorization: `Bearer ${getSystemOpenAiKey()}`,

@@ -4,12 +4,9 @@ import { UserAuthTypeEnum } from '@/constants/common';
 let timer: any;
 import { useToast } from './useToast';
 import { getClientToken } from '@/utils/plugin/google';
-import { useGlobalStore } from '@/store/global';
+import { googleVerKey } from '@/store/static';
 
 export const useSendCode = () => {
-  const {
-    initData: { googleVerKey }
-  } = useGlobalStore();
   const { toast } = useToast();
   const [codeSending, setCodeSending] = useState(false);
   const [codeCountDown, setCodeCountDown] = useState(0);
@@ -54,7 +51,7 @@ export const useSendCode = () => {
       }
       setCodeSending(false);
     },
-    [googleVerKey, toast]
+    [toast]
   );
 
   return {
