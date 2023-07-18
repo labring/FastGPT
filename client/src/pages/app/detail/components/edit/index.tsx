@@ -264,7 +264,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
       setLoaded(true);
       onFixView();
     },
-    [onDelConnect, setEdges, setNodes, onChangeNode, onDelNode]
+    [onDelConnect, setEdges, setNodes, onFixView, onChangeNode, onDelNode]
   );
 
   useEffect(() => {

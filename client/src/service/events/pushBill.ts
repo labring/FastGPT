@@ -2,6 +2,7 @@ import { connectToDatabase, Bill, User, ShareChat } from '../mongo';
 import { BillSourceEnum } from '@/constants/user';
 import { getModel } from '../utils/data';
 import type { BillListItemType } from '@/types/mongoSchema';
+import { formatPrice } from '@/utils/user';
 
 export const createTaskBill = async ({
   appName,
@@ -62,7 +63,7 @@ export const finishTaskBill = async ({ billId }: { billId: string }) => {
     if (!res) return;
     const total = res.list.reduce((sum, item) => sum + item.amount, 0) || 0;
 
-    console.log('finish bill:', total);
+    console.log('finish bill:', formatPrice(total));
 
     // 账号扣费
     await User.findByIdAndUpdate(res.userId, {
