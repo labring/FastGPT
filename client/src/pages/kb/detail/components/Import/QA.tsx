@@ -97,7 +97,6 @@ const QAImport = ({ kbId }: { kbId: string }) => {
               }
               return '';
             })();
-            console.log(extension, text, '=====', icon);
 
             if (icon && text) {
               const splitRes = splitText_token({

@@ -2,11 +2,11 @@ import axios from 'axios';
 import { Obj2Query } from '../tools';
 
 export const getClientToken = (googleVerKey: string) => {
-  if (typeof grecaptcha === 'undefined' || !grecaptcha?.ready) return '';
+  if (typeof window.grecaptcha === 'undefined' || !window.grecaptcha?.ready) return '';
   return new Promise<string>((resolve, reject) => {
-    grecaptcha.ready(async () => {
+    window.grecaptcha.ready(async () => {
       try {
-        const token = await grecaptcha.execute(googleVerKey, {
+        const token = await window.grecaptcha.execute(googleVerKey, {
           action: 'submit'
         });
         resolve(token);

@@ -17,6 +17,7 @@ export async function updateSystemEnv() {
       ...global.systemEnv,
       ...res
     };
+    console.log(global.systemEnv);
   } catch (error) {
     console.log('update system env error');
   }

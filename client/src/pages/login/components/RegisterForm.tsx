@@ -8,7 +8,7 @@ import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
 import { postCreateApp } from '@/api/app';
-import { chatAppDemo } from '@/constants/app';
+import { appTemplates } from '@/constants/flow/ModuleTemplate';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -65,9 +65,12 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           status: 'success'
         });
         // aut register a model
-        postCreateApp({
-          name: '应用1',
-          modules: chatAppDemo.modules
+        appTemplates.forEach((template) => {
+          postCreateApp({
+            avatar: template.avatar,
+            name: template.name,
+            modules: template.modules
+          });
         });
       } catch (error: any) {
         toast({

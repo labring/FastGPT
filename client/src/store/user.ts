@@ -22,6 +22,7 @@ type State = {
   loadMyModels: () => Promise<null>;
   appDetail: AppSchema;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
+  clearAppModules(): void;
   // kb
   myKbList: KbListItemType[];
   loadKbList: () => Promise<any>;
@@ -77,6 +78,14 @@ export const useUserStore = create<State>()(
             state.appDetail = res;
           });
           return res;
+        },
+        clearAppModules() {
+          set((state) => {
+            state.appDetail = {
+              ...state.appDetail,
+              modules: []
+            };
+          });
         },
         myKbList: [],
         async loadKbList() {
