@@ -89,6 +89,14 @@ export async function chatCompletion({
   // FastGpt temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
 
+  const limitText = (() => {
+    if (limitPrompt) return limitPrompt;
+    if (quotePrompt && !limitPrompt) {
+      return '根据知识库内容回答问题，仅回复知识库提供的内容。';
+    }
+    return '';
+  })();
+
   const messages: ChatItemType[] = [
     ...(quotePrompt
       ? [
@@ -107,11 +115,11 @@ export async function chatCompletion({
         ]
       : []),
     ...history,
-    ...(limitPrompt
+    ...(limitText
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: limitPrompt
+            value: limitText
           }
         ]
       : []),

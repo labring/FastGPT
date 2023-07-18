@@ -5,7 +5,8 @@ import React, {
   useMemo,
   forwardRef,
   useImperativeHandle,
-  ForwardedRef
+  ForwardedRef,
+  useEffect
 } from 'react';
 import { throttle } from 'lodash';
 import { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
@@ -31,6 +32,7 @@ import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 import MyTooltip from '../MyTooltip';
 import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
+import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
@@ -133,6 +135,7 @@ const ChatBox = (
 ) => {
   const ChatBoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
+  const router = useRouter();
   const { copyData } = useCopyData();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
@@ -391,6 +394,12 @@ const ChatBox = (
     () => showEmptyIntro && chatHistory.length === 0 && !variableModules?.length && !welcomeText,
     [chatHistory.length, showEmptyIntro, variableModules, welcomeText]
   );
+
+  useEffect(() => {
+    return () => {
+      controller.current?.abort();
+    };
+  }, [router.query]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

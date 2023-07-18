@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
@@ -48,13 +48,16 @@ const Markdown = ({
   isChatting?: boolean;
   onClick?: (e: any) => void;
 }) => {
-  const components = useRef({
-    a: Link,
-    img: Image,
-    pre: 'div',
-    p: 'div',
-    code: (props: any) => <Code {...props} onClick={onClick} />
-  });
+  const components = useMemo(
+    () => ({
+      a: Link,
+      img: Image,
+      pre: 'div',
+      p: 'div',
+      code: (props: any) => <Code {...props} onClick={onClick} />
+    }),
+    [onClick]
+  );
 
   return (
     <ReactMarkdown
@@ -64,7 +67,7 @@ const Markdown = ({
       remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
       // @ts-ignore
-      components={components.current}
+      components={components}
     >
       {source}
     </ReactMarkdown>

@@ -145,7 +145,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
     }
 
-    console.log(`finish time: ${(Date.now() - startTime) / 100}s`);
+    console.log(`finish time: ${(Date.now() - startTime) / 1000}s`);
 
     if (stream) {
       sseResponse({
