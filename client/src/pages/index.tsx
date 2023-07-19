@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Box, Link, Flex, Image, Button } from '@chakra-ui/react';
-import Markdown from '@/components/Markdown';
-import { useMarkdown } from '@/hooks/useMarkdown';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { beianText } from '@/store/static';
@@ -170,7 +168,7 @@ const Home = () => {
           fontSize={['40px', '70px']}
           letterSpacing={'5px'}
         >
-          FastAI
+          {feConfigs?.systemTitle || 'FastAI'}
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
           可视化 AI 编排
@@ -180,25 +178,27 @@ const Home = () => {
         </Box>
 
         <Flex flexDirection={['column', 'row']} my={5}>
-          <Button
-            mr={[0, 5]}
-            mb={[5, 0]}
-            fontSize={['xl', '3xl']}
-            h={'auto'}
-            py={[2, 3]}
-            variant={'base'}
-            border={'2px solid'}
-            borderColor={'myGray.800'}
-            transition={'0.3s'}
-            _hover={{
-              bg: 'myGray.800',
-              color: 'white'
-            }}
-            leftIcon={<MyIcon name={'git'} w={'20px'} />}
-            onClick={() => window.open('https://github.com/labring/FastGPT', '_blank')}
-          >
-            Stars {(star / 1000).toFixed(1)}k
-          </Button>
+          {feConfigs?.show_git && (
+            <Button
+              mr={[0, 5]}
+              mb={[5, 0]}
+              fontSize={['xl', '3xl']}
+              h={'auto'}
+              py={[2, 3]}
+              variant={'base'}
+              border={'2px solid'}
+              borderColor={'myGray.800'}
+              transition={'0.3s'}
+              _hover={{
+                bg: 'myGray.800',
+                color: 'white'
+              }}
+              leftIcon={<MyIcon name={'git'} w={'20px'} />}
+              onClick={() => window.open('https://github.com/labring/FastGPT', '_blank')}
+            >
+              Stars {(star / 1000).toFixed(1)}k
+            </Button>
+          )}
           <Button
             fontSize={['xl', '3xl']}
             h={'auto'}

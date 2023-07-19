@@ -394,7 +394,7 @@ const ChatBox = (
 
   const showEmpty = useMemo(
     () =>
-      feConfigs.show_emptyChat &&
+      feConfigs?.show_emptyChat &&
       showEmptyIntro &&
       chatHistory.length === 0 &&
       !variableModules?.length &&

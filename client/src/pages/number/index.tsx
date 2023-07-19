@@ -174,7 +174,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
               <Box flex={'0 0 50px'}>账号:</Box>
               <Box>{userInfo?.username}</Box>
             </Flex>
-            {feConfigs.show_userDetail && (
+            {feConfigs?.show_userDetail && (
               <Box mt={6}>
                 <Flex alignItems={'center'}>
                   <Box flex={'0 0 50px'}>余额:</Box>
@@ -188,7 +188,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
               </Box>
             )}
           </Card>
-          {feConfigs.show_userDetail && (
+          {feConfigs?.show_userDetail && (
             <Card px={6} py={4}>
               <Box fontSize={'xl'} fontWeight={'bold'}>
                 我的邀请
@@ -234,7 +234,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
           )}
         </Grid>
 
-        {feConfigs.show_userDetail && (
+        {feConfigs?.show_userDetail && (
           <Card mt={4} px={[3, 6]} py={4}>
             <Tabs
               m={'auto'}

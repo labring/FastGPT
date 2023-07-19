@@ -42,7 +42,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         link: `/kb/list`,
         activeLink: ['/kb/list', '/kb/detail']
       },
-      ...(feConfigs.show_appStore
+      ...(feConfigs?.show_appStore
         ? [
             {
               label: '市场',
@@ -143,7 +143,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </Box>
       )}
-      {feConfigs.show_git && (
+      {feConfigs?.show_git && (
         <Box>
           <Link
             as={NextLink}

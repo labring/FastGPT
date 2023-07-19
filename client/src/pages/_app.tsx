@@ -10,10 +10,9 @@ import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
-import { clientInitData } from '@/store/static';
+import { clientInitData, feConfigs } from '@/store/static';
 import { NextPageContext } from 'next';
 import { useGlobalStore } from '@/store/global';
-import { GET } from '@/service/api/axios';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());
@@ -51,7 +50,7 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
   return (
     <>
       <Head>
-        <title>Fast GPT</title>
+        <title>{feConfigs?.systemTitle || 'FastAI'}</title>
         <meta name="description" content="Embedding + LLM, Build AI knowledge base" />
         <meta
           name="viewport"
