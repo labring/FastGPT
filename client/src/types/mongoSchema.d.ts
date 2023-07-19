@@ -137,7 +137,7 @@ export interface ShareChatSchema {
   userId: string;
   appId: string;
   name: string;
-  tokens: number;
+  total: number;
   maxContext: number;
   lastTime: Date;
 }

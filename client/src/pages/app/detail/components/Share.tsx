@@ -38,6 +38,7 @@ import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/app';
 import MyTooltip from '@/components/MyTooltip';
 import { useRequest } from '@/hooks/useRequest';
+import { formatPrice } from '@/utils/user';
 
 const Share = ({ appId }: { appId: string }) => {
   const { toast } = useToast();
@@ -82,12 +83,6 @@ const Share = ({ appId }: { appId: string }) => {
     }
   });
 
-  // format share used token
-  const formatTokens = (tokens: number) => {
-    if (tokens < 10000) return tokens;
-    return `${(tokens / 10000).toFixed(2)}万`;
-  };
-
   return (
     <Box position={'relative'} pt={[0, 5, 8]} px={[5, 8]} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
@@ -118,7 +113,7 @@ const Share = ({ appId }: { appId: string }) => {
             <Tr>
               <Th>名称</Th>
               <Th>最大上下文</Th>
-              <Th>tokens消耗</Th>
+              <Th>金额消耗</Th>
               <Th>最后使用时间</Th>
               <Th>操作</Th>
             </Tr>
@@ -128,7 +123,7 @@ const Share = ({ appId }: { appId: string }) => {
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
                 <Td>{item.maxContext}</Td>
-                <Td>{formatTokens(item.tokens)}</Td>
+                <Td>{formatPrice(item.total)}元</Td>
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
                 <Td>
                   <Flex>

@@ -25,7 +25,10 @@ export const generateToken = (userId: string) => {
 
 /* set cookie */
 export const setCookie = (res: NextApiResponse, userId: string) => {
-  res.setHeader('Set-Cookie', `token=${generateToken(userId)}; Path=/; HttpOnly; Max-Age=604800`);
+  res.setHeader(
+    'Set-Cookie',
+    `token=${generateToken(userId)}; Path=/; HttpOnly; Max-Age=604800; Samesite=None; Secure;`
+  );
 };
 /* clear cookie */
 export const clearCookie = (res: NextApiResponse) => {

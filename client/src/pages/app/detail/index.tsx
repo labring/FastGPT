@@ -4,6 +4,8 @@ import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import dynamic from 'next/dynamic';
 import { defaultApp } from '@/constants/model';
+import { useToast } from '@/hooks/useToast';
+import { useQuery } from '@tanstack/react-query';
 
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
@@ -28,8 +30,9 @@ enum TabEnum {
 const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const router = useRouter();
   const theme = useTheme();
+  const { toast } = useToast();
   const { appId } = router.query as { appId: string };
-  const { appDetail = defaultApp, clearAppModules } = useUserStore();
+  const { appDetail = defaultApp, loadAppDetail, clearAppModules } = useUserStore();
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -64,6 +67,19 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       clearAppModules();
     };
   }, []);
+
+  useQuery([appId], () => loadAppDetail(appId, true), {
+    onError(err: any) {
+      toast({
+        title: err?.message || '获取应用异常',
+        status: 'error'
+      });
+      router.replace('/app/list');
+    },
+    onSettled() {
+      router.prefetch(`/chat?appId=${appId}`);
+    }
+  });
 
   return (
     <PageContainer>

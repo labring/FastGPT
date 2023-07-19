@@ -20,7 +20,7 @@ const ShareChatSchema = new Schema({
     type: String,
     required: true
   },
-  tokens: {
+  total: {
     type: Number,
     default: 0
   },

@@ -188,7 +188,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // bill
     finishTaskBill({
-      billId
+      billId,
+      shareId
     });
   } catch (err: any) {
     delTaskBill(billId);

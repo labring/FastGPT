@@ -27,19 +27,20 @@ import { useMarkdown } from '@/hooks/useMarkdown';
 import { AppModuleItemType, VariableItemType } from '@/types/app';
 import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
-import MySelect from '@/components/Select';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
-import MyTooltip from '../MyTooltip';
 import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
+import { useGlobalStore } from '@/store/global';
 import dynamic from 'next/dynamic';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'));
 
-import styles from './index.module.scss';
 import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import MyTooltip from '../MyTooltip';
+import MySelect from '@/components/Select';
+import styles from './index.module.scss';
 
 const textareaMinH = '22px';
 export type StartChatFnProps = {
@@ -139,6 +140,7 @@ const ChatBox = (
   const { copyData } = useCopyData();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
+  const { isPc } = useGlobalStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const controller = useRef(new AbortController());
 
@@ -312,7 +314,7 @@ const ChatBox = (
 
         setTimeout(() => {
           generatingScroll();
-          TextareaDom.current?.focus();
+          isPc && TextareaDom.current?.focus();
         }, 100);
       } catch (err: any) {
         toast({
@@ -342,13 +344,13 @@ const ChatBox = (
     [
       isChatting,
       chatHistory,
-      setChatHistory,
       resetInputVal,
       toast,
       scrollToBottom,
       onStartChat,
       generatingMessage,
-      generatingScroll
+      generatingScroll,
+      isPc
     ]
   );
 
