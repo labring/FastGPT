@@ -5,6 +5,7 @@ import { PageTypeEnum } from '@/constants/user';
 import { postLogin } from '@/api/user';
 import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
+import { feConfigs } from '@/store/static';
 
 interface Props {
   setPageType: Dispatch<`${PageTypeEnum}`>;
@@ -104,14 +105,16 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           >
             忘记密码?
           </Box>
-          <Box
-            cursor={'pointer'}
-            _hover={{ textDecoration: 'underline' }}
-            onClick={() => setPageType('register')}
-            fontSize="sm"
-          >
-            注册账号
-          </Box>
+          {feConfigs?.show_register && (
+            <Box
+              cursor={'pointer'}
+              _hover={{ textDecoration: 'underline' }}
+              onClick={() => setPageType('register')}
+              fontSize="sm"
+            >
+              注册账号
+            </Box>
+          )}
         </Flex>
         <Button
           type="submit"

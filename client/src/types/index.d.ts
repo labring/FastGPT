@@ -17,9 +17,9 @@ export type FeConfigsType = {
   show_emptyChat?: boolean;
   show_register?: boolean;
   show_appStore?: boolean;
-  show_promotion?: boolean;
   show_userDetail?: boolean;
   show_git?: false;
+  systemTitle?: string;
   authorText?: string;
 };
 

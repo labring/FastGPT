@@ -11,7 +11,7 @@ const list = [
     label: '我的知识库',
     link: '/kb/list'
   },
-  ...(feConfigs.show_appStore
+  ...(feConfigs?.show_appStore
     ? [
         {
           icon: 'appStoreLight',
@@ -20,7 +20,7 @@ const list = [
         }
       ]
     : []),
-  ...(feConfigs.show_git
+  ...(feConfigs?.show_git
     ? [
         {
           icon: 'git',

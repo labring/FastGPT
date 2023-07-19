@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // register switch
-    if (type === UserAuthTypeEnum.register && !global.feConfigs.show_register) {
+    if (type === UserAuthTypeEnum.register && !global.feConfigs?.show_register) {
       throw new Error('Register is closed');
     }
 
