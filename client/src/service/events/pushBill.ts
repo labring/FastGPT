@@ -47,7 +47,7 @@ export const pushTaskBillListItem = async ({
     });
   } catch (error) {}
 };
-export const finishTaskBill = async ({ billId }: { billId: string }) => {
+export const finishTaskBill = async ({ billId, shareId }: { billId: string; shareId?: string }) => {
   try {
     // update bill
     const res = await Bill.findByIdAndUpdate(billId, [
@@ -62,6 +62,13 @@ export const finishTaskBill = async ({ billId }: { billId: string }) => {
     ]);
     if (!res) return;
     const total = res.list.reduce((sum, item) => sum + item.amount, 0) || 0;
+
+    if (shareId) {
+      updateShareChatBill({
+        shareId,
+        total
+      });
+    }
 
     console.log('finish bill:', formatPrice(total));
 
@@ -85,16 +92,19 @@ export const delTaskBill = async (billId?: string) => {
 
 export const updateShareChatBill = async ({
   shareId,
-  tokens
+  total
 }: {
   shareId: string;
-  tokens: number;
+  total: number;
 }) => {
   try {
-    await ShareChat.findByIdAndUpdate(shareId, {
-      $inc: { tokens },
-      lastTime: new Date()
-    });
+    await ShareChat.findOneAndUpdate(
+      { shareId },
+      {
+        $inc: { total },
+        lastTime: new Date()
+      }
+    );
   } catch (error) {
     console.log('update shareChat error', error);
   }

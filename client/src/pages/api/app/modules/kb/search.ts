@@ -39,8 +39,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const { kb_ids = [], userChatInput } = req.body as Props;
 
-    if (!userChatInput || !Array.isArray(kb_ids)) {
-      throw new Error('params is error');
+    if (!userChatInput) {
+      throw new Error('用户输入为空');
+    }
+
+    if (!Array.isArray(kb_ids) || kb_ids.length === 0) {
+      throw new Error('没有选择知识库');
     }
 
     const result = await kbSearch({

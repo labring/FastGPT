@@ -11,7 +11,7 @@ export enum OpenAiChatEnum {
 export const defaultApp: AppSchema = {
   _id: '',
   userId: 'userId',
-  name: '模型名称',
+  name: '模型加载中',
   avatar: '/icon/logo.png',
   intro: '',
   updateTime: Date.now(),

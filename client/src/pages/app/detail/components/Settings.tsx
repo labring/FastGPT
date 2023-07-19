@@ -51,17 +51,8 @@ const Settings = ({ appId }: { appId: string }) => {
   }, [appDetail, setIsLoading, toast, router]);
 
   // load app data
-  const { isLoading, refetch } = useQuery([appId], () => loadAppDetail(appId, true), {
-    onError(err: any) {
-      toast({
-        title: err?.message || '获取应用异常',
-        status: 'error'
-      });
-      router.replace('/app/list');
-    },
-    onSettled() {
-      router.prefetch(`/chat?appId=${appId}`);
-    }
+  const { refetch } = useQuery([appId], () => loadAppDetail(appId, true), {
+    enabled: false
   });
 
   return (
@@ -168,7 +159,7 @@ const Settings = ({ appId }: { appId: string }) => {
       )}
 
       <ConfirmChild />
-      <Loading loading={isLoading} fixed={false} />
+      <Loading fixed={false} />
     </Flex>
   );
 };
