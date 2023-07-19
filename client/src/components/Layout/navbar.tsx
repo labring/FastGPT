@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Link } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import MyIcon from '../Icon';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
-import Avatar from '../Avatar';
 import { HUMAN_ICON } from '@/constants/chat';
+import { feConfigs } from '@/store/static';
 import NextLink from 'next/link';
 import Badge from '../Badge';
+import Avatar from '../Avatar';
+import MyIcon from '../Icon';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -41,13 +42,17 @@ const Navbar = ({ unread }: { unread: number }) => {
         link: `/kb/list`,
         activeLink: ['/kb/list', '/kb/detail']
       },
-      {
-        label: '市场',
-        icon: 'appStoreLight',
-        activeIcon: 'appStoreFill',
-        link: '/appStore',
-        activeLink: ['/appStore']
-      },
+      ...(feConfigs.show_appStore
+        ? [
+            {
+              label: '市场',
+              icon: 'appStoreLight',
+              activeIcon: 'appStoreFill',
+              link: '/appStore',
+              activeLink: ['/appStore']
+            }
+          ]
+        : []),
       {
         label: '账号',
         icon: 'meLight',
@@ -138,17 +143,19 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </Box>
       )}
-      <Box>
-        <Link
-          as={NextLink}
-          href="https://github.com/labring/FastGPT"
-          target={'_blank'}
-          {...itemStyles}
-          color={'#9096a5'}
-        >
-          <MyIcon name={'git'} width={'22px'} height={'22px'} />
-        </Link>
-      </Box>
+      {feConfigs.show_git && (
+        <Box>
+          <Link
+            as={NextLink}
+            href="https://github.com/labring/FastGPT"
+            target={'_blank'}
+            {...itemStyles}
+            color={'#9096a5'}
+          >
+            <MyIcon name={'git'} width={'22px'} height={'22px'} />
+          </Link>
+        </Box>
+      )}
     </Flex>
   );
 };

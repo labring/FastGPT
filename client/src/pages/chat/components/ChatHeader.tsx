@@ -25,8 +25,8 @@ const ChatHeader = ({
   return (
     <Flex
       alignItems={'center'}
-      py={[3, 5]}
       px={[3, 5]}
+      h={['46px', '60px']}
       borderBottom={theme.borders.base}
       borderBottomColor={'gray.200'}
       color={'myGray.900'}

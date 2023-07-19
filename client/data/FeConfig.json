@@ -1,0 +1,9 @@
+{
+  "show_emptyChat": false,
+  "show_register": false,
+  "show_appStore": false,
+  "show_promotion": false,
+  "show_userDetail": false,
+  "show_git": false,
+  "authorText": "Made by FastGpt Team."
+}

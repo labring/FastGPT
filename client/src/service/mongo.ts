@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
 import tunnel from 'tunnel';
 import { startQueue } from './utils/tools';
-import { updateSystemEnv } from '@/pages/api/system/updateEnv';
-import { initSystemModels } from '@/pages/api/system/getInitData';
+import { updateSystemEnv, initSystemModels, initFeConfig } from '@/pages/api/system/updateEnv';
 
 /**
  * 连接 MongoDB 数据库
@@ -24,6 +23,7 @@ export async function connectToDatabase(): Promise<void> {
   };
   global.sendInformQueue = [];
   global.sendInformQueueLen = 0;
+  global.feConfigs = {};
   // proxy obj
   if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {
     global.httpsAgent = tunnel.httpsOverHttp({
@@ -33,7 +33,10 @@ export async function connectToDatabase(): Promise<void> {
       }
     });
   }
+
+  // init function
   initSystemModels();
+  initFeConfig();
   updateSystemEnv();
 
   try {

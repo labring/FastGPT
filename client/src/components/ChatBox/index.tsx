@@ -14,13 +14,10 @@ import { useToast } from '@/hooks/useToast';
 import { useCopyData, voiceBroadcast, hasVoiceApi, getErrText } from '@/utils/tools';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
-
+import { feConfigs } from '@/store/static';
 import { Types } from 'mongoose';
 import { HUMAN_ICON, quoteLenKey, rawSearchKey } from '@/constants/chat';
-import Markdown from '@/components/Markdown';
 import { EventNameEnum } from '../Markdown/constant';
-import MyIcon from '@/components/Icon';
-import Avatar from '@/components/Avatar';
 
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { useMarkdown } from '@/hooks/useMarkdown';
@@ -32,14 +29,17 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import dynamic from 'next/dynamic';
-
-const QuoteModal = dynamic(() => import('./QuoteModal'));
-
 import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import MyTooltip from '../MyTooltip';
+
+import dynamic from 'next/dynamic';
+const QuoteModal = dynamic(() => import('./QuoteModal'));
+
+import MyIcon from '@/components/Icon';
+import Avatar from '@/components/Avatar';
+import Markdown from '@/components/Markdown';
 import MySelect from '@/components/Select';
+import MyTooltip from '../MyTooltip';
 import styles from './index.module.scss';
 
 const textareaMinH = '22px';
@@ -393,7 +393,12 @@ const ChatBox = (
   };
 
   const showEmpty = useMemo(
-    () => showEmptyIntro && chatHistory.length === 0 && !variableModules?.length && !welcomeText,
+    () =>
+      feConfigs.show_emptyChat &&
+      showEmptyIntro &&
+      chatHistory.length === 0 &&
+      !variableModules?.length &&
+      !welcomeText,
     [chatHistory.length, showEmptyIntro, variableModules, welcomeText]
   );
 

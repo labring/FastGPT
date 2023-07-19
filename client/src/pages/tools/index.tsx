@@ -3,6 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
+import { feConfigs } from '@/store/static';
 
 const list = [
   {
@@ -10,16 +11,24 @@ const list = [
     label: '我的知识库',
     link: '/kb/list'
   },
-  {
-    icon: 'appStoreLight',
-    label: 'AI应用市场',
-    link: '/appStore'
-  },
-  {
-    icon: 'git',
-    label: 'Git项目地址',
-    link: 'https://github.com/labring/FastGPT'
-  }
+  ...(feConfigs.show_appStore
+    ? [
+        {
+          icon: 'appStoreLight',
+          label: 'AI应用市场',
+          link: '/appStore'
+        }
+      ]
+    : []),
+  ...(feConfigs.show_git
+    ? [
+        {
+          icon: 'git',
+          label: 'Git项目地址',
+          link: 'https://github.com/labring/FastGPT'
+        }
+      ]
+    : [])
 ];
 
 const Tools = () => {

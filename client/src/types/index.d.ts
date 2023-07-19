@@ -13,6 +13,16 @@ export type PagingData<T> = {
 
 export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 
+export type FeConfigsType = {
+  show_emptyChat?: boolean;
+  show_register?: boolean;
+  show_appStore?: boolean;
+  show_promotion?: boolean;
+  show_userDetail?: boolean;
+  show_git?: false;
+  authorText?: string;
+};
+
 declare global {
   var mongodb: Mongoose | string | null;
   var pgClient: Pool | null;
@@ -31,6 +41,7 @@ declare global {
   var chatModels: ChatModelItemType[];
   var qaModels: QAModelItemType[];
   var vectorModels: VectorModelItemType[];
+  var feConfigs: FeConfigsType;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

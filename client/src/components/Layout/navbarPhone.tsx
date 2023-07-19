@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
-import MyIcon from '../Icon';
 import { Flex, Box } from '@chakra-ui/react';
 import { useChatStore } from '@/store/chat';
 import Badge from '../Badge';
+import MyIcon from '../Icon';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
