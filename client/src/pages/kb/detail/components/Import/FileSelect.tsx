@@ -34,7 +34,8 @@ const FileSelect = ({ fileExtension, onSelectFile, isLoading, ...props }: Props)
     >
       <Flex justifyContent={'center'} alignItems={'center'}>
         <MyIcon mr={1} name={'uploadFile'} w={'16px'} />
-        拖拽文件至此，或{' '}
+        {/* 拖拽文件至此，或{' '} */}
+        点击
         <Box ml={1} as={'span'} cursor={'pointer'} color={'myBlue.700'} onClick={onOpen}>
           选择文件
         </Box>

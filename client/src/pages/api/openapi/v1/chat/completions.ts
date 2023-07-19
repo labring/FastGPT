@@ -125,6 +125,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       billId
     });
 
+    if (!answerText) {
+      throw new Error('回复内容为空，可能模块编排出现问题');
+    }
+
     // save chat
     if (typeof chatId === 'string') {
       await saveChat({
