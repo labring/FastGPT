@@ -5,6 +5,7 @@ import { useMarkdown } from '@/hooks/useMarkdown';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { beianText } from '@/store/static';
+import { feConfigs } from '@/store/static';
 
 import styles from './index.module.scss';
 import axios from 'axios';
@@ -209,17 +210,19 @@ const Home = () => {
         </Flex>
       </Flex>
 
-      <Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>
-        <Card p={5} mt={4} textAlign={'center'}>
-          {beianText && (
-            <Link href="https://beian.miit.gov.cn/" target="_blank">
-              {beianText}
-            </Link>
-          )}
+      {feConfigs?.authorText && (
+        <Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>
+          <Card p={5} mt={4} textAlign={'center'}>
+            {beianText && (
+              <Link href="https://beian.miit.gov.cn/" target="_blank">
+                {beianText}
+              </Link>
+            )}
 
-          <Box>Made by FastGpt Team.</Box>
-        </Card>
-      </Box>
+            <Box>{feConfigs?.authorText}</Box>
+          </Card>
+        </Box>
+      )}
     </Flex>
   );
 };

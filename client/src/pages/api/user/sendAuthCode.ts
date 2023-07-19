@@ -32,6 +32,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await connectToDatabase();
 
+    // register switch
+    if (type === UserAuthTypeEnum.register && !global.feConfigs.show_register) {
+      throw new Error('Register is closed');
+    }
+
     const code = nanoid();
 
     // 判断 1 分钟内是否有重复数据

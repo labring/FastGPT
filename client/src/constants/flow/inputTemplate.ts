@@ -17,5 +17,6 @@ export const Input_Template_History: FlowInputItemType = {
 export const Input_Template_UserChatInput: FlowInputItemType = {
   key: SystemInputEnum.userChatInput,
   type: FlowInputItemTypeEnum.target,
-  label: '用户问题'
+  label: '用户问题',
+  required: true
 };
