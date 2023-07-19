@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, App } from '@/service/mongo';
-import { rawSearchKey } from '@/constants/chat';
 
 const chatTemplate = ({
   model,
@@ -84,7 +83,7 @@ const chatTemplate = ({
         },
         {
           key: 'temperature',
-          type: 'custom',
+          type: 'slider',
           label: '温度',
           value: temperature,
           min: 0,
@@ -108,16 +107,16 @@ const chatTemplate = ({
           label: '回复上限',
           value: maxToken,
           min: 100,
-          max: 16000,
+          max: 4000,
           step: 50,
           markList: [
             {
-              label: '0',
-              value: 0
+              label: '100',
+              value: 100
             },
             {
-              label: '16000',
-              value: 16000
+              label: '4000',
+              value: 4000
             }
           ],
           connected: false
@@ -142,12 +141,6 @@ const chatTemplate = ({
           placeholder:
             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
           value: limitPrompt,
-          connected: false
-        },
-        {
-          key: 'switch',
-          type: 'target',
-          label: '触发器',
           connected: false
         },
         {
@@ -284,8 +277,8 @@ const kbTemplate = ({
         }
       ],
       position: {
-        x: -210.24817109253843,
-        y: 665.7922967022607
+        x: -196.84632684738483,
+        y: 797.3401378431948
       },
       moduleId: 'v0nc1s'
     },
@@ -327,8 +320,8 @@ const kbTemplate = ({
         }
       ],
       position: {
-        x: -196.84632684738483,
-        y: 797.3401378431948
+        x: 211.58250540918442,
+        y: 611.8700401034965
       },
       moduleId: 'k9y3jm'
     },
@@ -345,25 +338,12 @@ const kbTemplate = ({
           type: 'custom',
           label: '对话模型',
           value: model,
-          list: [
-            {
-              label: 'FastAI-4k',
-              value: 'gpt-3.5-turbo'
-            },
-            {
-              label: 'FastAI-16k',
-              value: 'gpt-3.5-turbo-16k'
-            },
-            {
-              label: 'FastAI-Plus',
-              value: 'gpt-4'
-            }
-          ],
+          list: [],
           connected: false
         },
         {
           key: 'temperature',
-          type: 'custom',
+          type: 'slider',
           label: '温度',
           value: temperature,
           min: 0,
@@ -387,16 +367,16 @@ const kbTemplate = ({
           label: '回复上限',
           value: maxToken,
           min: 100,
-          max: 16000,
+          max: 4000,
           step: 50,
           markList: [
             {
-              label: '0',
-              value: 0
+              label: '100',
+              value: 100
             },
             {
-              label: '16000',
-              value: 16000
+              label: '4000',
+              value: 4000
             }
           ],
           connected: false
@@ -422,12 +402,6 @@ const kbTemplate = ({
             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
           value: limitPrompt,
           connected: false
-        },
-        {
-          key: 'switch',
-          type: 'target',
-          label: '触发器',
-          connected: true
         },
         {
           key: 'quotePrompt',
@@ -481,7 +455,7 @@ const kbTemplate = ({
         },
         {
           key: 'similarity',
-          type: 'custom',
+          type: 'slider',
           label: '相似度',
           value: searchSimilarity,
           min: 0,
@@ -489,8 +463,8 @@ const kbTemplate = ({
           step: 0.01,
           markList: [
             {
-              label: '0',
-              value: 0
+              label: '100',
+              value: 100
             },
             {
               label: '1',
@@ -501,7 +475,7 @@ const kbTemplate = ({
         },
         {
           key: 'limit',
-          type: 'custom',
+          type: 'slider',
           label: '单次搜索上限',
           description: '最多取 n 条记录作为本次问题引用',
           value: searchLimit,
@@ -524,7 +498,7 @@ const kbTemplate = ({
           key: 'switch',
           type: 'target',
           label: '触发器',
-          connected: true
+          connected: false
         },
         {
           key: 'userChatInput',
@@ -535,7 +509,7 @@ const kbTemplate = ({
       ],
       outputs: [
         {
-          key: rawSearchKey,
+          key: 'rawSearch',
           label: '源搜索数据',
           type: 'hidden',
           response: true,
@@ -545,16 +519,14 @@ const kbTemplate = ({
           key: 'isEmpty',
           label: '搜索结果为空',
           type: 'source',
-          targets: [
-            ...(searchEmptyText
-              ? [
-                  {
-                    moduleId: 'w8av9y',
-                    key: 'switch'
-                  }
-                ]
-              : [])
-          ]
+          targets: searchEmptyText
+            ? [
+                {
+                  moduleId: 'w8av9y',
+                  key: 'switch'
+                }
+              ]
+            : []
         },
         {
           key: 'quotePrompt',
@@ -593,7 +565,7 @@ const kbTemplate = ({
               {
                 key: 'answerText',
                 value: searchEmptyText,
-                type: 'input',
+                type: 'textarea',
                 label: '回复的内容',
                 connected: false
               }

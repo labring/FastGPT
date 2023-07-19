@@ -20,8 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { app } = await authApp({
       appId,
-      userId,
-      authOwner: false
+      userId
     });
 
     jsonRes(res, {

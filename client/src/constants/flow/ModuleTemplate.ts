@@ -162,7 +162,7 @@ export const ChatModule: AppModuleTemplateItemType = {
         '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
       value: ''
     },
-    Input_Template_TFSwitch,
+    // Input_Template_TFSwitch,
     {
       key: 'quotePrompt',
       type: FlowInputItemTypeEnum.target,
