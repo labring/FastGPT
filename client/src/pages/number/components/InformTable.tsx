@@ -34,6 +34,7 @@ const BillTable = () => {
             borderRadius={'md'}
             cursor={item.read ? 'default' : 'pointer'}
             position={'relative'}
+            _notLast={{ mb: 3 }}
             onClick={async () => {
               if (!item.read) {
                 await readInform(item._id);

@@ -15,10 +15,8 @@ import MyIcon from '@/components/Icon';
 import TotalUsage from './Charts/TotalUsage';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
-import AppEdit from './edit';
-import styles from '../../list/index.module.scss';
 
-const Settings = ({ appId }: { appId: string }) => {
+const OverView = ({ appId }: { appId: string }) => {
   const theme = useTheme();
   const { toast } = useToast();
   const router = useRouter();
@@ -28,7 +26,6 @@ const Settings = ({ appId }: { appId: string }) => {
     content: '确认删除该应用?'
   });
   const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
-  const [fullScreen, setFullScreen] = useState(false);
 
   /* 点击删除 */
   const handleDelModel = useCallback(async () => {
@@ -61,7 +58,7 @@ const Settings = ({ appId }: { appId: string }) => {
         <Grid gridTemplateColumns={['1fr', 'repeat(2,1fr)']} gridGap={[2, 4, 6]}>
           <Box>
             <Box mb={2} fontSize={['md', 'xl']}>
-              概览
+              基本信息
             </Box>
             <Box
               border={theme.borders.base}
@@ -93,7 +90,7 @@ const Settings = ({ appId }: { appId: string }) => {
                   onClick={openConfirm(handleDelModel)}
                 />
               </Flex>
-              <Box className={styles.intro} py={3} wordBreak={'break-all'} color={'myGray.600'}>
+              <Box className={'textEllipsis3'} py={3} wordBreak={'break-all'} color={'myGray.600'}>
                 {appDetail.intro || '快来给应用一个介绍~'}
               </Box>
               <Flex>
@@ -140,13 +137,6 @@ const Settings = ({ appId }: { appId: string }) => {
           </Flex>
         </Grid>
       </Box>
-      <Box flex={'1 0 0'} position={'relative'}>
-        <AppEdit
-          app={appDetail}
-          onFullScreen={(val) => setFullScreen(val)}
-          fullScreen={fullScreen}
-        />
-      </Box>
 
       {settingAppInfo && (
         <InfoModal
@@ -162,4 +152,4 @@ const Settings = ({ appId }: { appId: string }) => {
   );
 };
 
-export default Settings;
+export default OverView;
