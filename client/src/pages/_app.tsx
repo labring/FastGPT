@@ -31,7 +31,7 @@ const queryClient = new QueryClient({
 });
 
 function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; response: any }) {
-  const [googleVerKey, setGoogleVerKey] = useState<string>();
+  const [googleClientVerKey, setGoogleVerKey] = useState<string>();
   const [baiduTongji, setBaiduTongji] = useState<string>();
   const { initIsPc } = useGlobalStore();
 
@@ -42,9 +42,9 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
   useEffect(() => {
     (async () => {
       const {
-        systemEnv: { googleVerKey, baiduTongji }
+        systemEnv: { googleClientVerKey, baiduTongji }
       } = await clientInitData();
-      setGoogleVerKey(googleVerKey);
+      setGoogleVerKey(googleClientVerKey);
       setBaiduTongji(baiduTongji);
     })();
   }, []);
@@ -65,10 +65,10 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
       <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
       {baiduTongji && <Script src={baiduTongji} strategy="lazyOnload"></Script>}
-      {googleVerKey && (
+      {googleClientVerKey && (
         <>
           <Script
-            src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleVerKey}`}
+            src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleClientVerKey}`}
             strategy="afterInteractive"
           ></Script>
         </>

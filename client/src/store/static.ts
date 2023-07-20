@@ -9,7 +9,7 @@ import { delay } from '@/utils/tools';
 import { FeConfigsType } from '@/types';
 
 export let beianText: string | undefined;
-export let googleVerKey: string | undefined;
+export let googleClientVerKey: string | undefined;
 export let baiduTongji: string | undefined;
 export let chatModelList: ChatModelItemType[] = [];
 export let qaModelList: QAModelItemType[] = [];
@@ -26,10 +26,9 @@ export const clientInitData = async (): Promise<InitDateResponse> => {
     qaModelList = res.qaModels;
     vectorModelList = res.vectorModels;
     feConfigs = res.feConfigs;
-    beianText = res.systemEnv.beianText;
-    googleVerKey = res.systemEnv.googleVerKey;
-    baiduTongji = res.systemEnv.baiduTongji;
-    console.log(res);
+    beianText = res.systemEnv?.beianText;
+    googleClientVerKey = res.systemEnv?.googleClientVerKey;
+    baiduTongji = res.systemEnv?.baiduTongji;
 
     return res;
   } catch (error) {

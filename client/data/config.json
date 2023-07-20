@@ -10,8 +10,9 @@
   },
   "SystemParams": {
     "beianText": "",
-    "googleVerKey": "",
     "baiduTongji": "",
+    "googleClientVerKey": "",
+    "googleServiceVerKey": "",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgIvfflatProbe": 20,
