@@ -1,37 +1,44 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+import type { FeConfigsType, SystemEnvType } from '@/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
+import { readFileSync } from 'fs';
 import {
   type QAModelItemType,
   type ChatModelItemType,
   type VectorModelItemType
 } from '@/types/model';
-import type { FeConfigsType } from '@/types';
 
 export type InitDateResponse = {
-  beianText: string;
-  googleVerKey: string;
-  baiduTongji: string;
   chatModels: ChatModelItemType[];
   qaModels: QAModelItemType[];
   vectorModels: VectorModelItemType[];
+  systemEnv: SystemEnvType;
   feConfigs: FeConfigsType;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const envs = {
-    beianText: process.env.SAFE_BEIAN_TEXT || '',
-    googleVerKey: process.env.CLIENT_GOOGLE_VER_TOKEN || '',
-    baiduTongji: process.env.BAIDU_TONGJI || ''
-  };
-
   jsonRes<InitDateResponse>(res, {
     data: {
-      ...envs,
+      systemEnv: global.systemEnv,
+      feConfigs: global.feConfigs,
       chatModels: global.chatModels,
       qaModels: global.qaModels,
-      vectorModels: global.vectorModels,
-      feConfigs: global.feConfigs
+      vectorModels: global.vectorModels
     }
   });
+}
+
+export async function getInitConfig() {
+  try {
+    const res = JSON.parse(readFileSync('data/config.json', 'utf-8'));
+    console.log(res);
+
+    global.systemEnv = res.SystemParams;
+    global.feConfigs = res.FeConfig;
+    global.chatModels = res.ChatModels;
+    global.qaModels = res.QAModels;
+    global.vectorModels = res.VectorModels;
+  } catch (error) {
+    console.log('get init config error');
+  }
 }

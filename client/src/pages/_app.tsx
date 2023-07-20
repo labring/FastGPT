@@ -41,7 +41,9 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
 
   useEffect(() => {
     (async () => {
-      const { googleVerKey, baiduTongji } = await clientInitData();
+      const {
+        systemEnv: { googleVerKey, baiduTongji }
+      } = await clientInitData();
       setGoogleVerKey(googleVerKey);
       setBaiduTongji(baiduTongji);
     })();

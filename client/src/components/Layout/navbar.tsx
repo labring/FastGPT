@@ -19,50 +19,47 @@ const Navbar = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { lastChatAppId, lastChatId } = useChatStore();
-  const navbarList = useMemo(
-    () => [
-      {
-        label: '聊天',
-        icon: 'chatLight',
-        activeIcon: 'chatFill',
-        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
-        activeLink: ['/chat']
-      },
-      {
-        label: '应用',
-        icon: 'appLight',
-        activeIcon: 'appFill',
-        link: `/app/list`,
-        activeLink: ['/app/list', '/app/detail']
-      },
-      {
-        label: '知识库',
-        icon: 'dbLight',
-        activeIcon: 'dbFill',
-        link: `/kb/list`,
-        activeLink: ['/kb/list', '/kb/detail']
-      },
-      ...(feConfigs?.show_appStore
-        ? [
-            {
-              label: '市场',
-              icon: 'appStoreLight',
-              activeIcon: 'appStoreFill',
-              link: '/appStore',
-              activeLink: ['/appStore']
-            }
-          ]
-        : []),
-      {
-        label: '账号',
-        icon: 'meLight',
-        activeIcon: 'meFill',
-        link: '/number',
-        activeLink: ['/number']
-      }
-    ],
-    [lastChatId, lastChatAppId]
-  );
+  const navbarList = [
+    {
+      label: '聊天',
+      icon: 'chatLight',
+      activeIcon: 'chatFill',
+      link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+      activeLink: ['/chat']
+    },
+    {
+      label: '应用',
+      icon: 'appLight',
+      activeIcon: 'appFill',
+      link: `/app/list`,
+      activeLink: ['/app/list', '/app/detail']
+    },
+    {
+      label: '知识库',
+      icon: 'dbLight',
+      activeIcon: 'dbFill',
+      link: `/kb/list`,
+      activeLink: ['/kb/list', '/kb/detail']
+    },
+    ...(feConfigs?.show_appStore
+      ? [
+          {
+            label: '市场',
+            icon: 'appStoreLight',
+            activeIcon: 'appStoreFill',
+            link: '/appStore',
+            activeLink: ['/appStore']
+          }
+        ]
+      : []),
+    {
+      label: '账号',
+      icon: 'meLight',
+      activeIcon: 'meFill',
+      link: '/number',
+      activeLink: ['/number']
+    }
+  ];
 
   const itemStyles: any = {
     my: 3,
