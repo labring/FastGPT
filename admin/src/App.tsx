@@ -9,7 +9,7 @@ import {
   HTTPClient
 } from 'tushan';
 import { authProvider } from './auth';
-import { userFields, payFields, kbFields, AppFields, SystemFields } from './fields';
+import { userFields, payFields, kbFields, AppFields } from './fields';
 import { Dashboard } from './Dashboard';
 import { IconUser, IconApps, IconBook, IconStamp } from 'tushan/icon';
 import { i18nZhTranslation } from 'tushan/client/i18n/resources/zh';
@@ -64,7 +64,7 @@ function App() {
               })
             ]}
             fields={userFields}
-            action={{ detail: true, edit: true }}
+            action={{ create: true, detail: true, edit: true }}
           />
         }
       />
@@ -119,17 +119,6 @@ function App() {
             ]}
             fields={kbFields}
             action={{ detail: true }}
-          />
-        }
-      />
-
-      <Resource
-        name="system"
-        label="系统"
-        list={
-          <ListTable
-            fields={SystemFields}
-            action={{ detail: true, edit: true, create: true, delete: true }}
           />
         }
       />

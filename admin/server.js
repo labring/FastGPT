@@ -16,13 +16,20 @@ useKbRoute(app);
 useSystemRoute(app);
 
 app.get('/*', (req, res) => {
-  res.sendFile(new URL('dist/index.html', import.meta.url).pathname);
+  try {
+    res.sendFile(new URL('dist/index.html', import.meta.url).pathname);
+  } catch (error) {
+    res.end();
+  }
 });
 
 app.use((err, req, res, next) => {
-  res.sendFile(new URL('dist/index.html', import.meta.url).pathname);
+  try {
+    res.sendFile(new URL('dist/index.html', import.meta.url).pathname);
+  } catch (error) {
+    res.end();
+  }
 });
-
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

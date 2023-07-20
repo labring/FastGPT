@@ -2,9 +2,13 @@ import { createTextField, createNumberField } from 'tushan';
 
 export const userFields = [
   createTextField('id', { label: 'ID' }),
-  createTextField('username', { label: '用户名', edit: { hidden: true } }),
-  createNumberField('balance', { label: '余额', list: { sort: true } }),
-  createTextField('createTime', { label: 'Create Time', list: { sort: true } }),
+  createTextField('username', { label: '用户名' }),
+  createNumberField('balance', { label: '余额（元）', list: { sort: true } }),
+  createTextField('createTime', {
+    label: '创建时间',
+    list: { sort: true },
+    edit: { hidden: true }
+  }),
   createTextField('password', { label: '密码', list: { hidden: true } })
 ];
 
@@ -14,7 +18,7 @@ export const payFields = [
   createNumberField('price', { label: '支付金额' }),
   createTextField('orderId', { label: 'orderId' }),
   createTextField('status', { label: '状态' }),
-  createTextField('createTime', { label: 'Create Time', list: { sort: true } })
+  createTextField('createTime', { label: '创建时间', list: { sort: true } })
 ];
 
 export const kbFields = [
@@ -42,11 +46,4 @@ export const AppFields = [
       hidden: true
     }
   })
-];
-
-export const SystemFields = [
-  createTextField('vectorMaxProcess', { label: '向量最大进程' }),
-  createTextField('qaMaxProcess', { label: 'qa最大进程' }),
-  createTextField('pgIvfflatProbe', { label: 'pg 探针数量' }),
-  createTextField('sensitiveCheck', { label: '敏感词校验(true,false)' })
 ];

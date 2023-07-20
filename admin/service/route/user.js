@@ -2,6 +2,11 @@ import { User, Pay } from '../schema.js';
 import dayjs from 'dayjs';
 import { auth } from './system.js';
 import crypto from 'crypto';
+export const PRICE_SCALE = 100000;
+
+export const formatPrice = (val = 0, multiple = 1) => {
+  return Number(((val / PRICE_SCALE) * multiple).toFixed(10));
+};
 
 // 加密
 const hashPassword = (psw) => {
@@ -78,6 +83,7 @@ export const useUserRoute = (app) => {
         return {
           ...obj,
           id: obj._id,
+          balance: formatPrice(obj.balance),
           createTime: dayjs(obj.createTime).format('YYYY/MM/DD HH:mm'),
           password: ''
         };
@@ -107,8 +113,8 @@ export const useUserRoute = (app) => {
 
       const result = await User.create({
         username,
-        password,
-        balance
+        password: hashPassword(hashPassword(password)),
+        balance: balance * PRICE_SCALE
       });
       res.json(result);
     } catch (err) {
@@ -116,17 +122,17 @@ export const useUserRoute = (app) => {
       res.status(500).json({ error: 'Error creating user' });
     }
   });
-
   // 修改用户信息
   app.put('/users/:id', auth(), async (req, res) => {
     try {
       const _id = req.params.id;
 
-      let { password, balance = 0 } = req.body;
+      let { username, password, balance = 0 } = req.body;
 
       const result = await User.findByIdAndUpdate(_id, {
+        ...(username && { username }),
         ...(password && { password: hashPassword(hashPassword(password)) }),
-        ...(balance && { balance })
+        ...(balance && { balance: balance * PRICE_SCALE })
       });
       res.json(result);
     } catch (err) {
@@ -134,6 +140,7 @@ export const useUserRoute = (app) => {
       res.status(500).json({ error: 'Error updating user' });
     }
   });
+
   // 新增: 获取 pays 列表
   app.get('/pays', auth(), async (req, res) => {
     try {
