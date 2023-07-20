@@ -2,7 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { Card, Box, Flex, Button, Grid, useDisclosure } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { putUserInfo, getPromotionInitData } from '@/api/user';
+import { putUserInfo } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
-import { getErrText, useCopyData } from '@/utils/tools';
+import { getErrText } from '@/utils/tools';
 import { feConfigs } from '@/store/static';
 
 import Loading from '@/components/Loading';
@@ -25,9 +25,7 @@ import BillTable from './components/BillTable';
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'), {
   ssr: false
 });
-const PromotionTable = dynamic(() => import('./components/PromotionTable'), {
-  ssr: false
-});
+
 const InformTable = dynamic(() => import('./components/InformTable'), {
   ssr: false
 });
@@ -51,12 +49,10 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
   const tableList = useRef([
     { label: '账单', id: TableEnum.bill, Component: <BillTable /> },
     { label: '充值', id: TableEnum.pay, Component: <PayRecordTable /> },
-    { label: '佣金', id: TableEnum.promotion, Component: <PromotionTable /> },
     { label: '通知', id: TableEnum.inform, Component: <InformTable /> }
   ]);
 
   const router = useRouter();
-  const { copyData } = useCopyData();
   const { userInfo, updateUserInfo, initUserInfo, setUserInfo } = useUserStore();
   const { setLoading } = useGlobalStore();
   const { reset } = useForm<UserUpdateParams>({
@@ -67,11 +63,6 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
     isOpen: isOpenPayModal,
     onClose: onClosePayModal,
     onOpen: onOpenPayModal
-  } = useDisclosure();
-  const {
-    isOpen: isOpenWxConcat,
-    onClose: onCloseWxConcat,
-    onOpen: onOpenWxConcat
   } = useDisclosure();
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
@@ -141,10 +132,6 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
       reset(res);
     }
   });
-  const { data: { invitedAmount = 0, historyAmount = 0, residueAmount = 0 } = {} } = useQuery(
-    ['getPromotionInitData'],
-    getPromotionInitData
-  );
 
   return (
     <Box h={'100%'} overflow={'overlay'}>
@@ -188,50 +175,6 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
               </Box>
             )}
           </Card>
-          {feConfigs?.show_userDetail && (
-            <Card px={6} py={4}>
-              <Box fontSize={'xl'} fontWeight={'bold'}>
-                我的邀请
-              </Box>
-              {[
-                { label: '佣金比例', value: `${userInfo?.promotion.rate || 15}%` },
-                { label: '已注册用户数', value: `${invitedAmount}人` },
-                { label: '可用佣金', value: `￥${residueAmount}` }
-              ].map((item) => (
-                <Flex
-                  key={item.label}
-                  alignItems={'center'}
-                  mt={4}
-                  justifyContent={'space-between'}
-                >
-                  <Box w={'120px'}>{item.label}</Box>
-                  <Box fontWeight={'bold'}>{item.value}</Box>
-                </Flex>
-              ))}
-              <Button
-                mt={4}
-                variant={'base'}
-                w={'100%'}
-                onClick={() =>
-                  copyData(`${location.origin}/?inviterId=${userInfo?._id}`, '已复制邀请链接')
-                }
-              >
-                复制邀请链接
-              </Button>
-              <Button
-                mt={4}
-                leftIcon={<MyIcon name="withdraw" w={'22px'} />}
-                px={4}
-                title={residueAmount < 50 ? '最低提现额度为50元' : ''}
-                isDisabled={residueAmount < 50}
-                variant={'base'}
-                colorScheme={'myBlue'}
-                onClick={onOpenWxConcat}
-              >
-                {residueAmount < 50 ? '50元起提' : '提现'}
-              </Button>
-            </Card>
-          )}
         </Grid>
 
         {feConfigs?.show_userDetail && (
@@ -255,7 +198,6 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
         )}
       </Box>
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
-      {isOpenWxConcat && <WxConcat onClose={onCloseWxConcat} />}
       <File onSelect={onSelectFile} />
     </Box>
   );
