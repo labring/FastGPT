@@ -52,7 +52,7 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
   return (
     <>
       <Head>
-        <title>{feConfigs?.systemTitle || 'FastAI'}</title>
+        <title>{feConfigs?.systemTitle || 'AI知识库'}</title>
         <meta name="description" content="Embedding + LLM, Build AI knowledge base" />
         <meta
           name="viewport"

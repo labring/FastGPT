@@ -66,8 +66,9 @@ export async function generateQA(): Promise<any> {
           {
             role: 'system',
             content: `你是出题人.
-${data.prompt || '用户会发送一段长文本'}.
-从中选出 25 个问题和答案. 答案详细完整. 按格式回答: Q1:
+${data.prompt || '我会发送一段长文本'}.
+从中提取出 25 个问题和答案. 答案详细完整. 按下面格式返回: 
+Q1:
 A1:
 Q2:
 A2:
