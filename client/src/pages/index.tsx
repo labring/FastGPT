@@ -168,7 +168,7 @@ const Home = () => {
           fontSize={['40px', '70px']}
           letterSpacing={'5px'}
         >
-          {feConfigs?.systemTitle || 'FastAI'}
+          {feConfigs?.systemTitle || 'AI知识库'}
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
           可视化 AI 编排

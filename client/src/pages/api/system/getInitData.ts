@@ -17,6 +17,9 @@ export type InitDateResponse = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!global.feConfigs) {
+    await getInitConfig();
+  }
   jsonRes<InitDateResponse>(res, {
     data: {
       systemEnv: global.systemEnv,
@@ -39,6 +42,6 @@ export async function getInitConfig() {
     global.qaModels = res.QAModels;
     global.vectorModels = res.VectorModels;
   } catch (error) {
-    console.log('get init config error');
+    return Promise.reject('get init config error');
   }
 }
