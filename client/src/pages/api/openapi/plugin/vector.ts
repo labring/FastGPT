@@ -42,6 +42,12 @@ export async function getVector({
 }: { userId?: string } & Props) {
   userId && (await authBalanceByUid(userId));
 
+  for (let i = 0; i < input.length; i++) {
+    if (!input[i]) {
+      return Promise.reject('向量生成模块输入内容为空');
+    }
+  }
+
   // 获取 chatAPI
   const chatAPI = getOpenAIApi();
 

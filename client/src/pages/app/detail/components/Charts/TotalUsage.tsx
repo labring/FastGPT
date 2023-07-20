@@ -120,7 +120,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
         show: false,
         left: 5,
         right: 5,
-        top: 5,
+        top: 0,
         bottom: 5
       },
       tooltip: {
@@ -173,6 +173,10 @@ const TokenUsage = ({ appId }: { appId: string }) => {
     if (!Dom.current || myChart?.current?.getOption()) return;
     myChart.current = echarts.init(Dom.current);
     myChart.current && myChart.current.setOption(option);
+
+    setTimeout(() => {
+      myChart.current?.resize();
+    }, 500);
   }, []);
 
   // data changed, update
@@ -188,7 +192,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
   }, [screenWidth]);
 
   return (
-    <Box ref={Dom} w={'100%'} h={'100%'} position={'relative'}>
+    <Box ref={Dom} w={'100%'} flex={'1 0 0'} h={'100%'} position={'relative'}>
       <Loading fixed={false} />
     </Box>
   );

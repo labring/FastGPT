@@ -42,8 +42,8 @@ const BillTable = () => {
     api: getUserBills,
     pageSize: isPc ? 20 : 10,
     params: {
-      dateStart: new Date(dateRange.from || new Date()).setHours(0, 0, 0, 0),
-      dateEnd: new Date(dateRange.to || new Date()).setHours(23, 59, 59, 999)
+      dateStart: dateRange.from || new Date(),
+      dateEnd: addDays(dateRange.to || new Date(), 1)
     }
   });
 
