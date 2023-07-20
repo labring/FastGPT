@@ -9,11 +9,16 @@ import { useQuery } from '@tanstack/react-query';
 
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
-import Settings from './components/Settings';
+import OverView from './components/OverView';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
+import Loading from '@/components/Loading';
 
+const Edit = dynamic(() => import('./components/Edit'), {
+  ssr: false,
+  loading: () => <Loading />
+});
 const Share = dynamic(() => import('./components/Share'), {
   ssr: false
 });
@@ -22,6 +27,7 @@ const API = dynamic(() => import('./components/API'), {
 });
 
 enum TabEnum {
+  'overview' = 'overview',
   'settings' = 'settings',
   'share' = 'share',
   'API' = 'API'
@@ -48,7 +54,8 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '概览', id: TabEnum.settings, icon: 'overviewLight' },
+      { label: '概览', id: TabEnum.overview, icon: 'overviewLight' },
+      { label: '高级编排', id: TabEnum.settings, icon: 'settingLight' },
       { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
       { label: '立即对话', id: 'startChat', icon: 'chatLight' }
@@ -157,7 +164,14 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           />
         </Box>
         <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
-          {currentTab === TabEnum.settings && <Settings appId={appId} />}
+          {currentTab === TabEnum.overview && <OverView appId={appId} />}
+          {currentTab === TabEnum.settings && appDetail && (
+            <Edit
+              app={appDetail}
+              fullScreen={true}
+              onFullScreen={() => setCurrentTab(TabEnum.overview)}
+            />
+          )}
           {currentTab === TabEnum.API && <API appId={appId} />}
           {currentTab === TabEnum.share && <Share appId={appId} />}
         </Box>
@@ -167,7 +181,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 };
 
 export async function getServerSideProps(context: any) {
-  const currentTab = context?.query?.currentTab || TabEnum.settings;
+  const currentTab = context?.query?.currentTab || TabEnum.overview;
 
   return {
     props: { currentTab }

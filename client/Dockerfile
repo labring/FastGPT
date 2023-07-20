@@ -5,7 +5,8 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json ./
+COPY pnpm-lock.yaml* ./
 RUN pnpm config set registry https://registry.npmmirror.com/
 RUN \
   [ -f pnpm-lock.yaml ] && pnpm install || \
