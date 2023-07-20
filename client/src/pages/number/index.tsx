@@ -147,7 +147,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
   );
 
   return (
-    <>
+    <Box h={'100%'} overflow={'overlay'}>
       <Box py={[5, 10]} px={'5vw'}>
         <Grid gridTemplateColumns={['1fr', '3fr 300px']} gridGap={4}>
           <Card px={6} py={4}>
@@ -257,7 +257,7 @@ const NumberSetting = ({ tableType }: { tableType: `${TableEnum}` }) => {
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
       {isOpenWxConcat && <WxConcat onClose={onCloseWxConcat} />}
       <File onSelect={onSelectFile} />
-    </>
+    </Box>
   );
 };
 

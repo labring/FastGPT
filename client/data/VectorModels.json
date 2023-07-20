@@ -1,7 +1,0 @@
-{
-  "text-embedding-ada-002": {
-    "model": "text-embedding-ada-002",
-    "name": "Embedding-2",
-    "price": 0.2
-  }
-}

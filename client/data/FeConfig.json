@@ -1,9 +1,0 @@
-{
-  "show_emptyChat": true,
-  "show_register": true,
-  "show_appStore": true,
-  "show_userDetail": true,
-  "show_git": true,
-  "systemTitle": "FastAI",
-  "authorText": "Made by FastAI Team."
-}

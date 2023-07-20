@@ -22,6 +22,15 @@ export type FeConfigsType = {
   systemTitle?: string;
   authorText?: string;
 };
+export type SystemEnvType = {
+  beianText?: string;
+  googleVerKey?: string;
+  baiduTongji?: string;
+  vectorMaxProcess: number;
+  qaMaxProcess: number;
+  pgIvfflatProbe: number;
+  sensitiveCheck: boolean;
+};
 
 declare global {
   var mongodb: Mongoose | string | null;
@@ -32,12 +41,7 @@ declare global {
   var OpenAiEncMap: Tiktoken;
   var sendInformQueue: (() => Promise<void>)[];
   var sendInformQueueLen: number;
-  var systemEnv: {
-    vectorMaxProcess: number;
-    qaMaxProcess: number;
-    pgIvfflatProbe: number;
-    sensitiveCheck: boolean;
-  };
+  var systemEnv: SystemEnvType;
   var chatModels: ChatModelItemType[];
   var qaModels: QAModelItemType[];
   var vectorModels: VectorModelItemType[];
