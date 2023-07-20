@@ -7,6 +7,8 @@ import { sendInform } from '@/pages/api/user/inform/send';
 import { authBalanceByUid } from '../utils/auth';
 import { axiosConfig, getOpenAIApi } from '../ai/openai';
 import { ChatCompletionRequestMessage } from 'openai';
+import { modelToolMap } from '@/utils/plugin';
+import { gptMessage2ChatType } from '@/utils/adapt';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -58,6 +60,8 @@ export async function generateQA(): Promise<any> {
     // 请求 chatgpt 获取回答
     const response = await Promise.all(
       [data.q].map((text) => {
+        const modelTokenLimit =
+          chatModels.find((item) => item.model === data.model)?.contextMaxToken || 16000;
         const messages: ChatCompletionRequestMessage[] = [
           {
             role: 'system',
@@ -74,13 +78,20 @@ A2:
             content: text
           }
         ];
+
+        const promptsToken = modelToolMap.countTokens({
+          messages: gptMessage2ChatType(messages)
+        });
+        const maxToken = modelTokenLimit - promptsToken;
+
         return chatAPI
           .createChatCompletion(
             {
               model: data.model,
               temperature: 0.8,
               messages,
-              stream: false
+              stream: false,
+              max_tokens: maxToken
             },
             {
               timeout: 480000,

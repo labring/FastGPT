@@ -23,9 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // google auth
-    process.env.SERVICE_GOOGLE_VER_TOKEN &&
+    global.systemEnv.googleServiceVerKey &&
       (await authGoogleToken({
-        secret: process.env.SERVICE_GOOGLE_VER_TOKEN,
+        secret: global.systemEnv.googleServiceVerKey,
         response: googleToken,
         remoteip: requestIp.getClientIp(req) || undefined
       }));

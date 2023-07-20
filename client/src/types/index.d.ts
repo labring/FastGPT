@@ -24,7 +24,8 @@ export type FeConfigsType = {
 };
 export type SystemEnvType = {
   beianText?: string;
-  googleVerKey?: string;
+  googleClientVerKey?: string;
+  googleServiceVerKey?: string;
   baiduTongji?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
