@@ -5,8 +5,6 @@ import { authUser } from '@/service/utils/auth';
 import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { getPayResult } from '@/service/utils/wxpay';
-import { pushPromotionRecord } from '@/service/utils/promotion';
-import { PRICE_SCALE } from '@/constants/common';
 import { startQueue } from '@/service/utils/tools';
 
 /* 校验支付结果 */
@@ -33,13 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!user) {
       throw new Error('找不到用户');
     }
-    // 获取邀请者
-    const inviter = await (async () => {
-      if (user.inviterId) {
-        return User.findById(user.inviterId, '_id promotion');
-      }
-      return null;
-    })();
 
     const payRes = await getPayResult(payOrder.orderId);
 
@@ -65,16 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await User.findByIdAndUpdate(userId, {
             $inc: { balance: payOrder.price }
           });
-          // 推广佣金发放
-          if (inviter) {
-            pushPromotionRecord({
-              userId: inviter._id,
-              objUId: userId,
-              type: 'invite',
-              // amount 单位为元，需要除以缩放比例，最后乘比例
-              amount: (payOrder.price / PRICE_SCALE) * inviter.promotion.rate * 0.01
-            });
-          }
+
           unlockTask(userId);
           return jsonRes(res, {
             data: '支付成功'

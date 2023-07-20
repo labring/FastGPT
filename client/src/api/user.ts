@@ -14,14 +14,6 @@ export const sendAuthCode = (data: {
 
 export const getTokenLogin = () => GET<UserType>('/user/tokenLogin');
 
-/* get promotion init data */
-export const getPromotionInitData = () =>
-  GET<{
-    invitedAmount: number;
-    historyAmount: number;
-    residueAmount: number;
-  }>('/user/promotion/getPromotionData');
-
 export const postRegister = ({
   username,
   password,
@@ -77,10 +69,6 @@ export const getPayCode = (amount: number) =>
   }>(`/user/getPayCode?amount=${amount}`);
 
 export const checkPayResult = (payId: string) => GET<number>(`/user/checkPayResult?payId=${payId}`);
-
-/* promotion records */
-export const getPromotionRecords = (data: RequestPaging) =>
-  GET<PromotionRecordType>(`/user/promotion/getPromotions?${Obj2Query(data)}`);
 
 export const getInforms = (data: RequestPaging) =>
   POST<PagingData<informSchema>>(`/user/inform/list`, data);
