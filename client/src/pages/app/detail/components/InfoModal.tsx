@@ -146,12 +146,12 @@ const InfoModal = ({
               ></Input>
             </FormControl>
           </Flex>
-          <Box mt={6} mb={1}>
+          <Box mt={7} mb={1}>
             应用介绍
           </Box>
-          <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
+          {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
             该介绍主要用于记忆和在应用市场展示
-          </Box>
+          </Box> */}
           <Textarea
             rows={4}
             maxLength={500}

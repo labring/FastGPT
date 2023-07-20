@@ -132,14 +132,12 @@ const Settings = ({ appId }: { appId: string }) => {
               </Flex>
             </Box>
           </Box>
-          <Box>
+          <Flex flexDirection={'column'}>
             <Box mb={2} fontSize={['md', 'xl']}>
               近 14 日消费
             </Box>
-            <Box h={'150px'} w={'100%'}>
-              <TotalUsage appId={appId} />
-            </Box>
-          </Box>
+            <TotalUsage appId={appId} />
+          </Flex>
         </Grid>
       </Box>
       <Box flex={'1 0 0'} position={'relative'}>
