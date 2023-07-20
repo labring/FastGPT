@@ -63,7 +63,11 @@ const map = {
   qaImport: require('./icons/file/qaImport.svg').default,
   uploadFile: require('./icons/file/uploadFile.svg').default,
   closeLight: require('./icons/light/close.svg').default,
-  customTitle: require('./icons/light/customTitle.svg').default
+  customTitle: require('./icons/light/customTitle.svg').default,
+  billRecordLight: require('./icons/light/billRecord.svg').default,
+  informLight: require('./icons/light/inform.svg').default,
+  payRecordLight: require('./icons/light/payRecord.svg').default,
+  loginoutLight: require('./icons/light/loginout.svg').default
 };
 
 export type IconName = keyof typeof map;

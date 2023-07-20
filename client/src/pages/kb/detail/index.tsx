@@ -6,8 +6,8 @@ import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
 import { KbItemType } from '@/types/plugin';
-import { useScreen } from '@/hooks/useScreen';
 import { getErrText } from '@/utils/tools';
+import { useGlobalStore } from '@/store/global';
 import { type ComponentRef } from './components/Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
@@ -37,7 +37,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
   const theme = useTheme();
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc } = useScreen();
+  const { isPc } = useGlobalStore();
   const { kbDetail, getKbDetail } = useUserStore();
 
   const tabList = useRef([

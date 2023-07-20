@@ -21,6 +21,7 @@ import MyIcon from '@/components/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
+import { useGlobalStore } from '@/store/global';
 
 const BillDetail = dynamic(() => import('./BillDetail'));
 
@@ -30,6 +31,7 @@ const BillTable = () => {
     from: addDays(new Date(), -7),
     to: new Date()
   });
+  const { isPc } = useGlobalStore();
 
   const {
     data: bills,
@@ -38,6 +40,7 @@ const BillTable = () => {
     getData
   } = usePagination<UserBillType>({
     api: getUserBills,
+    pageSize: isPc ? 20 : 10,
     params: {
       dateStart: new Date(dateRange.from || new Date()).setHours(0, 0, 0, 0),
       dateEnd: new Date(dateRange.to || new Date()).setHours(23, 59, 59, 999)
@@ -47,8 +50,8 @@ const BillTable = () => {
   const [billDetail, setBillDetail] = useState<UserBillType>();
 
   return (
-    <>
-      <TableContainer position={'relative'} minH={'100px'}>
+    <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
+      <TableContainer px={[3, 8]} position={'relative'} flex={'1 0 0'} h={0} overflowY={'auto'}>
         <Table>
           <Thead>
             <Tr>
@@ -78,27 +81,27 @@ const BillTable = () => {
       </TableContainer>
 
       {!isLoading && bills.length === 0 && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'}>
+        <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
             无使用记录~
           </Box>
         </Flex>
       )}
-      <Flex w={'100%'} mt={4} justifyContent={'flex-end'} flexWrap={'wrap'}>
+      <Flex w={'100%'} mt={4} px={[3, 8]} alignItems={'center'} justifyContent={'flex-end'}>
         <DateRangePicker
           defaultDate={dateRange}
           position="top"
           onChange={setDateRange}
           onSuccess={() => getData(1)}
         />
-        <Box ml={[0, 2]} mt={[3, 0]} w={['100%', 'auto']}>
+        <Box ml={3}>
           <Pagination />
         </Box>
       </Flex>
       <Loading loading={isLoading} fixed={false} />
       {!!billDetail && <BillDetail bill={billDetail} onClose={() => setBillDetail(undefined)} />}
-    </>
+    </Flex>
   );
 };
 

@@ -59,45 +59,46 @@ const PayRecordTable = () => {
 
   return (
     <>
-      <TableContainer>
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>订单号</Th>
-              <Th>时间</Th>
-              <Th>金额</Th>
-              <Th>状态</Th>
-              <Th></Th>
-            </Tr>
-          </Thead>
-          <Tbody fontSize={'sm'}>
-            {payOrders.map((item) => (
-              <Tr key={item._id}>
-                <Td>{item.orderId}</Td>
-                <Td>
-                  {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
-                </Td>
-                <Td>{formatPrice(item.price)}元</Td>
-                <Td>{item.status}</Td>
-                <Td>
-                  {item.status === 'NOTPAY' && (
-                    <Button onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
-                      更新
-                    </Button>
-                  )}
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
-      {!isInitialLoading && payOrders.length === 0 && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'100px'}>
+      {!isInitialLoading && payOrders.length === 0 ? (
+        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
             无支付记录~
           </Box>
         </Flex>
+      ) : (
+        <TableContainer py={[0, 5]} px={[3, 8]} h={'100%'} overflow={'overlay'}>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>订单号</Th>
+                <Th>时间</Th>
+                <Th>金额</Th>
+                <Th>状态</Th>
+                <Th></Th>
+              </Tr>
+            </Thead>
+            <Tbody fontSize={'sm'}>
+              {payOrders.map((item) => (
+                <Tr key={item._id}>
+                  <Td>{item.orderId}</Td>
+                  <Td>
+                    {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                  </Td>
+                  <Td>{formatPrice(item.price)}元</Td>
+                  <Td>{item.status}</Td>
+                  <Td>
+                    {item.status === 'NOTPAY' && (
+                      <Button onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
+                        更新
+                      </Button>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
       )}
       <Loading loading={isInitialLoading} fixed={false} />
     </>

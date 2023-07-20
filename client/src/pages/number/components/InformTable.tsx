@@ -1,13 +1,5 @@
 import React from 'react';
-import {
-  Box,
-  Flex,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon
-} from '@chakra-ui/react';
+import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/api/user';
 import { usePagination } from '@/hooks/usePagination';
 import { useLoading } from '@/hooks/useLoading';
@@ -16,8 +8,8 @@ import { formatTimeToChatTime } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 
 const BillTable = () => {
+  const theme = useTheme();
   const { Loading } = useLoading();
-
   const {
     data: informs,
     isLoading,
@@ -31,11 +23,17 @@ const BillTable = () => {
   });
 
   return (
-    <Box mt={2}>
-      <Accordion defaultIndex={[0, 1, 2]} allowMultiple>
+    <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
+      <Box px={[3, 8]} position={'relative'} flex={'1 0 0'} h={0} overflowY={'auto'}>
         {informs.map((item) => (
-          <AccordionItem
+          <Box
             key={item._id}
+            border={theme.borders.md}
+            py={2}
+            px={4}
+            borderRadius={'md'}
+            cursor={item.read ? 'default' : 'pointer'}
+            position={'relative'}
             onClick={async () => {
               if (!item.read) {
                 await readInform(item._id);
@@ -43,35 +41,31 @@ const BillTable = () => {
               }
             }}
           >
-            <AccordionButton>
-              <Flex alignItems={'center'} flex="1" textAlign="left">
-                <Box fontWeight={'bold'} position={'relative'}>
-                  {!item.read && (
-                    <Box
-                      w={'5px'}
-                      h={'5px'}
-                      borderRadius={'10px'}
-                      bg={'myRead.600'}
-                      position={'absolute'}
-                      top={1}
-                      left={'-5px'}
-                    ></Box>
-                  )}
-                  {item.title}
-                </Box>
-                <Box ml={2} color={'myGray.500'}>
-                  {formatTimeToChatTime(item.time)}
-                </Box>
-              </Flex>
-
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel pb={4}>{item.content}</AccordionPanel>
-          </AccordionItem>
+            <Flex alignItems={'center'} justifyContent={'space-between'}>
+              <Box>{item.title}</Box>
+              <Box ml={2} color={'myGray.500'}>
+                {formatTimeToChatTime(item.time)}
+              </Box>
+            </Flex>
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              {item.content}
+            </Box>
+            {!item.read && (
+              <Box
+                w={'5px'}
+                h={'5px'}
+                borderRadius={'10px'}
+                bg={'myRead.600'}
+                position={'absolute'}
+                bottom={'8px'}
+                right={'8px'}
+              ></Box>
+            )}
+          </Box>
         ))}
-      </Accordion>
+      </Box>
       {!isLoading && informs.length === 0 && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'100px'}>
+        <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'} pt={'-48px'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
             暂无通知~
@@ -79,12 +73,12 @@ const BillTable = () => {
         </Flex>
       )}
       {total > pageSize && (
-        <Flex w={'100%'} mt={4} justifyContent={'flex-end'}>
+        <Flex w={'100%'} mt={4} px={[3, 8]} justifyContent={'flex-end'}>
           <Pagination />
         </Flex>
       )}
       <Loading loading={isLoading && informs.length === 0} fixed={false} />
-    </Box>
+    </Flex>
   );
 };
 
