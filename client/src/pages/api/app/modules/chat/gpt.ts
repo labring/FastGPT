@@ -10,7 +10,7 @@ import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { parseStreamChunk, textAdaptGptResponse } from '@/utils/adapt';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
-import { SpecificInputEnum } from '@/constants/app';
+import { TaskResponseKeyEnum } from '@/constants/app';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
 import { authUser } from '@/service/utils/auth';
@@ -27,7 +27,7 @@ export type Props = {
   limitPrompt?: string;
   billId?: string;
 };
-export type Response = { [SpecificInputEnum.answerText]: string; totalTokens: number };
+export type Response = { [TaskResponseKeyEnum.answerText]: string; totalTokens: number };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { model, stream } = req.body as Props;

@@ -10,7 +10,7 @@ import { getChatHistory } from './getHistory';
 import { saveChat } from '@/pages/api/chat/saveChat';
 import { sseResponse } from '@/service/utils/tools';
 import { type ChatCompletionRequestMessage } from 'openai';
-import { SpecificInputEnum, AppModuleItemTypeEnum } from '@/constants/app';
+import { TaskResponseKeyEnum, AppModuleItemTypeEnum } from '@/constants/app';
 import { Types } from 'mongoose';
 import { moduleFetch } from '@/service/api/request';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
@@ -223,34 +223,23 @@ export async function dispatchModules({
 }) {
   const runningModules = loadModules(modules, variables);
 
-  let storeData: Record<string, any> = {}; // after module used
-  let responseData: Record<string, any> = {}; // response request and save to database
+  // let storeData: Record<string, any> = {}; // after module used
+  let chatResponse: Record<string, any> = {}; // response request and save to database
   let answerText = ''; // AI answer
 
   function pushStore({
-    isResponse = false,
     answer,
-    data = {}
+    responseData = {}
   }: {
-    isResponse?: boolean;
     answer?: string;
-    data?: Record<string, any>;
+    responseData?: Record<string, any>;
   }) {
-    if (isResponse) {
-      responseData = {
-        ...responseData,
-        ...data
-      };
-    }
-
-    if (answer) {
-      answerText += answer;
-    }
-
-    storeData = {
-      ...storeData,
-      ...data
+    chatResponse = {
+      ...chatResponse,
+      ...responseData
     };
+
+    answerText += answer;
   }
   function moduleInput(
     module: RunningModuleItemType,
@@ -282,19 +271,12 @@ export async function dispatchModules({
     module: RunningModuleItemType,
     result: Record<string, any> = {}
   ): Promise<any> {
+    pushStore(result);
     return Promise.all(
       module.outputs.map((outputItem) => {
         if (result[outputItem.key] === undefined) return;
         /* update output value */
         outputItem.value = result[outputItem.key];
-
-        pushStore({
-          isResponse: outputItem.response,
-          answer: outputItem.answer ? outputItem.value : '',
-          data: {
-            [outputItem.key]: outputItem.value
-          }
-        });
 
         /* update target */
         return Promise.all(
@@ -315,7 +297,7 @@ export async function dispatchModules({
     // direct answer
     if (module.type === AppModuleItemTypeEnum.answer) {
       const text =
-        module.inputs.find((item) => item.key === SpecificInputEnum.answerText)?.value || '';
+        module.inputs.find((item) => item.key === TaskResponseKeyEnum.answerText)?.value || '';
       pushStore({
         answer: text
       });
@@ -365,7 +347,7 @@ export async function dispatchModules({
   await Promise.all(initModules.map((module) => moduleInput(module, params)));
 
   return {
-    responseData,
+    responseData: chatResponse,
     answerText
   };
 }
@@ -402,7 +384,7 @@ function loadModules(
         }),
       outputs: module.outputs.map((item) => ({
         key: item.key,
-        answer: item.key === SpecificInputEnum.answerText,
+        answer: item.key === TaskResponseKeyEnum.answerText,
         response: item.response,
         value: undefined,
         targets: item.targets

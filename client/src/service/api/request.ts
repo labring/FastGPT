@@ -3,7 +3,7 @@ import { getErrText } from '@/utils/tools';
 import { parseStreamChunk } from '@/utils/adapt';
 import { NextApiResponse } from 'next';
 import { sseResponse } from '../utils/tools';
-import { SpecificInputEnum } from '@/constants/app';
+import { TaskResponseKeyEnum } from '@/constants/app';
 
 interface Props {
   res: NextApiResponse; // 用于流转发
@@ -45,7 +45,7 @@ export const moduleFetch = ({ url, data, res }: Props) =>
       const reader = response.body?.getReader();
 
       let chatResponse: Record<string, any> = {
-        [SpecificInputEnum.answerText]: ''
+        [TaskResponseKeyEnum.answerText]: ''
       };
 
       const read = async () => {
@@ -85,8 +85,8 @@ export const moduleFetch = ({ url, data, res }: Props) =>
               if (answer) {
                 chatResponse = {
                   ...chatResponse,
-                  [SpecificInputEnum.answerText]:
-                    chatResponse[SpecificInputEnum.answerText] + answer
+                  [TaskResponseKeyEnum.answerText]:
+                    chatResponse[TaskResponseKeyEnum.answerText] + answer
                 };
               }
 

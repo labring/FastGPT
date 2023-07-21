@@ -1,6 +1,7 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { ChatSchema as ChatType } from '@/types/mongoSchema';
 import { ChatRoleMap } from '@/constants/chat';
+import { ChatSourceEnum, ChatSourceMap } from '@/constants/chat';
 
 const ChatSchema = new Schema({
   userId: {
@@ -32,6 +33,14 @@ const ChatSchema = new Schema({
     type: Object,
     default: {}
   },
+  // source: {
+  //   type: String,
+  //   enum: Object.keys(ChatSourceMap),
+  //   required: true
+  // },
+  // shareId: {
+  //   type: String
+  // },
   content: {
     type: [
       {

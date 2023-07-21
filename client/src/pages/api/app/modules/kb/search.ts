@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import type { ChatItemType } from '@/types/chat';
-import { ChatRoleEnum, rawSearchKey } from '@/constants/chat';
+import { ChatRoleEnum, rawSearchKey, responseDataKey } from '@/constants/chat';
 import { modelToolMap } from '@/utils/plugin';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
@@ -29,7 +29,9 @@ type Props = {
   billId?: string;
 };
 type Response = {
-  [rawSearchKey]: QuoteItemType[];
+  [responseDataKey]: {
+    [rawSearchKey]: QuoteItemType[];
+  };
   isEmpty?: boolean;
   quotePrompt?: string;
 };
@@ -112,7 +114,6 @@ export async function kbSearch({
   // filter part quote by maxToken
   const sliceResult = modelToolMap
     .tokenSlice({
-      model: 'gpt-3.5-turbo',
       maxToken,
       messages: searchRes.map((item, i) => ({
         obj: ChatRoleEnum.System,
@@ -128,7 +129,9 @@ export async function kbSearch({
 
   return {
     isEmpty: rawSearch.length === 0 ? true : undefined,
-    rawSearch,
-    quotePrompt: sliceResult ? `知识库:\n${sliceResult}` : undefined
+    quotePrompt: sliceResult ? `知识库:\n${sliceResult}` : undefined,
+    responseData: {
+      rawSearch
+    }
   };
 }
