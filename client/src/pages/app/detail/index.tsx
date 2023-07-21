@@ -54,7 +54,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '概览', id: TabEnum.overview, icon: 'overviewLight' },
+      { label: '基础', id: TabEnum.overview, icon: 'overviewLight' },
       { label: '高级编排', id: TabEnum.settings, icon: 'settingLight' },
       { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
@@ -150,7 +150,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           <Tabs
             mx={'auto'}
             mt={2}
-            w={'300px'}
+            w={'100%'}
             list={tabList}
             size={'sm'}
             activeId={currentTab}

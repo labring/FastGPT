@@ -9,6 +9,14 @@ import {
 } from './inputTemplate';
 import { rawSearchKey } from '../chat';
 
+export const ChatModelSystemTip =
+  '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}';
+export const ChatModelLimitTip =
+  '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"';
+export const userGuideTip = '可以添加特殊的对话前后引导模块，更好的让用户进行对话';
+export const welcomeTextTip =
+  '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
+
 export const VariableModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/variable.png',
   name: '全局变量',
@@ -30,7 +38,7 @@ export const VariableModule: AppModuleTemplateItemType = {
 export const UserGuideModule: AppModuleTemplateItemType = {
   logo: '/imgs/module/userGuide.png',
   name: '用户引导',
-  intro: '可以添加特殊的对话前后引导模块，更好的让用户进行对话',
+  intro: userGuideTip,
   type: AppModuleItemTypeEnum.userGuide,
   flowType: FlowModuleTypeEnum.userGuide,
   inputs: [
@@ -77,7 +85,7 @@ export const HistoryModule: AppModuleTemplateItemType = {
       key: 'maxContext',
       type: FlowInputItemTypeEnum.numberInput,
       label: '最长记录数',
-      value: 4,
+      value: 6,
       min: 0,
       max: 50
     },
@@ -146,20 +154,16 @@ export const ChatModule: AppModuleTemplateItemType = {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
       label: '系统提示词',
-      description:
-        '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-      placeholder:
-        '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
+      description: ChatModelSystemTip,
+      placeholder: ChatModelSystemTip,
       value: ''
     },
     {
       key: 'limitPrompt',
       type: FlowInputItemTypeEnum.textarea,
       label: '限定词',
-      description:
-        '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-      placeholder:
-        '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
+      description: ChatModelLimitTip,
+      placeholder: ChatModelLimitTip,
       value: ''
     },
     // Input_Template_TFSwitch,
@@ -191,7 +195,7 @@ export const KBSearchModule: AppModuleTemplateItemType = {
   url: '/app/modules/kb/search',
   inputs: [
     {
-      key: 'kb_ids',
+      key: 'kbList',
       type: FlowInputItemTypeEnum.custom,
       label: '关联的知识库',
       value: [],
@@ -548,7 +552,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxContext',
             type: 'numberInput',
             label: '最长记录数',
-            value: 4,
+            value: 10,
             min: 0,
             max: 50,
             connected: false
@@ -627,7 +631,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxContext',
             type: 'numberInput',
             label: '最长记录数',
-            value: 4,
+            value: 10,
             min: 0,
             max: 50,
             connected: false
@@ -788,7 +792,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ...KBSearchModule,
         inputs: [
           {
-            key: 'kb_ids',
+            key: 'kbList',
             type: 'custom',
             label: '关联的知识库',
             value: [],
@@ -1100,7 +1104,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxContext',
             type: 'numberInput',
             label: '最长记录数',
-            value: 4,
+            value: 10,
             min: 0,
             max: 50,
             connected: false
@@ -1239,7 +1243,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxContext',
             type: 'numberInput',
             label: '最长记录数',
-            value: 4,
+            value: 10,
             min: 0,
             max: 50,
             connected: false
@@ -1400,7 +1404,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         ...KBSearchModule,
         inputs: [
           {
-            key: 'kb_ids',
+            key: 'kbList',
             type: 'custom',
             label: '关联的知识库',
             value: [],

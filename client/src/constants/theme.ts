@@ -163,6 +163,9 @@ const Textarea: ComponentStyleConfig = {
       border: '1px solid',
       borderRadius: 'base',
       borderColor: 'myGray.200',
+      _hover: {
+        borderColor: ''
+      },
       _focus: {
         borderColor: 'myBlue.600',
         boxShadow: '0px 0px 4px #A8DBFF',

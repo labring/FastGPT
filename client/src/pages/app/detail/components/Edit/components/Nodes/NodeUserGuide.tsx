@@ -7,12 +7,8 @@ import { FlowModuleItemType } from '@/types/flow';
 import Container from '../modules/Container';
 import { SystemInputEnum } from '@/constants/app';
 import MyIcon from '@/components/Icon';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyTooltip from '@/components/MyTooltip';
-
-const welcomePlaceholder =
-  '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
+import { welcomeTextTip } from '@/constants/flow/ModuleTemplate';
 
 const NodeUserGuide = ({
   data: { inputs, outputs, onChangeNode, ...props }
@@ -30,7 +26,7 @@ const NodeUserGuide = ({
             <Flex mb={1} alignItems={'center'}>
               <MyIcon name={'welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
               <Box>开场白</Box>
-              <MyTooltip label={welcomePlaceholder}>
+              <MyTooltip label={welcomeTextTip}>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Flex>
@@ -40,7 +36,7 @@ const NodeUserGuide = ({
               resize={'both'}
               defaultValue={welcomeText}
               bg={'myWhite.500'}
-              placeholder={welcomePlaceholder}
+              placeholder={welcomeTextTip}
               onChange={(e) => {
                 onChangeNode({
                   moduleId: props.moduleId,

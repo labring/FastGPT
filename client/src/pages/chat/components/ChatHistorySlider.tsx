@@ -79,7 +79,7 @@ const ChatHistorySlider = ({
             cursor={appId ? 'pointer' : 'default'}
             onClick={() =>
               appId &&
-              router.push({
+              router.replace({
                 pathname: '/app/detail',
                 query: { appId }
               })

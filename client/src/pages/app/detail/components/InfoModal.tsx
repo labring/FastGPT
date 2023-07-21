@@ -17,10 +17,11 @@ import {
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@/types/mongoSchema';
 import { useToast } from '@/hooks/useToast';
-import { delModelById, putAppById } from '@/api/app';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
+import { useUserStore } from '@/store/user';
+import { useRequest } from '@/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 
 const InfoModal = ({
@@ -30,9 +31,11 @@ const InfoModal = ({
 }: {
   defaultApp: AppSchema;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }) => {
   const { toast } = useToast();
+  const { updateAppDetail } = useUserStore();
+
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
@@ -47,31 +50,30 @@ const InfoModal = ({
   } = useForm({
     defaultValues: defaultApp
   });
-  const [btnLoading, setBtnLoading] = useState(false);
   const [refresh, setRefresh] = useState(false);
 
   // 提交保存模型修改
-  const saveSubmitSuccess = useCallback(
-    async (data: AppSchema) => {
-      setBtnLoading(true);
-      try {
-        await putAppById(data._id, {
-          name: data.name,
-          avatar: data.avatar,
-          intro: data.intro,
-          chat: data.chat,
-          share: data.share
-        });
-      } catch (err: any) {
-        toast({
-          title: err?.message || '更新失败',
-          status: 'error'
-        });
-      }
-      setBtnLoading(false);
+  const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
+    mutationFn: async (data: AppSchema) => {
+      await updateAppDetail(data._id, {
+        name: data.name,
+        avatar: data.avatar,
+        intro: data.intro,
+        chat: data.chat,
+        share: data.share
+      });
     },
-    [toast]
-  );
+    onSuccess() {
+      onSuccess && onSuccess();
+      onClose();
+      toast({
+        title: '更新成功',
+        status: 'success'
+      });
+    },
+    errorToast: '更新失败'
+  });
+
   // 提交保存表单失败
   const saveSubmitError = useCallback(() => {
     // deep search message
@@ -91,7 +93,7 @@ const InfoModal = ({
   }, [errors, toast]);
 
   const saveUpdateModel = useCallback(
-    () => handleSubmit(saveSubmitSuccess, saveSubmitError)(),
+    () => handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)(),
     [handleSubmit, saveSubmitError, saveSubmitSuccess]
   );
 
@@ -165,22 +167,7 @@ const InfoModal = ({
           <Button variant={'base'} mr={3} onClick={onClose}>
             取消
           </Button>
-          <Button
-            isLoading={btnLoading}
-            onClick={async () => {
-              try {
-                await saveUpdateModel();
-                onSuccess();
-                onClose();
-                toast({
-                  title: '更新成功',
-                  status: 'success'
-                });
-              } catch (error) {
-                console.log(error);
-              }
-            }}
-          >
+          <Button isLoading={btnLoading} onClick={saveUpdateModel}>
             保存
           </Button>
         </ModalFooter>
