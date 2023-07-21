@@ -1,4 +1,4 @@
-import { AppModuleItemTypeEnum, SystemInputEnum, SpecificInputEnum } from '../app';
+import { AppModuleItemTypeEnum, SystemInputEnum, TaskResponseKeyEnum } from '../app';
 import { FlowModuleTypeEnum, FlowInputItemTypeEnum, FlowOutputItemTypeEnum } from './index';
 import type { AppItemType, AppModuleTemplateItemType } from '@/types/app';
 import { chatModelList } from '@/store/static';
@@ -177,7 +177,7 @@ export const ChatModule: AppModuleTemplateItemType = {
   ],
   outputs: [
     {
-      key: SpecificInputEnum.answerText,
+      key: TaskResponseKeyEnum.answerText,
       label: '模型回复',
       description: '直接响应，无需配置',
       type: FlowOutputItemTypeEnum.hidden,
@@ -264,7 +264,7 @@ export const AnswerModule: AppModuleTemplateItemType = {
   inputs: [
     Input_Template_TFSwitch,
     {
-      key: SpecificInputEnum.answerText,
+      key: TaskResponseKeyEnum.answerText,
       value: '',
       type: FlowInputItemTypeEnum.textarea,
       label: '回复的内容'

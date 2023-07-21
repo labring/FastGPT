@@ -14,8 +14,9 @@ export enum SystemInputEnum {
   'history' = 'history',
   'userChatInput' = 'userChatInput'
 }
-export enum SpecificInputEnum {
-  'answerText' = 'answerText' //  answer module text key
+export enum TaskResponseKeyEnum {
+  'answerText' = 'answerText', //  answer module text key
+  'responseData' = 'responseData'
 }
 export enum VariableInputEnum {
   input = 'input',

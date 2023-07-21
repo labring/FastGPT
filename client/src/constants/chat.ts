@@ -24,6 +24,30 @@ export const ChatRoleMap = {
   }
 };
 
+export enum ChatSourceEnum {
+  'test' = 'test',
+  online = 'online',
+  share = 'share',
+  api = 'api'
+}
+
+export const ChatSourceMap = {
+  [ChatSourceEnum.test]: {
+    name: '调试测试'
+  },
+  [ChatSourceEnum.online]: {
+    name: '在线使用'
+  },
+  [ChatSourceEnum.share]: {
+    name: '链接分享'
+  },
+  [ChatSourceEnum.api]: {
+    name: 'API调用'
+  }
+};
+
+export const responseDataKey = 'responseData';
+
 export const rawSearchKey = 'rawSearch';
 export const quoteLenKey = 'quoteLen';
 
