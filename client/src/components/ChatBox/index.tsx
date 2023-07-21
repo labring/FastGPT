@@ -650,9 +650,9 @@ const ChatBox = (
           <Box
             py={'18px'}
             position={'relative'}
-            boxShadow={`0 0 10px rgba(0,0,0,0.1)`}
+            boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
             borderTop={['1px solid', 0]}
-            borderTopColor={'gray.200'}
+            borderTopColor={'myGray.200'}
             borderRadius={['none', 'md']}
             backgroundColor={'white'}
           >

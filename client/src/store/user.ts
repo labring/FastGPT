@@ -2,11 +2,11 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import { getMyModels, getModelById } from '@/api/app';
+import { getMyModels, getModelById, putAppById } from '@/api/app';
 import { formatPrice } from '@/utils/user';
 import { getTokenLogin } from '@/api/user';
 import { defaultApp } from '@/constants/model';
-import { AppListItemType } from '@/types/app';
+import { AppListItemType, AppUpdateParams } from '@/types/app';
 import type { KbItemType, KbListItemType } from '@/types/plugin';
 import { getKbList, getKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
@@ -22,6 +22,7 @@ type State = {
   loadMyModels: () => Promise<null>;
   appDetail: AppSchema;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
+  updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
   clearAppModules(): void;
   // kb
   myKbList: KbListItemType[];
@@ -78,6 +79,15 @@ export const useUserStore = create<State>()(
             state.appDetail = res;
           });
           return res;
+        },
+        async updateAppDetail(appId: string, data: AppUpdateParams) {
+          await putAppById(appId, data);
+          set((state) => {
+            state.appDetail = {
+              ...state.appDetail,
+              ...data
+            };
+          });
         },
         clearAppModules() {
           set((state) => {

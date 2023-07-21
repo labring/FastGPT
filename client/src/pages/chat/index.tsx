@@ -239,7 +239,7 @@ const Chat = () => {
                 top: item.top
               }))}
               onChangeChat={(chatId) => {
-                router.push({
+                router.replace({
                   query: {
                     chatId: chatId || '',
                     appId

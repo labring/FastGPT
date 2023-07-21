@@ -9,6 +9,7 @@ import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
 import { getModel } from '@/service/utils/data';
 import { authUser } from '@/service/utils/auth';
+import type { SelectedKbType } from '@/types/plugin';
 
 export type QuoteItemType = {
   kb_id: string;
@@ -18,7 +19,7 @@ export type QuoteItemType = {
   source?: string;
 };
 type Props = {
-  kb_ids: string[];
+  kbList: SelectedKbType;
   history: ChatItemType[];
   similarity: number;
   limit: number;
@@ -37,19 +38,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   try {
     await authUser({ req, authRoot: true });
 
-    const { kb_ids = [], userChatInput } = req.body as Props;
+    const { kbList = [], userChatInput } = req.body as Props;
 
     if (!userChatInput) {
       throw new Error('用户输入为空');
     }
 
-    if (!Array.isArray(kb_ids) || kb_ids.length === 0) {
+    if (!Array.isArray(kbList) || kbList.length === 0) {
       throw new Error('没有选择知识库');
     }
 
     const result = await kbSearch({
       ...req.body,
-      kb_ids,
+      kbList,
       userChatInput
     });
 
@@ -66,7 +67,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 });
 
 export async function kbSearch({
-  kb_ids = [],
+  kbList = [],
   history = [],
   similarity = 0.8,
   limit = 5,
@@ -74,12 +75,9 @@ export async function kbSearch({
   userChatInput,
   billId
 }: Props): Promise<Response> {
-  if (kb_ids.length === 0)
-    return {
-      isEmpty: true,
-      rawSearch: [],
-      quotePrompt: undefined
-    };
+  if (kbList.length === 0) {
+    return Promise.reject('没有选择知识库');
+  }
 
   // get vector
   const vectorModel = global.vectorModels[0].model;
@@ -93,8 +91,8 @@ export async function kbSearch({
     PgClient.query(
       `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
-    select kb_id,id,q,a,source from modelData where kb_id IN (${kb_ids
-      .map((item) => `'${item}'`)
+    select kb_id,id,q,a,source from modelData where kb_id IN (${kbList
+      .map((item) => `'${item.kbId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
         vectors[0]
       }]' limit ${limit};

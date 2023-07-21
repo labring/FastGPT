@@ -7,12 +7,13 @@ import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import { delModelById } from '@/api/app';
 import { useConfirm } from '@/hooks/useConfirm';
-import dynamic from 'next/dynamic';
 import { AppSchema } from '@/types/mongoSchema';
 
+import dynamic from 'next/dynamic';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import TotalUsage from './Charts/TotalUsage';
+import BasicEdit from './BasicEdit';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 
@@ -54,98 +55,100 @@ const OverView = ({ appId }: { appId: string }) => {
 
   return (
     <Flex h={'100%'} flexDirection={'column'} position={'relative'}>
-      <Box w={'100%'} pt={[0, 7]} px={[3, 5, 8]}>
-        <Grid gridTemplateColumns={['1fr', 'repeat(2,1fr)']} gridGap={[2, 4, 6]}>
-          <Box>
-            <Box mb={2} fontSize={['md', 'xl']}>
-              基本信息
-            </Box>
-            <Box
-              border={theme.borders.base}
-              borderRadius={'lg'}
-              px={5}
-              py={4}
-              bg={'myBlue.100'}
-              position={'relative'}
-            >
-              <Flex alignItems={'center'} py={2}>
-                <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
-                <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
-                  {appDetail.name}
-                </Box>
-                <IconButton
-                  className="delete"
-                  position={'absolute'}
-                  top={4}
-                  right={4}
-                  size={'sm'}
-                  icon={<MyIcon name={'delete'} w={'14px'} />}
-                  variant={'base'}
-                  borderRadius={'md'}
-                  aria-label={'delete'}
-                  _hover={{
-                    bg: 'myGray.100',
-                    color: 'red.600'
-                  }}
-                  onClick={openConfirm(handleDelModel)}
-                />
-              </Flex>
-              <Box className={'textEllipsis3'} py={3} wordBreak={'break-all'} color={'myGray.600'}>
-                {appDetail.intro || '快来给应用一个介绍~'}
-              </Box>
-              <Flex>
-                <Button
-                  size={['sm', 'md']}
-                  variant={'base'}
-                  leftIcon={<MyIcon name={'chatLight'} w={'16px'} />}
-                  onClick={() => router.push(`/chat?appId=${appId}`)}
-                >
-                  对话
-                </Button>
-                <Button
-                  mx={3}
-                  size={['sm', 'md']}
-                  variant={'base'}
-                  leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
-                  onClick={() => {
-                    router.replace({
-                      query: {
-                        appId,
-                        currentTab: 'share'
-                      }
-                    });
-                  }}
-                >
-                  分享
-                </Button>
-                <Button
-                  size={['sm', 'md']}
-                  variant={'base'}
-                  leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
-                  onClick={() => setSettingAppInfo(appDetail)}
-                >
-                  设置
-                </Button>
-              </Flex>
-            </Box>
+      <Grid
+        gridTemplateColumns={['1fr', 'repeat(2,1fr)']}
+        gridGap={[2, 4, 6]}
+        pt={[0, 7]}
+        px={[3, 5, 8]}
+      >
+        <Box>
+          <Box mb={2} fontSize={['md', 'xl']}>
+            基本信息
           </Box>
-          <Flex flexDirection={'column'}>
-            <Box mb={2} fontSize={['md', 'xl']}>
-              近 14 日消费
+          <Box
+            border={theme.borders.base}
+            borderRadius={'lg'}
+            px={5}
+            py={4}
+            bg={'myBlue.100'}
+            position={'relative'}
+          >
+            <Flex alignItems={'center'} py={2}>
+              <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
+              <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
+                {appDetail.name}
+              </Box>
+              <IconButton
+                className="delete"
+                position={'absolute'}
+                top={4}
+                right={4}
+                size={'sm'}
+                icon={<MyIcon name={'delete'} w={'14px'} />}
+                variant={'base'}
+                borderRadius={'md'}
+                aria-label={'delete'}
+                _hover={{
+                  bg: 'myGray.100',
+                  color: 'red.600'
+                }}
+                onClick={openConfirm(handleDelModel)}
+              />
+            </Flex>
+            <Box className={'textEllipsis3'} py={3} wordBreak={'break-all'} color={'myGray.600'}>
+              {appDetail.intro || '快来给应用一个介绍~'}
             </Box>
-            <TotalUsage appId={appId} />
-          </Flex>
-        </Grid>
+            <Flex>
+              <Button
+                size={['sm', 'md']}
+                variant={'base'}
+                leftIcon={<MyIcon name={'chatLight'} w={'16px'} />}
+                onClick={() => router.push(`/chat?appId=${appId}`)}
+              >
+                对话
+              </Button>
+              <Button
+                mx={3}
+                size={['sm', 'md']}
+                variant={'base'}
+                leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
+                onClick={() => {
+                  router.replace({
+                    query: {
+                      appId,
+                      currentTab: 'share'
+                    }
+                  });
+                }}
+              >
+                分享
+              </Button>
+              <Button
+                size={['sm', 'md']}
+                variant={'base'}
+                leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
+                onClick={() => setSettingAppInfo(appDetail)}
+              >
+                设置
+              </Button>
+            </Flex>
+          </Box>
+        </Box>
+        <Flex flexDirection={'column'}>
+          <Box mb={2} fontSize={['md', 'xl']}>
+            近 14 日消费
+          </Box>
+          <TotalUsage appId={appId} />
+        </Flex>
+      </Grid>
+
+      <Box flex={'1 0 0'} h={0} mt={4} borderTop={theme.borders.base} px={[3, 5, 8]}>
+        <BasicEdit appId={appId} />
       </Box>
 
       {settingAppInfo && (
-        <InfoModal
-          defaultApp={settingAppInfo}
-          onClose={() => setSettingAppInfo(undefined)}
-          onSuccess={refetch}
-        />
+        <InfoModal defaultApp={settingAppInfo} onClose={() => setSettingAppInfo(undefined)} />
       )}
-
       <ConfirmChild />
       <Loading fixed={false} />
     </Flex>

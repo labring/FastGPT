@@ -53,6 +53,49 @@ const chatTemplate = ({
       moduleId: '7z5g5h'
     },
     {
+      logo: '/imgs/module/history.png',
+      name: '聊天记录',
+      intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
+      type: 'initInput',
+      flowType: 'historyNode',
+      url: '/app/modules/init/history',
+      inputs: [
+        {
+          key: 'maxContext',
+          type: 'numberInput',
+          label: '最长记录数',
+          value: 4,
+          min: 0,
+          max: 50,
+          connected: false
+        },
+        {
+          key: 'history',
+          type: 'hidden',
+          label: '聊天记录',
+          connected: false
+        }
+      ],
+      outputs: [
+        {
+          key: 'history',
+          label: '聊天记录',
+          type: 'source',
+          targets: [
+            {
+              moduleId: '7pacf0',
+              key: 'history'
+            }
+          ]
+        }
+      ],
+      position: {
+        x: 452.5466249541586,
+        y: 1276.3930310334215
+      },
+      moduleId: 'xj0c9p'
+    },
+    {
       logo: '/imgs/module/AI.png',
       name: 'AI 对话',
       intro: 'AI 大模型对话',
@@ -176,49 +219,6 @@ const chatTemplate = ({
         y: 890.014595014464
       },
       moduleId: '7pacf0'
-    },
-    {
-      logo: '/imgs/module/history.png',
-      name: '聊天记录',
-      intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-      type: 'initInput',
-      flowType: 'historyNode',
-      url: '/app/modules/init/history',
-      inputs: [
-        {
-          key: 'maxContext',
-          type: 'numberInput',
-          label: '最长记录数',
-          value: 4,
-          min: 0,
-          max: 50,
-          connected: false
-        },
-        {
-          key: 'history',
-          type: 'hidden',
-          label: '聊天记录',
-          connected: false
-        }
-      ],
-      outputs: [
-        {
-          key: 'history',
-          label: '聊天记录',
-          type: 'source',
-          targets: [
-            {
-              moduleId: '7pacf0',
-              key: 'history'
-            }
-          ]
-        }
-      ],
-      position: {
-        x: 452.5466249541586,
-        y: 1276.3930310334215
-      },
-      moduleId: 'xj0c9p'
     }
   ];
 };
@@ -228,7 +228,7 @@ const kbTemplate = ({
   maxToken,
   systemPrompt,
   limitPrompt,
-  kbs = [],
+  kbList = [],
   searchSimilarity,
   searchLimit,
   searchEmptyText
@@ -238,7 +238,7 @@ const kbTemplate = ({
   maxToken: number;
   systemPrompt: string;
   limitPrompt: string;
-  kbs: string[];
+  kbList: { kbId: string }[];
   searchSimilarity: number;
   searchLimit: number;
   searchEmptyText: string;
@@ -446,10 +446,10 @@ const kbTemplate = ({
       url: '/app/modules/kb/search',
       inputs: [
         {
-          key: 'kb_ids',
+          key: 'kbList',
           type: 'custom',
           label: '关联的知识库',
-          value: kbs,
+          value: kbList,
           list: [],
           connected: false
         },
@@ -588,58 +588,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     const { limit = 1000 } = req.body as { limit: number };
+    let skip = 0;
+    const total = await App.countDocuments();
+    let promise = Promise.resolve();
+    console.log(total);
 
-    // 遍历所有的 app
-    const apps = await App.find(
-      {
-        chat: { $ne: null },
-        modules: { $exists: false }
-        // userId: '63f9a14228d2a688d8dc9e1b'
-      },
-      '_id chat'
-    ).limit(limit);
-
-    await Promise.all(
-      apps.map(async (app) => {
-        if (!app.chat) return app;
-        const modules = (() => {
-          if (app.chat.relatedKbs.length === 0) {
-            return chatTemplate({
-              model: app.chat.chatModel,
-              temperature: app.chat.temperature,
-              maxToken: app.chat.maxToken,
-              systemPrompt: app.chat.systemPrompt,
-              limitPrompt: app.chat.limitPrompt
-            });
-          } else {
-            return kbTemplate({
-              model: app.chat.chatModel,
-              temperature: app.chat.temperature,
-              maxToken: app.chat.maxToken,
-              systemPrompt: app.chat.systemPrompt,
-              limitPrompt: app.chat.limitPrompt,
-              kbs: app.chat.relatedKbs,
-              searchEmptyText: app.chat.searchEmptyText,
-              searchLimit: app.chat.searchLimit,
-              searchSimilarity: app.chat.searchSimilarity
-            });
-          }
-        })();
-
-        await App.findByIdAndUpdate(app.id, {
-          modules
+    for (let i = 0; i < total; i += limit) {
+      const skipVal = skip;
+      skip += limit;
+      promise = promise
+        .then(() => init(limit, skipVal))
+        .then(() => {
+          console.log(skipVal);
         });
-        return modules;
-      })
-    );
+    }
 
-    jsonRes(res, {
-      data: apps.length
-    });
+    await promise;
+
+    jsonRes(res, {});
   } catch (error) {
     jsonRes(res, {
       code: 500,
       error
     });
   }
+}
+
+async function init(limit: number, skip: number) {
+  // 遍历 app
+  const apps = await App.find(
+    {
+      chat: { $ne: null }
+      // modules: { $exists: false },
+      // userId: '63f9a14228d2a688d8dc9e1b'
+    },
+    '_id chat'
+  )
+    .limit(limit)
+    .skip(skip);
+
+  return Promise.all(
+    apps.map(async (app) => {
+      if (!app.chat) return app;
+      const modules = (() => {
+        if (app.chat.relatedKbs.length === 0) {
+          return chatTemplate({
+            model: app.chat.chatModel,
+            temperature: app.chat.temperature,
+            maxToken: app.chat.maxToken,
+            systemPrompt: app.chat.systemPrompt,
+            limitPrompt: app.chat.limitPrompt
+          });
+        } else {
+          return kbTemplate({
+            model: app.chat.chatModel,
+            temperature: app.chat.temperature,
+            maxToken: app.chat.maxToken,
+            systemPrompt: app.chat.systemPrompt,
+            limitPrompt: app.chat.limitPrompt,
+            kbList: app.chat.relatedKbs.map((id) => ({ kbId: id })),
+            searchEmptyText: app.chat.searchEmptyText,
+            searchLimit: app.chat.searchLimit,
+            searchSimilarity: app.chat.searchSimilarity
+          });
+        }
+      })();
+
+      await App.findByIdAndUpdate(app.id, {
+        modules
+      });
+      return modules;
+    })
+  );
 }

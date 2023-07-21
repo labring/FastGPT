@@ -192,7 +192,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
   }, [screenWidth]);
 
   return (
-    <Box ref={Dom} w={'100%'} flex={'1 0 0'} h={'100%'} position={'relative'}>
+    <Box ref={Dom} w={'100%'} flex={'1 0 0'} h={'100%'} minH={'150px'} position={'relative'}>
       <Loading fixed={false} />
     </Box>
   );

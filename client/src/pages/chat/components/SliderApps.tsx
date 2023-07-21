@@ -21,7 +21,7 @@ const SliderApps = ({ appId }: { appId: string }) => {
         px={3}
         borderRadius={'md'}
         _hover={{ bg: 'myGray.200' }}
-        onClick={() => router.push('/app/list')}
+        onClick={() => router.back()}
       >
         <IconButton
           mr={3}

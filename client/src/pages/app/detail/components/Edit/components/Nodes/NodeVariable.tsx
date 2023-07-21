@@ -45,7 +45,7 @@ const VariableTypeList = [
   { label: '文本', icon: 'settingLight', key: VariableInputEnum.input },
   { label: '下拉单选', icon: 'settingLight', key: VariableInputEnum.select }
 ];
-const defaultVariable: VariableItemType = {
+export const defaultVariable: VariableItemType = {
   id: nanoid(),
   key: 'key',
   label: 'label',
@@ -64,10 +64,6 @@ const NodeUserGuide = ({
     () =>
       (inputs.find((item) => item.key === SystemInputEnum.variables)
         ?.value as VariableItemType[]) || [],
-    [inputs]
-  );
-  const welcomeText = useMemo(
-    () => inputs.find((item) => item.key === SystemInputEnum.welcomeText)?.value,
     [inputs]
   );
 
