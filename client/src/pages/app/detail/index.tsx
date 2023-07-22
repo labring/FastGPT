@@ -64,16 +64,17 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   );
 
   useEffect(() => {
-    window.onbeforeunload =
+    const listen =
       process.env.NODE_ENV === 'production'
-        ? (e) => {
+        ? (e: any) => {
             e.preventDefault();
             e.returnValue = '内容已修改，确认离开页面吗？';
           }
-        : null;
+        : () => {};
+    window.addEventListener('beforeunload', listen);
 
     return () => {
-      window.onbeforeunload = null;
+      window.removeEventListener('beforeunload', listen);
       clearAppModules();
     };
   }, []);

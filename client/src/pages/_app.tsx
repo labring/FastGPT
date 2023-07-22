@@ -35,9 +35,9 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
   const [baiduTongji, setBaiduTongji] = useState<string>();
   const { initIsPc } = useGlobalStore();
 
-  if (isPc !== undefined) {
-    initIsPc(isPc);
-  }
+  // if (isPc !== undefined) {
+  //   initIsPc(isPc);
+  // }
 
   useEffect(() => {
     (async () => {
