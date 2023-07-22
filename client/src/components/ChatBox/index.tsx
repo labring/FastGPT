@@ -100,15 +100,13 @@ const Empty = () => {
 
 const ChatAvatar = ({
   src,
-  order,
   ml,
   mr
 }: {
-  src: string;
-  order: number;
+  src?: string;
   ml?: (string | number) | (string | number)[];
   mr?: (string | number) | (string | number)[];
-}) => <Avatar src={src} w={['24px', '34px']} h={['24px', '34px']} order={order} ml={ml} mr={mr} />;
+}) => <Avatar src={src} w={['24px', '34px']} h={['24px', '34px']} ml={ml} mr={mr} />;
 
 const ChatBox = (
   {
@@ -168,8 +166,6 @@ const ChatBox = (
 
     return true;
   }, [chatHistory.length, variableModules, variables]);
-
-  const isLargeWidth = ChatBoxRef?.current?.clientWidth && ChatBoxRef?.current?.clientWidth >= 900;
 
   const { register, reset, getValues, setValue, handleSubmit } = useForm<Record<string, any>>({
     defaultValues: variables
@@ -391,6 +387,9 @@ const ChatBox = (
     zIndex: 1,
     w: '100%'
   };
+  console.log(ChatBoxRef.current?.clientWidth);
+
+  const messageCardMaxW = ['calc(100% - 48px)', 'calc(100% - 65px)'];
 
   const showEmpty = useMemo(
     () =>
@@ -410,14 +409,23 @@ const ChatBox = (
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} overflow={'overlay'} px={[2, 5, 7]} pt={[0, 5]}>
+      <Box
+        ref={ChatBoxRef}
+        flex={'1 0 0'}
+        h={0}
+        w={'100%'}
+        overflow={'overlay'}
+        px={[2, 5]}
+        mt={[0, 5]}
+        pb={3}
+      >
         <Box maxW={['100%', '1000px', '1200px']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
 
           {!!welcomeText && (
             <Flex alignItems={'flex-start'} py={2}>
               {/* avatar */}
-              <ChatAvatar src={appAvatar} order={1} mr={['6px', 2]} />
+              <ChatAvatar src={appAvatar} mr={['6px', 2]} />
               {/* message */}
               <Card
                 order={2}
@@ -425,7 +433,7 @@ const ChatBox = (
                 px={4}
                 py={3}
                 bg={'white'}
-                maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}
+                maxW={messageCardMaxW}
                 borderRadius={'0 8px 8px 8px'}
               >
                 <Markdown
@@ -444,7 +452,7 @@ const ChatBox = (
           {!!variableModules?.length && (
             <Flex alignItems={'flex-start'} py={2}>
               {/* avatar */}
-              <ChatAvatar src={appAvatar} order={1} mr={['6px', 2]} />
+              <ChatAvatar src={appAvatar} mr={['6px', 2]} />
               {/* message */}
               <Card
                 order={2}
@@ -454,7 +462,7 @@ const ChatBox = (
                 py={3}
                 borderRadius={'0 8px 8px 8px'}
                 flex={'0 0 400px'}
-                maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}
+                maxW={messageCardMaxW}
               >
                 {variableModules.map((item) => (
                   <Box key={item.id} mb={4}>
@@ -503,36 +511,70 @@ const ChatBox = (
           )}
 
           {/* chat history */}
-          <Box id={'history'} pb={8}>
+          <Box id={'history'}>
             {chatHistory.map((item, index) => (
               <Flex
+                position={'relative'}
                 key={item._id}
                 alignItems={'flex-start'}
-                py={4}
+                justifyContent={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
+                py={5}
                 _hover={{
                   '& .control': {
                     display: item.status === 'finish' ? 'flex' : 'none'
                   }
                 }}
               >
-                {item.obj === 'Human' && <Box flex={1} />}
-                {/* avatar */}
-                <ChatAvatar
-                  src={item.obj === 'Human' ? userInfo?.avatar || HUMAN_ICON : appAvatar}
-                  {...(item.obj === 'AI'
-                    ? {
-                        order: 1,
-                        mr: ['6px', 2]
-                      }
-                    : {
-                        order: 3,
-                        ml: ['6px', 2]
-                      })}
-                />
-                {/* message */}
-                <Box order={2} pt={2} maxW={`calc(100% - ${isLargeWidth ? '75px' : '58px'})`}>
-                  {item.obj === 'AI' ? (
-                    <Box w={'100%'} position={'relative'}>
+                {item.obj === 'Human' && (
+                  <>
+                    <Box position={'relative'} maxW={messageCardMaxW}>
+                      <Card
+                        className="markdown"
+                        whiteSpace={'pre-wrap'}
+                        px={4}
+                        py={3}
+                        borderRadius={'8px 0 8px 8px'}
+                        bg={'myBlue.300'}
+                      >
+                        <Box as={'p'}>{item.value}</Box>
+                      </Card>
+                      <Flex {...controlContainerStyle} justifyContent={'flex-end'}>
+                        <MyTooltip label={'复制'}>
+                          <MyIcon
+                            {...controlIconStyle}
+                            name={'copy'}
+                            _hover={{ color: 'myBlue.700' }}
+                            onClick={() => onclickCopy(item.value)}
+                          />
+                        </MyTooltip>
+                        {onDelMessage && (
+                          <MyTooltip label={'删除'}>
+                            <MyIcon
+                              {...controlIconStyle}
+                              mr={0}
+                              name={'delete'}
+                              _hover={{ color: 'red.600' }}
+                              onClick={() => {
+                                setChatHistory((state) =>
+                                  state.filter((chat) => chat._id !== item._id)
+                                );
+                                onDelMessage({
+                                  contentId: item._id,
+                                  index
+                                });
+                              }}
+                            />
+                          </MyTooltip>
+                        )}
+                      </Flex>
+                    </Box>
+                    <ChatAvatar src={userInfo?.avatar} ml={['6px', 2]} />
+                  </>
+                )}
+                {item.obj === 'AI' && (
+                  <>
+                    <ChatAvatar src={appAvatar} mr={['6px', 2]} />
+                    <Box position={'relative'} maxW={messageCardMaxW}>
                       <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
                         <Markdown
                           source={item.value}
@@ -595,50 +637,8 @@ const ChatBox = (
                         )}
                       </Flex>
                     </Box>
-                  ) : (
-                    <Box position={'relative'}>
-                      <Card
-                        className="markdown"
-                        whiteSpace={'pre-wrap'}
-                        px={4}
-                        py={3}
-                        borderRadius={'8px 0 8px 8px'}
-                        bg={'myBlue.300'}
-                      >
-                        <Box as={'p'}>{item.value}</Box>
-                      </Card>
-                      <Flex {...controlContainerStyle} justifyContent={'flex-end'}>
-                        <MyTooltip label={'复制'}>
-                          <MyIcon
-                            {...controlIconStyle}
-                            name={'copy'}
-                            _hover={{ color: 'myBlue.700' }}
-                            onClick={() => onclickCopy(item.value)}
-                          />
-                        </MyTooltip>
-                        {onDelMessage && (
-                          <MyTooltip label={'删除'}>
-                            <MyIcon
-                              {...controlIconStyle}
-                              mr={0}
-                              name={'delete'}
-                              _hover={{ color: 'red.600' }}
-                              onClick={() => {
-                                setChatHistory((state) =>
-                                  state.filter((chat) => chat._id !== item._id)
-                                );
-                                onDelMessage({
-                                  contentId: item._id,
-                                  index
-                                });
-                              }}
-                            />
-                          </MyTooltip>
-                        )}
-                      </Flex>
-                    </Box>
-                  )}
-                </Box>
+                  </>
+                )}
               </Flex>
             ))}
           </Box>

@@ -212,3 +212,5 @@ export const KbParamsModal = ({
     </Modal>
   );
 };
+
+export default KBSelectModal;
