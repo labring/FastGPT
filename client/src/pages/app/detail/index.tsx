@@ -64,10 +64,13 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   );
 
   useEffect(() => {
-    window.onbeforeunload = (e) => {
-      e.preventDefault();
-      e.returnValue = '内容已修改，确认离开页面吗？';
-    };
+    window.onbeforeunload =
+      process.env.NODE_ENV === 'production'
+        ? (e) => {
+            e.preventDefault();
+            e.returnValue = '内容已修改，确认离开页面吗？';
+          }
+        : null;
 
     return () => {
       window.onbeforeunload = null;

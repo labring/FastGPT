@@ -49,7 +49,7 @@ const OverView = ({ appId }: { appId: string }) => {
   }, [appDetail, setIsLoading, toast, router]);
 
   // load app data
-  const { refetch } = useQuery([appId], () => loadAppDetail(appId, true), {
+  useQuery([appId], () => loadAppDetail(appId, true), {
     enabled: false
   });
 
@@ -142,7 +142,7 @@ const OverView = ({ appId }: { appId: string }) => {
         </Flex>
       </Grid>
 
-      <Box flex={'1 0 0'} h={0} mt={4} borderTop={theme.borders.base} px={[3, 5, 8]}>
+      <Box flex={'1 0 0'} h={0} mt={4} borderTop={theme.borders.base}>
         <BasicEdit appId={appId} />
       </Box>
 

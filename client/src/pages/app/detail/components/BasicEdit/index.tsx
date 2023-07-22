@@ -161,6 +161,7 @@ const Settings = ({ appId }: { appId: string }) => {
       borderRight={'1.5px solid'}
       borderColor={'myGray.200'}
       pt={4}
+      pl={4}
     >
       <Flex overflowY={'auto'} pr={4} justifyContent={'space-between'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
@@ -482,8 +483,8 @@ const ChatTest = ({ appId }: { appId: string }) => {
   }, [appDetail, resetChatBox]);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} pl={4} py={4}>
-      <Flex>
+    <Flex flexDirection={'column'} h={'100%'} py={4} overflowX={'auto'}>
+      <Flex px={[2, 5]}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'} flex={1}>
           调试预览
         </Box>
