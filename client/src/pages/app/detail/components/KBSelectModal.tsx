@@ -17,10 +17,11 @@ import {
 import Avatar from '@/components/Avatar';
 import { KbListItemType } from '@/types/plugin';
 import { useForm } from 'react-hook-form';
-import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { SelectedKbType } from '@/types/plugin';
+import { useGlobalStore } from '@/store/global';
 import MySlider from '@/components/Slider';
+import MyTooltip from '@/components/MyTooltip';
 
 export type KbParamsType = {
   searchSimilarity: number;
@@ -41,9 +42,10 @@ export const KBSelectModal = ({
 }) => {
   const theme = useTheme();
   const [selectedKbList, setSelectedKbList] = useState<SelectedKbType>(activeKbs);
+  const { isPc } = useGlobalStore();
 
   return (
-    <Modal isOpen={true} onClose={onClose}>
+    <Modal isOpen={true} isCentered={!isPc} onClose={onClose}>
       <ModalOverlay />
       <ModalContent
         display={'flex'}
@@ -141,8 +143,8 @@ export const KbParamsModal = ({
         <ModalHeader>搜索参数调整</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Flex pt={3} pb={5}>
-            <Box flex={'0 0 100px'}>
+          <Box display={['block', 'flex']} pt={3} pb={5}>
+            <Box flex={'0 0 100px'} mb={[8, 0]}>
               相似度
               <MyTooltip label={'高相似度推荐0.8及以上。'}>
                 <QuestionOutlineIcon ml={1} />
@@ -162,9 +164,11 @@ export const KbParamsModal = ({
                 setRefresh(!refresh);
               }}
             />
-          </Flex>
-          <Flex py={8}>
-            <Box flex={'0 0 100px'}>单次搜索数量</Box>
+          </Box>
+          <Box display={['block', 'flex']} py={8}>
+            <Box flex={'0 0 100px'} mb={[8, 0]}>
+              单次搜索数量
+            </Box>
             <Box flex={1}>
               <MySlider
                 markList={[
@@ -180,9 +184,11 @@ export const KbParamsModal = ({
                 }}
               />
             </Box>
-          </Flex>
-          <Flex pt={3}>
-            <Box flex={'0 0 100px'}>空搜索回复</Box>
+          </Box>
+          <Box display={['block', 'flex']} pt={3}>
+            <Box flex={'0 0 100px'} mb={[2, 0]}>
+              空搜索回复
+            </Box>
             <Box flex={1}>
               <Textarea
                 rows={5}
@@ -193,7 +199,7 @@ export const KbParamsModal = ({
                 {...register('searchEmptyText')}
               ></Textarea>
             </Box>
-          </Flex>
+          </Box>
         </ModalBody>
         <ModalFooter>
           <Button variant={'base'} mr={3} onClick={onClose}>
