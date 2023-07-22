@@ -54,7 +54,7 @@ const OverView = ({ appId }: { appId: string }) => {
   });
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} position={'relative'}>
+    <Box h={'100%'} display={['block', 'flex']} flexDirection={'column'} position={'relative'}>
       <Grid
         gridTemplateColumns={['1fr', 'repeat(2,1fr)']}
         gridGap={[2, 4, 6]}
@@ -142,7 +142,7 @@ const OverView = ({ appId }: { appId: string }) => {
         </Flex>
       </Grid>
 
-      <Box flex={'1 0 0'} h={0} mt={4} borderTop={theme.borders.base}>
+      <Box flex={'1 0 0'} h={['auto', 0]} mt={4} borderTop={theme.borders.base}>
         <BasicEdit appId={appId} />
       </Box>
 
@@ -151,7 +151,7 @@ const OverView = ({ appId }: { appId: string }) => {
       )}
       <ConfirmChild />
       <Loading fixed={false} />
-    </Flex>
+    </Box>
   );
 };
 

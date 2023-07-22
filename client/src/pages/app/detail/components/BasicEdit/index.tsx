@@ -21,6 +21,7 @@ import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
+import { useGlobalStore } from '@/store/global';
 import {
   appModules2Form,
   getDefaultAppForm,
@@ -59,6 +60,7 @@ const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const Settings = ({ appId }: { appId: string }) => {
   const theme = useTheme();
   const { appDetail, updateAppDetail, loadKbList, myKbList } = useUserStore();
+  const { isPc } = useGlobalStore();
 
   const [editVariable, setEditVariable] = useState<VariableItemType>();
 
@@ -153,9 +155,15 @@ const Settings = ({ appId }: { appId: string }) => {
       bg: 'myGray.200'
     }
   };
+  const LabelStyles: BoxProps = {
+    w: ['60px', '100px'],
+    flexShrink: 0,
+    fontSize: ['sm', 'md']
+  };
 
   return (
-    <Flex
+    <Box
+      display={['block', 'flex']}
       flexDirection={'column'}
       h={'100%'}
       borderRight={'1.5px solid'}
@@ -163,7 +171,7 @@ const Settings = ({ appId }: { appId: string }) => {
       pt={4}
       pl={4}
     >
-      <Flex overflowY={'auto'} pr={4} justifyContent={'space-between'}>
+      <Flex pr={4} justifyContent={'space-between'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
           应用配置
           <MyTooltip label={'仅包含基础功能，复杂 agent 功能请使用高级编排。'}>
@@ -175,7 +183,7 @@ const Settings = ({ appId }: { appId: string }) => {
           fontSize={'sm'}
           onClick={openConfirm(handleSubmit((data) => onSubmitSave(data)))}
         >
-          保存并预览
+          {isPc ? '保存并预览' : '保存'}
         </Button>
       </Flex>
       <Box flex={'1 0 0'} my={4} pr={4} overflowY={'auto'}>
@@ -243,9 +251,7 @@ const Settings = ({ appId }: { appId: string }) => {
           </Flex>
 
           <Flex alignItems={'center'} mt={5}>
-            <Box w={['60px', '100px']} flexShrink={0}>
-              对话模型
-            </Box>
+            <Box {...LabelStyles}>对话模型</Box>
             <MySelect
               width={['100%', '300px']}
               value={getValues('chatModel.model')}
@@ -262,9 +268,7 @@ const Settings = ({ appId }: { appId: string }) => {
             />
           </Flex>
           <Flex alignItems={'center'} my={10}>
-            <Box w={['60px', '100px']} flexShrink={0}>
-              温度
-            </Box>
+            <Box {...LabelStyles}>温度</Box>
             <Box flex={1} ml={'10px'}>
               <MySlider
                 markList={[
@@ -283,9 +287,7 @@ const Settings = ({ appId }: { appId: string }) => {
             </Box>
           </Flex>
           <Flex alignItems={'center'} mt={12} mb={10}>
-            <Box w={['60px', '100px']} flexShrink={0}>
-              回复上限
-            </Box>
+            <Box {...LabelStyles}>回复上限</Box>
             <Box flex={1} ml={'10px'}>
               <MySlider
                 markList={[
@@ -305,7 +307,7 @@ const Settings = ({ appId }: { appId: string }) => {
             </Box>
           </Flex>
           <Flex mt={10} alignItems={'flex-start'}>
-            <Box w={['60px', '100px']} flexShrink={0}>
+            <Box {...LabelStyles}>
               提示词
               <MyTooltip label={ChatModelSystemTip}>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
@@ -319,7 +321,7 @@ const Settings = ({ appId }: { appId: string }) => {
             ></Textarea>
           </Flex>
           <Flex mt={5} alignItems={'flex-start'}>
-            <Box w={['60px', '100px']} flexShrink={0}>
+            <Box {...LabelStyles}>
               限定词
               <MyTooltip label={ChatModelLimitTip}>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
@@ -434,7 +436,7 @@ const Settings = ({ appId }: { appId: string }) => {
           }}
         />
       )}
-    </Flex>
+    </Box>
   );
 };
 
@@ -517,10 +519,11 @@ const ChatTest = ({ appId }: { appId: string }) => {
 };
 
 const BasicEdit = ({ appId }: { appId: string }) => {
+  const { isPc } = useGlobalStore();
   return (
     <Grid gridTemplateColumns={['1fr', '550px 1fr']} h={'100%'}>
       <Settings appId={appId} />
-      <ChatTest appId={appId} />
+      {isPc && <ChatTest appId={appId} />}
     </Grid>
   );
 };

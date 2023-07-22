@@ -17,7 +17,9 @@ const { definePartsStyle: numInputPart, defineMultiStyleConfig: numInputMultiSty
 // modal 弹窗
 const ModalTheme = defineMultiStyleConfig({
   baseStyle: definePartsStyle({
-    dialog: {}
+    dialog: {
+      maxW: '90vw'
+    }
   })
 });
 
