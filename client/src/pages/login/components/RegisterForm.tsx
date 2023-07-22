@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
 import { postCreateApp } from '@/api/app';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
+import { feConfigs } from '@/store/static';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;

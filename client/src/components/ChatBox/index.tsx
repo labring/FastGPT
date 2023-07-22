@@ -11,7 +11,13 @@ import React, {
 import { throttle } from 'lodash';
 import { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
-import { useCopyData, voiceBroadcast, hasVoiceApi, getErrText } from '@/utils/tools';
+import {
+  useCopyData,
+  voiceBroadcast,
+  cancelBroadcast,
+  hasVoiceApi,
+  getErrText
+} from '@/utils/tools';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { feConfigs } from '@/store/static';
@@ -387,7 +393,6 @@ const ChatBox = (
     zIndex: 1,
     w: '100%'
   };
-  console.log(ChatBoxRef.current?.clientWidth);
 
   const messageCardMaxW = ['calc(100% - 48px)', 'calc(100% - 65px)'];
 
@@ -404,8 +409,21 @@ const ChatBox = (
   useEffect(() => {
     return () => {
       controller.current?.abort();
+      // close voice
+      cancelBroadcast();
     };
   }, [router.query]);
+
+  useEffect(() => {
+    const listen = () => {
+      cancelBroadcast();
+    };
+    window.addEventListener('beforeunload', listen);
+
+    return () => {
+      window.removeEventListener('beforeunload', listen);
+    };
+  }, []);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

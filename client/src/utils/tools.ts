@@ -114,6 +114,9 @@ export const voiceBroadcast = ({ text }: { text: string }) => {
     cancel: () => window.speechSynthesis?.cancel()
   };
 };
+export const cancelBroadcast = () => {
+  window.speechSynthesis?.cancel();
+};
 
 export const getErrText = (err: any, def = '') => {
   const msg: string = typeof err === 'string' ? err : err?.message || def || '';
