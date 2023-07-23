@@ -1,19 +1,8 @@
-import type { AppModuleItemType, VariableItemType } from '@/types/app';
+import type { AppModuleInputItemType, AppModuleItemType, VariableItemType } from '@/types/app';
 import { chatModelList, vectorModelList } from '@/store/static';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { FlowInputItemType } from '@/types/flow';
 import { SystemInputEnum } from '@/constants/app';
 import type { SelectedKbType } from '@/types/plugin';
-import {
-  VariableModule,
-  UserGuideModule,
-  ChatModule,
-  HistoryModule,
-  UserInputModule,
-  KBSearchModule,
-  AnswerModule
-} from '@/constants/flow/ModuleTemplate';
-import { rawSearchKey } from '@/constants/chat';
 
 export type EditFormType = {
   chatModel: {
@@ -74,7 +63,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
     key
   }: {
     formKey: string;
-    inputs: FlowInputItemType[];
+    inputs: AppModuleInputItemType[];
     key: string;
   }) => {
     const propertyPath = formKey.split('.');
@@ -158,111 +147,55 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
   return defaultAppForm;
 };
 
-const chatModelInput = (formData: EditFormType) => [
+const chatModelInput = (formData: EditFormType): AppModuleInputItemType[] => [
   {
     key: 'model',
-    type: 'custom',
-    label: '对话模型',
     value: formData.chatModel.model,
-    list: chatModelList.map((item) => ({
-      label: item.name,
-      value: item.model
-    })),
-    connected: false
+    connected: true
   },
   {
     key: 'temperature',
-    type: 'custom',
-    label: '温度',
     value: formData.chatModel.temperature,
-    min: 0,
-    max: 10,
-    step: 1,
-    markList: [
-      {
-        label: '严谨',
-        value: 0
-      },
-      {
-        label: '发散',
-        value: 10
-      }
-    ],
-    connected: false
+    connected: true
   },
   {
     key: 'maxToken',
-    type: 'custom',
-    label: '回复上限',
     value: formData.chatModel.maxToken,
-    min: 100,
-    max: 16000,
-    step: 50,
-    markList: [
-      {
-        label: '0',
-        value: 0
-      },
-      {
-        label: '16000',
-        value: 16000
-      }
-    ],
-    connected: false
+    connected: true
   },
   {
     key: 'systemPrompt',
-    type: 'textarea',
-    label: '系统提示词',
-    description:
-      '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-    placeholder:
-      '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
     value: formData.chatModel.systemPrompt,
-    connected: false
+    connected: true
   },
   {
     key: 'limitPrompt',
-    type: 'textarea',
-    label: '限定词',
-    description:
-      '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-    placeholder:
-      '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
     value: formData.chatModel.limitPrompt,
-    connected: false
+    connected: true
   },
   {
-    key: 'quotePrompt',
-    type: 'target',
-    label: '引用内容',
+    key: 'quoteQA',
     connected: formData.kb.list.length > 0
   },
   {
     key: 'history',
-    type: 'target',
-    label: '聊天记录',
     connected: true
   },
   {
     key: 'userChatInput',
-    type: 'target',
-    label: '用户问题',
     connected: true
   }
 ];
-const welcomeTemplate = (formData: EditFormType) =>
+const welcomeTemplate = (formData: EditFormType): AppModuleItemType[] =>
   formData.guide?.welcome?.text
     ? [
         {
-          ...UserGuideModule,
+          flowType: FlowModuleTypeEnum.userGuide,
           inputs: [
             {
               key: 'welcomeText',
-              type: 'input',
-              label: '开场白',
               value: formData.guide.welcome.text,
-              connected: false
+              connected: true
             }
           ],
           outputs: [],
@@ -270,22 +203,20 @@ const welcomeTemplate = (formData: EditFormType) =>
             x: 447.98520778293346,
             y: 721.4016845336229
           },
-          moduleId: 'v7lq0x'
+          moduleId: 'userGuide'
         }
       ]
     : [];
-const variableTemplate = (formData: EditFormType) =>
+const variableTemplate = (formData: EditFormType): AppModuleItemType[] =>
   formData.variables.length > 0
     ? [
         {
-          ...VariableModule,
+          flowType: FlowModuleTypeEnum.variable,
           inputs: [
             {
               key: 'variables',
-              type: 'systemInput',
-              label: '变量输入',
               value: formData.variables,
-              connected: false
+              connected: true
             }
           ],
           outputs: [],
@@ -293,26 +224,22 @@ const variableTemplate = (formData: EditFormType) =>
             x: 444.0369195277651,
             y: 1008.5185781784537
           },
-          moduleId: '7blchb'
+          moduleId: 'variable'
         }
       ]
     : [];
-const simpleChatTemplate = (formData: EditFormType) => [
+const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
   {
-    ...UserInputModule,
+    flowType: FlowModuleTypeEnum.questionInput,
     inputs: [
       {
         key: 'userChatInput',
-        type: 'systemInput',
-        label: '用户问题',
-        connected: false
+        connected: true
       }
     ],
     outputs: [
       {
         key: 'userChatInput',
-        label: '用户问题',
-        type: 'source',
         targets: [
           {
             moduleId: 'chatModule',
@@ -325,32 +252,24 @@ const simpleChatTemplate = (formData: EditFormType) => [
       x: 464.32198615344566,
       y: 1602.2698463081606
     },
-    moduleId: '7z5g5h'
+    moduleId: 'userChatInput'
   },
   {
-    ...HistoryModule,
+    flowType: FlowModuleTypeEnum.historyNode,
     inputs: [
       {
         key: 'maxContext',
-        type: 'numberInput',
-        label: '最长记录数',
         value: 10,
-        min: 0,
-        max: 50,
-        connected: false
+        connected: true
       },
       {
         key: 'history',
-        type: 'hidden',
-        label: '聊天记录',
-        connected: false
+        connected: true
       }
     ],
     outputs: [
       {
         key: 'history',
-        label: '聊天记录',
-        type: 'source',
         targets: [
           {
             moduleId: 'chatModule',
@@ -363,17 +282,14 @@ const simpleChatTemplate = (formData: EditFormType) => [
       x: 452.5466249541586,
       y: 1276.3930310334215
     },
-    moduleId: 'xj0c9p'
+    moduleId: 'history'
   },
   {
-    ...ChatModule,
+    flowType: FlowModuleTypeEnum.chatNode,
     inputs: chatModelInput(formData),
     outputs: [
       {
         key: 'answerText',
-        label: '模型回复',
-        description: '直接响应，无需配置',
-        type: 'hidden',
         targets: []
       }
     ],
@@ -384,29 +300,25 @@ const simpleChatTemplate = (formData: EditFormType) => [
     moduleId: 'chatModule'
   }
 ];
-const kbTemplate = (formData: EditFormType) => [
+const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
   {
-    ...UserInputModule,
+    flowType: FlowModuleTypeEnum.questionInput,
     inputs: [
       {
         key: 'userChatInput',
-        type: 'systemInput',
-        label: '用户问题',
-        connected: false
+        connected: true
       }
     ],
     outputs: [
       {
         key: 'userChatInput',
-        label: '用户问题',
-        type: 'source',
         targets: [
           {
             moduleId: 'chatModule',
             key: 'userChatInput'
           },
           {
-            moduleId: 'q9v14m',
+            moduleId: 'kbSearch',
             key: 'userChatInput'
           }
         ]
@@ -416,32 +328,24 @@ const kbTemplate = (formData: EditFormType) => [
       x: 464.32198615344566,
       y: 1602.2698463081606
     },
-    moduleId: '7z5g5h'
+    moduleId: 'userChatInput'
   },
   {
-    ...HistoryModule,
+    flowType: FlowModuleTypeEnum.historyNode,
     inputs: [
       {
         key: 'maxContext',
-        type: 'numberInput',
-        label: '最长记录数',
         value: 10,
-        min: 0,
-        max: 50,
-        connected: false
+        connected: true
       },
       {
         key: 'history',
-        type: 'hidden',
-        label: '聊天记录',
-        connected: false
+        connected: true
       }
     ],
     outputs: [
       {
         key: 'history',
-        label: '聊天记录',
-        type: 'source',
         targets: [
           {
             moduleId: 'chatModule',
@@ -454,94 +358,67 @@ const kbTemplate = (formData: EditFormType) => [
       x: 452.5466249541586,
       y: 1276.3930310334215
     },
-    moduleId: 'xj0c9p'
+    moduleId: 'history'
   },
   {
-    ...KBSearchModule,
+    flowType: FlowModuleTypeEnum.kbSearchNode,
     inputs: [
       {
         key: 'kbList',
-        type: 'custom',
-        label: '关联的知识库',
         value: formData.kb.list,
-        list: [],
         connected: true
       },
       {
         key: 'similarity',
-        type: 'custom',
-        label: '相似度',
         value: formData.kb.searchSimilarity,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        markList: [
-          {
-            label: '0',
-            value: 0
-          },
-          {
-            label: '1',
-            value: 1
-          }
-        ],
-        connected: false
+        connected: true
       },
       {
         key: 'limit',
-        type: 'custom',
-        label: '单次搜索上限',
-        description: '最多取 n 条记录作为本次问题引用',
         value: formData.kb.searchLimit,
-        min: 1,
-        max: 20,
-        step: 1,
-        markList: [
-          {
-            label: '1',
-            value: 1
-          },
-          {
-            label: '20',
-            value: 20
-          }
-        ],
-        connected: false
+        connected: true
       },
       {
         key: 'switch',
-        type: 'target',
-        label: '触发器',
         connected: false
       },
       {
         key: 'userChatInput',
-        type: 'target',
-        label: '用户问题',
         connected: true
       }
     ],
     outputs: [
       {
         key: 'isEmpty',
-        label: '搜索结果为空',
-        type: 'source',
+        targets: formData.kb.searchEmptyText
+          ? [
+              {
+                moduleId: 'emptyText',
+                key: 'switch'
+              }
+            ]
+          : [
+              {
+                moduleId: 'chatModule',
+                key: 'switch'
+              }
+            ]
+      },
+      {
+        key: 'unEmpty',
         targets: [
           {
-            moduleId: 'emptyText',
+            moduleId: 'chatModule',
             key: 'switch'
           }
         ]
       },
       {
-        key: 'quotePrompt',
-        label: '引用内容',
-        description: '搜索结果为空时不返回',
-        type: 'source',
+        key: 'quoteQA',
         targets: [
           {
             moduleId: 'chatModule',
-            key: 'quotePrompt'
+            key: 'quoteQA'
           }
         ]
       }
@@ -550,30 +427,26 @@ const kbTemplate = (formData: EditFormType) => [
       x: 956.0838440206068,
       y: 887.462827870246
     },
-    moduleId: 'q9v14m'
+    moduleId: 'kbSearch'
   },
   ...(formData.kb.searchEmptyText
     ? [
         {
-          ...AnswerModule,
+          flowType: FlowModuleTypeEnum.answerNode,
           inputs: [
             {
               key: 'switch',
-              type: 'target',
-              label: '触发器',
               connected: true
             },
             {
               key: 'answerText',
               value: formData.kb.searchEmptyText,
-              type: 'input',
-              label: '回复的内容',
-              connected: false
+              connected: true
             }
           ],
           outputs: [],
           position: {
-            x: 1570.7651822907549,
+            x: 1553.5815811529146,
             y: 637.8753731306779
           },
           moduleId: 'emptyText'
@@ -581,14 +454,11 @@ const kbTemplate = (formData: EditFormType) => [
       ]
     : []),
   {
-    ...ChatModule,
+    flowType: FlowModuleTypeEnum.chatNode,
     inputs: chatModelInput(formData),
     outputs: [
       {
         key: 'answerText',
-        label: '模型回复',
-        description: '直接响应，无需配置',
-        type: 'hidden',
         targets: []
       }
     ],
