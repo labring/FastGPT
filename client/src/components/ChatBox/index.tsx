@@ -9,7 +9,12 @@ import React, {
   useEffect
 } from 'react';
 import { throttle } from 'lodash';
-import { ChatItemType, ChatSiteItemType, ExportChatType } from '@/types/chat';
+import {
+  ChatHistoryItemResType,
+  ChatItemType,
+  ChatSiteItemType,
+  ExportChatType
+} from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
 import {
   useCopyData,
@@ -35,6 +40,7 @@ import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { QuoteItemType } from '@/types/chat';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 
 import dynamic from 'next/dynamic';
 const QuoteModal = dynamic(() => import('./QuoteModal'));
@@ -131,9 +137,10 @@ const ChatBox = (
     variableModules?: VariableItemType[];
     welcomeText?: string;
     onUpdateVariable?: (e: Record<string, any>) => void;
-    onStartChat: (
-      e: StartChatFnProps
-    ) => Promise<{ responseText?: string; rawSearch?: QuoteItemType[] }>;
+    onStartChat: (e: StartChatFnProps) => Promise<{
+      responseText: string;
+      [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
+    }>;
     onDelMessage?: (e: { contentId?: string; index: number }) => void;
   },
   ref: ForwardedRef<ComponentRef>
@@ -294,7 +301,7 @@ const ChatBox = (
 
         const messages = adaptChatItem_openAI({ messages: newChatList, reserveId: true });
 
-        const { rawSearch } = await onStartChat({
+        const { responseData } = await onStartChat({
           messages,
           controller: abortSignal,
           generatingMessage,
@@ -308,7 +315,7 @@ const ChatBox = (
             return {
               ...item,
               status: 'finish',
-              rawSearch
+              responseData
             };
           })
         );

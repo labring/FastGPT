@@ -56,7 +56,8 @@ export type ChatHistoryItemResType = {
   question?: string;
   temperature?: number;
   maxToken?: number;
-  finishMessages?: ChatItemType[];
+  quoteList?: QuoteItemType[];
+  completeMessages?: ChatItemType[];
 
   // kb search
   similarity?: number;

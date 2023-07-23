@@ -46,7 +46,7 @@ export function gpt_chatItemTokenSlice({
   maxToken
 }: {
   messages: ChatItemType[];
-  model?: ModelType;
+  model?: string;
   maxToken: number;
 }) {
   let result: ChatItemType[] = [];

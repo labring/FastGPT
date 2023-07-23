@@ -51,5 +51,11 @@ export const ChatSourceMap = {
   }
 };
 
+export enum ChatModuleEnum {
+  'AIChat' = 'AI Chat',
+  'KBSearch' = 'KB Search',
+  'CQ' = 'Classify Question'
+}
+
 export const HUMAN_ICON = `https://fastgpt.run/icon/human.png`;
 export const LOGO_ICON = `https://fastgpt.run/icon/logo.png`;

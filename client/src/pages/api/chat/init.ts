@@ -8,6 +8,7 @@ import { authApp } from '@/service/utils/auth';
 import mongoose from 'mongoose';
 import type { ChatSchema } from '@/types/mongoSchema';
 import { getSpecialModule } from '@/components/ChatBox';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -67,7 +68,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 $project: {
                   _id: '$content._id',
                   obj: '$content.obj',
-                  value: '$content.value'
+                  value: '$content.value',
+                  [TaskResponseKeyEnum.responseData]: `$content.${TaskResponseKeyEnum.responseData}`
                 }
               }
             ])
