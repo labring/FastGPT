@@ -17,14 +17,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userId,
         ...(appId && { appId })
       },
-      '_id title top customTitle appId updateTime'
+      'chatId title top customTitle appId updateTime'
     )
       .sort({ top: -1, updateTime: -1 })
       .limit(20);
 
     jsonRes<ChatHistoryItemType[]>(res, {
       data: data.map((item) => ({
-        _id: item._id,
+        chatId: item.chatId,
         updateTime: item.updateTime,
         appId: item.appId,
         customTitle: item.customTitle,

@@ -441,7 +441,7 @@ const Settings = ({ appId }: { appId: string }) => {
 };
 
 const ChatTest = ({ appId }: { appId: string }) => {
-  const { appDetail } = useUserStore();
+  const { appDetail, userInfo } = useUserStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const [modules, setModules] = useState<AppModuleItemType[]>([]);
 
@@ -509,6 +509,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
         <ChatBox
           ref={ChatBoxRef}
           appAvatar={appDetail.avatar}
+          userAvatar={userInfo?.avatar}
           {...getSpecialModule(modules)}
           onStartChat={startChat}
           onDelMessage={() => {}}

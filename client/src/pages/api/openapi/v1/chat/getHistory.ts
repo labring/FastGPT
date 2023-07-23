@@ -43,7 +43,7 @@ export async function getChatHistory({
   }
 
   const history = await Chat.aggregate([
-    { $match: { _id: new Types.ObjectId(chatId), userId: new Types.ObjectId(userId) } },
+    { $match: { chatId, userId: new Types.ObjectId(userId) } },
     {
       $project: {
         content: {
@@ -54,10 +54,8 @@ export async function getChatHistory({
     { $unwind: '$content' },
     {
       $project: {
-        _id: '$content._id',
         obj: '$content.obj',
-        value: '$content.value',
-        quote: '$content.quote'
+        value: '$content.value'
       }
     }
   ]);

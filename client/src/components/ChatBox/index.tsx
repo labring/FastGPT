@@ -19,7 +19,6 @@ import {
   getErrText
 } from '@/utils/tools';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/react';
-import { useUserStore } from '@/store/user';
 import { feConfigs } from '@/store/static';
 import { Types } from 'mongoose';
 import { EventNameEnum } from '../Markdown/constant';
@@ -118,6 +117,7 @@ const ChatBox = (
     showEmptyIntro = false,
     chatId,
     appAvatar,
+    userAvatar,
     variableModules,
     welcomeText,
     onUpdateVariable,
@@ -126,7 +126,8 @@ const ChatBox = (
   }: {
     showEmptyIntro?: boolean;
     chatId?: string;
-    appAvatar: string;
+    appAvatar?: string;
+    userAvatar?: string;
     variableModules?: VariableItemType[];
     welcomeText?: string;
     onUpdateVariable?: (e: Record<string, any>) => void;
@@ -142,7 +143,6 @@ const ChatBox = (
   const router = useRouter();
   const { copyData } = useCopyData();
   const { toast } = useToast();
-  const { userInfo } = useUserStore();
   const { isPc } = useGlobalStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const controller = useRef(new AbortController());
@@ -585,7 +585,7 @@ const ChatBox = (
                         )}
                       </Flex>
                     </Box>
-                    <ChatAvatar src={userInfo?.avatar} ml={['6px', 2]} />
+                    <ChatAvatar src={userAvatar} ml={['6px', 2]} />
                   </>
                 )}
                 {item.obj === 'AI' && (

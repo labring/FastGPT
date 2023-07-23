@@ -28,7 +28,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         shareId: item.shareId,
         name: item.name,
         total: item.total,
-        maxContext: item.maxContext,
         lastTime: item.lastTime
       }))
     });

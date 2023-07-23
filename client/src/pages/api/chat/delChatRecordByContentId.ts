@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    const chatRecord = await Chat.findById(chatId);
+    const chatRecord = await Chat.findOne({ chatId });
 
     if (!chatRecord) {
       throw new Error('找不到对话');

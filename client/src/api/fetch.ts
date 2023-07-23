@@ -78,6 +78,7 @@ export const streamFetch = ({
               onMessage(answer);
               responseText += answer;
             } else if (item.event === sseResponseEventEnum.appStreamResponse) {
+              console.log(data);
             } else if (item.event === sseResponseEventEnum.error) {
               errMsg = getErrText(data, '流响应错误');
             }

@@ -20,7 +20,6 @@ export interface InitChatResponse {
 
 export interface InitShareChatResponse {
   userAvatar: string;
-  maxContext: number;
   app: {
     variableModules?: VariableItemType[];
     welcomeText?: string;

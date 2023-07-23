@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser, authApp, authShareChat } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { withNextCors } from '@/service/utils/tools';
-import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
+import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
 import {
   dispatchHistory,
   dispatchChatInput,
@@ -15,12 +15,11 @@ import {
 import type { CreateChatCompletionRequest } from 'openai';
 import { gptMessage2ChatType } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
-import { saveChat } from '@/pages/api/chat/saveChat';
+import { saveChat } from '@/service/utils/chat/saveChat';
 import { sseResponse } from '@/service/utils/tools';
 import { type ChatCompletionRequestMessage } from 'openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
-import { Types } from 'mongoose';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
@@ -101,14 +100,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
     // user question
     const prompt = prompts.pop();
-
     if (!prompt) {
       throw new Error('Question is empty');
-    }
-
-    const newChatId = chatId === '' ? new Types.ObjectId() : undefined;
-    if (stream && newChatId) {
-      res.setHeader('newChatId', String(newChatId));
     }
 
     /* start process */
@@ -122,29 +115,39 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       },
       stream
     });
-    console.log(responseData, '===', answerText);
+    // console.log(responseData, '===', answerText);
 
-    if (!answerText) {
-      throw new Error('回复内容为空，可能模块编排出现问题');
-    }
+    // if (!answerText) {
+    //   throw new Error('回复内容为空，可能模块编排出现问题');
+    // }
 
     // save chat
     if (typeof chatId === 'string') {
       await saveChat({
         chatId,
-        newChatId,
         appId,
+        userId,
         variables,
-        prompts: [
+        isOwner,
+        shareId,
+        source: (() => {
+          if (shareId) {
+            return ChatSourceEnum.share;
+          }
+          if (authType === 'apikey') {
+            return ChatSourceEnum.api;
+          }
+          return ChatSourceEnum.online;
+        })(),
+        content: [
           prompt,
           {
             _id: messages[messages.length - 1]._id,
             obj: ChatRoleEnum.AI,
             value: answerText,
-            ...responseData
+            responseData
           }
-        ],
-        userId
+        ]
       });
     }
 

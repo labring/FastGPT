@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { initShareChatInfo } from '@/api/chat';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
@@ -10,14 +10,14 @@ import { useShareChatStore, defaultHistory } from '@/store/shareChat';
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';
 import { getErrText } from '@/utils/tools';
-import dynamic from 'next/dynamic';
+import { ChatSiteItemType } from '@/types/chat';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
-
-const ChatHistorySlider = dynamic(() => import('./components/ChatHistorySlider'), {
-  ssr: false
-});
+import ChatHistorySlider from './components/ChatHistorySlider';
 
 const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
   const router = useRouter();
@@ -36,44 +36,46 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
     delOneShareHistoryByChatId,
     delManyShareChatHistoryByShareId
   } = useShareChatStore();
+  const history = useMemo(
+    () => shareChatHistory.filter((item) => item.shareId === shareId),
+    [shareChatHistory, shareId]
+  );
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const prompts = messages.slice(-shareChatData.maxContext - 2);
+      const prompts = messages.slice(-2);
+      const completionChatId = chatId ? chatId : nanoid();
+
       const { responseText } = await streamFetch({
         data: {
-          history,
           messages: prompts,
           variables,
-          shareId
+          shareId,
+          chatId: completionChatId
         },
         onMessage: generatingMessage,
         abortSignal: controller
       });
 
-      const result = {
-        question: messages[messages.length - 2].content || '',
-        answer: responseText
-      };
-
-      prompts[prompts.length - 1].content = responseText;
+      const result: ChatSiteItemType[] = gptMessage2ChatType(prompts).map((item) => ({
+        ...item,
+        status: 'finish'
+      }));
+      result[1].value = responseText;
 
       /* save chat */
-      const { newChatId } = saveChatResponse({
-        chatId,
-        prompts: gptMessage2ChatType(prompts).map((item) => ({
-          ...item,
-          status: 'finish'
-        })),
+      saveChatResponse({
+        chatId: completionChatId,
+        prompts: result,
         variables,
         shareId
       });
 
-      if (newChatId && !controller.signal.aborted) {
+      if (completionChatId !== chatId && !controller.signal.aborted) {
         router.replace({
           query: {
             shareId,
-            chatId: newChatId
+            chatId: completionChatId
           }
         });
       }
@@ -81,14 +83,17 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
       window.top?.postMessage(
         {
           type: 'shareChatFinish',
-          data: result
+          data: {
+            question: result[0]?.value,
+            answer: result[1]?.value
+          }
         },
         '*'
       );
 
       return { responseText };
     },
-    [chatId, router, saveChatResponse, shareChatData.maxContext, shareId]
+    [chatId, router, saveChatResponse, shareId]
   );
 
   const loadAppInfo = useCallback(
@@ -96,7 +101,7 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
       console.log(shareId, chatId);
 
       if (!shareId) return null;
-      const history = shareChatHistory.find((item) => item._id === chatId) || defaultHistory;
+      const history = shareChatHistory.find((item) => item.chatId === chatId) || defaultHistory;
 
       ChatBoxRef.current?.resetHistory(history.chats);
       ChatBoxRef.current?.resetVariables(history.variables);
@@ -157,11 +162,13 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
             appName={shareChatData.app.name}
             appAvatar={shareChatData.app.avatar}
             activeChatId={chatId}
-            history={shareChatHistory.map((item) => ({
-              id: item._id,
+            history={history.map((item) => ({
+              id: item.chatId,
               title: item.title
             }))}
             onChangeChat={(chatId) => {
+              console.log(chatId);
+
               router.push({
                 query: {
                   chatId: chatId || '',
@@ -196,6 +203,7 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
             <ChatBox
               ref={ChatBoxRef}
               appAvatar={shareChatData.app.avatar}
+              userAvatar={shareChatData.userAvatar}
               variableModules={shareChatData.app.variableModules}
               welcomeText={shareChatData.app.welcomeText}
               onUpdateVariable={(e) => {

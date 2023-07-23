@@ -4,6 +4,7 @@ import type { DataType } from './data';
 import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
+import { ChatSourceEnum } from '@/constants/chat';
 
 export interface UserModelSchema {
   _id: string;
@@ -78,6 +79,7 @@ export interface TrainingDataSchema {
 
 export interface ChatSchema {
   _id: string;
+  chatId: string;
   userId: string;
   appId: string;
   updateTime: Date;
@@ -85,6 +87,8 @@ export interface ChatSchema {
   customTitle: string;
   top: boolean;
   variables: Record<string, any>;
+  source: `${ChatSourceEnum}`;
+  shareId?: string;
   content: ChatItemType[];
 }
 
@@ -138,7 +142,6 @@ export interface ShareChatSchema {
   appId: string;
   name: string;
   total: number;
-  maxContext: number;
   lastTime: Date;
 }
 

@@ -65,12 +65,12 @@ export const useChatStore = create<State>()(
         },
         async delHistory(chatId) {
           set((state) => {
-            state.history = state.history.filter((item) => item._id !== chatId);
+            state.history = state.history.filter((item) => item.chatId !== chatId);
           });
           await delChatHistoryById(chatId);
         },
         updateHistory(history) {
-          const index = get().history.findIndex((item) => item._id === history._id);
+          const index = get().history.findIndex((item) => item.chatId === history.chatId);
           set((state) => {
             const newHistory = (() => {
               if (index > -1) {
