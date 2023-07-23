@@ -13,7 +13,7 @@ import {
   dispatchClassifyQuestion
 } from '@/service/moduleDispatch';
 import type { CreateChatCompletionRequest } from 'openai';
-import { gptMessage2ChatType } from '@/utils/adapt';
+import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { sseResponse } from '@/service/utils/tools';
@@ -154,6 +154,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     console.log(`finish time: ${(Date.now() - startTime) / 1000}s`);
 
     if (stream) {
+      sseResponse({
+        res,
+        event: sseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: null,
+          finish_reason: 'stop'
+        })
+      });
       sseResponse({
         res,
         event: sseResponseEventEnum.answer,
