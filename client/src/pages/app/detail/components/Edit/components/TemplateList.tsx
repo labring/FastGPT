@@ -1,18 +1,18 @@
-import React, { useRef } from 'react';
-import { Box, Flex, useOutsideClick } from '@chakra-ui/react';
+import React from 'react';
+import { Box, Flex } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import type { FlowModuleItemType } from '@/types/app';
+import { FlowModuleTemplateType } from '@/types/flow';
 import type { XYPosition } from 'reactflow';
 import { useGlobalStore } from '@/store/global';
 import Avatar from '@/components/Avatar';
 
-const ModuleStoreList = ({
+const ModuleTemplateList = ({
   isOpen,
   onAddNode,
   onClose
 }: {
   isOpen: boolean;
-  onAddNode: (e: { template: FlowModuleItemType; position: XYPosition }) => void;
+  onAddNode: (e: { template: FlowModuleTemplateType; position: XYPosition }) => void;
   onClose: () => void;
 }) => {
   const { isPc } = useGlobalStore();
@@ -92,4 +92,4 @@ const ModuleStoreList = ({
   );
 };
 
-export default ModuleStoreList;
+export default ModuleTemplateList;

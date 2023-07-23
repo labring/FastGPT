@@ -1,12 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ChatModuleEnum } from '@/constants/chat';
-import { ChatHistoryItemResType, QuoteItemType } from '@/types/chat';
+import { ChatHistoryItemResType, ChatItemType, QuoteItemType } from '@/types/chat';
 import { Flex, BoxProps } from '@chakra-ui/react';
 import { updateHistoryQuote } from '@/api/chat';
 import dynamic from 'next/dynamic';
 import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
+const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 
 const ResponseDetailModal = ({
   chatId,
@@ -18,6 +19,7 @@ const ResponseDetailModal = ({
   responseData?: ChatHistoryItemResType[];
 }) => {
   const [quoteModalData, setQuoteModalData] = useState<QuoteItemType[]>();
+  const [contextModalData, setContextModalData] = useState<ChatItemType[]>();
 
   const {
     tokens = 0,
@@ -60,8 +62,13 @@ const ResponseDetailModal = ({
         </MyTooltip>
       )}
       {completeMessages.length > 0 && (
-        <MyTooltip label={'提示词和限定词分别算 1 条上下文'} forceShow>
-          <Tag colorSchema="green" cursor={'default'} {...TagStyles}>
+        <MyTooltip label={'点击查看完整对话记录'} forceShow>
+          <Tag
+            colorSchema="green"
+            cursor={'pointer'}
+            {...TagStyles}
+            onClick={() => setContextModalData(completeMessages)}
+          >
             {completeMessages.length}条上下文
           </Tag>
         </MyTooltip>
@@ -71,23 +78,15 @@ const ResponseDetailModal = ({
           {tokens}tokens
         </Tag>
       )}
-      {/* <Button
-        size={'sm'}
-        variant={'base'}
-        borderRadius={'md'}
-        fontSize={'xs'}
-        px={2}
-        lineHeight={1}
-        py={1}
-      >
-        完整参数
-      </Button> */}
       {!!quoteModalData && (
         <QuoteModal
           rawSearch={quoteModalData}
           onUpdateQuote={updateQuote}
           onClose={() => setQuoteModalData(undefined)}
         />
+      )}
+      {!!contextModalData && (
+        <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
       )}
     </Flex>
   );

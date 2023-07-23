@@ -154,7 +154,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     [setEdges, setNodes]
   );
   const onAddNode = useCallback(
-    ({ template, position }: { template: FlowModuleItemType; position: XYPosition }) => {
+    ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
       if (!reactFlowWrapper.current) return;
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
