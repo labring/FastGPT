@@ -454,7 +454,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
       const history = messages.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
-      const { responseText, rawSearch } = await streamFetch({
+      const { responseText } = await streamFetch({
         url: '/api/chat/chatTest',
         data: {
           history,
@@ -468,7 +468,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
         abortSignal: controller
       });
 
-      return { responseText, rawSearch };
+      return { responseText };
     },
     [modules, appId, appDetail.name]
   );
