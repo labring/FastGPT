@@ -36,7 +36,7 @@ const NodeCard = ({
           {name}
         </Box>
         {description && (
-          <MyTooltip label={description}>
+          <MyTooltip label={description} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
         )}

@@ -201,7 +201,7 @@ const Info = (
       <Flex mt={8} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           分类标签
-          <MyTooltip label={'用空格隔开多个标签，便于搜索'}>
+          <MyTooltip label={'用空格隔开多个标签，便于搜索'} forceShow>
             <QuestionOutlineIcon ml={1} />
           </MyTooltip>
         </Box>

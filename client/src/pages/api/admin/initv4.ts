@@ -3,7 +3,68 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, App } from '@/service/mongo';
+import { EditFormType } from '@/utils/app';
+import { AppModuleInputItemType } from '@/types/app';
+import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 
+const chatModelInput = ({
+  model,
+  temperature,
+  maxToken,
+  systemPrompt,
+  limitPrompt,
+  kbList
+}: {
+  model: string;
+  temperature: number;
+  maxToken: number;
+  systemPrompt: string;
+  limitPrompt: string;
+  kbList: { kbId: string }[];
+}): AppModuleInputItemType[] => [
+  {
+    key: 'model',
+    value: model,
+    connected: true
+  },
+  {
+    key: 'temperature',
+    value: temperature,
+    connected: true
+  },
+  {
+    key: 'maxToken',
+    value: maxToken,
+    connected: true
+  },
+  {
+    key: 'systemPrompt',
+    value: systemPrompt,
+    connected: true
+  },
+  {
+    key: 'limitPrompt',
+    value: limitPrompt,
+    connected: true
+  },
+  {
+    key: 'switch',
+    connected: kbList.length > 0
+  },
+  {
+    key: 'quoteQA',
+    connected: kbList.length > 0
+  },
+  {
+    key: 'history',
+    connected: true
+  },
+  {
+    key: 'userChatInput',
+    connected: true
+  }
+];
 const chatTemplate = ({
   model,
   temperature,
@@ -19,71 +80,49 @@ const chatTemplate = ({
 }) => {
   return [
     {
-      logo: '/imgs/module/userChatInput.png',
-      name: '用户问题',
-      intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-      type: 'initInput',
-      flowType: 'questionInput',
-      url: '/app/modules/init/userChatInput',
+      flowType: FlowModuleTypeEnum.questionInput,
       inputs: [
         {
           key: 'userChatInput',
-          type: 'systemInput',
-          label: '用户问题',
-          connected: false
+          connected: true
         }
       ],
       outputs: [
         {
           key: 'userChatInput',
-          label: '用户问题',
-          type: 'source',
           targets: [
             {
-              moduleId: '7pacf0',
+              moduleId: 'chatModule',
               key: 'userChatInput'
             }
           ]
         }
       ],
       position: {
-        x: 477.9074315528994,
-        y: 1604.2106242223683
+        x: 464.32198615344566,
+        y: 1602.2698463081606
       },
-      moduleId: '7z5g5h'
+      moduleId: 'userChatInput'
     },
     {
-      logo: '/imgs/module/history.png',
-      name: '聊天记录',
-      intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-      type: 'initInput',
-      flowType: 'historyNode',
-      url: '/app/modules/init/history',
+      flowType: FlowModuleTypeEnum.historyNode,
       inputs: [
         {
           key: 'maxContext',
-          type: 'numberInput',
-          label: '最长记录数',
-          value: 4,
-          min: 0,
-          max: 50,
-          connected: false
+          value: 10,
+          connected: true
         },
         {
           key: 'history',
-          type: 'hidden',
-          label: '聊天记录',
-          connected: false
+          connected: true
         }
       ],
       outputs: [
         {
           key: 'history',
-          label: '聊天记录',
-          type: 'source',
           targets: [
             {
-              moduleId: '7pacf0',
+              moduleId: 'chatModule',
               key: 'history'
             }
           ]
@@ -93,124 +132,21 @@ const chatTemplate = ({
         x: 452.5466249541586,
         y: 1276.3930310334215
       },
-      moduleId: 'xj0c9p'
+      moduleId: 'history'
     },
     {
-      logo: '/imgs/module/AI.png',
-      name: 'AI 对话',
-      intro: 'AI 大模型对话',
-      flowType: 'chatNode',
-      type: 'http',
-      url: '/app/modules/chat/gpt',
-      inputs: [
-        {
-          key: 'model',
-          type: 'custom',
-          label: '对话模型',
-          value: model,
-          list: [
-            {
-              label: 'FastAI-4k',
-              value: 'gpt-3.5-turbo'
-            },
-            {
-              label: 'FastAI-16k',
-              value: 'gpt-3.5-turbo-16k'
-            },
-            {
-              label: 'FastAI-Plus',
-              value: 'gpt-4'
-            }
-          ],
-          connected: false
-        },
-        {
-          key: 'temperature',
-          type: 'slider',
-          label: '温度',
-          value: temperature,
-          min: 0,
-          max: 10,
-          step: 1,
-          markList: [
-            {
-              label: '严谨',
-              value: 0
-            },
-            {
-              label: '发散',
-              value: 10
-            }
-          ],
-          connected: false
-        },
-        {
-          key: 'maxToken',
-          type: 'custom',
-          label: '回复上限',
-          value: maxToken,
-          min: 100,
-          max: 4000,
-          step: 50,
-          markList: [
-            {
-              label: '100',
-              value: 100
-            },
-            {
-              label: '4000',
-              value: 4000
-            }
-          ],
-          connected: false
-        },
-        {
-          key: 'systemPrompt',
-          type: 'textarea',
-          label: '系统提示词',
-          description:
-            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-          placeholder:
-            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-          value: systemPrompt,
-          connected: false
-        },
-        {
-          key: 'limitPrompt',
-          type: 'textarea',
-          label: '限定词',
-          description:
-            '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-          placeholder:
-            '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-          value: limitPrompt,
-          connected: false
-        },
-        {
-          key: 'quotePrompt',
-          type: 'target',
-          label: '引用内容',
-          connected: false
-        },
-        {
-          key: 'history',
-          type: 'target',
-          label: '聊天记录',
-          connected: true
-        },
-        {
-          key: 'userChatInput',
-          type: 'target',
-          label: '用户问题',
-          connected: true
-        }
-      ],
+      flowType: FlowModuleTypeEnum.chatNode,
+      inputs: chatModelInput({
+        model,
+        temperature,
+        maxToken,
+        systemPrompt,
+        limitPrompt,
+        kbList: []
+      }),
       outputs: [
         {
-          key: 'answerText',
-          label: '模型回复',
-          description: '直接响应，无需配置',
-          type: 'hidden',
+          key: TaskResponseKeyEnum.answerText,
           targets: []
         }
       ],
@@ -218,7 +154,7 @@ const chatTemplate = ({
         x: 981.9682828103937,
         y: 890.014595014464
       },
-      moduleId: '7pacf0'
+      moduleId: 'chatModule'
     }
   ];
 };
@@ -245,340 +181,172 @@ const kbTemplate = ({
 }) => {
   return [
     {
-      logo: '/imgs/module/userChatInput.png',
-      name: '用户问题',
-      intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-      type: 'initInput',
-      flowType: 'questionInput',
-      url: '/app/modules/init/userChatInput',
+      flowType: FlowModuleTypeEnum.questionInput,
       inputs: [
         {
           key: 'userChatInput',
-          type: 'systemInput',
-          label: '用户问题',
-          connected: false
+          connected: true
         }
       ],
       outputs: [
         {
           key: 'userChatInput',
-          label: '用户问题',
-          type: 'source',
           targets: [
             {
-              moduleId: 'q9v14m',
+              moduleId: 'chatModule',
               key: 'userChatInput'
             },
             {
-              moduleId: 'qbf8td',
+              moduleId: 'kbSearch',
               key: 'userChatInput'
             }
           ]
         }
       ],
       position: {
-        x: -196.84632684738483,
-        y: 797.3401378431948
+        x: 464.32198615344566,
+        y: 1602.2698463081606
       },
-      moduleId: 'v0nc1s'
+      moduleId: 'userChatInput'
     },
     {
-      logo: '/imgs/module/history.png',
-      name: '聊天记录',
-      intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-      type: 'initInput',
-      flowType: 'historyNode',
-      url: '/app/modules/init/history',
+      flowType: FlowModuleTypeEnum.historyNode,
       inputs: [
         {
           key: 'maxContext',
-          type: 'numberInput',
-          label: '最长记录数',
-          value: 4,
-          min: 0,
-          max: 50,
-          connected: false
+          value: 10,
+          connected: true
         },
         {
           key: 'history',
-          type: 'hidden',
-          label: '聊天记录',
-          connected: false
+          connected: true
         }
       ],
       outputs: [
         {
           key: 'history',
-          label: '聊天记录',
-          type: 'source',
           targets: [
             {
-              moduleId: 'qbf8td',
+              moduleId: 'chatModule',
               key: 'history'
             }
           ]
         }
       ],
       position: {
-        x: 211.58250540918442,
-        y: 611.8700401034965
+        x: 452.5466249541586,
+        y: 1276.3930310334215
       },
-      moduleId: 'k9y3jm'
+      moduleId: 'history'
     },
     {
-      logo: '/imgs/module/AI.png',
-      name: 'AI 对话',
-      intro: 'AI 大模型对话',
-      flowType: 'chatNode',
-      type: 'http',
-      url: '/app/modules/chat/gpt',
-      inputs: [
-        {
-          key: 'model',
-          type: 'custom',
-          label: '对话模型',
-          value: model,
-          list: [],
-          connected: false
-        },
-        {
-          key: 'temperature',
-          type: 'slider',
-          label: '温度',
-          value: temperature,
-          min: 0,
-          max: 10,
-          step: 1,
-          markList: [
-            {
-              label: '严谨',
-              value: 0
-            },
-            {
-              label: '发散',
-              value: 10
-            }
-          ],
-          connected: false
-        },
-        {
-          key: 'maxToken',
-          type: 'custom',
-          label: '回复上限',
-          value: maxToken,
-          min: 100,
-          max: 4000,
-          step: 50,
-          markList: [
-            {
-              label: '100',
-              value: 100
-            },
-            {
-              label: '4000',
-              value: 4000
-            }
-          ],
-          connected: false
-        },
-        {
-          key: 'systemPrompt',
-          type: 'textarea',
-          label: '系统提示词',
-          description:
-            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-          placeholder:
-            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-          value: systemPrompt,
-          connected: false
-        },
-        {
-          key: 'limitPrompt',
-          type: 'textarea',
-          label: '限定词',
-          description:
-            '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-          placeholder:
-            '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-          value: limitPrompt,
-          connected: false
-        },
-        {
-          key: 'quotePrompt',
-          type: 'target',
-          label: '引用内容',
-          connected: true
-        },
-        {
-          key: 'history',
-          type: 'target',
-          label: '聊天记录',
-          connected: true
-        },
-        {
-          key: 'userChatInput',
-          type: 'target',
-          label: '用户问题',
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'answerText',
-          label: '模型回复',
-          description: '直接响应，无需配置',
-          type: 'hidden',
-          targets: []
-        }
-      ],
-      position: {
-        x: 745.484449528062,
-        y: 259.9361900288137
-      },
-      moduleId: 'qbf8td'
-    },
-    {
-      logo: '/imgs/module/db.png',
-      name: '知识库搜索',
-      intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
-      flowType: 'kbSearchNode',
-      type: 'http',
-      url: '/app/modules/kb/search',
+      flowType: FlowModuleTypeEnum.kbSearchNode,
       inputs: [
         {
           key: 'kbList',
-          type: 'custom',
-          label: '关联的知识库',
           value: kbList,
-          list: [],
-          connected: false
+          connected: true
         },
         {
           key: 'similarity',
-          type: 'slider',
-          label: '相似度',
           value: searchSimilarity,
-          min: 0,
-          max: 1,
-          step: 0.01,
-          markList: [
-            {
-              label: '100',
-              value: 100
-            },
-            {
-              label: '1',
-              value: 1
-            }
-          ],
-          connected: false
+          connected: true
         },
         {
           key: 'limit',
-          type: 'slider',
-          label: '单次搜索上限',
-          description: '最多取 n 条记录作为本次问题引用',
           value: searchLimit,
-          min: 1,
-          max: 20,
-          step: 1,
-          markList: [
-            {
-              label: '1',
-              value: 1
-            },
-            {
-              label: '20',
-              value: 20
-            }
-          ],
-          connected: false
+          connected: true
         },
         {
           key: 'switch',
-          type: 'target',
-          label: '触发器',
           connected: false
         },
         {
           key: 'userChatInput',
-          type: 'target',
-          label: '用户问题',
           connected: true
         }
       ],
       outputs: [
         {
-          key: 'rawSearch',
-          label: '源搜索数据',
-          type: 'hidden',
-          response: true,
-          targets: []
-        },
-        {
           key: 'isEmpty',
-          label: '搜索结果为空',
-          type: 'source',
           targets: searchEmptyText
             ? [
                 {
-                  moduleId: 'w8av9y',
+                  moduleId: 'emptyText',
                   key: 'switch'
                 }
               ]
-            : []
+            : [
+                {
+                  moduleId: 'chatModule',
+                  key: 'switch'
+                }
+              ]
         },
         {
-          key: 'quotePrompt',
-          label: '引用内容',
-          description: '搜索结果为空时不返回',
-          type: 'source',
+          key: 'unEmpty',
           targets: [
             {
-              moduleId: 'qbf8td',
-              key: 'quotePrompt'
+              moduleId: 'chatModule',
+              key: 'switch'
+            }
+          ]
+        },
+        {
+          key: 'quoteQA',
+          targets: [
+            {
+              moduleId: 'chatModule',
+              key: 'quoteQA'
             }
           ]
         }
       ],
       position: {
-        x: 101.2612930583856,
-        y: -31.342317423453437
+        x: 956.0838440206068,
+        y: 887.462827870246
       },
-      moduleId: 'q9v14m'
+      moduleId: 'kbSearch'
     },
     ...(searchEmptyText
       ? [
           {
-            logo: '/imgs/module/reply.png',
-            name: '指定回复',
-            intro: '该模块可以直接回复一段指定的内容。常用于引导、提示。',
-            type: 'answer',
-            flowType: 'answerNode',
+            flowType: FlowModuleTypeEnum.answerNode,
             inputs: [
               {
                 key: 'switch',
-                type: 'target',
-                label: '触发器',
                 connected: true
               },
               {
-                key: 'answerText',
+                key: SpecialInputKeyEnum.answerText,
                 value: searchEmptyText,
-                type: 'textarea',
-                label: '回复的内容',
-                connected: false
+                connected: true
               }
             ],
             outputs: [],
             position: {
-              x: 673.6108151684664,
-              y: -84.13355134221933
+              x: 1553.5815811529146,
+              y: 637.8753731306779
             },
-            moduleId: 'w8av9y'
+            moduleId: 'emptyText'
           }
         ]
-      : [])
+      : []),
+    {
+      flowType: FlowModuleTypeEnum.chatNode,
+      inputs: chatModelInput({ model, temperature, maxToken, systemPrompt, limitPrompt, kbList }),
+      outputs: [
+        {
+          key: TaskResponseKeyEnum.answerText,
+          targets: []
+        }
+      ],
+      position: {
+        x: 1551.71405495818,
+        y: 977.4911578918461
+      },
+      moduleId: 'chatModule'
+    }
   ];
 };
 

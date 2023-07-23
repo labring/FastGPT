@@ -135,6 +135,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
           fileExtension={fileExtension}
           onSelectFile={onSelectFile}
           isLoading={selecting}
+          tipText={'如果导入文件乱码，请将 CSV 转成 utf-8 编码格式'}
           py={emptyFiles ? '100px' : 5}
         />
 

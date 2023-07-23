@@ -20,7 +20,7 @@ const Label = ({
       </Box>
     )}
     {description && (
-      <MyTooltip label={description}>
+      <MyTooltip label={description} forceShow>
         <QuestionOutlineIcon display={['none', 'inline']} fontSize={'12px'} mb={1} ml={1} />
       </MyTooltip>
     )}

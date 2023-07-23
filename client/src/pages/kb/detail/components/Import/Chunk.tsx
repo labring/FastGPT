@@ -260,6 +260,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
                 段落长度
                 <MyTooltip
                   label={'基于 Gpt3.5 的 Token 计算方法进行分段。前后段落会有 30% 的内容重叠。'}
+                  forceShow
                 >
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
@@ -287,7 +288,10 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
             <Flex py={5} alignItems={'center'}>
               <Box>
                 预估价格
-                <MyTooltip label={`索引生成计费为: ${formatPrice(unitPrice, 1000)}/1k tokens`}>
+                <MyTooltip
+                  label={`索引生成计费为: ${formatPrice(unitPrice, 1000)}/1k tokens`}
+                  forceShow
+                >
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Box>

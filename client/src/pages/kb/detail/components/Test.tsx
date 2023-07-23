@@ -161,6 +161,7 @@ const Test = ({ kbId }: { kbId: string }) => {
                 label={
                   '根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。'
                 }
+                forceShow
               >
                 <QuestionOutlineIcon
                   ml={2}

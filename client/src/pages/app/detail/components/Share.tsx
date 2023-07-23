@@ -88,7 +88,10 @@ const Share = ({ appId }: { appId: string }) => {
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'}>
           免登录聊天窗口
-          <MyTooltip label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的tokens。请保管好链接和密码。">
+          <MyTooltip
+            forceShow
+            label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的tokens。请保管好链接和密码。"
+          >
             <QuestionOutlineIcon ml={1} />
           </MyTooltip>
         </Box>
