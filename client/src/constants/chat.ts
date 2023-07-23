@@ -12,6 +12,11 @@ export enum ChatRoleEnum {
   AI = 'AI'
 }
 
+export enum TaskResponseKeyEnum {
+  'answerText' = 'answerText', //  answer module text key
+  'responseData' = 'responseData'
+}
+
 export const ChatRoleMap = {
   [ChatRoleEnum.System]: {
     name: '系统提示词'
@@ -45,11 +50,6 @@ export const ChatSourceMap = {
     name: 'API调用'
   }
 };
-
-export const responseDataKey = 'responseData';
-
-export const rawSearchKey = 'rawSearch';
-export const quoteLenKey = 'quoteLen';
 
 export const HUMAN_ICON = `https://fastgpt.run/icon/human.png`;
 export const LOGO_ICON = `https://fastgpt.run/icon/logo.png`;

@@ -22,7 +22,6 @@ import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/r
 import { useUserStore } from '@/store/user';
 import { feConfigs } from '@/store/static';
 import { Types } from 'mongoose';
-import { HUMAN_ICON, quoteLenKey, rawSearchKey } from '@/constants/chat';
 import { EventNameEnum } from '../Markdown/constant';
 
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
@@ -35,7 +34,7 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
+import { QuoteItemType } from '@/types/chat';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 
 import dynamic from 'next/dynamic';
@@ -598,7 +597,7 @@ const ChatBox = (
                           source={item.value}
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
-                        {(!!item[quoteLenKey] || !!item[rawSearchKey]?.length) && (
+                        {/* {(!!item[quoteLenKey] || !!item[rawSearchKey]?.length) && (
                           <Button
                             size={'xs'}
                             variant={'base'}
@@ -613,7 +612,7 @@ const ChatBox = (
                           >
                             {item[quoteLenKey] || item[rawSearchKey]?.length}条引用
                           </Button>
-                        )}
+                        )} */}
                       </Card>
 
                       <Flex {...controlContainerStyle}>

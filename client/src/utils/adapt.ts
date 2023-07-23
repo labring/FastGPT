@@ -6,11 +6,11 @@ import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 import type { AppModuleItemType } from '@/types/app';
-import type { FlowModuleItemType } from '@/types/flow';
+import type { FlowModuleItemType, FlowModuleTemplateType } from '@/types/flow';
 import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
-import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
+import { EmptyModule, ModuleTemplates, ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const adaptBill = (bill: BillSchema): UserBillType => {
@@ -92,48 +92,41 @@ export const appModule2FlowNode = ({
 }): Node<FlowModuleItemType> => {
   // init some static data
   const template =
-    ModuleTemplates.map((templates) => templates.list)
-      ?.flat()
-      .find((template) => template.flowType === item.flowType) || item;
+    ModuleTemplatesFlat.find((template) => template.flowType === item.flowType) || EmptyModule;
 
   // replace item data
-  const moduleItem = {
+  const moduleItem: FlowModuleItemType = {
     ...item,
     logo: template.logo,
     name: template.name,
     intro: template.intro,
-    type: template.type,
     url: template.url,
     inputs: template.inputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;
       return {
         ...templateInput,
-        key: itemInput.key,
         value: itemInput.value
       };
     }),
-    outputs: item.outputs.map((itemOutput) => {
+    outputs: template.outputs.map((templateOutput) => {
       // unChange outputs
-      const templateOutput =
-        template.outputs.find((item) => item.key === itemOutput.key) || itemOutput;
+      const itemOutput =
+        item.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
 
       return {
         ...templateOutput,
-        key: itemOutput.key,
         targets: itemOutput.targets || []
       };
-    })
+    }),
+    onChangeNode,
+    onDelNode
   };
 
   return {
     id: item.moduleId,
     type: item.flowType,
-    data: {
-      ...moduleItem,
-      onChangeNode,
-      onDelNode
-    },
+    data: moduleItem,
     position: item.position || { x: 0, y: 0 }
   };
 };

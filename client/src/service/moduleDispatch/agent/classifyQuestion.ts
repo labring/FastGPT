@@ -1,58 +1,31 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { ChatContextFilter } from '@/service/utils/chat/index';
-import type { ChatItemType } from '@/types/chat';
-import { ChatRoleEnum } from '@/constants/chat';
+import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
-import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
-import { getModel } from '@/service/utils/data';
-import { authUser } from '@/service/utils/auth';
+import { countModelPrice } from '@/service/events/pushBill';
 
-export type Props = {
+export type CQProps = {
   systemPrompt?: string;
   history?: ChatItemType[];
   userChatInput: string;
   agents: ClassifyQuestionAgentItemType[];
-  billId?: string;
 };
-export type Response = { history: ChatItemType[] };
+export type CQResponse = {
+  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  [key: string]: any;
+};
 
+const moduleName = 'Classify Question';
 const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_user_question';
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await authUser({ req, authRoot: true });
-    let { userChatInput } = req.body as Props;
-
-    if (!userChatInput) {
-      throw new Error('userChatInput is empty');
-    }
-
-    const response = await classifyQuestion(req.body);
-
-    jsonRes(res, {
-      data: response
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
-}
+const maxTokens = 2000;
 
 /* request openai chat */
-export async function classifyQuestion({
-  agents,
-  systemPrompt,
-  history = [],
-  userChatInput,
-  billId
-}: Props) {
+export const dispatchClassifyQuestion = async (props: Record<string, any>): Promise<CQResponse> => {
+  const { agents, systemPrompt, history = [], userChatInput } = props as CQProps;
+
   const messages: ChatItemType[] = [
     ...(systemPrompt
       ? [
@@ -62,16 +35,16 @@ export async function classifyQuestion({
           }
         ]
       : []),
+    ...history,
     {
       obj: ChatRoleEnum.Human,
       value: userChatInput
     }
   ];
   const filterMessages = ChatContextFilter({
-    // @ts-ignore
     model: agentModel,
     prompts: messages,
-    maxTokens: 1500
+    maxTokens
   });
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
 
@@ -112,27 +85,19 @@ export async function classifyQuestion({
     throw new Error('');
   }
 
-  const totalTokens = response.data.usage?.total_tokens || 0;
+  const tokens = response.data.usage?.total_tokens || 0;
 
-  await pushTaskBillListItem({
-    billId,
-    moduleName: 'Classify Question',
-    amount: countModelPrice({ model: agentModel, tokens: totalTokens }),
-    model: getModel(agentModel)?.name,
-    tokenLen: totalTokens
-  });
-
-  console.log(agents.map((item) => `${item.value}，返回: '${item.key}'`).join('；'), arg);
-
-  const result = agents.find((item) => item.key === arg.type);
-
-  if (result) {
-    return {
-      [arg.type]: 1
-    };
-  }
+  const result = agents.find((item) => item.key === arg.type) || agents[0];
 
   return {
-    [agents[0].key]: 1
+    [result.key]: 1,
+    [TaskResponseKeyEnum.responseData]: {
+      moduleName,
+      price: countModelPrice({ model: agentModel, tokens }),
+      model: agentModel,
+      tokens,
+      cqList: agents,
+      cqResult: result.value
+    }
   };
-}
+};

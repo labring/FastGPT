@@ -1,6 +1,7 @@
 import { ChatRoleEnum, rawSearchKey } from '@/constants/chat';
 import type { InitChatResponse, InitShareChatResponse } from '@/api/response/chat';
-import { QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
+import { TaskResponseKeyEnum } from '@/constants/chat';
+import { ClassifyQuestionAgentItemType } from './app';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
@@ -36,4 +37,34 @@ export type ShareChatHistoryItemType = HistoryItemType & {
 
 export type ShareChatType = InitShareChatResponse & {
   history: ShareChatHistoryItemType;
+};
+
+export type QuoteItemType = {
+  kb_id: string;
+  id: string;
+  q: string;
+  a: string;
+  source?: string;
+};
+
+export type ChatHistoryItemResType = {
+  moduleName: string;
+  price: number;
+  model?: string;
+  tokens?: number;
+
+  // chat
+  answer?: string;
+  question?: string;
+  temperature?: number;
+  maxToken?: number;
+  finishMessages?: ChatItemType[];
+
+  // kb search
+  similarity?: number;
+  limit?: number;
+
+  // cq
+  cqList?: ClassifyQuestionAgentItemType[];
+  cqResult?: string;
 };

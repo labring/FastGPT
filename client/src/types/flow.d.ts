@@ -5,6 +5,15 @@ import {
 } from '@/constants/flow';
 import { Connection } from 'reactflow';
 import type { AppModuleItemType } from './app';
+import { FlowModuleTypeEnum } from '@/constants/flow';
+
+export type FlowModuleItemChangeProps = {
+  moduleId: string;
+  type?: 'inputs' | 'outputs';
+  key: string;
+  value: any;
+  valueKey?: keyof FlowInputItemType & keyof FlowBodyItemType;
+};
 
 export type FlowInputItemType = {
   key: string; // 字段名
@@ -31,19 +40,21 @@ export type FlowOutputItemType = {
   label: string;
   description?: string;
   type: `${FlowOutputItemTypeEnum}`;
-  response?: boolean;
   targets: FlowOutputTargetItemType[];
 };
 
-export type FlowModuleItemChangeProps = {
-  moduleId: string;
-  type?: 'inputs' | 'outputs';
-  key: string;
-  value: any;
-  valueKey?: keyof FlowInputItemType & keyof FlowBodyItemType;
+export type FlowModuleTemplateType = {
+  logo: string;
+  name: string;
+  description?: string;
+  intro: string;
+  flowType: `${FlowModuleTypeEnum}`;
+  url?: string;
+  inputs: FlowInputItemType[];
+  outputs: FlowOutputItemType[];
 };
-
-export type FlowModuleItemType = AppModuleItemType & {
+export type FlowModuleItemType = FlowModuleTemplateType & {
+  moduleId: string;
   onChangeNode: (e: FlowModuleItemChangeProps) => void;
   onDelNode: (id: string) => void;
 };

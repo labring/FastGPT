@@ -8,7 +8,7 @@ import { type ChatCompletionRequestMessage } from 'openai';
 import { AppModuleItemType } from '@/types/app';
 import { dispatchModules } from '../openapi/v1/chat/completions';
 import { gptMessage2ChatType } from '@/utils/adapt';
-import { createTaskBill, delTaskBill, finishTaskBill } from '@/service/events/pushBill';
+import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
@@ -31,7 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   let { modules = [], history = [], prompt, variables = {}, appName, appId } = req.body as Props;
-  let billId = '';
   try {
     if (!history || !modules || !prompt) {
       throw new Error('Prams Error');
@@ -45,13 +44,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     /* user auth */
     const { userId } = await authUser({ req });
 
-    billId = await createTaskBill({
-      userId,
-      appName,
-      appId,
-      source: BillSourceEnum.fastgpt
-    });
-
     /* start process */
     const { responseData } = await dispatchModules({
       res,
@@ -61,8 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         history: gptMessage2ChatType(history),
         userChatInput: prompt
       },
-      stream: true,
-      billId
+      stream: true
     });
 
     sseResponse({
@@ -77,12 +68,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     res.end();
 
-    // bill
-    finishTaskBill({
-      billId
+    pushTaskBill({
+      appName,
+      appId,
+      userId,
+      source: BillSourceEnum.fastgpt,
+      response: responseData
     });
   } catch (err: any) {
-    delTaskBill(billId);
     res.status(500);
     sseErrRes(res, err);
     res.end();

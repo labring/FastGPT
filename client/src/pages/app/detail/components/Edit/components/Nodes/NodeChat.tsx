@@ -43,7 +43,7 @@ const NodeChat = ({
               return (
                 <MySelect
                   width={'100%'}
-                  value={inputItem.value || chatModelList[0]?.model}
+                  value={inputItem.value}
                   list={list}
                   onchange={(e) => {
                     onChangeNode({

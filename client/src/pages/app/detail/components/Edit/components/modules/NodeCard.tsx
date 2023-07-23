@@ -7,7 +7,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
 type Props = {
-  children: React.ReactNode | React.ReactNode[] | string;
+  children?: React.ReactNode | React.ReactNode[] | string;
   logo: string;
   name: string;
   description?: string;
