@@ -1,6 +1,11 @@
 import { SystemInputEnum } from '../app';
 import { TaskResponseKeyEnum } from '../chat';
-import { FlowModuleTypeEnum, FlowInputItemTypeEnum, FlowOutputItemTypeEnum } from './index';
+import {
+  FlowModuleTypeEnum,
+  FlowInputItemTypeEnum,
+  FlowOutputItemTypeEnum,
+  SpecialInputKeyEnum
+} from './index';
 import type { AppItemType } from '@/types/app';
 import type { FlowModuleTemplateType } from '@/types/flow';
 import { chatModelList } from '@/store/static';
@@ -257,7 +262,7 @@ export const AnswerModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
-      key: 'text',
+      key: SpecialInputKeyEnum.answerText,
       value: '',
       type: FlowInputItemTypeEnum.textarea,
       label: '回复的内容'
@@ -385,1297 +390,883 @@ export const ModuleTemplatesFlat = ModuleTemplates.map((templates) => templates.
 
 // template
 export const appTemplates: (AppItemType & { avatar: string; intro: string })[] = [
-  // {
-  //   id: 'simpleChat',
-  //   avatar: '/imgs/module/AI.png',
-  //   name: '简单的对话',
-  //   intro: '一个极其简单的 AI 对话应用',
-  //   modules: [
-  //     {
-  //       ...UserInputModule,
-  //       inputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'systemInput',
-  //           label: '用户问题',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           label: '用户问题',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '7pacf0',
-  //               key: 'userChatInput'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 477.9074315528994,
-  //         y: 1604.2106242223683
-  //       },
-  //       moduleId: '7z5g5h'
-  //     },
-  //     {
-  //       ...ChatModule,
-  //       inputs: [
-  //         {
-  //           key: 'model',
-  //           type: 'custom',
-  //           label: '对话模型',
-  //           value: 'gpt-3.5-turbo-16k',
-  //           list: [
-  //             {
-  //               label: 'FastAI-4k',
-  //               value: 'gpt-3.5-turbo'
-  //             },
-  //             {
-  //               label: 'FastAI-16k',
-  //               value: 'gpt-3.5-turbo-16k'
-  //             },
-  //             {
-  //               label: 'FastAI-Plus',
-  //               value: 'gpt-4'
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'temperature',
-  //           type: 'custom',
-  //           label: '温度',
-  //           value: 0,
-  //           min: 0,
-  //           max: 10,
-  //           step: 1,
-  //           markList: [
-  //             {
-  //               label: '严谨',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '发散',
-  //               value: 10
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'maxToken',
-  //           type: 'custom',
-  //           label: '回复上限',
-  //           value: 8000,
-  //           min: 100,
-  //           max: 16000,
-  //           step: 50,
-  //           markList: [
-  //             {
-  //               label: '0',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '16000',
-  //               value: 16000
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'systemPrompt',
-  //           type: 'textarea',
-  //           label: '系统提示词',
-  //           description:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           placeholder:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           value: '',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'limitPrompt',
-  //           type: 'textarea',
-  //           label: '限定词',
-  //           description:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           placeholder:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           value: '',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'quoteQA',
-  //           type: 'target',
-  //           label: '引用内容',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'target',
-  //           label: '聊天记录',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'target',
-  //           label: '用户问题',
-  //           connected: true
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'answerText',
-  //           label: '模型回复',
-  //           description: '直接响应，无需配置',
-  //           type: 'hidden',
-  //           targets: []
-  //         }
-  //       ],
-  //       position: {
-  //         x: 981.9682828103937,
-  //         y: 890.014595014464
-  //       },
-  //       moduleId: '7pacf0'
-  //     },
-  //     {
-  //       ...HistoryModule,
-  //       inputs: [
-  //         {
-  //           key: 'maxContext',
-  //           type: 'numberInput',
-  //           label: '最长记录数',
-  //           value: 10,
-  //           min: 0,
-  //           max: 50,
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'hidden',
-  //           label: '聊天记录',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'history',
-  //           label: '聊天记录',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '7pacf0',
-  //               key: 'history'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 452.5466249541586,
-  //         y: 1276.3930310334215
-  //       },
-  //       moduleId: 'xj0c9p'
-  //     }
-  //   ]
-  // },
-  // {
-  //   id: 'simpleKbChat',
-  //   avatar: '/imgs/module/db.png',
-  //   name: '知识库 + 对话引导',
-  //   intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
-  //   modules: [
-  //     {
-  //       ...UserInputModule,
-  //       inputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'systemInput',
-  //           label: '用户问题',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           label: '用户问题',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: 'q9v14m',
-  //               key: 'userChatInput'
-  //             },
-  //             {
-  //               moduleId: 'qbf8td',
-  //               key: 'userChatInput'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: -196.84632684738483,
-  //         y: 797.3401378431948
-  //       },
-  //       moduleId: 'v0nc1s'
-  //     },
-  //     {
-  //       ...HistoryModule,
-  //       inputs: [
-  //         {
-  //           key: 'maxContext',
-  //           type: 'numberInput',
-  //           label: '最长记录数',
-  //           value: 10,
-  //           min: 0,
-  //           max: 50,
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'hidden',
-  //           label: '聊天记录',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'history',
-  //           label: '聊天记录',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: 'qbf8td',
-  //               key: 'history'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 211.58250540918442,
-  //         y: 611.8700401034965
-  //       },
-  //       moduleId: 'k9y3jm'
-  //     },
-  //     {
-  //       ...ChatModule,
-  //       inputs: [
-  //         {
-  //           key: 'model',
-  //           type: 'custom',
-  //           label: '对话模型',
-  //           value: 'gpt-3.5-turbo-16k',
-  //           list: [
-  //             {
-  //               label: 'FastAI-4k',
-  //               value: 'gpt-3.5-turbo'
-  //             },
-  //             {
-  //               label: 'FastAI-16k',
-  //               value: 'gpt-3.5-turbo-16k'
-  //             },
-  //             {
-  //               label: 'FastAI-Plus',
-  //               value: 'gpt-4'
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'temperature',
-  //           type: 'custom',
-  //           label: '温度',
-  //           value: 0,
-  //           min: 0,
-  //           max: 10,
-  //           step: 1,
-  //           markList: [
-  //             {
-  //               label: '严谨',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '发散',
-  //               value: 10
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'maxToken',
-  //           type: 'custom',
-  //           label: '回复上限',
-  //           value: 8000,
-  //           min: 100,
-  //           max: 16000,
-  //           step: 50,
-  //           markList: [
-  //             {
-  //               label: '0',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '16000',
-  //               value: 16000
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'systemPrompt',
-  //           type: 'textarea',
-  //           label: '系统提示词',
-  //           description:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           placeholder:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           value: '',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'limitPrompt',
-  //           type: 'textarea',
-  //           label: '限定词',
-  //           description:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           placeholder:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           value: '知识库是关于 Laf 的内容，参考知识库回答我的问题。',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'quoteQA',
-  //           type: 'target',
-  //           label: '引用内容',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'target',
-  //           label: '聊天记录',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'target',
-  //           label: '用户问题',
-  //           connected: true
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'answerText',
-  //           label: '模型回复',
-  //           description: '直接响应，无需配置',
-  //           type: 'hidden',
-  //           targets: []
-  //         }
-  //       ],
-  //       position: {
-  //         x: 745.484449528062,
-  //         y: 259.9361900288137
-  //       },
-  //       moduleId: 'qbf8td'
-  //     },
-  //     {
-  //       ...KBSearchModule,
-  //       inputs: [
-  //         {
-  //           key: 'kbList',
-  //           type: 'custom',
-  //           label: '关联的知识库',
-  //           value: [],
-  //           list: [],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'similarity',
-  //           type: 'custom',
-  //           label: '相似度',
-  //           value: 0.8,
-  //           min: 0,
-  //           max: 1,
-  //           step: 0.01,
-  //           markList: [
-  //             {
-  //               label: '0',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '1',
-  //               value: 1
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'limit',
-  //           type: 'custom',
-  //           label: '单次搜索上限',
-  //           description: '最多取 n 条记录作为本次问题引用',
-  //           value: 5,
-  //           min: 1,
-  //           max: 20,
-  //           step: 1,
-  //           markList: [
-  //             {
-  //               label: '1',
-  //               value: 1
-  //             },
-  //             {
-  //               label: '20',
-  //               value: 20
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'target',
-  //           label: '用户问题',
-  //           connected: true
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           label: '源搜索数据',
-  //           type: 'hidden',
-  //           response: true,
-  //           targets: []
-  //         },
-  //         {
-  //           key: 'isEmpty',
-  //           label: '搜索结果为空',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: 'w8av9y',
-  //               key: 'switch'
-  //             }
-  //           ]
-  //         },
-  //         {
-  //           key: 'quoteQA',
-  //           label: '引用内容',
-  //           description: '搜索结果为空时不返回',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: 'qbf8td',
-  //               key: 'quoteQA'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 101.2612930583856,
-  //         y: -31.342317423453437
-  //       },
-  //       moduleId: 'q9v14m'
-  //     },
-  //     {
-  //       ...AnswerModule,
-  //       inputs: [
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'answerText',
-  //           value: '对不起，我没有找到你的问题',
-  //           type: 'input',
-  //           label: '回复的内容',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [],
-  //       position: {
-  //         x: 673.6108151684664,
-  //         y: -84.13355134221933
-  //       },
-  //       moduleId: 'w8av9y'
-  //     },
-  //     {
-  //       ...UserGuideModule,
-  //       inputs: [
-  //         {
-  //           key: 'welcomeText',
-  //           type: 'input',
-  //           label: '开场白',
-  //           value:
-  //             '你好，我是 Laf 助手，请问有什么可以帮助你的么？\n[laf 是什么？]\n[官网是多少？]',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [],
-  //       position: {
-  //         x: -338.02984747117785,
-  //         y: 203.21398144017178
-  //       },
-  //       moduleId: 'v7lq0x'
-  //     }
-  //   ]
-  // },
-  // {
-  //   id: 'chatGuide',
-  //   avatar: '/imgs/module/userGuide.png',
-  //   name: '对话引导 + 变量',
-  //   intro: '可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量',
-  //   modules: [
-  //     {
-  //       ...UserInputModule,
-  //       inputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'systemInput',
-  //           label: '用户问题',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           label: '用户问题',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '7pacf0',
-  //               key: 'userChatInput'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 485.8457451202796,
-  //         y: 1601.0352987954163
-  //       },
-  //       moduleId: '7z5g5h'
-  //     },
-  //     {
-  //       ...ChatModule,
-  //       inputs: [
-  //         {
-  //           key: 'model',
-  //           type: 'custom',
-  //           label: '对话模型',
-  //           value: 'gpt-3.5-turbo-16k',
-  //           list: [
-  //             {
-  //               label: 'FastAI-4k',
-  //               value: 'gpt-3.5-turbo'
-  //             },
-  //             {
-  //               label: 'FastAI-16k',
-  //               value: 'gpt-3.5-turbo-16k'
-  //             },
-  //             {
-  //               label: 'FastAI-Plus',
-  //               value: 'gpt-4'
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'temperature',
-  //           type: 'custom',
-  //           label: '温度',
-  //           value: 0,
-  //           min: 0,
-  //           max: 10,
-  //           step: 1,
-  //           markList: [
-  //             {
-  //               label: '严谨',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '发散',
-  //               value: 10
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'maxToken',
-  //           type: 'custom',
-  //           label: '回复上限',
-  //           value: 8000,
-  //           min: 100,
-  //           max: 16000,
-  //           step: 50,
-  //           markList: [
-  //             {
-  //               label: '0',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '16000',
-  //               value: 16000
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'systemPrompt',
-  //           type: 'textarea',
-  //           label: '系统提示词',
-  //           description:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           placeholder:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           value: '',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'limitPrompt',
-  //           type: 'textarea',
-  //           label: '限定词',
-  //           description:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           placeholder:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           value: '将我发送的任何内容，直接翻译成{{language}}',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'quoteQA',
-  //           type: 'target',
-  //           label: '引用内容',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'target',
-  //           label: '聊天记录',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'target',
-  //           label: '用户问题',
-  //           connected: true
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'answerText',
-  //           label: '模型回复',
-  //           description: '直接响应，无需配置',
-  //           type: 'hidden',
-  //           targets: []
-  //         }
-  //       ],
-  //       position: {
-  //         x: 981.9682828103937,
-  //         y: 890.014595014464
-  //       },
-  //       moduleId: '7pacf0'
-  //     },
-  //     {
-  //       ...HistoryModule,
-  //       inputs: [
-  //         {
-  //           key: 'maxContext',
-  //           type: 'numberInput',
-  //           label: '最长记录数',
-  //           value: 10,
-  //           min: 0,
-  //           max: 50,
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'hidden',
-  //           label: '聊天记录',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'history',
-  //           label: '聊天记录',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '7pacf0',
-  //               key: 'history'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 446.2698477029736,
-  //         y: 1281.1006139718102
-  //       },
-  //       moduleId: 'xj0c9p'
-  //     },
-  //     {
-  //       ...VariableModule,
-  //       inputs: [
-  //         {
-  //           key: 'variables',
-  //           type: 'systemInput',
-  //           label: '变量输入',
-  //           value: [
-  //             {
-  //               id: 'z3bs2f',
-  //               key: 'language',
-  //               label: '目标语言',
-  //               type: 'select',
-  //               required: true,
-  //               maxLen: 50,
-  //               enums: [
-  //                 {
-  //                   value: '英语'
-  //                 },
-  //                 {
-  //                   value: '法语'
-  //                 },
-  //                 {
-  //                   value: '日语'
-  //                 }
-  //               ]
-  //             }
-  //           ],
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [],
-  //       position: {
-  //         x: 513.9049244392417,
-  //         y: 996.8739106932076
-  //       },
-  //       moduleId: '7blchb'
-  //     },
-  //     {
-  //       ...UserGuideModule,
-  //       inputs: [
-  //         {
-  //           key: 'welcomeText',
-  //           type: 'input',
-  //           label: '开场白',
-  //           value: '你好，我是翻译助手，可以帮你翻译任何语言。请告诉我，你需要翻译成什么语言？',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [],
-  //       position: {
-  //         x: 173.17995039750167,
-  //         y: 982.945778706804
-  //       },
-  //       moduleId: 'w35iml'
-  //     }
-  //   ]
-  // },
-  // {
-  //   id: 'CQ',
-  //   avatar: '/imgs/module/cq.png',
-  //   name: '问题分类 + 知识库',
-  //   intro: '先对用户的问题进行分类，再根据不同类型问题，执行不同的操作',
-  //   modules: [
-  //     {
-  //       ...UserInputModule,
-  //       inputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'systemInput',
-  //           label: '用户问题',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'userChatInput',
-  //           label: '用户问题',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '3n49vn',
-  //               key: 'userChatInput'
-  //             },
-  //             {
-  //               moduleId: 's7qnhf',
-  //               key: 'userChatInput'
-  //             },
-  //             {
-  //               moduleId: '15c9bv',
-  //               key: 'userChatInput'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: -216.08819066976912,
-  //         y: 585.9302721518841
-  //       },
-  //       moduleId: 'xzj0oo'
-  //     },
-  //     {
-  //       ...HistoryModule,
-  //       inputs: [
-  //         {
-  //           key: 'maxContext',
-  //           type: 'numberInput',
-  //           label: '最长记录数',
-  //           value: 10,
-  //           min: 0,
-  //           max: 50,
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'hidden',
-  //           label: '聊天记录',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'history',
-  //           label: '聊天记录',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '3n49vn',
-  //               key: 'history'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 1146.0216647621794,
-  //         y: 236.92269104756855
-  //       },
-  //       moduleId: 'hh6of9'
-  //     },
-  //     {
-  //       ...ChatModule,
-  //       inputs: [
-  //         {
-  //           key: 'model',
-  //           type: 'select',
-  //           label: '对话模型',
-  //           value: 'gpt-3.5-turbo',
-  //           list: [
-  //             {
-  //               label: 'FastAI-16k',
-  //               value: 'gpt-3.5-turbo-16k'
-  //             },
-  //             {
-  //               label: 'FastAI-4k',
-  //               value: 'gpt-3.5-turbo'
-  //             },
-  //             {
-  //               label: 'FastAI-Plus-8k',
-  //               value: 'gpt-4'
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'temperature',
-  //           type: 'custom',
-  //           label: '温度',
-  //           value: 0,
-  //           min: 0,
-  //           max: 10,
-  //           step: 1,
-  //           markList: [
-  //             {
-  //               label: '严谨',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '发散',
-  //               value: 10
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'maxToken',
-  //           type: 'custom',
-  //           label: '回复上限',
-  //           value: 3000,
-  //           min: 100,
-  //           max: 4000,
-  //           step: 50,
-  //           markList: [
-  //             {
-  //               label: '0',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '4000',
-  //               value: 4000
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'systemPrompt',
-  //           type: 'textarea',
-  //           label: '系统提示词',
-  //           description:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           placeholder:
-  //             '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。',
-  //           value: '你是 Laf 助手，可以回答 Laf 相关问题。',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'limitPrompt',
-  //           type: 'textarea',
-  //           label: '限定词',
-  //           description:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           placeholder:
-  //             '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。例如:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-  //           value: '知识库是 Laf 的内容，参考知识库回答问题。',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'quoteQA',
-  //           type: 'target',
-  //           label: '引用内容',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'target',
-  //           label: '聊天记录',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'target',
-  //           label: '用户问题',
-  //           connected: true
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'answerText',
-  //           label: '模型回复',
-  //           description: '直接响应，无需配置',
-  //           type: 'hidden',
-  //           targets: []
-  //         }
-  //       ],
-  //       position: {
-  //         x: 1494.4843114348841,
-  //         y: -13.57201521210618
-  //       },
-  //       moduleId: '3n49vn'
-  //     },
-  //     {
-  //       ...KBSearchModule,
-  //       inputs: [
-  //         {
-  //           key: 'kbList',
-  //           type: 'custom',
-  //           label: '关联的知识库',
-  //           value: [],
-  //           list: [],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'similarity',
-  //           type: 'custom',
-  //           label: '相似度',
-  //           value: 0.8,
-  //           min: 0,
-  //           max: 1,
-  //           step: 0.01,
-  //           markList: [
-  //             {
-  //               label: '0',
-  //               value: 0
-  //             },
-  //             {
-  //               label: '1',
-  //               value: 1
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'limit',
-  //           type: 'custom',
-  //           label: '单次搜索上限',
-  //           description: '最多取 n 条记录作为本次问题引用',
-  //           value: 5,
-  //           min: 1,
-  //           max: 20,
-  //           step: 1,
-  //           markList: [
-  //             {
-  //               label: '1',
-  //               value: 1
-  //             },
-  //             {
-  //               label: '20',
-  //               value: 20
-  //             }
-  //           ],
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'target',
-  //           label: '用户问题',
-  //           connected: true
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           label: '源搜索数据',
-  //           type: 'hidden',
-  //           response: true,
-  //           targets: []
-  //         },
-  //         {
-  //           key: 'isEmpty',
-  //           label: '搜索结果为空',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: 'phwr0u',
-  //               key: 'switch'
-  //             }
-  //           ]
-  //         },
-  //         {
-  //           key: 'quoteQA',
-  //           label: '引用内容',
-  //           description: '搜索结果为空时不返回',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '3n49vn',
-  //               key: 'quoteQA'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 690.1930900957847,
-  //         y: 102.10119978743109
-  //       },
-  //       moduleId: 's7qnhf'
-  //     },
-  //     {
-  //       ...HistoryModule,
-  //       inputs: [
-  //         {
-  //           key: 'maxContext',
-  //           type: 'numberInput',
-  //           label: '最长记录数',
-  //           value: 2,
-  //           min: 0,
-  //           max: 50,
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'hidden',
-  //           label: '聊天记录',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'history',
-  //           label: '聊天记录',
-  //           type: 'source',
-  //           targets: [
-  //             {
-  //               moduleId: '15c9bv',
-  //               key: 'history'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: -274.2362185453961,
-  //         y: 152.19755525696058
-  //       },
-  //       moduleId: 'qiwrjt'
-  //     },
-  //     {
-  //       ...AnswerModule,
-  //       inputs: [
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'answerText',
-  //           value: '你好，我是 Laf 助手，有什么可以帮助你的么？',
-  //           type: 'input',
-  //           label: '回复的内容',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [],
-  //       position: {
-  //         x: 686.1260929408212,
-  //         y: -142.16731465682332
-  //       },
-  //       moduleId: 'l4e36k'
-  //     },
-  //     {
-  //       ...AnswerModule,
-  //       inputs: [
-  //         {
-  //           key: 'switch',
-  //           type: 'target',
-  //           label: '触发器',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'answerText',
-  //           value: '对不起，我无法回答你的问题，请问有什么关于 Laf 的问题么？',
-  //           type: 'input',
-  //           label: '回复的内容',
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [],
-  //       position: {
-  //         x: 1469.3636235179692,
-  //         y: 937.5555811306511
-  //       },
-  //       moduleId: 'phwr0u'
-  //     },
-  //     {
-  //       ...ClassifyQuestionModule,
-  //       inputs: [
-  //         {
-  //           key: 'systemPrompt',
-  //           type: 'textarea',
-  //           label: '系统提示词',
-  //           description:
-  //             '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
-  //           placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统',
-  //           value:
-  //             ' laf 是什么\nlaf 是云开发平台，可以快速的开发应用\nlaf 是一个开源的 BaaS 开发平台（Backend as a Service)\nlaf 是一个开箱即用的 serverless 开发平台\nlaf 是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台\nlaf 可以是开源版的腾讯云开发、开源版的 Google Firebase、开源版的 UniCloud\nlaf 让每个开发团队都可以随时拥有一个自己的云开发平台！',
-  //           connected: false
-  //         },
-  //         {
-  //           key: 'history',
-  //           type: 'target',
-  //           label: '聊天记录',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'userChatInput',
-  //           type: 'target',
-  //           label: '用户问题',
-  //           connected: true
-  //         },
-  //         {
-  //           key: 'agents',
-  //           type: 'custom',
-  //           label: '',
-  //           value: [
-  //             {
-  //               value: '打招呼、问候等',
-  //               key: 'fasw'
-  //             },
-  //             {
-  //               value: '关于 laf 云函数的问题',
-  //               key: 'fqsw'
-  //             },
-  //             {
-  //               value: '其他问题',
-  //               key: 'q73b'
-  //             }
-  //           ],
-  //           connected: false
-  //         }
-  //       ],
-  //       outputs: [
-  //         {
-  //           key: 'fasw',
-  //           label: '',
-  //           type: 'hidden',
-  //           targets: [
-  //             {
-  //               moduleId: 'l4e36k',
-  //               key: 'switch'
-  //             }
-  //           ]
-  //         },
-  //         {
-  //           key: 'fqsw',
-  //           label: '',
-  //           type: 'hidden',
-  //           targets: [
-  //             {
-  //               moduleId: 's7qnhf',
-  //               key: 'switch'
-  //             }
-  //           ]
-  //         },
-  //         {
-  //           key: 'q73b',
-  //           label: '',
-  //           type: 'hidden',
-  //           targets: [
-  //             {
-  //               moduleId: 'phwr0u',
-  //               key: 'switch'
-  //             }
-  //           ]
-  //         }
-  //       ],
-  //       position: {
-  //         x: 154.9724540917009,
-  //         y: -37.48714632270105
-  //       },
-  //       moduleId: '15c9bv'
-  //     }
-  //   ]
-  // }
+  {
+    id: 'simpleChat',
+    avatar: '/imgs/module/AI.png',
+    name: '简单的对话',
+    intro: '一个极其简单的 AI 对话应用',
+    modules: [
+      {
+        moduleId: 'userChatInput',
+        position: {
+          x: 464.32198615344566,
+          y: 1602.2698463081606
+        },
+        flowType: 'questionInput',
+        inputs: [
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'history',
+        position: {
+          x: 452.5466249541586,
+          y: 1276.3930310334215
+        },
+        flowType: 'historyNode',
+        inputs: [
+          {
+            key: 'maxContext',
+            value: 10,
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'history'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'chatModule',
+        position: {
+          x: 981.9682828103937,
+          y: 890.014595014464
+        },
+        flowType: 'chatNode',
+        inputs: [
+          {
+            key: 'model',
+            value: 'gpt-3.5-turbo-16k',
+            connected: true
+          },
+          {
+            key: 'temperature',
+            value: 0,
+            connected: true
+          },
+          {
+            key: 'maxToken',
+            value: 8000,
+            connected: true
+          },
+          {
+            key: 'systemPrompt',
+            value: '',
+            connected: true
+          },
+          {
+            key: 'limitPrompt',
+            value: '',
+            connected: true
+          },
+          {
+            key: 'switch',
+            connected: false
+          },
+          {
+            key: 'quoteQA',
+            connected: false
+          },
+          {
+            key: 'history',
+            connected: true
+          },
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'answerText',
+            targets: []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'simpleKbChat',
+    avatar: '/imgs/module/db.png',
+    name: '知识库 + 对话引导',
+    intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
+    modules: [
+      {
+        moduleId: 'userGuide',
+        position: {
+          x: 447.98520778293346,
+          y: 721.4016845336229
+        },
+        flowType: 'userGuide',
+        inputs: [
+          {
+            key: 'welcomeText',
+            value:
+              '我是 laf 助手，请问有什么可以帮助你的么？\n[laf 是什么？]\n[laf 官网是多少？]\n[交流群]',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: 'userChatInput',
+        position: {
+          x: 464.32198615344566,
+          y: 1602.2698463081606
+        },
+        flowType: 'questionInput',
+        inputs: [
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'userChatInput'
+              },
+              {
+                moduleId: 'kbSearch',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'history',
+        position: {
+          x: 458.37518916304566,
+          y: 1296.7930057645262
+        },
+        flowType: 'historyNode',
+        inputs: [
+          {
+            key: 'maxContext',
+            value: 10,
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'history'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'kbSearch',
+        position: {
+          x: 956.0838440206068,
+          y: 887.462827870246
+        },
+        flowType: 'kbSearchNode',
+        inputs: [
+          {
+            key: 'kbList',
+            value: [],
+            connected: true
+          },
+          {
+            key: 'similarity',
+            value: 0.82,
+            connected: true
+          },
+          {
+            key: 'limit',
+            value: 5,
+            connected: true
+          },
+          {
+            key: 'switch',
+            connected: false
+          },
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'isEmpty',
+            targets: [
+              {
+                moduleId: 'asv5cb',
+                key: 'switch'
+              }
+            ]
+          },
+          {
+            key: 'unEmpty',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'switch'
+              }
+            ]
+          },
+          {
+            key: 'quoteQA',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'quoteQA'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'chatModule',
+        position: {
+          x: 1521.114092861523,
+          y: 1038.6910820851604
+        },
+        flowType: 'chatNode',
+        inputs: [
+          {
+            key: 'model',
+            value: 'gpt-3.5-turbo-16k',
+            connected: true
+          },
+          {
+            key: 'temperature',
+            value: 5,
+            connected: true
+          },
+          {
+            key: 'maxToken',
+            value: 16000,
+            connected: true
+          },
+          {
+            key: 'systemPrompt',
+            value: '知识库是关于 laf 的内容。',
+            connected: true
+          },
+          {
+            key: 'limitPrompt',
+            value: '根据知识库回答用户问题，回答范围仅限知识库。',
+            connected: true
+          },
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'quoteQA',
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          },
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'answerText',
+            targets: []
+          }
+        ]
+      },
+      {
+        moduleId: 'asv5cb',
+        position: {
+          x: 1517.320542832093,
+          y: 699.8757371712562
+        },
+        flowType: 'answerNode',
+        inputs: [
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'text',
+            value: '对不起，我找不到你的问题，请更加详细的描述 laf 相关的问题。',
+            connected: true
+          }
+        ],
+        outputs: []
+      }
+    ]
+  },
+  {
+    id: 'chatGuide',
+    avatar: '/imgs/module/userGuide.png',
+    name: '对话引导 + 变量',
+    intro: '可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量',
+    modules: [
+      {
+        moduleId: 'userGuide',
+        position: {
+          x: 447.98520778293346,
+          y: 721.4016845336229
+        },
+        flowType: 'userGuide',
+        inputs: [
+          {
+            key: 'welcomeText',
+            value:
+              '你好，我是翻译助手，可以帮你把内容翻译成任何语言，请告诉我，你需要翻译成什么语言？',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: 'userChatInput',
+        position: {
+          x: 464.32198615344566,
+          y: 1602.2698463081606
+        },
+        flowType: 'questionInput',
+        inputs: [
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'history',
+        position: {
+          x: 452.5466249541586,
+          y: 1276.3930310334215
+        },
+        flowType: 'historyNode',
+        inputs: [
+          {
+            key: 'maxContext',
+            value: 10,
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            targets: [
+              {
+                moduleId: 'chatModule',
+                key: 'history'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'chatModule',
+        position: {
+          x: 981.9682828103937,
+          y: 890.014595014464
+        },
+        flowType: 'chatNode',
+        inputs: [
+          {
+            key: 'model',
+            value: 'gpt-3.5-turbo-16k',
+            connected: true
+          },
+          {
+            key: 'temperature',
+            value: 0,
+            connected: true
+          },
+          {
+            key: 'maxToken',
+            value: 8000,
+            connected: true
+          },
+          {
+            key: 'systemPrompt',
+            value: '',
+            connected: true
+          },
+          {
+            key: 'limitPrompt',
+            value: '把用户发送的内容直接翻译成{{language}}，不要做其他回答。',
+            connected: true
+          },
+          {
+            key: 'switch',
+            connected: false
+          },
+          {
+            key: 'quoteQA',
+            connected: false
+          },
+          {
+            key: 'history',
+            connected: true
+          },
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'answerText',
+            targets: []
+          }
+        ]
+      },
+      {
+        moduleId: 'fo9i68',
+        position: {
+          x: 445.17843864558927,
+          y: 992.4891333735476
+        },
+        flowType: 'variable',
+        inputs: [
+          {
+            key: 'variables',
+            value: [
+              {
+                id: '9qjnai',
+                key: 'language',
+                label: '目标语言',
+                type: 'input',
+                required: true,
+                maxLen: 50,
+                enums: [
+                  {
+                    value: ''
+                  }
+                ]
+              }
+            ],
+            connected: true
+          }
+        ],
+        outputs: []
+      }
+    ]
+  },
+  {
+    id: 'CQ',
+    avatar: '/imgs/module/cq.png',
+    name: '问题分类 + 知识库',
+    intro: '先对用户的问题进行分类，再根据不同类型问题，执行不同的操作',
+    modules: [
+      {
+        moduleId: '7z5g5h',
+        position: {
+          x: 198.56612928723575,
+          y: 1622.7034463081607
+        },
+        flowType: 'questionInput',
+        inputs: [
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            targets: [
+              {
+                moduleId: 'remuj3',
+                key: 'userChatInput'
+              },
+              {
+                moduleId: 'nlfwkc',
+                key: 'userChatInput'
+              },
+              {
+                moduleId: 'fljhzy',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'xj0c9p',
+        position: {
+          x: 194.99102398958047,
+          y: 1801.3545999721096
+        },
+        flowType: 'historyNode',
+        inputs: [
+          {
+            key: 'maxContext',
+            value: 10,
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            targets: [
+              {
+                moduleId: 'nlfwkc',
+                key: 'history'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'remuj3',
+        position: {
+          x: 672.9092284362648,
+          y: 1077.557793775116
+        },
+        flowType: 'classifyQuestion',
+        inputs: [
+          {
+            key: 'systemPrompt',
+            value:
+              'laf 是云开发平台，可以快速的开发应用\nlaf 是一个开源的 BaaS 开发平台（Backend as a Service)\nlaf 是一个开箱即用的 serverless 开发平台\nlaf 是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台\nlaf 可以是开源版的腾讯云开发、开源版的 Google Firebase、开源版的 UniCloud',
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          },
+          {
+            key: 'userChatInput',
+            connected: true
+          },
+          {
+            key: 'agents',
+            value: [
+              {
+                value: '打招呼、问候等问题',
+                key: 'fasw'
+              },
+              {
+                value: '“laf” 的问题',
+                key: 'fqsw'
+              },
+              {
+                value: '其他问题',
+                key: 'fesw'
+              }
+            ],
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'fasw',
+            targets: [
+              {
+                moduleId: 'a99p6z',
+                key: 'switch'
+              }
+            ]
+          },
+          {
+            key: 'fqsw',
+            targets: [
+              {
+                moduleId: 'fljhzy',
+                key: 'switch'
+              }
+            ]
+          },
+          {
+            key: 'fesw',
+            targets: [
+              {
+                moduleId: 'iejcou',
+                key: 'switch'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'a99p6z',
+        position: {
+          x: 1304.2886011902247,
+          y: 776.1589509539264
+        },
+        flowType: 'answerNode',
+        inputs: [
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'text',
+            value: '你好，我是 laf 助手，有什么可以帮助你的？',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: 'iejcou',
+        position: {
+          x: 1301.7531189034548,
+          y: 1842.1297123368286
+        },
+        flowType: 'answerNode',
+        inputs: [
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'text',
+            value: '你好，我仅能回答 laf 相关问题，请问你有什么问题么？',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: 'nlfwkc',
+        position: {
+          x: 1821.979893659983,
+          y: 1104.6583548423682
+        },
+        flowType: 'chatNode',
+        inputs: [
+          {
+            key: 'model',
+            value: 'gpt-3.5-turbo-16k',
+            connected: true
+          },
+          {
+            key: 'temperature',
+            value: 0,
+            connected: true
+          },
+          {
+            key: 'maxToken',
+            value: 8000,
+            connected: true
+          },
+          {
+            key: 'systemPrompt',
+            value: '知识库是关于 laf 的内容。',
+            connected: true
+          },
+          {
+            key: 'limitPrompt',
+            value:
+              '我的问题都是关于 laf 的。根据知识库回答我的问题，与 laf 无关问题，直接回复：“我不清楚，我仅能回答 laf 相关的问题。”。',
+            connected: true
+          },
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'quoteQA',
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          },
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'answerText',
+            targets: []
+          }
+        ]
+      },
+      {
+        moduleId: 's4v9su',
+        position: {
+          x: 193.3803955457983,
+          y: 1116.251200765746
+        },
+        flowType: 'historyNode',
+        inputs: [
+          {
+            key: 'maxContext',
+            value: 2,
+            connected: true
+          },
+          {
+            key: 'history',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'history',
+            targets: [
+              {
+                moduleId: 'remuj3',
+                key: 'history'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'fljhzy',
+        position: {
+          x: 1305.5374262228029,
+          y: 1120.0404921820218
+        },
+        flowType: 'kbSearchNode',
+        inputs: [
+          {
+            key: 'kbList',
+            value: [],
+            connected: true
+          },
+          {
+            key: 'similarity',
+            value: 0.76,
+            connected: true
+          },
+          {
+            key: 'limit',
+            value: 5,
+            connected: true
+          },
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'userChatInput',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'isEmpty',
+            targets: [
+              {
+                moduleId: 'tc90wz',
+                key: 'switch'
+              }
+            ]
+          },
+          {
+            key: 'unEmpty',
+            targets: [
+              {
+                moduleId: 'nlfwkc',
+                key: 'switch'
+              }
+            ]
+          },
+          {
+            key: 'quoteQA',
+            targets: [
+              {
+                moduleId: 'nlfwkc',
+                key: 'quoteQA'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: 'q9equb',
+        position: {
+          x: 191.4857498376603,
+          y: 856.6847387508401
+        },
+        flowType: 'userGuide',
+        inputs: [
+          {
+            key: 'welcomeText',
+            value:
+              '你好，我是 laf 助手，有什么可以帮助你的？\n[laf 是什么？有什么用？]\n[laf 在线体验地址]\n[官网地址是多少]',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: 'tc90wz',
+        position: {
+          x: 1828.4596416688908,
+          y: 765.3628156185887
+        },
+        flowType: 'answerNode',
+        inputs: [
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'text',
+            value: '对不起，我找不到你的问题，请更加详细的描述你的问题。',
+            connected: true
+          }
+        ],
+        outputs: []
+      }
+    ]
+  }
 ];

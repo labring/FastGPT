@@ -51,7 +51,7 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
   //   function body
   const agentFunction = {
     name: agentFunName,
-    description: '判断用户问题的类型，并返回指定值',
+    description: '判断用户问题的类型属于哪方面，返回对应的枚举字段',
     parameters: {
       type: 'object',
       properties: {
@@ -81,13 +81,9 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
 
   const arg = JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '');
 
-  if (!arg.type) {
-    throw new Error('');
-  }
-
   const tokens = response.data.usage?.total_tokens || 0;
 
-  const result = agents.find((item) => item.key === arg.type) || agents[0];
+  const result = agents.find((item) => item.key === arg?.type) || agents[0];
 
   return {
     [result.key]: 1,

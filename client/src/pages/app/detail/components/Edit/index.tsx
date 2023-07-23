@@ -283,7 +283,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   useEffect(() => {
     initData(JSON.parse(JSON.stringify(app)));
   }, [app, initData]);
-  console.log(flow2AppModules());
 
   return (
     <>

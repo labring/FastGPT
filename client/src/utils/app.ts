@@ -1,7 +1,8 @@
 import type { AppModuleInputItemType, AppModuleItemType, VariableItemType } from '@/types/app';
 import { chatModelList, vectorModelList } from '@/store/static';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 import type { SelectedKbType } from '@/types/plugin';
 
 export type EditFormType = {
@@ -128,7 +129,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
       if (emptyOutput) {
         const target = modules.find((item) => item.moduleId === emptyOutput.moduleId);
         defaultAppForm.kb.searchEmptyText =
-          target?.inputs?.find((item) => item.key === 'answerText')?.value || '';
+          target?.inputs?.find((item) => item.key === SpecialInputKeyEnum.answerText)?.value || '';
       }
     } else if (module.flowType === FlowModuleTypeEnum.userGuide) {
       const val =
@@ -172,6 +173,10 @@ const chatModelInput = (formData: EditFormType): AppModuleInputItemType[] => [
     key: 'limitPrompt',
     value: formData.chatModel.limitPrompt,
     connected: true
+  },
+  {
+    key: 'switch',
+    connected: formData.kb.list.length > 0
   },
   {
     key: 'quoteQA',
@@ -289,7 +294,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: chatModelInput(formData),
     outputs: [
       {
-        key: 'answerText',
+        key: TaskResponseKeyEnum.answerText,
         targets: []
       }
     ],
@@ -439,7 +444,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
               connected: true
             },
             {
-              key: 'answerText',
+              key: SpecialInputKeyEnum.answerText,
               value: formData.kb.searchEmptyText,
               connected: true
             }
@@ -458,7 +463,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: chatModelInput(formData),
     outputs: [
       {
-        key: 'answerText',
+        key: TaskResponseKeyEnum.answerText,
         targets: []
       }
     ],

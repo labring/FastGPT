@@ -41,15 +41,19 @@ const NodeCard = ({
           </MyTooltip>
         )}
         <Box flex={1} />
-        <MyIcon
+        <Flex
           className={'nodrag'}
-          name="delete"
-          cursor={'pointer'}
+          w={'22px'}
+          h={'22px'}
+          alignItems={'center'}
+          justifyContent={'center'}
           color={'myGray.600'}
-          w={'16px'}
           _hover={{ color: 'red.600' }}
+          cursor={'pointer'}
           onClick={() => onDelNode(moduleId)}
-        />
+        >
+          <MyIcon name="delete" w={'16px'} />
+        </Flex>
       </Flex>
       {children}
     </Box>
