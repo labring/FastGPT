@@ -1,8 +1,7 @@
 import { sseResponseEventEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
 import { parseStreamChunk } from '@/utils/adapt';
-import { QuoteItemType } from '@/pages/api/app/modules/kb/search';
-import { rawSearchKey } from '@/constants/chat';
+import { QuoteItemType } from '@/types/chat';
 
 interface StreamFetchProps {
   url?: string;
@@ -20,7 +19,6 @@ export const streamFetch = ({
     responseText: string;
     errMsg: string;
     newChatId: string | null;
-    [rawSearchKey]: QuoteItemType[];
   }>(async (resolve, reject) => {
     try {
       const response = await window.fetch(url, {
@@ -43,7 +41,6 @@ export const streamFetch = ({
 
       // response data
       let responseText = '';
-      let rawSearch: QuoteItemType[] = [];
       let errMsg = '';
       const newChatId = response.headers.get('newChatId');
 
@@ -55,8 +52,7 @@ export const streamFetch = ({
               return resolve({
                 responseText,
                 errMsg,
-                newChatId,
-                rawSearch
+                newChatId
               });
             } else {
               return reject({
@@ -82,7 +78,6 @@ export const streamFetch = ({
               onMessage(answer);
               responseText += answer;
             } else if (item.event === sseResponseEventEnum.appStreamResponse) {
-              rawSearch = data?.[rawSearchKey] ? data[rawSearchKey] : rawSearch;
             } else if (item.event === sseResponseEventEnum.error) {
               errMsg = getErrText(data, '流响应错误');
             }
@@ -93,8 +88,7 @@ export const streamFetch = ({
             return resolve({
               responseText,
               errMsg,
-              newChatId,
-              rawSearch
+              newChatId
             });
           }
           reject(getErrText(err, '请求异常'));

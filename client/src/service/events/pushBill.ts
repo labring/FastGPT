@@ -1,93 +1,54 @@
 import { connectToDatabase, Bill, User, ShareChat } from '../mongo';
 import { BillSourceEnum } from '@/constants/user';
 import { getModel } from '../utils/data';
-import type { BillListItemType } from '@/types/mongoSchema';
+import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@/utils/user';
 
-export const createTaskBill = async ({
+export const pushTaskBill = async ({
   appName,
   appId,
   userId,
-  source
+  source,
+  shareId,
+  response
 }: {
   appName: string;
   appId: string;
   userId: string;
   source: `${BillSourceEnum}`;
+  shareId?: string;
+  response: ChatHistoryItemResType[];
 }) => {
-  const res = await Bill.create({
-    userId,
-    appName,
-    appId,
-    total: 0,
-    source,
-    list: []
-  });
-  return String(res._id);
-};
+  const total = response.reduce((sum, item) => sum + item.price, 0);
 
-export const pushTaskBillListItem = async ({
-  billId,
-  moduleName,
-  amount,
-  model,
-  tokenLen
-}: { billId?: string } & BillListItemType) => {
-  if (!billId) return;
-  try {
-    await Bill.findByIdAndUpdate(billId, {
-      $push: {
-        list: {
-          moduleName,
-          amount,
-          model,
-          tokenLen
-        }
-      }
-    });
-  } catch (error) {}
-};
-export const finishTaskBill = async ({ billId, shareId }: { billId: string; shareId?: string }) => {
-  try {
-    // update bill
-    const res = await Bill.findByIdAndUpdate(billId, [
-      {
-        $set: {
-          total: {
-            $sum: '$list.amount'
-          },
-          time: new Date()
-        }
-      }
-    ]);
-    if (!res) return;
-    const total = res.list.reduce((sum, item) => sum + item.amount, 0) || 0;
-
-    if (shareId) {
-      updateShareChatBill({
-        shareId,
-        total
-      });
-    }
-
-    console.log('finish bill:', formatPrice(total));
-
-    // 账号扣费
-    await User.findByIdAndUpdate(res.userId, {
+  await Promise.allSettled([
+    Bill.create({
+      userId,
+      appName,
+      appId,
+      total,
+      source,
+      list: response.map((item) => ({
+        moduleName: item.moduleName,
+        amount: item.price || 0,
+        model: item.model,
+        tokenLen: item.tokens
+      }))
+    }),
+    User.findByIdAndUpdate(userId, {
       $inc: { balance: -total }
-    });
-  } catch (error) {
-    console.log('Finish bill failed:', error);
-    billId && Bill.findByIdAndDelete(billId);
-  }
-};
+    }),
+    ...(shareId
+      ? [
+          updateShareChatBill({
+            shareId,
+            total
+          })
+        ]
+      : [])
+  ]);
 
-export const delTaskBill = async (billId?: string) => {
-  if (!billId) return;
-
-  try {
-    await Bill.findByIdAndRemove(billId);
-  } catch (error) {}
+  console.log('finish bill:', formatPrice(total));
 };
 
 export const updateShareChatBill = async ({

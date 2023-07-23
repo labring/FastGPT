@@ -19,9 +19,10 @@ export enum FlowOutputItemTypeEnum {
 }
 
 export enum FlowModuleTypeEnum {
+  empty = 'empty',
   variable = 'variable',
   userGuide = 'userGuide',
-  questionInputNode = 'questionInput',
+  questionInput = 'questionInput',
   historyNode = 'historyNode',
   chatNode = 'chatNode',
   kbSearchNode = 'kbSearchNode',
@@ -29,6 +30,11 @@ export enum FlowModuleTypeEnum {
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion'
 }
+
+export const initModuleType: Record<string, boolean> = {
+  [FlowModuleTypeEnum.historyNode]: true,
+  [FlowModuleTypeEnum.questionInput]: true
+};
 
 export const edgeOptions = {
   style: {

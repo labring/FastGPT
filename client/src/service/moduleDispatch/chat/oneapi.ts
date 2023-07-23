@@ -1,89 +1,57 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes, sseErrRes } from '@/service/response';
+import type { NextApiResponse } from 'next';
 import { sseResponse } from '@/service/utils/tools';
 import { OpenAiChatEnum } from '@/constants/model';
 import { adaptChatItem_openAI, countOpenAIToken } from '@/utils/plugin/openai';
 import { modelToolMap } from '@/utils/plugin';
 import { ChatContextFilter } from '@/service/utils/chat/index';
-import type { ChatItemType } from '@/types/chat';
+import type { ChatItemType, QuoteItemType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { parseStreamChunk, textAdaptGptResponse } from '@/utils/adapt';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
-import { TaskResponseKeyEnum } from '@/constants/app';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
-import { countModelPrice, pushTaskBillListItem } from '@/service/events/pushBill';
-import { authUser } from '@/service/utils/auth';
+import { countModelPrice } from '@/service/events/pushBill';
 
-export type Props = {
+export type ChatProps = {
+  res: NextApiResponse;
   model: `${OpenAiChatEnum}`;
   temperature?: number;
   maxToken?: number;
   history?: ChatItemType[];
   userChatInput: string;
   stream?: boolean;
-  quotePrompt?: string;
+  quoteQA?: QuoteItemType[];
   systemPrompt?: string;
   limitPrompt?: string;
-  billId?: string;
 };
-export type Response = { [TaskResponseKeyEnum.answerText]: string; totalTokens: number };
+export type ChatResponse = {
+  [TaskResponseKeyEnum.answerText]: string;
+  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+};
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let { model, stream } = req.body as Props;
-  try {
-    await authUser({ req, authRoot: true });
-
-    const response = await chatCompletion({
-      ...req.body,
-      res,
-      model
-    });
-
-    if (stream) {
-      sseResponse({
-        res,
-        event: sseResponseEventEnum.moduleFetchResponse,
-        data: JSON.stringify(response)
-      });
-      res.end();
-    } else {
-      jsonRes(res, {
-        data: response
-      });
-    }
-  } catch (err) {
-    if (stream) {
-      sseErrRes(res, err);
-      res.end();
-    } else {
-      jsonRes(res, {
-        code: 500,
-        error: err
-      });
-    }
-  }
-}
+const moduleName = 'AI Chat';
 
 /* request openai chat */
-export async function chatCompletion({
-  res,
-  model,
-  temperature = 0,
-  maxToken = 4000,
-  stream = false,
-  history = [],
-  quotePrompt = '',
-  userChatInput,
-  systemPrompt = '',
-  limitPrompt = '',
-  billId
-}: Props & { res: NextApiResponse }): Promise<Response> {
+export const dispatchChatCompletion = async (props: Record<string, any>): Promise<ChatResponse> => {
+  let {
+    res,
+    model,
+    temperature = 0,
+    maxToken = 4000,
+    stream = false,
+    history = [],
+    quoteQA = [],
+    userChatInput,
+    systemPrompt = '',
+    limitPrompt = ''
+  } = props as ChatProps;
+
   // temperature adapt
   const modelConstantsData = getChatModel(model);
 
   if (!modelConstantsData) {
-    return Promise.reject('The chat model is undefined');
+    return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
   // FastGpt temperature range: 1~10
@@ -91,11 +59,18 @@ export async function chatCompletion({
 
   const limitText = (() => {
     if (limitPrompt) return limitPrompt;
-    if (quotePrompt && !limitPrompt) {
-      return '根据知识库内容回答问题，仅回复知识库提供的内容。';
+    if (quoteQA.length > 0 && !limitPrompt) {
+      return '根据知识库内容回答问题，仅回复知识库提供的内容，不要对知识库内容做补充说明。';
     }
     return '';
   })();
+
+  const quotePrompt =
+    quoteQA.length > 0
+      ? `下面是知识库内容:
+${quoteQA.map((item, i) => `${i + 1}. [${item.q}\n${item.a}]`).join('\n')}
+`
+      : '';
 
   const messages: ChatItemType[] = [
     ...(quotePrompt
@@ -138,6 +113,7 @@ export async function chatCompletion({
 
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
   const chatAPI = getOpenAIApi();
+  // console.log(adaptMessages);
 
   /* count response max token */
   const promptsToken = modelToolMap.countTokens({
@@ -152,8 +128,8 @@ export async function chatCompletion({
       temperature: Number(temperature || 0),
       max_tokens: maxToken,
       messages: adaptMessages,
-      // frequency_penalty: 0.5, // 越大，重复内容越少
-      // presence_penalty: -0.5, // 越大，越容易出现新内容
+      frequency_penalty: 0.5, // 越大，重复内容越少
+      presence_penalty: -0.5, // 越大，越容易出现新内容
       stream
     },
     {
@@ -163,7 +139,7 @@ export async function chatCompletion({
     }
   );
 
-  const { answer, totalTokens } = await (async () => {
+  const { answerText, totalTokens, finishMessages } = await (async () => {
     if (stream) {
       // sse response
       const { answer } = await streamResponse({ res, response });
@@ -174,38 +150,45 @@ export async function chatCompletion({
       });
 
       const totalTokens = countOpenAIToken({
-        messages: finishMessages,
-        model: 'gpt-3.5-turbo-16k'
+        messages: finishMessages
       });
 
       return {
-        answer,
-        totalTokens
+        answerText: answer,
+        totalTokens,
+        finishMessages
       };
     } else {
       const answer = stream ? '' : response.data.choices?.[0].message?.content || '';
       const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
 
+      const finishMessages = filterMessages.concat({
+        obj: ChatRoleEnum.AI,
+        value: answer
+      });
+
       return {
-        answer,
-        totalTokens
+        answerText: answer,
+        totalTokens,
+        finishMessages
       };
     }
   })();
 
-  await pushTaskBillListItem({
-    billId,
-    moduleName: 'AI Chat',
-    amount: countModelPrice({ model, tokens: totalTokens }),
-    model: modelConstantsData.name,
-    tokenLen: totalTokens
-  });
-
   return {
-    answerText: answer,
-    totalTokens
+    [TaskResponseKeyEnum.answerText]: answerText,
+    [TaskResponseKeyEnum.responseData]: {
+      moduleName,
+      price: countModelPrice({ model, tokens: totalTokens }),
+      model: modelConstantsData.name,
+      tokens: totalTokens,
+      question: userChatInput,
+      answer: answerText,
+      maxToken,
+      finishMessages
+    }
   };
-}
+};
 
 async function streamResponse({ res, response }: { res: NextApiResponse; response: any }) {
   let answer = '';

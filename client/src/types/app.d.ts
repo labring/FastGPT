@@ -5,7 +5,7 @@ import {
   ModulesInputItemTypeEnum,
   VariableInputEnum
 } from '../constants/app';
-import type { FlowInputItemType, FlowOutputItemType } from './flow';
+import type { FlowInputItemType, FlowOutputItemType, FlowOutputTargetItemType } from './flow';
 import type { AppSchema, kbSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
 
@@ -58,21 +58,12 @@ export type VariableItemType = {
 };
 
 /* app module */
-export type AppModuleTemplateItemType = {
-  logo: string;
-  name: string;
-  description?: string;
-  intro: string;
-
-  flowType: `${FlowModuleTypeEnum}`;
-  type: `${AppModuleItemTypeEnum}`;
-  url?: string;
-  inputs: FlowInputItemType[];
-  outputs: FlowOutputItemType[];
-};
-export type AppModuleItemType = AppModuleTemplateItemType & {
+export type AppModuleItemType = {
   moduleId: string;
   position?: XYPosition;
+  flowType: `${FlowModuleTypeEnum}`;
+  inputs: { key: string; value?: any; connected?: boolean }[];
+  outputs: { key: string; targets: FlowOutputTargetItemType[] }[];
 };
 
 export type AppItemType = {
@@ -83,8 +74,7 @@ export type AppItemType = {
 
 export type RunningModuleItemType = {
   moduleId: string;
-  type: `${AppModuleItemTypeEnum}`;
-  url?: string;
+  flowType: `${FlowModuleTypeEnum}`;
   inputs: {
     key: string;
     value?: any;

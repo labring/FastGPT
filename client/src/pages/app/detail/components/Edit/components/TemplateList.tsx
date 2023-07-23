@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Box, Flex, useOutsideClick } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import type { AppModuleTemplateItemType } from '@/types/app';
+import type { FlowModuleItemType } from '@/types/app';
 import type { XYPosition } from 'reactflow';
 import { useGlobalStore } from '@/store/global';
 import Avatar from '@/components/Avatar';
@@ -12,7 +12,7 @@ const ModuleStoreList = ({
   onClose
 }: {
   isOpen: boolean;
-  onAddNode: (e: { template: AppModuleTemplateItemType; position: XYPosition }) => void;
+  onAddNode: (e: { template: FlowModuleItemType; position: XYPosition }) => void;
   onClose: () => void;
 }) => {
   const { isPc } = useGlobalStore();

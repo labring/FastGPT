@@ -12,13 +12,20 @@ import ReactFlow, {
 } from 'reactflow';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { edgeOptions, connectionLineStyle, FlowModuleTypeEnum } from '@/constants/flow';
+import {
+  edgeOptions,
+  connectionLineStyle,
+  FlowModuleTypeEnum,
+  FlowInputItemTypeEnum
+} from '@/constants/flow';
 import { appModule2FlowNode, appModule2FlowEdge } from '@/utils/adapt';
 import {
   FlowModuleItemType,
+  FlowModuleTemplateType,
   FlowOutputTargetItemType,
   type FlowModuleItemChangeProps
 } from '@/types/flow';
+import { AppModuleItemType } from '@/types/app';
 import { customAlphabet } from 'nanoid';
 import { putAppById } from '@/api/app';
 import { useRequest } from '@/hooks/useRequest';
@@ -61,20 +68,20 @@ const NodeUserGuide = dynamic(() => import('./components/Nodes/NodeUserGuide'), 
 
 import 'reactflow/dist/style.css';
 import styles from './index.module.scss';
-import { AppModuleItemType, AppModuleTemplateItemType } from '@/types/app';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const nodeTypes = {
   [FlowModuleTypeEnum.userGuide]: NodeUserGuide,
   [FlowModuleTypeEnum.variable]: NodeVariable,
-  [FlowModuleTypeEnum.questionInputNode]: NodeQuestionInput,
+  [FlowModuleTypeEnum.questionInput]: NodeQuestionInput,
   [FlowModuleTypeEnum.historyNode]: NodeHistory,
   [FlowModuleTypeEnum.chatNode]: NodeChat,
   [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
   [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode
+  // [FlowModuleTypeEnum.empty]: EmptyModule
 };
 const edgeTypes = {
   buttonedge: ButtonEdge
@@ -147,7 +154,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     [setEdges, setNodes]
   );
   const onAddNode = useCallback(
-    ({ template, position }: { template: AppModuleTemplateItemType; position: XYPosition }) => {
+    ({ template, position }: { template: FlowModuleItemType; position: XYPosition }) => {
       if (!reactFlowWrapper.current) return;
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
@@ -158,8 +165,8 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           appModule2FlowNode({
             item: {
               ...template,
-              position: { x: mouseX, y: mouseY },
-              moduleId: nanoid()
+              moduleId: nanoid(),
+              position: { x: mouseX, y: mouseY }
             },
             onChangeNode,
             onDelNode
@@ -169,14 +176,18 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     },
     [onChangeNode, onDelNode, setNodes, x, y, zoom]
   );
-  const flow2Modules = useCallback(() => {
+  const flow2AppModules = useCallback(() => {
     const modules: AppModuleItemType[] = nodes.map((item) => ({
-      ...item.data,
+      moduleId: item.data.moduleId,
       position: item.position,
-      onChangeNode: undefined,
-      onDelNode: undefined,
-      outputs: item.data.outputs.map((output) => ({
-        ...output,
+      flowType: item.data.flowType,
+      inputs: item.data.inputs.map((item) => ({
+        key: item.key,
+        value: item.value,
+        connected: item.type !== FlowInputItemTypeEnum.target
+      })),
+      outputs: item.data.outputs.map((item) => ({
+        key: item.key,
         targets: [] as FlowOutputTargetItemType[]
       }))
     }));
@@ -184,9 +195,11 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     // update inputs and outputs
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
-        input.connected = !!edges.find(
-          (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
-        );
+        input.connected =
+          input.connected ||
+          !!edges.find(
+            (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
+          );
       });
       module.outputs.forEach((output) => {
         output.targets = edges
@@ -233,7 +246,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
       return putAppById(app._id, {
-        modules: flow2Modules()
+        modules: flow2AppModules()
       });
     },
     successToast: '保存配置成功',
@@ -270,6 +283,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   useEffect(() => {
     initData(JSON.parse(JSON.stringify(app)));
   }, [app, initData]);
+  console.log(flow2AppModules());
 
   return (
     <>
@@ -340,7 +354,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
               aria-label={'save'}
               variant={'base'}
               onClick={() => {
-                setTestModules(flow2Modules());
+                setTestModules(flow2AppModules());
               }}
             />
           </MyTooltip>
