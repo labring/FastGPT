@@ -1,7 +1,7 @@
-import { sseResponseEventEnum } from '@/constants/chat';
+import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
 import { parseStreamChunk } from '@/utils/adapt';
-import { QuoteItemType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@/types/chat';
 
 interface StreamFetchProps {
   url?: string;
@@ -17,8 +17,7 @@ export const streamFetch = ({
 }: StreamFetchProps) =>
   new Promise<{
     responseText: string;
-    errMsg: string;
-    newChatId: string | null;
+    [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
   }>(async (resolve, reject) => {
     try {
       const response = await window.fetch(url, {
@@ -42,7 +41,7 @@ export const streamFetch = ({
       // response data
       let responseText = '';
       let errMsg = '';
-      const newChatId = response.headers.get('newChatId');
+      let responseData: ChatHistoryItemResType[] = [];
 
       const read = async () => {
         try {
@@ -51,8 +50,7 @@ export const streamFetch = ({
             if (response.status === 200 && !errMsg) {
               return resolve({
                 responseText,
-                errMsg,
-                newChatId
+                responseData
               });
             } else {
               return reject({
@@ -78,7 +76,7 @@ export const streamFetch = ({
               onMessage(answer);
               responseText += answer;
             } else if (item.event === sseResponseEventEnum.appStreamResponse) {
-              console.log(data);
+              responseData = data;
             } else if (item.event === sseResponseEventEnum.error) {
               errMsg = getErrText(data, '流响应错误');
             }
@@ -88,8 +86,7 @@ export const streamFetch = ({
           if (err?.message === 'The user aborted a request.') {
             return resolve({
               responseText,
-              errMsg,
-              newChatId
+              responseData
             });
           }
           reject(getErrText(err, '请求异常'));

@@ -46,7 +46,7 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
       const prompts = messages.slice(-2);
       const completionChatId = chatId ? chatId : nanoid();
 
-      const { responseText } = await streamFetch({
+      const { responseText, responseData } = await streamFetch({
         data: {
           messages: prompts,
           variables,
@@ -91,7 +91,7 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
         '*'
       );
 
-      return { responseText };
+      return { responseText, responseData };
     },
     [chatId, router, saveChatResponse, shareId]
   );

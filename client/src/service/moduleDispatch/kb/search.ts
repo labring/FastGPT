@@ -1,6 +1,6 @@
 import { PgClient } from '@/service/pg';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
-import { TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatModuleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice } from '@/service/events/pushBill';
 import type { SelectedKbType } from '@/types/plugin';
@@ -19,8 +19,6 @@ export type KBSearchResponse = {
   unEmpty?: boolean;
   quoteQA: QuoteItemType[];
 };
-
-const moduleName = 'KB Search';
 
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
   const {
@@ -65,7 +63,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      moduleName,
+      moduleName: ChatModuleEnum.KBSearch,
       price: countModelPrice({ model: vectorModel.model, tokens: tokenLen }),
       model: vectorModel.name,
       tokens: tokenLen,

@@ -68,7 +68,7 @@ export function setDefaultData() {
       model: 'gpt-3.5-turbo',
       name: 'FastAI-4k',
       contextMaxToken: 4000,
-      systemMaxToken: 2400,
+      quoteMaxToken: 2400,
       maxTemperature: 1.2,
       price: 1.5
     },
@@ -76,7 +76,7 @@ export function setDefaultData() {
       model: 'gpt-3.5-turbo-16k',
       name: 'FastAI-16k',
       contextMaxToken: 16000,
-      systemMaxToken: 8000,
+      quoteMaxToken: 8000,
       maxTemperature: 1.2,
       price: 3
     },
@@ -84,7 +84,7 @@ export function setDefaultData() {
       model: 'gpt-4',
       name: 'FastAI-Plus',
       contextMaxToken: 8000,
-      systemMaxToken: 4000,
+      quoteMaxToken: 4000,
       maxTemperature: 1.2,
       price: 45
     }

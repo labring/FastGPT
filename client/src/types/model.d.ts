@@ -2,7 +2,7 @@ export type ChatModelItemType = {
   model: string;
   name: string;
   contextMaxToken: number;
-  systemMaxToken: number;
+  quoteMaxToken: number;
   maxTemperature: number;
   price: number;
 };

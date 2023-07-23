@@ -1,7 +1,6 @@
 import { ChatItemType } from '@/types/chat';
 import { modelToolMap } from '@/utils/plugin';
-import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
-import { sseResponse } from '../tools';
+import { ChatRoleEnum } from '@/constants/chat';
 import { OpenAiChatEnum } from '@/constants/model';
 import type { NextApiResponse } from 'next';
 
@@ -18,18 +17,6 @@ export type StreamResponseType = {
   model: `${OpenAiChatEnum}`;
   [key: string]: any;
 };
-export type StreamResponseReturnType = {
-  responseContent: string;
-  totalTokens: number;
-  finishMessages: ChatItemType[];
-};
-
-/* delete invalid symbol */
-const simplifyStr = (str = '') =>
-  str
-    .replace(/\n+/g, '\n') // 连续空行
-    .replace(/[^\S\r\n]+/g, ' ') // 连续空白内容
-    .trim();
 
 /* slice chat context by tokens */
 export const ChatContextFilter = ({

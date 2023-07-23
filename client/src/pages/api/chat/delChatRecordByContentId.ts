@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 删除一条数据库记录
     await Chat.updateOne(
       {
-        _id: chatId,
+        chatId,
         userId
       },
       { $pull: { content: { _id: contentId } } }

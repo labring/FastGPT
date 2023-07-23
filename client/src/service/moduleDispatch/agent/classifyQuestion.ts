@@ -1,7 +1,7 @@
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { countModelPrice } from '@/service/events/pushBill';
@@ -17,7 +17,6 @@ export type CQResponse = {
   [key: string]: any;
 };
 
-const moduleName = 'Classify Question';
 const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_user_question';
 const maxTokens = 2000;
@@ -88,7 +87,7 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
   return {
     [result.key]: 1,
     [TaskResponseKeyEnum.responseData]: {
-      moduleName,
+      moduleName: ChatModuleEnum.CQ,
       price: countModelPrice({ model: agentModel, tokens }),
       model: agentModel,
       tokens,
