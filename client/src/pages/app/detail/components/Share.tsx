@@ -115,7 +115,6 @@ const Share = ({ appId }: { appId: string }) => {
           <Thead>
             <Tr>
               <Th>名称</Th>
-              <Th>最大上下文</Th>
               <Th>金额消耗</Th>
               <Th>最后使用时间</Th>
               <Th>操作</Th>
@@ -125,7 +124,6 @@ const Share = ({ appId }: { appId: string }) => {
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                <Td>{item.maxContext}</Td>
                 <Td>{formatPrice(item.total)}元</Td>
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
                 <Td>
@@ -195,42 +193,6 @@ const Share = ({ appId }: { appId: string }) => {
                     required: '记录名称不能为空'
                   })}
                 />
-              </Flex>
-            </FormControl>
-            <FormControl mt={9}>
-              <Flex alignItems={'center'}>
-                <Box flex={'0 0 120px'} w={0}>
-                  最长上下文（组）
-                </Box>
-                <Slider
-                  aria-label="slider-ex-1"
-                  min={1}
-                  max={20}
-                  step={1}
-                  value={getShareChatValues('maxContext')}
-                  onChange={(e) => {
-                    setShareChatValues('maxContext', e);
-                    setRefresh(!refresh);
-                  }}
-                >
-                  <SliderMark
-                    value={getShareChatValues('maxContext')}
-                    textAlign="center"
-                    bg="myBlue.600"
-                    color="white"
-                    w={'18px'}
-                    h={'18px'}
-                    borderRadius={'100px'}
-                    fontSize={'xs'}
-                    transform={'translate(-50%, -200%)'}
-                  >
-                    {getShareChatValues('maxContext')}
-                  </SliderMark>
-                  <SliderTrack>
-                    <SliderFilledTrack bg={'myBlue.700'} />
-                  </SliderTrack>
-                  <SliderThumb />
-                </Slider>
               </Flex>
             </FormControl>
           </ModalBody>

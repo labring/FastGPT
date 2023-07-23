@@ -249,7 +249,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
-              history={history.map((item) => ({
+              history={history.map((item, i) => ({
                 id: item.chatId,
                 title: item.title,
                 customTitle: item.customTitle,

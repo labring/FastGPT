@@ -110,10 +110,10 @@ const ChatHistorySlider = ({
 
       {/* chat history */}
       <Box flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
-        {concatHistory.map((item) => (
+        {concatHistory.map((item, i) => (
           <Flex
             position={'relative'}
-            key={item.id}
+            key={item.id || `${i}`}
             alignItems={'center'}
             py={3}
             px={4}
