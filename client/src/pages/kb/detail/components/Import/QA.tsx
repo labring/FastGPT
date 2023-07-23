@@ -263,6 +263,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
                 QA 拆分引导词{' '}
                 <MyTooltip
                   label={`可输入关于文件内容的范围介绍，例如:\n1. 关于 Laf 的介绍\n2. xxx的简历`}
+                  forceShow
                 >
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
@@ -282,7 +283,10 @@ const QAImport = ({ kbId }: { kbId: string }) => {
             <Flex py={5} alignItems={'center'}>
               <Box>
                 预估价格
-                <MyTooltip label={`索引生成计费为: ${formatPrice(unitPrice, 1000)}/1k tokens`}>
+                <MyTooltip
+                  label={`索引生成计费为: ${formatPrice(unitPrice, 1000)}/1k tokens`}
+                  forceShow
+                >
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Box>

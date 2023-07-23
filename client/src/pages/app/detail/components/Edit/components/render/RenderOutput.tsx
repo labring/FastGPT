@@ -15,7 +15,7 @@ const Label = ({
 }) => (
   <Flex as={'label'} justifyContent={'right'} alignItems={'center'} position={'relative'}>
     {description && (
-      <MyTooltip label={description}>
+      <MyTooltip label={description} forceShow>
         <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
       </MyTooltip>
     )}

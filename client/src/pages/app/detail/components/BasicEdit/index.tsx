@@ -174,7 +174,7 @@ const Settings = ({ appId }: { appId: string }) => {
       <Flex pr={4} justifyContent={'space-between'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
           应用配置
-          <MyTooltip label={'仅包含基础功能，复杂 agent 功能请使用高级编排。'}>
+          <MyTooltip label={'仅包含基础功能，复杂 agent 功能请使用高级编排。'} forceShow>
             <QuestionOutlineIcon ml={2} fontSize={'md'} />
           </MyTooltip>
         </Box>
@@ -309,7 +309,7 @@ const Settings = ({ appId }: { appId: string }) => {
           <Flex mt={10} alignItems={'flex-start'}>
             <Box {...LabelStyles}>
               提示词
-              <MyTooltip label={ChatModelSystemTip}>
+              <MyTooltip label={ChatModelSystemTip} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Box>
@@ -323,7 +323,7 @@ const Settings = ({ appId }: { appId: string }) => {
           <Flex mt={5} alignItems={'flex-start'}>
             <Box {...LabelStyles}>
               限定词
-              <MyTooltip label={ChatModelLimitTip}>
+              <MyTooltip label={ChatModelLimitTip} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Box>
@@ -381,7 +381,7 @@ const Settings = ({ appId }: { appId: string }) => {
           <Flex alignItems={'center'}>
             <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
             <Box mx={2}>对话开场白</Box>
-            <MyTooltip label={welcomeTextTip}>
+            <MyTooltip label={welcomeTextTip} forceShow>
               <QuestionOutlineIcon />
             </MyTooltip>
           </Flex>

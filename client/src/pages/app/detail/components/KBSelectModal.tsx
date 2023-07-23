@@ -146,7 +146,7 @@ export const KbParamsModal = ({
           <Box display={['block', 'flex']} pt={3} pb={5}>
             <Box flex={'0 0 100px'} mb={[8, 0]}>
               相似度
-              <MyTooltip label={'高相似度推荐0.8及以上。'}>
+              <MyTooltip label={'高相似度推荐0.8及以上。'} forceShow>
                 <QuestionOutlineIcon ml={1} />
               </MyTooltip>
             </Box>

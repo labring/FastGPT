@@ -7,11 +7,12 @@ import MyIcon from '@/components/Icon';
 
 interface Props extends BoxProps {
   fileExtension: string;
+  tipText?: string;
   onSelectFile: (files: File[]) => Promise<void>;
   isLoading?: boolean;
 }
 
-const FileSelect = ({ fileExtension, onSelectFile, isLoading, ...props }: Props) => {
+const FileSelect = ({ fileExtension, onSelectFile, isLoading, tipText, ...props }: Props) => {
   const { Loading: FileSelectLoading } = useLoading();
 
   const { File, onOpen } = useSelectFile({
@@ -41,6 +42,11 @@ const FileSelect = ({ fileExtension, onSelectFile, isLoading, ...props }: Props)
         </Box>
       </Flex>
       <Box mt={1}>支持 {fileExtension} 文件</Box>
+      {tipText && (
+        <Box mt={1} fontSize={'sm'} color={'myGray.600'}>
+          {tipText}
+        </Box>
+      )}
       <FileSelectLoading loading={isLoading} fixed={false} />
       <File onSelect={onSelectFile} />
     </Box>

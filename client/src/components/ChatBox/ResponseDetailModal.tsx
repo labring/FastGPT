@@ -17,8 +17,6 @@ const ResponseDetailModal = ({
   contentId?: string;
   responseData?: ChatHistoryItemResType[];
 }) => {
-  console.log(responseData);
-
   const [quoteModalData, setQuoteModalData] = useState<QuoteItemType[]>();
 
   const {
@@ -62,9 +60,11 @@ const ResponseDetailModal = ({
         </MyTooltip>
       )}
       {completeMessages.length > 0 && (
-        <Tag colorSchema="green" cursor={'default'} {...TagStyles}>
-          {completeMessages.length}条上下文
-        </Tag>
+        <MyTooltip label={'提示词和限定词分别算 1 条上下文'} forceShow>
+          <Tag colorSchema="green" cursor={'default'} {...TagStyles}>
+            {completeMessages.length}条上下文
+          </Tag>
+        </MyTooltip>
       )}
       {tokens > 0 && (
         <Tag colorSchema="gray" cursor={'default'} {...TagStyles}>
