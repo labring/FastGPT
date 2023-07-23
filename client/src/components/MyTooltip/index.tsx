@@ -1,8 +1,14 @@
 import React from 'react';
 import { Tooltip, TooltipProps } from '@chakra-ui/react';
+import { useGlobalStore } from '@/store/global';
 
-const MyTooltip = ({ children, ...props }: TooltipProps) => {
-  return (
+interface Props extends TooltipProps {
+  forceShow?: boolean;
+}
+
+const MyTooltip = ({ children, forceShow = false, ...props }: Props) => {
+  const { isPc } = useGlobalStore();
+  return isPc || forceShow ? (
     <Tooltip
       bg={'white'}
       arrowShadowColor={' rgba(0,0,0,0.1)'}
@@ -19,6 +25,8 @@ const MyTooltip = ({ children, ...props }: TooltipProps) => {
     >
       {children}
     </Tooltip>
+  ) : (
+    <>{children}</>
   );
 };
 

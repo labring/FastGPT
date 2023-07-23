@@ -23,7 +23,7 @@ import {
   hasVoiceApi,
   getErrText
 } from '@/utils/tools';
-import { Box, Card, Flex, Input, Textarea, Button, useTheme } from '@chakra-ui/react';
+import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
 import { Types } from 'mongoose';
 import { EventNameEnum } from '../Markdown/constant';
@@ -38,12 +38,11 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { QuoteItemType } from '@/types/chat';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 
 import dynamic from 'next/dynamic';
-const QuoteModal = dynamic(() => import('./QuoteModal'));
+const ResponseDetailModal = dynamic(() => import('./ResponseDetailModal'));
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -108,15 +107,22 @@ const Empty = () => {
   );
 };
 
-const ChatAvatar = ({
-  src,
-  ml,
-  mr
-}: {
-  src?: string;
-  ml?: (string | number) | (string | number)[];
-  mr?: (string | number) | (string | number)[];
-}) => <Avatar src={src} w={['24px', '34px']} h={['24px', '34px']} ml={ml} mr={mr} />;
+const ChatAvatar = ({ src, type }: { src?: string; type: 'Human' | 'AI' }) => {
+  const theme = useTheme();
+  return (
+    <Box
+      w={['28px', '34px']}
+      h={['28px', '34px']}
+      p={'2px'}
+      borderRadius={'lg'}
+      border={theme.borders.base}
+      boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
+      bg={type === 'Human' ? 'white' : 'myBlue.100'}
+    >
+      <Avatar src={src} w={'100%'} h={'100%'} />
+    </Box>
+  );
+};
 
 const ChatBox = (
   {
@@ -157,10 +163,6 @@ const ChatBox = (
   const [refresh, setRefresh] = useState(false);
   const [variables, setVariables] = useState<Record<string, any>>({});
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
-  const [quoteModalData, setQuoteModalData] = useState<{
-    contentId?: string;
-    rawSearch?: QuoteItemType[];
-  }>();
 
   const isChatting = useMemo(
     () => chatHistory[chatHistory.length - 1]?.status === 'loading',
@@ -394,13 +396,16 @@ const ChatBox = (
     color: 'myGray.400',
     display: ['flex', 'none'],
     pl: 1,
-    mt: 2,
-    position: 'absolute' as any,
-    zIndex: 1,
-    w: '100%'
+    mt: 2
+  };
+  const MessageCardStyle: BoxProps = {
+    px: 4,
+    py: 3,
+    borderRadius: '0 8px 8px 8px',
+    boxShadow: '0 0 8px rgba(0,0,0,0.15)'
   };
 
-  const messageCardMaxW = ['calc(100% - 48px)', 'calc(100% - 65px)'];
+  const messageCardMaxW = ['calc(100% - 25px)', 'calc(100% - 40px)'];
 
   const showEmpty = useMemo(
     () =>
@@ -439,27 +444,19 @@ const ChatBox = (
         h={0}
         w={'100%'}
         overflow={'overlay'}
-        px={[2, 5]}
+        px={[4, 0]}
         mt={[0, 5]}
         pb={3}
       >
-        <Box maxW={['100%', '1000px', '1200px']} h={'100%'} mx={'auto'}>
+        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
 
           {!!welcomeText && (
-            <Flex alignItems={'flex-start'} py={2}>
+            <Flex flexDirection={'column'} alignItems={'flex-start'} py={2}>
               {/* avatar */}
-              <ChatAvatar src={appAvatar} mr={['6px', 2]} />
+              <ChatAvatar src={appAvatar} type={'AI'} />
               {/* message */}
-              <Card
-                order={2}
-                mt={2}
-                px={4}
-                py={3}
-                bg={'white'}
-                maxW={messageCardMaxW}
-                borderRadius={'0 8px 8px 8px'}
-              >
+              <Card order={2} mt={2} {...MessageCardStyle} bg={'white'} maxW={messageCardMaxW}>
                 <Markdown
                   source={`~~~guide \n${welcomeText}`}
                   isChatting={false}
@@ -474,19 +471,17 @@ const ChatBox = (
           )}
           {/* variable input */}
           {!!variableModules?.length && (
-            <Flex alignItems={'flex-start'} py={2}>
+            <Flex flexDirection={'column'} alignItems={'flex-start'} py={2}>
               {/* avatar */}
-              <ChatAvatar src={appAvatar} mr={['6px', 2]} />
+              <ChatAvatar src={appAvatar} type={'AI'} />
               {/* message */}
               <Card
                 order={2}
                 mt={2}
                 bg={'white'}
-                px={4}
-                py={3}
-                borderRadius={'0 8px 8px 8px'}
-                flex={'0 0 400px'}
+                w={'400px'}
                 maxW={messageCardMaxW}
+                {...MessageCardStyle}
               >
                 {variableModules.map((item) => (
                   <Box key={item.id} mb={4}>
@@ -540,8 +535,8 @@ const ChatBox = (
               <Flex
                 position={'relative'}
                 key={item._id}
-                alignItems={'flex-start'}
-                justifyContent={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
+                flexDirection={'column'}
+                alignItems={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
                 py={5}
                 _hover={{
                   '& .control': {
@@ -551,18 +546,8 @@ const ChatBox = (
               >
                 {item.obj === 'Human' && (
                   <>
-                    <Box position={'relative'} maxW={messageCardMaxW}>
-                      <Card
-                        className="markdown"
-                        whiteSpace={'pre-wrap'}
-                        px={4}
-                        py={3}
-                        borderRadius={'8px 0 8px 8px'}
-                        bg={'myBlue.300'}
-                      >
-                        <Box as={'p'}>{item.value}</Box>
-                      </Card>
-                      <Flex {...controlContainerStyle} justifyContent={'flex-end'}>
+                    <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
+                      <Flex {...controlContainerStyle} justifyContent={'flex-end'} mr={3}>
                         <MyTooltip label={'复制'}>
                           <MyIcon
                             {...controlIconStyle}
@@ -591,38 +576,25 @@ const ChatBox = (
                           </MyTooltip>
                         )}
                       </Flex>
+                      <ChatAvatar src={userAvatar} type={'Human'} />
+                    </Flex>
+                    <Box position={'relative'} maxW={messageCardMaxW} mt={['6px', 2]}>
+                      <Card
+                        className="markdown"
+                        whiteSpace={'pre-wrap'}
+                        {...MessageCardStyle}
+                        bg={'myBlue.300'}
+                      >
+                        <Box as={'p'}>{item.value}</Box>
+                      </Card>
                     </Box>
-                    <ChatAvatar src={userAvatar} ml={['6px', 2]} />
                   </>
                 )}
                 {item.obj === 'AI' && (
                   <>
-                    <ChatAvatar src={appAvatar} mr={['6px', 2]} />
-                    <Box position={'relative'} maxW={messageCardMaxW}>
-                      <Card bg={'white'} px={4} py={3} borderRadius={'0 8px 8px 8px'}>
-                        <Markdown
-                          source={item.value}
-                          isChatting={index === chatHistory.length - 1 && isChatting}
-                        />
-                        {/* {(!!item[quoteLenKey] || !!item[rawSearchKey]?.length) && (
-                          <Button
-                            size={'xs'}
-                            variant={'base'}
-                            mt={2}
-                            w={'80px'}
-                            onClick={() => {
-                              setQuoteModalData({
-                                contentId: item._id,
-                                rawSearch: item[rawSearchKey]
-                              });
-                            }}
-                          >
-                            {item[quoteLenKey] || item[rawSearchKey]?.length}条引用
-                          </Button>
-                        )} */}
-                      </Card>
-
-                      <Flex {...controlContainerStyle}>
+                    <Flex w={'100%'} alignItems={'center'}>
+                      <ChatAvatar src={appAvatar} type={'AI'} />
+                      <Flex {...controlContainerStyle} ml={3}>
                         <MyTooltip label={'复制'}>
                           <MyIcon
                             {...controlIconStyle}
@@ -660,6 +632,19 @@ const ChatBox = (
                           </MyTooltip>
                         )}
                       </Flex>
+                    </Flex>
+                    <Box position={'relative'} maxW={messageCardMaxW} mt={['6px', 2]}>
+                      <Card bg={'white'} {...MessageCardStyle}>
+                        <Markdown
+                          source={item.value}
+                          isChatting={index === chatHistory.length - 1 && isChatting}
+                        />
+                        <ResponseDetailModal
+                          chatId={chatId}
+                          contentId={item._id}
+                          responseData={item.responseData}
+                        />
+                      </Card>
                     </Box>
                   </>
                 )}
@@ -753,14 +738,6 @@ const ChatBox = (
           </Box>
         </Box>
       ) : null}
-      {/* quote modal */}
-      {!!quoteModalData && (
-        <QuoteModal
-          chatId={chatId}
-          {...quoteModalData}
-          onClose={() => setQuoteModalData(undefined)}
-        />
-      )}
     </Flex>
   );
 };

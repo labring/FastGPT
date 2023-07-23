@@ -159,7 +159,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         if (res.history.length > 0) {
           setTimeout(() => {
             ChatBoxRef.current?.scrollToBottom('auto');
-          }, 200);
+          }, 500);
         }
       } catch (e: any) {
         // reset all chat tore

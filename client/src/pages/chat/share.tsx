@@ -131,7 +131,9 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
       }
 
       if (history.chats.length > 0) {
-        ChatBoxRef.current?.scrollToBottom('auto');
+        setTimeout(() => {
+          ChatBoxRef.current?.scrollToBottom('auto');
+        }, 500);
       }
 
       return history;

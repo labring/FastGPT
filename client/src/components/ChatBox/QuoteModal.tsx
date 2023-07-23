@@ -13,21 +13,17 @@ import MyIcon from '@/components/Icon';
 import InputDataModal from '@/pages/kb/detail/components/InputDataModal';
 import { getKbDataItemById } from '@/api/plugins/kb';
 import { useLoading } from '@/hooks/useLoading';
-import { useQuery } from '@tanstack/react-query';
-import { getHistoryQuote, updateHistoryQuote } from '@/api/chat';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import { QuoteItemType } from '@/types/chat';
 
 const QuoteModal = ({
-  chatId,
-  contentId,
+  onUpdateQuote,
   rawSearch = [],
   onClose
 }: {
-  chatId?: string;
-  contentId?: string;
-  rawSearch?: QuoteItemType[];
+  onUpdateQuote: (quoteId: string, sourceText: string) => Promise<void>;
+  rawSearch: QuoteItemType[];
   onClose: () => void;
 }) => {
   const theme = useTheme();
@@ -40,47 +36,6 @@ const QuoteModal = ({
     q: string;
   }>();
 
-  const {
-    data: quote = [],
-    refetch,
-    isLoading
-  } = useQuery(['getHistoryQuote'], () => {
-    if (chatId && contentId) {
-      return getHistoryQuote({ chatId, contentId });
-    }
-    if (rawSearch.length > 0) {
-      return rawSearch;
-    }
-    return [];
-  });
-
-  /**
-   * update kbData, update mongo status and reload quotes
-   */
-  const updateQuoteStatus = useCallback(
-    async (quoteId: string, sourceText: string) => {
-      if (!chatId || !contentId) return;
-      setIsLoading(true);
-      try {
-        await updateHistoryQuote({
-          contentId,
-          chatId,
-          quoteId,
-          sourceText
-        });
-        // reload quote
-        refetch();
-      } catch (err) {
-        toast({
-          status: 'warning',
-          title: getErrText(err)
-        });
-      }
-      setIsLoading(false);
-    },
-    [contentId, chatId, refetch, setIsLoading, toast]
-  );
-
   /**
    * click edit, get new kbDataItem
    */
@@ -91,7 +46,7 @@ const QuoteModal = ({
         const data = (await getKbDataItemById(item.id)) as QuoteItemType;
 
         if (!data) {
-          updateQuoteStatus(item.id, '已删除');
+          onUpdateQuote(item.id, '已删除');
           throw new Error('该数据已被删除');
         }
 
@@ -109,7 +64,7 @@ const QuoteModal = ({
       }
       setIsLoading(false);
     },
-    [setIsLoading, toast, updateQuoteStatus]
+    [setIsLoading, toast, onUpdateQuote]
   );
 
   return (
@@ -123,14 +78,14 @@ const QuoteModal = ({
           overflow={'overlay'}
         >
           <ModalHeader>
-            知识库引用({quote.length}条)
+            知识库引用({rawSearch.length}条)
             <Box fontSize={'sm'} fontWeight={'normal'}>
-              注意: 修改知识库内容成功后，此处不会显示。点击编辑后，才是显示最新的内容。
+              注意: 修改知识库内容成功后，此处不会显示变更情况。点击编辑后，会显示知识库最新的内容。
             </Box>
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
-            {quote.map((item) => (
+            {rawSearch.map((item) => (
               <Box
                 key={item.id}
                 flex={'1 0 0'}
@@ -172,14 +127,14 @@ const QuoteModal = ({
               </Box>
             ))}
           </ModalBody>
-          <Loading loading={isLoading} fixed={false} />
+          <Loading fixed={false} />
         </ModalContent>
       </Modal>
       {editDataItem && (
         <InputDataModal
           onClose={() => setEditDataItem(undefined)}
-          onSuccess={() => updateQuoteStatus(editDataItem.dataId, '手动修改')}
-          onDelete={() => updateQuoteStatus(editDataItem.dataId, '已删除')}
+          onSuccess={() => onUpdateQuote(editDataItem.dataId, '手动修改')}
+          onDelete={() => onUpdateQuote(editDataItem.dataId, '已删除')}
           kbId={editDataItem.kbId}
           defaultValues={editDataItem}
         />
