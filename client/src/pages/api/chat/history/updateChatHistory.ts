@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await Chat.findOneAndUpdate(
       {
-        _id: chatId,
+        chatId,
         userId
       },
       {

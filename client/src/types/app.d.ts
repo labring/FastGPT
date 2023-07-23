@@ -37,7 +37,6 @@ export interface ShareAppItem {
 
 export type ShareChatEditType = {
   name: string;
-  maxContext: number;
 };
 
 /* agent */

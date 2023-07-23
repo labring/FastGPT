@@ -9,7 +9,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 /* create a shareChat */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { appId, name, maxContext } = req.body as ShareChatEditType & {
+    const { appId, name } = req.body as ShareChatEditType & {
       appId: string;
     };
 
@@ -27,8 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       shareId,
       userId,
       appId,
-      name,
-      maxContext
+      name
     });
 
     jsonRes(res, {

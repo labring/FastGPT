@@ -24,10 +24,6 @@ const ShareChatSchema = new Schema({
     type: Number,
     default: 0
   },
-  maxContext: {
-    type: Number,
-    default: 20
-  },
   lastTime: {
     type: Date
   }

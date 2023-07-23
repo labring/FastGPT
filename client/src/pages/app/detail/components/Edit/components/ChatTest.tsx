@@ -13,6 +13,7 @@ import MyIcon from '@/components/Icon';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { streamFetch } from '@/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
+import { useUserStore } from '@/store/user';
 import ChatBox, {
   getSpecialModule,
   type ComponentRef,
@@ -36,6 +37,7 @@ const ChatTest = (
   ref: ForwardedRef<ChatTestComponentRef>
 ) => {
   const ChatBoxRef = useRef<ComponentRef>(null);
+  const { userInfo } = useUserStore();
   const isOpen = useMemo(() => modules && modules.length > 0, [modules]);
 
   const startChat = useCallback(
@@ -47,7 +49,7 @@ const ChatTest = (
       const history = messages.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
-      const { responseText, rawSearch } = await streamFetch({
+      const { responseText } = await streamFetch({
         url: '/api/chat/chatTest',
         data: {
           history,
@@ -61,7 +63,7 @@ const ChatTest = (
         abortSignal: controller
       });
 
-      return { responseText, rawSearch };
+      return { responseText };
     },
     [app._id, app.name, modules]
   );
@@ -113,6 +115,7 @@ const ChatTest = (
           <ChatBox
             ref={ChatBoxRef}
             appAvatar={app.avatar}
+            userAvatar={userInfo?.avatar}
             {...getSpecialModule(modules)}
             onStartChat={startChat}
             onDelMessage={() => {}}

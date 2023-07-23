@@ -3,10 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, ShareChat, User } from '@/service/mongo';
 import type { InitShareChatResponse } from '@/api/response/chat';
 import { authApp } from '@/service/utils/auth';
-import { hashPassword } from '@/service/utils/tools';
 import { HUMAN_ICON } from '@/constants/chat';
-import { FlowModuleTypeEnum } from '@/constants/flow';
-import { SystemInputEnum } from '@/constants/app';
 import { getSpecialModule } from '@/components/ChatBox';
 
 /* 初始化我的聊天框，需要身份验证 */
@@ -33,21 +30,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 校验使用权限
-    const { app } = await authApp({
-      appId: shareChat.appId,
-      userId: String(shareChat.userId),
-      authOwner: false
-    });
-
-    const user = await User.findById(shareChat.userId, 'avatar');
+    const [{ app }, user] = await Promise.all([
+      authApp({
+        appId: shareChat.appId,
+        userId: String(shareChat.userId),
+        authOwner: false
+      }),
+      User.findById(shareChat.userId, 'avatar')
+    ]);
 
     jsonRes<InitShareChatResponse>(res, {
       data: {
         userAvatar: user?.avatar || HUMAN_ICON,
-        maxContext:
-          app.modules
-            ?.find((item) => item.flowType === FlowModuleTypeEnum.historyNode)
-            ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0,
         app: {
           ...getSpecialModule(app.modules),
           name: app.name,

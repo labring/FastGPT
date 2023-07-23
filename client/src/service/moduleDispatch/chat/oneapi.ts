@@ -113,7 +113,7 @@ ${quoteQA.map((item, i) => `${i + 1}. [${item.q}\n${item.a}]`).join('\n')}
 
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
   const chatAPI = getOpenAIApi();
-  // console.log(adaptMessages);
+  console.log(adaptMessages);
 
   /* count response max token */
   const promptsToken = modelToolMap.countTokens({
@@ -128,8 +128,8 @@ ${quoteQA.map((item, i) => `${i + 1}. [${item.q}\n${item.a}]`).join('\n')}
       temperature: Number(temperature || 0),
       max_tokens: maxToken,
       messages: adaptMessages,
-      frequency_penalty: 0.5, // 越大，重复内容越少
-      presence_penalty: -0.5, // 越大，越容易出现新内容
+      // frequency_penalty: 0.5, // 越大，重复内容越少
+      // presence_penalty: -0.5, // 越大，越容易出现新内容
       stream
     },
     {

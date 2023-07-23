@@ -3,7 +3,6 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { Types } from 'mongoose';
-import { rawSearchKey } from '@/constants/chat';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -36,13 +35,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       {
         $project: {
-          [rawSearchKey]: `$content.${rawSearchKey}`
+          // [rawSearchKey]: `$content.${rawSearchKey}`
         }
       }
     ]);
 
     jsonRes(res, {
-      data: history[0]?.[rawSearchKey] || []
+      // data: history[0]?.[rawSearchKey] || []
     });
   } catch (err) {
     jsonRes(res, {

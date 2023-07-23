@@ -1,4 +1,4 @@
-import { ChatRoleEnum, rawSearchKey } from '@/constants/chat';
+import { ChatRoleEnum } from '@/constants/chat';
 import type { InitChatResponse, InitShareChatResponse } from '@/api/response/chat';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
@@ -9,9 +9,7 @@ export type ChatItemType = {
   _id?: string;
   obj: `${ChatRoleEnum}`;
   value: string;
-  [rawSearchKey]?: QuoteItemType[];
-  quoteLen?: number;
-  [key: string]: any;
+  [TaskResponseKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
 
 export type ChatSiteItemType = {
@@ -19,7 +17,7 @@ export type ChatSiteItemType = {
 } & ChatItemType;
 
 export type HistoryItemType = {
-  _id: string;
+  chatId: string;
   updateTime: Date;
   customTitle?: string;
   title: string;

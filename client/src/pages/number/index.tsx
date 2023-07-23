@@ -4,13 +4,12 @@ import { useGlobalStore } from '@/store/global';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { clearCookie } from '@/utils/user';
-
+import { useUserStore } from '@/store/user';
+import { useConfirm } from '@/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
-
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
-import { useUserStore } from '@/store/user';
 
 const BillTable = dynamic(() => import('./components/BillTable'), {
   ssr: false
@@ -39,6 +38,10 @@ const NumberSetting = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     { icon: 'loginoutLight', label: '登出', id: TabEnum.loginout, Component: () => <></> }
   ]);
 
+  const { openConfirm, ConfirmChild } = useConfirm({
+    content: '确认退出登录？'
+  });
+
   const router = useRouter();
   const theme = useTheme();
   const { isPc } = useGlobalStore();
@@ -47,9 +50,11 @@ const NumberSetting = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const setCurrentTab = useCallback(
     (tab: string) => {
       if (tab === TabEnum.loginout) {
-        clearCookie();
-        setUserInfo(null);
-        router.replace('/login');
+        openConfirm(() => {
+          clearCookie();
+          setUserInfo(null);
+          router.replace('/login');
+        })();
       } else {
         router.replace({
           query: {
@@ -58,7 +63,7 @@ const NumberSetting = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         });
       }
     },
-    [router, setUserInfo]
+    [openConfirm, router, setUserInfo]
   );
 
   return (
@@ -105,6 +110,7 @@ const NumberSetting = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           {currentTab === TabEnum.inform && <InformTable />}
         </Box>
       </Flex>
+      <ConfirmChild />
     </PageContainer>
   );
 };

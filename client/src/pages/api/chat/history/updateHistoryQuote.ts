@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await Chat.updateOne(
       {
-        _id: new Types.ObjectId(chatId),
+        chatId,
         userId: new Types.ObjectId(userId),
         'content._id': new Types.ObjectId(contentId)
       },

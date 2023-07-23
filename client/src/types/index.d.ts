@@ -18,7 +18,7 @@ export type FeConfigsType = {
   show_register?: boolean;
   show_appStore?: boolean;
   show_userDetail?: boolean;
-  show_git?: false;
+  show_git?: boolean;
   systemTitle?: string;
   authorText?: string;
 };

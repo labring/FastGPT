@@ -4,8 +4,6 @@ import { immer } from 'zustand/middleware/immer';
 
 import type { ChatSiteItemType, ShareChatHistoryItemType, ShareChatType } from '@/types/chat';
 import { HUMAN_ICON } from '@/constants/chat';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 type State = {
   shareChatData: ShareChatType;
@@ -16,21 +14,20 @@ type State = {
     prompts: ChatSiteItemType[];
     variables: Record<string, any>;
     shareId: string;
-  }) => { newChatId: string };
+  }) => void;
   delOneShareHistoryByChatId: (chatId: string) => void;
   delShareChatHistoryItemById: (e: { chatId: string; index: number }) => void;
   delManyShareChatHistoryByShareId: (shareId?: string) => void;
 };
 
 export const defaultHistory: ShareChatHistoryItemType = {
-  _id: `${Date.now()}`,
+  chatId: `${Date.now()}`,
   updateTime: new Date(),
   title: '新对话',
   shareId: '',
   chats: []
 };
 const defaultShareChatData: ShareChatType = {
-  maxContext: 5,
   userAvatar: HUMAN_ICON,
   app: {
     name: '',
@@ -57,32 +54,30 @@ export const useShareChatStore = create<State>()(
             state.shareChatData = val;
             // update history
             state.shareChatHistory = state.shareChatHistory.map((item) =>
-              item._id === val.history._id ? val.history : item
+              item.chatId === val.history.chatId ? val.history : item
             );
           });
         },
         shareChatHistory: [],
         saveChatResponse({ chatId, prompts, variables, shareId }) {
-          const history = get().shareChatHistory.find((item) => item._id === chatId);
-
-          const newChatId = history ? '' : nanoid();
+          const chatHistory = get().shareChatHistory.find((item) => item.chatId === chatId);
 
           const historyList = (() => {
-            if (history) {
+            if (chatHistory) {
               return get().shareChatHistory.map((item) =>
-                item._id === chatId
+                item.chatId === chatId
                   ? {
                       ...item,
                       title: prompts[prompts.length - 2]?.value,
                       updateTime: new Date(),
-                      chats: prompts,
+                      chats: chatHistory.chats.concat(prompts).slice(-50),
                       variables
                     }
                   : item
               );
             }
             return get().shareChatHistory.concat({
-              _id: newChatId,
+              chatId,
               shareId,
               title: prompts[prompts.length - 2]?.value,
               updateTime: new Date(),
@@ -97,21 +92,19 @@ export const useShareChatStore = create<State>()(
           set((state) => {
             state.shareChatHistory = historyList.slice(0, 100);
           });
-
-          return {
-            newChatId
-          };
         },
         delOneShareHistoryByChatId(chatId: string) {
           set((state) => {
-            state.shareChatHistory = state.shareChatHistory.filter((item) => item._id !== chatId);
+            state.shareChatHistory = state.shareChatHistory.filter(
+              (item) => item.chatId !== chatId
+            );
           });
         },
         delShareChatHistoryItemById({ chatId, index }) {
           set((state) => {
             // update history store
             const newHistoryList = state.shareChatHistory.map((item) =>
-              item._id === chatId
+              item.chatId === chatId
                 ? {
                     ...item,
                     chats: [...item.chats.slice(0, index), ...item.chats.slice(index + 1)]

@@ -15,19 +15,24 @@ import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/api/fetch';
 import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
+import { useToast } from '@/hooks/useToast';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+import type { ChatHistoryItemType } from '@/types/chat';
 
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import { ChatHistoryItemType } from '@/types/chat';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import SliderApps from './components/SliderApps';
 import ChatHeader from './components/ChatHeader';
+import { getErrText } from '@/utils/tools';
+import { useUserStore } from '@/store/user';
 
-const Chat = () => {
+const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
-  const { appId = '', chatId = '' } = router.query as { appId: string; chatId: string };
   const theme = useTheme();
+  const { toast } = useToast();
 
   const ChatBoxRef = useRef<ComponentRef>(null);
   const forbidRefresh = useRef(false);
@@ -44,6 +49,7 @@ const Chat = () => {
     chatData,
     setChatData
   } = useChatStore();
+  const { myApps, userInfo } = useUserStore();
 
   const { isPc } = useGlobalStore();
   const { Loading, setIsLoading } = useLoading();
@@ -52,12 +58,14 @@ const Chat = () => {
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
       const prompts = messages.slice(-2);
-      const { responseText, newChatId, rawSearch } = await streamFetch({
+      const completionChatId = chatId ? chatId : nanoid();
+
+      const { responseText } = await streamFetch({
         data: {
           messages: prompts,
           variables,
           appId,
-          chatId
+          chatId: completionChatId
         },
         onMessage: generatingMessage,
         abortSignal: controller
@@ -66,10 +74,10 @@ const Chat = () => {
       const newTitle = prompts[0].content?.slice(0, 20) || '新对话';
 
       // update history
-      if (newChatId && !controller.signal.aborted) {
+      if (completionChatId !== chatId && !controller.signal.aborted) {
         forbidRefresh.current = true;
         const newHistory: ChatHistoryItemType = {
-          _id: newChatId,
+          chatId: completionChatId,
           updateTime: new Date(),
           title: newTitle,
           appId,
@@ -78,12 +86,12 @@ const Chat = () => {
         updateHistory(newHistory);
         router.replace({
           query: {
-            chatId: newChatId,
+            chatId: completionChatId,
             appId
           }
         });
       } else {
-        const currentChat = history.find((item) => item._id === chatId);
+        const currentChat = history.find((item) => item.chatId === chatId);
         currentChat &&
           updateHistory({
             ...currentChat,
@@ -98,7 +106,7 @@ const Chat = () => {
         history: ChatBoxRef.current?.getChatHistory() || state.history
       }));
 
-      return { responseText, rawSearch };
+      return { responseText };
     },
     [appId, chatId, history, router, setChatData, updateHistory]
   );
@@ -153,38 +161,43 @@ const Chat = () => {
             ChatBoxRef.current?.scrollToBottom('auto');
           }, 200);
         }
-
-        // empty appId request, return first app
-        if (res.appId !== appId) {
-          forbidRefresh.current = true;
-          router.replace({
-            query: {
-              appId: res.appId
-            }
-          });
-        }
       } catch (e: any) {
         // reset all chat tore
         setLastChatAppId('');
         setLastChatId('');
-        router.replace('/chat');
+        toast({
+          title: getErrText(e, '初始化聊天失败'),
+          status: 'error'
+        });
+        if (e?.code === 501) {
+          router.replace('/app/list');
+        } else {
+          router.replace('/chat');
+        }
       }
       setIsLoading(false);
       return null;
     },
-    [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId]
+    [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId, toast]
   );
   // 初始化聊天框
   useQuery(['init', appId, chatId], () => {
     // pc: redirect to latest model chat
     if (!appId && lastChatAppId) {
-      router.replace({
+      return router.replace({
         query: {
           appId: lastChatAppId,
           chatId: lastChatId
         }
       });
-      return null;
+    }
+    if (!appId && myApps[0]) {
+      return router.replace({
+        query: {
+          appId: myApps[0]._id,
+          chatId: lastChatId
+        }
+      });
     }
 
     // store id
@@ -196,11 +209,15 @@ const Chat = () => {
       return null;
     }
 
-    return loadChatInfo({
-      appId,
-      chatId,
-      loading: appId !== chatData.appId
-    });
+    if (appId) {
+      return loadChatInfo({
+        appId,
+        chatId,
+        loading: appId !== chatData.appId
+      });
+    }
+
+    return null;
   });
 
   useQuery(['loadHistory', appId], () => (appId ? loadHistory({ appId }) : null));
@@ -233,7 +250,7 @@ const Chat = () => {
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
               history={history.map((item) => ({
-                id: item._id,
+                id: item.chatId,
                 title: item.title,
                 customTitle: item.customTitle,
                 top: item.top
@@ -253,7 +270,7 @@ const Chat = () => {
               onSetHistoryTop={async (e) => {
                 try {
                   await putChatHistory(e);
-                  const historyItem = history.find((item) => item._id === e.chatId);
+                  const historyItem = history.find((item) => item.chatId === e.chatId);
                   if (!historyItem) return;
                   updateHistory({
                     ...historyItem,
@@ -267,7 +284,7 @@ const Chat = () => {
                     chatId: e.chatId,
                     customTitle: e.title
                   });
-                  const historyItem = history.find((item) => item._id === e.chatId);
+                  const historyItem = history.find((item) => item.chatId === e.chatId);
                   if (!historyItem) return;
                   updateHistory({
                     ...historyItem,
@@ -300,6 +317,7 @@ const Chat = () => {
                 showEmptyIntro
                 chatId={chatId}
                 appAvatar={chatData.app.avatar}
+                userAvatar={userInfo?.avatar}
                 variableModules={chatData.app.variableModules}
                 welcomeText={chatData.app.welcomeText}
                 onUpdateVariable={(e) => {}}
@@ -314,5 +332,14 @@ const Chat = () => {
     </Flex>
   );
 };
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: {
+      appId: context?.query?.appId || '',
+      chatId: context?.query?.chatId || ''
+    }
+  };
+}
 
 export default Chat;
