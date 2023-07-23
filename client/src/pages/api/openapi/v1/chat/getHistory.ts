@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 export async function getChatHistory({
   chatId,
   userId,
-  limit = 50
+  limit = 20
 }: Props & { userId: string }): Promise<Response> {
   if (!chatId) {
     return { history: [] };
@@ -47,7 +47,7 @@ export async function getChatHistory({
     {
       $project: {
         content: {
-          $slice: ['$content', -limit] // 返回 content 数组的最后50个元素
+          $slice: ['$content', -limit] // 返回 content 数组的最后20个元素
         }
       }
     },

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Chat, App } from '@/service/mongo';
+import { connectToDatabase, Chat } from '@/service/mongo';
 import type { InitChatResponse } from '@/api/response/chat';
 import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               {
                 $project: {
                   content: {
-                    $slice: ['$content', -50] // 返回 content 数组的最后50个元素
+                    $slice: ['$content', -30] // 返回 content 数组的最后 30 个元素
                   }
                 }
               },

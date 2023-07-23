@@ -140,7 +140,7 @@ const Settings = ({ appId }: { appId: string }) => {
   }, [appModule2Form]);
 
   const BoxStyles: BoxProps = {
-    bg: 'myWhite.300',
+    bg: 'myWhite.200',
     px: 4,
     py: 3,
     borderRadius: 'lg',
