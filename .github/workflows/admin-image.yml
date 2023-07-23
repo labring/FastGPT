@@ -43,7 +43,7 @@ jobs:
         env:
           DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
         run: |
-          cd client && \
+          cd admin && \
           docker buildx build \
           --platform linux/amd64,linux/arm64 \
           --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
