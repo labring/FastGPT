@@ -31,7 +31,7 @@ const simplifyStr = (str = '') =>
     .replace(/[^\S\r\n]+/g, ' ') // 连续空白内容
     .trim();
 
-/* 聊天上下文 tokens 截断 */
+/* slice chat context by tokens */
 export const ChatContextFilter = ({
   model,
   prompts,
@@ -41,33 +41,19 @@ export const ChatContextFilter = ({
   prompts: ChatItemType[];
   maxTokens: number;
 }) => {
-  const systemPrompts: ChatItemType[] = [];
-  const chatPrompts: ChatItemType[] = [];
+  const rawTextLen = prompts.reduce((sum, item) => sum + item.value.length, 0);
 
-  let rawTextLen = 0;
-  prompts.forEach((item) => {
-    const val = simplifyStr(item.value);
-    rawTextLen += val.length;
-
-    const data = {
-      _id: item._id,
-      obj: item.obj,
-      value: val
-    };
-
-    if (item.obj === ChatRoleEnum.System) {
-      systemPrompts.push(data);
-    } else {
-      chatPrompts.push(data);
-    }
-  });
-
-  // 长度太小时，不需要进行 token 截断
+  // If the text length is less than half of the maximum token, no calculation is required
   if (rawTextLen < maxTokens * 0.5) {
-    return [...systemPrompts, ...chatPrompts];
+    return prompts;
   }
 
-  // 去掉 system 的 token
+  // filter startWith system prompt
+  const chatStartIndex = prompts.findIndex((item) => item.obj !== ChatRoleEnum.System);
+  const systemPrompts: ChatItemType[] = prompts.slice(0, chatStartIndex);
+  const chatPrompts: ChatItemType[] = prompts.slice(chatStartIndex);
+
+  // reduce  token of systemPrompt
   maxTokens -= modelToolMap.countTokens({
     model,
     messages: systemPrompts

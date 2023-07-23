@@ -31,6 +31,10 @@ export enum FlowModuleTypeEnum {
   classifyQuestion = 'classifyQuestion'
 }
 
+export enum SpecialInputKeyEnum {
+  'answerText' = 'text'
+}
+
 export const initModuleType: Record<string, boolean> = {
   [FlowModuleTypeEnum.historyNode]: true,
   [FlowModuleTypeEnum.questionInput]: true
@@ -38,8 +42,8 @@ export const initModuleType: Record<string, boolean> = {
 
 export const edgeOptions = {
   style: {
-    strokeWidth: 1,
+    strokeWidth: 1.5,
     stroke: '#5A646Es'
   }
 };
-export const connectionLineStyle = { strokeWidth: 1, stroke: '#5A646Es' };
+export const connectionLineStyle = { strokeWidth: 1.5, stroke: '#5A646Es' };
