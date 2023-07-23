@@ -209,21 +209,7 @@ async function streamResponse({ res, response }: { res: NextApiResponse; respons
 
     if (res.closed || error) return;
 
-    if (data === '[DONE]') {
-      sseResponse({
-        res,
-        event: sseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: null,
-          finish_reason: 'stop'
-        })
-      });
-      sseResponse({
-        res,
-        event: sseResponseEventEnum.answer,
-        data: '[DONE]'
-      });
-    } else {
+    if (data !== '[DONE]') {
       sseResponse({
         res,
         event: sseResponseEventEnum.answer,

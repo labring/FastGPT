@@ -169,7 +169,7 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
             onChangeChat={(chatId) => {
               console.log(chatId);
 
-              router.push({
+              router.replace({
                 query: {
                   chatId: chatId || '',
                   shareId
