@@ -223,7 +223,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     } = await (async () => {
       if (stream) {
         // 创建响应流
-        res.setHeader('Content-Type', 'text/event-stream;charset-utf-8');
+        res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Transfer-Encoding', 'chunked');
         res.setHeader('X-Accel-Buffering', 'no');
