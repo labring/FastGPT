@@ -9,8 +9,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import { clientInitData, feConfigs } from '@/store/static';
-import { appWithTranslation } from 'next-i18next';
-import { setLangStore } from '@/utils/i18n';
+import { appWithTranslation, useTranslation } from 'next-i18next';
+import { getLangStore, setLangStore } from '@/utils/i18n';
+import { useRouter } from 'next/router';
 
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
@@ -32,6 +33,9 @@ const queryClient = new QueryClient({
 });
 
 function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+  const { i18n } = useTranslation();
+
   const [googleClientVerKey, setGoogleVerKey] = useState<string>();
   const [baiduTongji, setBaiduTongji] = useState<string>();
 
@@ -44,8 +48,13 @@ function App({ Component, pageProps }: AppProps) {
       setBaiduTongji(baiduTongji);
     })();
 
-    setLangStore('en');
+    setLangStore('zh');
   }, []);
+
+  useEffect(() => {
+    const lang = getLangStore() || 'zh';
+    i18n?.changeLanguage?.(lang);
+  }, [router.asPath]);
 
   return (
     <>

@@ -18,6 +18,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
+import { serviceSideProps } from '@/utils/i18n';
 
 const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
   const router = useRouter();
@@ -232,7 +233,7 @@ export async function getServerSideProps(context: any) {
   const chatId = context?.query?.chatId || '';
 
   return {
-    props: { shareId, chatId }
+    props: { shareId, chatId, ...(await serviceSideProps(context)) }
   };
 }
 
