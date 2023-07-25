@@ -584,6 +584,7 @@ const ChatBox = (
                         whiteSpace={'pre-wrap'}
                         {...MessageCardStyle}
                         bg={'myBlue.300'}
+                        borderRadius={'8px 0 8px 8px'}
                       >
                         <Box as={'p'}>{item.value}</Box>
                       </Card>

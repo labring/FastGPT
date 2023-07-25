@@ -15,7 +15,11 @@ import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
 
-const Edit = dynamic(() => import('./components/Edit'), {
+const BasicEdit = dynamic(() => import('./components/BasicEdit'), {
+  ssr: false,
+  loading: () => <Loading />
+});
+const AdEdit = dynamic(() => import('./components/AdEdit'), {
   ssr: false,
   loading: () => <Loading />
 });
@@ -28,7 +32,8 @@ const API = dynamic(() => import('./components/API'), {
 
 enum TabEnum {
   'overview' = 'overview',
-  'settings' = 'settings',
+  'basicEdit' = 'basicEdit',
+  'adEdit' = 'adEdit',
   'share' = 'share',
   'API' = 'API'
 }
@@ -54,8 +59,9 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '基础', id: TabEnum.overview, icon: 'overviewLight' },
-      { label: '高级编排', id: TabEnum.settings, icon: 'settingLight' },
+      { label: '概览', id: TabEnum.overview, icon: 'overviewLight' },
+      { label: '简易编排', id: TabEnum.basicEdit, icon: 'edit' },
+      { label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' },
       { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
       { label: '立即对话', id: 'startChat', icon: 'chatLight' }
@@ -169,8 +175,9 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         </Box>
         <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
           {currentTab === TabEnum.overview && <OverView appId={appId} />}
-          {currentTab === TabEnum.settings && appDetail && (
-            <Edit
+          {currentTab === TabEnum.basicEdit && <BasicEdit appId={appId} />}
+          {currentTab === TabEnum.adEdit && appDetail && (
+            <AdEdit
               app={appDetail}
               fullScreen={true}
               onFullScreen={() => setCurrentTab(TabEnum.overview)}
