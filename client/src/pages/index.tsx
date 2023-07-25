@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { beianText } from '@/store/static';
 import { feConfigs } from '@/store/static';
+import { serviceSideProps } from '@/utils/i18n';
+import { useTranslation } from 'next-i18next';
 
 import styles from './index.module.scss';
 import axios from 'axios';
@@ -11,6 +13,7 @@ import MyIcon from '@/components/Icon';
 
 const Home = () => {
   const router = useRouter();
+  const { t } = useTranslation();
   const { inviterId } = router.query as { inviterId: string };
   const { isPc } = useGlobalStore();
   const [star, setStar] = useState(1500);
@@ -157,9 +160,11 @@ const Home = () => {
       <Flex
         flexDirection={'column'}
         alignItems={'center'}
+        justifyContent={'center'}
         mt={'22vh'}
         position={'absolute'}
         userSelect={'none'}
+        textAlign={'center'}
       >
         <Image src="/icon/logo2.png" w={['70px', '120px']} h={['70px', '120px']} alt={''}></Image>
         <Box
@@ -171,10 +176,10 @@ const Home = () => {
           {feConfigs?.systemTitle || 'AI知识库'}
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
-          可视化 AI 编排
+          {t('home.Visual AI orchestration')}
         </Box>
         <Box className={styles.textlg} fontWeight={'bold'} fontSize={['30px', '50px']}>
-          快速搭建 AI 问答库
+          {t('home.Quickly build AI question and answer library')}
         </Box>
 
         <Flex flexDirection={['column', 'row']} my={5}>
@@ -205,7 +210,7 @@ const Home = () => {
             py={[2, 3]}
             onClick={() => router.push(`/app/list`)}
           >
-            立即开始
+            {t('home.Start Now')}
           </Button>
         </Flex>
       </Flex>
@@ -226,5 +231,13 @@ const Home = () => {
     </Flex>
   );
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      ...(await serviceSideProps(content))
+    }
+  };
+}
 
 export default Home;
