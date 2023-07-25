@@ -7,6 +7,7 @@ import type { ShareAppItem } from '@/types/app';
 import { useUserStore } from '@/store/user';
 import ShareModelList from './components/list';
 import styles from './index.module.scss';
+import { serviceSideProps } from '@/utils/i18n';
 
 const modelList = () => {
   const { Loading } = useLoading();
@@ -88,5 +89,13 @@ const modelList = () => {
     </Box>
   );
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      ...(await serviceSideProps(content))
+    }
+  };
+}
 
 export default modelList;

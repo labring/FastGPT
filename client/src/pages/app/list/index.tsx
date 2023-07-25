@@ -16,17 +16,21 @@ import { AddIcon } from '@chakra-ui/icons';
 import { delModelById } from '@/api/app';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
-import dynamic from 'next/dynamic';
+import { serviceSideProps } from '@/utils/i18n';
+import { useTranslation } from 'next-i18next';
 
+import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
-const CreateModal = dynamic(() => import('./component/CreateModal'));
-import styles from './index.module.scss';
 import MyTooltip from '@/components/MyTooltip';
+const CreateModal = dynamic(() => import('./component/CreateModal'));
+
+import styles from './index.module.scss';
 
 const MyApps = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { myApps, loadMyModels } = useUserStore();
@@ -69,7 +73,7 @@ const MyApps = () => {
     <PageContainer>
       <Flex pt={3} px={5} alignItems={'center'}>
         <Box flex={1} className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-          我的应用
+          {t('app.My Apps')}
         </Box>
         <Button leftIcon={<AddIcon />} variant={'base'} onClick={onOpenCreateModal}>
           新建
@@ -166,5 +170,13 @@ const MyApps = () => {
     </PageContainer>
   );
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      ...(await serviceSideProps(content))
+    }
+  };
+}
 
 export default MyApps;

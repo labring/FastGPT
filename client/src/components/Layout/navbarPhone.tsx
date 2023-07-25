@@ -2,44 +2,46 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Flex, Box } from '@chakra-ui/react';
 import { useChatStore } from '@/store/chat';
+import { useTranslation } from 'react-i18next';
 import Badge from '../Badge';
 import MyIcon from '../Icon';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
+  const { t } = useTranslation();
   const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(
     () => [
       {
-        label: '聊天',
+        label: t('navbar.Chat'),
         icon: 'chatLight',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
       },
       {
-        label: '应用',
+        label: t('navbar.Apps'),
         icon: 'tabbarModel',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail'],
         unread: 0
       },
       {
-        label: '工具',
+        label: t('navbar.Tools'),
         icon: 'tabbarMore',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
       },
       {
-        label: '我的',
+        label: t('navbar.Account'),
         icon: 'tabbarMe',
-        link: '/number',
-        activeLink: ['/number'],
+        link: '/account',
+        activeLink: ['/account'],
         unread
       }
     ],
-    [lastChatId, lastChatAppId, unread]
+    [t, lastChatAppId, lastChatId, unread]
   );
 
   return (

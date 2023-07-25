@@ -17,6 +17,7 @@ import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import Info from './components/Info';
+import { serviceSideProps } from '@/utils/i18n';
 
 const ImportData = dynamic(() => import('./components/Import'), {
   ssr: false
@@ -159,7 +160,7 @@ export async function getServerSideProps(context: any) {
   const kbId = context?.query?.kbId;
 
   return {
-    props: { currentTab, kbId }
+    props: { currentTab, kbId, ...(await serviceSideProps(content)) }
   };
 }
 

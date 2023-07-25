@@ -1,7 +1,18 @@
 {
+  "app": {
+    "My Apps": "我的应用"
+  },
   "home": {
     "Quickly build AI question and answer library": "快速搭建 AI 问答系统",
     "Start Now": "立即开始",
     "Visual AI orchestration": "可视化 AI 编排"
+  },
+  "navbar": {
+    "Account": "账号",
+    "Apps": "应用",
+    "Chat": "聊天",
+    "Datasets": "知识库",
+    "Store": "应用市场",
+    "Tools": "工具"
   }
 }
