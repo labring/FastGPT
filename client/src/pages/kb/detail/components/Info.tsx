@@ -215,7 +215,7 @@ const Info = (
             setRefresh(!refresh);
           }}
         />
-        <Box w={'100%'} pl={['90px', '160px']} mt={2}>
+        <Flex w={'100%'} pl={['90px', '160px']} mt={2}>
           {getValues('tags')
             .split(' ')
             .filter((item) => item)
@@ -224,7 +224,7 @@ const Info = (
                 {item}
               </Tag>
             ))}
-        </Box>
+        </Flex>
       </Flex>
 
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>

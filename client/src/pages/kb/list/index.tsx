@@ -132,11 +132,13 @@ const Kb = () => {
               />
             </Flex>
             <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
-              {kb.tags.map((tag, i) => (
-                <Tag key={i} mr={2} mb={2}>
-                  {tag}
-                </Tag>
-              ))}
+              <Flex>
+                {kb.tags.map((tag, i) => (
+                  <Tag key={i} mr={2} mb={2}>
+                    {tag}
+                  </Tag>
+                ))}
+              </Flex>
             </Box>
           </Card>
         ))}
