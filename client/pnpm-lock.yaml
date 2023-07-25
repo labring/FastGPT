@@ -68,9 +68,15 @@ dependencies:
   hyperdown:
     specifier: ^2.4.29
     version: registry.npmmirror.com/hyperdown@2.4.29
+  i18next:
+    specifier: ^22.5.1
+    version: registry.npmmirror.com/i18next@22.5.1
   immer:
     specifier: ^9.0.19
     version: registry.npmmirror.com/immer@9.0.19
+  js-cookie:
+    specifier: ^3.0.5
+    version: registry.npmmirror.com/js-cookie@3.0.5
   jsonwebtoken:
     specifier: ^9.0.0
     version: registry.npmmirror.com/jsonwebtoken@9.0.0
@@ -92,6 +98,9 @@ dependencies:
   next:
     specifier: 13.1.6
     version: registry.npmmirror.com/next@13.1.6(@babel/core@7.22.5)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
+  next-i18next:
+    specifier: ^13.3.0
+    version: registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.1.6)(react-i18next@12.3.1)(react@18.2.0)
   nextjs-cors:
     specifier: ^2.1.2
     version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.1.6)
@@ -122,6 +131,9 @@ dependencies:
   react-hook-form:
     specifier: ^7.43.1
     version: registry.npmmirror.com/react-hook-form@7.43.1(react@18.2.0)
+  react-i18next:
+    specifier: ^12.3.1
+    version: registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0)
   react-markdown:
     specifier: ^8.0.7
     version: registry.npmmirror.com/react-markdown@8.0.7(@types/react@18.0.28)(react@18.2.0)
@@ -169,6 +181,9 @@ devDependencies:
   '@types/formidable':
     specifier: ^2.0.5
     version: registry.npmmirror.com/@types/formidable@2.0.5
+  '@types/js-cookie':
+    specifier: ^3.0.3
+    version: registry.npmmirror.com/@types/js-cookie@3.0.3
   '@types/jsonwebtoken':
     specifier: ^9.0.1
     version: registry.npmmirror.com/@types/jsonwebtoken@9.0.1
@@ -5595,6 +5610,21 @@ packages:
       '@types/unist': registry.npmmirror.com/@types/unist@2.0.6
     dev: false
 
+  registry.npmmirror.com/@types/hoist-non-react-statics@3.3.1:
+    resolution: {integrity: sha512-iMIqiko6ooLrTh1joXodJK5X9xeEALT1kM5G3ZLhD3hszxBdIEd5C75U834D9mLcINgD4OyZf5uQXjkuYydWvA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/hoist-non-react-statics/-/hoist-non-react-statics-3.3.1.tgz}
+    name: '@types/hoist-non-react-statics'
+    version: 3.3.1
+    dependencies:
+      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      hoist-non-react-statics: registry.npmmirror.com/hoist-non-react-statics@3.3.2
+    dev: false
+
+  registry.npmmirror.com/@types/js-cookie@3.0.3:
+    resolution: {integrity: sha512-Xe7IImK09HP1sv2M/aI+48a20VX+TdRJucfq4vfRVy6nWN8PYPOEnlMRSgxJAgYQIXJVL8dZ4/ilAM7dWNaOww==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/js-cookie/-/js-cookie-3.0.3.tgz}
+    name: '@types/js-cookie'
+    version: 3.0.3
+    dev: true
+
   registry.npmmirror.com/@types/json5@0.0.29:
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/json5/-/json5-0.0.29.tgz}
     name: '@types/json5'
@@ -6549,6 +6579,13 @@ packages:
     dependencies:
       browserslist: registry.npmmirror.com/browserslist@4.21.7
     dev: true
+
+  registry.npmmirror.com/core-js@3.31.1:
+    resolution: {integrity: sha512-2sKLtfq1eFST7l7v62zaqXacPc7uG8ZAya8ogijLhTtaKNcpzpB4TMoTw2Si+8GYKRwFPMMtUT0263QFWFfqyQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/core-js/-/core-js-3.31.1.tgz}
+    name: core-js
+    version: 3.31.1
+    requiresBuild: true
+    dev: false
 
   registry.npmmirror.com/core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/core-util-is/-/core-util-is-1.0.3.tgz}
@@ -8555,6 +8592,14 @@ packages:
       react-is: registry.npmmirror.com/react-is@16.13.1
     dev: false
 
+  registry.npmmirror.com/html-parse-stringify@3.0.1:
+    resolution: {integrity: sha512-KknJ50kTInJ7qIScF3jeaFRpMpE8/lfiTdzf/twXyPBLAGrLRTmkz3AdTnKeh40X8k9L2fdYwEp/42WGXIRGcg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/html-parse-stringify/-/html-parse-stringify-3.0.1.tgz}
+    name: html-parse-stringify
+    version: 3.0.1
+    dependencies:
+      void-elements: registry.npmmirror.com/void-elements@3.1.0
+    dev: false
+
   registry.npmmirror.com/http-errors@2.0.0:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/http-errors/-/http-errors-2.0.0.tgz}
     name: http-errors
@@ -8630,6 +8675,20 @@ packages:
     resolution: {integrity: sha512-vwpa65JOmo6zBdvmNV3tM5IxNMbTRCXmCz4rajM9NHuiI9aAMw9tGzp8FBO8NT7ZnyWND0HEY6vKCVYl//U8kA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/hyperdown/-/hyperdown-2.4.29.tgz}
     name: hyperdown
     version: 2.4.29
+    dev: false
+
+  registry.npmmirror.com/i18next-fs-backend@2.1.5:
+    resolution: {integrity: sha512-7fgSH8nVhXSBYPHR/W3tEXXhcnwHwNiND4Dfx9knzPzdsWTUTL/TdDVV+DY0dL0asHKLbdoJaXS4LdVW6R8MVQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/i18next-fs-backend/-/i18next-fs-backend-2.1.5.tgz}
+    name: i18next-fs-backend
+    version: 2.1.5
+    dev: false
+
+  registry.npmmirror.com/i18next@22.5.1:
+    resolution: {integrity: sha512-8TGPgM3pAD+VRsMtUMNknRz3kzqwp/gPALrWMsDnmC1mKqJwpWyooQRLMcbTwq8z8YwSmuj+ZYvc+xCuEpkssA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/i18next/-/i18next-22.5.1.tgz}
+    name: i18next
+    version: 22.5.1
+    dependencies:
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.22.5
     dev: false
 
   registry.npmmirror.com/iconv-lite@0.4.24:
@@ -9090,6 +9149,13 @@ packages:
     name: isexe
     version: 2.0.0
     dev: true
+
+  registry.npmmirror.com/js-cookie@3.0.5:
+    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-cookie/-/js-cookie-3.0.5.tgz}
+    name: js-cookie
+    version: 3.0.5
+    engines: {node: '>=14'}
+    dev: false
 
   registry.npmmirror.com/js-sdsl@4.4.1:
     resolution: {integrity: sha512-6Gsx8R0RucyePbWqPssR8DyfuXmLBooYN5cZFZKjHGnQuaf7pEzhtpceagJxVu4LqhYY5EYA7nko3FmeHZ1KbA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-sdsl/-/js-sdsl-4.4.1.tgz}
@@ -10177,6 +10243,29 @@ packages:
     engines: {node: '>= 0.4.0'}
     dev: false
 
+  registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.1.6)(react-i18next@12.3.1)(react@18.2.0):
+    resolution: {integrity: sha512-X4kgi51BCOoGdKbv87eZ8OU7ICQDg5IP+T5fNjqDY3os9ea0OKTY4YpAiVFiwcI9XimcUmSPbKO4a9jFUyYSgg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/next-i18next/-/next-i18next-13.3.0.tgz}
+    id: registry.npmmirror.com/next-i18next/13.3.0
+    name: next-i18next
+    version: 13.3.0
+    engines: {node: '>=14'}
+    peerDependencies:
+      i18next: ^22.0.6
+      next: '>= 12.0.0'
+      react: '>= 17.0.2'
+      react-i18next: ^12.2.0
+    dependencies:
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.22.5
+      '@types/hoist-non-react-statics': registry.npmmirror.com/@types/hoist-non-react-statics@3.3.1
+      core-js: registry.npmmirror.com/core-js@3.31.1
+      hoist-non-react-statics: registry.npmmirror.com/hoist-non-react-statics@3.3.2
+      i18next: registry.npmmirror.com/i18next@22.5.1
+      i18next-fs-backend: registry.npmmirror.com/i18next-fs-backend@2.1.5
+      next: registry.npmmirror.com/next@13.1.6(@babel/core@7.22.5)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
+      react: registry.npmmirror.com/react@18.2.0
+      react-i18next: registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0)
+    dev: false
+
   registry.npmmirror.com/next@13.1.6(@babel/core@7.22.5)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3):
     resolution: {integrity: sha512-hHlbhKPj9pW+Cymvfzc15lvhaOZ54l+8sXDXJWm3OBNBzgrVj6hwGPmqqsXg40xO1Leq+kXpllzRPuncpC0Phw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/next/-/next-13.1.6.tgz}
     id: registry.npmmirror.com/next/13.1.6
@@ -10959,6 +11048,29 @@ packages:
       react: ^16.8.0 || ^17 || ^18
     dependencies:
       react: registry.npmmirror.com/react@18.2.0
+    dev: false
+
+  registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-5v8E2XjZDFzK7K87eSwC7AJcAkcLt5xYZ4+yTPDAW1i7C93oOY1dnr4BaQM7un4Hm+GmghuiPvevWwlca5PwDA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-i18next/-/react-i18next-12.3.1.tgz}
+    id: registry.npmmirror.com/react-i18next/12.3.1
+    name: react-i18next
+    version: 12.3.1
+    peerDependencies:
+      i18next: '>= 19.0.0'
+      react: '>= 16.8.0'
+      react-dom: '*'
+      react-native: '*'
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
+      react-native:
+        optional: true
+    dependencies:
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.22.5
+      html-parse-stringify: registry.npmmirror.com/html-parse-stringify@3.0.1
+      i18next: registry.npmmirror.com/i18next@22.5.1
+      react: registry.npmmirror.com/react@18.2.0
+      react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
     dev: false
 
   registry.npmmirror.com/react-is@16.13.1:
@@ -12429,6 +12541,13 @@ packages:
     dependencies:
       acorn: registry.npmmirror.com/acorn@8.8.2
       acorn-walk: registry.npmmirror.com/acorn-walk@8.2.0
+    dev: false
+
+  registry.npmmirror.com/void-elements@3.1.0:
+    resolution: {integrity: sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/void-elements/-/void-elements-3.1.0.tgz}
+    name: void-elements
+    version: 3.1.0
+    engines: {node: '>=0.10.0'}
     dev: false
 
   registry.npmmirror.com/web-namespaces@2.0.1:

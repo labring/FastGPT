@@ -8,8 +8,11 @@
   },
   "devDependencies": {
     "husky": "^8.0.3",
+    "i18next": "^23.2.11",
     "lint-staged": "^13.2.1",
-    "prettier": "^2.8.7"
+    "next-i18next": "^14.0.0",
+    "prettier": "^2.8.7",
+    "react-i18next": "^13.0.2"
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format"

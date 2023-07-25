@@ -8,11 +8,12 @@ import { theme } from '@/constants/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
+import { clientInitData, feConfigs } from '@/store/static';
+import { appWithTranslation } from 'next-i18next';
+import { setLangStore } from '@/utils/i18n';
+
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
-import { clientInitData, feConfigs } from '@/store/static';
-import { NextPageContext } from 'next';
-import { useGlobalStore } from '@/store/global';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());
@@ -30,14 +31,9 @@ const queryClient = new QueryClient({
   }
 });
 
-function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; response: any }) {
+function App({ Component, pageProps }: AppProps) {
   const [googleClientVerKey, setGoogleVerKey] = useState<string>();
   const [baiduTongji, setBaiduTongji] = useState<string>();
-  const { initIsPc } = useGlobalStore();
-
-  // if (isPc !== undefined) {
-  //   initIsPc(isPc);
-  // }
 
   useEffect(() => {
     (async () => {
@@ -47,12 +43,14 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
       setGoogleVerKey(googleClientVerKey);
       setBaiduTongji(baiduTongji);
     })();
+
+    setLangStore('en');
   }, []);
 
   return (
     <>
       <Head>
-        <title>{feConfigs?.systemTitle || 'AI知识库'}</title>
+        <title>{feConfigs?.systemTitle || 'FastAI'}</title>
         <meta name="description" content="Embedding + LLM, Build AI knowledge base" />
         <meta
           name="viewport"
@@ -85,12 +83,4 @@ function App({ Component, pageProps, isPc }: AppProps & { isPc?: boolean; respon
   );
 }
 
-App.getInitialProps = async ({ ctx }: { ctx: NextPageContext }) => {
-  const reg = /mobile/gi;
-
-  const isPc = !reg.test(ctx.req?.headers?.['user-agent'] || '');
-
-  return { isPc };
-};
-
-export default App;
+export default appWithTranslation(App);
