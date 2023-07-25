@@ -28,6 +28,7 @@ import SliderApps from './components/SliderApps';
 import ChatHeader from './components/ChatHeader';
 import { getErrText } from '@/utils/tools';
 import { useUserStore } from '@/store/user';
+import { serviceSideProps } from '@/utils/i18n';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -338,7 +339,8 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       appId: context?.query?.appId || '',
-      chatId: context?.query?.chatId || ''
+      chatId: context?.query?.chatId || '',
+      ...(await serviceSideProps(context))
     }
   };
 }

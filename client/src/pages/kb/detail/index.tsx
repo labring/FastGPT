@@ -160,7 +160,7 @@ export async function getServerSideProps(context: any) {
   const kbId = context?.query?.kbId;
 
   return {
-    props: { currentTab, kbId, ...(await serviceSideProps(content)) }
+    props: { currentTab, kbId, ...(await serviceSideProps(context)) }
   };
 }
 

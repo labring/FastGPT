@@ -9,6 +9,7 @@ import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
+import { serviceSideProps } from '@/utils/i18n';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
@@ -96,5 +97,11 @@ const Login = () => {
     </Flex>
   );
 };
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: { ...(await serviceSideProps(context)) }
+  };
+}
 
 export default Login;
