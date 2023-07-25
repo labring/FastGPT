@@ -5,11 +5,13 @@ import { usePagination } from '@/hooks/usePagination';
 import { useLoading } from '@/hooks/useLoading';
 import type { informSchema } from '@/types/mongoSchema';
 import { formatTimeToChatTime } from '@/utils/tools';
+import { useGlobalStore } from '@/store/global';
 import MyIcon from '@/components/Icon';
 
 const BillTable = () => {
   const theme = useTheme();
   const { Loading } = useLoading();
+  const { isPc } = useGlobalStore();
   const {
     data: informs,
     isLoading,
@@ -19,7 +21,8 @@ const BillTable = () => {
     getData,
     pageNum
   } = usePagination<informSchema>({
-    api: getInforms
+    api: getInforms,
+    pageSize: isPc ? 20 : 10
   });
 
   return (
