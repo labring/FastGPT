@@ -1,7 +1,18 @@
 {
+  "app": {
+    "My Apps": "My Apps"
+  },
   "home": {
     "Quickly build AI question and answer library": "Quickly build AI question and answer library",
     "Start Now": "Start Now",
     "Visual AI orchestration": "Visual AI orchestration"
+  },
+  "navbar": {
+    "Account": "Account",
+    "Apps": "Apps",
+    "Chat": "Chat",
+    "Datasets": "DataSets",
+    "Store": "Store",
+    "Tools": "Tools"
   }
 }

@@ -9,6 +9,8 @@ import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '../Avatar';
 import MyIcon from '../Icon';
+import Language from '../Language';
+import { useTranslation } from 'next-i18next';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -16,50 +18,54 @@ export enum NavbarTypeEnum {
 }
 
 const Navbar = ({ unread }: { unread: number }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { lastChatAppId, lastChatId } = useChatStore();
-  const navbarList = [
-    {
-      label: '聊天',
-      icon: 'chatLight',
-      activeIcon: 'chatFill',
-      link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
-      activeLink: ['/chat']
-    },
-    {
-      label: '应用',
-      icon: 'appLight',
-      activeIcon: 'appFill',
-      link: `/app/list`,
-      activeLink: ['/app/list', '/app/detail']
-    },
-    {
-      label: '知识库',
-      icon: 'dbLight',
-      activeIcon: 'dbFill',
-      link: `/kb/list`,
-      activeLink: ['/kb/list', '/kb/detail']
-    },
-    ...(feConfigs?.show_appStore
-      ? [
-          {
-            label: '市场',
-            icon: 'appStoreLight',
-            activeIcon: 'appStoreFill',
-            link: '/appStore',
-            activeLink: ['/appStore']
-          }
-        ]
-      : []),
-    {
-      label: '账号',
-      icon: 'meLight',
-      activeIcon: 'meFill',
-      link: '/number',
-      activeLink: ['/number']
-    }
-  ];
+  const navbarList = useMemo(
+    () => [
+      {
+        label: t('navbar.Chat'),
+        icon: 'chatLight',
+        activeIcon: 'chatFill',
+        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+        activeLink: ['/chat']
+      },
+      {
+        label: t('navbar.Apps'),
+        icon: 'appLight',
+        activeIcon: 'appFill',
+        link: `/app/list`,
+        activeLink: ['/app/list', '/app/detail']
+      },
+      {
+        label: t('navbar.Datasets'),
+        icon: 'dbLight',
+        activeIcon: 'dbFill',
+        link: `/kb/list`,
+        activeLink: ['/kb/list', '/kb/detail']
+      },
+      ...(feConfigs?.show_appStore
+        ? [
+            {
+              label: t('navbar.Store'),
+              icon: 'appStoreLight',
+              activeIcon: 'appStoreFill',
+              link: '/appStore',
+              activeLink: ['/appStore']
+            }
+          ]
+        : []),
+      {
+        label: t('navbar.Account'),
+        icon: 'meLight',
+        activeIcon: 'meFill',
+        link: '/account',
+        activeLink: ['/account']
+      }
+    ],
+    [lastChatAppId, lastChatId, t]
+  );
 
   const itemStyles: any = {
     my: 3,
@@ -94,7 +100,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         borderRadius={'50%'}
         overflow={'hidden'}
         cursor={'pointer'}
-        onClick={() => router.push('/number')}
+        onClick={() => router.push('/account')}
       >
         <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={HUMAN_ICON} />
       </Box>
@@ -133,25 +139,31 @@ const Navbar = ({ unread }: { unread: number }) => {
       </Box>
       {unread > 0 && (
         <Box>
-          <Link as={NextLink} {...itemStyles} href={`/number?type=inform`} mb={0} color={'#9096a5'}>
+          <Link
+            as={NextLink}
+            {...itemStyles}
+            href={`/account?type=inform`}
+            mb={0}
+            color={'#9096a5'}
+          >
             <Badge count={unread}>
               <MyIcon name={'inform'} width={'22px'} height={'22px'} />
             </Badge>
           </Link>
         </Box>
       )}
+      <Language {...itemStyles} />
       {feConfigs?.show_git && (
-        <Box>
-          <Link
-            as={NextLink}
-            href="https://github.com/labring/FastGPT"
-            target={'_blank'}
-            {...itemStyles}
-            color={'#9096a5'}
-          >
-            <MyIcon name={'git'} width={'22px'} height={'22px'} />
-          </Link>
-        </Box>
+        <Link
+          as={NextLink}
+          href="https://github.com/labring/FastGPT"
+          target={'_blank'}
+          {...itemStyles}
+          mt={0}
+          color={'#9096a5'}
+        >
+          <MyIcon name={'git'} width={'22px'} height={'22px'} />
+        </Link>
       )}
     </Flex>
   );

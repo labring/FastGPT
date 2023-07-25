@@ -10,6 +10,7 @@ import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
+import { serviceSideProps } from '@/utils/i18n';
 
 const BillTable = dynamic(() => import('./components/BillTable'), {
   ssr: false
@@ -29,7 +30,7 @@ enum TabEnum {
   'loginout' = 'loginout'
 }
 
-const NumberSetting = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
+const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const tabList = useRef([
     { icon: 'meLight', label: '个人信息', id: TabEnum.info, Component: <BillTable /> },
     { icon: 'billRecordLight', label: '消费记录', id: TabEnum.bill, Component: <BillTable /> },
@@ -115,12 +116,13 @@ const NumberSetting = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   );
 };
 
-export async function getServerSideProps({ query }: any) {
+export async function getServerSideProps(content: any) {
   return {
     props: {
-      currentTab: query?.currentTab || TabEnum.info
+      currentTab: content?.query?.currentTab || TabEnum.info,
+      ...(await serviceSideProps(content))
     }
   };
 }
 
-export default NumberSetting;
+export default Account;

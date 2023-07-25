@@ -12,6 +12,7 @@ import { useRequest } from '@/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import Tag from '@/components/Tag';
+import { serviceSideProps } from '@/utils/i18n';
 
 const Kb = () => {
   const theme = useTheme();
@@ -155,5 +156,13 @@ const Kb = () => {
     </PageContainer>
   );
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      ...(await serviceSideProps(content))
+    }
+  };
+}
 
 export default Kb;

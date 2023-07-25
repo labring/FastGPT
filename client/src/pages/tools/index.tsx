@@ -4,6 +4,7 @@ import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
 import { feConfigs } from '@/store/static';
+import { serviceSideProps } from '@/utils/i18n';
 
 const list = [
   {
@@ -56,5 +57,13 @@ const Tools = () => {
     </Box>
   );
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      ...(await serviceSideProps(content))
+    }
+  };
+}
 
 export default Tools;
