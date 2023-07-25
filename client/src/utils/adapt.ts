@@ -60,27 +60,6 @@ export const textAdaptGptResponse = ({
   });
 };
 
-const decoder = new TextDecoder();
-export const parseStreamChunk = (value: BufferSource) => {
-  const chunk = decoder.decode(value);
-  const chunkLines = chunk.split('\n\n').filter((item) => item);
-  const chunkResponse = chunkLines.map((item) => {
-    const splitEvent = item.split('\n');
-    if (splitEvent.length === 2) {
-      return {
-        event: splitEvent[0].replace('event: ', ''),
-        data: splitEvent[1].replace('data: ', '')
-      };
-    }
-    return {
-      event: '',
-      data: splitEvent[0].replace('data: ', '')
-    };
-  });
-
-  return chunkResponse;
-};
-
 export const appModule2FlowNode = ({
   item,
   onChangeNode,

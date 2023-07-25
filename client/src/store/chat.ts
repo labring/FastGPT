@@ -83,15 +83,7 @@ export const useChatStore = create<State>()(
                 return [history, ...state.history];
               }
             })();
-            // newHistory.sort(function (a, b) {
-            //   if (a.top === true && b.top === false) {
-            //     return -1;
-            //   } else if (a.top === false && b.top === true) {
-            //     return 1;
-            //   } else {
-            //     return 0;
-            //   }
-            // });
+
             state.history = newHistory;
           });
         },

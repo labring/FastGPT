@@ -1,6 +1,6 @@
 import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
-import { parseStreamChunk } from '@/utils/adapt';
+import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@/types/chat';
 
 interface StreamFetchProps {
@@ -43,6 +43,8 @@ export const streamFetch = ({
       let errMsg = '';
       let responseData: ChatHistoryItemResType[] = [];
 
+      const parseData = new SSEParseData();
+
       const read = async () => {
         try {
           const { done, value } = await reader.read();
@@ -63,21 +65,20 @@ export const streamFetch = ({
 
           chunkResponse.forEach((item) => {
             // parse json data
-            const data = (() => {
-              try {
-                return JSON.parse(item.data);
-              } catch (error) {
-                return item.data;
-              }
-            })();
+            const { eventName, data } = parseData.parse(item);
 
-            if (item.event === sseResponseEventEnum.answer && data !== '[DONE]') {
+            if (!eventName || !data) return;
+
+            if (eventName === sseResponseEventEnum.answer && data !== '[DONE]') {
               const answer: string = data?.choices?.[0].delta.content || '';
               onMessage(answer);
               responseText += answer;
-            } else if (item.event === sseResponseEventEnum.appStreamResponse) {
+            } else if (
+              eventName === sseResponseEventEnum.appStreamResponse &&
+              Array.isArray(data)
+            ) {
               responseData = data;
-            } else if (item.event === sseResponseEventEnum.error) {
+            } else if (eventName === sseResponseEventEnum.error) {
               errMsg = getErrText(data, '流响应错误');
             }
           });
