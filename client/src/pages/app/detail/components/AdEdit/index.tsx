@@ -95,12 +95,12 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const { x, y, zoom } = useViewport();
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [loaded, setLoaded] = useState(false);
   const {
     isOpen: isOpenTemplate,
     onOpen: onOpenTemplate,
     onClose: onCloseTemplate
   } = useDisclosure();
+
   const [testModules, setTestModules] = useState<AppModuleItemType[]>();
 
   const onFixView = useCallback(() => {
@@ -110,6 +110,48 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
       btn && btn.click();
     }, 100);
   }, []);
+
+  const flow2AppModules = useCallback(() => {
+    const modules: AppModuleItemType[] = nodes.map((item) => ({
+      moduleId: item.data.moduleId,
+      position: item.position,
+      flowType: item.data.flowType,
+      inputs: item.data.inputs.map((item) => ({
+        key: item.key,
+        value: item.value,
+        connected: item.type !== FlowInputItemTypeEnum.target
+      })),
+      outputs: item.data.outputs.map((item) => ({
+        key: item.key,
+        targets: [] as FlowOutputTargetItemType[]
+      }))
+    }));
+
+    // update inputs and outputs
+    modules.forEach((module) => {
+      module.inputs.forEach((input) => {
+        input.connected =
+          input.connected ||
+          !!edges.find(
+            (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
+          );
+      });
+      module.outputs.forEach((output) => {
+        output.targets = edges
+          .filter(
+            (edge) =>
+              edge.source === module.moduleId &&
+              edge.sourceHandle === output.key &&
+              edge.targetHandle
+          )
+          .map((edge) => ({
+            moduleId: edge.target,
+            key: edge.targetHandle || ''
+          }));
+      });
+    });
+    return modules;
+  }, [edges, nodes]);
 
   const onChangeNode = useCallback(
     ({ moduleId, key, type = 'inputs', value, valueKey = 'value' }: FlowModuleItemChangeProps) => {
@@ -176,48 +218,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     },
     [onChangeNode, onDelNode, setNodes, x, y, zoom]
   );
-  const flow2AppModules = useCallback(() => {
-    const modules: AppModuleItemType[] = nodes.map((item) => ({
-      moduleId: item.data.moduleId,
-      position: item.position,
-      flowType: item.data.flowType,
-      inputs: item.data.inputs.map((item) => ({
-        key: item.key,
-        value: item.value,
-        connected: item.type !== FlowInputItemTypeEnum.target
-      })),
-      outputs: item.data.outputs.map((item) => ({
-        key: item.key,
-        targets: [] as FlowOutputTargetItemType[]
-      }))
-    }));
-
-    // update inputs and outputs
-    modules.forEach((module) => {
-      module.inputs.forEach((input) => {
-        input.connected =
-          input.connected ||
-          !!edges.find(
-            (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
-          );
-      });
-      module.outputs.forEach((output) => {
-        output.targets = edges
-          .filter(
-            (edge) =>
-              edge.source === module.moduleId &&
-              edge.sourceHandle === output.key &&
-              edge.targetHandle
-          )
-          .map((edge) => ({
-            moduleId: edge.target,
-            key: edge.targetHandle || ''
-          }));
-      });
-    });
-    return modules;
-  }, [edges, nodes]);
-
   const onDelConnect = useCallback(
     (id: string) => {
       setEdges((state) => state.filter((item) => item.id !== id));
@@ -274,7 +274,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         )
       );
 
-      setLoaded(true);
       onFixView();
     },
     [onDelConnect, setEdges, setNodes, onFixView, onChangeNode, onDelNode]
@@ -296,10 +295,10 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
       >
         {fullScreen ? (
           <>
-            <MyTooltip label={'取消全屏'} offset={[10, 10]}>
+            <MyTooltip label={'返回'} offset={[10, 10]}>
               <IconButton
                 size={'sm'}
-                icon={<MyIcon name={'fullScreenLight'} w={['14px', '16px']} />}
+                icon={<MyIcon name={'back'} w={'14px'} />}
                 borderRadius={'md'}
                 borderColor={'myGray.300'}
                 variant={'base'}
@@ -425,7 +424,12 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
         </ReactFlow>
 
-        <TemplateList isOpen={isOpenTemplate} onAddNode={onAddNode} onClose={onCloseTemplate} />
+        <TemplateList
+          isOpen={isOpenTemplate}
+          nodes={nodes}
+          onAddNode={onAddNode}
+          onClose={onCloseTemplate}
+        />
         <ChatTest
           ref={ChatTestRef}
           modules={testModules}

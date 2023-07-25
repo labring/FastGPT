@@ -1,21 +1,53 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
 import { FlowModuleTemplateType } from '@/types/flow';
-import type { XYPosition } from 'reactflow';
+import type { Node, XYPosition } from 'reactflow';
 import { useGlobalStore } from '@/store/global';
+import type { AppModuleItemType } from '@/types/app';
 import Avatar from '@/components/Avatar';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 const ModuleTemplateList = ({
+  nodes,
   isOpen,
   onAddNode,
   onClose
 }: {
+  nodes?: Node<AppModuleItemType>[];
   isOpen: boolean;
   onAddNode: (e: { template: FlowModuleTemplateType; position: XYPosition }) => void;
   onClose: () => void;
 }) => {
   const { isPc } = useGlobalStore();
+
+  const filterTemplates = useMemo(() => {
+    const guideModulesIndex = ModuleTemplates.findIndex((item) => item.label === '引导模块');
+    const guideModule: {
+      label: string;
+      list: FlowModuleTemplateType[];
+    } = JSON.parse(JSON.stringify(ModuleTemplates[guideModulesIndex]));
+
+    if (nodes?.find((item) => item.type === FlowModuleTypeEnum.userGuide)) {
+      const index = guideModule.list.findIndex(
+        (item) => item.flowType === FlowModuleTypeEnum.userGuide
+      );
+      guideModule.list.splice(index, 1);
+    }
+    if (nodes?.find((item) => item.type === FlowModuleTypeEnum.variable)) {
+      const index = guideModule.list.findIndex(
+        (item) => item.flowType === FlowModuleTypeEnum.variable
+      );
+      guideModule.list.splice(index, 1);
+    }
+
+    return [
+      ...ModuleTemplates.slice(0, guideModulesIndex),
+      guideModule,
+      ...ModuleTemplates.slice(guideModulesIndex + 1)
+    ];
+  }, [nodes]);
+
   return (
     <>
       <Box
@@ -49,7 +81,7 @@ const ModuleTemplateList = ({
         </Box>
         <Box flex={'1 0 0'} overflow={'overlay'}>
           <Box w={['100%', '330px']} mx={'auto'}>
-            {ModuleTemplates.map((item) =>
+            {filterTemplates.map((item) =>
               item.list.map((item) => (
                 <Flex
                   key={item.name}
@@ -68,11 +100,11 @@ const ModuleTemplateList = ({
                   }}
                   onClick={(e) => {
                     if (isPc) return;
+                    onClose();
                     onAddNode({
                       template: item,
                       position: { x: e.clientX, y: e.clientY }
                     });
-                    onClose();
                   }}
                 >
                   <Avatar src={item.logo} w={'34px'} objectFit={'contain'} borderRadius={'0'} />
