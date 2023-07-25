@@ -58,7 +58,7 @@ const PayRecordTable = () => {
   });
 
   return (
-    <>
+    <Box position={'relative'} h={'100%'}>
       {!isInitialLoading && payOrders.length === 0 ? (
         <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
@@ -101,7 +101,7 @@ const PayRecordTable = () => {
         </TableContainer>
       )}
       <Loading loading={isInitialLoading} fixed={false} />
-    </>
+    </Box>
   );
 };
 
