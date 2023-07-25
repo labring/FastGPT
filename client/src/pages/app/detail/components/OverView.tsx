@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import TotalUsage from './Charts/TotalUsage';
-import BasicEdit from './BasicEdit';
+import MyTooltip from '@/components/MyTooltip';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 
@@ -74,7 +74,9 @@ const OverView = ({ appId }: { appId: string }) => {
             position={'relative'}
           >
             <Flex alignItems={'center'} py={2}>
-              <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
+              <MyTooltip label={'选择头像'}>
+                <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
+              </MyTooltip>
               <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
                 {appDetail.name}
               </Box>
@@ -95,7 +97,14 @@ const OverView = ({ appId }: { appId: string }) => {
                 onClick={openConfirm(handleDelModel)}
               />
             </Flex>
-            <Box className={'textEllipsis3'} py={3} wordBreak={'break-all'} color={'myGray.600'}>
+            <Box
+              h={'68px'}
+              flex={1}
+              my={2}
+              className={'textEllipsis3'}
+              wordBreak={'break-all'}
+              color={'myGray.600'}
+            >
               {appDetail.intro || '快来给应用一个介绍~'}
             </Box>
             <Flex>
@@ -138,13 +147,11 @@ const OverView = ({ appId }: { appId: string }) => {
           <Box mb={2} fontSize={['md', 'xl']}>
             近 14 日消费
           </Box>
-          <TotalUsage appId={appId} />
+          <Box flex={'1 0 0'} boxShadow={theme.shadows.base} borderRadius={'lg'} px={5} py={4}>
+            <TotalUsage appId={appId} />
+          </Box>
         </Flex>
       </Grid>
-
-      <Box flex={'1 0 0'} h={['auto', 0]} mt={4} borderTop={theme.borders.base}>
-        <BasicEdit appId={appId} />
-      </Box>
 
       {settingAppInfo && (
         <InfoModal defaultApp={settingAppInfo} onClose={() => setSettingAppInfo(undefined)} />

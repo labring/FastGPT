@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ChatModuleEnum } from '@/constants/chat';
 import { ChatHistoryItemResType, ChatItemType, QuoteItemType } from '@/types/chat';
 import { Flex, BoxProps } from '@chakra-ui/react';
-import { updateHistoryQuote } from '@/api/chat';
 import dynamic from 'next/dynamic';
 import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
@@ -62,7 +61,7 @@ const ResponseDetailModal = ({
         </MyTooltip>
       )}
       {completeMessages.length > 0 && (
-        <MyTooltip label={'点击查看完整对话记录'} forceShow>
+        <MyTooltip label={'点击查看完整对话记录'}>
           <Tag
             colorSchema="green"
             cursor={'pointer'}

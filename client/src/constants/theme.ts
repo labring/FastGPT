@@ -293,6 +293,12 @@ export const theme = extendTheme({
     md: '1px solid #DAE0E2',
     lg: '1px solid #D0E0E2'
   },
+  shadows: {
+    sm: '0 0 5px rgba(0,0,0,0.1)',
+    md: '0 0 8px rgba(0,0,0,0.1)',
+    base: '0 0 10px rgba(0,0,0,0.15)',
+    lg: '0 0 10px rgba(0,0,0,0.2)'
+  },
   breakpoints: {
     sm: '900px',
     md: '1200px',
