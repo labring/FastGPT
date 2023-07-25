@@ -817,20 +817,3 @@ export const useChatBox = () => {
     onExportChat
   };
 };
-
-export const getSpecialModule = (modules: AppModuleItemType[]) => {
-  const welcomeText: string =
-    modules
-      .find((item) => item.flowType === FlowModuleTypeEnum.userGuide)
-      ?.inputs?.find((item) => item.key === SystemInputEnum.welcomeText)?.value || '';
-
-  const variableModules: VariableItemType[] =
-    modules
-      .find((item) => item.flowType === FlowModuleTypeEnum.variable)
-      ?.inputs.find((item) => item.key === SystemInputEnum.variables)?.value || [];
-
-  return {
-    welcomeText,
-    variableModules
-  };
-};

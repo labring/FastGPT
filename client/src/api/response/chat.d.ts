@@ -8,10 +8,11 @@ export interface InitChatResponse {
   app: {
     variableModules?: VariableItemType[];
     welcomeText?: string;
+    chatModels?: string[];
     name: string;
     avatar: string;
     intro: string;
-    canUse: boolean;
+    canUse?: boolean;
   };
   title: string;
   variables: Record<string, any>;
@@ -20,11 +21,5 @@ export interface InitChatResponse {
 
 export interface InitShareChatResponse {
   userAvatar: string;
-  app: {
-    variableModules?: VariableItemType[];
-    welcomeText?: string;
-    name: string;
-    avatar: string;
-    intro: string;
-  };
+  app: InitChatResponse['app'];
 }

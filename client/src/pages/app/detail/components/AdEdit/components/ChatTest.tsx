@@ -14,11 +14,8 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import { streamFetch } from '@/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/store/user';
-import ChatBox, {
-  getSpecialModule,
-  type ComponentRef,
-  type StartChatFnProps
-} from '@/components/ChatBox';
+import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import { getSpecialModule } from '@/components/ChatBox/utils';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;

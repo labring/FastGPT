@@ -11,16 +11,21 @@ const ChatHeader = ({
   history,
   appName,
   appAvatar,
+  chatModels,
   onOpenSlider
 }: {
   history: ChatItemType[];
   appName: string;
   appAvatar: string;
+  chatModels?: string[];
   onOpenSlider: () => void;
 }) => {
   const theme = useTheme();
   const { isPc } = useGlobalStore();
-  const title = useMemo(() => {}, []);
+  const title = useMemo(
+    () => history[history.length - 2]?.value?.slice(0, 8) || appName || '新对话',
+    [appName, history]
+  );
 
   return (
     <Flex
@@ -34,12 +39,18 @@ const ChatHeader = ({
       {isPc ? (
         <>
           <Box mr={3} color={'myGray.1000'}>
-            {appName}
+            {title}
           </Box>
-          <Tag display={'flex'}>
+          <Tag>
             <MyIcon name={'history'} w={'14px'} />
             <Box ml={1}>{history.length === 0 ? '新的对话' : `${history.length}条记录`}</Box>
           </Tag>
+          {!!chatModels && (
+            <Tag ml={2} colorSchema={'green'}>
+              <MyIcon name={'chatModelTag'} w={'14px'} />
+              <Box ml={1}>{chatModels.join(',')}</Box>
+            </Tag>
+          )}
           <Box flex={1} />
         </>
       ) : (

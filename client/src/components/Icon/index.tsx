@@ -67,7 +67,8 @@ const map = {
   billRecordLight: require('./icons/light/billRecord.svg').default,
   informLight: require('./icons/light/inform.svg').default,
   payRecordLight: require('./icons/light/payRecord.svg').default,
-  loginoutLight: require('./icons/light/loginout.svg').default
+  loginoutLight: require('./icons/light/loginout.svg').default,
+  chatModelTag: require('./icons/light/chatModelTag.svg').default
 };
 
 export type IconName = keyof typeof map;

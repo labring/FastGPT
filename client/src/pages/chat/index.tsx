@@ -307,6 +307,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               appAvatar={chatData.app.avatar}
               appName={chatData.app.name}
               history={chatData.history}
+              chatModels={chatData.app.chatModels}
               onOpenSlider={onOpenSlider}
             />
 
