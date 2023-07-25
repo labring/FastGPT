@@ -51,11 +51,9 @@ import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
-import ChatBox, {
-  getSpecialModule,
-  type ComponentRef,
-  type StartChatFnProps
-} from '@/components/ChatBox';
+import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import { getSpecialModule } from '@/components/ChatBox/utils';
+
 import { addVariable } from '../VariableEditModal';
 import { KBSelectModal, KbParamsModal } from '../KBSelectModal';
 

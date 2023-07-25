@@ -4,7 +4,7 @@ import { connectToDatabase, ShareChat, User } from '@/service/mongo';
 import type { InitShareChatResponse } from '@/api/response/chat';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
-import { getSpecialModule } from '@/components/ChatBox';
+import { getChatModelNameList, getSpecialModule } from '@/components/ChatBox/utils';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -44,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userAvatar: user?.avatar || HUMAN_ICON,
         app: {
           ...getSpecialModule(app.modules),
+          chatModels: getChatModelNameList(app.modules),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro
