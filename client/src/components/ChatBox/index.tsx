@@ -41,14 +41,14 @@ import { useGlobalStore } from '@/store/global';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 
-import dynamic from 'next/dynamic';
-const ResponseDetailModal = dynamic(() => import('./ResponseDetailModal'));
-
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
 import Markdown from '@/components/Markdown';
 import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
+import dynamic from 'next/dynamic';
+const ResponseDetailModal = dynamic(() => import('./ResponseDetailModal'));
+
 import styles from './index.module.scss';
 
 const textareaMinH = '22px';

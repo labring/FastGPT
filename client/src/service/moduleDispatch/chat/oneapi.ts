@@ -7,7 +7,8 @@ import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
-import { parseStreamChunk, textAdaptGptResponse } from '@/utils/adapt';
+import { SSEParseData, parseStreamChunk } from '@/utils/sse';
+import { textAdaptGptResponse } from '@/utils/adapt';
 import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
@@ -270,38 +271,28 @@ function getMaxTokens({
 async function streamResponse({ res, response }: { res: NextApiResponse; response: any }) {
   let answer = '';
   let error: any = null;
-
-  const clientRes = async (data: string) => {
-    const { content = '' } = (() => {
-      try {
-        const json = JSON.parse(data);
-        const content: string = json?.choices?.[0].delta.content || '';
-        error = json.error;
-        answer += content;
-        return { content };
-      } catch (error) {
-        return {};
-      }
-    })();
-
-    if (res.closed || error) return;
-
-    if (data !== '[DONE]') {
-      sseResponse({
-        res,
-        event: sseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: content
-        })
-      });
-    }
-  };
+  const parseData = new SSEParseData();
 
   try {
     for await (const chunk of response.data as any) {
       if (res.closed) break;
       const parse = parseStreamChunk(chunk);
-      parse.forEach((item) => clientRes(item.data));
+      parse.forEach((item) => {
+        const { data } = parseData.parse(item);
+        if (!data || data === '[DONE]') return;
+
+        const content: string = data?.choices?.[0].delta.content || '';
+        error = data.error;
+        answer += content;
+
+        sseResponse({
+          res,
+          event: sseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text: content
+          })
+        });
+      });
     }
   } catch (error) {
     console.log('pipe error', error);

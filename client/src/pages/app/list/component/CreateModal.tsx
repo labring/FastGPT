@@ -23,6 +23,7 @@ import { postCreateApp } from '@/api/app';
 import { useRouter } from 'next/router';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
 import { useGlobalStore } from '@/store/global';
+import { useRequest } from '@/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 
@@ -34,7 +35,6 @@ type FormType = {
 
 const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const [refresh, setRefresh] = useState(false);
-  const [creating, setCreating] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const theme = useTheme();
@@ -74,32 +74,22 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     [setValue, toast]
   );
 
-  const onclickCreate = useCallback(
-    async (data: FormType) => {
-      setCreating(true);
-      try {
-        const id = await postCreateApp({
-          avatar: data.avatar,
-          name: data.name,
-          modules: appTemplates.find((item) => item.id === data.templateId)?.modules || []
-        });
-        toast({
-          title: '创建成功',
-          status: 'success'
-        });
-        router.push(`/app/detail?appId=${id}`);
-        onClose();
-        onSuccess();
-      } catch (error) {
-        toast({
-          title: getErrText(error, '创建应用异常'),
-          status: 'error'
-        });
-      }
-      setCreating(false);
+  const { mutate: onclickCreate, isLoading: creating } = useRequest({
+    mutationFn: async (data: FormType) => {
+      return postCreateApp({
+        avatar: data.avatar,
+        name: data.name,
+        modules: appTemplates.find((item) => item.id === data.templateId)?.modules || []
+      });
     },
-    [onClose, onSuccess, router, toast]
-  );
+    onSuccess(id: string) {
+      router.push(`/app/detail?appId=${id}`);
+      onSuccess();
+      onClose();
+    },
+    successToast: '创建成功',
+    errorToast: '创建应用异常'
+  });
 
   return (
     <Modal isOpen onClose={onClose} isCentered={!isPc}>
@@ -180,7 +170,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
           <Button variant={'base'} mr={3} onClick={onClose}>
             取消
           </Button>
-          <Button isLoading={creating} onClick={handleSubmit(onclickCreate)}>
+          <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
             确认创建
           </Button>
         </ModalFooter>
