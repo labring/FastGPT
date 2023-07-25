@@ -9,16 +9,12 @@ import { useQuery } from '@tanstack/react-query';
 
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
-import OverView from './components/OverView';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
+import BasicEdit from './components/BasicEdit';
 
-const BasicEdit = dynamic(() => import('./components/BasicEdit'), {
-  ssr: false,
-  loading: () => <Loading />
-});
 const AdEdit = dynamic(() => import('./components/AdEdit'), {
   ssr: false,
   loading: () => <Loading />
@@ -31,7 +27,6 @@ const API = dynamic(() => import('./components/API'), {
 });
 
 enum TabEnum {
-  'overview' = 'overview',
   'basicEdit' = 'basicEdit',
   'adEdit' = 'adEdit',
   'share' = 'share',
@@ -59,8 +54,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '概览', id: TabEnum.overview, icon: 'overviewLight' },
-      { label: '简易编排', id: TabEnum.basicEdit, icon: 'edit' },
+      { label: '简易配置', id: TabEnum.basicEdit, icon: 'overviewLight' },
       { label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' },
       { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
@@ -174,13 +168,12 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           />
         </Box>
         <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
-          {currentTab === TabEnum.overview && <OverView appId={appId} />}
           {currentTab === TabEnum.basicEdit && <BasicEdit appId={appId} />}
           {currentTab === TabEnum.adEdit && appDetail && (
             <AdEdit
               app={appDetail}
               fullScreen={true}
-              onFullScreen={() => setCurrentTab(TabEnum.overview)}
+              onFullScreen={() => setCurrentTab(TabEnum.basicEdit)}
             />
           )}
           {currentTab === TabEnum.API && <API appId={appId} />}
@@ -192,7 +185,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 };
 
 export async function getServerSideProps(context: any) {
-  const currentTab = context?.query?.currentTab || TabEnum.overview;
+  const currentTab = context?.query?.currentTab || TabEnum.basicEdit;
 
   return {
     props: { currentTab }

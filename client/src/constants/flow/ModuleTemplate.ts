@@ -371,7 +371,11 @@ export const EmptyModule: FlowModuleTemplateType = {
 export const ModuleTemplates = [
   {
     label: '输入模块',
-    list: [UserInputModule, HistoryModule, VariableModule, UserGuideModule]
+    list: [UserInputModule, HistoryModule]
+  },
+  {
+    label: '引导模块',
+    list: [UserGuideModule, VariableModule]
   },
   {
     label: '内容生成',
