@@ -3,18 +3,31 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 
-/* 获取历史记录 */
+type Props = {
+  chatId?: string;
+  appId?: string;
+};
+
+/* clear chat history */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { chatId } = req.query;
+    const { chatId, appId } = req.query as Props;
     const { userId } = await authUser({ req, authToken: true });
 
     await connectToDatabase();
 
-    await Chat.findOneAndRemove({
-      chatId,
-      userId
-    });
+    if (chatId) {
+      await Chat.findOneAndRemove({
+        chatId,
+        userId
+      });
+    }
+    if (appId) {
+      await Chat.deleteMany({
+        appId,
+        userId
+      });
+    }
 
     jsonRes(res);
   } catch (err) {

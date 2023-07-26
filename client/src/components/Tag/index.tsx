@@ -15,9 +15,9 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
         color: 'myBlue.700'
       },
       green: {
-        borderColor: '#54cd19',
-        bg: '#f2fcf2',
-        color: '#54cd19'
+        borderColor: '#67c13b',
+        bg: '#f8fff8',
+        color: '#67c13b'
       },
       gray: {
         borderColor: '#979797',

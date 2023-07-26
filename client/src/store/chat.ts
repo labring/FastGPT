@@ -4,12 +4,13 @@ import { immer } from 'zustand/middleware/immer';
 
 import { ChatHistoryItemType } from '@/types/chat';
 import type { InitChatResponse } from '@/api/response/chat';
-import { delChatHistoryById, getChatHistory } from '@/api/chat';
+import { delChatHistoryById, getChatHistory, clearChatHistoryByAppId } from '@/api/chat';
 
 type State = {
   history: ChatHistoryItemType[];
   loadHistory: (data: { appId?: string }) => Promise<null>;
   delHistory(history: string): Promise<void>;
+  clearHistory(appId: string): Promise<void>;
   updateHistory: (history: ChatHistoryItemType) => void;
   chatData: InitChatResponse;
   setChatData: (e: InitChatResponse | ((e: InitChatResponse) => InitChatResponse)) => void;
@@ -68,6 +69,12 @@ export const useChatStore = create<State>()(
             state.history = state.history.filter((item) => item.chatId !== chatId);
           });
           await delChatHistoryById(chatId);
+        },
+        async clearHistory(appId) {
+          set((state) => {
+            state.history = [];
+          });
+          await clearChatHistoryByAppId(appId);
         },
         updateHistory(history) {
           const index = get().history.findIndex((item) => item.chatId === history.chatId);

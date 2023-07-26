@@ -8,9 +8,9 @@ import Avatar from '@/components/Avatar';
 
 const SliderApps = ({ appId }: { appId: string }) => {
   const router = useRouter();
-  const { myApps, loadMyModels } = useUserStore();
+  const { myApps, loadMyApps } = useUserStore();
 
-  useQuery(['loadModels'], loadMyModels);
+  useQuery(['loadModels'], loadMyApps);
 
   return (
     <>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   Box,
   Button,
@@ -16,6 +16,8 @@ import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyIcon from '@/components/Icon';
+import { useTranslation } from 'react-i18next';
+import { useConfirm } from '@/hooks/useConfirm';
 
 type HistoryItemType = {
   id: string;
@@ -32,6 +34,7 @@ const ChatHistorySlider = ({
   activeChatId,
   onChangeChat,
   onDelHistory,
+  onClearHistory,
   onSetHistoryTop,
   onSetCustomTitle
 }: {
@@ -42,16 +45,21 @@ const ChatHistorySlider = ({
   activeChatId: string;
   onChangeChat: (chatId?: string) => void;
   onDelHistory: (chatId: string) => void;
+  onClearHistory: () => void;
   onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
   onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
 }) => {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const { isPc } = useGlobalStore();
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditInfo({
     title: '自定义历史记录标题',
     placeholder: '如果设置为空，会自动跟随聊天记录。'
+  });
+  const { openConfirm, ConfirmChild } = useConfirm({
+    content: t('chat.Confirm to clear history')
   });
 
   const concatHistory = useMemo<HistoryItemType[]>(
@@ -70,7 +78,7 @@ const ChatHistorySlider = ({
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <MyTooltip label={appId ? '应用详情' : ''} offset={[0, 0]}>
+        <MyTooltip label={appId ? t('app.App Detail') : ''} offset={[0, 0]}>
           <Flex
             pt={5}
             pb={2}
@@ -92,11 +100,11 @@ const ChatHistorySlider = ({
           </Flex>
         </MyTooltip>
       )}
-      {/* 新对话 */}
-      <Box w={'100%'} px={[2, 5]} h={'36px'} my={5}>
+      {/* btn */}
+      <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5}>
         <Button
           variant={'base'}
-          w={'100%'}
+          flex={1}
           h={'100%'}
           color={'myBlue.700'}
           borderRadius={'xl'}
@@ -104,9 +112,20 @@ const ChatHistorySlider = ({
           overflow={'hidden'}
           onClick={() => onChangeChat()}
         >
-          新对话
+          {t('chat.New Chat')}
         </Button>
-      </Box>
+
+        <IconButton
+          ml={3}
+          h={'100%'}
+          variant={'base'}
+          aria-label={''}
+          borderRadius={'xl'}
+          onClick={openConfirm(onClearHistory)}
+        >
+          <MyIcon name={'clear'} w={'16px'} />
+        </IconButton>
+      </Flex>
 
       {/* chat history */}
       <Box flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
@@ -230,6 +249,7 @@ const ChatHistorySlider = ({
         </Flex>
       )}
       <EditTitleModal />
+      <ConfirmChild />
     </Flex>
   );
 };

@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import type { ChatHistoryItemType } from '@/types/chat';
+import { useTranslation } from 'react-i18next';
 
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import PageContainer from '@/components/PageContainer';
@@ -33,6 +34,7 @@ import { serviceSideProps } from '@/utils/i18n';
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
   const { toast } = useToast();
 
   const ChatBoxRef = useRef<ComponentRef>(null);
@@ -47,10 +49,11 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     loadHistory,
     updateHistory,
     delHistory,
+    clearHistory,
     chatData,
     setChatData
   } = useChatStore();
-  const { myApps, userInfo } = useUserStore();
+  const { myApps, loadMyApps, userInfo } = useUserStore();
 
   const { isPc } = useGlobalStore();
   const { Loading, setIsLoading } = useLoading();
@@ -200,6 +203,26 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         }
       });
     }
+    if (!appId) {
+      (async () => {
+        const apps = await loadMyApps();
+        if (apps.length === 0) {
+          toast({
+            status: 'error',
+            title: t('chat.You need to a chat app')
+          });
+          router.replace('/app/list');
+        } else {
+          router.replace({
+            query: {
+              appId: apps[0]._id,
+              chatId: lastChatId
+            }
+          });
+        }
+      })();
+      return;
+    }
 
     // store id
     appId && setLastChatAppId(appId);
@@ -210,15 +233,11 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       return null;
     }
 
-    if (appId) {
-      return loadChatInfo({
-        appId,
-        chatId,
-        loading: appId !== chatData.appId
-      });
-    }
-
-    return null;
+    return loadChatInfo({
+      appId,
+      chatId,
+      loading: appId !== chatData.appId
+    });
   });
 
   useQuery(['loadHistory', appId], () => (appId ? loadHistory({ appId }) : null));
@@ -268,6 +287,14 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 }
               }}
               onDelHistory={delHistory}
+              onClearHistory={() => {
+                clearHistory(appId);
+                router.replace({
+                  query: {
+                    appId
+                  }
+                });
+              }}
               onSetHistoryTop={async (e) => {
                 try {
                   await putChatHistory(e);

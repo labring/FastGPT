@@ -23,12 +23,10 @@ export const getChatHistory = (data: RequestPaging & { appId?: string }) =>
  * 删除一条历史记录
  */
 export const delChatHistoryById = (chatId: string) => DELETE(`/chat/removeHistory`, { chatId });
-
 /**
- * get history quotes
+ * clear all history by appid
  */
-export const getHistoryQuote = (params: { chatId: string; contentId: string }) =>
-  GET<(QuoteItemType & { _id: string })[]>(`/chat/history/getHistoryQuote`, params);
+export const clearChatHistoryByAppId = (appId: string) => DELETE(`/chat/removeHistory`, { appId });
 
 /**
  * update history quote status

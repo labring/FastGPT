@@ -19,7 +19,7 @@ type State = {
   updateUserInfo: (user: UserUpdateParams) => void;
   myApps: AppListItemType[];
   myCollectionApps: AppListItemType[];
-  loadMyModels: () => Promise<null>;
+  loadMyApps: () => Promise<AppListItemType[]>;
   appDetail: AppSchema;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
   updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
@@ -63,12 +63,12 @@ export const useUserStore = create<State>()(
         },
         myApps: [],
         myCollectionApps: [],
-        async loadMyModels() {
+        async loadMyApps() {
           const res = await getMyModels();
           set((state) => {
             state.myApps = res;
           });
-          return null;
+          return res;
         },
         appDetail: defaultApp,
         async loadAppDetail(id: string, init = false) {

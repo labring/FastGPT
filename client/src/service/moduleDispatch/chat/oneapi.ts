@@ -72,16 +72,16 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     maxToken,
     filterMessages
   });
-  // console.log(messages);
 
   // FastGpt temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
+  temperature = Math.max(temperature, 0.01);
   const chatAPI = getOpenAIApi();
 
   const response = await chatAPI.createChatCompletion(
     {
       model,
-      temperature: Number(temperature || 0),
+      temperature,
       max_tokens,
       messages,
       // frequency_penalty: 0.5, // 越大，重复内容越少
