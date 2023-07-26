@@ -1,13 +1,18 @@
 {
+  "App": "App",
   "Cancel": "No",
   "Confirm": "Yes",
   "Warning": "Warning",
   "app": {
     "App Detail": "App Detail",
-    "My Apps": "My Apps"
+    "My Apps": "My Apps",
+    "Confirm Save App Tip": "After saving, the advanced orchestration configuration will be overwritten. Make sure that the application does not use advanced orchestration.",
+    "Confirm Del App Tip": "Confirm to delete the app and all its chats"
   },
   "chat": {
     "Confirm to clear history": "Confirm to clear history?",
+    "Exit Chat": "Exit",
+    "History": "History",
     "New Chat": "New Chat",
     "You need to a chat app": "You need to a chat app"
   },

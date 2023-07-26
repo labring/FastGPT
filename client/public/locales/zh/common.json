@@ -1,13 +1,18 @@
 {
+  "App": "应用",
   "Cancel": "取消",
   "Confirm": "确认",
   "Warning": "提示",
   "app": {
     "App Detail": "应用详情",
-    "My Apps": "我的应用"
+    "My Apps": "我的应用",
+    "Confirm Save App Tip": "保存后将会覆盖高级编排配置，请确保该应用未使用高级编排功能。",
+    "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？"
   },
   "chat": {
     "Confirm to clear history": "确认清空该应用的聊天记录？",
+    "Exit Chat": "退出聊天",
+    "History": "记录",
     "New Chat": "新对话",
     "You need to a chat app": "你需要创建一个应用"
   },

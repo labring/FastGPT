@@ -26,7 +26,7 @@ const Navbar = ({ unread }: { unread: number }) => {
     () => [
       {
         label: t('navbar.Chat'),
-        icon: 'chatLight',
+        icon: 'chat',
         activeIcon: 'chatFill',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat']

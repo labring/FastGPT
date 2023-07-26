@@ -39,7 +39,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
   );
   const emptyFiles = useMemo(() => files.length === 0, [files]);
 
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     content: `该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。`
   });
 
@@ -234,7 +234,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
           </Box>
         </Box>
       )}
-      <ConfirmChild />
+      <ConfirmModal />
     </Box>
   );
 };

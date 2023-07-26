@@ -69,7 +69,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
     return formatPrice(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice);
   }, [files, unitPrice]);
 
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     content: `该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。`
   });
 
@@ -455,7 +455,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
           )}
         </Box>
       )}
-      <ConfirmChild />
+      <ConfirmModal />
     </Box>
   );
 };

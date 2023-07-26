@@ -52,6 +52,7 @@ import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import { useTranslation } from 'react-i18next';
 import { getSpecialModule } from '@/components/ChatBox/utils';
 
 import { addVariable } from '../VariableEditModal';
@@ -63,6 +64,7 @@ const InfoModal = dynamic(() => import('../InfoModal'));
 const Settings = ({ appId }: { appId: string }) => {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { appDetail, updateAppDetail, loadKbList, myKbList } = useUserStore();
   const { isPc } = useGlobalStore();
@@ -72,9 +74,11 @@ const Settings = ({ appId }: { appId: string }) => {
 
   const [refresh, setRefresh] = useState(false);
 
-  const { openConfirm, ConfirmChild } = useConfirm({
-    title: '警告',
-    content: '保存后将会覆盖高级编排配置，请确保该应用未使用高级编排功能。'
+  const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
+    content: t('app.Confirm Save App Tip')
+  });
+  const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
+    content: t('app.Confirm Del App Tip')
   });
   const { register, setValue, getValues, reset, handleSubmit, control } = useForm<EditFormType>({
     defaultValues: getDefaultAppForm()
@@ -227,7 +231,7 @@ const Settings = ({ appId }: { appId: string }) => {
               color: 'red.600'
             }}
             isLoading={isLoading}
-            onClick={openConfirm(handleDelModel)}
+            onClick={openConfirmDel(handleDelModel)}
           />
         </Flex>
         <Box
@@ -243,7 +247,7 @@ const Settings = ({ appId }: { appId: string }) => {
           <Button
             size={['sm', 'md']}
             variant={'base'}
-            leftIcon={<MyIcon name={'chatLight'} w={'16px'} />}
+            leftIcon={<MyIcon name={'chat'} w={'16px'} />}
             onClick={() => router.push(`/chat?appId=${appId}`)}
           >
             对话
@@ -286,7 +290,7 @@ const Settings = ({ appId }: { appId: string }) => {
           isLoading={isSaving}
           fontSize={'sm'}
           size={['sm', 'md']}
-          onClick={openConfirm(handleSubmit((data) => onSubmitSave(data)))}
+          onClick={openConfirmSave(handleSubmit((data) => onSubmitSave(data)))}
         >
           {isPc ? '保存并预览' : '保存'}
         </Button>
@@ -494,7 +498,8 @@ const Settings = ({ appId }: { appId: string }) => {
         />
       </Box>
 
-      <ConfirmChild />
+      <ConfirmSaveModal />
+      <ConfirmDelModal />
       {settingAppInfo && (
         <InfoModal defaultApp={settingAppInfo} onClose={() => setSettingAppInfo(undefined)} />
       )}

@@ -258,7 +258,13 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
             return isPc || !appId ? (
               <SideBar>{children}</SideBar>
             ) : (
-              <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
+              <Drawer
+                isOpen={isOpenSlider}
+                placement="left"
+                autoFocus={false}
+                size={'xs'}
+                onClose={onCloseSlider}
+              >
                 <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
                 <DrawerContent maxWidth={'250px'}>{children}</DrawerContent>
               </Drawer>
@@ -269,6 +275,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
+              onClose={onCloseSlider}
               history={history.map((item, i) => ({
                 id: item.chatId,
                 title: item.title,

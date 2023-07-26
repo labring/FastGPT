@@ -10,7 +10,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const router = useRouter();
   const menuList = useRef([
     {
-      icon: 'chatLight',
+      icon: 'chat',
       label: '新对话',
       onClick: () => {
         router.push({

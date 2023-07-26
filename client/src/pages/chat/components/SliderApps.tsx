@@ -10,7 +10,7 @@ const SliderApps = ({ appId }: { appId: string }) => {
   const router = useRouter();
   const { myApps, loadMyApps } = useUserStore();
 
-  useQuery(['loadModels'], loadMyApps);
+  useQuery(['loadModels'], () => loadMyApps(false));
 
   return (
     <>

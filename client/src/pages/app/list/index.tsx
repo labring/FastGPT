@@ -34,7 +34,7 @@ const MyApps = () => {
   const theme = useTheme();
   const router = useRouter();
   const { myApps, loadMyApps } = useUserStore();
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     title: '删除提示',
     content: '确认删除该应用所有信息？'
   });
@@ -53,7 +53,7 @@ const MyApps = () => {
           title: '删除成功',
           status: 'success'
         });
-        loadMyApps();
+        loadMyApps(true);
       } catch (err: any) {
         toast({
           title: err?.message || '删除失败',
@@ -65,7 +65,7 @@ const MyApps = () => {
   );
 
   /* 加载模型 */
-  useQuery(['loadModels'], loadMyApps, {
+  useQuery(['loadModels'], () => loadMyApps(true), {
     refetchOnMount: true
   });
 
@@ -147,7 +147,7 @@ const MyApps = () => {
               size={'sm'}
               icon={
                 <MyTooltip label={'去聊天'}>
-                  <MyIcon name={'chatLight'} w={'14px'} />
+                  <MyIcon name={'chat'} w={'14px'} />
                 </MyTooltip>
               }
               variant={'base'}
@@ -165,8 +165,10 @@ const MyApps = () => {
           </Card>
         ))}
       </Grid>
-      <ConfirmChild />
-      {isOpenCreateModal && <CreateModal onClose={onCloseCreateModal} onSuccess={loadMyApps} />}
+      <ConfirmModal />
+      {isOpenCreateModal && (
+        <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps(true)} />
+      )}
     </PageContainer>
   );
 };

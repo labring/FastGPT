@@ -40,7 +40,7 @@ const Info = (
   const [btnLoading, setBtnLoading] = useState(false);
   const [refresh, setRefresh] = useState(false);
 
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认删除该知识库？数据将无法恢复，请确认！'
   });
 
@@ -251,7 +251,7 @@ const Info = (
         />
       </Flex>
       <File onSelect={onSelectFile} />
-      <ConfirmChild />
+      <ConfirmModal />
     </Box>
   );
 };

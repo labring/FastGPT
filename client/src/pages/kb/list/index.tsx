@@ -18,7 +18,7 @@ const Kb = () => {
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     title: '删除提示',
     content: '确认删除该知识库？'
   });
@@ -152,7 +152,7 @@ const Kb = () => {
           </Box>
         </Flex>
       )}
-      <ConfirmChild />
+      <ConfirmModal />
     </PageContainer>
   );
 };

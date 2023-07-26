@@ -347,7 +347,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           <MyTooltip label={'测试对话'}>
             <IconButton
               mr={6}
-              icon={<MyIcon name={'chatLight'} w={['14px', '16px']} />}
+              icon={<MyIcon name={'chat'} w={['14px', '16px']} />}
               borderRadius={'lg'}
               aria-label={'save'}
               variant={'base'}

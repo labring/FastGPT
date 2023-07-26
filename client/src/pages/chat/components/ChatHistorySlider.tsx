@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -18,6 +18,9 @@ import MyTooltip from '@/components/MyTooltip';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/hooks/useConfirm';
+import Tabs from '@/components/Tabs';
+import { useUserStore } from '@/store/user';
+import { useQuery } from '@tanstack/react-query';
 
 type HistoryItemType = {
   id: string;
@@ -25,6 +28,11 @@ type HistoryItemType = {
   customTitle?: string;
   top?: boolean;
 };
+
+enum TabEnum {
+  'app' = 'app',
+  'history' = 'history'
+}
 
 const ChatHistorySlider = ({
   appId,
@@ -36,7 +44,8 @@ const ChatHistorySlider = ({
   onDelHistory,
   onClearHistory,
   onSetHistoryTop,
-  onSetCustomTitle
+  onSetCustomTitle,
+  onClose
 }: {
   appId?: string;
   appName: string;
@@ -48,24 +57,40 @@ const ChatHistorySlider = ({
   onClearHistory: () => void;
   onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
   onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
+  onClose: () => void;
 }) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useGlobalStore();
+  const { myApps, loadMyApps, userInfo } = useUserStore();
+
+  const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
+
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditInfo({
     title: '自定义历史记录标题',
     placeholder: '如果设置为空，会自动跟随聊天记录。'
   });
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     content: t('chat.Confirm to clear history')
   });
 
   const concatHistory = useMemo<HistoryItemType[]>(
-    () => (!activeChatId ? [{ id: activeChatId, title: '新对话' }].concat(history) : history),
+    () =>
+      !activeChatId ? [{ id: activeChatId, title: t('chat.New Chat') }].concat(history) : history,
     [activeChatId, history]
   );
+
+  const isShare = useMemo(() => !appId || !userInfo, [appId, userInfo]);
+
+  useQuery(['init'], () => {
+    if (isShare) {
+      setCurrentTab(TabEnum.history);
+      return null;
+    }
+    return loadMyApps(false);
+  });
 
   return (
     <Flex
@@ -100,130 +125,183 @@ const ChatHistorySlider = ({
           </Flex>
         </MyTooltip>
       )}
-      {/* btn */}
-      <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5}>
+
+      {/* menu */}
+      <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5} alignItems={'center'}>
+        {!isPc && !isShare && (
+          <Tabs
+            w={'120px'}
+            mr={2}
+            list={[
+              { label: 'App', id: TabEnum.app },
+              { label: 'chat.History', id: TabEnum.history }
+            ]}
+            activeId={currentTab}
+            onChange={(e) => setCurrentTab(e as `${TabEnum}`)}
+          />
+        )}
         <Button
           variant={'base'}
           flex={1}
           h={'100%'}
           color={'myBlue.700'}
           borderRadius={'xl'}
-          leftIcon={<MyIcon name={'edit'} w={'16px'} />}
+          leftIcon={<MyIcon name={'chat'} w={'16px'} />}
           overflow={'hidden'}
           onClick={() => onChangeChat()}
         >
           {t('chat.New Chat')}
         </Button>
 
-        <IconButton
-          ml={3}
-          h={'100%'}
-          variant={'base'}
-          aria-label={''}
-          borderRadius={'xl'}
-          onClick={openConfirm(onClearHistory)}
-        >
-          <MyIcon name={'clear'} w={'16px'} />
-        </IconButton>
+        {(isPc || isShare) && (
+          <IconButton
+            ml={3}
+            h={'100%'}
+            variant={'base'}
+            aria-label={''}
+            borderRadius={'xl'}
+            onClick={openConfirm(onClearHistory)}
+          >
+            <MyIcon name={'clear'} w={'16px'} />
+          </IconButton>
+        )}
       </Flex>
 
-      {/* chat history */}
       <Box flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
-        {concatHistory.map((item, i) => (
-          <Flex
-            position={'relative'}
-            key={item.id || `${i}`}
-            alignItems={'center'}
-            py={3}
-            px={4}
-            cursor={'pointer'}
-            userSelect={'none'}
-            borderRadius={'lg'}
-            mb={2}
-            _hover={{
-              bg: 'myGray.100',
-              '& .more': {
-                display: 'block'
-              }
-            }}
-            bg={item.top ? '#E6F6F6 !important' : ''}
-            {...(item.id === activeChatId
-              ? {
-                  backgroundColor: 'myBlue.100 !important',
-                  color: 'myBlue.700'
-                }
-              : {
-                  onClick: () => {
-                    onChangeChat(item.id);
+        {/* chat history */}
+        {(currentTab === TabEnum.history || isPc) && (
+          <>
+            {concatHistory.map((item, i) => (
+              <Flex
+                position={'relative'}
+                key={item.id || `${i}`}
+                alignItems={'center'}
+                py={3}
+                px={4}
+                cursor={'pointer'}
+                userSelect={'none'}
+                borderRadius={'lg'}
+                mb={2}
+                _hover={{
+                  bg: 'myGray.100',
+                  '& .more': {
+                    display: 'block'
                   }
-                })}
-          >
-            <MyIcon name={item.id === activeChatId ? 'chatFill' : 'chatLight'} w={'16px'} />
-            <Box flex={'1 0 0'} ml={3} className="textEllipsis">
-              {item.customTitle || item.title}
-            </Box>
-            {!!item.id && (
-              <Box className="more" display={['block', 'none']}>
-                <Menu autoSelect={false} isLazy offset={[0, 5]}>
-                  <MenuButton
-                    _hover={{ bg: 'white' }}
-                    cursor={'pointer'}
-                    borderRadius={'md'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <MyIcon name={'more'} w={'14px'} p={1} />
-                  </MenuButton>
-                  <MenuList color={'myGray.700'} minW={`90px !important`}>
-                    {onSetHistoryTop && (
-                      <MenuItem
+                }}
+                bg={item.top ? '#E6F6F6 !important' : ''}
+                {...(item.id === activeChatId
+                  ? {
+                      backgroundColor: 'myBlue.100 !important',
+                      color: 'myBlue.700'
+                    }
+                  : {
+                      onClick: () => {
+                        onChangeChat(item.id);
+                      }
+                    })}
+              >
+                <MyIcon name={item.id === activeChatId ? 'chatFill' : 'chat'} w={'16px'} />
+                <Box flex={'1 0 0'} ml={3} className="textEllipsis">
+                  {item.customTitle || item.title}
+                </Box>
+                {!!item.id && (
+                  <Box className="more" display={['block', 'none']}>
+                    <Menu autoSelect={false} isLazy offset={[0, 5]}>
+                      <MenuButton
+                        _hover={{ bg: 'white' }}
+                        cursor={'pointer'}
+                        borderRadius={'md'}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onSetHistoryTop({ chatId: item.id, top: !item.top });
                         }}
                       >
-                        <MyIcon mr={2} name={'setTop'} w={'16px'}></MyIcon>
-                        {item.top ? '取消置顶' : '置顶'}
-                      </MenuItem>
-                    )}
-                    {onSetCustomTitle && (
-                      <MenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenModal({
-                            defaultVal: item.customTitle || item.title,
-                            onSuccess: (e) =>
-                              onSetCustomTitle({
-                                chatId: item.id,
-                                title: e
-                              })
-                          });
-                        }}
-                      >
-                        <MyIcon mr={2} name={'customTitle'} w={'16px'}></MyIcon>
-                        自定义标题
-                      </MenuItem>
-                    )}
-                    <MenuItem
-                      _hover={{ color: 'red.500' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelHistory(item.id);
-                        if (item.id === activeChatId) {
-                          onChangeChat();
-                        }
-                      }}
-                    >
-                      <MyIcon mr={2} name={'delete'} w={'16px'}></MyIcon>
-                      删除
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-              </Box>
-            )}
-          </Flex>
-        ))}
+                        <MyIcon name={'more'} w={'14px'} p={1} />
+                      </MenuButton>
+                      <MenuList color={'myGray.700'} minW={`90px !important`}>
+                        {onSetHistoryTop && (
+                          <MenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSetHistoryTop({ chatId: item.id, top: !item.top });
+                            }}
+                          >
+                            <MyIcon mr={2} name={'setTop'} w={'16px'}></MyIcon>
+                            {item.top ? '取消置顶' : '置顶'}
+                          </MenuItem>
+                        )}
+                        {onSetCustomTitle && (
+                          <MenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenModal({
+                                defaultVal: item.customTitle || item.title,
+                                onSuccess: (e) =>
+                                  onSetCustomTitle({
+                                    chatId: item.id,
+                                    title: e
+                                  })
+                              });
+                            }}
+                          >
+                            <MyIcon mr={2} name={'customTitle'} w={'16px'}></MyIcon>
+                            自定义标题
+                          </MenuItem>
+                        )}
+                        <MenuItem
+                          _hover={{ color: 'red.500' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelHistory(item.id);
+                            if (item.id === activeChatId) {
+                              onChangeChat();
+                            }
+                          }}
+                        >
+                          <MyIcon mr={2} name={'delete'} w={'16px'}></MyIcon>
+                          删除
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
+                  </Box>
+                )}
+              </Flex>
+            ))}
+          </>
+        )}
+        {currentTab === TabEnum.app && !isPc && (
+          <>
+            {myApps.map((item) => (
+              <Flex
+                key={item._id}
+                py={2}
+                px={3}
+                mb={3}
+                borderRadius={'lg'}
+                alignItems={'center'}
+                {...(item._id === appId
+                  ? {
+                      backgroundColor: 'myBlue.100 !important',
+                      color: 'myBlue.700'
+                    }
+                  : {
+                      onClick: () => {
+                        router.replace({
+                          query: {
+                            appId: item._id
+                          }
+                        });
+                        onClose();
+                      }
+                    })}
+              >
+                <Avatar src={item.avatar} w={'24px'} />
+                <Box ml={2} className={'textEllipsis'}>
+                  {item.name}
+                </Box>
+              </Flex>
+            ))}
+          </>
+        )}
       </Box>
 
       {!isPc && appId && (
@@ -245,11 +323,11 @@ const ChatHistorySlider = ({
             borderRadius={'50%'}
             aria-label={''}
           />
-          切换应用
+          {t('chat.Exit Chat')}
         </Flex>
       )}
       <EditTitleModal />
-      <ConfirmChild />
+      <ConfirmModal />
     </Flex>
   );
 };
