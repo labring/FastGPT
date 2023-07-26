@@ -7,22 +7,22 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 🎉 [fastgpt.run](https://fastgpt.run/)
 🎉 [ai.fastgpt.run](https://ai.fastgpt.run/)
 
-![Demo](docs/.github/demo.png?raw=true 'demo')
+![Demo](.github/demo.png?raw=true 'demo')
 
 #### 知识库原理图
 
-![KBProcess](docs/.github/KBProcess.jpg?raw=true 'KBProcess')
+![KBProcess](.github/KBProcess.jpg?raw=true 'KBProcess')
 
 ## 👨‍💻 开发
 
 项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）  
 这是一个平台项目，非单机项目，除了模型调用外还涉及非常多用户的内容。  
-[本地开发 Quick Start](docs/dev/README.md)
+[本地开发 Quick Start](docSite/i18n/zh-Hans/docusaurus-plugin-content-docs/current/quick-start/dev.md)
 
 ## 🚀 私有化部署
 
 - [官方推荐 Sealos 部署](https://sealos.io/docs/examples/ai-applications/install-fastgpt-on-desktop) 无需服务器，代理和域名，高可用。
-- [docker-compose 部署](docs/deploy/docker.md) 单机版。
+- [docker-compose 部署](docSite/i18n/zh-Hans/docusaurus-plugin-content-docs/current/deploy/docker.md) 单机版。
 - [由社区贡献的宝塔部署和本地运行教程](https://www.bilibili.com/video/BV1tV4y1y7Mj/?vd_source=92041a1a395f852f9d89158eaa3f61b4) 单机版。
 
 ## :point_right: RoadMap

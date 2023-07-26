@@ -1,0 +1,20 @@
+{
+  "sidebar.docSidebar.intro": {
+    "message": "介绍"
+  },
+  "sidebar.docSidebar.category.Quick Start": {
+    "message": "快速开始"
+  },
+  "sidebar.docSidebar.category.Deploy": {
+    "message": "部署"
+  },
+  "sidebar.docSidebar.category.Datasets": {
+    "message": "知识库实践"
+  },
+  "sidebar.docSidebar.category.Flow AI": {
+    "message": "Flow 编排"
+  },
+  "sidebar.docSidebar.category.Other": {
+    "message": "其他"
+  }
+}
