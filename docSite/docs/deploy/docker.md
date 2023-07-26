@@ -12,7 +12,7 @@
 
 ## openai key 池管理方案
 
-推荐使用 [one-api](https://github.com/songquanpeng/one-api) 项目来管理 key 池，兼容 openai 和微软等多渠道。部署可以看该项目的 README.md，也可以看 [在 Sealos 1 分钟部署 one-api](./one-api/sealos.md)
+推荐使用 [one-api](https://github.com/songquanpeng/one-api) 项目来管理 key 池，兼容 openai 和微软等多渠道。部署可以看该项目的 README.md，也可以看 [在 Sealos 1 分钟部署 one-api](./oneapi/index.md)
 
 ### 1. 准备一些内容
 
