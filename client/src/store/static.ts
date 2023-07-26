@@ -29,7 +29,6 @@ export const clientInitData = async (): Promise<InitDateResponse> => {
     beianText = res.systemEnv?.beianText;
     googleClientVerKey = res.systemEnv?.googleClientVerKey;
     baiduTongji = res.systemEnv?.baiduTongji;
-    console.log(res.feConfigs);
 
     return res;
   } catch (error) {

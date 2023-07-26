@@ -596,7 +596,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
           <IconButton
             className="chat"
             size={'sm'}
-            icon={<MyIcon name={'clearLight'} w={'14px'} />}
+            icon={<MyIcon name={'clear'} w={'14px'} />}
             variant={'base'}
             borderRadius={'md'}
             aria-label={'delete'}

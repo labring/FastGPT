@@ -1,6 +1,15 @@
 {
+  "Cancel": "No",
+  "Confirm": "Yes",
+  "Warning": "Warning",
   "app": {
+    "App Detail": "App Detail",
     "My Apps": "My Apps"
+  },
+  "chat": {
+    "Confirm to clear history": "Confirm to clear history?",
+    "New Chat": "New Chat",
+    "You need to a chat app": "You need to a chat app"
   },
   "home": {
     "Quickly build AI question and answer library": "Quickly build AI question and answer library",

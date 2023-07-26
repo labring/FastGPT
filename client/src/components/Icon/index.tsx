@@ -37,7 +37,7 @@ const map = {
   minus: require('./icons/minus.svg').default,
   chatLight: require('./icons/light/chat.svg').default,
   chatFill: require('./icons/fill/chat.svg').default,
-  clearLight: require('./icons/light/clear.svg').default,
+  clear: require('./icons/light/clear.svg').default,
   apiLight: require('./icons/light/appApi.svg').default,
   overviewLight: require('./icons/light/overview.svg').default,
   settingLight: require('./icons/light/setting.svg').default,

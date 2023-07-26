@@ -99,8 +99,6 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
 
   const loadAppInfo = useCallback(
     async (shareId: string, chatId: string) => {
-      console.log(shareId, chatId);
-
       if (!shareId) return null;
       const history = shareChatHistory.find((item) => item.chatId === chatId) || defaultHistory;
 
@@ -183,6 +181,14 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
               }
             }}
             onDelHistory={delOneShareHistoryByChatId}
+            onClearHistory={() => {
+              delManyShareChatHistoryByShareId(shareId);
+              router.replace({
+                query: {
+                  shareId
+                }
+              });
+            }}
           />
         )}
 

@@ -33,7 +33,7 @@ const MyApps = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
-  const { myApps, loadMyModels } = useUserStore();
+  const { myApps, loadMyApps } = useUserStore();
   const { openConfirm, ConfirmChild } = useConfirm({
     title: '删除提示',
     content: '确认删除该应用所有信息？'
@@ -53,7 +53,7 @@ const MyApps = () => {
           title: '删除成功',
           status: 'success'
         });
-        loadMyModels();
+        loadMyApps();
       } catch (err: any) {
         toast({
           title: err?.message || '删除失败',
@@ -61,11 +61,11 @@ const MyApps = () => {
         });
       }
     },
-    [toast, loadMyModels]
+    [toast, loadMyApps]
   );
 
   /* 加载模型 */
-  useQuery(['loadModels'], loadMyModels, {
+  useQuery(['loadModels'], loadMyApps, {
     refetchOnMount: true
   });
 
@@ -166,7 +166,7 @@ const MyApps = () => {
         ))}
       </Grid>
       <ConfirmChild />
-      {isOpenCreateModal && <CreateModal onClose={onCloseCreateModal} onSuccess={loadMyModels} />}
+      {isOpenCreateModal && <CreateModal onClose={onCloseCreateModal} onSuccess={loadMyApps} />}
     </PageContainer>
   );
 };
