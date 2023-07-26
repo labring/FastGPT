@@ -3,6 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import type { ChatHistoryItemType } from '@/types/chat';
+import { ChatSourceEnum } from '@/constants/chat';
 
 /* 获取历史记录 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await Chat.find(
       {
         userId,
+        source: ChatSourceEnum.online,
         ...(appId && { appId })
       },
       'chatId title top customTitle appId updateTime'

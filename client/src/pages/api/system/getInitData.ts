@@ -31,16 +31,73 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 }
 
+const defaultSystemEnv = {
+  vectorMaxProcess: 15,
+  qaMaxProcess: 15,
+  pgIvfflatProbe: 20,
+  sensitiveCheck: false
+};
+const defaultFeConfigs = {
+  show_emptyChat: true,
+  show_register: true,
+  show_appStore: true,
+  show_userDetail: true,
+  show_git: true,
+  systemTitle: 'FastAI',
+  authorText: 'Made by FastAI Team.'
+};
+const defaultChatModels = [
+  {
+    model: 'gpt-3.5-turbo',
+    name: 'FastAI-4k',
+    contextMaxToken: 4000,
+    quoteMaxToken: 2400,
+    maxTemperature: 1.2,
+    price: 1.5
+  },
+  {
+    model: 'gpt-3.5-turbo-16k',
+    name: 'FastAI-16k',
+    contextMaxToken: 16000,
+    quoteMaxToken: 8000,
+    maxTemperature: 1.2,
+    price: 3
+  },
+  {
+    model: 'gpt-4',
+    name: 'FastAI-Plus',
+    contextMaxToken: 8000,
+    quoteMaxToken: 4000,
+    maxTemperature: 1.2,
+    price: 45
+  }
+];
+const defaultQAModels = [
+  {
+    model: 'gpt-3.5-turbo-16k',
+    name: 'FastAI-16k',
+    maxToken: 16000,
+    price: 3
+  }
+];
+const defaultVectorModels = [
+  {
+    model: 'text-embedding-ada-002',
+    name: 'Embedding-2',
+    price: 0.2
+  }
+];
+
 export async function getInitConfig() {
   try {
     const res = JSON.parse(readFileSync('data/config.json', 'utf-8'));
     console.log(res);
 
-    global.systemEnv = res.SystemParams;
-    global.feConfigs = res.FeConfig;
-    global.chatModels = res.ChatModels;
-    global.qaModels = res.QAModels;
-    global.vectorModels = res.VectorModels;
+    global.systemEnv = res.SystemParams || defaultSystemEnv;
+    global.feConfigs = res.FeConfig || defaultFeConfigs;
+    global.chatModels = res.ChatModels || defaultChatModels;
+    global.qaModels = res.QAModels || defaultQAModels;
+    global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
     return Promise.reject('get init config error');
@@ -48,60 +105,9 @@ export async function getInitConfig() {
 }
 
 export function setDefaultData() {
-  global.systemEnv = {
-    vectorMaxProcess: 15,
-    qaMaxProcess: 15,
-    pgIvfflatProbe: 20,
-    sensitiveCheck: false
-  };
-  global.feConfigs = {
-    show_emptyChat: true,
-    show_register: true,
-    show_appStore: true,
-    show_userDetail: true,
-    show_git: true,
-    systemTitle: 'FastAI',
-    authorText: 'Made by FastAI Team.'
-  };
-  global.chatModels = [
-    {
-      model: 'gpt-3.5-turbo',
-      name: 'FastAI-4k',
-      contextMaxToken: 4000,
-      quoteMaxToken: 2400,
-      maxTemperature: 1.2,
-      price: 1.5
-    },
-    {
-      model: 'gpt-3.5-turbo-16k',
-      name: 'FastAI-16k',
-      contextMaxToken: 16000,
-      quoteMaxToken: 8000,
-      maxTemperature: 1.2,
-      price: 3
-    },
-    {
-      model: 'gpt-4',
-      name: 'FastAI-Plus',
-      contextMaxToken: 8000,
-      quoteMaxToken: 4000,
-      maxTemperature: 1.2,
-      price: 45
-    }
-  ];
-  global.qaModels = [
-    {
-      model: 'gpt-3.5-turbo-16k',
-      name: 'FastAI-16k',
-      maxToken: 16000,
-      price: 3
-    }
-  ];
-  global.vectorModels = [
-    {
-      model: 'text-embedding-ada-002',
-      name: 'Embedding-2',
-      price: 0.2
-    }
-  ];
+  global.systemEnv = defaultSystemEnv;
+  global.feConfigs = defaultFeConfigs;
+  global.chatModels = defaultChatModels;
+  global.qaModels = defaultQAModels;
+  global.vectorModels = defaultVectorModels;
 }
