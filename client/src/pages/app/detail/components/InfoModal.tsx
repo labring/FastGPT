@@ -6,13 +6,8 @@ import {
   FormControl,
   Input,
   Textarea,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
   ModalFooter,
-  ModalBody,
-  ModalCloseButton
+  ModalBody
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@/types/mongoSchema';
@@ -23,6 +18,7 @@ import { getErrText } from '@/utils/tools';
 import { useUserStore } from '@/store/user';
 import { useRequest } from '@/hooks/useRequest';
 import Avatar from '@/components/Avatar';
+import MyModal from '@/components/MyModal';
 
 const InfoModal = ({
   defaultApp,
@@ -120,61 +116,56 @@ const InfoModal = ({
   );
 
   return (
-    <Modal isOpen={true} onClose={onClose}>
-      <ModalOverlay />
-      <ModalContent maxW={'min(90vw,470px)'}>
-        <ModalHeader>应用信息设置</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <Box>头像 & 名称</Box>
-          <Flex mt={2} alignItems={'center'}>
-            <Avatar
-              src={getValues('avatar')}
-              w={['26px', '34px']}
-              h={['26px', '34px']}
-              cursor={'pointer'}
-              borderRadius={'lg'}
-              mr={4}
-              title={'点击切换头像'}
-              onClick={() => onOpenSelectFile()}
-            />
-            <FormControl>
-              <Input
-                bg={'myWhite.600'}
-                placeholder={'给应用设置一个名称'}
-                {...register('name', {
-                  required: '展示名称不能为空'
-                })}
-              ></Input>
-            </FormControl>
-          </Flex>
-          <Box mt={7} mb={1}>
-            应用介绍
-          </Box>
-          {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
+    <MyModal isOpen={true} onClose={onClose} title={'应用信息设置'}>
+      <ModalBody>
+        <Box>头像 & 名称</Box>
+        <Flex mt={2} alignItems={'center'}>
+          <Avatar
+            src={getValues('avatar')}
+            w={['26px', '34px']}
+            h={['26px', '34px']}
+            cursor={'pointer'}
+            borderRadius={'lg'}
+            mr={4}
+            title={'点击切换头像'}
+            onClick={() => onOpenSelectFile()}
+          />
+          <FormControl>
+            <Input
+              bg={'myWhite.600'}
+              placeholder={'给应用设置一个名称'}
+              {...register('name', {
+                required: '展示名称不能为空'
+              })}
+            ></Input>
+          </FormControl>
+        </Flex>
+        <Box mt={7} mb={1}>
+          应用介绍
+        </Box>
+        {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
             该介绍主要用于记忆和在应用市场展示
           </Box> */}
-          <Textarea
-            rows={4}
-            maxLength={500}
-            placeholder={'给你的 AI 应用一个介绍'}
-            bg={'myWhite.600'}
-            {...register('intro')}
-          />
-        </ModalBody>
+        <Textarea
+          rows={4}
+          maxLength={500}
+          placeholder={'给你的 AI 应用一个介绍'}
+          bg={'myWhite.600'}
+          {...register('intro')}
+        />
+      </ModalBody>
 
-        <ModalFooter>
-          <Button variant={'base'} mr={3} onClick={onClose}>
-            取消
-          </Button>
-          <Button isLoading={btnLoading} onClick={saveUpdateModel}>
-            保存
-          </Button>
-        </ModalFooter>
-      </ModalContent>
+      <ModalFooter>
+        <Button variant={'base'} mr={3} onClick={onClose}>
+          取消
+        </Button>
+        <Button isLoading={btnLoading} onClick={saveUpdateModel}>
+          保存
+        </Button>
+      </ModalFooter>
 
       <File onSelect={onSelectFile} />
-    </Modal>
+    </MyModal>
   );
 };
 

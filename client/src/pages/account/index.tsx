@@ -33,7 +33,7 @@ enum TabEnum {
 const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const tabList = useRef([
     { icon: 'meLight', label: '个人信息', id: TabEnum.info, Component: <BillTable /> },
-    { icon: 'billRecordLight', label: '消费记录', id: TabEnum.bill, Component: <BillTable /> },
+    { icon: 'billRecordLight', label: '使用记录', id: TabEnum.bill, Component: <BillTable /> },
     { icon: 'payRecordLight', label: '充值记录', id: TabEnum.pay, Component: <PayRecordTable /> },
     { icon: 'informLight', label: '通知', id: TabEnum.inform, Component: <InformTable /> },
     { icon: 'loginoutLight', label: '登出', id: TabEnum.loginout, Component: () => <></> }

@@ -10,7 +10,7 @@ import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import { clientInitData, feConfigs } from '@/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
-import { getLangStore, setLangStore } from '@/utils/i18n';
+import { getLangStore } from '@/utils/i18n';
 import { useRouter } from 'next/router';
 
 import 'nprogress/nprogress.css';
@@ -47,8 +47,6 @@ function App({ Component, pageProps }: AppProps) {
       setGoogleVerKey(googleClientVerKey);
       setBaiduTongji(baiduTongji);
     })();
-
-    setLangStore('zh');
   }, []);
 
   useEffect(() => {

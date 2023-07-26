@@ -3,9 +3,6 @@ import {
   Box,
   Flex,
   Button,
-  Modal,
-  ModalOverlay,
-  ModalContent,
   ModalHeader,
   ModalFooter,
   ModalBody,
@@ -26,6 +23,7 @@ import { useGlobalStore } from '@/store/global';
 import { useRequest } from '@/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
+import MyModal from '@/components/MyModal';
 
 type FormType = {
   avatar: string;
@@ -92,92 +90,89 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   });
 
   return (
-    <Modal isOpen onClose={onClose} isCentered={!isPc}>
-      <ModalOverlay />
-      <ModalContent maxW={'min(700px,90vw)'}>
-        <ModalHeader fontSize={'2xl'}>创建属于你的 AI 应用</ModalHeader>
-        <ModalBody>
-          <Box color={'myGray.800'} fontWeight={'bold'}>
-            取个响亮的名字
-          </Box>
-          <Flex mt={3} alignItems={'center'}>
-            <MyTooltip label={'点击设置头像'}>
-              <Avatar
-                flexShrink={0}
-                src={getValues('avatar')}
-                w={['32px', '36px']}
-                h={['32px', '36px']}
-                cursor={'pointer'}
-                borderRadius={'md'}
-                onClick={onOpenSelectFile}
-              />
-            </MyTooltip>
-            <Input
-              flex={1}
-              ml={4}
-              autoFocus
-              bg={'myWhite.600'}
-              {...register('name', {
-                required: '应用名不能为空~'
-              })}
+    <MyModal isOpen onClose={onClose} isCentered={!isPc}>
+      <ModalHeader fontSize={'2xl'}>创建属于你的 AI 应用</ModalHeader>
+      <ModalBody>
+        <Box color={'myGray.800'} fontWeight={'bold'}>
+          取个响亮的名字
+        </Box>
+        <Flex mt={3} alignItems={'center'}>
+          <MyTooltip label={'点击设置头像'}>
+            <Avatar
+              flexShrink={0}
+              src={getValues('avatar')}
+              w={['32px', '36px']}
+              h={['32px', '36px']}
+              cursor={'pointer'}
+              borderRadius={'md'}
+              onClick={onOpenSelectFile}
             />
-          </Flex>
-          <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
-            从模板中选择
-          </Box>
-          <Grid
-            userSelect={'none'}
-            gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
-            gridGap={[2, 4]}
-          >
-            {appTemplates.map((item) => (
-              <Card
-                key={item.id}
-                border={theme.borders.base}
-                p={3}
-                borderRadius={'md'}
-                cursor={'pointer'}
-                boxShadow={'sm'}
-                {...(getValues('templateId') === item.id
-                  ? {
-                      bg: 'myWhite.600'
+          </MyTooltip>
+          <Input
+            flex={1}
+            ml={4}
+            autoFocus
+            bg={'myWhite.600'}
+            {...register('name', {
+              required: '应用名不能为空~'
+            })}
+          />
+        </Flex>
+        <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
+          从模板中选择
+        </Box>
+        <Grid
+          userSelect={'none'}
+          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
+          gridGap={[2, 4]}
+        >
+          {appTemplates.map((item) => (
+            <Card
+              key={item.id}
+              border={theme.borders.base}
+              p={3}
+              borderRadius={'md'}
+              cursor={'pointer'}
+              boxShadow={'sm'}
+              {...(getValues('templateId') === item.id
+                ? {
+                    bg: 'myWhite.600'
+                  }
+                : {
+                    _hover: {
+                      boxShadow: 'md'
                     }
-                  : {
-                      _hover: {
-                        boxShadow: 'md'
-                      }
-                    })}
-                onClick={() => {
-                  setValue('templateId', item.id);
-                  setRefresh((state) => !state);
-                }}
-              >
-                <Flex alignItems={'center'}>
-                  <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
-                  <Box ml={3} fontWeight={'bold'}>
-                    {item.name}
-                  </Box>
-                </Flex>
-                <Box fontSize={'sm'} mt={4}>
-                  {item.intro}
+                  })}
+              onClick={() => {
+                setValue('templateId', item.id);
+                setRefresh((state) => !state);
+              }}
+            >
+              <Flex alignItems={'center'}>
+                <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
+                <Box ml={3} fontWeight={'bold'}>
+                  {item.name}
                 </Box>
-              </Card>
-            ))}
-          </Grid>
-        </ModalBody>
+              </Flex>
+              <Box fontSize={'sm'} mt={4}>
+                {item.intro}
+              </Box>
+            </Card>
+          ))}
+        </Grid>
+      </ModalBody>
 
-        <ModalFooter>
-          <Button variant={'base'} mr={3} onClick={onClose}>
-            取消
-          </Button>
-          <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-            确认创建
-          </Button>
-        </ModalFooter>
-      </ModalContent>
+      <ModalFooter>
+        <Button variant={'base'} mr={3} onClick={onClose}>
+          取消
+        </Button>
+        <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
+          确认创建
+        </Button>
+      </ModalFooter>
 
       <File onSelect={onSelectFile} />
-    </Modal>
+    </MyModal>
   );
 };
 

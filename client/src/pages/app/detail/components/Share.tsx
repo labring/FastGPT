@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Flex,
   Box,
@@ -11,19 +11,9 @@ import {
   Td,
   Tbody,
   useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
   ModalFooter,
   ModalBody,
-  ModalCloseButton,
   FormControl,
-  Slider,
-  SliderTrack,
-  SliderFilledTrack,
-  SliderThumb,
-  SliderMark,
   Input
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -36,12 +26,12 @@ import { formatTimeToChatTime, useCopyData, getErrText } from '@/utils/tools';
 import { useForm } from 'react-hook-form';
 import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/app';
-import MyTooltip from '@/components/MyTooltip';
 import { useRequest } from '@/hooks/useRequest';
 import { formatPrice } from '@/utils/user';
+import MyTooltip from '@/components/MyTooltip';
+import MyModal from '@/components/MyModal';
 
 const Share = ({ appId }: { appId: string }) => {
-  const { toast } = useToast();
   const { Loading, setIsLoading } = useLoading();
   const { copyData } = useCopyData();
   const {
@@ -175,42 +165,41 @@ const Share = ({ appId }: { appId: string }) => {
         </Flex>
       )}
       {/* create shareChat modal */}
-      <Modal isOpen={isOpenCreateShareChat} onClose={onCloseCreateShareChat}>
-        <ModalOverlay />
-        <ModalContent maxW={'min(90vw,500px)'}>
-          <ModalHeader>创建免登录窗口</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <FormControl>
-              <Flex alignItems={'center'}>
-                <Box flex={'0 0 60px'} w={0}>
-                  名称:
-                </Box>
-                <Input
-                  placeholder="记录名字，仅用于展示"
-                  maxLength={20}
-                  {...registerShareChat('name', {
-                    required: '记录名称不能为空'
-                  })}
-                />
-              </Flex>
-            </FormControl>
-          </ModalBody>
+      <MyModal
+        isOpen={isOpenCreateShareChat}
+        onClose={onCloseCreateShareChat}
+        title={'创建免登录窗口'}
+      >
+        <ModalBody>
+          <FormControl>
+            <Flex alignItems={'center'}>
+              <Box flex={'0 0 60px'} w={0}>
+                名称:
+              </Box>
+              <Input
+                placeholder="记录名字，仅用于展示"
+                maxLength={20}
+                {...registerShareChat('name', {
+                  required: '记录名称不能为空'
+                })}
+              />
+            </Flex>
+          </FormControl>
+        </ModalBody>
 
-          <ModalFooter>
-            <Button variant={'base'} mr={3} onClick={onCloseCreateShareChat}>
-              取消
-            </Button>
+        <ModalFooter>
+          <Button variant={'base'} mr={3} onClick={onCloseCreateShareChat}>
+            取消
+          </Button>
 
-            <Button
-              isLoading={creating}
-              onClick={submitShareChat((data) => onclickCreateShareChat(data))}
-            >
-              确认
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          <Button
+            isLoading={creating}
+            onClick={submitShareChat((data) => onclickCreateShareChat(data))}
+          >
+            确认
+          </Button>
+        </ModalFooter>
+      </MyModal>
       <Loading loading={isFetching} fixed={false} />
     </Box>
   );

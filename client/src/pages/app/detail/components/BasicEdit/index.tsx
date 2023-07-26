@@ -460,22 +460,32 @@ const Settings = ({ appId }: { appId: string }) => {
           相似度: {getValues('kb.searchSimilarity')}, 单次搜索数量: {getValues('kb.searchLimit')},
           空搜索时拒绝回复: {getValues('kb.searchEmptyText') !== '' ? 'true' : 'false'}
         </Flex>
-        <Grid templateColumns={['1fr', 'repeat(2,1fr)']} my={2} gridGap={[2, 4]}>
+        <Grid templateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} my={2} gridGap={[2, 4]}>
           {selectedKbList.map((item) => (
-            <Flex
-              key={item._id}
-              alignItems={'center'}
-              p={2}
-              bg={'white'}
-              boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-              borderRadius={'md'}
-              border={theme.borders.base}
-            >
-              <Avatar src={item.avatar} w={'18px'} mr={1} />
-              <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
-                {item.name}
-              </Box>
-            </Flex>
+            <MyTooltip key={item._id} label={'查看知识库详情'}>
+              <Flex
+                alignItems={'center'}
+                p={2}
+                bg={'white'}
+                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                borderRadius={'md'}
+                border={theme.borders.base}
+                cursor={'pointer'}
+                onClick={() =>
+                  router.push({
+                    pathname: '/kb/detail',
+                    query: {
+                      kbId: item._id
+                    }
+                  })
+                }
+              >
+                <Avatar src={item.avatar} w={'18px'} mr={1} />
+                <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                  {item.name}
+                </Box>
+              </Flex>
+            </MyTooltip>
           ))}
         </Grid>
       </Box>

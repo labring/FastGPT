@@ -1,23 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  Textarea,
-  IconButton
-} from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, IconButton } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { postKbDataFromList, putKbDataById, delOneKbDataByDataId } from '@/api/plugins/kb';
 import { useToast } from '@/hooks/useToast';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { getErrText } from '@/utils/tools';
-import MyIcon from '@/components/Icon';
 import { vectorModelList } from '@/store/static';
+import MyIcon from '@/components/Icon';
+import MyModal from '@/components/MyModal';
 
 export type FormData = { dataId?: string; a: string; q: string };
 
@@ -133,19 +123,15 @@ const InputDataModal = ({
   );
 
   return (
-    <Modal isOpen={true} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent
-        m={0}
-        display={'flex'}
-        flexDirection={'column'}
-        h={'90vh'}
-        maxW={'90vw'}
-        position={'relative'}
-      >
-        <ModalHeader>{defaultValues.dataId ? '变更数据' : '手动导入数据'}</ModalHeader>
-        <ModalCloseButton />
-
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      isCentered
+      title={defaultValues.dataId ? '变更数据' : '手动导入数据'}
+      w={'90vw'}
+      maxW={'90vw'}
+    >
+      <Flex display={'flex'} flexDirection={'column'} h={'90vh'}>
         <Box
           display={'flex'}
           flexDirection={['column', 'row']}
@@ -225,8 +211,8 @@ const InputDataModal = ({
             {defaultValues.dataId ? '确认变更' : '确认导入'}
           </Button>
         </Flex>
-      </ModalContent>
-    </Modal>
+      </Flex>
+    </MyModal>
   );
 };
 

@@ -27,9 +27,9 @@ import {
 } from '@/types/flow';
 import { AppModuleItemType } from '@/types/app';
 import { customAlphabet } from 'nanoid';
-import { putAppById } from '@/api/app';
 import { useRequest } from '@/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
+import { useUserStore } from '@/store/user';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
@@ -92,6 +92,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const theme = useTheme();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const ChatTestRef = useRef<ChatTestComponentRef>(null);
+  const { updateAppDetail } = useUserStore();
   const { x, y, zoom } = useViewport();
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -245,7 +246,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
-      return putAppById(app._id, {
+      return updateAppDetail(app._id, {
         modules: flow2AppModules()
       });
     },

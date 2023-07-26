@@ -121,7 +121,7 @@ const UserInfo = () => {
           <Flex alignItems={'center'}>
             <Box flex={'0 0 50px'}>余额:</Box>
             <Box>
-              <strong>{userInfo?.balance}</strong> 元
+              <strong>{userInfo?.balance.toFixed(3)}</strong> 元
             </Box>
             <Button size={['xs', 'sm']} w={['70px', '80px']} ml={5} onClick={onOpenPayModal}>
               充值
