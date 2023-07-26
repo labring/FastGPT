@@ -4,13 +4,9 @@ import {
   Flex,
   Box,
   Button,
-  Modal,
-  ModalOverlay,
-  ModalContent,
   ModalBody,
   ModalHeader,
   ModalFooter,
-  ModalCloseButton,
   useTheme,
   Textarea
 } from '@chakra-ui/react';
@@ -22,6 +18,7 @@ import type { SelectedKbType } from '@/types/plugin';
 import { useGlobalStore } from '@/store/global';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
+import MyModal from '@/components/MyModal';
 
 export type KbParamsType = {
   searchSimilarity: number;
@@ -45,17 +42,15 @@ export const KBSelectModal = ({
   const { isPc } = useGlobalStore();
 
   return (
-    <Modal isOpen={true} isCentered={!isPc} onClose={onClose}>
-      <ModalOverlay />
-      <ModalContent
-        display={'flex'}
-        flexDirection={'column'}
-        w={'800px'}
-        maxW={'90vw'}
-        h={['90vh', 'auto']}
-      >
+    <MyModal
+      isOpen={true}
+      isCentered={!isPc}
+      maxW={['90vw', '800px']}
+      w={'800px'}
+      onClose={onClose}
+    >
+      <Flex flexDirection={'column'} h={['90vh', 'auto']}>
         <ModalHeader>关联的知识库({selectedKbList.length})</ModalHeader>
-        <ModalCloseButton />
         <ModalBody
           flex={['1 0 0', '0 0 auto']}
           maxH={'80vh'}
@@ -115,8 +110,8 @@ export const KBSelectModal = ({
             完成
           </Button>
         </ModalFooter>
-      </ModalContent>
-    </Modal>
+      </Flex>
+    </MyModal>
   );
 };
 
@@ -137,11 +132,8 @@ export const KbParamsModal = ({
   });
 
   return (
-    <Modal isOpen={true} onClose={onClose}>
-      <ModalOverlay />
-      <ModalContent display={'flex'} flexDirection={'column'} w={'600px'} maxW={'90vw'}>
-        <ModalHeader>搜索参数调整</ModalHeader>
-        <ModalCloseButton />
+    <MyModal isOpen={true} onClose={onClose} title={'搜索参数调整'}>
+      <Flex flexDirection={'column'}>
         <ModalBody>
           <Box display={['block', 'flex']} pt={3} pb={5}>
             <Box flex={'0 0 100px'} mb={[8, 0]}>
@@ -214,8 +206,8 @@ export const KbParamsModal = ({
             完成
           </Button>
         </ModalFooter>
-      </ModalContent>
-    </Modal>
+      </Flex>
+    </MyModal>
   );
 };
 

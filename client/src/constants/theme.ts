@@ -14,15 +14,6 @@ const { definePartsStyle: selectPart, defineMultiStyleConfig: selectMultiStyle }
 const { definePartsStyle: numInputPart, defineMultiStyleConfig: numInputMultiStyle } =
   createMultiStyleConfigHelpers(numberInputAnatomy.keys);
 
-// modal 弹窗
-const ModalTheme = defineMultiStyleConfig({
-  baseStyle: definePartsStyle({
-    dialog: {
-      maxW: '90vw'
-    }
-  })
-});
-
 // 按键
 const Button = defineStyleConfig({
   baseStyle: {
@@ -313,7 +304,6 @@ export const theme = extendTheme({
     primary2: 'linear-gradient(to bottom right, #2152d9 0%,#3370ff 30%,#4e83fd 80%, #85b1ff 100%)'
   },
   components: {
-    Modal: ModalTheme,
     Button,
     Input,
     Textarea,

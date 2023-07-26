@@ -5,9 +5,9 @@
   "Warning": "提示",
   "app": {
     "App Detail": "应用详情",
-    "My Apps": "我的应用",
+    "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
     "Confirm Save App Tip": "保存后将会覆盖高级编排配置，请确保该应用未使用高级编排功能。",
-    "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？"
+    "My Apps": "我的应用"
   },
   "chat": {
     "Confirm to clear history": "确认清空该应用的聊天记录？",
@@ -28,5 +28,9 @@
     "Datasets": "知识库",
     "Store": "应用市场",
     "Tools": "工具"
+  },
+  "user": {
+    "Bill Detail": "账单详情",
+    "Pay": "充值"
   }
 }
