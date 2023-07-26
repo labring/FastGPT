@@ -7,11 +7,11 @@ Fast GPT 允许你使用自己的 openai API KEY 来快速的调用 openai 接�
 🎉 [fastgpt.run](https://fastgpt.run/)
 🎉 [ai.fastgpt.run](https://ai.fastgpt.run/)
 
-![Demo](docs/imgs/demo.png?raw=true 'demo')
+![Demo](docs/.github/demo.png?raw=true 'demo')
 
 #### 知识库原理图
 
-![KBProcess](docs/imgs/KBProcess.jpg?raw=true 'KBProcess')
+![KBProcess](docs/.github/KBProcess.jpg?raw=true 'KBProcess')
 
 ## 👨‍💻 开发
 
