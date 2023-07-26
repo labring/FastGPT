@@ -1,0 +1,256 @@
+# 非 host 版本, 不使用本机代理
+version: '3.3'
+services:
+  pg:
+    # image: ankane/pgvector:v0.4.2 # dockerhub
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
+    container_name: pg
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 8100:5432
+    networks:
+      - fastgpt
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - POSTGRES_USER=fastgpt
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=fastgpt
+    volumes:
+      # 刚创建的文件
+      - ./pg/init.sql:/docker-entrypoint-initdb.d/init.sh
+      - ./pg/data:/var/lib/postgresql/data
+  mongo:
+    # image: mongo:5.0.18
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+    container_name: mongo
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 27017:27017
+    networks:
+      - fastgpt
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - MONGO_INITDB_ROOT_USERNAME=username
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - ./mongo/data:/data/db
+      - ./mongo/logs:/var/log/mongodb
+  fastgpt:
+    container_name: fastgpt
+    # image: c121914yu/fast-gpt:latest # docker hub
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+    # network_mode: host #
+    ports:
+      - 3000:3000
+    networks:
+      - fastgpt
+    depends_on:
+      - mongo
+      - pg
+    restart: always
+    environment: # 可选的变量，不需要的话需要去掉
+      - PORT=3000 # 运行的端口地址，如果不是 3000，需要修改成实际地址。
+      - DB_MAX_LINK=5 # database max link
+      # proxy（可选）
+      - AXIOS_PROXY_HOST=127.0.0.1
+      - AXIOS_PROXY_PORT=7890
+      # 发送邮箱验证码配置。用的是QQ邮箱。参考 nodeMail 获取MAILE_CODE，自行百度。
+      - MY_MAIL=54545@qq.com
+      - MAILE_CODE=1234
+      # 阿里短信服务（邮箱和短信至少二选一）
+      - aliAccessKeyId=xxxx
+      - aliAccessKeySecret=xxxx
+      - aliSignName=xxxxx
+      - aliTemplateCode=SMS_xxxx
+      # google V3 安全校验（可选）
+      - CLIENT_GOOGLE_VER_TOKEN=xxx
+      - SERVICE_GOOGLE_VER_TOKEN=xx
+      # token加密凭证（随便填，作为登录凭证）
+      - TOKEN_KEY=any
+      # root key, 最高权限，可以内部接口互相调用
+      - ROOT_KEY=root_key
+      # 和上方mongo镜像的username,password对应
+      - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
+      - MONGODB_NAME=fastgpt
+      - PG_HOST=pg
+      - PG_PORT=5432
+      # 和上方PG镜像对应.
+      - PG_USER=fastgpt
+      - PG_PASSWORD=1234
+      - PG_DB_NAME=fastgpt
+      # oneapi 配置 推荐使用 one-api 管理key
+      - ONEAPI_URL=https://xxxxx.cloud.sealos.io/v1
+      - ONEAPI_KEY=sk-xxxxxx
+      # openai 相关配置：使用了 oneapi 后，下面只需要填下 OPENAI_BASE_URL （国外可全忽略）
+      - OPENAIKEY=sk-xxxxx
+      - OPENAI_BASE_URL=https://api.openai.com/v1
+      - OPENAI_BASE_URL_AUTH=可选的安全凭证，会放到 header.auth 里
+  fastgpt-admin:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:latest
+    container_name: fastgpt-admin
+    restart: always
+    ports:
+      - 3001:3001
+    networks:
+      - fastgpt
+    depends_on:
+      - mongo
+      - fastgpt
+    environment:
+      - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
+      - MONGODB_NAME=fastgpt
+      - ADMIN_USER=username
+      - ADMIN_PASS=password
+      - ADMIN_SECRET=any
+      - PARENT_URL=http://fastgpt:3000
+      - PARENT_ROOT_KEY=root_key
+  keyadmin:
+    container_name: keyadmin
+    image: justsong/one-api
+    restart: always
+    ports:
+      - 3002:3000
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /keyadmin:/data
+  nginx: # 宝塔不需要额外装 nginx
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/nginx:alpine3.17
+    # image: nginx:alpine3.17
+    container_name: nginx
+    restart: always
+    network_mode: host
+    volumes:
+      # 刚创建的文件
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/logs:/var/log/nginx
+      # https证书，没有的话不填，对应的nginx.conf也要修改
+      - ./nginx/ssl/docgpt.key:/ssl/docgpt.key
+      - ./nginx/ssl/docgpt.pem:/ssl/docgpt.pem
+networks:
+  fastgpt:
+# host 版本, 不推荐，推荐直接用上面的，用个 BASE_URL 中转
+# version: '3.3'
+# services:
+#   pg:
+#     # image: ankane/pgvector:v0.4.2 # dockerhub
+#     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
+#     container_name: pg
+#     restart: always
+#     ports: # 生产环境建议不要暴露
+#       - 8100:5432
+#     networks:
+#       - fastgpt
+#     environment:
+#       # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+#       - POSTGRES_USER=fastgpt
+#       - POSTGRES_PASSWORD=1234
+#       - POSTGRES_DB=fastgpt
+#     volumes:
+#       # 刚创建的文件
+#       - ./pg/init.sql:/docker-entrypoint-initdb.d/init.sh
+#       - ./pg/data:/var/lib/postgresql/data
+#   mongo:
+#     # image: mongo:5.0.18
+#     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+#     container_name: mongo
+#     restart: always
+#     ports: # 生产环境建议不要暴露
+#       - 27017:27017
+#     networks:
+#       - fastgpt
+#     environment:
+#       # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+#       - MONGO_INITDB_ROOT_USERNAME=username
+#       - MONGO_INITDB_ROOT_PASSWORD=password
+#     volumes:
+#       - ./mongo/data:/data/db
+#       - ./mongo/logs:/var/log/mongodb
+#   fastgpt:
+#     # image: ghcr.io/c121914yu/fastgpt:latest # github
+#     # image: c121914yu/fast-gpt:latest # docker hub
+#     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+#     network_mode: host
+#     restart: always
+#     container_name: fastgpt
+#     environment: # 可选的变量，不需要的话需要去掉
+#       - PORT=3000 # 运行的端口地址，如果不是 3000，需要修改成实际地址。
+#       - DB_MAX_LINK=15 # database max link
+#       # proxy（可选）
+#       - AXIOS_PROXY_HOST=127.0.0.1
+#       - AXIOS_PROXY_PORT=7890
+#       # 发送邮箱验证码配置。用的是QQ邮箱。参考 nodeMail 获取MAILE_CODE，自行百度。
+#       - MY_MAIL=54545@qq.com
+#       - MAILE_CODE=1234
+#       # 阿里短信服务（邮箱和短信至少二选一）
+#       - aliAccessKeyId=xxxx
+#       - aliAccessKeySecret=xxxx
+#       - aliSignName=xxxxx
+#       - aliTemplateCode=SMS_xxxx
+#       # google V3 安全校验（可选）
+#       - CLIENT_GOOGLE_VER_TOKEN=xxx
+#       - SERVICE_GOOGLE_VER_TOKEN=xx
+#       # token加密凭证（随便填，作为登录凭证）
+#       - TOKEN_KEY=xxxx
+#       # root key, 最高权限，可以内部接口互相调用
+#       - ROOT_KEY=xxx
+#       # 和上方mongo镜像的username,password对应
+#       - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
+#       - MONGODB_NAME=fastgpt
+#       - PG_HOST=0.0.0.0
+#       - PG_PORT=8100
+#       # 和上方PG镜像对应.
+#       - PG_USER=fastgpt
+#       - PG_PASSWORD=1234
+#       - PG_DB_NAME=fastgpt
+#       # oneapi 配置 推荐使用 one-api 管理key
+#       - ONEAPI_URL=https://xxxxx.cloud.sealos.io/v1
+#       - ONEAPI_KEY=sk-xxxxx
+#       # openai 相关配置：使用了 oneapi 后，下面只需要填下 OPENAI_BASE_URL （国外可全忽略）
+#       - OPENAIKEY=sk-xxxxx
+#       - OPENAI_BASE_URL=https://api.openai.com/v1
+#       - OPENAI_BASE_URL_AUTH=可选的安全凭证，会放到 header.auth 里
+#   fastgpt-admin:
+#     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:latest
+#     container_name: fastgpt-admin
+#     restart: always
+#     ports:
+#       - 3001:3001
+#     networks:
+#       - fastgpt
+#     depends_on:
+#       - mongo
+#       - fastgpt
+#     environment:
+#       - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
+#       - MONGODB_NAME=fastgpt
+#       - ADMIN_USER=username
+#       - ADMIN_PASS=password
+#       - ADMIN_SECRET=any
+#       - PARENT_URL=http://fastgpt:3000
+#       - PARENT_ROOT_KEY=root_key
+#   key-admin:
+#     container_name: key-admin
+#     image: justsong/one-api
+#     restart: always
+#     ports:
+#       - 3002:3000
+#     environment:
+#       - TZ=Asia/Shanghai
+#     volumes:
+#       - /home/ubuntu/data/one-api:/data
+#   nginx: # 宝塔不需要额外装 nginx
+#     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/nginx:alpine3.17
+#     # image: nginx:alpine3.17
+#     container_name: nginx
+#     restart: always
+#     network_mode: host
+#     volumes:
+#       # 刚创建的文件
+#       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+#       - ./nginx/logs:/var/log/nginx
+#       # https证书，没有的话不填，对应的nginx.conf也要修改
+#       - ./nginx/ssl/docgpt.key:/ssl/docgpt.key
+#       - ./nginx/ssl/docgpt.pem:/ssl/docgpt.pem
+# networks:
+#   fastgpt:
