@@ -11,8 +11,9 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
-export const useConfirm = ({ title = 'Warning', content }: { title?: string; content: string }) => {
+export const useConfirm = (props: { title?: string; content: string }) => {
   const { t } = useTranslation();
+  const { title = t('Warning'), content } = props;
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = useRef(null);
@@ -29,13 +30,13 @@ export const useConfirm = ({ title = 'Warning', content }: { title?: string; con
       },
       [onOpen]
     ),
-    ConfirmChild: useCallback(
+    ConfirmModal: useCallback(
       () => (
         <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
           <AlertDialogOverlay>
             <AlertDialogContent maxW={'min(90vw,400px)'}>
               <AlertDialogHeader fontSize="lg" fontWeight="bold">
-                {t(title)}
+                {title}
               </AlertDialogHeader>
 
               <AlertDialogBody>{content}</AlertDialogBody>

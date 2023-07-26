@@ -39,7 +39,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     { icon: 'loginoutLight', label: '登出', id: TabEnum.loginout, Component: () => <></> }
   ]);
 
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认退出登录？'
   });
 
@@ -111,7 +111,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           {currentTab === TabEnum.inform && <InformTable />}
         </Box>
       </Flex>
-      <ConfirmChild />
+      <ConfirmModal />
     </PageContainer>
   );
 };

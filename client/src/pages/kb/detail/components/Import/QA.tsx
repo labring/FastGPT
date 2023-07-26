@@ -71,7 +71,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
     return formatPrice(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice * 1.3);
   }, [files, unitPrice]);
 
-  const { openConfirm, ConfirmChild } = useConfirm({
+  const { openConfirm, ConfirmModal } = useConfirm({
     content: `该任务无法终止！导入后会自动调用大模型生成问答对，会有一些细节丢失，请确认！如果余额不足，未完成的任务会被暂停。`
   });
 
@@ -446,7 +446,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
           )}
         </Box>
       )}
-      <ConfirmChild />
+      <ConfirmModal />
     </Box>
   );
 };

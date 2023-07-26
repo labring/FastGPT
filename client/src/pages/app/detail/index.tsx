@@ -59,7 +59,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       { label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' },
       { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
-      { label: '立即对话', id: 'startChat', icon: 'chatLight' }
+      { label: '立即对话', id: 'startChat', icon: 'chat' }
     ],
     []
   );

@@ -151,7 +151,13 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
           return isPc ? (
             <SideBar>{children}</SideBar>
           ) : (
-            <Drawer isOpen={isOpenSlider} placement="left" size={'xs'} onClose={onCloseSlider}>
+            <Drawer
+              isOpen={isOpenSlider}
+              placement="left"
+              autoFocus={false}
+              size={'xs'}
+              onClose={onCloseSlider}
+            >
               <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
               <DrawerContent maxWidth={'250px'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
                 {children}
@@ -167,6 +173,7 @@ const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => 
               id: item.chatId,
               title: item.title
             }))}
+            onClose={onCloseSlider}
             onChangeChat={(chatId) => {
               console.log(chatId);
 
