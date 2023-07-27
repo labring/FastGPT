@@ -76,10 +76,7 @@ export const appModule2FlowNode = ({
   // replace item data
   const moduleItem: FlowModuleItemType = {
     ...item,
-    logo: template.logo,
-    name: template.name,
-    intro: template.intro,
-    url: template.url,
+    ...template,
     inputs: template.inputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;

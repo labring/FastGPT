@@ -30,6 +30,7 @@ export type ChatProps = {
 export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  finish: boolean;
 };
 
 /* request openai chat */
@@ -143,7 +144,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
       maxToken,
       quoteList: filterQuoteQA,
       completeMessages
-    }
+    },
+    finish: true
   };
 };
 

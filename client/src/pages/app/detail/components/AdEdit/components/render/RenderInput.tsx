@@ -12,10 +12,10 @@ import {
 } from '@chakra-ui/react';
 import { FlowInputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { Handle, Position } from 'reactflow';
 import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
+import TargetHandle from './TargetHandle';
 
 export const Label = ({
   required = false,
@@ -35,7 +35,7 @@ export const Label = ({
     )}
     {description && (
       <MyTooltip label={description} forceShow>
-        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+        <QuestionOutlineIcon display={['none', 'inline']} transform={'translateY(-1px)'} ml={1} />
       </MyTooltip>
     )}
   </Box>
@@ -61,6 +61,10 @@ const RenderBody = ({
               {!!item.label && (
                 <Label required={item.required} description={item.description}>
                   {item.label}
+
+                  {(item.type === FlowInputItemTypeEnum.target || item.valueType) && (
+                    <TargetHandle handleKey={item.key} valueType={item.valueType} />
+                  )}
                 </Label>
               )}
               <Box mt={2} className={'nodrag'}>
@@ -147,22 +151,6 @@ const RenderBody = ({
                 )}
                 {item.type === FlowInputItemTypeEnum.custom && CustomComponent[item.key] && (
                   <>{CustomComponent[item.key]({ ...item })}</>
-                )}
-                {item.type === FlowInputItemTypeEnum.target && (
-                  <Handle
-                    style={{
-                      top: '50%',
-                      left: '-14px',
-                      transform: 'translate(-50%,-50%)',
-                      width: '12px',
-                      height: '12px',
-                      background: '#9CA2A8'
-                    }}
-                    id={item.key}
-                    type="target"
-                    position={Position.Left}
-                    onConnect={(params) => console.log('handle onConnect', params)}
-                  />
                 )}
               </Box>
             </Box>

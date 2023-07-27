@@ -4,7 +4,8 @@ import {
   FlowModuleTypeEnum,
   FlowInputItemTypeEnum,
   FlowOutputItemTypeEnum,
-  SpecialInputKeyEnum
+  SpecialInputKeyEnum,
+  FlowValueTypeEnum
 } from './index';
 import type { AppItemType } from '@/types/app';
 import type { FlowModuleTemplateType } from '@/types/flow';
@@ -56,7 +57,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
 };
 export const UserInputModule: FlowModuleTemplateType = {
   logo: '/imgs/module/userChatInput.png',
-  name: '用户问题',
+  name: '用户问题(对话入口)',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   flowType: FlowModuleTypeEnum.questionInput,
   url: '/app/modules/init/userChatInput',
@@ -72,6 +73,7 @@ export const UserInputModule: FlowModuleTemplateType = {
       key: SystemInputEnum.userChatInput,
       label: '用户问题',
       type: FlowOutputItemTypeEnum.source,
+      valueType: FlowValueTypeEnum.string,
       targets: []
     }
   ]
@@ -101,6 +103,7 @@ export const HistoryModule: FlowModuleTemplateType = {
     {
       key: SystemInputEnum.history,
       label: '聊天记录',
+      valueType: FlowValueTypeEnum.chatHistory,
       type: FlowOutputItemTypeEnum.source,
       targets: []
     }
@@ -155,6 +158,7 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
       label: '系统提示词',
+      valueType: FlowValueTypeEnum.string,
       description: ChatModelSystemTip,
       placeholder: ChatModelSystemTip,
       value: ''
@@ -162,6 +166,7 @@ export const ChatModule: FlowModuleTemplateType = {
     {
       key: 'limitPrompt',
       type: FlowInputItemTypeEnum.textarea,
+      valueType: FlowValueTypeEnum.string,
       label: '限定词',
       description: ChatModelLimitTip,
       placeholder: ChatModelLimitTip,
@@ -171,7 +176,8 @@ export const ChatModule: FlowModuleTemplateType = {
     {
       key: 'quoteQA',
       type: FlowInputItemTypeEnum.target,
-      label: '引用内容'
+      label: '引用内容',
+      valueType: FlowValueTypeEnum.kbQuote
     },
     Input_Template_History,
     Input_Template_UserChatInput
@@ -182,6 +188,14 @@ export const ChatModule: FlowModuleTemplateType = {
       label: '模型回复',
       description: '直接响应，无需配置',
       type: FlowOutputItemTypeEnum.hidden,
+      targets: []
+    },
+    {
+      key: 'finish',
+      label: '回复结束',
+      description: 'AI 回复完成后触发',
+      valueType: FlowValueTypeEnum.boolean,
+      type: FlowOutputItemTypeEnum.source,
       targets: []
     }
   ]
@@ -236,12 +250,14 @@ export const KBSearchModule: FlowModuleTemplateType = {
       key: 'isEmpty',
       label: '搜索结果为空',
       type: FlowOutputItemTypeEnum.source,
+      valueType: FlowValueTypeEnum.boolean,
       targets: []
     },
     {
       key: 'unEmpty',
       label: '搜索结果不为空',
       type: FlowOutputItemTypeEnum.source,
+      valueType: FlowValueTypeEnum.boolean,
       targets: []
     },
     {
@@ -249,6 +265,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
       label: '引用内容',
       description: '搜索结果为空时不返回',
       type: FlowOutputItemTypeEnum.source,
+      valueType: FlowValueTypeEnum.kbQuote,
       targets: []
     }
   ]
@@ -257,7 +274,8 @@ export const KBSearchModule: FlowModuleTemplateType = {
 export const AnswerModule: FlowModuleTemplateType = {
   logo: '/imgs/module/reply.png',
   name: '指定回复',
-  intro: '该模块可以直接回复一段指定的内容。常用于引导、提示。',
+  intro: '该模块可以直接回复一段指定的内容。常用于引导、提示',
+  description: '该模块可以直接回复一段指定的内容。常用于引导、提示',
   flowType: FlowModuleTypeEnum.answerNode,
   inputs: [
     Input_Template_TFSwitch,
@@ -265,7 +283,8 @@ export const AnswerModule: FlowModuleTemplateType = {
       key: SpecialInputKeyEnum.answerText,
       value: '',
       type: FlowInputItemTypeEnum.textarea,
-      label: '回复的内容'
+      label: '回复的内容',
+      description: '可以使用 \\n 来实现换行'
     }
   ],
   outputs: []
@@ -309,6 +328,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
+      valueType: FlowValueTypeEnum.string,
       label: '系统提示词',
       description:
         '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',

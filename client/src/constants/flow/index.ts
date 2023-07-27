@@ -1,3 +1,5 @@
+import type { BoxProps } from '@chakra-ui/react';
+
 export enum FlowInputItemTypeEnum {
   systemInput = 'systemInput', // history, userChatInput, variableInput
   input = 'input',
@@ -34,6 +36,36 @@ export enum FlowModuleTypeEnum {
 export enum SpecialInputKeyEnum {
   'answerText' = 'text'
 }
+
+export enum FlowValueTypeEnum {
+  'string' = 'string',
+  'number' = 'number',
+  'boolean' = 'boolean',
+  'chatHistory' = 'chatHistory',
+  'kbQuote' = 'kbQuote',
+  'other' = 'other'
+}
+
+export const FlowValueTypeStyle: Record<`${FlowValueTypeEnum}`, BoxProps> = {
+  [FlowValueTypeEnum.string]: {
+    background: '#36ADEF'
+  },
+  [FlowValueTypeEnum.number]: {
+    background: '#FB7C3C'
+  },
+  [FlowValueTypeEnum.boolean]: {
+    background: '#E7D118'
+  },
+  [FlowValueTypeEnum.chatHistory]: {
+    background: '#00A9A6'
+  },
+  [FlowValueTypeEnum.kbQuote]: {
+    background: '#A558C9'
+  },
+  [FlowValueTypeEnum.other]: {
+    background: '#9CA2A8'
+  }
+};
 
 export const initModuleType: Record<string, boolean> = {
   [FlowModuleTypeEnum.historyNode]: true,
