@@ -1,6 +1,6 @@
 import { GET, POST, PUT } from './request';
-import { createHashPassword, Obj2Query } from '@/utils/tools';
-import { ResLogin, PromotionRecordType } from './response/user';
+import { createHashPassword } from '@/utils/tools';
+import { ResLogin } from './response/user';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
