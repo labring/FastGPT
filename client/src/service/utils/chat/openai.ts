@@ -62,12 +62,16 @@ export const chatResponse = async ({
 
   const responseText = stream ? '' : response.data.choices?.[0].message?.content || '';
   const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
+  const completion_tokens = stream ? 0 : response.data.usage?.completion_tokens || 0;
+  const prompt_tokens = stream ? 0 : response.data.usage?.prompt_tokens || 0;
 
   return {
     streamResponse: response,
     responseMessages: filterMessages.concat({ obj: 'AI', value: responseText }),
     responseText,
-    totalTokens
+    totalTokens,
+    completion_tokens,
+    prompt_tokens
   };
 };
 
