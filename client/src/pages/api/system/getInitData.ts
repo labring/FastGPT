@@ -101,7 +101,7 @@ export async function getInitConfig() {
     global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
-    return Promise.reject('get init config error');
+    console.log('get init config error, set default');
   }
 }
 
