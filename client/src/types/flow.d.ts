@@ -1,7 +1,8 @@
 import {
   FlowBodyItemTypeEnum,
   FlowInputItemTypeEnum,
-  FlowOutputItemTypeEnum
+  FlowOutputItemTypeEnum,
+  FlowValueTypeEnum
 } from '@/constants/flow';
 import { Connection } from 'reactflow';
 import type { AppModuleItemType } from './app';
@@ -18,6 +19,7 @@ export type FlowModuleItemChangeProps = {
 export type FlowInputItemType = {
   key: string; // 字段名
   value?: any;
+  valueType?: `${FlowValueTypeEnum}`;
   type: `${FlowInputItemTypeEnum}`;
   label: string;
   connected?: boolean;
@@ -39,6 +41,7 @@ export type FlowOutputItemType = {
   key: string; // 字段名
   label: string;
   description?: string;
+  valueType?: `${FlowValueTypeEnum}`;
   type: `${FlowOutputItemTypeEnum}`;
   targets: FlowOutputTargetItemType[];
 };

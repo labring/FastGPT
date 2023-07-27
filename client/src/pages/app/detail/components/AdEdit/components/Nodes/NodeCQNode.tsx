@@ -11,7 +11,8 @@ import { Handle, Position } from 'reactflow';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
-import { FlowOutputItemTypeEnum } from '@/constants/flow';
+import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import SourceHandle from '../render/SourceHandle';
 
 const NodeCQNode = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
@@ -82,19 +83,7 @@ const NodeCQNode = ({
                             });
                           }}
                         />
-                        <Handle
-                          style={{
-                            top: '50%',
-                            right: '-14px',
-                            transform: 'translate(50%,-50%)',
-                            width: '12px',
-                            height: '12px',
-                            background: '#9CA2A8'
-                          }}
-                          type="source"
-                          id={item.key}
-                          position={Position.Right}
-                        />
+                        <SourceHandle handleKey={item.key} valueType={FlowValueTypeEnum.boolean} />
                       </Box>
                     </Box>
                   </Flex>

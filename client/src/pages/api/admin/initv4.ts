@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, App } from '@/service/mongo';
-import { EditFormType } from '@/utils/app';
 import { AppModuleInputItemType } from '@/types/app';
 import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import { TaskResponseKeyEnum } from '@/constants/chat';
