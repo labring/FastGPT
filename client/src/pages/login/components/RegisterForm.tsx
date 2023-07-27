@@ -65,7 +65,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           title: `注册成功`,
           status: 'success'
         });
-        // aut register a model
+        // auto register template app
         appTemplates.forEach((template) => {
           postCreateApp({
             avatar: template.avatar,

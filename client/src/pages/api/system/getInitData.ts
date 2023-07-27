@@ -90,7 +90,8 @@ const defaultVectorModels = [
 
 export async function getInitConfig() {
   try {
-    const res = JSON.parse(readFileSync('data/config.json', 'utf-8'));
+    const filename = process.env.NODE_ENV === 'development' ? 'config.json.local' : 'config.json';
+    const res = JSON.parse(readFileSync(`data/${filename}`, 'utf-8'));
     console.log(res);
 
     global.systemEnv = res.SystemParams || defaultSystemEnv;

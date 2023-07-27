@@ -32,7 +32,12 @@ export const useConfirm = (props: { title?: string; content: string }) => {
     ),
     ConfirmModal: useCallback(
       () => (
-        <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
+        <AlertDialog
+          isOpen={isOpen}
+          leastDestructiveRef={cancelRef}
+          autoFocus={false}
+          onClose={onClose}
+        >
           <AlertDialogOverlay>
             <AlertDialogContent maxW={'min(90vw,400px)'}>
               <AlertDialogHeader fontSize="lg" fontWeight="bold">
