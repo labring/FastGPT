@@ -1,6 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai';
 
-const baseUrl = process.env.ONEAPI_URL || process.env.OPENAI_BASE_URL || 'api.openai.com';
+const baseUrl =
+  process.env.ONEAPI_URL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
 export const getSystemOpenAiKey = () => {
   return process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';

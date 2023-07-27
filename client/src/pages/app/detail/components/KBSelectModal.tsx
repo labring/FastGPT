@@ -132,10 +132,10 @@ export const KbParamsModal = ({
   });
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={'搜索参数调整'}>
+    <MyModal isOpen={true} onClose={onClose} title={'搜索参数调整'} minW={['90vw', '600px']}>
       <Flex flexDirection={'column'}>
         <ModalBody>
-          <Box display={['block', 'flex']} pt={3} pb={5}>
+          <Box display={['block', 'flex']} py={5} pt={[0, 5]}>
             <Box flex={'0 0 100px'} mb={[8, 0]}>
               相似度
               <MyTooltip label={'高相似度推荐0.8及以上。'} forceShow>

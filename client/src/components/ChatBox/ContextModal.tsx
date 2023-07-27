@@ -13,7 +13,14 @@ const ContextModal = ({
   const theme = useTheme();
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={`完整对话记录(${context.length}条)`} h={'80vh'}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      title={`完整对话记录(${context.length}条)`}
+      minW={['90vw', '600px']}
+      h={['90vh', '80vh']}
+      isCentered
+    >
       <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
         {context.map((item, i) => (
           <Box
