@@ -130,8 +130,9 @@ const InputDataModal = ({
       title={defaultValues.dataId ? '变更数据' : '手动导入数据'}
       w={'90vw'}
       maxW={'90vw'}
+      h={'90vh'}
     >
-      <Flex display={'flex'} flexDirection={'column'} h={'90vh'}>
+      <Flex flexDirection={'column'} h={'100%'}>
         <Box
           display={'flex'}
           flexDirection={['column', 'row']}

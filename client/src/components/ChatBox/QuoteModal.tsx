@@ -61,13 +61,21 @@ const QuoteModal = ({
 
   return (
     <>
-      <MyModal isOpen={true} onClose={onClose} h={'80vh'}>
-        <ModalHeader>
-          知识库引用({rawSearch.length}条)
-          <Box fontSize={'sm'} fontWeight={'normal'}>
-            注意: 修改知识库内容成功后，此处不会显示变更情况。点击编辑后，会显示知识库最新的内容。
-          </Box>
-        </ModalHeader>
+      <MyModal
+        isOpen={true}
+        onClose={onClose}
+        h={['90vh', '80vh']}
+        isCentered
+        minW={['90vw', '600px']}
+        title={
+          <>
+            知识库引用({rawSearch.length}条)
+            <Box fontSize={['xs', 'sm']} fontWeight={'normal'}>
+              注意: 修改知识库内容成功后，此处不会显示变更情况。点击编辑后，会显示知识库最新的内容。
+            </Box>
+          </>
+        }
+      >
         <ModalCloseButton />
         <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
           {rawSearch.map((item) => (

@@ -5,9 +5,9 @@ import {
   ModalContent,
   ModalHeader,
   ModalCloseButton,
-  ModalContentProps
+  ModalContentProps,
+  Box
 } from '@chakra-ui/react';
-import { DefaultTFuncReturn } from 'i18next';
 
 interface Props extends ModalContentProps {
   showCloseBtn?: boolean;
@@ -32,16 +32,20 @@ const MyModal = ({
     <Modal isOpen={isOpen} onClose={onClose} autoFocus={false} isCentered={isCentered}>
       <ModalOverlay />
       <ModalContent
+        display={'flex'}
+        flexDirection={'column'}
         w={w}
-        minW={['300px', '400px']}
+        minW={['90vw', '400px']}
         maxW={maxW}
         position={'relative'}
-        overflow={'overlay'}
+        maxH={'90vh'}
         {...props}
       >
         {!!title && <ModalHeader>{title}</ModalHeader>}
-        {showCloseBtn && <ModalCloseButton />}
-        {children}
+        <Box overflow={'overlay'}>
+          {showCloseBtn && <ModalCloseButton />}
+          {children}
+        </Box>
       </ModalContent>
     </Modal>
   );

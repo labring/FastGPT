@@ -50,7 +50,7 @@ export async function connectToDatabase(): Promise<void> {
       minPoolSize: 2
     });
 
-    initRootUser();
+    await initRootUser();
     initPg();
     console.log('mongo connected');
   } catch (error) {
@@ -84,7 +84,6 @@ async function initRootUser() {
     });
   } catch (error) {
     console.log('init root user error', error);
-    initRootUser();
   }
 }
 async function initPg() {
@@ -108,7 +107,6 @@ async function initPg() {
     console.log('init pg successful');
   } catch (error) {
     console.log('init pg error', error);
-    initPg();
   }
 }
 
