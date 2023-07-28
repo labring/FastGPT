@@ -5,7 +5,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
 import { authBalanceByUid } from '../utils/auth';
-import { axiosConfig, getOpenAIApi } from '../ai/openai';
+import { axiosConfig, getAIChatApi } from '../ai/openai';
 import { ChatCompletionRequestMessage } from 'openai';
 import { modelToolMap } from '@/utils/plugin';
 import { gptMessage2ChatType } from '@/utils/adapt';
@@ -55,7 +55,7 @@ export async function generateQA(): Promise<any> {
 
     const startTime = Date.now();
 
-    const chatAPI = getOpenAIApi();
+    const chatAPI = getAIChatApi();
 
     // 请求 chatgpt 获取回答
     const response = await Promise.all(

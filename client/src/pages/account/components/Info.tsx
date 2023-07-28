@@ -1,10 +1,8 @@
 import React, { useCallback } from 'react';
-import { Box, Flex, Button, useDisclosure, useTheme, ModalBody } from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, useTheme, Divider } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { putUserInfo } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
-import { useGlobalStore } from '@/store/global';
 import { useUserStore } from '@/store/user';
 import { UserType } from '@/types/user';
 import { useQuery } from '@tanstack/react-query';
@@ -28,13 +26,16 @@ const UpdatePswModal = dynamic(() => import('./UpdatePswModal'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
 });
+const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'), {
+  loading: () => <Loading fixed={false} />,
+  ssr: false
+});
 
 const UserInfo = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
-  const { setLoading } = useGlobalStore();
-  const { reset, register } = useForm<UserUpdateParams>({
+  const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
 
@@ -49,41 +50,32 @@ const UserInfo = () => {
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
+  const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
+
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
   });
 
   const onclickSave = useCallback(
-    async (data: UserUpdateParams) => {
-      setLoading(true);
-      try {
-        await putUserInfo({
-          avatar: data.avatar
-        });
-        updateUserInfo({
-          avatar: data.avatar
-        });
-        reset(data);
-        toast({
-          title: '更新数据成功',
-          status: 'success'
-        });
-      } catch (error) {
-        toast({
-          title: getErrText(error),
-          status: 'error'
-        });
-      }
-      setLoading(false);
+    async (data: UserType) => {
+      await updateUserInfo({
+        avatar: data.avatar,
+        openaiAccount: data.openaiAccount
+      });
+      reset(data);
+      toast({
+        title: '更新数据成功',
+        status: 'success'
+      });
     },
-    [reset, setLoading, toast, updateUserInfo]
+    [reset, toast, updateUserInfo]
   );
 
   const onSelectFile = useCallback(
     async (e: File[]) => {
       const file = e[0];
-      if (!file) return;
+      if (!file || !userInfo) return;
       try {
         const src = await compressImg({
           file,
@@ -110,6 +102,7 @@ const UserInfo = () => {
       reset(res);
     }
   });
+
   return (
     <Box display={['block', 'flex']} py={[2, 10]} justifyContent={'center'} fontSize={['lg', 'xl']}>
       <Flex
@@ -155,22 +148,65 @@ const UserInfo = () => {
           </Button>
         </Flex>
         {feConfigs?.show_userDetail && (
-          <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
-            <Flex alignItems={'center'}>
-              <Box flex={'0 0 50px'}>余额:</Box>
-              <Box flex={1}>
-                <strong>{userInfo?.balance.toFixed(3)}</strong> 元
-              </Box>
-              <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
-                充值
-              </Button>
-            </Flex>
-          </Box>
+          <>
+            <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
+              <Flex alignItems={'center'}>
+                <Box flex={'0 0 50px'}>余额:</Box>
+                <Box flex={1}>
+                  <strong>{userInfo?.balance.toFixed(3)}</strong> 元
+                </Box>
+                <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
+                  充值
+                </Button>
+              </Flex>
+            </Box>
+
+            <Divider my={3} />
+
+            <MyTooltip label={'点击配置账号'}>
+              <Flex
+                w={['85%', '300px']}
+                py={3}
+                px={6}
+                border={theme.borders.sm}
+                borderWidth={'1.5px'}
+                borderRadius={'md'}
+                bg={'myWhite.300'}
+                alignItems={'center'}
+                cursor={'pointer'}
+                userSelect={'none'}
+                onClick={onOpenOpenai}
+              >
+                <Avatar src={'/imgs/openai.png'} w={'18px'} />
+                <Box ml={2} flex={1}>
+                  OpenAI 账号
+                </Box>
+                <Box
+                  w={'9px'}
+                  h={'9px'}
+                  borderRadius={'50%'}
+                  bg={userInfo?.openaiAccount?.key ? '#67c13b' : 'myGray.500'}
+                />
+              </Flex>
+            </MyTooltip>
+          </>
         )}
       </Box>
 
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {isOpenOpenai && userInfo && (
+        <OpenAIAccountModal
+          defaultData={userInfo?.openaiAccount}
+          onSuccess={(data) =>
+            onclickSave({
+              ...userInfo,
+              openaiAccount: data
+            })
+          }
+          onClose={onCloseOpenai}
+        />
+      )}
       <File onSelect={onSelectFile} />
     </Box>
   );

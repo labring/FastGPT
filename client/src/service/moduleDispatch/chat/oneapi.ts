@@ -9,7 +9,7 @@ import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { SSEParseData, parseStreamChunk } from '@/utils/sse';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/events/pushBill';
@@ -77,7 +77,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   // FastGpt temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
-  const chatAPI = getOpenAIApi();
+  const chatAPI = getAIChatApi();
 
   const response = await chatAPI.createChatCompletion(
     {

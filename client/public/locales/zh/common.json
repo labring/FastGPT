@@ -33,10 +33,12 @@
   },
   "user": {
     "Bill Detail": "账单详情",
+    "Old password is error": "旧密码错误",
+    "OpenAI Account Setting": "OpenAI 账号配置",
     "Pay": "充值",
+    "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
-    "Update password succseful": "修改密码成功",
-    "Old password is error": "旧密码错误"
+    "Update password succseful": "修改密码成功"
   }
 }

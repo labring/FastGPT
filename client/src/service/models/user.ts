@@ -35,17 +35,16 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'user'
   },
-  promotion: {
-    rate: {
-      // 返现比例
-      type: Number,
-      default: 15
-    }
-  },
   limit: {
     exportKbTime: {
       // Every half hour
       type: Date
+    }
+  },
+  openaiAccount: {
+    type: {
+      key: String,
+      baseUrl: String
     }
   }
 });

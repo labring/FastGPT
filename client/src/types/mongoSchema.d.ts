@@ -16,8 +16,9 @@ export interface UserModelSchema {
   promotionAmount: number;
   openaiKey: string;
   createTime: number;
-  promotion: {
-    rate: number;
+  openaiAccount?: {
+    key: string;
+    baseUrl: string;
   };
   limit: {
     exportKbTime?: Date;

@@ -230,13 +230,13 @@ const OutLink = ({ appId }: { appId: string }) => {
               title: '免登录窗口',
               desc: '分享链接给其他用户，无需登录即可直接进行使用',
               value: LinkTypeEnum.share
-            },
-            {
-              icon: 'outlink_iframe',
-              title: '网页嵌入',
-              desc: '嵌入到已有网页中，右下角会生成对话按键',
-              value: LinkTypeEnum.iframe
             }
+            // {
+            //   icon: 'outlink_iframe',
+            //   title: '网页嵌入',
+            //   desc: '嵌入到已有网页中，右下角会生成对话按键',
+            //   value: LinkTypeEnum.iframe
+            // }
           ]}
           value={linkType}
           onChange={(e) => setLinkType(e as `${LinkTypeEnum}`)}

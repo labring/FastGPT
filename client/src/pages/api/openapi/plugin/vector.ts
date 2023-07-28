@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authBalanceByUid, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
 import { pushGenerateVectorBill } from '@/service/events/pushBill';
 
 type Props = {
@@ -49,7 +49,7 @@ export async function getVector({
   }
 
   // 获取 chatAPI
-  const chatAPI = getOpenAIApi();
+  const chatAPI = getAIChatApi();
 
   // 把输入的内容转成向量
   const result = await chatAPI

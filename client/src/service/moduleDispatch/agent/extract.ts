@@ -5,7 +5,7 @@ import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { getOpenAIApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { authUser } from '@/service/utils/auth';
 
@@ -79,7 +79,7 @@ export async function extract({ agents, history = [], userChatInput, description
     }
   };
 
-  const chatAPI = getOpenAIApi();
+  const chatAPI = getAIChatApi();
 
   const response = await chatAPI.createChatCompletion(
     {

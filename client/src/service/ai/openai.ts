@@ -1,27 +1,26 @@
 import { Configuration, OpenAIApi } from 'openai';
 
-const baseUrl =
-  process.env.ONEAPI_URL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+export const openaiBaseUrl = 'https://api.openai.com/v1';
+export const baseUrl = process.env.ONEAPI_URL || process.env.OPENAI_BASE_URL || openaiBaseUrl;
 
-export const getSystemOpenAiKey = () => {
-  return process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
-};
+export const systemAIChatKey = process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
 
-export const getOpenAIApi = () => {
+export const getAIChatApi = (props?: { base?: string; apikey?: string }) => {
   return new OpenAIApi(
     new Configuration({
-      basePath: baseUrl
+      basePath: props?.base || baseUrl,
+      apiKey: props?.apikey || systemAIChatKey
     })
   );
 };
 
 /* openai axios config */
-export const axiosConfig = () => {
+export const axiosConfig = (props?: { base?: string; apikey?: string }) => {
   return {
-    baseURL: baseUrl, // 此处仅对非 npm 模块有效
+    baseURL: props?.base || baseUrl, // 此处仅对非 npm 模块有效
     httpsAgent: global.httpsAgent,
     headers: {
-      Authorization: `Bearer ${getSystemOpenAiKey()}`,
+      Authorization: `Bearer ${props?.apikey || systemAIChatKey}`,
       auth: process.env.OPENAI_BASE_URL_AUTH || ''
     }
   };

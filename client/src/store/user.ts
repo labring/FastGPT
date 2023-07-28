@@ -4,7 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
 import { getMyModels, getModelById, putAppById } from '@/api/app';
 import { formatPrice } from '@/utils/user';
-import { getTokenLogin } from '@/api/user';
+import { getTokenLogin, putUserInfo } from '@/api/user';
 import { defaultApp } from '@/constants/model';
 import { AppListItemType, AppUpdateParams } from '@/types/app';
 import type { KbItemType, KbListItemType } from '@/types/plugin';
@@ -16,7 +16,7 @@ type State = {
   userInfo: UserType | null;
   initUserInfo: () => Promise<UserType>;
   setUserInfo: (user: UserType | null) => void;
-  updateUserInfo: (user: UserUpdateParams) => void;
+  updateUserInfo: (user: UserUpdateParams) => Promise<void>;
   myApps: AppListItemType[];
   myCollectionApps: AppListItemType[];
   loadMyApps: (init?: boolean) => Promise<AppListItemType[]>;
@@ -52,7 +52,7 @@ export const useUserStore = create<State>()(
               : null;
           });
         },
-        updateUserInfo(user: UserUpdateParams) {
+        async updateUserInfo(user: UserUpdateParams) {
           set((state) => {
             if (!state.userInfo) return;
             state.userInfo = {
@@ -60,6 +60,7 @@ export const useUserStore = create<State>()(
               ...user
             };
           });
+          await putUserInfo(user);
         },
         myApps: [],
         myCollectionApps: [],

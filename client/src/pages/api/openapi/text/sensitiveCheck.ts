@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser, getSystemOpenAiKey } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import axios from 'axios';
 import { axiosConfig } from '@/service/ai/openai';
 

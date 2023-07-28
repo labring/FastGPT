@@ -33,10 +33,12 @@
   },
   "user": {
     "Bill Detail": "Bill Detail",
+    "Old password is error": "Old password is error",
+    "OpenAI Account Setting": "OpenAI Account Setting",
     "Pay": "Pay",
+    "Set OpenAI Account Failed": "Set OpenAI account failed",
     "Update Password": "Update Password",
     "Update password failed": "Update password failed",
-    "Update password succseful": "Update password succseful",
-    "Old password is error": "Old password is error"
+    "Update password succseful": "Update password succseful"
   }
 }
