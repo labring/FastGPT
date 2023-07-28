@@ -32,7 +32,8 @@ const OpenAIAccountModal = ({
     <MyModal isOpen onClose={onClose} title={t('user.OpenAI Account Setting')}>
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          如果你填写了该内容，平台上的聊天不会计费（不包含知识库训练和 API 调用）
+          如果你填写了该内容，平台上 Openai Chat 模型不会计费（不包含知识库训练，索引生成和 API
+          调用）
         </Box>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 65px'}>API Key:</Box>

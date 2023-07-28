@@ -5,12 +5,15 @@ import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/c
 import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { countModelPrice } from '@/service/events/pushBill';
+import { UserModelSchema } from '@/types/mongoSchema';
+import { getModel } from '@/service/utils/data';
 
 export type CQProps = {
   systemPrompt?: string;
   history?: ChatItemType[];
   userChatInput: string;
   agents: ClassifyQuestionAgentItemType[];
+  userOpenaiAccount: UserModelSchema['openaiAccount'];
 };
 export type CQResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
@@ -23,7 +26,7 @@ const maxTokens = 2000;
 
 /* request openai chat */
 export const dispatchClassifyQuestion = async (props: Record<string, any>): Promise<CQResponse> => {
-  const { agents, systemPrompt, history = [], userChatInput } = props as CQProps;
+  const { agents, systemPrompt, history = [], userChatInput, userOpenaiAccount } = props as CQProps;
 
   const messages: ChatItemType[] = [
     ...(systemPrompt
@@ -63,7 +66,7 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
       required: ['type']
     }
   };
-  const chatAPI = getAIChatApi();
+  const chatAPI = getAIChatApi(userOpenaiAccount);
 
   const response = await chatAPI.createChatCompletion(
     {
@@ -74,7 +77,7 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
       functions: [agentFunction]
     },
     {
-      ...axiosConfig()
+      ...axiosConfig(userOpenaiAccount)
     }
   );
 
@@ -88,8 +91,8 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
     [result.key]: 1,
     [TaskResponseKeyEnum.responseData]: {
       moduleName: ChatModuleEnum.CQ,
-      price: countModelPrice({ model: agentModel, tokens }),
-      model: agentModel,
+      price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),
+      model: getModel(agentModel)?.name || agentModel,
       tokens,
       cqList: agents,
       cqResult: result.value

@@ -24,6 +24,8 @@ import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
+import { UserModelSchema } from '@/types/mongoSchema';
+import { getAIChatApi } from '@/service/ai/openai';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -69,6 +71,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     /* user auth */
     const {
+      user,
       userId,
       appId: authAppid,
       authType
@@ -76,7 +79,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       ? authShareChat({
           shareId
         })
-      : authUser({ req }));
+      : authUser({ req, authBalance: true }));
+
+    if (!user) {
+      throw new Error('Account is error');
+    }
+    if (authType !== 'token') {
+      user.openaiAccount = undefined;
+    }
 
     appId = appId ? appId : authAppid;
     if (!appId) {
@@ -108,6 +118,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { responseData, answerText } = await dispatchModules({
       res,
       modules: app.modules,
+      user,
       variables,
       params: {
         history: prompts,
@@ -182,7 +193,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         responseData,
         id: chatId || '',
         model: '',
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
             message: [{ role: 'assistant', content: answerText }],
@@ -217,12 +228,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 export async function dispatchModules({
   res,
   modules,
+  user,
   params = {},
   variables = {},
   stream = false
 }: {
   res: NextApiResponse;
   modules: AppModuleItemType[];
+  user?: UserModelSchema;
   params?: Record<string, any>;
   variables?: Record<string, any>;
   stream?: boolean;
@@ -304,6 +317,7 @@ export async function dispatchModules({
     const props: Record<string, any> = {
       res,
       stream,
+      userOpenaiAccount: user?.openaiAccount,
       ...params
     };
 

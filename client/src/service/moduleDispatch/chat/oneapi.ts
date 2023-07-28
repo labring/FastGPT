@@ -14,6 +14,7 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/events/pushBill';
 import { ChatModelItemType } from '@/types/model';
+import { UserModelSchema } from '@/types/mongoSchema';
 
 export type ChatProps = {
   res: NextApiResponse;
@@ -26,6 +27,7 @@ export type ChatProps = {
   quoteQA?: QuoteItemType[];
   systemPrompt?: string;
   limitPrompt?: string;
+  userOpenaiAccount: UserModelSchema['openaiAccount'];
 };
 export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
@@ -45,7 +47,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     quoteQA = [],
     userChatInput,
     systemPrompt = '',
-    limitPrompt = ''
+    limitPrompt = '',
+    userOpenaiAccount
   } = props as ChatProps;
 
   // temperature adapt
@@ -77,7 +80,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   // FastGpt temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
-  const chatAPI = getAIChatApi();
+  const chatAPI = getAIChatApi(userOpenaiAccount);
 
   const response = await chatAPI.createChatCompletion(
     {
@@ -92,7 +95,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     {
       timeout: stream ? 60000 : 480000,
       responseType: stream ? 'stream' : 'json',
-      ...axiosConfig()
+      ...axiosConfig(userOpenaiAccount)
     }
   );
 
@@ -136,7 +139,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     [TaskResponseKeyEnum.answerText]: answerText,
     [TaskResponseKeyEnum.responseData]: {
       moduleName: ChatModuleEnum.AIChat,
-      price: countModelPrice({ model, tokens: totalTokens }),
+      price: userOpenaiAccount?.key ? 0 : countModelPrice({ model, tokens: totalTokens }),
       model: modelConstantsData.name,
       tokens: totalTokens,
       question: userChatInput,

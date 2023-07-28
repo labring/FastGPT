@@ -2,7 +2,7 @@ import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
 import { App, OpenApi, User, OutLink, KB } from '../mongo';
-import type { AppSchema } from '@/types/mongoSchema';
+import type { AppSchema, UserModelSchema } from '@/types/mongoSchema';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
 
@@ -37,7 +37,7 @@ export const authBalanceByUid = async (uid: string) => {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
-  if (!user.openaiKey && formatPrice(user.balance) <= 0) {
+  if (user.balance <= 0) {
     return Promise.reject(ERROR_ENUM.insufficientQuota);
   }
   return user;
@@ -151,14 +151,17 @@ export const authUser = async ({
   }
 
   // balance check
-  if (authBalance) {
-    await authBalanceByUid(uid);
-  }
+  const user = await (() => {
+    if (authBalance) {
+      return authBalanceByUid(uid);
+    }
+  })();
 
   return {
     userId: uid,
     appId,
-    authType
+    authType,
+    user
   };
 };
 
@@ -217,7 +220,13 @@ export const authShareChat = async ({ shareId }: { shareId: string }) => {
     return Promise.reject('分享链接已失效');
   }
 
+  const uid = String(shareChat.userId);
+
+  // authBalance
+  const user = await authBalanceByUid(uid);
+
   return {
+    user,
     userId: String(shareChat.userId),
     appId: String(shareChat.appId),
     authType: 'token' as AuthType

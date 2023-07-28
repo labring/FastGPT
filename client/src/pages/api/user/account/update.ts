@@ -5,12 +5,12 @@ import { User } from '@/service/models/user';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { UserUpdateParams } from '@/types/user';
-import { getAIChatApi, openaiBaseUrl } from '@/service/ai/openai';
+import { axiosConfig, getAIChatApi, openaiBaseUrl } from '@/service/ai/openai';
 
-/* 更新一些基本信息 */
+/* update user info */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    let { avatar, openaiAccount } = req.body as UserUpdateParams;
+    const { avatar, openaiAccount } = req.body as UserUpdateParams;
 
     const { userId } = await authUser({ req, authToken: true });
 
@@ -19,17 +19,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // auth key
     if (openaiAccount?.key) {
       console.log('auth user openai key', openaiAccount?.key);
+      const baseUrl = openaiAccount?.baseUrl || openaiBaseUrl;
+      openaiAccount.baseUrl = baseUrl;
 
-      const chatAPI = getAIChatApi({
-        base: openaiAccount?.baseUrl || openaiBaseUrl,
-        apikey: openaiAccount?.key
-      });
+      const chatAPI = getAIChatApi(openaiAccount);
 
-      const response = await chatAPI.createChatCompletion({
-        model: 'gpt-3.5-turbo',
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'hi' }]
-      });
+      const response = await chatAPI.createChatCompletion(
+        {
+          model: 'gpt-3.5-turbo',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'hi' }]
+        },
+        {
+          ...axiosConfig(openaiAccount)
+        }
+      );
       if (!response?.data?.choices?.[0]?.message?.content) {
         throw new Error(JSON.stringify(response?.data));
       }
@@ -42,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       },
       {
         ...(avatar && { avatar }),
-        ...(openaiAccount && { openaiAccount })
+        openaiAccount: openaiAccount?.key ? openaiAccount : null
       }
     );
 
