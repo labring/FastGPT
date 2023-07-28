@@ -76,7 +76,6 @@ const QuoteModal = ({
           </>
         }
       >
-        <ModalCloseButton />
         <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
           {rawSearch.map((item) => (
             <Box

@@ -16,7 +16,8 @@ import {
   edgeOptions,
   connectionLineStyle,
   FlowModuleTypeEnum,
-  FlowInputItemTypeEnum
+  FlowInputItemTypeEnum,
+  FlowValueTypeEnum
 } from '@/constants/flow';
 import { appModule2FlowNode, appModule2FlowEdge } from '@/utils/adapt';
 import {
@@ -231,9 +232,14 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   );
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
-      const sourceType = nodes
-        .find((node) => node.id === connect.source)
-        ?.data?.outputs.find((output) => output.key === connect.sourceHandle)?.valueType;
+      const source = nodes.find((node) => node.id === connect.source)?.data;
+      const sourceType = (() => {
+        if (source?.flowType === FlowModuleTypeEnum.classifyQuestion) {
+          return FlowValueTypeEnum.boolean;
+        }
+        return source?.outputs.find((output) => output.key === connect.sourceHandle)?.valueType;
+      })();
+
       const targetType = nodes
         .find((node) => node.id === connect.target)
         ?.data?.inputs.find((input) => input.key === connect.targetHandle)?.valueType;
