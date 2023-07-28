@@ -17,8 +17,8 @@ const ContextModal = ({
       isOpen={true}
       onClose={onClose}
       title={`完整对话记录(${context.length}条)`}
-      minW={['90vw', '600px']}
       h={['90vh', '80vh']}
+      minW={['90vw', '600px']}
       isCentered
     >
       <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
