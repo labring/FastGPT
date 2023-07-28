@@ -33,6 +33,10 @@
   },
   "user": {
     "Bill Detail": "Bill Detail",
-    "Pay": "Pay"
+    "Pay": "Pay",
+    "Update Password": "Update Password",
+    "Update password failed": "Update password failed",
+    "Update password succseful": "Update password succseful",
+    "Old password is error": "Old password is error"
   }
 }
