@@ -385,8 +385,8 @@ async function init(limit: number, skip: number) {
   // 遍历 app
   const apps = await App.find(
     {
-      chat: { $ne: null }
-      // modules: { $exists: false },
+      chat: { $ne: null },
+      modules: { $exists: false }
       // userId: '63f9a14228d2a688d8dc9e1b'
     },
     '_id chat'

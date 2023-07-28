@@ -179,10 +179,10 @@ export const authApp = async ({
   authOwner?: boolean;
   reserveDetail?: boolean; // focus reserve detail
 }) => {
-  // 获取 model 数据
+  // 获取 app 数据
   const app = await App.findById<AppSchema>(appId);
   if (!app) {
-    return Promise.reject('模型不存在');
+    return Promise.reject('App is not exists');
   }
 
   /* 

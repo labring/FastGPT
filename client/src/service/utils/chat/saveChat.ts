@@ -31,35 +31,45 @@ export async function saveChat({
     '_id'
   );
 
+  const promise = [];
+
   if (chatHistory) {
-    await Chat.findOneAndUpdate(
-      { chatId },
-      {
-        $push: {
-          content: {
-            $each: content
-          }
-        },
-        title: content[0].value.slice(0, 20),
-        updateTime: new Date()
-      }
+    promise.push(
+      Chat.findOneAndUpdate(
+        { chatId },
+        {
+          $push: {
+            content: {
+              $each: content
+            }
+          },
+          title: content[0].value.slice(0, 20),
+          updateTime: new Date()
+        }
+      )
     );
   } else {
-    await Chat.create({
-      chatId,
-      userId,
-      appId,
-      variables,
-      title: content[0].value.slice(0, 20),
-      source,
-      shareId,
-      content: content
-    });
+    promise.push(
+      Chat.create({
+        chatId,
+        userId,
+        appId,
+        variables,
+        title: content[0].value.slice(0, 20),
+        source,
+        shareId,
+        content: content
+      })
+    );
   }
 
   if (isOwner && source === ChatSourceEnum.online) {
-    App.findByIdAndUpdate(appId, {
-      updateTime: new Date()
-    });
+    promise.push(
+      App.findByIdAndUpdate(appId, {
+        updateTime: new Date()
+      })
+    );
   }
+
+  await Promise.all(promise);
 }
