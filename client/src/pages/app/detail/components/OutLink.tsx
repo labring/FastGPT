@@ -19,11 +19,10 @@ import {
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
-import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import { getShareChatList, delShareChatById, createShareChat } from '@/api/chat';
-import { formatTimeToChatTime, useCopyData, getErrText } from '@/utils/tools';
+import { formatTimeToChatTime, useCopyData } from '@/utils/tools';
 import { useForm } from 'react-hook-form';
 import { defaultShareChat } from '@/constants/model';
 import type { ShareChatEditType } from '@/types/app';
@@ -67,8 +66,8 @@ const Share = ({ appId }: { appId: string }) => {
     onSuccess(id) {
       onCloseCreateShareChat();
       refetchShareChatList();
-      const url = `对话地址为：${location.origin}/chat/share?shareId=${id}`;
-      copyData(url, '已复制分享地址');
+      const url = `${location.origin}/chat/share?shareId=${id}`;
+      copyData(url, '创建成功。已复制分享地址，可直接分享使用');
       resetShareChat(defaultShareChat);
     }
   });
@@ -116,40 +115,53 @@ const Share = ({ appId }: { appId: string }) => {
                 <Td>{item.name}</Td>
                 <Td>{formatPrice(item.total)}元</Td>
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
-                <Td>
-                  <Flex>
-                    <MyTooltip label={'复制分享链接'}>
-                      <MyIcon
-                        mr={3}
-                        name="copy"
-                        w={'14px'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'myBlue.600' }}
-                        onClick={() => {
-                          const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
-                          copyData(url, '已复制分享链接');
-                        }}
-                      />
-                    </MyTooltip>
-                    <MyTooltip label={'删除链接'}>
-                      <MyIcon
-                        name="delete"
-                        w={'14px'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'red' }}
-                        onClick={async () => {
-                          setIsLoading(true);
-                          try {
-                            await delShareChatById(item._id);
-                            refetchShareChatList();
-                          } catch (error) {
-                            console.log(error);
-                          }
-                          setIsLoading(false);
-                        }}
-                      />
-                    </MyTooltip>
-                  </Flex>
+                <Td display={'flex'} alignItems={'center'}>
+                  <MyTooltip label={'嵌入网页'}>
+                    <MyIcon
+                      mr={4}
+                      name="apiLight"
+                      w={'14px'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'myBlue.600' }}
+                      onClick={() => {
+                        const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
+                        const src = `${location.origin}/js/iframe.js`;
+                        const script = `<script src="${src}" id="fastgpt-iframe" data-src="${url}" data-color="#4e83fd"></script>`;
+                        copyData(script, '已复制嵌入 Script，可在应用 HTML 底部嵌入', 3000);
+                      }}
+                    />
+                  </MyTooltip>
+                  <MyTooltip label={'复制分享链接'}>
+                    <MyIcon
+                      mr={4}
+                      name="copy"
+                      w={'14px'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'myBlue.600' }}
+                      onClick={() => {
+                        const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
+                        copyData(url, '已复制分享链接，可直接分享使用');
+                      }}
+                    />
+                  </MyTooltip>
+                  <MyTooltip label={'删除链接'}>
+                    <MyIcon
+                      name="delete"
+                      w={'14px'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'red' }}
+                      onClick={async () => {
+                        setIsLoading(true);
+                        try {
+                          await delShareChatById(item._id);
+                          refetchShareChatList();
+                        } catch (error) {
+                          console.log(error);
+                        }
+                        setIsLoading(false);
+                      }}
+                    />
+                  </MyTooltip>
                 </Td>
               </Tr>
             ))}

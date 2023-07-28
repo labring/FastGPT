@@ -4,7 +4,7 @@ import type { DataType } from './data';
 import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
-import { ChatSourceEnum } from '@/constants/chat';
+import { ChatSourceEnum, OutLinkTypeEnum } from '@/constants/chat';
 
 export interface UserModelSchema {
   _id: string;
@@ -144,6 +144,7 @@ export interface OutLinkSchema {
   name: string;
   total: number;
   lastTime: Date;
+  type: `${OutLinkTypeEnum}`;
 }
 
 export interface kbSchema {

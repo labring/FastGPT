@@ -2,9 +2,8 @@ import { GET, POST, DELETE, PUT } from './request';
 import type { ChatHistoryItemType } from '@/types/chat';
 import type { InitChatResponse, InitShareChatResponse } from './response/chat';
 import { RequestPaging } from '../types/index';
-import type { ShareChatSchema } from '@/types/mongoSchema';
+import type { OutLinkSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/app';
-import type { QuoteItemType } from '@/types/chat';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
 
 /**
@@ -51,6 +50,12 @@ export const putChatHistory = (data: UpdateHistoryProps) =>
   PUT('/chat/history/updateChatHistory', data);
 
 /**
+ * 初始化分享聊天
+ */
+export const initShareChatInfo = (data: { shareId: string }) =>
+  GET<InitShareChatResponse>(`/chat/shareChat/init`, data);
+
+/**
  * create a shareChat
  */
 export const createShareChat = (
@@ -63,15 +68,9 @@ export const createShareChat = (
  * get shareChat
  */
 export const getShareChatList = (appId: string) =>
-  GET<ShareChatSchema[]>(`/chat/shareChat/list`, { appId });
+  GET<OutLinkSchema[]>(`/chat/shareChat/list`, { appId });
 
 /**
  * delete a  shareChat
  */
 export const delShareChatById = (id: string) => DELETE(`/chat/shareChat/delete?id=${id}`);
-
-/**
- * 初始化分享聊天
- */
-export const initShareChatInfo = (data: { shareId: string }) =>
-  GET<InitShareChatResponse>(`/chat/shareChat/init`, data);

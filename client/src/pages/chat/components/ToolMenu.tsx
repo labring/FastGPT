@@ -8,7 +8,7 @@ import { useRouter } from 'next/router';
 const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const { onExportChat } = useChatBox();
   const router = useRouter();
-  const { appId } = router.query;
+  const { appId, shareId } = router.query;
 
   const menuList = useMemo(
     () => [
@@ -18,7 +18,8 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         onClick: () => {
           router.replace({
             query: {
-              appId
+              appId,
+              shareId
             }
           });
         }
@@ -35,7 +36,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
       },
       { icon: 'pdf', label: 'PDF导出', onClick: () => onExportChat({ type: 'pdf', history }) }
     ],
-    [appId, history, onExportChat, router]
+    [appId, history, onExportChat, router, shareId]
   );
 
   return history.length > 0 ? (
@@ -59,7 +60,9 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         ))}
       </MenuList>
     </Menu>
-  ) : null;
+  ) : (
+    <Box w={'28px'} h={'28px'} />
+  );
 };
 
 export default ToolMenu;

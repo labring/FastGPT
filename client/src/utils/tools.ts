@@ -9,7 +9,7 @@ export const useCopyData = () => {
   const { toast } = useToast();
 
   return {
-    copyData: async (data: string, title: string = '复制成功') => {
+    copyData: async (data: string, title: string = '复制成功', duration = 1000) => {
       try {
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(data);
@@ -28,7 +28,7 @@ export const useCopyData = () => {
       toast({
         title,
         status: 'success',
-        duration: 1000
+        duration
       });
     }
   };
