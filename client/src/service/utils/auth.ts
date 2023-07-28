@@ -162,11 +162,6 @@ export const authUser = async ({
   };
 };
 
-/* random get openai api key */
-export const getSystemOpenAiKey = () => {
-  return process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
-};
-
 // 模型使用权校验
 export const authApp = async ({
   appId,
