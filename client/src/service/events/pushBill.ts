@@ -1,4 +1,4 @@
-import { connectToDatabase, Bill, User, ShareChat } from '../mongo';
+import { connectToDatabase, Bill, User, OutLink } from '../mongo';
 import { BillSourceEnum } from '@/constants/user';
 import { getModel } from '../utils/data';
 import { ChatHistoryItemResType } from '@/types/chat';
@@ -59,7 +59,7 @@ export const updateShareChatBill = async ({
   total: number;
 }) => {
   try {
-    await ShareChat.findOneAndUpdate(
+    await OutLink.findOneAndUpdate(
       { shareId },
       {
         $inc: { total },

@@ -261,12 +261,12 @@ const Settings = ({ appId }: { appId: string }) => {
               router.replace({
                 query: {
                   appId,
-                  currentTab: 'share'
+                  currentTab: 'outLink'
                 }
               });
             }}
           >
-            分享
+            外接
           </Button>
           <Button
             size={['sm', 'md']}

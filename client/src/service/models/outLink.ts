@@ -1,7 +1,8 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { ShareChatSchema as ShareChatSchemaType } from '@/types/mongoSchema';
+import { OutLinkSchema as SchmaType } from '@/types/mongoSchema';
+import { OutLinkTypeEnum } from '@/constants/chat';
 
-const ShareChatSchema = new Schema({
+const OutLinkSchema = new Schema({
   shareId: {
     type: String,
     required: true
@@ -16,6 +17,10 @@ const ShareChatSchema = new Schema({
     ref: 'model',
     required: true
   },
+  type: {
+    type: String,
+    default: OutLinkTypeEnum.share
+  },
   name: {
     type: String,
     required: true
@@ -29,5 +34,4 @@ const ShareChatSchema = new Schema({
   }
 });
 
-export const ShareChat: Model<ShareChatSchemaType> =
-  models['shareChat'] || model('shareChat', ShareChatSchema);
+export const OutLink: Model<SchmaType> = models['outlinks'] || model('outlinks', OutLinkSchema);

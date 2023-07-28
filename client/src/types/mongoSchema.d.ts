@@ -135,7 +135,7 @@ export interface PromotionRecordSchema {
   amount: number;
 }
 
-export interface ShareChatSchema {
+export interface OutLinkSchema {
   _id: string;
   shareId: string;
   userId: string;

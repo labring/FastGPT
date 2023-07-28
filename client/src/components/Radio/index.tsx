@@ -6,12 +6,20 @@ import MyIcon from '@/components/Icon';
 // @ts-ignore
 interface Props extends GridProps {
   list: { icon?: string; title: string; desc?: string; value: string | number }[];
+  iconSize?: string;
   align?: 'top' | 'center';
   value: string | number;
   onChange: (e: string | number) => void;
 }
 
-const MyRadio = ({ list, value, align = 'center', onChange, ...props }: Props) => {
+const MyRadio = ({
+  list,
+  value,
+  align = 'center',
+  iconSize = '18px',
+  onChange,
+  ...props
+}: Props) => {
   const theme = useTheme();
   return (
     <Grid gridGap={[3, 5]} fontSize={['sm', 'md']} {...props}>
@@ -60,7 +68,7 @@ const MyRadio = ({ list, value, align = 'center', onChange, ...props }: Props) =
           }}
           onClick={() => onChange(item.value)}
         >
-          {!!item.icon && <MyIcon mr={'14px'} name={item.icon as any} w={'18px'} />}
+          {!!item.icon && <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />}
           <Box>
             <Box>{item.title}</Box>
             {!!item.desc && (

@@ -70,7 +70,9 @@ const map = {
   loginoutLight: require('./icons/light/loginout.svg').default,
   chatModelTag: require('./icons/light/chatModelTag.svg').default,
   language_en: require('./icons/language/en.svg').default,
-  language_zh: require('./icons/language/zh.svg').default
+  language_zh: require('./icons/language/zh.svg').default,
+  outlink_share: require('./icons/outlink/share.svg').default,
+  outlink_iframe: require('./icons/outlink/iframe.svg').default
 };
 
 export type IconName = keyof typeof map;

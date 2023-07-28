@@ -57,5 +57,10 @@ export enum ChatModuleEnum {
   'CQ' = 'Classify Question'
 }
 
+export enum OutLinkTypeEnum {
+  'share' = 'share',
+  'iframe' = 'iframe'
+}
+
 export const HUMAN_ICON = `https://fastgpt.run/icon/human.png`;
 export const LOGO_ICON = `https://fastgpt.run/icon/logo.png`;

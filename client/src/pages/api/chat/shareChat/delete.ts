@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ShareChat } from '@/service/mongo';
+import { connectToDatabase, OutLink } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 
 /* delete a shareChat by shareChatId */
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
 
-    await ShareChat.findOneAndRemove({
+    await OutLink.findOneAndRemove({
       _id: id,
       userId
     });

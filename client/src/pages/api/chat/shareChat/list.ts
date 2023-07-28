@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ShareChat } from '@/service/mongo';
+import { connectToDatabase, OutLink } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { hashPassword } from '@/service/utils/tools';
 
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
 
-    const data = await ShareChat.find({
+    const data = await OutLink.find({
       appId,
       userId
     }).sort({

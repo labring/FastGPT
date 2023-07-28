@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ShareChat } from '@/service/mongo';
+import { connectToDatabase, OutLink } from '@/service/mongo';
 import { authApp, authUser } from '@/service/utils/auth';
 import type { ShareChatEditType } from '@/types/app';
 import { customAlphabet } from 'nanoid';
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const shareId = nanoid();
-    await ShareChat.create({
+    await OutLink.create({
       shareId,
       userId,
       appId,
