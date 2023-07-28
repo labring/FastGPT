@@ -2,11 +2,14 @@ import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
 import { App, OpenApi, User, OutLink, KB } from '../mongo';
-import type { AppSchema, UserModelSchema } from '@/types/mongoSchema';
-import { formatPrice } from '@/utils/user';
+import type { AppSchema } from '@/types/mongoSchema';
 import { ERROR_ENUM } from '../errorCode';
 
-export type AuthType = 'token' | 'root' | 'apikey';
+export enum AuthUserTypeEnum {
+  token = 'token',
+  root = 'root',
+  apikey = 'apikey'
+}
 
 export const parseCookie = (cookie?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -124,28 +127,28 @@ export const authUser = async ({
 
   let uid = '';
   let appId = '';
-  let authType: AuthType = 'token';
+  let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
 
   if (authToken) {
     uid = await parseCookie(cookie);
-    authType = 'token';
+    authType = AuthUserTypeEnum.token;
   } else if (authRoot) {
     uid = await parseRootKey(rootkey, userid);
-    authType = 'root';
+    authType = AuthUserTypeEnum.root;
   } else if (cookie) {
     uid = await parseCookie(cookie);
-    authType = 'token';
+    authType = AuthUserTypeEnum.token;
   } else if (apikey) {
     uid = await parseOpenApiKey(apikey);
-    authType = 'apikey';
+    authType = AuthUserTypeEnum.apikey;
   } else if (authorization) {
     const authResponse = await parseAuthorization(authorization);
     uid = authResponse.uid;
     appId = authResponse.appId;
-    authType = 'apikey';
+    authType = AuthUserTypeEnum.apikey;
   } else if (rootkey) {
     uid = await parseRootKey(rootkey, userid);
-    authType = 'root';
+    authType = AuthUserTypeEnum.root;
   } else {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
@@ -229,6 +232,6 @@ export const authShareChat = async ({ shareId }: { shareId: string }) => {
     user,
     userId: String(shareChat.userId),
     appId: String(shareChat.appId),
-    authType: 'token' as AuthType
+    authType: AuthUserTypeEnum.token
   };
 };

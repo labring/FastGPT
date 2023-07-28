@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authApp, authShareChat } from '@/service/utils/auth';
+import { authUser, authApp, authShareChat, AuthUserTypeEnum } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -25,7 +25,6 @@ import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
-import { getAIChatApi } from '@/service/ai/openai';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -84,7 +83,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!user) {
       throw new Error('Account is error');
     }
-    if (authType !== 'token') {
+    if (authType === AuthUserTypeEnum.apikey || shareId) {
       user.openaiAccount = undefined;
     }
 
@@ -208,7 +207,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       appName: app.name,
       appId,
       userId,
-      source: authType === 'apikey' ? BillSourceEnum.api : BillSourceEnum.fastgpt,
+      source: (() => {
+        if (authType === 'apikey') return BillSourceEnum.api;
+        if (shareId) return BillSourceEnum.shareLink;
+        return BillSourceEnum.fastgpt;
+      })(),
       response: responseData,
       shareId
     });
