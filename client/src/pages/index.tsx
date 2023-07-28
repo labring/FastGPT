@@ -17,7 +17,7 @@ const Home = () => {
     isPc,
     initData: { beianText }
   } = useGlobalStore();
-  const [star, setStar] = useState(1500);
+  const [star, setStar] = useState(2300);
 
   useEffect(() => {
     if (inviterId) {
