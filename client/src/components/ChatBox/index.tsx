@@ -30,15 +30,14 @@ import { EventNameEnum } from '../Markdown/constant';
 
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { useMarkdown } from '@/hooks/useMarkdown';
-import { AppModuleItemType, VariableItemType } from '@/types/app';
-import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
+import { VariableItemType } from '@/types/app';
+import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { FlowModuleTypeEnum } from '@/constants/flow';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 
 import MyIcon from '@/components/Icon';

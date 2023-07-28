@@ -19,12 +19,11 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { serviceSideProps } from '@/utils/i18n';
 import { useTranslation } from 'next-i18next';
 
-import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
-const CreateModal = dynamic(() => import('./component/CreateModal'));
+import CreateModal from './component/CreateModal';
 
 import styles from './index.module.scss';
 

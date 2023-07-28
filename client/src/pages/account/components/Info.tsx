@@ -9,7 +9,6 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
-import { getErrText } from '@/utils/tools';
 import { feConfigs } from '@/store/static';
 import { useTranslation } from 'react-i18next';
 
