@@ -41,8 +41,8 @@ export enum FlowValueTypeEnum {
   'string' = 'string',
   'number' = 'number',
   'boolean' = 'boolean',
-  'chatHistory' = 'chatHistory',
-  'kbQuote' = 'kbQuote',
+  'chatHistory' = 'chat_history',
+  'kbQuote' = 'kb_quote',
   'other' = 'other'
 }
 

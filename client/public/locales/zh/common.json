@@ -7,6 +7,8 @@
     "App Detail": "应用详情",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
     "Confirm Save App Tip": "保存后将会覆盖高级编排配置，请确保该应用未使用高级编排功能。",
+    "Connection is invalid": "连接无效",
+    "Connection type is different": "连接的类型不一致",
     "My Apps": "我的应用"
   },
   "chat": {
