@@ -40,7 +40,7 @@ const defaultSystemEnv = {
 const defaultFeConfigs = {
   show_emptyChat: true,
   show_register: true,
-  show_appStore: true,
+  show_appStore: false,
   show_userDetail: true,
   show_git: true,
   systemTitle: 'FastAI',

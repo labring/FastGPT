@@ -7,6 +7,8 @@
     "App Detail": "App Detail",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
     "Confirm Save App Tip": "After saving, the advanced orchestration configuration will be overwritten. Make sure that the application does not use advanced orchestration.",
+    "Connection is invalid": "Connecting is invalid",
+    "Connection type is different": "Connection type is different",
     "My Apps": "My Apps"
   },
   "chat": {

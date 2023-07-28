@@ -30,6 +30,8 @@ import { customAlphabet } from 'nanoid';
 import { useRequest } from '@/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
 import { useUserStore } from '@/store/user';
+import { useToast } from '@/hooks/useToast';
+import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
@@ -90,6 +92,8 @@ type Props = { app: AppSchema; fullScreen: boolean; onFullScreen: (val: boolean)
 
 const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const theme = useTheme();
+  const { toast } = useToast();
+  const { t } = useTranslation();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const ChatTestRef = useRef<ChatTestComponentRef>(null);
   const { updateAppDetail } = useUserStore();
@@ -227,6 +231,26 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   );
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
+      const sourceType = nodes
+        .find((node) => node.id === connect.source)
+        ?.data?.outputs.find((output) => output.key === connect.sourceHandle)?.valueType;
+      const targetType = nodes
+        .find((node) => node.id === connect.target)
+        ?.data?.inputs.find((input) => input.key === connect.targetHandle)?.valueType;
+
+      if (!sourceType || !targetType) {
+        return toast({
+          status: 'warning',
+          title: t('app.Connection is invalid')
+        });
+      }
+      if (sourceType !== targetType) {
+        return toast({
+          status: 'warning',
+          title: t('app.Connection type is different')
+        });
+      }
+
       setEdges((state) =>
         addEdge(
           {
@@ -241,7 +265,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         )
       );
     },
-    [onDelConnect, setEdges]
+    [onDelConnect, setEdges, nodes]
   );
 
   const { mutate: onclickSave, isLoading } = useRequest({
