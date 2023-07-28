@@ -4,6 +4,7 @@ import { connectToDatabase, OutLink } from '@/service/mongo';
 import { authApp, authUser } from '@/service/utils/auth';
 import type { ShareChatEditType } from '@/types/app';
 import { customAlphabet } from 'nanoid';
+import { OutLinkTypeEnum } from '@/constants/chat';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 /* create a shareChat */
@@ -27,7 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       shareId,
       userId,
       appId,
-      name
+      name,
+      type: OutLinkTypeEnum.share
     });
 
     jsonRes(res, {
