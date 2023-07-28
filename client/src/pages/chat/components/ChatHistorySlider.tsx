@@ -79,7 +79,7 @@ const ChatHistorySlider = ({
   const concatHistory = useMemo<HistoryItemType[]>(
     () =>
       !activeChatId ? [{ id: activeChatId, title: t('chat.New Chat') }].concat(history) : history,
-    [activeChatId, history]
+    [activeChatId, history, t]
   );
 
   const isShare = useMemo(() => !appId || !userInfo, [appId, userInfo]);

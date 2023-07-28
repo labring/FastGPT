@@ -16,7 +16,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         icon: 'chat',
         label: '新对话',
         onClick: () => {
-          router.push({
+          router.replace({
             query: {
               appId
             }
