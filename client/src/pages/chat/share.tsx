@@ -20,7 +20,7 @@ import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/utils/i18n';
 
-const ShareChat = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
+const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
   const router = useRouter();
   const { toast } = useToast();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
@@ -250,4 +250,4 @@ export async function getServerSideProps(context: any) {
   };
 }
 
-export default ShareChat;
+export default OutLink;

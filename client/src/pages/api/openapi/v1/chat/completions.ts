@@ -198,7 +198,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       appId,
       userId,
       source: authType === 'apikey' ? BillSourceEnum.api : BillSourceEnum.fastgpt,
-      response: responseData
+      response: responseData,
+      shareId
     });
   } catch (err: any) {
     if (stream) {

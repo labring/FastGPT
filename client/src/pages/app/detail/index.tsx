@@ -20,7 +20,7 @@ const AdEdit = dynamic(() => import('./components/AdEdit'), {
   ssr: false,
   loading: () => <Loading />
 });
-const Share = dynamic(() => import('./components/Share'), {
+const OutLink = dynamic(() => import('./components/OutLink'), {
   ssr: false
 });
 const API = dynamic(() => import('./components/API'), {
@@ -30,7 +30,7 @@ const API = dynamic(() => import('./components/API'), {
 enum TabEnum {
   'basicEdit' = 'basicEdit',
   'adEdit' = 'adEdit',
-  'share' = 'share',
+  'outLink' = 'outLink',
   'API' = 'API'
 }
 
@@ -57,7 +57,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     () => [
       { label: '简易配置', id: TabEnum.basicEdit, icon: 'overviewLight' },
       { label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' },
-      { label: '链接分享', id: TabEnum.share, icon: 'shareLight' },
+      { label: '外部使用', id: TabEnum.outLink, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
       { label: '立即对话', id: 'startChat', icon: 'chat' }
     ],
@@ -178,7 +178,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             />
           )}
           {currentTab === TabEnum.API && <API appId={appId} />}
-          {currentTab === TabEnum.share && <Share appId={appId} />}
+          {currentTab === TabEnum.outLink && <OutLink appId={appId} />}
         </Box>
       </Flex>
     </PageContainer>

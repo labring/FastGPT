@@ -14,7 +14,8 @@ import {
   ModalFooter,
   ModalBody,
   FormControl,
-  Input
+  Input,
+  useTheme
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
@@ -30,6 +31,7 @@ import { useRequest } from '@/hooks/useRequest';
 import { formatPrice } from '@/utils/user';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
+import MyRadio from '@/components/Radio';
 
 const Share = ({ appId }: { appId: string }) => {
   const { Loading, setIsLoading } = useLoading();
@@ -48,8 +50,6 @@ const Share = ({ appId }: { appId: string }) => {
   } = useForm({
     defaultValues: defaultShareChat
   });
-
-  const [refresh, setRefresh] = useState(false);
 
   const {
     isFetching,
@@ -77,7 +77,7 @@ const Share = ({ appId }: { appId: string }) => {
     <Box position={'relative'} pt={[0, 5, 8]} px={[5, 8]} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'}>
-          免登录聊天窗口
+          免登录窗口
           <MyTooltip
             forceShow
             label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的tokens。请保管好链接和密码。"
@@ -97,7 +97,7 @@ const Share = ({ appId }: { appId: string }) => {
             : {})}
           onClick={onOpenCreateShareChat}
         >
-          创建新窗口
+          创建新链接
         </Button>
       </Flex>
       <TableContainer mt={3}>
@@ -118,7 +118,7 @@ const Share = ({ appId }: { appId: string }) => {
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
                 <Td>
                   <Flex>
-                    <MyTooltip label={'复制分享地址'}>
+                    <MyTooltip label={'复制分享链接'}>
                       <MyIcon
                         mr={3}
                         name="copy"
@@ -127,7 +127,7 @@ const Share = ({ appId }: { appId: string }) => {
                         _hover={{ color: 'myBlue.600' }}
                         onClick={() => {
                           const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
-                          copyData(url, '已复制分享地址');
+                          copyData(url, '已复制分享链接');
                         }}
                       />
                     </MyTooltip>
@@ -205,4 +205,47 @@ const Share = ({ appId }: { appId: string }) => {
   );
 };
 
-export default Share;
+enum LinkTypeEnum {
+  share = 'share',
+  iframe = 'iframe'
+}
+
+const OutLink = ({ appId }: { appId: string }) => {
+  const theme = useTheme();
+
+  const [linkType, setLinkType] = useState<`${LinkTypeEnum}`>(LinkTypeEnum.share);
+
+  return (
+    <Box pt={[1, 5]}>
+      <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2} px={[4, 8]}>
+        外部使用途径
+      </Box>
+      <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
+        <MyRadio
+          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2, 350px)']}
+          iconSize={'20px'}
+          list={[
+            {
+              icon: 'outlink_share',
+              title: '免登录窗口',
+              desc: '分享链接给其他用户，无需登录即可直接进行使用',
+              value: LinkTypeEnum.share
+            }
+            // {
+            //   icon: 'outlink_iframe',
+            //   title: '网页嵌入',
+            //   desc: '嵌入到已有网页中，右下角会生成对话按键',
+            //   value: LinkTypeEnum.iframe
+            // }
+          ]}
+          value={linkType}
+          onChange={(e) => setLinkType(e as `${LinkTypeEnum}`)}
+        />
+      </Box>
+
+      {linkType === LinkTypeEnum.share && <Share appId={appId} />}
+    </Box>
+  );
+};
+
+export default OutLink;

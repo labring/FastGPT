@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ShareChat, User } from '@/service/mongo';
+import { connectToDatabase, OutLink, User } from '@/service/mongo';
 import type { InitShareChatResponse } from '@/api/response/chat';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // get shareChat
-    const shareChat = await ShareChat.findOne({ shareId });
+    const shareChat = await OutLink.findOne({ shareId });
 
     if (!shareChat) {
       return jsonRes(res, {

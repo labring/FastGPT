@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
-import { App, OpenApi, User, ShareChat, KB } from '../mongo';
+import { App, OpenApi, User, OutLink, KB } from '../mongo';
 import type { AppSchema } from '@/types/mongoSchema';
 import { formatPrice } from '@/utils/user';
 import { ERROR_ENUM } from '../errorCode';
@@ -216,7 +216,7 @@ export const authKb = async ({ kbId, userId }: { kbId: string; userId: string })
 
 export const authShareChat = async ({ shareId }: { shareId: string }) => {
   // get shareChat
-  const shareChat = await ShareChat.findOne({ shareId });
+  const shareChat = await OutLink.findOne({ shareId });
 
   if (!shareChat) {
     return Promise.reject('分享链接已失效');
