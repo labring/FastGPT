@@ -42,13 +42,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     /* user auth */
-    const { userId } = await authUser({ req });
+    const { userId, user } = await authUser({ req, authBalance: true });
 
     /* start process */
     const { responseData } = await dispatchModules({
       res,
       modules: modules,
       variables,
+      user,
       params: {
         history: gptMessage2ChatType(history),
         userChatInput: prompt

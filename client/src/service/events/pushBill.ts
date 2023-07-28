@@ -19,7 +19,7 @@ export const pushTaskBill = async ({
   shareId?: string;
   response: ChatHistoryItemResType[];
 }) => {
-  const total = response.reduce((sum, item) => sum + item.price, 0);
+  const total = response.reduce((sum, item) => sum + item.price, 0) || 1;
 
   await Promise.allSettled([
     Bill.create({
