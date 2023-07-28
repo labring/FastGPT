@@ -33,6 +33,10 @@
   },
   "user": {
     "Bill Detail": "账单详情",
-    "Pay": "充值"
+    "Pay": "充值",
+    "Update Password": "修改密码",
+    "Update password failed": "修改密码异常",
+    "Update password succseful": "修改密码成功",
+    "Old password is error": "旧密码错误"
   }
 }

@@ -12,7 +12,7 @@ export const sendAuthCode = (data: {
   googleToken: string;
 }) => POST('/user/sendAuthCode', data);
 
-export const getTokenLogin = () => GET<UserType>('/user/tokenLogin');
+export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
 
 export const postRegister = ({
   username,
@@ -25,7 +25,7 @@ export const postRegister = ({
   password: string;
   inviterId: string;
 }) =>
-  POST<ResLogin>('/user/register', {
+  POST<ResLogin>('/user/account/register', {
     username,
     code,
     inviterId,
@@ -41,21 +41,27 @@ export const postFindPassword = ({
   code: string;
   password: string;
 }) =>
-  POST<ResLogin>('/user/updatePasswordByCode', {
+  POST<ResLogin>('/user/account/updatePasswordByCode', {
     username,
     code,
     password: createHashPassword(password)
   });
 
+export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw: string }) =>
+  POST('/user/account/updatePasswordByOld', {
+    oldPsw: createHashPassword(oldPsw),
+    newPsw: createHashPassword(newPsw)
+  });
+
 export const postLogin = ({ username, password }: { username: string; password: string }) =>
-  POST<ResLogin>('/user/loginByPassword', {
+  POST<ResLogin>('/user/account/loginByPassword', {
     username,
     password: createHashPassword(password)
   });
 
-export const loginOut = () => GET('/user/loginout');
+export const loginOut = () => GET('/user/account/loginout');
 
-export const putUserInfo = (data: UserUpdateParams) => PUT('/user/update', data);
+export const putUserInfo = (data: UserUpdateParams) => PUT('/user/account/update', data);
 
 export const getUserBills = (data: RequestPaging) =>
   POST<PagingData<UserBillType>>(`/user/getBill`, data);

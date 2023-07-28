@@ -74,7 +74,7 @@ const Share = ({ appId }: { appId: string }) => {
   });
 
   return (
-    <Box position={'relative'} pt={[0, 5, 8]} px={[5, 8]} minH={'50vh'}>
+    <Box position={'relative'} pt={[3, 5, 8]} px={[5, 8]} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'}>
           免登录窗口
@@ -222,7 +222,7 @@ const OutLink = ({ appId }: { appId: string }) => {
       </Box>
       <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
         <MyRadio
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2, 350px)']}
+          gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 360px))']}
           iconSize={'20px'}
           list={[
             {
@@ -230,13 +230,13 @@ const OutLink = ({ appId }: { appId: string }) => {
               title: '免登录窗口',
               desc: '分享链接给其他用户，无需登录即可直接进行使用',
               value: LinkTypeEnum.share
+            },
+            {
+              icon: 'outlink_iframe',
+              title: '网页嵌入',
+              desc: '嵌入到已有网页中，右下角会生成对话按键',
+              value: LinkTypeEnum.iframe
             }
-            // {
-            //   icon: 'outlink_iframe',
-            //   title: '网页嵌入',
-            //   desc: '嵌入到已有网页中，右下角会生成对话按键',
-            //   value: LinkTypeEnum.iframe
-            // }
           ]}
           value={linkType}
           onChange={(e) => setLinkType(e as `${LinkTypeEnum}`)}
