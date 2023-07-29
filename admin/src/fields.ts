@@ -37,7 +37,6 @@ export const AppFields = [
   createTextField('share.topNum', { label: '置顶等级', list: { sort: true } }),
   createTextField('share.isShare', { label: '是否分享(true,false)' }),
   createTextField('intro', { label: '介绍', list: { width: 400 } }),
-  createTextField('relatedKbs', { label: '引用的知识库', list: { hidden: true } }),
   createTextField('temperature', { label: '温度' }),
   createTextField('systemPrompt', {
     label: '提示词',
