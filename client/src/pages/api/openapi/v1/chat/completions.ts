@@ -195,7 +195,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: [{ role: 'assistant', content: answerText }],
+            message: { role: 'assistant', content: answerText },
             finish_reason: 'stop',
             index: 0
           }
