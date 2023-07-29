@@ -55,7 +55,7 @@ export const Dashboard: React.FC = React.memo(() => {
       const kbResponse = await fetch(`${baseUrl}/kbs?_end=1`, {
         headers
       });
-      const modelResponse = await fetch(`${baseUrl}/models?_end=1`, {
+      const modelResponse = await fetch(`${baseUrl}/apps?_end=1`, {
         headers
       });
 
