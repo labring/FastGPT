@@ -52,7 +52,6 @@ export type FlowModuleTemplateType = {
   description?: string;
   intro: string;
   flowType: `${FlowModuleTypeEnum}`;
-  url?: string;
   inputs: FlowInputItemType[];
   outputs: FlowOutputItemType[];
 };

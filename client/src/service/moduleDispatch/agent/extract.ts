@@ -7,40 +7,41 @@ import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
-import { authUser } from '@/service/utils/auth';
+import { SystemInputEnum } from '@/constants/app';
 
 export type Props = {
+  systemPrompt?: string;
   history?: ChatItemType[];
-  userChatInput: string;
-  agents: ClassifyQuestionAgentItemType[];
+  [SystemInputEnum.userChatInput]: string;
   description: string;
+  agents: ClassifyQuestionAgentItemType[];
 };
-export type Response = { history: ChatItemType[] };
+export type Response = {
+  arguments: Record<string, any>;
+  deficiency: boolean;
+};
 
-const agentModel = 'gpt-3.5-turbo-16k';
+const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_extract_data';
+const maxTokens = 3000;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await authUser({ req, authRoot: true });
-
-    const response = await extract(req.body);
-
-    jsonRes(res, {
-      data: response
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
-}
-
-/* request openai chat */
-export async function extract({ agents, history = [], userChatInput, description }: Props) {
+export async function extract({
+  systemPrompt,
+  agents,
+  history = [],
+  userChatInput,
+  description
+}: Props): Promise<Response> {
   const messages: ChatItemType[] = [
-    ...history.slice(-4),
+    ...(systemPrompt
+      ? [
+          {
+            obj: ChatRoleEnum.System,
+            value: systemPrompt
+          }
+        ]
+      : []),
+    ...history,
     {
       obj: ChatRoleEnum.Human,
       value: userChatInput
@@ -50,7 +51,7 @@ export async function extract({ agents, history = [], userChatInput, description
     // @ts-ignore
     model: agentModel,
     prompts: messages,
-    maxTokens: 3000
+    maxTokens
   });
   const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
 
@@ -94,7 +95,17 @@ export async function extract({ agents, history = [], userChatInput, description
     }
   );
 
-  const arg = JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '');
+  const arg = JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '{}');
+  let deficiency = false;
+  for (const key in arg) {
+    if (arg[key] === '') {
+      deficiency = true;
+      break;
+    }
+  }
 
-  return arg;
+  return {
+    arguments: arg,
+    deficiency
+  };
 }

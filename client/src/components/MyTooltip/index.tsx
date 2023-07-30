@@ -20,7 +20,7 @@ const MyTooltip = ({ children, forceShow = false, ...props }: Props) => {
       py={2}
       borderRadius={'8px'}
       whiteSpace={'pre-wrap'}
-      shouldWrapChildren
+      boxShadow={'1px 1px 10px rgba(0,0,0,0.2)'}
       {...props}
     >
       {children}

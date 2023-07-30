@@ -30,7 +30,8 @@ export enum FlowModuleTypeEnum {
   kbSearchNode = 'kbSearchNode',
   tfSwitchNode = 'tfSwitchNode',
   answerNode = 'answerNode',
-  classifyQuestion = 'classifyQuestion'
+  classifyQuestion = 'classifyQuestion',
+  contentExtract = 'contentExtract'
 }
 
 export enum SpecialInputKeyEnum {
