@@ -1,16 +1,12 @@
-lockfileVersion: '6.1'
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
+lockfileVersion: '6.0'
 
 dependencies:
   '@docusaurus/core':
     specifier: 2.4.1
-    version: registry.npmmirror.com/@docusaurus/core@2.4.1(@docusaurus/types@2.4.1)(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
+    version: registry.npmmirror.com/@docusaurus/core@2.4.1(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
   '@docusaurus/preset-classic':
     specifier: 2.4.1
-    version: registry.npmmirror.com/@docusaurus/preset-classic@2.4.1(@algolia/client-search@4.19.1)(react-dom@17.0.2)(react@17.0.2)(search-insights@2.7.0)(typescript@4.7.4)
+    version: registry.npmmirror.com/@docusaurus/preset-classic@2.4.1(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
   '@mdx-js/react':
     specifier: ^1.6.22
     version: registry.npmmirror.com/@mdx-js/react@1.6.22(react@17.0.2)
@@ -40,21 +36,21 @@ devDependencies:
 
 packages:
 
-  registry.npmmirror.com/@algolia/autocomplete-core@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)(search-insights@2.7.0):
+  registry.npmmirror.com/@algolia/autocomplete-core@1.9.3(algoliasearch@4.19.1):
     resolution: {integrity: sha512-009HdfugtGCdC4JdXUbVJClA0q0zh24yyePn+KUGk3rP7j8FEe/m5Yo/z65gn6nP/cM39PxpzqKrL7A6fP6PPw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@algolia/autocomplete-core/-/autocomplete-core-1.9.3.tgz}
     id: registry.npmmirror.com/@algolia/autocomplete-core/1.9.3
     name: '@algolia/autocomplete-core'
     version: 1.9.3
     dependencies:
-      '@algolia/autocomplete-plugin-algolia-insights': registry.npmmirror.com/@algolia/autocomplete-plugin-algolia-insights@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)(search-insights@2.7.0)
-      '@algolia/autocomplete-shared': registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)
+      '@algolia/autocomplete-plugin-algolia-insights': registry.npmmirror.com/@algolia/autocomplete-plugin-algolia-insights@1.9.3(algoliasearch@4.19.1)
+      '@algolia/autocomplete-shared': registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(algoliasearch@4.19.1)
     transitivePeerDependencies:
       - '@algolia/client-search'
       - algoliasearch
       - search-insights
     dev: false
 
-  registry.npmmirror.com/@algolia/autocomplete-plugin-algolia-insights@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)(search-insights@2.7.0):
+  registry.npmmirror.com/@algolia/autocomplete-plugin-algolia-insights@1.9.3(algoliasearch@4.19.1):
     resolution: {integrity: sha512-a/yTUkcO/Vyy+JffmAnTWbr4/90cLzw+CC3bRbhnULr/EM0fGNvM13oQQ14f2moLMcVDyAx/leczLlAOovhSZg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@algolia/autocomplete-plugin-algolia-insights/-/autocomplete-plugin-algolia-insights-1.9.3.tgz}
     id: registry.npmmirror.com/@algolia/autocomplete-plugin-algolia-insights/1.9.3
     name: '@algolia/autocomplete-plugin-algolia-insights'
@@ -62,14 +58,13 @@ packages:
     peerDependencies:
       search-insights: '>= 1 < 3'
     dependencies:
-      '@algolia/autocomplete-shared': registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)
-      search-insights: registry.npmmirror.com/search-insights@2.7.0
+      '@algolia/autocomplete-shared': registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(algoliasearch@4.19.1)
     transitivePeerDependencies:
       - '@algolia/client-search'
       - algoliasearch
     dev: false
 
-  registry.npmmirror.com/@algolia/autocomplete-preset-algolia@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1):
+  registry.npmmirror.com/@algolia/autocomplete-preset-algolia@1.9.3(algoliasearch@4.19.1):
     resolution: {integrity: sha512-d4qlt6YmrLMYy95n5TB52wtNDr6EgAIPH81dvvvW8UmuWRgxEtY0NJiPwl/h95JtG2vmRM804M0DSwMCNZlzRA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@algolia/autocomplete-preset-algolia/-/autocomplete-preset-algolia-1.9.3.tgz}
     id: registry.npmmirror.com/@algolia/autocomplete-preset-algolia/1.9.3
     name: '@algolia/autocomplete-preset-algolia'
@@ -78,12 +73,11 @@ packages:
       '@algolia/client-search': '>= 4.9.1 < 6'
       algoliasearch: '>= 4.9.1 < 6'
     dependencies:
-      '@algolia/autocomplete-shared': registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)
-      '@algolia/client-search': registry.npmmirror.com/@algolia/client-search@4.19.1
+      '@algolia/autocomplete-shared': registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(algoliasearch@4.19.1)
       algoliasearch: registry.npmmirror.com/algoliasearch@4.19.1
     dev: false
 
-  registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1):
+  registry.npmmirror.com/@algolia/autocomplete-shared@1.9.3(algoliasearch@4.19.1):
     resolution: {integrity: sha512-Wnm9E4Ye6Rl6sTTqjoymD+l8DjSTHsHboVRYrKgEt8Q7UHm9nYbqhN/i0fhUYA3OAEH7WA8x3jfpnmJm3rKvaQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@algolia/autocomplete-shared/-/autocomplete-shared-1.9.3.tgz}
     id: registry.npmmirror.com/@algolia/autocomplete-shared/1.9.3
     name: '@algolia/autocomplete-shared'
@@ -92,7 +86,6 @@ packages:
       '@algolia/client-search': '>= 4.9.1 < 6'
       algoliasearch: '>= 4.9.1 < 6'
     dependencies:
-      '@algolia/client-search': registry.npmmirror.com/@algolia/client-search@4.19.1
       algoliasearch: registry.npmmirror.com/algoliasearch@4.19.1
     dev: false
 
@@ -1990,7 +1983,7 @@ packages:
     version: 3.5.1
     dev: false
 
-  registry.npmmirror.com/@docsearch/react@3.5.1(@algolia/client-search@4.19.1)(react-dom@17.0.2)(react@17.0.2)(search-insights@2.7.0):
+  registry.npmmirror.com/@docsearch/react@3.5.1(react-dom@17.0.2)(react@17.0.2):
     resolution: {integrity: sha512-t5mEODdLzZq4PTFAm/dvqcvZFdPDMdfPE5rJS5SC8OUq9mPzxEy6b+9THIqNM9P0ocCb4UC5jqBrxKclnuIbzQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docsearch/react/-/react-3.5.1.tgz}
     id: registry.npmmirror.com/@docsearch/react/3.5.1
     name: '@docsearch/react'
@@ -2007,8 +2000,8 @@ packages:
       react-dom:
         optional: true
     dependencies:
-      '@algolia/autocomplete-core': registry.npmmirror.com/@algolia/autocomplete-core@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)(search-insights@2.7.0)
-      '@algolia/autocomplete-preset-algolia': registry.npmmirror.com/@algolia/autocomplete-preset-algolia@1.9.3(@algolia/client-search@4.19.1)(algoliasearch@4.19.1)
+      '@algolia/autocomplete-core': registry.npmmirror.com/@algolia/autocomplete-core@1.9.3(algoliasearch@4.19.1)
+      '@algolia/autocomplete-preset-algolia': registry.npmmirror.com/@algolia/autocomplete-preset-algolia@1.9.3(algoliasearch@4.19.1)
       '@docsearch/css': registry.npmmirror.com/@docsearch/css@3.5.1
       algoliasearch: registry.npmmirror.com/algoliasearch@4.19.1
       react: registry.npmmirror.com/react@17.0.2
@@ -2121,6 +2114,109 @@ packages:
       - webpack-cli
     dev: false
 
+  registry.npmmirror.com/@docusaurus/core@2.4.1(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4):
+    resolution: {integrity: sha512-SNsY7PshK3Ri7vtsLXVeAJGS50nJN3RgF836zkyUfAD01Fq+sAk5EwWgLw+nnm5KVNGDu7PRR2kRGDsWvqpo0g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/core/-/core-2.4.1.tgz}
+    id: registry.npmmirror.com/@docusaurus/core/2.4.1
+    name: '@docusaurus/core'
+    version: 2.4.1
+    engines: {node: '>=16.14'}
+    hasBin: true
+    peerDependencies:
+      react: ^16.8.4 || ^17.0.0
+      react-dom: ^16.8.4 || ^17.0.0
+    dependencies:
+      '@babel/core': registry.npmmirror.com/@babel/core@7.22.9
+      '@babel/generator': registry.npmmirror.com/@babel/generator@7.22.9
+      '@babel/plugin-syntax-dynamic-import': registry.npmmirror.com/@babel/plugin-syntax-dynamic-import@7.8.3(@babel/core@7.22.9)
+      '@babel/plugin-transform-runtime': registry.npmmirror.com/@babel/plugin-transform-runtime@7.22.9(@babel/core@7.22.9)
+      '@babel/preset-env': registry.npmmirror.com/@babel/preset-env@7.22.9(@babel/core@7.22.9)
+      '@babel/preset-react': registry.npmmirror.com/@babel/preset-react@7.22.5(@babel/core@7.22.9)
+      '@babel/preset-typescript': registry.npmmirror.com/@babel/preset-typescript@7.22.5(@babel/core@7.22.9)
+      '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.22.6
+      '@babel/runtime-corejs3': registry.npmmirror.com/@babel/runtime-corejs3@7.22.6
+      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.8
+      '@docusaurus/cssnano-preset': registry.npmmirror.com/@docusaurus/cssnano-preset@2.4.1
+      '@docusaurus/logger': registry.npmmirror.com/@docusaurus/logger@2.4.1
+      '@docusaurus/mdx-loader': registry.npmmirror.com/@docusaurus/mdx-loader@2.4.1(react-dom@17.0.2)(react@17.0.2)
+      '@docusaurus/react-loadable': registry.npmmirror.com/@docusaurus/react-loadable@5.5.2(react@17.0.2)
+      '@docusaurus/utils': registry.npmmirror.com/@docusaurus/utils@2.4.1
+      '@docusaurus/utils-common': registry.npmmirror.com/@docusaurus/utils-common@2.4.1
+      '@docusaurus/utils-validation': registry.npmmirror.com/@docusaurus/utils-validation@2.4.1
+      '@slorber/static-site-generator-webpack-plugin': registry.npmmirror.com/@slorber/static-site-generator-webpack-plugin@4.0.7
+      '@svgr/webpack': registry.npmmirror.com/@svgr/webpack@6.5.1
+      autoprefixer: registry.npmmirror.com/autoprefixer@10.4.14(postcss@8.4.27)
+      babel-loader: registry.npmmirror.com/babel-loader@8.3.0(@babel/core@7.22.9)(webpack@5.88.2)
+      babel-plugin-dynamic-import-node: registry.npmmirror.com/babel-plugin-dynamic-import-node@2.3.3
+      boxen: registry.npmmirror.com/boxen@6.2.1
+      chalk: registry.npmmirror.com/chalk@4.1.2
+      chokidar: registry.npmmirror.com/chokidar@3.5.3
+      clean-css: registry.npmmirror.com/clean-css@5.3.2
+      cli-table3: registry.npmmirror.com/cli-table3@0.6.3
+      combine-promises: registry.npmmirror.com/combine-promises@1.1.0
+      commander: registry.npmmirror.com/commander@5.1.0
+      copy-webpack-plugin: registry.npmmirror.com/copy-webpack-plugin@11.0.0(webpack@5.88.2)
+      core-js: registry.npmmirror.com/core-js@3.31.1
+      css-loader: registry.npmmirror.com/css-loader@6.8.1(webpack@5.88.2)
+      css-minimizer-webpack-plugin: registry.npmmirror.com/css-minimizer-webpack-plugin@4.2.2(clean-css@5.3.2)(webpack@5.88.2)
+      cssnano: registry.npmmirror.com/cssnano@5.1.15(postcss@8.4.27)
+      del: registry.npmmirror.com/del@6.1.1
+      detect-port: registry.npmmirror.com/detect-port@1.5.1
+      escape-html: registry.npmmirror.com/escape-html@1.0.3
+      eta: registry.npmmirror.com/eta@2.2.0
+      file-loader: registry.npmmirror.com/file-loader@6.2.0(webpack@5.88.2)
+      fs-extra: registry.npmmirror.com/fs-extra@10.1.0
+      html-minifier-terser: registry.npmmirror.com/html-minifier-terser@6.1.0
+      html-tags: registry.npmmirror.com/html-tags@3.3.1
+      html-webpack-plugin: registry.npmmirror.com/html-webpack-plugin@5.5.3(webpack@5.88.2)
+      import-fresh: registry.npmmirror.com/import-fresh@3.3.0
+      leven: registry.npmmirror.com/leven@3.1.0
+      lodash: registry.npmmirror.com/lodash@4.17.21
+      mini-css-extract-plugin: registry.npmmirror.com/mini-css-extract-plugin@2.7.6(webpack@5.88.2)
+      postcss: registry.npmmirror.com/postcss@8.4.27
+      postcss-loader: registry.npmmirror.com/postcss-loader@7.3.3(postcss@8.4.27)(webpack@5.88.2)
+      prompts: registry.npmmirror.com/prompts@2.4.2
+      react: registry.npmmirror.com/react@17.0.2
+      react-dev-utils: registry.npmmirror.com/react-dev-utils@12.0.1(typescript@4.7.4)(webpack@5.88.2)
+      react-dom: registry.npmmirror.com/react-dom@17.0.2(react@17.0.2)
+      react-helmet-async: registry.npmmirror.com/react-helmet-async@1.3.0(react-dom@17.0.2)(react@17.0.2)
+      react-loadable: registry.npmmirror.com/@docusaurus/react-loadable@5.5.2(react@17.0.2)
+      react-loadable-ssr-addon-v5-slorber: registry.npmmirror.com/react-loadable-ssr-addon-v5-slorber@1.0.1(@docusaurus/react-loadable@5.5.2)(webpack@5.88.2)
+      react-router: registry.npmmirror.com/react-router@5.3.4(react@17.0.2)
+      react-router-config: registry.npmmirror.com/react-router-config@5.1.1(react-router@5.3.4)(react@17.0.2)
+      react-router-dom: registry.npmmirror.com/react-router-dom@5.3.4(react@17.0.2)
+      rtl-detect: registry.npmmirror.com/rtl-detect@1.0.4
+      semver: registry.npmmirror.com/semver@7.5.4
+      serve-handler: registry.npmmirror.com/serve-handler@6.1.5
+      shelljs: registry.npmmirror.com/shelljs@0.8.5
+      terser-webpack-plugin: registry.npmmirror.com/terser-webpack-plugin@5.3.9(webpack@5.88.2)
+      tslib: registry.npmmirror.com/tslib@2.6.1
+      update-notifier: registry.npmmirror.com/update-notifier@5.1.0
+      url-loader: registry.npmmirror.com/url-loader@4.1.1(file-loader@6.2.0)(webpack@5.88.2)
+      wait-on: registry.npmmirror.com/wait-on@6.0.1
+      webpack: registry.npmmirror.com/webpack@5.88.2
+      webpack-bundle-analyzer: registry.npmmirror.com/webpack-bundle-analyzer@4.9.0
+      webpack-dev-server: registry.npmmirror.com/webpack-dev-server@4.15.1(webpack@5.88.2)
+      webpack-merge: registry.npmmirror.com/webpack-merge@5.9.0
+      webpackbar: registry.npmmirror.com/webpackbar@5.0.2(webpack@5.88.2)
+    transitivePeerDependencies:
+      - '@docusaurus/types'
+      - '@parcel/css'
+      - '@swc/core'
+      - '@swc/css'
+      - bufferutil
+      - csso
+      - debug
+      - esbuild
+      - eslint
+      - lightningcss
+      - supports-color
+      - typescript
+      - uglify-js
+      - utf-8-validate
+      - vue-template-compiler
+      - webpack-cli
+    dev: false
+
   registry.npmmirror.com/@docusaurus/cssnano-preset@2.4.1:
     resolution: {integrity: sha512-ka+vqXwtcW1NbXxWsh6yA1Ckii1klY9E53cJ4O9J09nkMBgrNX3iEFED1fWdv8wf4mJjvGi5RLZ2p9hJNjsLyQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/cssnano-preset/-/cssnano-preset-2.4.1.tgz}
     name: '@docusaurus/cssnano-preset'
@@ -2157,6 +2253,44 @@ packages:
       '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.8
       '@docusaurus/logger': registry.npmmirror.com/@docusaurus/logger@2.4.1
       '@docusaurus/utils': registry.npmmirror.com/@docusaurus/utils@2.4.1(@docusaurus/types@2.4.1)
+      '@mdx-js/mdx': registry.npmmirror.com/@mdx-js/mdx@1.6.22
+      escape-html: registry.npmmirror.com/escape-html@1.0.3
+      file-loader: registry.npmmirror.com/file-loader@6.2.0(webpack@5.88.2)
+      fs-extra: registry.npmmirror.com/fs-extra@10.1.0
+      image-size: registry.npmmirror.com/image-size@1.0.2
+      mdast-util-to-string: registry.npmmirror.com/mdast-util-to-string@2.0.0
+      react: registry.npmmirror.com/react@17.0.2
+      react-dom: registry.npmmirror.com/react-dom@17.0.2(react@17.0.2)
+      remark-emoji: registry.npmmirror.com/remark-emoji@2.2.0
+      stringify-object: registry.npmmirror.com/stringify-object@3.3.0
+      tslib: registry.npmmirror.com/tslib@2.6.1
+      unified: registry.npmmirror.com/unified@9.2.2
+      unist-util-visit: registry.npmmirror.com/unist-util-visit@2.0.3
+      url-loader: registry.npmmirror.com/url-loader@4.1.1(file-loader@6.2.0)(webpack@5.88.2)
+      webpack: registry.npmmirror.com/webpack@5.88.2
+    transitivePeerDependencies:
+      - '@docusaurus/types'
+      - '@swc/core'
+      - esbuild
+      - supports-color
+      - uglify-js
+      - webpack-cli
+    dev: false
+
+  registry.npmmirror.com/@docusaurus/mdx-loader@2.4.1(react-dom@17.0.2)(react@17.0.2):
+    resolution: {integrity: sha512-4KhUhEavteIAmbBj7LVFnrVYDiU51H5YWW1zY6SmBSte/YLhDutztLTBE0PQl1Grux1jzUJeaSvAzHpTn6JJDQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/mdx-loader/-/mdx-loader-2.4.1.tgz}
+    id: registry.npmmirror.com/@docusaurus/mdx-loader/2.4.1
+    name: '@docusaurus/mdx-loader'
+    version: 2.4.1
+    engines: {node: '>=16.14'}
+    peerDependencies:
+      react: ^16.8.4 || ^17.0.0
+      react-dom: ^16.8.4 || ^17.0.0
+    dependencies:
+      '@babel/parser': registry.npmmirror.com/@babel/parser@7.22.7
+      '@babel/traverse': registry.npmmirror.com/@babel/traverse@7.22.8
+      '@docusaurus/logger': registry.npmmirror.com/@docusaurus/logger@2.4.1
+      '@docusaurus/utils': registry.npmmirror.com/@docusaurus/utils@2.4.1
       '@mdx-js/mdx': registry.npmmirror.com/@mdx-js/mdx@1.6.22
       escape-html: registry.npmmirror.com/escape-html@1.0.3
       file-loader: registry.npmmirror.com/file-loader@6.2.0(webpack@5.88.2)
@@ -2515,7 +2649,7 @@ packages:
       - webpack-cli
     dev: false
 
-  registry.npmmirror.com/@docusaurus/preset-classic@2.4.1(@algolia/client-search@4.19.1)(react-dom@17.0.2)(react@17.0.2)(search-insights@2.7.0)(typescript@4.7.4):
+  registry.npmmirror.com/@docusaurus/preset-classic@2.4.1(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4):
     resolution: {integrity: sha512-P4//+I4zDqQJ+UDgoFrjIFaQ1MeS9UD1cvxVQaI6O7iBmiHQm0MGROP1TbE7HlxlDPXFJjZUK3x3cAoK63smGQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/preset-classic/-/preset-classic-2.4.1.tgz}
     id: registry.npmmirror.com/@docusaurus/preset-classic/2.4.1
     name: '@docusaurus/preset-classic'
@@ -2536,7 +2670,7 @@ packages:
       '@docusaurus/plugin-sitemap': registry.npmmirror.com/@docusaurus/plugin-sitemap@2.4.1(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
       '@docusaurus/theme-classic': registry.npmmirror.com/@docusaurus/theme-classic@2.4.1(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
       '@docusaurus/theme-common': registry.npmmirror.com/@docusaurus/theme-common@2.4.1(@docusaurus/types@2.4.1)(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
-      '@docusaurus/theme-search-algolia': registry.npmmirror.com/@docusaurus/theme-search-algolia@2.4.1(@algolia/client-search@4.19.1)(@docusaurus/types@2.4.1)(react-dom@17.0.2)(react@17.0.2)(search-insights@2.7.0)(typescript@4.7.4)
+      '@docusaurus/theme-search-algolia': registry.npmmirror.com/@docusaurus/theme-search-algolia@2.4.1(@docusaurus/types@2.4.1)(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
       '@docusaurus/types': registry.npmmirror.com/@docusaurus/types@2.4.1(react-dom@17.0.2)(react@17.0.2)
       react: registry.npmmirror.com/react@17.0.2
       react-dom: registry.npmmirror.com/react-dom@17.0.2(react@17.0.2)
@@ -2676,7 +2810,7 @@ packages:
       - webpack-cli
     dev: false
 
-  registry.npmmirror.com/@docusaurus/theme-search-algolia@2.4.1(@algolia/client-search@4.19.1)(@docusaurus/types@2.4.1)(react-dom@17.0.2)(react@17.0.2)(search-insights@2.7.0)(typescript@4.7.4):
+  registry.npmmirror.com/@docusaurus/theme-search-algolia@2.4.1(@docusaurus/types@2.4.1)(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4):
     resolution: {integrity: sha512-6BcqW2lnLhZCXuMAvPRezFs1DpmEKzXFKlYjruuas+Xy3AQeFzDJKTJFIm49N77WFCTyxff8d3E4Q9pi/+5McQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/theme-search-algolia/-/theme-search-algolia-2.4.1.tgz}
     id: registry.npmmirror.com/@docusaurus/theme-search-algolia/2.4.1
     name: '@docusaurus/theme-search-algolia'
@@ -2686,7 +2820,7 @@ packages:
       react: ^16.8.4 || ^17.0.0
       react-dom: ^16.8.4 || ^17.0.0
     dependencies:
-      '@docsearch/react': registry.npmmirror.com/@docsearch/react@3.5.1(@algolia/client-search@4.19.1)(react-dom@17.0.2)(react@17.0.2)(search-insights@2.7.0)
+      '@docsearch/react': registry.npmmirror.com/@docsearch/react@3.5.1(react-dom@17.0.2)(react@17.0.2)
       '@docusaurus/core': registry.npmmirror.com/@docusaurus/core@2.4.1(@docusaurus/types@2.4.1)(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
       '@docusaurus/logger': registry.npmmirror.com/@docusaurus/logger@2.4.1
       '@docusaurus/plugin-content-docs': registry.npmmirror.com/@docusaurus/plugin-content-docs@2.4.1(react-dom@17.0.2)(react@17.0.2)(typescript@4.7.4)
@@ -2761,6 +2895,20 @@ packages:
       - uglify-js
       - webpack-cli
 
+  registry.npmmirror.com/@docusaurus/utils-common@2.4.1:
+    resolution: {integrity: sha512-bCVGdZU+z/qVcIiEQdyx0K13OC5mYwxhSuDUR95oFbKVuXYRrTVrwZIqQljuo1fyJvFTKHiL9L9skQOPokuFNQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/utils-common/-/utils-common-2.4.1.tgz}
+    name: '@docusaurus/utils-common'
+    version: 2.4.1
+    engines: {node: '>=16.14'}
+    peerDependencies:
+      '@docusaurus/types': '*'
+    peerDependenciesMeta:
+      '@docusaurus/types':
+        optional: true
+    dependencies:
+      tslib: registry.npmmirror.com/tslib@2.6.1
+    dev: false
+
   registry.npmmirror.com/@docusaurus/utils-common@2.4.1(@docusaurus/types@2.4.1):
     resolution: {integrity: sha512-bCVGdZU+z/qVcIiEQdyx0K13OC5mYwxhSuDUR95oFbKVuXYRrTVrwZIqQljuo1fyJvFTKHiL9L9skQOPokuFNQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/utils-common/-/utils-common-2.4.1.tgz}
     id: registry.npmmirror.com/@docusaurus/utils-common/2.4.1
@@ -2777,6 +2925,26 @@ packages:
       tslib: registry.npmmirror.com/tslib@2.6.1
     dev: false
 
+  registry.npmmirror.com/@docusaurus/utils-validation@2.4.1:
+    resolution: {integrity: sha512-unII3hlJlDwZ3w8U+pMO3Lx3RhI4YEbY3YNsQj4yzrkZzlpqZOLuAiZK2JyULnD+TKbceKU0WyWkQXtYbLNDFA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/utils-validation/-/utils-validation-2.4.1.tgz}
+    name: '@docusaurus/utils-validation'
+    version: 2.4.1
+    engines: {node: '>=16.14'}
+    dependencies:
+      '@docusaurus/logger': registry.npmmirror.com/@docusaurus/logger@2.4.1
+      '@docusaurus/utils': registry.npmmirror.com/@docusaurus/utils@2.4.1
+      joi: registry.npmmirror.com/joi@17.9.2
+      js-yaml: registry.npmmirror.com/js-yaml@4.1.0
+      tslib: registry.npmmirror.com/tslib@2.6.1
+    transitivePeerDependencies:
+      - '@docusaurus/types'
+      - '@swc/core'
+      - esbuild
+      - supports-color
+      - uglify-js
+      - webpack-cli
+    dev: false
+
   registry.npmmirror.com/@docusaurus/utils-validation@2.4.1(@docusaurus/types@2.4.1):
     resolution: {integrity: sha512-unII3hlJlDwZ3w8U+pMO3Lx3RhI4YEbY3YNsQj4yzrkZzlpqZOLuAiZK2JyULnD+TKbceKU0WyWkQXtYbLNDFA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/utils-validation/-/utils-validation-2.4.1.tgz}
     id: registry.npmmirror.com/@docusaurus/utils-validation/2.4.1
@@ -2791,6 +2959,41 @@ packages:
       tslib: registry.npmmirror.com/tslib@2.6.1
     transitivePeerDependencies:
       - '@docusaurus/types'
+      - '@swc/core'
+      - esbuild
+      - supports-color
+      - uglify-js
+      - webpack-cli
+    dev: false
+
+  registry.npmmirror.com/@docusaurus/utils@2.4.1:
+    resolution: {integrity: sha512-1lvEZdAQhKNht9aPXPoh69eeKnV0/62ROhQeFKKxmzd0zkcuE/Oc5Gpnt00y/f5bIsmOsYMY7Pqfm/5rteT5GA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@docusaurus/utils/-/utils-2.4.1.tgz}
+    name: '@docusaurus/utils'
+    version: 2.4.1
+    engines: {node: '>=16.14'}
+    peerDependencies:
+      '@docusaurus/types': '*'
+    peerDependenciesMeta:
+      '@docusaurus/types':
+        optional: true
+    dependencies:
+      '@docusaurus/logger': registry.npmmirror.com/@docusaurus/logger@2.4.1
+      '@svgr/webpack': registry.npmmirror.com/@svgr/webpack@6.5.1
+      escape-string-regexp: registry.npmmirror.com/escape-string-regexp@4.0.0
+      file-loader: registry.npmmirror.com/file-loader@6.2.0(webpack@5.88.2)
+      fs-extra: registry.npmmirror.com/fs-extra@10.1.0
+      github-slugger: registry.npmmirror.com/github-slugger@1.5.0
+      globby: registry.npmmirror.com/globby@11.1.0
+      gray-matter: registry.npmmirror.com/gray-matter@4.0.3
+      js-yaml: registry.npmmirror.com/js-yaml@4.1.0
+      lodash: registry.npmmirror.com/lodash@4.17.21
+      micromatch: registry.npmmirror.com/micromatch@4.0.5
+      resolve-pathname: registry.npmmirror.com/resolve-pathname@3.0.0
+      shelljs: registry.npmmirror.com/shelljs@0.8.5
+      tslib: registry.npmmirror.com/tslib@2.6.1
+      url-loader: registry.npmmirror.com/url-loader@4.1.1(file-loader@6.2.0)(webpack@5.88.2)
+      webpack: registry.npmmirror.com/webpack@5.88.2
+    transitivePeerDependencies:
       - '@swc/core'
       - esbuild
       - supports-color
@@ -3769,13 +3972,10 @@ packages:
       indent-string: registry.npmmirror.com/indent-string@4.0.0
     dev: false
 
-  registry.npmmirror.com/ajv-formats@2.1.1(ajv@8.12.0):
+  registry.npmmirror.com/ajv-formats@2.1.1:
     resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/ajv-formats/-/ajv-formats-2.1.1.tgz}
-    id: registry.npmmirror.com/ajv-formats/2.1.1
     name: ajv-formats
     version: 2.1.1
-    peerDependencies:
-      ajv: ^8.0.0
     peerDependenciesMeta:
       ajv:
         optional: true
@@ -5595,6 +5795,7 @@ packages:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz}
     name: fast-deep-equal
     version: 3.1.3
+    dev: false
 
   registry.npmmirror.com/fast-glob@3.3.1:
     resolution: {integrity: sha512-kNFPyjhh5cKjrUltxs+wFx+ZkbRaxxmZ+X0ZU31SOsxCEtP9VPgtq2teZw1DebupL5GmDaNQ6yKMMVcM41iqDg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/fast-glob/-/fast-glob-3.3.1.tgz}
@@ -8511,6 +8712,7 @@ packages:
     name: punycode
     version: 2.3.0
     engines: {node: '>=6'}
+    dev: false
 
   registry.npmmirror.com/pupa@2.1.1:
     resolution: {integrity: sha512-l1jNAspIBSFqbT+y+5FosojNpVpF94nlI+wDUpqP9enwOTfHx9f0gh5nB96vl+6yTpsJsypeNrwfzPrKuHB41A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pupa/-/pupa-2.1.1.tgz}
@@ -9212,15 +9414,8 @@ packages:
     dependencies:
       '@types/json-schema': registry.npmmirror.com/@types/json-schema@7.0.12
       ajv: registry.npmmirror.com/ajv@8.12.0
-      ajv-formats: registry.npmmirror.com/ajv-formats@2.1.1(ajv@8.12.0)
+      ajv-formats: registry.npmmirror.com/ajv-formats@2.1.1
       ajv-keywords: registry.npmmirror.com/ajv-keywords@5.1.0(ajv@8.12.0)
-    dev: false
-
-  registry.npmmirror.com/search-insights@2.7.0:
-    resolution: {integrity: sha512-GLbVaGgzYEKMvuJbHRhLi1qoBFnjXZGZ6l4LxOYPCp4lI2jDRB3jPU9/XNhMwv6kvnA9slTreq6pvK+b3o3aqg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/search-insights/-/search-insights-2.7.0.tgz}
-    name: search-insights
-    version: 2.7.0
-    engines: {node: '>=8.16.0'}
     dev: false
 
   registry.npmmirror.com/section-matter@1.0.0:
@@ -10161,6 +10356,7 @@ packages:
     version: 4.4.1
     dependencies:
       punycode: registry.npmmirror.com/punycode@2.3.0
+    dev: false
 
   registry.npmmirror.com/url-loader@4.1.1(file-loader@6.2.0)(webpack@5.88.2):
     resolution: {integrity: sha512-3BTV812+AVHHOJQO8O5MkWgZ5aosP7GnROJwvzLS9hWDj00lZ6Z0wNak423Lp9PBZN05N+Jk/N5Si8jRAlGyWA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/url-loader/-/url-loader-4.1.1.tgz}
@@ -10717,3 +10913,7 @@ packages:
     name: zwitch
     version: 1.0.5
     dev: false
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
