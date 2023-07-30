@@ -60,7 +60,6 @@ export const UserInputModule: FlowModuleTemplateType = {
   name: '用户问题(对话入口)',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   flowType: FlowModuleTypeEnum.questionInput,
-  url: '/app/modules/init/userChatInput',
   inputs: [
     {
       key: SystemInputEnum.userChatInput,
@@ -83,7 +82,6 @@ export const HistoryModule: FlowModuleTemplateType = {
   name: '聊天记录',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   flowType: FlowModuleTypeEnum.historyNode,
-  url: '/app/modules/init/history',
   inputs: [
     {
       key: 'maxContext',
@@ -116,7 +114,6 @@ export const ChatModule: FlowModuleTemplateType = {
   name: 'AI 对话',
   intro: 'AI 大模型对话',
   flowType: FlowModuleTypeEnum.chatNode,
-  url: '/app/modules/chat/gpt',
   inputs: [
     {
       key: 'model',
@@ -206,7 +203,6 @@ export const KBSearchModule: FlowModuleTemplateType = {
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
   flowType: FlowModuleTypeEnum.kbSearchNode,
-  url: '/app/modules/kb/search',
   inputs: [
     {
       key: 'kbList',
@@ -322,7 +318,6 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
   description:
     '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',
-  url: '/app/modules/agent/classifyQuestion',
   flowType: FlowModuleTypeEnum.classifyQuestion,
   inputs: [
     {
@@ -333,6 +328,65 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
       description:
         '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
       placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统',
+      value: ''
+    },
+    Input_Template_History,
+    Input_Template_UserChatInput,
+    {
+      key: 'agents',
+      type: FlowInputItemTypeEnum.custom,
+      label: '',
+      value: [
+        {
+          value: '打招呼',
+          key: 'fasw'
+        },
+        {
+          value: '关于 xxx 的问题',
+          key: 'fqsw'
+        },
+        {
+          value: '其他问题',
+          key: 'fesw'
+        }
+      ]
+    }
+  ],
+  outputs: [
+    {
+      key: 'fasw',
+      label: '',
+      type: FlowOutputItemTypeEnum.hidden,
+      targets: []
+    },
+    {
+      key: 'fqsw',
+      label: '',
+      type: FlowOutputItemTypeEnum.hidden,
+      targets: []
+    },
+    {
+      key: 'fesw',
+      label: '',
+      type: FlowOutputItemTypeEnum.hidden,
+      targets: []
+    }
+  ]
+};
+export const ContextExtractModule: FlowModuleTemplateType = {
+  logo: '/imgs/module/extract.png',
+  name: '内容提取',
+  intro: '从文本中提取出指定格式的数据',
+  description: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
+  flowType: FlowModuleTypeEnum.contentExtract,
+  inputs: [
+    {
+      key: 'systemPrompt',
+      type: FlowInputItemTypeEnum.textarea,
+      valueType: FlowValueTypeEnum.string,
+      label: '提取内容描述',
+      description: '写一段提取要求，告诉 AI 需要提取哪些内容',
+      placeholder: '例如: \n1. 根据用户的\n2. Sealos 是一个集群操作系统',
       value: ''
     },
     Input_Template_History,

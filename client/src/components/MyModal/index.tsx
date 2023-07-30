@@ -42,7 +42,7 @@ const MyModal = ({
         {...props}
       >
         {!!title && <ModalHeader>{title}</ModalHeader>}
-        <Box overflow={'overlay'}>
+        <Box overflow={'overlay'} h={'100%'}>
           {showCloseBtn && <ModalCloseButton />}
           {children}
         </Box>

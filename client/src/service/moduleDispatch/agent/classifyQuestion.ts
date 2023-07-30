@@ -7,13 +7,14 @@ import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { countModelPrice } from '@/service/events/pushBill';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { getModel } from '@/service/utils/data';
+import { SystemInputEnum } from '@/constants/app';
 
 export type CQProps = {
   systemPrompt?: string;
   history?: ChatItemType[];
-  userChatInput: string;
-  agents: ClassifyQuestionAgentItemType[];
+  [SystemInputEnum.userChatInput]: string;
   userOpenaiAccount: UserModelSchema['openaiAccount'];
+  agents: ClassifyQuestionAgentItemType[];
 };
 export type CQResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
@@ -22,7 +23,7 @@ export type CQResponse = {
 
 const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_user_question';
-const maxTokens = 2000;
+const maxTokens = 3000;
 
 /* request openai chat */
 export const dispatchClassifyQuestion = async (props: Record<string, any>): Promise<CQResponse> => {
