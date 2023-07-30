@@ -73,7 +73,8 @@ async function initRootUser() {
       await User.findOneAndUpdate(
         { username: 'root' },
         {
-          password: createHashPassword(psw)
+          password: createHashPassword(psw),
+          balance: 999999 * PRICE_SCALE
         }
       );
     } else {
