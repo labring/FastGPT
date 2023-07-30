@@ -67,18 +67,24 @@ async function initRootUser() {
     const rootUser = await User.findOne({
       username: 'root'
     });
-    if (rootUser) {
-      console.log('root user already exists');
-      return;
-    }
     const psw = process.env.DEFAULT_ROOT_PSW || '123456';
-    await User.create({
-      username: 'root',
-      password: createHashPassword(psw),
-      balance: 100 * PRICE_SCALE
-    });
 
-    console.log(`create root user success`, {
+    if (rootUser) {
+      await User.findOneAndUpdate(
+        { username: 'root' },
+        {
+          password: createHashPassword(psw)
+        }
+      );
+    } else {
+      await User.create({
+        username: 'root',
+        password: createHashPassword(psw),
+        balance: 999999 * PRICE_SCALE
+      });
+    }
+
+    console.log(`root user init:`, {
       username: 'root',
       password: psw
     });
