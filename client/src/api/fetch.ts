@@ -90,7 +90,10 @@ export const streamFetch = ({
               responseData
             });
           }
-          reject(getErrText(err, '请求异常'));
+          reject({
+            responseText,
+            message: getErrText(err, '请求异常')
+          });
         }
       };
       read();
