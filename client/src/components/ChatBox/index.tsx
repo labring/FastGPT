@@ -693,7 +693,7 @@ const ChatBox = (
               }}
               onKeyDown={(e) => {
                 // 触发快捷发送
-                if (e.keyCode === 13 && !e.shiftKey) {
+                if (isPc && e.keyCode === 13 && !e.shiftKey) {
                   handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
                   e.preventDefault();
                 }

@@ -84,4 +84,12 @@ const ChatSchema = new Schema({
   }
 });
 
+try {
+  ChatSchema.index({ userId: 1 });
+  ChatSchema.index({ updateTime: -1 });
+  ChatSchema.index({ appId: 1 });
+} catch (error) {
+  console.log(error);
+}
+
 export const Chat: Model<ChatType> = models['chat'] || model('chat', ChatSchema);
