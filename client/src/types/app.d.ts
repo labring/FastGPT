@@ -8,6 +8,7 @@ import {
 import type { FlowInputItemType, FlowOutputItemType, FlowOutputTargetItemType } from './flow';
 import type { AppSchema, kbSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
+import { FlowValueTypeEnum } from '@/constants/flow';
 
 export type AppListItemType = {
   _id: string;
@@ -44,6 +45,11 @@ export type ShareChatEditType = {
 export type ClassifyQuestionAgentItemType = {
   value: string;
   key: string;
+};
+export type ContextExtractAgentItemType = {
+  desc: string;
+  key: string;
+  required: boolean;
 };
 
 export type VariableItemType = {

@@ -8,13 +8,14 @@ import { countModelPrice } from '@/service/events/pushBill';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { getModel } from '@/service/utils/data';
 import { SystemInputEnum } from '@/constants/app';
+import { SpecialInputKeyEnum } from '@/constants/flow';
 
 export type CQProps = {
   systemPrompt?: string;
   history?: ChatItemType[];
   [SystemInputEnum.userChatInput]: string;
   userOpenaiAccount: UserModelSchema['openaiAccount'];
-  agents: ClassifyQuestionAgentItemType[];
+  [SpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 };
 export type CQResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;

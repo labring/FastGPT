@@ -35,7 +35,8 @@ export enum FlowModuleTypeEnum {
 }
 
 export enum SpecialInputKeyEnum {
-  'answerText' = 'text'
+  'answerText' = 'text',
+  'agents' = 'agents' // cq agent key
 }
 
 export enum FlowValueTypeEnum {

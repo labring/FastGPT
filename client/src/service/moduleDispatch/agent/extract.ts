@@ -1,50 +1,44 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { ChatContextFilter } from '@/service/utils/chat/index';
-import type { ChatItemType } from '@/types/chat';
-import { ChatRoleEnum } from '@/constants/chat';
+import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
+import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
-import type { ClassifyQuestionAgentItemType } from '@/types/app';
-import { SystemInputEnum } from '@/constants/app';
+import type { ContextExtractAgentItemType } from '@/types/app';
+import { ContextExtractEnum } from '@/constants/flow/flowField';
+import { countModelPrice } from '@/service/events/pushBill';
+import { UserModelSchema } from '@/types/mongoSchema';
+import { getModel } from '@/service/utils/data';
 
 export type Props = {
-  systemPrompt?: string;
+  userOpenaiAccount: UserModelSchema['openaiAccount'];
   history?: ChatItemType[];
-  [SystemInputEnum.userChatInput]: string;
-  description: string;
-  agents: ClassifyQuestionAgentItemType[];
+  [ContextExtractEnum.content]: string;
+  [ContextExtractEnum.extractKeys]: ContextExtractAgentItemType[];
+  [ContextExtractEnum.description]: string;
 };
 export type Response = {
-  arguments: Record<string, any>;
-  deficiency: boolean;
+  [ContextExtractEnum.success]?: boolean;
+  [ContextExtractEnum.failed]?: boolean;
+  [ContextExtractEnum.fields]: Record<string, any>;
+  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
 };
 
 const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_extract_data';
 const maxTokens = 3000;
 
-export async function extract({
-  systemPrompt,
-  agents,
+export async function dispatchContentExtract({
+  userOpenaiAccount,
+  content,
+  extractKeys,
   history = [],
-  userChatInput,
   description
 }: Props): Promise<Response> {
   const messages: ChatItemType[] = [
-    ...(systemPrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: systemPrompt
-          }
-        ]
-      : []),
     ...history,
     {
       obj: ChatRoleEnum.Human,
-      value: userChatInput
+      value: content
     }
   ];
   const filterMessages = ChatContextFilter({
@@ -62,25 +56,25 @@ export async function extract({
       description: string;
     }
   > = {};
-  agents.forEach((item) => {
+  extractKeys.forEach((item) => {
     properties[item.key] = {
       type: 'string',
-      description: item.value
+      description: item.desc
     };
   });
 
   //   function body
   const agentFunction = {
     name: agentFunName,
-    description,
+    description: `${description}\n如果内容不存在，返回空字符串。当前时间是2023/7/31 18:00`,
     parameters: {
       type: 'object',
       properties,
-      required: agents.map((item) => item.key)
+      required: extractKeys.map((item) => item.key)
     }
   };
 
-  const chatAPI = getAIChatApi();
+  const chatAPI = getAIChatApi(userOpenaiAccount);
 
   const response = await chatAPI.createChatCompletion(
     {
@@ -91,21 +85,44 @@ export async function extract({
       functions: [agentFunction]
     },
     {
-      ...axiosConfig()
+      ...axiosConfig(userOpenaiAccount)
     }
   );
 
-  const arg = JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '{}');
-  let deficiency = false;
-  for (const key in arg) {
-    if (arg[key] === '') {
-      deficiency = true;
-      break;
+  const arg: Record<string, any> = (() => {
+    try {
+      return JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '{}');
+    } catch (error) {
+      return {};
+    }
+  })();
+  console.log(adaptMessages, arg);
+
+  // auth fields
+  let success = !extractKeys.find((item) => !arg[item.key]);
+  // auth empty value
+  if (success) {
+    for (const key in arg) {
+      if (arg[key] === '') {
+        success = false;
+        break;
+      }
     }
   }
 
+  const tokens = response.data.usage?.total_tokens || 0;
+
   return {
-    arguments: arg,
-    deficiency
+    [ContextExtractEnum.success]: success ? true : undefined,
+    [ContextExtractEnum.failed]: success ? undefined : true,
+    [ContextExtractEnum.fields]: arg,
+    [TaskResponseKeyEnum.responseData]: {
+      moduleName: ChatModuleEnum.Extract,
+      price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),
+      model: getModel(agentModel)?.name || agentModel,
+      tokens,
+      extractDescription: description,
+      extractResult: arg
+    }
   };
 }

@@ -18,6 +18,13 @@
     "New Chat": "新对话",
     "You need to a chat app": "你需要创建一个应用"
   },
+  "common": {
+    "Add": "添加",
+    "Filed is repeat": "",
+    "Filed is repeated": "字段重复了",
+    "Input": "输入",
+    "Output": "输出"
+  },
   "home": {
     "Quickly build AI question and answer library": "快速搭建 AI 问答系统",
     "Start Now": "立即开始",

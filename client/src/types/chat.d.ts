@@ -66,4 +66,8 @@ export type ChatHistoryItemResType = {
   // cq
   cqList?: ClassifyQuestionAgentItemType[];
   cqResult?: string;
+
+  // content extract
+  extractDescription?: string;
+  extractResult?: Record<string, any>;
 };

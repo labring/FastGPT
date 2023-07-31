@@ -1,8 +1,10 @@
 import React from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 
-const Divider = ({ text }: { text: 'Body' | 'Input' | 'Output' | string }) => {
+const Divider = ({ text }: { text: 'Input' | 'Output' | string }) => {
   const theme = useTheme();
+  const { t } = useTranslation();
   return (
     <Box
       textAlign={'center'}
@@ -12,7 +14,7 @@ const Divider = ({ text }: { text: 'Body' | 'Input' | 'Output' | string }) => {
       borderBottom={theme.borders.base}
       fontSize={'lg'}
     >
-      {text}
+      {t(`common.${text}`)}
     </Box>
   );
 };
