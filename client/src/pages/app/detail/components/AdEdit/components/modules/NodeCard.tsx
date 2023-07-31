@@ -29,7 +29,14 @@ const NodeCard = ({
   const theme = useTheme();
 
   return (
-    <Box minW={minW} bg={'white'} border={theme.borders.md} borderRadius={'md'} boxShadow={'sm'}>
+    <Box
+      minW={minW}
+      maxW={'430px'}
+      bg={'white'}
+      border={theme.borders.md}
+      borderRadius={'md'}
+      boxShadow={'sm'}
+    >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
         <Avatar src={logo} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
@@ -39,7 +46,7 @@ const NodeCard = ({
           <MyTooltip label={description} forceShow>
             <QuestionOutlineIcon
               display={['none', 'inline']}
-              transform={'translateY(-1px)'}
+              transform={'translateY(1px)'}
               ml={1}
             />
           </MyTooltip>

@@ -68,6 +68,9 @@ const NodeVariable = dynamic(() => import('./components/Nodes/NodeVariable'), {
 const NodeUserGuide = dynamic(() => import('./components/Nodes/NodeUserGuide'), {
   ssr: false
 });
+const NodeExtract = dynamic(() => import('./components/Nodes/NodeExtract'), {
+  ssr: false
+});
 
 import 'reactflow/dist/style.css';
 import styles from './index.module.scss';
@@ -83,7 +86,8 @@ const nodeTypes = {
   [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
-  [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode
+  [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode,
+  [FlowModuleTypeEnum.contentExtract]: NodeExtract
   // [FlowModuleTypeEnum.empty]: EmptyModule
 };
 const edgeTypes = {

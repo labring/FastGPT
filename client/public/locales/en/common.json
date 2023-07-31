@@ -18,6 +18,13 @@
     "New Chat": "New Chat",
     "You need to a chat app": "You need to a chat app"
   },
+  "common": {
+    "Add": "Add",
+    "Filed is repeat": "Filed is repeated",
+    "Filed is repeated": "",
+    "Input": "Input",
+    "Output": "Output"
+  },
   "home": {
     "Quickly build AI question and answer library": "Quickly build AI question and answer library",
     "Start Now": "Start Now",

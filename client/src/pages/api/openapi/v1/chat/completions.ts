@@ -25,6 +25,7 @@ import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
+import { dispatchContentExtract } from '@/service/moduleDispatch/agent/extract';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -337,7 +338,8 @@ export async function dispatchModules({
         [FlowModuleTypeEnum.answerNode]: dispatchAnswer,
         [FlowModuleTypeEnum.chatNode]: dispatchChatCompletion,
         [FlowModuleTypeEnum.kbSearchNode]: dispatchKBSearch,
-        [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion
+        [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+        [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);

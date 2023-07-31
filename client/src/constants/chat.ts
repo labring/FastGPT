@@ -54,7 +54,8 @@ export const ChatSourceMap = {
 export enum ChatModuleEnum {
   'AIChat' = 'AI Chat',
   'KBSearch' = 'KB Search',
-  'CQ' = 'Classify Question'
+  'CQ' = 'Classify Question',
+  'Extract' = 'Content Extract'
 }
 
 export enum OutLinkTypeEnum {

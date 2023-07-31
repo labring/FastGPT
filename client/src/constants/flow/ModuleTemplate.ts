@@ -15,6 +15,7 @@ import {
   Input_Template_TFSwitch,
   Input_Template_UserChatInput
 } from './inputTemplate';
+import { ContextExtractEnum } from './flowField';
 
 export const ChatModelSystemTip =
   '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}';
@@ -333,7 +334,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     Input_Template_History,
     Input_Template_UserChatInput,
     {
-      key: 'agents',
+      key: SpecialInputKeyEnum.agents,
       type: FlowInputItemTypeEnum.custom,
       label: '',
       value: [
@@ -375,59 +376,70 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
 };
 export const ContextExtractModule: FlowModuleTemplateType = {
   logo: '/imgs/module/extract.png',
-  name: '内容提取',
+  name: '文本内容提取',
   intro: '从文本中提取出指定格式的数据',
   description: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
   flowType: FlowModuleTypeEnum.contentExtract,
   inputs: [
+    Input_Template_TFSwitch,
     {
-      key: 'systemPrompt',
+      key: ContextExtractEnum.description,
       type: FlowInputItemTypeEnum.textarea,
       valueType: FlowValueTypeEnum.string,
-      label: '提取内容描述',
+      label: '提取要求描述',
       description: '写一段提取要求，告诉 AI 需要提取哪些内容',
-      placeholder: '例如: \n1. 根据用户的\n2. Sealos 是一个集群操作系统',
+      placeholder:
+        '例如: \n1. 你是一个实验室预约助手。根据用户问题，提取出姓名、实验室号和预约时间',
       value: ''
     },
     Input_Template_History,
-    Input_Template_UserChatInput,
     {
-      key: 'agents',
+      key: ContextExtractEnum.content,
+      type: FlowInputItemTypeEnum.target,
+      label: '需要提取的文本',
+      required: true,
+      valueType: FlowValueTypeEnum.string
+    },
+    {
+      key: ContextExtractEnum.extractKeys,
       type: FlowInputItemTypeEnum.custom,
-      label: '',
+      label: '目标字段',
+      description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
       value: [
         {
-          value: '打招呼',
-          key: 'fasw'
+          key: 'a',
+          desc: '描述',
+          required: true
         },
         {
-          value: '关于 xxx 的问题',
-          key: 'fqsw'
-        },
-        {
-          value: '其他问题',
-          key: 'fesw'
+          key: 'n',
+          desc: '描述',
+          required: true
         }
       ]
     }
   ],
   outputs: [
     {
-      key: 'fasw',
-      label: '',
-      type: FlowOutputItemTypeEnum.hidden,
+      key: ContextExtractEnum.success,
+      label: '字段完全提取',
+      valueType: FlowValueTypeEnum.boolean,
+      type: FlowOutputItemTypeEnum.source,
       targets: []
     },
     {
-      key: 'fqsw',
-      label: '',
-      type: FlowOutputItemTypeEnum.hidden,
+      key: ContextExtractEnum.failed,
+      label: '提取字段缺失',
+      valueType: FlowValueTypeEnum.boolean,
+      type: FlowOutputItemTypeEnum.source,
       targets: []
     },
     {
-      key: 'fesw',
-      label: '',
-      type: FlowOutputItemTypeEnum.hidden,
+      key: ContextExtractEnum.fields,
+      label: '提取结果',
+      description: '一个 JSON 对象，例如 {"name:":"YY","Time":"2023/7/2 18:00"}',
+      valueType: FlowValueTypeEnum.other,
+      type: FlowOutputItemTypeEnum.source,
       targets: []
     }
   ]
@@ -461,7 +473,7 @@ export const ModuleTemplates = [
   },
   {
     label: 'Agent',
-    list: [ClassifyQuestionModule]
+    list: [ClassifyQuestionModule, ContextExtractModule]
   }
 ];
 export const ModuleTemplatesFlat = ModuleTemplates.map((templates) => templates.list)?.flat();
@@ -1070,7 +1082,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             connected: true
           },
           {
-            key: 'agents',
+            key: SpecialInputKeyEnum.agents,
             value: [
               {
                 value: '打招呼、问候等问题',

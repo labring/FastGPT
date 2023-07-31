@@ -10,7 +10,7 @@ import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
-import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import { FlowOutputItemTypeEnum, FlowValueTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import SourceHandle from '../render/SourceHandle';
 
 const NodeCQNode = ({
@@ -25,7 +25,7 @@ const NodeCQNode = ({
           onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
-            agents: ({
+            [SpecialInputKeyEnum.agents]: ({
               key: agentKey,
               value: agents = []
             }: {
