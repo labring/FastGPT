@@ -132,7 +132,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         connected: item.type !== FlowInputItemTypeEnum.target
       })),
       outputs: item.data.outputs.map((item) => ({
-        key: item.key,
+        ...item,
         targets: [] as FlowOutputTargetItemType[]
       }))
     }));
@@ -254,7 +254,11 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           title: t('app.Connection is invalid')
         });
       }
-      if (sourceType !== targetType) {
+      if (
+        sourceType !== FlowValueTypeEnum.any &&
+        targetType !== FlowValueTypeEnum.any &&
+        sourceType !== targetType
+      ) {
         return toast({
           status: 'warning',
           title: t('app.Connection type is different')
@@ -280,6 +284,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
+      console.log(flow2AppModules(), '====');
       return updateAppDetail(app._id, {
         modules: flow2AppModules()
       });

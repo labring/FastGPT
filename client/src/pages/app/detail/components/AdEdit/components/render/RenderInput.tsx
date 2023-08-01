@@ -35,7 +35,7 @@ export const Label = ({
     )}
     {description && (
       <MyTooltip label={description} forceShow>
-        <QuestionOutlineIcon display={['none', 'inline']} transform={'translateY(-1px)'} ml={1} />
+        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
       </MyTooltip>
     )}
   </Box>

@@ -11,8 +11,7 @@ const NodeAnswer = ({
 }: NodeProps<FlowModuleItemType>) => {
   return (
     <NodeCard minW={'400px'} moduleId={moduleId} {...props}>
-      <Divider text="Input" />
-      <Container>
+      <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
         <RenderInput moduleId={moduleId} onChangeNode={onChangeNode} flowInputList={inputs} />
       </Container>
     </NodeCard>

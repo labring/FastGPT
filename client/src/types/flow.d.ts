@@ -39,10 +39,10 @@ export type FlowOutputTargetItemType = {
 };
 export type FlowOutputItemType = {
   key: string; // 字段名
-  label: string;
+  label?: string;
   description?: string;
   valueType?: `${FlowValueTypeEnum}`;
-  type: `${FlowOutputItemTypeEnum}`;
+  type?: `${FlowOutputItemTypeEnum}`;
   targets: FlowOutputTargetItemType[];
 };
 

@@ -6,7 +6,7 @@ export const Input_Template_TFSwitch: FlowInputItemType = {
   key: SystemInputEnum.switch,
   type: FlowInputItemTypeEnum.target,
   label: '触发器',
-  valueType: FlowValueTypeEnum.boolean
+  valueType: FlowValueTypeEnum.any
 };
 
 export const Input_Template_History: FlowInputItemType = {
