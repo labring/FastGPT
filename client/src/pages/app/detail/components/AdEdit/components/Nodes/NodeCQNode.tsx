@@ -55,7 +55,7 @@ const NodeCQNode = ({
                         onChangeNode({
                           moduleId,
                           type: 'outputs',
-                          key: agentKey,
+                          key: '',
                           value: newOutputVal
                         });
                       }}

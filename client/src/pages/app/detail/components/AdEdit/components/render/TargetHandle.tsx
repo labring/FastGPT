@@ -15,7 +15,7 @@ const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
     () =>
       valueType
         ? FlowValueTypeStyle[valueType]
-        : (FlowValueTypeStyle[FlowValueTypeEnum.other] as any),
+        : (FlowValueTypeStyle[FlowValueTypeEnum.any] as any),
     []
   );
 

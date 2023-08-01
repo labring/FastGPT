@@ -36,7 +36,7 @@ export async function saveChat({
   if (chatHistory) {
     promise.push(
       Chat.findOneAndUpdate(
-        { chatId },
+        { chatId, userId },
         {
           $push: {
             content: {

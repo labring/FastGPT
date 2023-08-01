@@ -96,7 +96,6 @@ export async function dispatchContentExtract({
       return {};
     }
   })();
-  console.log(adaptMessages, arg);
 
   // auth fields
   let success = !extractKeys.find((item) => !arg[item.key]);
@@ -109,6 +108,7 @@ export async function dispatchContentExtract({
       }
     }
   }
+  console.log(arg, '====');
 
   const tokens = response.data.usage?.total_tokens || 0;
 
@@ -116,6 +116,7 @@ export async function dispatchContentExtract({
     [ContextExtractEnum.success]: success ? true : undefined,
     [ContextExtractEnum.failed]: success ? undefined : true,
     [ContextExtractEnum.fields]: arg,
+    ...arg,
     [TaskResponseKeyEnum.responseData]: {
       moduleName: ChatModuleEnum.Extract,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),

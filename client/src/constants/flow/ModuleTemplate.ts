@@ -109,7 +109,6 @@ export const HistoryModule: FlowModuleTemplateType = {
   ]
 };
 
-const defaultModel = chatModelList[0];
 export const ChatModule: FlowModuleTemplateType = {
   logo: '/imgs/module/AI.png',
   name: 'AI 对话',
@@ -120,7 +119,7 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'model',
       type: FlowInputItemTypeEnum.custom,
       label: '对话模型',
-      value: defaultModel?.model,
+      value: chatModelList[0]?.model,
       list: chatModelList.map((item) => ({ label: item.name, value: item.model }))
     },
     {
@@ -140,15 +139,15 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'maxToken',
       type: FlowInputItemTypeEnum.custom,
       label: '回复上限',
-      value: defaultModel ? defaultModel.contextMaxToken / 2 : 2000,
+      value: chatModelList[0] ? chatModelList[0].contextMaxToken / 2 : 2000,
       min: 100,
-      max: defaultModel?.contextMaxToken || 4000,
+      max: chatModelList[0]?.contextMaxToken || 4000,
       step: 50,
       markList: [
         { label: '100', value: 100 },
         {
-          label: `${defaultModel?.contextMaxToken || 4000}`,
-          value: defaultModel?.contextMaxToken || 4000
+          label: `${chatModelList[0]?.contextMaxToken || 4000}`,
+          value: chatModelList[0]?.contextMaxToken || 4000
         }
       ]
     },
@@ -280,8 +279,10 @@ export const AnswerModule: FlowModuleTemplateType = {
       key: SpecialInputKeyEnum.answerText,
       value: '',
       type: FlowInputItemTypeEnum.textarea,
+      valueType: FlowValueTypeEnum.string,
       label: '回复的内容',
-      description: '可以使用 \\n 来实现换行'
+      description:
+        '可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容'
     }
   ],
   outputs: []
@@ -407,13 +408,8 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
       value: [
         {
-          key: 'a',
-          desc: '描述',
-          required: true
-        },
-        {
-          key: 'n',
-          desc: '描述',
+          key: 'key',
+          desc: '目标字段',
           required: true
         }
       ]
@@ -436,9 +432,16 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     },
     {
       key: ContextExtractEnum.fields,
-      label: '提取结果',
+      label: '完整提取结果',
       description: '一个 JSON 对象，例如 {"name:":"YY","Time":"2023/7/2 18:00"}',
-      valueType: FlowValueTypeEnum.other,
+      valueType: FlowValueTypeEnum.any,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
+    {
+      key: 'key',
+      label: '提取结果-目标字段',
+      valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
       targets: []
     }
@@ -502,6 +505,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'userChatInput',
+            label: '用户问题',
+            type: 'source',
+            valueType: 'string',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -521,7 +527,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         inputs: [
           {
             key: 'maxContext',
-            value: 10,
+            value: 6,
             connected: true
           },
           {
@@ -532,6 +538,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'history',
+            label: '聊天记录',
+            valueType: 'chat_history',
+            type: 'source',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -544,14 +553,14 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       {
         moduleId: 'chatModule',
         position: {
-          x: 981.9682828103937,
-          y: 890.014595014464
+          x: 998.0312473867093,
+          y: 803.8586941051353
         },
         flowType: 'chatNode',
         inputs: [
           {
             key: 'model',
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             connected: true
           },
           {
@@ -561,7 +570,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'maxToken',
-            value: 8000,
+            value: 2000,
             connected: true
           },
           {
@@ -594,6 +603,17 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'answerText',
+            label: '模型回复',
+            description: '直接响应，无需配置',
+            type: 'hidden',
+            targets: []
+          },
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: 'AI 回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
             targets: []
           }
         ]
@@ -616,8 +636,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         inputs: [
           {
             key: 'welcomeText',
-            value:
-              '我是 laf 助手，请问有什么可以帮助你的么？\n[laf 是什么？]\n[laf 官网是多少？]\n[交流群]',
+            value: '你好，我是 laf 助手，有什么可以帮助你的么？',
             connected: true
           }
         ],
@@ -639,6 +658,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'userChatInput',
+            label: '用户问题',
+            type: 'source',
+            valueType: 'string',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -655,14 +677,14 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       {
         moduleId: 'history',
         position: {
-          x: 458.37518916304566,
-          y: 1296.7930057645262
+          x: 452.5466249541586,
+          y: 1276.3930310334215
         },
         flowType: 'historyNode',
         inputs: [
           {
             key: 'maxContext',
-            value: 10,
+            value: 6,
             connected: true
           },
           {
@@ -673,6 +695,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'history',
+            label: '聊天记录',
+            valueType: 'chat_history',
+            type: 'source',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -697,7 +722,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'similarity',
-            value: 0.82,
+            value: 0.8,
             connected: true
           },
           {
@@ -717,15 +742,21 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'isEmpty',
+            label: '搜索结果为空',
+            type: 'source',
+            valueType: 'boolean',
             targets: [
               {
-                moduleId: 'asv5cb',
+                moduleId: 'chatModule',
                 key: 'switch'
               }
             ]
           },
           {
             key: 'unEmpty',
+            label: '搜索结果不为空',
+            type: 'source',
+            valueType: 'boolean',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -735,6 +766,10 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'quoteQA',
+            label: '引用内容',
+            description: '搜索结果为空时不返回',
+            type: 'source',
+            valueType: 'kb_quote',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -747,34 +782,34 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       {
         moduleId: 'chatModule',
         position: {
-          x: 1521.114092861523,
-          y: 1038.6910820851604
+          x: 1564.2820496250988,
+          y: 842.3852152224699
         },
         flowType: 'chatNode',
         inputs: [
           {
             key: 'model',
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             connected: true
           },
           {
             key: 'temperature',
-            value: 5,
+            value: 0,
             connected: true
           },
           {
             key: 'maxToken',
-            value: 16000,
+            value: 2000,
             connected: true
           },
           {
             key: 'systemPrompt',
-            value: '知识库是关于 laf 的内容。',
+            value: '',
             connected: true
           },
           {
             key: 'limitPrompt',
-            value: '根据知识库回答用户问题，回答范围仅限知识库。',
+            value: '',
             connected: true
           },
           {
@@ -797,29 +832,20 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'answerText',
+            label: '模型回复',
+            description: '直接响应，无需配置',
+            type: 'hidden',
+            targets: []
+          },
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: 'AI 回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
             targets: []
           }
         ]
-      },
-      {
-        moduleId: 'asv5cb',
-        position: {
-          x: 1517.320542832093,
-          y: 699.8757371712562
-        },
-        flowType: 'answerNode',
-        inputs: [
-          {
-            key: 'switch',
-            connected: true
-          },
-          {
-            key: 'text',
-            value: '对不起，我找不到你的问题，请更加详细的描述 laf 相关的问题。',
-            connected: true
-          }
-        ],
-        outputs: []
       }
     ]
   },
@@ -839,8 +865,53 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         inputs: [
           {
             key: 'welcomeText',
-            value:
-              '你好，我是翻译助手，可以帮你把内容翻译成任何语言，请告诉我，你需要翻译成什么语言？',
+            value: '你好，我可以为你翻译各种语言，请告诉我你需要翻译成什么语言？',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: 'variable',
+        position: {
+          x: 444.0369195277651,
+          y: 1008.5185781784537
+        },
+        flowType: 'variable',
+        inputs: [
+          {
+            key: 'variables',
+            value: [
+              {
+                id: '35c640eb-cf22-431f-bb57-3fc21643880e',
+                key: 'language',
+                label: '目标语言',
+                type: 'input',
+                required: true,
+                maxLen: 50,
+                enums: [
+                  {
+                    value: ''
+                  }
+                ]
+              },
+              {
+                id: '2011ff08-91aa-4f60-ae69-f311ab4797b3',
+                key: 'language2',
+                label: '下拉框测试',
+                type: 'select',
+                required: false,
+                maxLen: 50,
+                enums: [
+                  {
+                    value: '英语'
+                  },
+                  {
+                    value: '法语'
+                  }
+                ]
+              }
+            ],
             connected: true
           }
         ],
@@ -862,6 +933,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'userChatInput',
+            label: '用户问题',
+            type: 'source',
+            valueType: 'string',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -892,6 +966,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'history',
+            label: '聊天记录',
+            valueType: 'chat_history',
+            type: 'source',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -911,7 +988,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         inputs: [
           {
             key: 'model',
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             connected: true
           },
           {
@@ -921,7 +998,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'maxToken',
-            value: 8000,
+            value: 2000,
             connected: true
           },
           {
@@ -931,7 +1008,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'limitPrompt',
-            value: '把用户发送的内容直接翻译成{{language}}，不要做其他回答。',
+            value: '将我的问题直接翻译成英语{{language}}',
             connected: true
           },
           {
@@ -954,39 +1031,20 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'answerText',
+            label: '模型回复',
+            description: '直接响应，无需配置',
+            type: 'hidden',
+            targets: []
+          },
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: 'AI 回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
             targets: []
           }
         ]
-      },
-      {
-        moduleId: 'fo9i68',
-        position: {
-          x: 445.17843864558927,
-          y: 992.4891333735476
-        },
-        flowType: 'variable',
-        inputs: [
-          {
-            key: 'variables',
-            value: [
-              {
-                id: '9qjnai',
-                key: 'language',
-                label: '目标语言',
-                type: 'input',
-                required: true,
-                maxLen: 50,
-                enums: [
-                  {
-                    value: ''
-                  }
-                ]
-              }
-            ],
-            connected: true
-          }
-        ],
-        outputs: []
       }
     ]
   },
@@ -1012,6 +1070,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'userChatInput',
+            label: '用户问题',
+            type: 'source',
+            valueType: 'string',
             targets: [
               {
                 moduleId: 'remuj3',
@@ -1039,7 +1100,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         inputs: [
           {
             key: 'maxContext',
-            value: 10,
+            value: 6,
             connected: true
           },
           {
@@ -1050,6 +1111,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'history',
+            label: '聊天记录',
+            valueType: 'chat_history',
+            type: 'source',
             targets: [
               {
                 moduleId: 'nlfwkc',
@@ -1082,7 +1146,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             connected: true
           },
           {
-            key: SpecialInputKeyEnum.agents,
+            key: 'agents',
             value: [
               {
                 value: '打招呼、问候等问题',
@@ -1093,8 +1157,12 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 key: 'fqsw'
               },
               {
-                value: '其他问题',
+                value: '商务问题',
                 key: 'fesw'
+              },
+              {
+                value: '其他问题',
+                key: 'oy1c'
               }
             ],
             connected: true
@@ -1103,6 +1171,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'fasw',
+            label: '',
+            type: 'hidden',
             targets: [
               {
                 moduleId: 'a99p6z',
@@ -1112,6 +1182,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'fqsw',
+            label: '',
+            type: 'hidden',
             targets: [
               {
                 moduleId: 'fljhzy',
@@ -1121,6 +1193,19 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'fesw',
+            label: '',
+            type: 'hidden',
+            targets: [
+              {
+                moduleId: '5v78ap',
+                key: 'switch'
+              }
+            ]
+          },
+          {
+            key: 'oy1c',
+            label: '',
+            type: 'hidden',
             targets: [
               {
                 moduleId: 'iejcou',
@@ -1153,8 +1238,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       {
         moduleId: 'iejcou',
         position: {
-          x: 1301.7531189034548,
-          y: 1842.1297123368286
+          x: 1294.2531189034548,
+          y: 2127.1297123368286
         },
         flowType: 'answerNode',
         inputs: [
@@ -1224,6 +1309,17 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'answerText',
+            label: '模型回复',
+            description: '直接响应，无需配置',
+            type: 'hidden',
+            targets: []
+          },
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: 'AI 回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
             targets: []
           }
         ]
@@ -1249,6 +1345,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'history',
+            label: '聊天记录',
+            valueType: 'chat_history',
+            type: 'source',
             targets: [
               {
                 moduleId: 'remuj3',
@@ -1268,7 +1367,11 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         inputs: [
           {
             key: 'kbList',
-            value: [],
+            value: [
+              {
+                kbId: '646627f4f7b896cfd8910e24'
+              }
+            ],
             connected: true
           },
           {
@@ -1293,6 +1396,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         outputs: [
           {
             key: 'isEmpty',
+            label: '搜索结果为空',
+            type: 'source',
+            valueType: 'boolean',
             targets: [
               {
                 moduleId: 'tc90wz',
@@ -1302,6 +1408,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'unEmpty',
+            label: '搜索结果不为空',
+            type: 'source',
+            valueType: 'boolean',
             targets: [
               {
                 moduleId: 'nlfwkc',
@@ -1311,6 +1420,10 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'quoteQA',
+            label: '引用内容',
+            description: '搜索结果为空时不返回',
+            type: 'source',
+            valueType: 'kb_quote',
             targets: [
               {
                 moduleId: 'nlfwkc',
@@ -1352,6 +1465,26 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           {
             key: 'text',
             value: '对不起，我找不到你的问题，请更加详细的描述你的问题。',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: '5v78ap',
+        position: {
+          x: 1294.814522053934,
+          y: 1822.7626988141562
+        },
+        flowType: 'answerNode',
+        inputs: [
+          {
+            key: 'switch',
+            connected: true
+          },
+          {
+            key: 'text',
+            value: '这是一个商务问题',
             connected: true
           }
         ],

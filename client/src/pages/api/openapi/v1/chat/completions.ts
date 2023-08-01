@@ -139,7 +139,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // }
 
     // save chat
-    if (typeof chatId === 'string') {
+    if (chatId) {
       await saveChat({
         chatId,
         appId,

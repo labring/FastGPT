@@ -14,8 +14,8 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
     () =>
       valueType
         ? FlowValueTypeStyle[valueType]
-        : (FlowValueTypeStyle[FlowValueTypeEnum.other] as any),
-    []
+        : (FlowValueTypeStyle[FlowValueTypeEnum.any] as any),
+    [valueType]
   );
 
   return (

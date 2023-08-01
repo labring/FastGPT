@@ -6,7 +6,7 @@ interface Props extends TooltipProps {
   forceShow?: boolean;
 }
 
-const MyTooltip = ({ children, forceShow = false, ...props }: Props) => {
+const MyTooltip = ({ children, forceShow = false, shouldWrapChildren = true, ...props }: Props) => {
   const { isPc } = useGlobalStore();
   return isPc || forceShow ? (
     <Tooltip
@@ -21,6 +21,7 @@ const MyTooltip = ({ children, forceShow = false, ...props }: Props) => {
       borderRadius={'8px'}
       whiteSpace={'pre-wrap'}
       boxShadow={'1px 1px 10px rgba(0,0,0,0.2)'}
+      shouldWrapChildren={shouldWrapChildren}
       {...props}
     >
       {children}

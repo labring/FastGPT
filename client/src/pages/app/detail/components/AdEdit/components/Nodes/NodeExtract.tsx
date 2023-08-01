@@ -13,6 +13,8 @@ import RenderOutput from '../render/RenderOutput';
 import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
+import SourceHandle from '../render/SourceHandle';
+import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 
 const NodeExtract = ({
   data: { inputs, outputs, moduleId, onChangeNode, ...props }
@@ -36,7 +38,22 @@ const NodeExtract = ({
               key: string;
               value?: ContextExtractAgentItemType[];
             }) => (
-              <Box>
+              <Box pt={2}>
+                <Box position={'absolute'} top={0} right={0}>
+                  <Button
+                    variant={'base'}
+                    leftIcon={<AddIcon fontSize={'10px'} />}
+                    onClick={() =>
+                      setEditExtractField({
+                        desc: '',
+                        key: '',
+                        required: true
+                      })
+                    }
+                  >
+                    新增字段
+                  </Button>
+                </Box>
                 <TableContainer>
                   <Table>
                     <Thead>
@@ -49,10 +66,10 @@ const NodeExtract = ({
                     </Thead>
                     <Tbody>
                       {extractKeys.map((item, index) => (
-                        <Tr key={index}>
+                        <Tr key={index} position={'relative'}>
                           <Td>{item.key}</Td>
                           <Td whiteSpace={'pre-line'} wordBreak={'break-all'}>
-                            {item.desc}{' '}
+                            {item.desc}
                           </Td>
                           <Td>{item.required ? '✔' : ''}</Td>
                           <Td whiteSpace={'nowrap'}>
@@ -70,11 +87,24 @@ const NodeExtract = ({
                               w={'16px'}
                               cursor={'pointer'}
                               onClick={() => {
+                                const newInputValue = extractKeys.filter(
+                                  (extract) => item.key !== extract.key
+                                );
+                                const newOutputVal = outputs.filter(
+                                  (output) => output.key !== item.key
+                                );
+
                                 onChangeNode({
                                   moduleId,
                                   type: 'inputs',
                                   key: ContextExtractEnum.extractKeys,
-                                  value: extractKeys.filter((extract) => item.key !== extract.key)
+                                  value: newInputValue
+                                });
+                                onChangeNode({
+                                  moduleId,
+                                  type: 'outputs',
+                                  key: '',
+                                  value: newOutputVal
                                 });
                               }}
                             />
@@ -84,21 +114,6 @@ const NodeExtract = ({
                     </Tbody>
                   </Table>
                 </TableContainer>
-                <Box mt={2} textAlign={'right'}>
-                  <Button
-                    variant={'base'}
-                    leftIcon={<AddIcon fontSize={'10px'} />}
-                    onClick={() =>
-                      setEditExtractField({
-                        desc: '',
-                        key: '',
-                        required: true
-                      })
-                    }
-                  >
-                    新增字段
-                  </Button>
-                </Box>
               </Box>
             )
           }}
@@ -119,21 +134,39 @@ const NodeExtract = ({
 
             const exists = extracts.find((item) => item.key === editExtractFiled.key);
 
-            if (exists) {
-              onChangeNode({
-                moduleId,
-                type: 'inputs',
-                key: ContextExtractEnum.extractKeys,
-                value: extracts.map((item) => (item.key === editExtractFiled.key ? data : item))
-              });
-            } else {
-              onChangeNode({
-                moduleId,
-                type: 'inputs',
-                key: ContextExtractEnum.extractKeys,
-                value: extracts.concat(data)
-              });
-            }
+            const newInputs = exists
+              ? extracts.map((item) => (item.key === editExtractFiled.key ? data : item))
+              : extracts.concat(data);
+            const newOutputs = exists
+              ? outputs.map((output) =>
+                  output.key === editExtractFiled.key
+                    ? {
+                        ...output,
+                        key: data.key,
+                        label: `提取结果-${data.desc}`
+                      }
+                    : output
+                )
+              : outputs.concat({
+                  key: data.key,
+                  label: `提取结果-${data.desc}`,
+                  valueType: FlowValueTypeEnum.string,
+                  type: FlowOutputItemTypeEnum.source,
+                  targets: []
+                });
+
+            onChangeNode({
+              moduleId,
+              type: 'inputs',
+              key: ContextExtractEnum.extractKeys,
+              value: newInputs
+            });
+            onChangeNode({
+              moduleId,
+              type: 'outputs',
+              key: '',
+              value: newOutputs
+            });
 
             setEditExtractField(undefined);
           }}

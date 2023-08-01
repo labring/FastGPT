@@ -73,6 +73,10 @@ export const appModule2FlowNode = ({
   const template =
     ModuleTemplatesFlat.find((template) => template.flowType === item.flowType) || EmptyModule;
 
+  const mergeOutputs = item.outputs.concat(
+    template.outputs.filter((output) => !item.outputs.find((item) => item.key === output.key))
+  );
+
   // replace item data
   const moduleItem: FlowModuleItemType = {
     ...item,
@@ -85,14 +89,14 @@ export const appModule2FlowNode = ({
         value: itemInput.value
       };
     }),
-    outputs: template.outputs.map((templateOutput) => {
+    // 合并 template 和数据库，文案以 template 为准
+    outputs: mergeOutputs.map((output) => {
       // unChange outputs
-      const itemOutput =
-        item.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+      const templateOutput = template.outputs.find((item) => item.key === output.key);
 
       return {
-        ...templateOutput,
-        targets: itemOutput.targets || []
+        ...(templateOutput ? templateOutput : output),
+        targets: output.targets || []
       };
     }),
     onChangeNode,
@@ -131,5 +135,6 @@ export const appModule2FlowEdge = ({
       })
     )
   );
+
   return edges;
 };

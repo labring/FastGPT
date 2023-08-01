@@ -45,7 +45,7 @@ export enum FlowValueTypeEnum {
   'boolean' = 'boolean',
   'chatHistory' = 'chat_history',
   'kbQuote' = 'kb_quote',
-  'other' = 'other'
+  'any' = 'any'
 }
 
 export const FlowValueTypeStyle: Record<`${FlowValueTypeEnum}`, BoxProps> = {
@@ -64,7 +64,7 @@ export const FlowValueTypeStyle: Record<`${FlowValueTypeEnum}`, BoxProps> = {
   [FlowValueTypeEnum.kbQuote]: {
     background: '#A558C9'
   },
-  [FlowValueTypeEnum.other]: {
+  [FlowValueTypeEnum.any]: {
     background: '#9CA2A8'
   }
 };

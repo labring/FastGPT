@@ -17,14 +17,14 @@ const Label = ({
   <Flex as={'label'} justifyContent={'right'} alignItems={'center'} position={'relative'}>
     {description && (
       <MyTooltip label={description} forceShow>
-        <QuestionOutlineIcon display={['none', 'inline']} transform={'translateY(-1px)'} mr={1} />
+        <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
       </MyTooltip>
     )}
     {children}
   </Flex>
 );
 
-const RenderBody = ({ flowOutputList }: { flowOutputList: FlowOutputItemType[] }) => {
+const RenderOutput = ({ flowOutputList }: { flowOutputList: FlowOutputItemType[] }) => {
   return (
     <>
       {flowOutputList.map(
@@ -44,4 +44,4 @@ const RenderBody = ({ flowOutputList }: { flowOutputList: FlowOutputItemType[] }
   );
 };
 
-export default React.memo(RenderBody);
+export default RenderOutput;
