@@ -162,7 +162,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     });
     return modules;
   }, [edges, nodes]);
-
   const onChangeNode = useCallback(
     ({ moduleId, key, type = 'inputs', value, valueKey = 'value' }: FlowModuleItemChangeProps) => {
       setNodes((nodes) =>
@@ -205,6 +204,29 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     },
     [setEdges, setNodes]
   );
+  const onDelEdge = useCallback(
+    ({
+      moduleId,
+      sourceHandle,
+      targetHandle
+    }: {
+      moduleId: string;
+      sourceHandle?: string;
+      targetHandle?: string;
+    }) => {
+      if (!sourceHandle && !targetHandle) return;
+      setEdges((state) =>
+        state.filter((edge) => {
+          if (edge.source === moduleId && edge.sourceHandle === sourceHandle) return false;
+          if (edge.target === moduleId && edge.targetHandle === targetHandle) return false;
+
+          return true;
+        })
+      );
+    },
+    [setEdges]
+  );
+
   const onAddNode = useCallback(
     ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
       if (!reactFlowWrapper.current) return;
@@ -221,12 +243,13 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
               position: { x: mouseX, y: mouseY }
             },
             onChangeNode,
-            onDelNode
+            onDelNode,
+            onDelEdge
           })
         )
       );
     },
-    [onChangeNode, onDelNode, setNodes, x, y, zoom]
+    [onDelEdge, onChangeNode, onDelNode, setNodes, x, y, zoom]
   );
   const onDelConnect = useCallback(
     (id: string) => {
@@ -309,14 +332,15 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           appModule2FlowNode({
             item,
             onChangeNode,
-            onDelNode
+            onDelNode,
+            onDelEdge
           })
         )
       );
 
       onFixView();
     },
-    [onDelConnect, setEdges, setNodes, onFixView, onChangeNode, onDelNode]
+    [onDelConnect, setEdges, setNodes, onFixView, onChangeNode, onDelNode, onDelEdge]
   );
 
   useEffect(() => {

@@ -63,11 +63,13 @@ export const textAdaptGptResponse = ({
 export const appModule2FlowNode = ({
   item,
   onChangeNode,
-  onDelNode
+  onDelNode,
+  onDelEdge
 }: {
   item: AppModuleItemType;
   onChangeNode: FlowModuleItemType['onChangeNode'];
   onDelNode: FlowModuleItemType['onDelNode'];
+  onDelEdge: FlowModuleItemType['onDelEdge'];
 }): Node<FlowModuleItemType> => {
   // init some static data
   const template =
@@ -96,7 +98,8 @@ export const appModule2FlowNode = ({
       };
     }),
     onChangeNode,
-    onDelNode
+    onDelNode,
+    onDelEdge
   };
 
   return {

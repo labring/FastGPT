@@ -38,7 +38,7 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum, getDefaultChatVariables } from '@/constants/chat';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -251,7 +251,7 @@ const ChatBox = (
    * user confirm send prompt
    */
   const sendPrompt = useCallback(
-    async (data: Record<string, any> = {}, inputVal = '') => {
+    async (variables: Record<string, any> = {}, inputVal = '') => {
       if (isChatting) {
         toast({
           title: '正在聊天中...请等待结束',
@@ -306,7 +306,10 @@ const ChatBox = (
           messages,
           controller: abortSignal,
           generatingMessage,
-          variables: data
+          variables: {
+            ...getDefaultChatVariables(),
+            ...variables
+          }
         });
 
         // set finish status

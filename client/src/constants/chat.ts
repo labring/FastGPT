@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+
 export enum sseResponseEventEnum {
   error = 'error',
   answer = 'answer',
@@ -65,3 +67,7 @@ export enum OutLinkTypeEnum {
 
 export const HUMAN_ICON = `https://fastgpt.run/icon/human.png`;
 export const LOGO_ICON = `https://fastgpt.run/icon/logo.png`;
+
+export const getDefaultChatVariables = () => ({
+  cTime: dayjs().format('YYYY/MM/DD HH:mm:ss')
+});
