@@ -19,7 +19,7 @@ export type Props = {
 export type Response = {
   [ContextExtractEnum.success]?: boolean;
   [ContextExtractEnum.failed]?: boolean;
-  [ContextExtractEnum.fields]: Record<string, any>;
+  [ContextExtractEnum.fields]: string;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
 };
 
@@ -115,7 +115,7 @@ export async function dispatchContentExtract({
   return {
     [ContextExtractEnum.success]: success ? true : undefined,
     [ContextExtractEnum.failed]: success ? undefined : true,
-    [ContextExtractEnum.fields]: arg,
+    [ContextExtractEnum.fields]: JSON.stringify(arg),
     ...arg,
     [TaskResponseKeyEnum.responseData]: {
       moduleName: ChatModuleEnum.Extract,

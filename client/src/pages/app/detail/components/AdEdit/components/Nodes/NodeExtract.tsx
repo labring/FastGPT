@@ -16,7 +16,7 @@ import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 
 const NodeExtract = ({
-  data: { inputs, outputs, moduleId, onChangeNode, ...props }
+  data: { inputs, outputs, moduleId, onChangeNode, onDelEdge, ...props }
 }: NodeProps<FlowModuleItemType>) => {
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
@@ -105,6 +105,7 @@ const NodeExtract = ({
                                   key: '',
                                   value: newOutputVal
                                 });
+                                onDelEdge({ moduleId, sourceHandle: item.key });
                               }}
                             />
                           </Td>
@@ -167,6 +168,10 @@ const NodeExtract = ({
               key: '',
               value: newOutputs
             });
+
+            if (editExtractFiled.key && editExtractFiled.key !== data.key) {
+              onDelEdge({ moduleId, sourceHandle: editExtractFiled.key });
+            }
 
             setEditExtractField(undefined);
           }}

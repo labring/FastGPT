@@ -30,7 +30,7 @@ export const VariableModule: FlowModuleTemplateType = {
   name: '全局变量',
   intro: '可以在对话开始前，要求用户填写一些内容作为本轮对话的变量。该模块位于开场引导之后。',
   description:
-    '全局变量可以通过 {{变量key}} 的形式注入到其他模块的文本中。目前支持：提示词、限定词。',
+    '全局变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等',
   flowType: FlowModuleTypeEnum.variable,
   inputs: [
     {
@@ -389,6 +389,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       valueType: FlowValueTypeEnum.string,
       label: '提取要求描述',
       description: '写一段提取要求，告诉 AI 需要提取哪些内容',
+      required: true,
       placeholder:
         '例如: \n1. 你是一个实验室预约助手。根据用户问题，提取出姓名、实验室号和预约时间',
       value: ''
@@ -433,8 +434,8 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     {
       key: ContextExtractEnum.fields,
       label: '完整提取结果',
-      description: '一个 JSON 对象，例如 {"name:":"YY","Time":"2023/7/2 18:00"}',
-      valueType: FlowValueTypeEnum.any,
+      description: '一个 JSON 字符串，例如：{"name:":"YY","Time":"2023/7/2 18:00"}',
+      valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
       targets: []
     },
