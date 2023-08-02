@@ -264,7 +264,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: [
       {
         key: 'maxContext',
-        value: 10,
+        value: 6,
         connected: true
       },
       {
@@ -340,7 +340,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: [
       {
         key: 'maxContext',
-        value: 10,
+        value: 6,
         connected: true
       },
       {

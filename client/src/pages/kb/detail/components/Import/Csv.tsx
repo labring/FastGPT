@@ -20,7 +20,7 @@ const fileExtension = '.csv';
 type FileItemType = {
   id: string;
   filename: string;
-  chunks: { q: string; a: string }[];
+  chunks: { q: string; a: string; source?: string }[];
 };
 
 const CsvImport = ({ kbId }: { kbId: string }) => {
@@ -61,7 +61,8 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
                 filename: file.name,
                 chunks: data.map((item) => ({
                   q: item[0],
-                  a: item[1]
+                  a: item[1],
+                  source: item[2]
                 }))
               },
               ...state
@@ -88,7 +89,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
         file.chunks.forEach((chunk) => {
           chunks.push({
             ...chunk,
-            source: file.filename
+            source: chunk.source || file.filename
           });
         })
       );
@@ -210,6 +211,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
                     <Box px={3} py={'1px'} border={theme.borders.base} borderRadius={'md'}>
                       # {i + 1}
                     </Box>
+                    {item.source && <Box ml={1}>({item.source})</Box>}
                     <Box flex={1} />
                     <DeleteIcon
                       onClick={() => {

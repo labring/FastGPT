@@ -23,7 +23,7 @@ const FileSelect = ({
   ...props
 }: Props) => {
   const { Loading: FileSelectLoading } = useLoading();
-  const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
+  const csvTemplate = `question,answer,source\n"什么是 laf","laf 是一个云函数开发平台……","laf git doc"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……","sealos git doc"`;
 
   const { File, onOpen } = useSelectFile({
     fileType: fileExtension,
@@ -72,7 +72,7 @@ const FileSelect = ({
             })
           }
         >
-          点击下载csv模板
+          点击下载 CSV 模板
         </Box>
       )}
       <FileSelectLoading loading={isLoading} fixed={false} />

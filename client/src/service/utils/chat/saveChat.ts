@@ -35,12 +35,13 @@ export async function saveChat({
 
   if (chatHistory) {
     promise.push(
-      Chat.findOneAndUpdate(
+      Chat.updateOne(
         { chatId, userId },
         {
           $push: {
             content: {
-              $each: content
+              $each: content,
+              $slice: -50
             }
           },
           title: content[0].value.slice(0, 20),
