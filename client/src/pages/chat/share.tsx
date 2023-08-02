@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { initShareChatInfo } from '@/api/chat';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
@@ -146,6 +147,9 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
 
   return (
     <PageContainer>
+      <Head>
+        <title>{shareChatData.app.name}</title>
+      </Head>
       <Flex h={'100%'} flexDirection={['column', 'row']}>
         {((children: React.ReactNode) => {
           return isPc ? (
