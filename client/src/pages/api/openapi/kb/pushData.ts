@@ -35,6 +35,18 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!kbId || !Array.isArray(data) || !model) {
       throw new Error('缺少参数');
     }
+
+    // auth model
+    if (mode === TrainingModeEnum.qa && !global.qaModels.find((item) => item.model === model)) {
+      throw new Error('不支持的 QA 拆分模型');
+    }
+    if (
+      mode === TrainingModeEnum.index &&
+      !global.vectorModels.find((item) => item.model === model)
+    ) {
+      throw new Error('不支持的向量生成模型');
+    }
+
     await connectToDatabase();
 
     // 凭证校验
