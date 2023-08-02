@@ -6,20 +6,24 @@ import Tag from '@/components/Tag';
 import Avatar from '@/components/Avatar';
 import ToolMenu from './ToolMenu';
 import { ChatItemType } from '@/types/chat';
+import { useRouter } from 'next/router';
 
 const ChatHeader = ({
   history,
   appName,
   appAvatar,
   chatModels,
+  appId,
   onOpenSlider
 }: {
   history: ChatItemType[];
   appName: string;
   appAvatar: string;
   chatModels?: string[];
+  appId?: string;
   onOpenSlider: () => void;
 }) => {
+  const router = useRouter();
   const theme = useTheme();
   const { isPc } = useGlobalStore();
   const title = useMemo(
@@ -58,7 +62,13 @@ const ChatHeader = ({
           <MyIcon name={'menu'} w={'20px'} h={'20px'} color={'myGray.900'} onClick={onOpenSlider} />
           <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
             <Avatar src={appAvatar} w={'16px'} />
-            <Box ml={1} className="textEllipsis">
+            <Box
+              ml={1}
+              className="textEllipsis"
+              onClick={() => {
+                appId && router.push(`/app/detail?appId=${appId}`);
+              }}
+            >
               {appName}
             </Box>
           </Flex>
