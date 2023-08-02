@@ -22,10 +22,11 @@ import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicke
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
-
+import { useTranslation } from 'next-i18next';
 const BillDetail = dynamic(() => import('./BillDetail'));
 
 const BillTable = () => {
+  const { t } = useTranslation();
   const { Loading } = useLoading();
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
@@ -55,10 +56,10 @@ const BillTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>时间</Th>
-              <Th>来源</Th>
-              <Th>应用名</Th>
-              <Th>总金额</Th>
+              <Th>{t('user.Time')}</Th>
+              <Th>{t('user.Source')}</Th>
+              <Th>{t('user.Application Name')}</Th>
+              <Th>{t('user.Total Amount')}</Th>
               <Th></Th>
             </Tr>
           </Thead>

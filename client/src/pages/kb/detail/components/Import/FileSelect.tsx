@@ -4,16 +4,26 @@ import { useLoading } from '@/hooks/useLoading';
 import { useSelectFile } from '@/hooks/useSelectFile';
 
 import MyIcon from '@/components/Icon';
+import { fileDownload } from '@/utils/file';
 
 interface Props extends BoxProps {
   fileExtension: string;
   tipText?: string;
   onSelectFile: (files: File[]) => Promise<void>;
   isLoading?: boolean;
+  isCsv?: boolean;
 }
 
-const FileSelect = ({ fileExtension, onSelectFile, isLoading, tipText, ...props }: Props) => {
+const FileSelect = ({
+  fileExtension,
+  onSelectFile,
+  isLoading,
+  tipText,
+  isCsv = false,
+  ...props
+}: Props) => {
   const { Loading: FileSelectLoading } = useLoading();
+  const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
   const { File, onOpen } = useSelectFile({
     fileType: fileExtension,
@@ -45,6 +55,24 @@ const FileSelect = ({ fileExtension, onSelectFile, isLoading, tipText, ...props 
       {tipText && (
         <Box mt={1} fontSize={'sm'} color={'myGray.600'}>
           {tipText}
+        </Box>
+      )}
+      {isCsv && (
+        <Box
+          my={3}
+          cursor={'pointer'}
+          textDecoration={'underline'}
+          color={'myBlue.600'}
+          fontSize={'12px'}
+          onClick={() =>
+            fileDownload({
+              text: csvTemplate,
+              type: 'text/csv',
+              filename: 'template.csv'
+            })
+          }
+        >
+          点击下载csv模板
         </Box>
       )}
       <FileSelectLoading loading={isLoading} fixed={false} />
