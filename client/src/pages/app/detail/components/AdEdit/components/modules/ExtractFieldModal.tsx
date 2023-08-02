@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -16,6 +16,7 @@ import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
+import MyTooltip from '@/components/MyTooltip';
 
 const ExtractFieldModal = ({
   defaultField = {
@@ -33,6 +34,7 @@ const ExtractFieldModal = ({
   const { register, handleSubmit } = useForm<ContextExtractAgentItemType>({
     defaultValues: defaultField
   });
+  const isEdit = useMemo(() => !!defaultField.key, [defaultField]);
 
   return (
     <MyModal isOpen={true} onClose={onClose}>
@@ -42,23 +44,29 @@ const ExtractFieldModal = ({
       </ModalHeader>
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box w={'70px'}>必填</Box>
+          <Box flex={'0 0 70px'}>必填</Box>
           <Switch {...register('required')} />
         </Flex>
         <Flex mt={5} alignItems={'center'}>
-          <Box w={'80px'}>字段描述</Box>
+          <Box flex={'0 0 70px'}>字段描述</Box>
           <Input
             placeholder="姓名/年龄/sql语句……"
             {...register('desc', { required: '字段描述不能为空' })}
           />
         </Flex>
         <Flex mt={5} alignItems={'center'}>
-          <Box w={'80px'}>字段 key</Box>
-          <Input
-            placeholder="name/age/sql"
-            {...register('key', { required: '字段 key 不能为空' })}
-          />
+          <Box flex={'0 0 70px'}>字段 key</Box>
+          <MyTooltip label={isEdit ? '不支持修改 key' : ''} shouldWrapChildren={false}>
+            <Input
+              isDisabled={isEdit}
+              placeholder="name/age/sql"
+              {...register('key', { required: '字段 key 不能为空' })}
+            />
+          </MyTooltip>
         </Flex>
+        <Box mt={1} pl={'70px'} color={'myGray.600'} fontSize={'sm'}>
+          注意: key 字段创建后无法修改
+        </Box>
       </ModalBody>
 
       <ModalFooter>

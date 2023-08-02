@@ -13,7 +13,6 @@ import RenderOutput from '../render/RenderOutput';
 import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
-import SourceHandle from '../render/SourceHandle';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 
 const NodeExtract = ({
@@ -150,6 +149,7 @@ const NodeExtract = ({
               : outputs.concat({
                   key: data.key,
                   label: `提取结果-${data.desc}`,
+                  description: '无法提取时不会返回',
                   valueType: FlowValueTypeEnum.string,
                   type: FlowOutputItemTypeEnum.source,
                   targets: []
