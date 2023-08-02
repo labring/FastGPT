@@ -39,6 +39,21 @@
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
-    "Update password succseful": "修改密码成功"
+    "Update password succseful": "修改密码成功",
+    "Personal Information": "个人信息",
+    "Usage Record": "使用记录",
+    "Recharge Record": "充值记录",
+    "Notice": "通知",
+    "Sign Out": "登出",
+    "Avatar": "头像",
+    "Account": "账号",
+    "Balance": "余额",
+    "Time": "时间",
+    "Source": "来源",
+    "Application Name": "应用名",
+    "Total Amount": "总金额",
+    "Change": "变更",
+    "Password": "密码",
+    "Replace": "更换"
   }
 }

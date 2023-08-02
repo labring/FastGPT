@@ -10,8 +10,7 @@ import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { feConfigs } from '@/store/static';
-import { useTranslation } from 'react-i18next';
-
+import { useTranslation } from 'next-i18next';
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -125,7 +124,7 @@ const UserInfo = () => {
 
         <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
           <MyIcon mr={1} name={'edit'} w={'14px'} />
-          更换
+          {t('user.Replace')}
         </Flex>
       </Flex>
       <Box
@@ -136,26 +135,26 @@ const UserInfo = () => {
         mt={[6, 0]}
       >
         <Flex alignItems={'center'} w={['85%', '300px']}>
-          <Box flex={'0 0 50px'}>账号:</Box>
+          <Box flex={'0 0 50px'}>{t('user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
-          <Box flex={'0 0 50px'}>密码:</Box>
+          <Box flex={'0 0 50px'}>{t('user.Password')}:&nbsp;</Box>
           <Box flex={1}>*****</Box>
           <Button size={['sm', 'md']} variant={'base'} ml={5} onClick={onOpenUpdatePsw}>
-            变更
+            {t('user.Change')}
           </Button>
         </Flex>
         {feConfigs?.show_userDetail && (
           <>
             <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
               <Flex alignItems={'center'}>
-                <Box flex={'0 0 50px'}>余额:</Box>
+                <Box flex={'0 0 50px'}>{t('user.Balance')}:&nbsp;</Box>
                 <Box flex={1}>
                   <strong>{userInfo?.balance.toFixed(3)}</strong> 元
                 </Box>
                 <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
-                  充值
+                  {t('user.Pay')}
                 </Button>
               </Flex>
             </Box>

@@ -13,7 +13,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect from './FileSelect';
 import { useRouter } from 'next/router';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-import { readCsvContent } from '@/utils/file';
+import { fileDownload, readCsvContent } from '@/utils/file';
 
 const fileExtension = '.csv';
 
@@ -137,6 +137,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
           isLoading={selecting}
           tipText={'如果导入文件乱码，请将 CSV 转成 utf-8 编码格式'}
           py={emptyFiles ? '100px' : 5}
+          isCsv
         />
 
         {!emptyFiles && (

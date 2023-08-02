@@ -39,6 +39,21 @@
     "Set OpenAI Account Failed": "Set OpenAI account failed",
     "Update Password": "Update Password",
     "Update password failed": "Update password failed",
-    "Update password succseful": "Update password succseful"
+    "Update password succseful": "Update password succseful",
+    "Personal Information": "Personal",
+    "Usage Record": "Usage",
+    "Recharge Record": "Recharge",
+    "Notice": "Notice",
+    "Sign Out": "Sign Out",
+    "Avatar": "Avatar",
+    "Account": "Account",
+    "Balance": "Balance",
+    "Time": "Time",
+    "Source": "Source",
+    "Application Name": "Application Name",
+    "Total Amount": "Total Amount",
+    "Change": "Change",
+    "Password": "Password",
+    "Replace": "Replace"
   }
 }
