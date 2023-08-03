@@ -27,7 +27,8 @@ const NodeCQNode = ({
           CustomComponent={{
             [SpecialInputKeyEnum.agents]: ({
               key: agentKey,
-              value: agents = []
+              value: agents = [],
+              ...props
             }: {
               key: string;
               value?: ClassifyQuestionAgentItemType[];
@@ -50,7 +51,11 @@ const NodeCQNode = ({
                           moduleId,
                           type: 'inputs',
                           key: agentKey,
-                          value: newInputValue
+                          value: {
+                            ...props,
+                            key: agentKey,
+                            value: newInputValue
+                          }
                         });
                         onChangeNode({
                           moduleId,
@@ -77,8 +82,13 @@ const NodeCQNode = ({
                             );
                             onChangeNode({
                               moduleId,
+                              type: 'inputs',
                               key: agentKey,
-                              value: newVal
+                              value: {
+                                ...props,
+                                key: agentKey,
+                                value: newVal
+                              }
                             });
                           }}
                         />
@@ -97,11 +107,16 @@ const NodeCQNode = ({
                       type: FlowOutputItemTypeEnum.hidden,
                       targets: []
                     });
+
                     onChangeNode({
                       moduleId,
                       type: 'inputs',
                       key: agentKey,
-                      value: newInputValue
+                      value: {
+                        ...props,
+                        key: agentKey,
+                        value: newInputValue
+                      }
                     });
                     onChangeNode({
                       moduleId,

@@ -31,7 +31,8 @@ export enum FlowModuleTypeEnum {
   tfSwitchNode = 'tfSwitchNode',
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion',
-  contentExtract = 'contentExtract'
+  contentExtract = 'contentExtract',
+  httpRequest = 'httpRequest'
 }
 
 export enum SpecialInputKeyEnum {

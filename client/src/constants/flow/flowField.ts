@@ -6,3 +6,10 @@ export enum ContextExtractEnum {
   failed = 'failed',
   fields = 'fields'
 }
+
+export enum HttpPropsEnum {
+  url = 'url',
+  finish = 'finish',
+  body = 'body',
+  response = 'response'
+}

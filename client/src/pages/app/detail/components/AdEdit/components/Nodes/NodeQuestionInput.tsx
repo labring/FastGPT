@@ -9,7 +9,7 @@ import { FlowValueTypeEnum } from '@/constants/flow';
 import SourceHandle from '../render/SourceHandle';
 
 const QuestionInputNode = ({
-  data: { inputs, outputs, onChangeNode, ...props }
+  data: { inputs, outputs, ...props }
 }: NodeProps<FlowModuleItemType>) => {
   return (
     <NodeCard minW={'240px'} {...props}>

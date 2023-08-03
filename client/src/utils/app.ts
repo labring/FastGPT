@@ -1,9 +1,10 @@
-import type { AppModuleInputItemType, AppModuleItemType, VariableItemType } from '@/types/app';
+import type { AppModuleItemType, VariableItemType } from '@/types/app';
 import { chatModelList, vectorModelList } from '@/store/static';
 import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import type { SelectedKbType } from '@/types/plugin';
+import { FlowInputItemType } from '@/types/flow';
 
 export type EditFormType = {
   chatModel: {
@@ -64,7 +65,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
     key
   }: {
     formKey: string;
-    inputs: AppModuleInputItemType[];
+    inputs: FlowInputItemType[];
     key: string;
   }) => {
     const propertyPath = formKey.split('.');
@@ -148,7 +149,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
   return defaultAppForm;
 };
 
-const chatModelInput = (formData: EditFormType): AppModuleInputItemType[] => [
+const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
   {
     key: 'model',
     value: formData.chatModel.model,

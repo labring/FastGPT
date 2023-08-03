@@ -51,6 +51,11 @@ export type ContextExtractAgentItemType = {
   key: string;
   required: boolean;
 };
+export type HttpFieldItemType = {
+  label: string;
+  key: string;
+  type: `${FlowValueTypeEnum}`;
+};
 
 export type VariableItemType = {
   id: string;
@@ -63,12 +68,11 @@ export type VariableItemType = {
 };
 
 /* app module */
-export type AppModuleInputItemType = { key: string; value?: any; connected?: boolean };
 export type AppModuleItemType = {
   moduleId: string;
   position?: XYPosition;
   flowType: `${FlowModuleTypeEnum}`;
-  inputs: AppModuleInputItemType[];
+  inputs: FlowInputItemType[];
   outputs: FlowOutputItemType[];
 };
 

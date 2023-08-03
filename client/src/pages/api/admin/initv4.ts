@@ -3,9 +3,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, App } from '@/service/mongo';
-import { AppModuleInputItemType } from '@/types/app';
 import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import { TaskResponseKeyEnum } from '@/constants/chat';
+import { FlowInputItemType } from '@/types/flow';
 
 const chatModelInput = ({
   model,
@@ -21,7 +21,7 @@ const chatModelInput = ({
   systemPrompt: string;
   limitPrompt: string;
   kbList: { kbId: string }[];
-}): AppModuleInputItemType[] => [
+}): FlowInputItemType[] => [
   {
     key: 'model',
     value: model,

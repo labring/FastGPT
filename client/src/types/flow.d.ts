@@ -10,10 +10,9 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type FlowModuleItemChangeProps = {
   moduleId: string;
-  type?: 'inputs' | 'outputs';
+  type: 'inputs' | 'outputs' | 'addInput' | 'delInput';
   key: string;
   value: any;
-  valueKey?: keyof FlowInputItemType & keyof FlowBodyItemType;
 };
 
 export type FlowInputItemType = {
@@ -22,6 +21,7 @@ export type FlowInputItemType = {
   valueType?: `${FlowValueTypeEnum}`;
   type: `${FlowInputItemTypeEnum}`;
   label: string;
+  edit?: boolean;
   connected?: boolean;
   description?: string;
   placeholder?: string;
@@ -40,6 +40,7 @@ export type FlowOutputTargetItemType = {
 export type FlowOutputItemType = {
   key: string; // 字段名
   label?: string;
+  edit?: boolean;
   description?: string;
   valueType?: `${FlowValueTypeEnum}`;
   type?: `${FlowOutputItemTypeEnum}`;

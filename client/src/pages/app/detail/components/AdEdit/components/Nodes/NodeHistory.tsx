@@ -18,7 +18,11 @@ const NodeHistory = ({
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput flowOutputList={outputs} />
+        <RenderOutput
+          onChangeNode={onChangeNode}
+          moduleId={props.moduleId}
+          flowOutputList={outputs}
+        />
       </Container>
     </NodeCard>
   );

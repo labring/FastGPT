@@ -40,10 +40,13 @@ const NodeUserGuide = ({
         moduleId: props.moduleId,
         key: SystemInputEnum.variables,
         type: 'inputs',
-        value
+        value: {
+          ...inputs.find((item) => item.key === SystemInputEnum.variables),
+          value
+        }
       });
     },
-    [onChangeNode, props.moduleId]
+    [inputs, onChangeNode, props.moduleId]
   );
 
   const onclickSubmit = useCallback(

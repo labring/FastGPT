@@ -59,7 +59,7 @@ const FileSelect = ({
       )}
       {isCsv && (
         <Box
-          my={3}
+          mt={1}
           cursor={'pointer'}
           textDecoration={'underline'}
           color={'myBlue.600'}

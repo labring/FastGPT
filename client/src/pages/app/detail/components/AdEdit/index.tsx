@@ -71,6 +71,9 @@ const NodeUserGuide = dynamic(() => import('./components/Nodes/NodeUserGuide'), 
 const NodeExtract = dynamic(() => import('./components/Nodes/NodeExtract'), {
   ssr: false
 });
+const NodeHttp = dynamic(() => import('./components/Nodes/NodeHttp'), {
+  ssr: false
+});
 
 import 'reactflow/dist/style.css';
 import styles from './index.module.scss';
@@ -87,7 +90,8 @@ const nodeTypes = {
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
   [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode,
-  [FlowModuleTypeEnum.contentExtract]: NodeExtract
+  [FlowModuleTypeEnum.contentExtract]: NodeExtract,
+  [FlowModuleTypeEnum.httpRequest]: NodeHttp
   // [FlowModuleTypeEnum.empty]: EmptyModule
 };
 const edgeTypes = {
@@ -124,11 +128,10 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const flow2AppModules = useCallback(() => {
     const modules: AppModuleItemType[] = nodes.map((item) => ({
       moduleId: item.data.moduleId,
-      position: item.position,
       flowType: item.data.flowType,
+      position: item.position,
       inputs: item.data.inputs.map((item) => ({
-        key: item.key,
-        value: item.value,
+        ...item,
         connected: item.type !== FlowInputItemTypeEnum.target
       })),
       outputs: item.data.outputs.map((item) => ({
@@ -163,7 +166,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     return modules;
   }, [edges, nodes]);
   const onChangeNode = useCallback(
-    ({ moduleId, key, type = 'inputs', value, valueKey = 'value' }: FlowModuleItemChangeProps) => {
+    ({ moduleId, key, type = 'inputs', value }: FlowModuleItemChangeProps) => {
       setNodes((nodes) =>
         nodes.map((node) => {
           if (node.id !== moduleId) return node;
@@ -172,18 +175,43 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
               ...node,
               data: {
                 ...node.data,
-                inputs: node.data.inputs.map((item) => {
-                  if (item.key === key) {
-                    return {
-                      ...item,
-                      [valueKey]: value
-                    };
-                  }
-                  return item;
-                })
+                inputs: node.data.inputs.map((item) => (item.key === key ? value : item))
               }
             };
           }
+          if (type === 'addInput') {
+            const input = node.data.inputs.find((input) => input.key === value.key);
+            if (input) {
+              toast({
+                status: 'warning',
+                title: 'key 重复'
+              });
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  inputs: node.data.inputs
+                }
+              };
+            }
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                inputs: node.data.inputs.concat(value)
+              }
+            };
+          }
+          if (type === 'delInput') {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                inputs: node.data.inputs.filter((item) => item.key !== key)
+              }
+            };
+          }
+          console.log(value);
 
           return {
             ...node,
