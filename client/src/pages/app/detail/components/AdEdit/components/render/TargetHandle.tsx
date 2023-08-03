@@ -21,6 +21,7 @@ const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
 
   return (
     <Box
+      key={handleKey}
       position={'absolute'}
       top={'50%'}
       left={'-16px'}
@@ -36,7 +37,6 @@ const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
           }}
           type="target"
           id={handleKey}
-          datatype={valueStyle}
           position={Position.Left}
         />
       </MyTooltip>
@@ -44,4 +44,4 @@ const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
   );
 };
 
-export default TargetHandle;
+export default React.memo(TargetHandle);

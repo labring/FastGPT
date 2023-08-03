@@ -125,6 +125,36 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     }, 100);
   }, []);
 
+  const onDelNode = useCallback(
+    (nodeId: string) => {
+      setNodes((state) => state.filter((item) => item.id !== nodeId));
+      setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    },
+    [setEdges, setNodes]
+  );
+  const onDelEdge = useCallback(
+    ({
+      moduleId,
+      sourceHandle,
+      targetHandle
+    }: {
+      moduleId: string;
+      sourceHandle?: string;
+      targetHandle?: string;
+    }) => {
+      if (!sourceHandle && !targetHandle) return;
+      setEdges((state) =>
+        state.filter((edge) => {
+          if (edge.source === moduleId && edge.sourceHandle === sourceHandle) return false;
+          if (edge.target === moduleId && edge.targetHandle === targetHandle) return false;
+
+          return true;
+        })
+      );
+    },
+    [setEdges]
+  );
+
   const flow2AppModules = useCallback(() => {
     const modules: AppModuleItemType[] = nodes.map((item) => ({
       moduleId: item.data.moduleId,
@@ -203,6 +233,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
             };
           }
           if (type === 'delInput') {
+            onDelEdge({ moduleId, targetHandle: key });
             return {
               ...node,
               data: {
@@ -211,7 +242,14 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
               }
             };
           }
-          console.log(value);
+
+          // del output connect
+          const delOutputs = node.data.outputs.filter(
+            (item) => !value.find((output: FlowOutputTargetItemType) => output.key === item.key)
+          );
+          delOutputs.forEach((output) => {
+            onDelEdge({ moduleId, sourceHandle: output.key });
+          });
 
           return {
             ...node,
@@ -224,35 +262,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
       );
     },
     [setNodes]
-  );
-  const onDelNode = useCallback(
-    (nodeId: string) => {
-      setNodes((state) => state.filter((item) => item.id !== nodeId));
-      setEdges((state) => state.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
-    },
-    [setEdges, setNodes]
-  );
-  const onDelEdge = useCallback(
-    ({
-      moduleId,
-      sourceHandle,
-      targetHandle
-    }: {
-      moduleId: string;
-      sourceHandle?: string;
-      targetHandle?: string;
-    }) => {
-      if (!sourceHandle && !targetHandle) return;
-      setEdges((state) =>
-        state.filter((edge) => {
-          if (edge.source === moduleId && edge.sourceHandle === sourceHandle) return false;
-          if (edge.target === moduleId && edge.targetHandle === targetHandle) return false;
-
-          return true;
-        })
-      );
-    },
-    [setEdges]
   );
 
   const onAddNode = useCallback(

@@ -66,7 +66,7 @@ export async function dispatchContentExtract({
   //   function body
   const agentFunction = {
     name: agentFunName,
-    description: `${description}\n如果内容不存在，返回空字符串。当前时间是2023/7/31 18:00`,
+    description: `${description}\n如果内容不存在，返回空字符串。`,
     parameters: {
       type: 'object',
       properties,

@@ -10,7 +10,9 @@ import {
   dispatchChatCompletion,
   dispatchKBSearch,
   dispatchAnswer,
-  dispatchClassifyQuestion
+  dispatchClassifyQuestion,
+  dispatchContentExtract,
+  dispatchHttpRequest
 } from '@/service/moduleDispatch';
 import type { CreateChatCompletionRequest } from 'openai';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
@@ -25,7 +27,6 @@ import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
-import { dispatchContentExtract } from '@/service/moduleDispatch/agent/extract';
 
 export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 type FastGptWebChatProps = {
@@ -339,7 +340,8 @@ export async function dispatchModules({
         [FlowModuleTypeEnum.chatNode]: dispatchChatCompletion,
         [FlowModuleTypeEnum.kbSearchNode]: dispatchKBSearch,
         [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-        [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract
+        [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract,
+        [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);

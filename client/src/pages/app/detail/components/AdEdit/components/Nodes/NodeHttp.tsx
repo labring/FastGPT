@@ -32,7 +32,6 @@ const NodeHttp = ({
               key,
               value: {
                 key,
-                value: '',
                 valueType: FlowValueTypeEnum.string,
                 type: FlowInputItemTypeEnum.target,
                 label: 'New Param',

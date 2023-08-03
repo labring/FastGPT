@@ -35,7 +35,7 @@ export const Label = ({
   const [editField, setEditField] = useState<FlowInputItemType>();
 
   return (
-    <Flex alignItems={'center'} position={'relative'}>
+    <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
       <Box position={'relative'}>
         {label}
         {description && (
@@ -83,9 +83,6 @@ export const Label = ({
             ml={2}
             _hover={{ color: 'red.500' }}
             onClick={() => {
-              {
-                console.log(moduleId, inputKey, valueType);
-              }
               onChangeNode({
                 moduleId,
                 type: 'delInput',
@@ -113,15 +110,15 @@ export const Label = ({
               // diff key. del and add
               onChangeNode({
                 moduleId,
-                type: 'delInput',
-                key: editField.key,
-                value: ''
+                type: 'addInput',
+                key: data.key,
+                value: data
               });
               onChangeNode({
                 moduleId,
-                type: 'addInput',
+                type: 'delInput',
                 key: editField.key,
-                value: data
+                value: ''
               });
             }
             setEditField(undefined);
@@ -132,7 +129,7 @@ export const Label = ({
   );
 };
 
-const RenderBody = ({
+const RenderInput = ({
   flowInputList,
   moduleId,
   CustomComponent = {},
@@ -270,4 +267,4 @@ const RenderBody = ({
   );
 };
 
-export default React.memo(RenderBody);
+export default React.memo(RenderInput);
