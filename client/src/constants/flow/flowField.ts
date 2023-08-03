@@ -9,7 +9,6 @@ export enum ContextExtractEnum {
 
 export enum HttpPropsEnum {
   url = 'url',
-  finish = 'finish',
-  body = 'body',
-  response = 'response'
+  failed = 'failed',
+  finish = 'finish'
 }

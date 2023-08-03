@@ -66,7 +66,7 @@ const NodeExtract = ({
                       {extractKeys.map((item, index) => (
                         <Tr key={index} position={'relative'}>
                           <Td>{item.key}</Td>
-                          <Td whiteSpace={'pre-line'} wordBreak={'break-all'}>
+                          <Td whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
                             {item.desc}
                           </Td>
                           <Td>{item.required ? '✔' : ''}</Td>

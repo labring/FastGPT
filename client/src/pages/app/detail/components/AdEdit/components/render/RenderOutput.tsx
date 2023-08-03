@@ -1,9 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import type { FlowModuleItemType, FlowOutputItemType } from '@/types/flow';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { Handle, Position } from 'reactflow';
 import MyTooltip from '@/components/MyTooltip';
 import SourceHandle from './SourceHandle';
 import MyIcon from '@/components/Icon';
@@ -13,24 +12,26 @@ const SetOutputFieldModal = dynamic(() => import('../modules/SetOutputFieldModal
 const Label = ({
   moduleId,
   outputKey,
-  delOutputByKey,
-  updateOutput,
+  outputs,
   onChangeNode,
-  addUpdateOutput,
   ...item
 }: FlowOutputItemType & {
   outputKey: string;
   moduleId: string;
-  delOutputByKey: (key: string) => void;
-  updateOutput: (key: string, val: FlowOutputItemType) => void;
-  addUpdateOutput: (val: FlowOutputItemType) => void;
+  outputs: FlowOutputItemType[];
   onChangeNode: FlowModuleItemType['onChangeNode'];
 }) => {
   const { label, description, edit } = item;
   const [editField, setEditField] = useState<FlowOutputItemType>();
 
   return (
-    <Flex as={'label'} justifyContent={'right'} alignItems={'center'} position={'relative'}>
+    <Flex
+      className="nodrag"
+      cursor={'default'}
+      justifyContent={'right'}
+      alignItems={'center'}
+      position={'relative'}
+    >
       {edit && (
         <>
           <MyIcon
@@ -53,7 +54,14 @@ const Label = ({
             cursor={'pointer'}
             mr={3}
             _hover={{ color: 'red.500' }}
-            onClick={() => delOutputByKey(outputKey)}
+            onClick={() => {
+              onChangeNode({
+                moduleId,
+                type: 'outputs',
+                key: '',
+                value: outputs.filter((output) => output.key !== outputKey)
+              });
+            }}
           />
         </>
       )}
@@ -69,13 +77,13 @@ const Label = ({
           defaultField={editField}
           onClose={() => setEditField(undefined)}
           onSubmit={(data) => {
-            console.log(data); // same key
-            if (editField.key === data.key) {
-              updateOutput(data.key, data);
-            } else {
-              delOutputByKey(editField.key);
-              addUpdateOutput(data);
-            }
+            onChangeNode({
+              moduleId,
+              type: 'outputs',
+              key: '',
+              value: outputs.map((output) => (output.key === outputKey ? data : output))
+            });
+
             setEditField(undefined);
           }}
         />
@@ -93,40 +101,6 @@ const RenderOutput = ({
   flowOutputList: FlowOutputItemType[];
   onChangeNode: FlowModuleItemType['onChangeNode'];
 }) => {
-  const delOutputByKey = useCallback(
-    (key: string) => {
-      onChangeNode({
-        moduleId,
-        type: 'outputs',
-        key: '',
-        value: flowOutputList.filter((output) => output.key !== key)
-      });
-    },
-    [moduleId, flowOutputList, onChangeNode]
-  );
-  const updateOutput = useCallback(
-    (key: string, val: FlowOutputItemType) => {
-      onChangeNode({
-        moduleId,
-        type: 'outputs',
-        key: '',
-        value: flowOutputList.map((output) => (output.key === key ? val : output))
-      });
-    },
-    [flowOutputList, moduleId, onChangeNode]
-  );
-  const addUpdateOutput = useCallback(
-    (val: FlowOutputItemType) => {
-      onChangeNode({
-        moduleId,
-        type: 'outputs',
-        key: '',
-        value: flowOutputList.concat(val)
-      });
-    },
-    [flowOutputList, moduleId, onChangeNode]
-  );
-
   return (
     <>
       {flowOutputList.map(
@@ -137,9 +111,7 @@ const RenderOutput = ({
                 moduleId={moduleId}
                 onChangeNode={onChangeNode}
                 outputKey={item.key}
-                delOutputByKey={delOutputByKey}
-                addUpdateOutput={addUpdateOutput}
-                updateOutput={updateOutput}
+                outputs={flowOutputList}
                 {...item}
               />
               <Box mt={FlowOutputItemTypeEnum.answer ? 0 : 2} className={'nodrag'}>

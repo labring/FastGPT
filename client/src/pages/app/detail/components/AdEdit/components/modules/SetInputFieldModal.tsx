@@ -10,14 +10,13 @@ import {
   Input,
   FormControl
 } from '@chakra-ui/react';
-import type { ContextExtractAgentItemType, HttpFieldItemType } from '@/types/app';
 import { useForm } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
-import { FlowInputItemTypeEnum, FlowValueTypeEnum, FlowValueTypeStyle } from '@/constants/flow';
+import { FlowInputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
 import { FlowInputItemType } from '@/types/flow';
