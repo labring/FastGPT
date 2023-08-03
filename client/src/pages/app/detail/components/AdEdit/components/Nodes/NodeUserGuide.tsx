@@ -14,7 +14,7 @@ const NodeUserGuide = ({
   data: { inputs, outputs, onChangeNode, ...props }
 }: NodeProps<FlowModuleItemType>) => {
   const welcomeText = useMemo(
-    () => inputs.find((item) => item.key === SystemInputEnum.welcomeText)?.value,
+    () => inputs.find((item) => item.key === SystemInputEnum.welcomeText),
     [inputs]
   );
 
@@ -30,22 +30,27 @@ const NodeUserGuide = ({
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Flex>
-            <Textarea
-              className="nodrag"
-              rows={6}
-              resize={'both'}
-              defaultValue={welcomeText}
-              bg={'myWhite.500'}
-              placeholder={welcomeTextTip}
-              onChange={(e) => {
-                onChangeNode({
-                  moduleId: props.moduleId,
-                  key: SystemInputEnum.welcomeText,
-                  type: 'inputs',
-                  value: e.target.value
-                });
-              }}
-            />
+            {welcomeText && (
+              <Textarea
+                className="nodrag"
+                rows={6}
+                resize={'both'}
+                defaultValue={welcomeText.value}
+                bg={'myWhite.500'}
+                placeholder={welcomeTextTip}
+                onChange={(e) => {
+                  onChangeNode({
+                    moduleId: props.moduleId,
+                    key: SystemInputEnum.welcomeText,
+                    type: 'inputs',
+                    value: {
+                      ...welcomeText,
+                      value: e.target.value
+                    }
+                  });
+                }}
+              />
+            )}
           </>
         </Container>
       </NodeCard>

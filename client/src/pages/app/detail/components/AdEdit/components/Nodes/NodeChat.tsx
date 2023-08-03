@@ -48,33 +48,32 @@ const NodeChat = ({
                   onchange={(e) => {
                     onChangeNode({
                       moduleId,
+                      type: 'inputs',
                       key: inputItem.key,
-                      value: e
+                      value: {
+                        ...inputItem,
+                        value: e
+                      }
                     });
+
                     // update max tokens
-                    const model = chatModelList.find((item) => item.model === e);
+                    const model =
+                      chatModelList.find((item) => item.model === e) || chatModelList[0];
                     if (!model) return;
 
                     onChangeNode({
                       moduleId,
+                      type: 'inputs',
                       key: 'maxToken',
-                      valueKey: 'markList',
-                      value: [
-                        { label: '100', value: 100 },
-                        { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
-                      ]
-                    });
-                    onChangeNode({
-                      moduleId,
-                      key: 'maxToken',
-                      valueKey: 'max',
-                      value: model.contextMaxToken
-                    });
-                    onChangeNode({
-                      moduleId,
-                      key: 'maxToken',
-                      valueKey: 'value',
-                      value: model.contextMaxToken / 2
+                      value: {
+                        ...inputs.find((input) => input.key === 'maxToken'),
+                        markList: [
+                          { label: '100', value: 100 },
+                          { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
+                        ],
+                        max: model.contextMaxToken,
+                        value: model.contextMaxToken / 2
+                      }
                     });
                   }}
                 />
@@ -100,8 +99,12 @@ const NodeChat = ({
                     onChange={(e) => {
                       onChangeNode({
                         moduleId,
+                        type: 'inputs',
                         key: inputItem.key,
-                        value: e
+                        value: {
+                          ...inputItem,
+                          value: e
+                        }
                       });
                     }}
                   />
@@ -115,7 +118,11 @@ const NodeChat = ({
         <>
           <Divider text="Output" />
           <Container>
-            <RenderOutput flowOutputList={outputs} />
+            <RenderOutput
+              onChangeNode={onChangeNode}
+              moduleId={moduleId}
+              flowOutputList={outputs}
+            />
           </Container>
         </>
       )}

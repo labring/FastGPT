@@ -9,7 +9,9 @@
     "Confirm Save App Tip": "保存后将会覆盖高级编排配置，请确保该应用未使用高级编排功能。",
     "Connection is invalid": "连接无效",
     "Connection type is different": "连接的类型不一致",
-    "My Apps": "我的应用"
+    "Input Field Settings": "输入字段编辑",
+    "My Apps": "我的应用",
+    "Output Field Settings": "输出字段编辑"
   },
   "chat": {
     "Confirm to clear history": "确认清空该应用的聊天记录？",
@@ -39,28 +41,28 @@
     "Tools": "工具"
   },
   "user": {
+    "Account": "账号",
+    "Application Name": "应用名",
+    "Avatar": "头像",
+    "Balance": "余额",
     "Bill Detail": "账单详情",
+    "Change": "变更",
+    "Notice": "通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
+    "Password": "密码",
     "Pay": "充值",
+    "Personal Information": "个人信息",
+    "Recharge Record": "充值记录",
+    "Replace": "更换",
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
+    "Sign Out": "登出",
+    "Source": "来源",
+    "Time": "时间",
+    "Total Amount": "总金额",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
     "Update password succseful": "修改密码成功",
-    "Personal Information": "个人信息",
-    "Usage Record": "使用记录",
-    "Recharge Record": "充值记录",
-    "Notice": "通知",
-    "Sign Out": "登出",
-    "Avatar": "头像",
-    "Account": "账号",
-    "Balance": "余额",
-    "Time": "时间",
-    "Source": "来源",
-    "Application Name": "应用名",
-    "Total Amount": "总金额",
-    "Change": "变更",
-    "Password": "密码",
-    "Replace": "更换"
+    "Usage Record": "使用记录"
   }
 }

@@ -75,11 +75,17 @@ export const appModule2FlowNode = ({
   const template =
     ModuleTemplatesFlat.find((template) => template.flowType === item.flowType) || EmptyModule;
 
+  const concatInputs = template.inputs.concat(
+    item.inputs.filter(
+      (input) => input.label && !template.inputs.find((item) => item.key === input.key)
+    )
+  );
+
   // replace item data
   const moduleItem: FlowModuleItemType = {
     ...item,
     ...template,
-    inputs: template.inputs.map((templateInput) => {
+    inputs: concatInputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;
       return {
@@ -87,7 +93,6 @@ export const appModule2FlowNode = ({
         value: itemInput.value
       };
     }),
-    // 合并 template 和数据库，文案以 template 为准
     outputs: item.outputs.map((output) => {
       // unChange outputs
       const templateOutput = template.outputs.find((item) => item.key === output.key);

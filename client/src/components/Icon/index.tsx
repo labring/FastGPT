@@ -8,7 +8,6 @@ const map = {
   copy: require('./icons/copy.svg').default,
   chatSend: require('./icons/chatSend.svg').default,
   delete: require('./icons/delete.svg').default,
-  withdraw: require('./icons/withdraw.svg').default,
   stop: require('./icons/stop.svg').default,
   collectionLight: require('./icons/collectionLight.svg').default,
   collectionSolid: require('./icons/collectionSolid.svg').default,
@@ -72,7 +71,8 @@ const map = {
   language_en: require('./icons/language/en.svg').default,
   language_zh: require('./icons/language/zh.svg').default,
   outlink_share: require('./icons/outlink/share.svg').default,
-  outlink_iframe: require('./icons/outlink/iframe.svg').default
+  outlink_iframe: require('./icons/outlink/iframe.svg').default,
+  addCircle: require('./icons/circle/add.svg').default
 };
 
 export type IconName = keyof typeof map;

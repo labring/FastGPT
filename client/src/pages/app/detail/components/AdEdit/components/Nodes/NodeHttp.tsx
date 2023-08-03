@@ -1,0 +1,80 @@
+import React from 'react';
+import { NodeProps } from 'reactflow';
+import NodeCard from '../modules/NodeCard';
+import { FlowModuleItemType } from '@/types/flow';
+import Divider from '../modules/Divider';
+import Container from '../modules/Container';
+import RenderInput from '../render/RenderInput';
+import { Box, Button } from '@chakra-ui/react';
+import { SmallAddIcon } from '@chakra-ui/icons';
+import RenderOutput from '../render/RenderOutput';
+
+import { FlowInputItemTypeEnum, FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
+
+const NodeHttp = ({
+  data: { moduleId, inputs, outputs, onChangeNode, ...props }
+}: NodeProps<FlowModuleItemType>) => {
+  return (
+    <NodeCard minW={'350px'} moduleId={moduleId} {...props}>
+      <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
+        <RenderInput moduleId={moduleId} onChangeNode={onChangeNode} flowInputList={inputs} />
+        <Button
+          variant={'base'}
+          mt={5}
+          leftIcon={<SmallAddIcon />}
+          onClick={() => {
+            const key = nanoid();
+            onChangeNode({
+              moduleId,
+              type: 'addInput',
+              key,
+              value: {
+                key,
+                value: '',
+                valueType: FlowValueTypeEnum.string,
+                type: FlowInputItemTypeEnum.target,
+                label: 'New Param',
+                edit: true
+              }
+            });
+          }}
+        >
+          添加入参
+        </Button>
+      </Container>
+      <Divider text="Output" />
+      <Container>
+        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
+        <Box textAlign={'right'} mt={5}>
+          <Button
+            variant={'base'}
+            leftIcon={<SmallAddIcon />}
+            onClick={() => {
+              const key = nanoid();
+              onChangeNode({
+                moduleId,
+                type: 'outputs',
+                key,
+                value: outputs.concat([
+                  {
+                    key,
+                    label: '出参1',
+                    valueType: FlowValueTypeEnum.string,
+                    type: FlowOutputItemTypeEnum.source,
+                    edit: true,
+                    targets: []
+                  }
+                ])
+              });
+            }}
+          >
+            添加出参
+          </Button>
+        </Box>
+      </Container>
+    </NodeCard>
+  );
+};
+export default React.memo(NodeHttp);

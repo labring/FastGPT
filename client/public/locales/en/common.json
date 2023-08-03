@@ -9,7 +9,9 @@
     "Confirm Save App Tip": "After saving, the advanced orchestration configuration will be overwritten. Make sure that the application does not use advanced orchestration.",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
-    "My Apps": "My Apps"
+    "Input Field Settings": "Input Field Settings",
+    "My Apps": "My Apps",
+    "Output Field Settings": "Output Field Settings"
   },
   "chat": {
     "Confirm to clear history": "Confirm to clear history?",
@@ -39,28 +41,28 @@
     "Tools": "Tools"
   },
   "user": {
+    "Account": "Account",
+    "Application Name": "Application Name",
+    "Avatar": "Avatar",
+    "Balance": "Balance",
     "Bill Detail": "Bill Detail",
+    "Change": "Change",
+    "Notice": "Notice",
     "Old password is error": "Old password is error",
     "OpenAI Account Setting": "OpenAI Account Setting",
+    "Password": "Password",
     "Pay": "Pay",
+    "Personal Information": "Personal",
+    "Recharge Record": "Recharge",
+    "Replace": "Replace",
     "Set OpenAI Account Failed": "Set OpenAI account failed",
+    "Sign Out": "Sign Out",
+    "Source": "Source",
+    "Time": "Time",
+    "Total Amount": "Total Amount",
     "Update Password": "Update Password",
     "Update password failed": "Update password failed",
     "Update password succseful": "Update password succseful",
-    "Personal Information": "Personal",
-    "Usage Record": "Usage",
-    "Recharge Record": "Recharge",
-    "Notice": "Notice",
-    "Sign Out": "Sign Out",
-    "Avatar": "Avatar",
-    "Account": "Account",
-    "Balance": "Balance",
-    "Time": "Time",
-    "Source": "Source",
-    "Application Name": "Application Name",
-    "Total Amount": "Total Amount",
-    "Change": "Change",
-    "Password": "Password",
-    "Replace": "Replace"
+    "Usage Record": "Usage"
   }
 }

@@ -15,7 +15,7 @@ import {
   Input_Template_TFSwitch,
   Input_Template_UserChatInput
 } from './inputTemplate';
-import { ContextExtractEnum } from './flowField';
+import { ContextExtractEnum, HttpPropsEnum } from './flowField';
 
 export const ChatModelSystemTip =
   '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}';
@@ -448,6 +448,34 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     }
   ]
 };
+export const HttpModule: FlowModuleTemplateType = {
+  logo: '/imgs/module/http.png',
+  name: 'HTTP模块',
+  intro: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
+  description: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
+  flowType: FlowModuleTypeEnum.httpRequest,
+  inputs: [
+    {
+      key: HttpPropsEnum.url,
+      value: '',
+      type: FlowInputItemTypeEnum.input,
+      label: '请求地址',
+      description: '请求目标地址',
+      placeholder: 'https://api.fastgpt.run/getInventory',
+      required: true
+    },
+    Input_Template_TFSwitch
+  ],
+  outputs: [
+    {
+      key: HttpPropsEnum.finish,
+      label: '请求结束',
+      valueType: FlowValueTypeEnum.boolean,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    }
+  ]
+};
 export const EmptyModule: FlowModuleTemplateType = {
   logo: '/imgs/module/cq.png',
   name: '该模块已被移除',
@@ -477,7 +505,7 @@ export const ModuleTemplates = [
   },
   {
     label: 'Agent',
-    list: [ClassifyQuestionModule, ContextExtractModule]
+    list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
   }
 ];
 export const ModuleTemplatesFlat = ModuleTemplates.map((templates) => templates.list)?.flat();

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { FlowInputItemType, FlowModuleItemType } from '@/types/flow';
 import {
   Box,
@@ -8,38 +8,129 @@ import {
   NumberInputField,
   NumberInputStepper,
   NumberIncrementStepper,
-  NumberDecrementStepper
+  NumberDecrementStepper,
+  Flex
 } from '@chakra-ui/react';
 import { FlowInputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from './TargetHandle';
+import MyIcon from '@/components/Icon';
+const SetInputFieldModal = dynamic(() => import('../modules/SetInputFieldModal'));
 
 export const Label = ({
-  required = false,
-  children,
-  description
-}: {
-  required?: boolean;
-  children: React.ReactNode | string;
-  description?: string;
-}) => (
-  <Box as={'label'} display={'inline-block'} position={'relative'}>
-    {children}
-    {required && (
-      <Box position={'absolute'} top={'-2px'} right={'-10px'} color={'red.500'} fontWeight={'bold'}>
-        *
+  moduleId,
+  inputKey,
+  onChangeNode,
+  ...item
+}: FlowInputItemType & {
+  moduleId: string;
+  inputKey: string;
+  onChangeNode: FlowModuleItemType['onChangeNode'];
+}) => {
+  const { required = false, description, edit, label, type, valueType } = item;
+  const [editField, setEditField] = useState<FlowInputItemType>();
+
+  return (
+    <Flex alignItems={'center'} position={'relative'}>
+      <Box position={'relative'}>
+        {label}
+        {description && (
+          <MyTooltip label={description} forceShow>
+            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+          </MyTooltip>
+        )}
+        {required && (
+          <Box
+            position={'absolute'}
+            top={'-2px'}
+            right={'-8px'}
+            color={'red.500'}
+            fontWeight={'bold'}
+          >
+            *
+          </Box>
+        )}
       </Box>
-    )}
-    {description && (
-      <MyTooltip label={description} forceShow>
-        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-      </MyTooltip>
-    )}
-  </Box>
-);
+
+      {(type === FlowInputItemTypeEnum.target || valueType) && (
+        <TargetHandle handleKey={inputKey} valueType={valueType} />
+      )}
+
+      {edit && (
+        <>
+          <MyIcon
+            name={'settingLight'}
+            w={'14px'}
+            cursor={'pointer'}
+            ml={3}
+            _hover={{ color: 'myBlue.600' }}
+            onClick={() =>
+              setEditField({
+                ...item,
+                key: inputKey
+              })
+            }
+          />
+          <MyIcon
+            className="delete"
+            name={'delete'}
+            w={'14px'}
+            cursor={'pointer'}
+            ml={2}
+            _hover={{ color: 'red.500' }}
+            onClick={() => {
+              {
+                console.log(moduleId, inputKey, valueType);
+              }
+              onChangeNode({
+                moduleId,
+                type: 'delInput',
+                key: inputKey,
+                value: ''
+              });
+            }}
+          />
+        </>
+      )}
+      {!!editField && (
+        <SetInputFieldModal
+          defaultField={editField}
+          onClose={() => setEditField(undefined)}
+          onSubmit={(data) => {
+            // same key
+            if (editField.key === data.key) {
+              onChangeNode({
+                moduleId,
+                type: 'inputs',
+                key: inputKey,
+                value: data
+              });
+            } else {
+              // diff key. del and add
+              onChangeNode({
+                moduleId,
+                type: 'delInput',
+                key: editField.key,
+                value: ''
+              });
+              onChangeNode({
+                moduleId,
+                type: 'addInput',
+                key: editField.key,
+                value: data
+              });
+            }
+            setEditField(undefined);
+          }}
+        />
+      )}
+    </Flex>
+  );
+};
 
 const RenderBody = ({
   flowInputList,
@@ -59,13 +150,12 @@ const RenderBody = ({
           item.type !== FlowInputItemTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
               {!!item.label && (
-                <Label required={item.required} description={item.description}>
-                  {item.label}
-
-                  {(item.type === FlowInputItemTypeEnum.target || item.valueType) && (
-                    <TargetHandle handleKey={item.key} valueType={item.valueType} />
-                  )}
-                </Label>
+                <Label
+                  moduleId={moduleId}
+                  onChangeNode={onChangeNode}
+                  inputKey={item.key}
+                  {...item}
+                />
               )}
               <Box mt={2} className={'nodrag'}>
                 {item.type === FlowInputItemTypeEnum.numberInput && (
@@ -76,8 +166,12 @@ const RenderBody = ({
                     onChange={(e) => {
                       onChangeNode({
                         moduleId,
+                        type: 'inputs',
                         key: item.key,
-                        value: Number(e)
+                        value: {
+                          ...item,
+                          value: Number(e)
+                        }
                       });
                     }}
                   >
@@ -95,8 +189,12 @@ const RenderBody = ({
                     onChange={(e) => {
                       onChangeNode({
                         moduleId,
+                        type: 'inputs',
                         key: item.key,
-                        value: e.target.value
+                        value: {
+                          ...item,
+                          value: e.target.value
+                        }
                       });
                     }}
                   />
@@ -110,8 +208,12 @@ const RenderBody = ({
                     onChange={(e) => {
                       onChangeNode({
                         moduleId,
+                        type: 'inputs',
                         key: item.key,
-                        value: e.target.value
+                        value: {
+                          ...item,
+                          value: e.target.value
+                        }
                       });
                     }}
                   />
@@ -124,8 +226,12 @@ const RenderBody = ({
                     onchange={(e) => {
                       onChangeNode({
                         moduleId,
+                        type: 'inputs',
                         key: item.key,
-                        value: e
+                        value: {
+                          ...item,
+                          value: e
+                        }
                       });
                     }}
                   />
@@ -142,8 +248,12 @@ const RenderBody = ({
                       onChange={(e) => {
                         onChangeNode({
                           moduleId,
+                          type: 'inputs',
                           key: item.key,
-                          value: e
+                          value: {
+                            ...item,
+                            value: e
+                          }
                         });
                       }}
                     />

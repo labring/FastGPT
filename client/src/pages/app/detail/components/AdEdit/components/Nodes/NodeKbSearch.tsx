@@ -81,14 +81,19 @@ const NodeKbSearch = ({
           onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
-            kbList: ({ key, value }) => (
+            kbList: ({ key, value, ...props }) => (
               <KBSelect
                 activeKbs={value}
                 onChange={(e) => {
                   onChangeNode({
                     moduleId,
                     key,
-                    value: e
+                    type: 'inputs',
+                    value: {
+                      ...props,
+                      key,
+                      value: e
+                    }
                   });
                 }}
               />
@@ -98,7 +103,7 @@ const NodeKbSearch = ({
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput flowOutputList={outputs} />
+        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
       </Container>
     </NodeCard>
   );

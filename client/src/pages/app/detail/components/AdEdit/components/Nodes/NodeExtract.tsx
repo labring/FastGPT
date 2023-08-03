@@ -31,10 +31,9 @@ const NodeExtract = ({
           flowInputList={inputs}
           CustomComponent={{
             [ContextExtractEnum.extractKeys]: ({
-              key,
-              value: extractKeys = []
+              value: extractKeys = [],
+              ...props
             }: {
-              key: string;
               value?: ContextExtractAgentItemType[];
             }) => (
               <Box pt={2}>
@@ -97,7 +96,10 @@ const NodeExtract = ({
                                   moduleId,
                                   type: 'inputs',
                                   key: ContextExtractEnum.extractKeys,
-                                  value: newInputValue
+                                  value: {
+                                    ...props,
+                                    value: newInputValue
+                                  }
                                 });
                                 onChangeNode({
                                   moduleId,
@@ -121,7 +123,7 @@ const NodeExtract = ({
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput flowOutputList={outputs} />
+        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
       </Container>
 
       {!!editExtractFiled && (
@@ -160,7 +162,10 @@ const NodeExtract = ({
               moduleId,
               type: 'inputs',
               key: ContextExtractEnum.extractKeys,
-              value: newInputs
+              value: {
+                ...inputs.find((input) => input.key === ContextExtractEnum.extractKeys),
+                value: newInputs
+              }
             });
             onChangeNode({
               moduleId,
