@@ -1,18 +1,15 @@
 {
   "FeConfig": {
     "show_emptyChat": true,
-    "show_register": true,
+    "show_register": false,
     "show_appStore": false,
-    "show_userDetail": true,
+    "show_userDetail": false,
     "show_git": true,
     "systemTitle": "FastAI",
     "authorText": "Made by FastAI Team."
   },
   "SystemParams": {
     "beianText": "",
-    "baiduTongji": "",
-    "googleClientVerKey": "",
-    "googleServiceVerKey": "",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgIvfflatProbe": 20,

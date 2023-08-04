@@ -39,9 +39,9 @@ const defaultSystemEnv = {
 };
 const defaultFeConfigs = {
   show_emptyChat: true,
-  show_register: true,
+  show_register: false,
   show_appStore: false,
-  show_userDetail: true,
+  show_userDetail: false,
   show_git: true,
   systemTitle: 'FastAI',
   authorText: 'Made by FastAI Team.'
@@ -90,8 +90,9 @@ const defaultVectorModels = [
 
 export async function getInitConfig() {
   try {
-    const filename = process.env.NODE_ENV === 'development' ? 'config.json.local' : 'config.json';
-    const res = JSON.parse(readFileSync(`data/${filename}`, 'utf-8'));
+    const filename =
+      process.env.NODE_ENV === 'development' ? 'data/config.json.local' : '/app/data/config.json';
+    const res = JSON.parse(readFileSync(filename, 'utf-8'));
     console.log(res);
 
     global.systemEnv = res.SystemParams || defaultSystemEnv;
