@@ -77,12 +77,31 @@ const Label = ({
           defaultField={editField}
           onClose={() => setEditField(undefined)}
           onSubmit={(data) => {
-            onChangeNode({
-              moduleId,
-              type: 'outputs',
-              key: '',
-              value: outputs.map((output) => (output.key === outputKey ? data : output))
-            });
+            if (editField.key === data.key) {
+              onChangeNode({
+                moduleId,
+                type: 'outputs',
+                key: '',
+                value: outputs.map((output) => (output.key === outputKey ? data : output))
+              });
+            } else {
+              const storeOutputs = outputs.filter((output) => output.key !== editField.key);
+
+              onChangeNode({
+                moduleId,
+                type: 'outputs',
+                key: '',
+                value: storeOutputs
+              });
+              setTimeout(() => {
+                onChangeNode({
+                  moduleId,
+                  type: 'outputs',
+                  key: '',
+                  value: storeOutputs.concat(data)
+                });
+              }, 10);
+            }
 
             setEditField(undefined);
           }}

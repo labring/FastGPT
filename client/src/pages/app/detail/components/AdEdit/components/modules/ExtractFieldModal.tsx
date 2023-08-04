@@ -34,7 +34,6 @@ const ExtractFieldModal = ({
   const { register, handleSubmit } = useForm<ContextExtractAgentItemType>({
     defaultValues: defaultField
   });
-  const isEdit = useMemo(() => !!defaultField.key, [defaultField]);
 
   return (
     <MyModal isOpen={true} onClose={onClose}>
@@ -56,17 +55,11 @@ const ExtractFieldModal = ({
         </Flex>
         <Flex mt={5} alignItems={'center'}>
           <Box flex={'0 0 70px'}>字段 key</Box>
-          <MyTooltip label={isEdit ? '不支持修改 key' : ''} shouldWrapChildren={false}>
-            <Input
-              isDisabled={isEdit}
-              placeholder="name/age/sql"
-              {...register('key', { required: '字段 key 不能为空' })}
-            />
-          </MyTooltip>
+          <Input
+            placeholder="name/age/sql"
+            {...register('key', { required: '字段 key 不能为空' })}
+          />
         </Flex>
-        <Box mt={1} pl={'70px'} color={'myGray.600'} fontSize={'sm'}>
-          注意: key 字段创建后无法修改
-        </Box>
       </ModalBody>
 
       <ModalFooter>

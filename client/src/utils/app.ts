@@ -1,6 +1,11 @@
 import type { AppModuleItemType, VariableItemType } from '@/types/app';
 import { chatModelList, vectorModelList } from '@/store/static';
-import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
+import {
+  FlowInputItemTypeEnum,
+  FlowModuleTypeEnum,
+  FlowValueTypeEnum,
+  SpecialInputKeyEnum
+} from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import type { SelectedKbType } from '@/types/plugin';
@@ -153,42 +158,60 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
   {
     key: 'model',
     value: formData.chatModel.model,
+    type: 'custom',
+    label: '对话模型',
     connected: true
   },
   {
     key: 'temperature',
     value: formData.chatModel.temperature,
+    type: 'slider',
+    label: '温度',
     connected: true
   },
   {
     key: 'maxToken',
     value: formData.chatModel.maxToken,
+    type: 'custom',
+    label: '回复上限',
     connected: true
   },
   {
     key: 'systemPrompt',
     value: formData.chatModel.systemPrompt,
+    type: 'textarea',
+    label: '系统提示词',
     connected: true
   },
   {
     key: 'limitPrompt',
+    type: 'textarea',
     value: formData.chatModel.limitPrompt,
+    label: '限定词',
     connected: true
   },
   {
     key: 'switch',
+    type: 'target',
+    label: '触发器',
     connected: formData.kb.list.length > 0
   },
   {
     key: 'quoteQA',
+    type: 'target',
+    label: '引用内容',
     connected: formData.kb.list.length > 0
   },
   {
     key: 'history',
+    type: 'target',
+    label: '聊天记录',
     connected: true
   },
   {
     key: 'userChatInput',
+    type: 'target',
+    label: '用户问题',
     connected: true
   }
 ];
@@ -200,6 +223,8 @@ const welcomeTemplate = (formData: EditFormType): AppModuleItemType[] =>
           inputs: [
             {
               key: 'welcomeText',
+              type: 'input',
+              label: '开场白',
               value: formData.guide.welcome.text,
               connected: true
             }
@@ -222,6 +247,8 @@ const variableTemplate = (formData: EditFormType): AppModuleItemType[] =>
             {
               key: 'variables',
               value: formData.variables,
+              type: 'systemInput',
+              label: '变量输入',
               connected: true
             }
           ],
@@ -240,7 +267,9 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: [
       {
         key: 'userChatInput',
-        connected: true
+        connected: true,
+        label: '用户问题',
+        type: 'target'
       }
     ],
     outputs: [
@@ -266,10 +295,14 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
       {
         key: 'maxContext',
         value: 6,
-        connected: true
+        connected: true,
+        type: 'numberInput',
+        label: '最长记录数'
       },
       {
         key: 'history',
+        type: 'hidden',
+        label: '聊天记录',
         connected: true
       }
     ],
@@ -312,6 +345,8 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: [
       {
         key: 'userChatInput',
+        label: '用户问题',
+        type: 'target',
         connected: true
       }
     ],
@@ -342,10 +377,14 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
       {
         key: 'maxContext',
         value: 6,
-        connected: true
+        connected: true,
+        type: 'numberInput',
+        label: '最长记录数'
       },
       {
         key: 'history',
+        type: 'hidden',
+        label: '聊天记录',
         connected: true
       }
     ],
@@ -372,24 +411,34 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
       {
         key: 'kbList',
         value: formData.kb.list,
+        type: FlowInputItemTypeEnum.custom,
+        label: '关联的知识库',
         connected: true
       },
       {
         key: 'similarity',
         value: formData.kb.searchSimilarity,
+        type: FlowInputItemTypeEnum.slider,
+        label: '相似度',
         connected: true
       },
       {
         key: 'limit',
         value: formData.kb.searchLimit,
+        type: FlowInputItemTypeEnum.slider,
+        label: '单次搜索上限',
         connected: true
       },
       {
         key: 'switch',
+        type: FlowInputItemTypeEnum.target,
+        label: '触发器',
         connected: false
       },
       {
         key: 'userChatInput',
+        type: FlowInputItemTypeEnum.target,
+        label: '用户问题',
         connected: true
       }
     ],
@@ -442,11 +491,16 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
           inputs: [
             {
               key: 'switch',
+              type: FlowInputItemTypeEnum.target,
+              label: '触发器',
               connected: true
             },
             {
               key: SpecialInputKeyEnum.answerText,
               value: formData.kb.searchEmptyText,
+              type: FlowInputItemTypeEnum.textarea,
+              valueType: FlowValueTypeEnum.string,
+              label: '回复的内容',
               connected: true
             }
           ],
