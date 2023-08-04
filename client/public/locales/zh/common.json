@@ -27,6 +27,15 @@
     "Input": "输入",
     "Output": "输出"
   },
+  "file": {
+    "Click to download CSV template": "点击下载 CSV 模板",
+    "Drag and drop": "拖拽文件至此，或点击",
+    "Release the mouse to upload the file": "松开鼠标上传文件",
+    "select a document": "选择文件",
+    "support": "支持 {{fileExtension}} 文件",
+    "upload error description": "单次只支持上传多个文件或者一个文件夹",
+    "If the imported file is garbled, please convert CSV to utf-8 encoding format": "如果导入文件乱码，请将 CSV 转成 utf-8 编码格式"
+  },
   "home": {
     "Quickly build AI question and answer library": "快速搭建 AI 问答系统",
     "Start Now": "立即开始",

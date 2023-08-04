@@ -27,6 +27,15 @@
     "Input": "Input",
     "Output": "Output"
   },
+  "file": {
+    "Click to download CSV template": "Click to download CSV template",
+    "Drag and drop": "Drag and drop files here, or click",
+    "Release the mouse to upload the file": "Release the mouse to upload the file",
+    "select a document": "select a document",
+    "support": "support {{fileExtension}} file",
+    "upload error description": "Only upload multiple files or one folder at a time",
+    "If the imported file is garbled, please convert CSV to utf-8 encoding format": "If the imported file is garbled, please convert CSV to utf-8 encoding format"
+  },
   "home": {
     "Quickly build AI question and answer library": "Quickly build AI question and answer library",
     "Start Now": "Start Now",
