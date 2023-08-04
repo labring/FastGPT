@@ -48,27 +48,29 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
       setSelecting(true);
       try {
         let promise = Promise.resolve();
-        files.forEach((file) => {
-          promise = promise.then(async () => {
-            const { header, data } = await readCsvContent(file);
-            if (header[0] !== 'question' || header[1] !== 'answer') {
-              throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
-            }
+        files
+          .filter((file) => /csv$/.test(file.name))
+          .forEach((file) => {
+            promise = promise.then(async () => {
+              const { header, data } = await readCsvContent(file);
+              if (header[0] !== 'question' || header[1] !== 'answer') {
+                throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
+              }
 
-            setFiles((state) => [
-              {
-                id: nanoid(),
-                filename: file.name,
-                chunks: data.map((item) => ({
-                  q: item[0],
-                  a: item[1],
-                  source: item[2]
-                }))
-              },
-              ...state
-            ]);
+              setFiles((state) => [
+                {
+                  id: nanoid(),
+                  filename: file.name,
+                  chunks: data.map((item) => ({
+                    q: item[0],
+                    a: item[1],
+                    source: item[2]
+                  }))
+                },
+                ...state
+              ]);
+            });
           });
-        });
         await promise;
       } catch (error: any) {
         console.log(error);
