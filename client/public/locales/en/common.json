@@ -35,7 +35,7 @@
     "select a document": "select a document",
     "support": "support {{fileExtension}} file",
     "upload error description": "Only upload multiple files or one folder at a time",
-    "If the imported file is garbled, please convert CSV to utf-8 encoding format": "If the imported file is garbled, please convert CSV to utf-8 encoding format"
+    "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "If the imported file is garbled, please convert CSV to UTF-8 encoding format"
   },
   "home": {
     "Quickly build AI question and answer library": "Quickly build AI question and answer library",
