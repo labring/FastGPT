@@ -35,7 +35,7 @@
     "select a document": "选择文件",
     "support": "支持 {{fileExtension}} 文件",
     "upload error description": "单次只支持上传多个文件或者一个文件夹",
-    "If the imported file is garbled, please convert CSV to utf-8 encoding format": "如果导入文件乱码，请将 CSV 转成 utf-8 编码格式"
+    "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式"
   },
   "home": {
     "Quickly build AI question and answer library": "快速搭建 AI 问答系统",

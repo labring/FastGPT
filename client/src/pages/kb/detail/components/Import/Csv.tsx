@@ -52,7 +52,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
           promise = promise.then(async () => {
             const { header, data } = await readCsvContent(file);
             if (header[0] !== 'question' || header[1] !== 'answer') {
-              throw new Error('csv 文件格式有误');
+              throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
             }
 
             setFiles((state) => [
@@ -73,7 +73,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
       } catch (error: any) {
         console.log(error);
         toast({
-          title: typeof error === 'string' ? error : '解析文件失败',
+          title: getErrText(error, '解析文件失败'),
           status: 'error'
         });
       }
@@ -136,7 +136,9 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
           fileExtension={fileExtension}
           onSelectFile={onSelectFile}
           isLoading={selecting}
-          tipText={'If the imported file is garbled, please convert CSV to utf-8 encoding format'}
+          tipText={
+            'file.If the imported file is garbled, please convert CSV to UTF-8 encoding format'
+          }
           py={emptyFiles ? '100px' : 5}
           isCsv
         />
