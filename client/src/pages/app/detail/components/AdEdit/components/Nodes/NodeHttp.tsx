@@ -34,7 +34,7 @@ const NodeHttp = ({
                 key,
                 valueType: FlowValueTypeEnum.string,
                 type: FlowInputItemTypeEnum.target,
-                label: 'New Param',
+                label: `入参${inputs.length - 1}`,
                 edit: true
               }
             });
@@ -59,7 +59,7 @@ const NodeHttp = ({
                 value: outputs.concat([
                   {
                     key,
-                    label: '出参1',
+                    label: `出参${outputs.length}`,
                     valueType: FlowValueTypeEnum.string,
                     type: FlowOutputItemTypeEnum.source,
                     edit: true,

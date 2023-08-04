@@ -80,6 +80,11 @@ export const appModule2FlowNode = ({
       (input) => input.label && !template.inputs.find((item) => item.key === input.key)
     )
   );
+  const concatOutputs = item.outputs.concat(
+    template.outputs.filter(
+      (templateOutput) => !item.outputs.find((item) => item.key === templateOutput.key)
+    )
+  );
 
   // replace item data
   const moduleItem: FlowModuleItemType = {
@@ -93,7 +98,7 @@ export const appModule2FlowNode = ({
         value: itemInput.value
       };
     }),
-    outputs: item.outputs.map((output) => {
+    outputs: concatOutputs.map((output) => {
       // unChange outputs
       const templateOutput = template.outputs.find((item) => item.key === output.key);
 

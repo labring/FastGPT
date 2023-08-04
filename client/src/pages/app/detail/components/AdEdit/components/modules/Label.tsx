@@ -27,4 +27,4 @@ const Label = ({
   </Box>
 );
 
-export default Label;
+export default React.memo(Label);
