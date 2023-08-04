@@ -10,4 +10,4 @@ const Container = ({ children, ...props }: BoxProps) => {
   );
 };
 
-export default Container;
+export default React.memo(Container);

@@ -3,7 +3,7 @@ import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from 'reactflow
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 
-export default function ButtonEdge({
+const ButtonEdge = ({
   id,
   sourceX,
   sourceY,
@@ -16,7 +16,7 @@ export default function ButtonEdge({
   data
 }: EdgeProps<{
   onDelete: (id: string) => void;
-}>) {
+}>) => {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -53,4 +53,6 @@ export default function ButtonEdge({
       </EdgeLabelRenderer>
     </>
   );
-}
+};
+
+export default React.memo(ButtonEdge);

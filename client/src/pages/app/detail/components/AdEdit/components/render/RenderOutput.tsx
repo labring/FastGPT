@@ -145,4 +145,4 @@ const RenderOutput = ({
   );
 };
 
-export default RenderOutput;
+export default React.memo(RenderOutput);

@@ -19,4 +19,4 @@ const Divider = ({ text }: { text: 'Input' | 'Output' | string }) => {
   );
 };
 
-export default Divider;
+export default React.memo(Divider);

@@ -407,13 +407,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       type: FlowInputItemTypeEnum.custom,
       label: '目标字段',
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
-      value: [
-        {
-          key: 'key',
-          desc: '目标字段',
-          required: true
-        }
-      ]
+      value: []
     }
   ],
   outputs: [
@@ -435,13 +429,6 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       key: ContextExtractEnum.fields,
       label: '完整提取结果',
       description: '一个 JSON 字符串，例如：{"name:":"YY","Time":"2023/7/2 18:00"}',
-      valueType: FlowValueTypeEnum.string,
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
-    },
-    {
-      key: 'key',
-      label: '提取结果-目标字段',
       valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
       targets: []

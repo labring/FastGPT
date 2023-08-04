@@ -328,7 +328,18 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: chatModelInput(formData),
     outputs: [
       {
-        key: TaskResponseKeyEnum.answerText,
+        key: 'answerText',
+        label: '模型回复',
+        description: '直接响应，无需配置',
+        type: 'hidden',
+        targets: []
+      },
+      {
+        key: 'finish',
+        label: '回复结束',
+        description: 'AI 回复完成后触发',
+        valueType: 'boolean',
+        type: 'source',
         targets: []
       }
     ],
@@ -518,7 +529,18 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: chatModelInput(formData),
     outputs: [
       {
-        key: TaskResponseKeyEnum.answerText,
+        key: 'answerText',
+        label: '模型回复',
+        description: '直接响应，无需配置',
+        type: 'hidden',
+        targets: []
+      },
+      {
+        key: 'finish',
+        label: '回复结束',
+        description: 'AI 回复完成后触发',
+        valueType: 'boolean',
+        type: 'source',
         targets: []
       }
     ],

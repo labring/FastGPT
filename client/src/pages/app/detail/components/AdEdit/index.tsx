@@ -344,7 +344,6 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
-      console.log(flow2AppModules(), '====');
       return updateAppDetail(app._id, {
         modules: flow2AppModules()
       });
