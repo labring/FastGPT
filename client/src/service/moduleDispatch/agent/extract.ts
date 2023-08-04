@@ -70,7 +70,7 @@ export async function dispatchContentExtract({
     parameters: {
       type: 'object',
       properties,
-      required: extractKeys.map((item) => item.key)
+      required: extractKeys.filter((item) => item.required).map((item) => item.key)
     }
   };
 
@@ -108,7 +108,6 @@ export async function dispatchContentExtract({
       }
     }
   }
-  console.log(arg, '====');
 
   const tokens = response.data.usage?.total_tokens || 0;
 
