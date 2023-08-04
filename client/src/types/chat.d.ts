@@ -13,7 +13,8 @@ export type ChatItemType = {
 };
 
 export type ChatSiteItemType = {
-  status: 'loading' | 'finish';
+  status: 'loading' | 'running' | 'finish';
+  moduleName?: string;
 } & ChatItemType;
 
 export type HistoryItemType = {

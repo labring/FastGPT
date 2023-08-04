@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';

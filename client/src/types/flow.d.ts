@@ -55,6 +55,7 @@ export type FlowModuleTemplateType = {
   flowType: `${FlowModuleTypeEnum}`;
   inputs: FlowInputItemType[];
   outputs: FlowOutputItemType[];
+  showStatus?: boolean;
 };
 export type FlowModuleItemType = FlowModuleTemplateType & {
   moduleId: string;

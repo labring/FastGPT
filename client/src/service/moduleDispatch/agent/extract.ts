@@ -34,6 +34,9 @@ export async function dispatchContentExtract({
   history = [],
   description
 }: Props): Promise<Response> {
+  if (!content) {
+    return Promise.reject('Input is empty');
+  }
   const messages: ChatItemType[] = [
     ...history,
     {

@@ -116,10 +116,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 创建响应流
-    res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    if (stream) {
+      res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+    }
 
     /* start process */
     const { responseData, answerText } = await dispatchModules({
@@ -320,6 +322,14 @@ export async function dispatchModules({
     if (res.closed) return Promise.resolve();
     console.log('run=========', module.flowType);
 
+    if (stream && module.showStatus) {
+      responseStatus({
+        res,
+        name: module.name,
+        status: 'running'
+      });
+    }
+
     // get fetch params
     const params: Record<string, any> = {};
     module.inputs.forEach((item: any) => {
@@ -370,7 +380,9 @@ function loadModules(
   return modules.map((module) => {
     return {
       moduleId: module.moduleId,
+      name: module.name,
       flowType: module.flowType,
+      showStatus: module.showStatus,
       inputs: module.inputs
         .filter((item) => item.connected) // filter unconnected target input
         .map((item) => {
@@ -399,5 +411,25 @@ function loadModules(
         targets: item.targets
       }))
     };
+  });
+}
+
+function responseStatus({
+  res,
+  status,
+  name
+}: {
+  res: NextApiResponse;
+  status: 'running' | 'finish';
+  name?: string;
+}) {
+  if (!name) return;
+  sseResponse({
+    res,
+    event: sseResponseEventEnum.moduleStatus,
+    data: JSON.stringify({
+      status,
+      name
+    })
   });
 }

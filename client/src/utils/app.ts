@@ -219,6 +219,7 @@ const welcomeTemplate = (formData: EditFormType): AppModuleItemType[] =>
   formData.guide?.welcome?.text
     ? [
         {
+          name: '用户引导',
           flowType: FlowModuleTypeEnum.userGuide,
           inputs: [
             {
@@ -242,6 +243,7 @@ const variableTemplate = (formData: EditFormType): AppModuleItemType[] =>
   formData.variables.length > 0
     ? [
         {
+          name: '全局变量',
           flowType: FlowModuleTypeEnum.variable,
           inputs: [
             {
@@ -263,6 +265,7 @@ const variableTemplate = (formData: EditFormType): AppModuleItemType[] =>
     : [];
 const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
   {
+    name: '用户问题(对话入口)',
     flowType: FlowModuleTypeEnum.questionInput,
     inputs: [
       {
@@ -290,6 +293,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     moduleId: 'userChatInput'
   },
   {
+    name: '聊天记录',
     flowType: FlowModuleTypeEnum.historyNode,
     inputs: [
       {
@@ -324,6 +328,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     moduleId: 'history'
   },
   {
+    name: 'AI 对话',
     flowType: FlowModuleTypeEnum.chatNode,
     inputs: chatModelInput(formData),
     outputs: [
@@ -352,6 +357,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
 ];
 const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
   {
+    name: '用户问题(对话入口)',
     flowType: FlowModuleTypeEnum.questionInput,
     inputs: [
       {
@@ -383,6 +389,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     moduleId: 'userChatInput'
   },
   {
+    name: '聊天记录',
     flowType: FlowModuleTypeEnum.historyNode,
     inputs: [
       {
@@ -417,6 +424,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     moduleId: 'history'
   },
   {
+    name: '知识库搜索',
     flowType: FlowModuleTypeEnum.kbSearchNode,
     inputs: [
       {
@@ -498,6 +506,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
   ...(formData.kb.searchEmptyText
     ? [
         {
+          name: '指定回复',
           flowType: FlowModuleTypeEnum.answerNode,
           inputs: [
             {
@@ -525,6 +534,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
       ]
     : []),
   {
+    name: 'AI 对话',
     flowType: FlowModuleTypeEnum.chatNode,
     inputs: chatModelInput(formData),
     outputs: [

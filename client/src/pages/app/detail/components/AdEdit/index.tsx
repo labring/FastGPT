@@ -158,7 +158,9 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const flow2AppModules = useCallback(() => {
     const modules: AppModuleItemType[] = nodes.map((item) => ({
       moduleId: item.data.moduleId,
+      name: item.data.name,
       flowType: item.data.flowType,
+      showStatus: item.data.showStatus,
       position: item.position,
       inputs: item.data.inputs.map((item) => ({
         ...item,
