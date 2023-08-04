@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import { FlowModuleTemplateType } from '@/types/flow';
+import { FlowModuleItemType, FlowModuleTemplateType } from '@/types/flow';
 import type { Node, XYPosition } from 'reactflow';
 import { useGlobalStore } from '@/store/global';
-import type { AppModuleItemType } from '@/types/app';
 import Avatar from '@/components/Avatar';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 
@@ -14,7 +13,7 @@ const ModuleTemplateList = ({
   onAddNode,
   onClose
 }: {
-  nodes?: Node<AppModuleItemType>[];
+  nodes?: Node<FlowModuleItemType>[];
   isOpen: boolean;
   onAddNode: (e: { template: FlowModuleTemplateType; position: XYPosition }) => void;
   onClose: () => void;

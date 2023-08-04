@@ -3,6 +3,7 @@
   "Cancel": "取消",
   "Confirm": "确认",
   "Warning": "提示",
+  "Running": "运行中",
   "app": {
     "App Detail": "应用详情",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",

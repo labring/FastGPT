@@ -3,9 +3,8 @@ import dayjs from 'dayjs';
 export enum sseResponseEventEnum {
   error = 'error',
   answer = 'answer',
-  chatResponse = 'chatResponse', //
-  appStreamResponse = 'appStreamResponse', // sse response request
-  moduleFetchResponse = 'moduleFetchResponse' // http module sse response
+  moduleStatus = 'moduleStatus',
+  appStreamResponse = 'appStreamResponse' // sse response request
 }
 
 export enum ChatRoleEnum {

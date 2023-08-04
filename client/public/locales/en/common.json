@@ -3,6 +3,7 @@
   "Cancel": "No",
   "Confirm": "Yes",
   "Warning": "Warning",
+  "Running": "Running",
   "app": {
     "App Detail": "App Detail",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",

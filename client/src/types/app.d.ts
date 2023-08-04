@@ -69,9 +69,11 @@ export type VariableItemType = {
 
 /* app module */
 export type AppModuleItemType = {
+  name: string;
   moduleId: string;
   position?: XYPosition;
   flowType: `${FlowModuleTypeEnum}`;
+  showStatus?: boolean;
   inputs: FlowInputItemType[];
   outputs: FlowOutputItemType[];
 };
@@ -83,8 +85,11 @@ export type AppItemType = {
 };
 
 export type RunningModuleItemType = {
-  moduleId: string;
-  flowType: `${FlowModuleTypeEnum}`;
+  name: AppModuleItemType['name'];
+  moduleId: AppModuleItemType['moduleId'];
+  flowType: AppModuleItemType['flowType'];
+  showStatus?: AppModuleItemType['showStatus'];
+} & {
   inputs: {
     key: string;
     value?: any;

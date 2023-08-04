@@ -39,6 +39,7 @@ import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { TaskResponseKeyEnum, getDefaultChatVariables } from '@/constants/chat';
+import { useTranslation } from 'react-i18next';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -51,11 +52,12 @@ const ResponseDetailModal = dynamic(() => import('./ResponseDetailModal'));
 import styles from './index.module.scss';
 
 const textareaMinH = '22px';
+type generatingMessageProps = { text?: string; name?: string; status?: 'running' | 'finish' };
 export type StartChatFnProps = {
   messages: MessageItemType[];
   controller: AbortController;
   variables: Record<string, any>;
-  generatingMessage: (text: string) => void;
+  generatingMessage: (e: generatingMessageProps) => void;
 };
 
 export type ComponentRef = {
@@ -153,6 +155,7 @@ const ChatBox = (
   const ChatBoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { toast } = useToast();
   const { isPc } = useGlobalStore();
@@ -164,7 +167,9 @@ const ChatBox = (
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
 
   const isChatting = useMemo(
-    () => chatHistory[chatHistory.length - 1]?.status === 'loading',
+    () =>
+      chatHistory[chatHistory.length - 1] &&
+      chatHistory[chatHistory.length - 1]?.status !== 'finish',
     [chatHistory]
   );
   const variableIsFinish = useMemo(() => {
@@ -209,13 +214,23 @@ const ChatBox = (
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const generatingMessage = useCallback(
-    (text: string) => {
+    ({ text = '', status, name }: generatingMessageProps) => {
       setChatHistory((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
           return {
             ...item,
-            value: item.value + text
+            ...(text
+              ? {
+                  value: item.value + text
+                }
+              : {}),
+            ...(status && name
+              ? {
+                  status,
+                  moduleName: name
+                }
+              : {})
           };
         })
       );
@@ -418,6 +433,21 @@ const ChatBox = (
       !welcomeText,
     [chatHistory.length, showEmptyIntro, variableModules, welcomeText]
   );
+  const statusBoxData = useMemo(() => {
+    const colorMap = {
+      loading: '#67c13b',
+      running: '#67c13b',
+      finish: 'myBlue.600'
+    };
+    if (!isChatting) return;
+    const chatContent = chatHistory[chatHistory.length - 1];
+    if (!chatContent) return;
+
+    return {
+      bg: colorMap[chatContent.status] || colorMap.loading,
+      name: t(chatContent.moduleName || 'Running')
+    };
+  }, [chatHistory, isChatting, t]);
 
   useEffect(() => {
     return () => {
@@ -595,7 +625,7 @@ const ChatBox = (
                 )}
                 {item.obj === 'AI' && (
                   <>
-                    <Flex w={'100%'} alignItems={'center'}>
+                    <Flex w={'100%'} alignItems={'flex-end'}>
                       <ChatAvatar src={appAvatar} type={'AI'} />
                       <Flex {...controlContainerStyle} ml={3}>
                         <MyTooltip label={'复制'}>
@@ -635,6 +665,28 @@ const ChatBox = (
                           </MyTooltip>
                         )}
                       </Flex>
+                      {statusBoxData && index === chatHistory.length - 1 && (
+                        <Flex
+                          ml={3}
+                          alignItems={'center'}
+                          px={3}
+                          py={'1px'}
+                          borderRadius="md"
+                          border={theme.borders.base}
+                        >
+                          <Box
+                            className={styles.statusAnimation}
+                            bg={statusBoxData.bg}
+                            w="8px"
+                            h="8px"
+                            borderRadius={'50%'}
+                            mt={'1px'}
+                          ></Box>
+                          <Box ml={2} color={'myGray.600'}>
+                            {statusBoxData.name}
+                          </Box>
+                        </Flex>
+                      )}
                     </Flex>
                     <Box position={'relative'} maxW={messageCardMaxW} mt={['6px', 2]}>
                       <Card bg={'white'} {...MessageCardStyle}>

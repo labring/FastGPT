@@ -114,6 +114,7 @@ export const ChatModule: FlowModuleTemplateType = {
   name: 'AI 对话',
   intro: 'AI 大模型对话',
   flowType: FlowModuleTypeEnum.chatNode,
+  showStatus: true,
   inputs: [
     {
       key: 'model',
@@ -203,6 +204,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
   flowType: FlowModuleTypeEnum.kbSearchNode,
+  showStatus: true,
   inputs: [
     {
       key: 'kbList',
@@ -321,6 +323,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   description:
     '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',
   flowType: FlowModuleTypeEnum.classifyQuestion,
+  showStatus: true,
   inputs: [
     {
       key: 'systemPrompt',
@@ -381,6 +384,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   intro: '从文本中提取出指定格式的数据',
   description: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
   flowType: FlowModuleTypeEnum.contentExtract,
+  showStatus: true,
   inputs: [
     Input_Template_TFSwitch,
     {
@@ -441,6 +445,7 @@ export const HttpModule: FlowModuleTemplateType = {
   intro: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   description: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   flowType: FlowModuleTypeEnum.httpRequest,
+  showStatus: true,
   inputs: [
     {
       key: HttpPropsEnum.url,
@@ -507,10 +512,11 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
     modules: [
       {
         moduleId: 'userChatInput',
+        name: '用户问题(对话入口)',
         flowType: 'questionInput',
         position: {
-          x: 506.7143912167368,
-          y: 1601.0230108651226
+          x: 464.32198615344566,
+          y: 1602.2698463081606
         },
         inputs: [
           {
@@ -537,6 +543,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'history',
+        name: '聊天记录',
         flowType: 'historyNode',
         position: {
           x: 452.5466249541586,
@@ -576,17 +583,19 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'chatModule',
+        name: 'AI 对话',
         flowType: 'chatNode',
+        showStatus: true,
         position: {
-          x: 998.0312473867093,
-          y: 803.8586941051353
+          x: 1150.8317145593148,
+          y: 957.9676672880053
         },
         inputs: [
           {
             key: 'model',
             type: 'custom',
             label: '对话模型',
-            value: 'gpt-3.5-turbo',
+            value: 'gpt-3.5-turbo-16k',
             list: [],
             connected: true
           },
@@ -614,9 +623,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxToken',
             type: 'custom',
             label: '回复上限',
-            value: 2000,
+            value: 8000,
             min: 100,
-            max: 4000,
+            max: 16000,
             step: 50,
             markList: [
               {
@@ -624,8 +633,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 value: 100
               },
               {
-                label: '4000',
-                value: 4000
+                label: '16000',
+                value: 16000
               }
             ],
             connected: true
@@ -712,6 +721,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
     modules: [
       {
         moduleId: 'userGuide',
+        name: '用户引导',
         flowType: 'userGuide',
         position: {
           x: 454.98510354678695,
@@ -730,6 +740,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'userChatInput',
+        name: '用户问题(对话入口)',
         flowType: 'questionInput',
         position: {
           x: 464.32198615344566,
@@ -764,6 +775,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'history',
+        name: '聊天记录',
         flowType: 'historyNode',
         position: {
           x: 452.5466249541586,
@@ -803,7 +815,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'kbSearch',
+        name: '知识库搜索',
         flowType: 'kbSearchNode',
+        showStatus: true,
         position: {
           x: 956.0838440206068,
           y: 887.462827870246
@@ -916,7 +930,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'chatModule',
+        name: 'AI 对话',
         flowType: 'chatNode',
+        showStatus: true,
         position: {
           x: 1546.0823206390796,
           y: 1008.9827344021824
@@ -926,7 +942,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'model',
             type: 'custom',
             label: '对话模型',
-            value: 'gpt-3.5-turbo',
+            value: 'gpt-3.5-turbo-16k',
             list: [],
             connected: true
           },
@@ -954,9 +970,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxToken',
             type: 'custom',
             label: '回复上限',
-            value: 2000,
+            value: 8000,
             min: 100,
-            max: 4000,
+            max: 16000,
             step: 50,
             markList: [
               {
@@ -964,8 +980,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 value: 100
               },
               {
-                label: '4000',
-                value: 4000
+                label: '16000',
+                value: 16000
               }
             ],
             connected: true
@@ -1044,6 +1060,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: '2752oj',
+        name: '指定回复',
         flowType: 'answerNode',
         position: {
           x: 1542.9271243684725,
@@ -1080,6 +1097,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
     modules: [
       {
         moduleId: 'userGuide',
+        name: '用户引导',
         flowType: 'userGuide',
         position: {
           x: 447.98520778293346,
@@ -1098,6 +1116,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'variable',
+        name: '全局变量',
         flowType: 'variable',
         position: {
           x: 444.0369195277651,
@@ -1146,6 +1165,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'userChatInput',
+        name: '用户问题(对话入口)',
         flowType: 'questionInput',
         position: {
           x: 464.32198615344566,
@@ -1176,6 +1196,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'history',
+        name: '聊天记录',
         flowType: 'historyNode',
         position: {
           x: 452.5466249541586,
@@ -1215,7 +1236,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'chatModule',
+        name: 'AI 对话',
         flowType: 'chatNode',
+        showStatus: true,
         position: {
           x: 981.9682828103937,
           y: 890.014595014464
@@ -1225,7 +1248,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'model',
             type: 'custom',
             label: '对话模型',
-            value: 'gpt-3.5-turbo',
+            value: 'gpt-3.5-turbo-16k',
             list: [],
             connected: true
           },
@@ -1253,9 +1276,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'maxToken',
             type: 'custom',
             label: '回复上限',
-            value: 2000,
+            value: 8000,
             min: 100,
-            max: 4000,
+            max: 16000,
             step: 50,
             markList: [
               {
@@ -1263,8 +1286,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 value: 100
               },
               {
-                label: '4000',
-                value: 4000
+                label: '16000',
+                value: 16000
               }
             ],
             connected: true
@@ -1351,6 +1374,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
     modules: [
       {
         moduleId: '7z5g5h',
+        name: '用户问题(对话入口)',
         flowType: 'questionInput',
         position: {
           x: 198.56612928723575,
@@ -1389,6 +1413,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'xj0c9p',
+        name: '聊天记录',
         flowType: 'historyNode',
         position: {
           x: 194.99102398958047,
@@ -1428,7 +1453,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'remuj3',
+        name: '问题分类',
         flowType: 'classifyQuestion',
+        showStatus: true,
         position: {
           x: 672.9092284362648,
           y: 1077.557793775116
@@ -1535,6 +1562,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'a99p6z',
+        name: '指定回复',
         flowType: 'answerNode',
         position: {
           x: 1304.2886011902247,
@@ -1563,6 +1591,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'iejcou',
+        name: '指定回复',
         flowType: 'answerNode',
         position: {
           x: 1294.2531189034548,
@@ -1591,7 +1620,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'nlfwkc',
+        name: 'AI 对话',
         flowType: 'chatNode',
+        showStatus: true,
         position: {
           x: 1821.979893659983,
           y: 1104.6583548423682
@@ -1720,6 +1751,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 's4v9su',
+        name: '聊天记录',
         flowType: 'historyNode',
         position: {
           x: 193.3803955457983,
@@ -1759,22 +1791,20 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'fljhzy',
+        name: '知识库搜索',
         flowType: 'kbSearchNode',
+        showStatus: true,
         position: {
           x: 1305.5374262228029,
           y: 1120.0404921820218
         },
         inputs: [
           {
-            key: 'kbList',
             type: 'custom',
             label: '关联的知识库',
-            value: [
-              {
-                kbId: '646627f4f7b896cfd8910e24'
-              }
-            ],
             list: [],
+            key: 'kbList',
+            value: [],
             connected: true
           },
           {
@@ -1876,6 +1906,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'q9equb',
+        name: '用户引导',
         flowType: 'userGuide',
         position: {
           x: 191.4857498376603,
@@ -1895,6 +1926,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: 'tc90wz',
+        name: '指定回复',
         flowType: 'answerNode',
         position: {
           x: 1828.4596416688908,
@@ -1923,6 +1955,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
       },
       {
         moduleId: '5v78ap',
+        name: '指定回复',
         flowType: 'answerNode',
         position: {
           x: 1294.814522053934,

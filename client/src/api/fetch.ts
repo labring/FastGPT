@@ -2,11 +2,12 @@ import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
 import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@/types/chat';
+import { StartChatFnProps } from '@/components/ChatBox';
 
 interface StreamFetchProps {
   url?: string;
   data: Record<string, any>;
-  onMessage: (text: string) => void;
+  onMessage: StartChatFnProps['generatingMessage'];
   abortSignal: AbortController;
 }
 export const streamFetch = ({
@@ -71,8 +72,14 @@ export const streamFetch = ({
 
             if (eventName === sseResponseEventEnum.answer && data !== '[DONE]') {
               const answer: string = data?.choices?.[0].delta.content || '';
-              onMessage(answer);
+              onMessage({ text: answer });
               responseText += answer;
+            } else if (
+              eventName === sseResponseEventEnum.moduleStatus &&
+              data?.name &&
+              data?.status
+            ) {
+              onMessage(data);
             } else if (
               eventName === sseResponseEventEnum.appStreamResponse &&
               Array.isArray(data)
