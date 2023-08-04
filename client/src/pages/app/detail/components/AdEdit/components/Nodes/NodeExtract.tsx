@@ -22,7 +22,7 @@ const NodeExtract = ({
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
 
   return (
-    <NodeCard minW={'380px'} moduleId={moduleId} {...props}>
+    <NodeCard minW={'400px'} moduleId={moduleId} {...props}>
       <Divider text="Input" />
       <Container>
         <RenderInput
@@ -64,11 +64,14 @@ const NodeExtract = ({
                     </Thead>
                     <Tbody>
                       {extractKeys.map((item, index) => (
-                        <Tr key={index} position={'relative'}>
+                        <Tr
+                          key={index}
+                          position={'relative'}
+                          whiteSpace={'pre-wrap'}
+                          wordBreak={'break-all'}
+                        >
                           <Td>{item.key}</Td>
-                          <Td whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
-                            {item.desc}
-                          </Td>
+                          <Td>{item.desc}</Td>
                           <Td>{item.required ? '✔' : ''}</Td>
                           <Td whiteSpace={'nowrap'}>
                             <MyIcon
@@ -139,24 +142,6 @@ const NodeExtract = ({
             const newInputs = exists
               ? extracts.map((item) => (item.key === editExtractFiled.key ? data : item))
               : extracts.concat(data);
-            const newOutputs = exists
-              ? outputs.map((output) =>
-                  output.key === editExtractFiled.key
-                    ? {
-                        ...output,
-                        key: data.key,
-                        label: `提取结果-${data.desc}`
-                      }
-                    : output
-                )
-              : outputs.concat({
-                  key: data.key,
-                  label: `提取结果-${data.desc}`,
-                  description: '无法提取时不会返回',
-                  valueType: FlowValueTypeEnum.string,
-                  type: FlowOutputItemTypeEnum.source,
-                  targets: []
-                });
 
             onChangeNode({
               moduleId,
@@ -167,15 +152,63 @@ const NodeExtract = ({
                 value: newInputs
               }
             });
-            onChangeNode({
-              moduleId,
-              type: 'outputs',
-              key: '',
-              value: newOutputs
-            });
 
-            if (editExtractFiled.key && editExtractFiled.key !== data.key) {
-              onDelEdge({ moduleId, sourceHandle: editExtractFiled.key });
+            if (!exists) {
+              onChangeNode({
+                moduleId,
+                type: 'outputs',
+                key: '',
+                value: outputs.concat({
+                  key: data.key,
+                  label: `提取结果-${data.desc}`,
+                  description: '无法提取时不会返回',
+                  valueType: FlowValueTypeEnum.string,
+                  type: FlowOutputItemTypeEnum.source,
+                  targets: []
+                })
+              });
+            } else {
+              if (editExtractFiled.key === data.key) {
+                // update
+                onChangeNode({
+                  moduleId,
+                  type: 'outputs',
+                  key: '',
+                  value: outputs.map((output) =>
+                    output.key === data.key
+                      ? {
+                          ...output,
+                          label: `提取结果-${data.desc}`
+                        }
+                      : output
+                  )
+                });
+              } else {
+                // del and push
+                const newOutputs = outputs.filter((output) => output.key !== editExtractFiled.key);
+
+                onChangeNode({
+                  moduleId,
+                  type: 'outputs',
+                  key: '',
+                  value: newOutputs
+                });
+                setTimeout(() => {
+                  onChangeNode({
+                    moduleId,
+                    type: 'outputs',
+                    key: '',
+                    value: newOutputs.concat({
+                      key: data.key,
+                      label: `提取结果-${data.desc}`,
+                      description: '无法提取时不会返回',
+                      valueType: FlowValueTypeEnum.string,
+                      type: FlowOutputItemTypeEnum.source,
+                      targets: []
+                    })
+                  });
+                }, 10);
+              }
             }
 
             setEditExtractField(undefined);
@@ -186,4 +219,4 @@ const NodeExtract = ({
   );
 };
 
-export default NodeExtract;
+export default React.memo(NodeExtract);

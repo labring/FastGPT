@@ -25,42 +25,60 @@ const chatModelInput = ({
   {
     key: 'model',
     value: model,
+    type: 'custom',
+    label: '对话模型',
     connected: true
   },
   {
     key: 'temperature',
     value: temperature,
+    label: '温度',
+    type: 'slider',
     connected: true
   },
   {
     key: 'maxToken',
     value: maxToken,
+    type: 'custom',
+    label: '回复上限',
     connected: true
   },
   {
     key: 'systemPrompt',
     value: systemPrompt,
+    type: 'textarea',
+    label: '系统提示词',
     connected: true
   },
   {
     key: 'limitPrompt',
+    label: '限定词',
+    type: 'textarea',
     value: limitPrompt,
     connected: true
   },
   {
     key: 'switch',
+    type: 'target',
+    label: '触发器',
     connected: kbList.length > 0
   },
   {
     key: 'quoteQA',
+    type: 'target',
+    label: '引用内容',
     connected: kbList.length > 0
   },
   {
     key: 'history',
+    type: 'target',
+    label: '聊天记录',
     connected: true
   },
   {
     key: 'userChatInput',
+    type: 'target',
+    label: '用户问题',
     connected: true
   }
 ];

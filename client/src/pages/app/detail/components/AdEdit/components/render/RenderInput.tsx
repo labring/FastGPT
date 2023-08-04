@@ -114,11 +114,13 @@ export const Label = ({
                 key: data.key,
                 value: data
               });
-              onChangeNode({
-                moduleId,
-                type: 'delInput',
-                key: editField.key,
-                value: ''
+              setTimeout(() => {
+                onChangeNode({
+                  moduleId,
+                  type: 'delInput',
+                  key: editField.key,
+                  value: ''
+                });
               });
             }
             setEditField(undefined);

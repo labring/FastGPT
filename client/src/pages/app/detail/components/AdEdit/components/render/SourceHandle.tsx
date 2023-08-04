@@ -42,4 +42,4 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
   );
 };
 
-export default SourceHandle;
+export default React.memo(SourceHandle);

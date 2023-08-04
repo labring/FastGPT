@@ -3,10 +3,12 @@ import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
 
 const SliderApps = ({ appId }: { appId: string }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { myApps, loadMyApps } = useUserStore();
 
@@ -33,7 +35,7 @@ const SliderApps = ({ appId }: { appId: string }) => {
           borderRadius={'50%'}
           aria-label={''}
         />
-        退出聊天
+        {t('chat.Exit Chat')}
       </Flex>
       <Box mt={5}>
         {myApps.map((item) => (
