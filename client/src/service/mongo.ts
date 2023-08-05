@@ -19,11 +19,6 @@ export async function connectToDatabase(): Promise<void> {
   // init global data
   global.qaQueueLen = 0;
   global.vectorQueueLen = 0;
-  global.systemEnv = {
-    vectorMaxProcess: 10,
-    qaMaxProcess: 10,
-    pgIvfflatProbe: 10
-  };
   global.sendInformQueue = [];
   global.sendInformQueueLen = 0;
   // proxy obj
@@ -116,7 +111,6 @@ async function initPg() {
   }
 }
 
-export * from './models/authCode';
 export * from './models/chat';
 export * from './models/app';
 export * from './models/user';

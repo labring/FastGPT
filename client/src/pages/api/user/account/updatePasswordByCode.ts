@@ -2,10 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { User } from '@/service/models/user';
-import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { generateToken, setCookie } from '@/service/utils/tools';
+import { authCode } from '@/service/api/plugins';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -18,11 +18,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // 验证码校验
-    const authCode = await AuthCode.findOne({
+    await authCode({
       username,
       code,
-      type: UserAuthTypeEnum.findPassword,
-      expiredTime: { $gte: Date.now() }
+      type: UserAuthTypeEnum.findPassword
     });
 
     if (!authCode) {

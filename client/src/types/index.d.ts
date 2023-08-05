@@ -31,13 +31,15 @@ export type SystemEnvType = {
   qaMaxProcess: number;
   pgIvfflatProbe: number;
 };
-type PluginItemType = {
-  url: string;
-  auth: string;
-};
+
 export type PluginType = {
-  authCode?: PluginItemType;
-  moderationsCheck?: PluginItemType;
+  authCode?: {
+    sendUrl: string;
+    authUrl: string;
+  };
+  moderationsCheck?: {
+    url: string;
+  };
 };
 
 declare global {
@@ -52,7 +54,7 @@ declare global {
 
   var feConfigs: FeConfigsType;
   var systemEnv: SystemEnvType;
-  var;
+  var systemPlugins: PluginType;
   var chatModels: ChatModelItemType[];
   var qaModels: QAModelItemType[];
   var vectorModels: VectorModelItemType[];

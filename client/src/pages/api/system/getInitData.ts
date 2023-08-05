@@ -88,7 +88,7 @@ const defaultVectorModels = [
 export async function getInitConfig() {
   try {
     const filename =
-      process.env.NODE_ENV === 'development' ? 'data/config.json.local' : '/app/data/config.json';
+      process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
     const res = JSON.parse(readFileSync(filename, 'utf-8'));
     console.log(res);
 
@@ -97,6 +97,7 @@ export async function getInitConfig() {
     global.chatModels = res.ChatModels || defaultChatModels;
     global.qaModels = res.QAModels || defaultQAModels;
     global.vectorModels = res.VectorModels || defaultVectorModels;
+    global.systemPlugins = res.plugins || {};
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);
@@ -109,4 +110,5 @@ export function setDefaultData() {
   global.chatModels = defaultChatModels;
   global.qaModels = defaultQAModels;
   global.vectorModels = defaultVectorModels;
+  global.systemPlugins = {};
 }
