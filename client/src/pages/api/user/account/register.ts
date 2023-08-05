@@ -2,10 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { User } from '@/service/models/user';
-import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
 import { generateToken, setCookie } from '@/service/utils/tools';
 import { UserAuthTypeEnum } from '@/constants/common';
+import { authCode } from '@/service/api/plugins';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -18,16 +18,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // 验证码校验
-    const authCode = await AuthCode.findOne({
+    await authCode({
       username,
-      code,
       type: UserAuthTypeEnum.register,
-      expiredTime: { $gte: Date.now() }
+      code
     });
-
-    if (!authCode) {
-      throw new Error('验证码错误');
-    }
 
     // 重名校验
     const authRepeat = await User.findOne({
@@ -50,11 +45,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!user) {
       throw new Error('获取用户信息异常');
     }
-
-    // 删除验证码记录
-    await AuthCode.deleteMany({
-      username
-    });
 
     const token = generateToken(user._id);
     setCookie(res, token);
