@@ -89,19 +89,12 @@ const Empty = () => {
   const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
 
   return (
-    <Box
-      pt={[6, 0]}
-      w={'85%'}
-      maxW={'600px'}
-      m={'auto'}
-      alignItems={'center'}
-      justifyContent={'center'}
-    >
+    <Box pt={6} w={'85%'} maxW={'600px'} m={'auto'} alignItems={'center'} justifyContent={'center'}>
       {/* version intro */}
-      <Card p={4} mb={10}>
+      <Card p={4} mb={10} minH={'200px'}>
         <Markdown source={versionIntro} />
       </Card>
-      <Card p={4}>
+      <Card p={4} minH={'600px'}>
         <Markdown source={chatProblem} />
       </Card>
     </Box>
@@ -451,7 +444,7 @@ const ChatBox = (
 
   useEffect(() => {
     return () => {
-      controller.current?.abort();
+      controller.current?.abort('leave');
       // close voice
       cancelBroadcast();
     };
@@ -470,16 +463,7 @@ const ChatBox = (
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box
-        ref={ChatBoxRef}
-        flex={'1 0 0'}
-        h={0}
-        w={'100%'}
-        overflow={'overlay'}
-        px={[4, 0]}
-        mt={[0, 5]}
-        pb={3}
-      >
+      <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
         <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
 
@@ -775,7 +759,7 @@ const ChatBox = (
                   cursor={'pointer'}
                   name={'stop'}
                   color={'gray.500'}
-                  onClick={() => controller.current?.abort()}
+                  onClick={() => controller.current?.abort('stop')}
                 />
               ) : (
                 <MyIcon

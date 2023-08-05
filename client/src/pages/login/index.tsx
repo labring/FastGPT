@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import styles from './index.module.scss';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { Box, Flex, Image, useDisclosure } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
 import { useGlobalStore } from '@/store/global';
 import type { ResLogin } from '@/api/response/user';
@@ -11,6 +11,8 @@ import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/utils/i18n';
 import { setToken } from '@/utils/user';
+import { feConfigs } from '@/store/static';
+import WxConcat from '@/components/WxConcat';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
@@ -21,6 +23,7 @@ const Login = () => {
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo } = useUserStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -84,6 +87,7 @@ const Login = () => {
         )}
 
         <Box
+          position={'relative'}
           order={1}
           flex={`0 0 ${isPc ? '400px' : '100%'}`}
           height={'100%'}
@@ -94,8 +98,24 @@ const Login = () => {
           borderRadius={isPc ? 'md' : 'none'}
         >
           <DynamicComponent type={pageType} />
+
+          {feConfigs?.show_register && (
+            <Box
+              fontSize={'sm'}
+              color={'myGray.600'}
+              cursor={'pointer'}
+              position={'absolute'}
+              right={5}
+              bottom={3}
+              onClick={onOpen}
+            >
+              无法登录，点击联系
+            </Box>
+          )}
         </Box>
       </Flex>
+
+      {isOpen && <WxConcat onClose={onClose} />}
     </Flex>
   );
 };

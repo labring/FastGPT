@@ -73,7 +73,7 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
         shareId
       });
 
-      if (completionChatId !== chatId && !controller.signal.aborted) {
+      if (completionChatId !== chatId && controller.signal.reason !== 'leave') {
         router.replace({
           query: {
             shareId,
