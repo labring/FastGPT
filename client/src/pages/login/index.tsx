@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import styles from './index.module.scss';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
@@ -10,6 +10,7 @@ import { useChatStore } from '@/store/chat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/utils/i18n';
+import { setToken } from '@/utils/user';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
@@ -28,6 +29,7 @@ const Login = () => {
       setLastChatAppId('');
 
       setUserInfo(res.user);
+      setToken(res.token);
       setTimeout(() => {
         router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/list');
       }, 100);

@@ -5,7 +5,7 @@ import { User } from '@/service/models/user';
 import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
 import { UserAuthTypeEnum } from '@/constants/common';
-import { setCookie } from '@/service/utils/tools';
+import { generateToken, setCookie } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -48,11 +48,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('获取用户信息异常');
     }
 
-    setCookie(res, user._id);
+    const token = generateToken(user._id);
+    setCookie(res, token);
 
     jsonRes(res, {
       data: {
-        user
+        user,
+        token
       }
     });
   } catch (err) {

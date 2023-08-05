@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { generateQA } from '../events/generateQA';
 import { generateVector } from '../events/generateVector';
+import { ERROR_ENUM } from '../errorCode';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -22,12 +23,24 @@ export const generateToken = (userId: string) => {
   );
   return token;
 };
+// auth token
+export const authJWT = (token: string) =>
+  new Promise<string>((resolve, reject) => {
+    const key = process.env.TOKEN_KEY as string;
 
+    jwt.verify(token, key, function (err, decoded: any) {
+      if (err || !decoded?.userId) {
+        reject(ERROR_ENUM.unAuthorization);
+        return;
+      }
+      resolve(decoded.userId);
+    });
+  });
 /* set cookie */
-export const setCookie = (res: NextApiResponse, userId: string) => {
+export const setCookie = (res: NextApiResponse, token: string) => {
   res.setHeader(
     'Set-Cookie',
-    `token=${generateToken(userId)}; Path=/; HttpOnly; Max-Age=604800; Samesite=None; Secure;`
+    `token=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=None; Secure;`
   );
 };
 /* clear cookie */
