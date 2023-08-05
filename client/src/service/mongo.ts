@@ -22,8 +22,7 @@ export async function connectToDatabase(): Promise<void> {
   global.systemEnv = {
     vectorMaxProcess: 10,
     qaMaxProcess: 10,
-    pgIvfflatProbe: 10,
-    sensitiveCheck: false
+    pgIvfflatProbe: 10
   };
   global.sendInformQueue = [];
   global.sendInformQueueLen = 0;

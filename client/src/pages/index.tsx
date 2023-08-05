@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Card, Box, Link, Flex, Image, Button } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { beianText } from '@/store/static';
 import { feConfigs } from '@/store/static';
 import { serviceSideProps } from '@/utils/i18n';
 import { useTranslation } from 'next-i18next';
@@ -215,19 +214,17 @@ const Home = () => {
         </Flex>
       </Flex>
 
-      {feConfigs?.authorText && (
-        <Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>
-          <Card p={5} mt={4} textAlign={'center'}>
-            {beianText && (
-              <Link href="https://beian.miit.gov.cn/" target="_blank">
-                {beianText}
-              </Link>
-            )}
+      <Box w={'100%'} mt={'100vh'} px={[5, 10]} pb={[5, 10]}>
+        <Card p={5} mt={4} textAlign={'center'}>
+          {feConfigs?.beianText && (
+            <Link href="https://beian.miit.gov.cn/" target="_blank">
+              {feConfigs.beianText}
+            </Link>
+          )}
 
-            <Box>{feConfigs?.authorText}</Box>
-          </Card>
-        </Box>
-      )}
+          {feConfigs?.authorText && <Box>{feConfigs?.authorText}</Box>}
+        </Card>
+      </Box>
     </Flex>
   );
 };

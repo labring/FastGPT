@@ -21,16 +21,23 @@ export type FeConfigsType = {
   show_git?: boolean;
   systemTitle?: string;
   authorText?: string;
-};
-export type SystemEnvType = {
   beianText?: string;
   googleClientVerKey?: string;
+  baiduTongjiUrl?: string;
+};
+export type SystemEnvType = {
   googleServiceVerKey?: string;
-  baiduTongji?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgIvfflatProbe: number;
-  sensitiveCheck: boolean;
+};
+type PluginItemType = {
+  url: string;
+  auth: string;
+};
+export type PluginType = {
+  authCode?: PluginItemType;
+  moderationsCheck?: PluginItemType;
 };
 
 declare global {
@@ -42,11 +49,13 @@ declare global {
   var OpenAiEncMap: Tiktoken;
   var sendInformQueue: (() => Promise<void>)[];
   var sendInformQueueLen: number;
+
+  var feConfigs: FeConfigsType;
   var systemEnv: SystemEnvType;
+  var;
   var chatModels: ChatModelItemType[];
   var qaModels: QAModelItemType[];
   var vectorModels: VectorModelItemType[];
-  var feConfigs: FeConfigsType;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

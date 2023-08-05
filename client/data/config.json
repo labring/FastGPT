@@ -5,15 +5,14 @@
     "show_appStore": false,
     "show_userDetail": false,
     "show_git": true,
+    "beianText": "",
     "systemTitle": "FastAI",
     "authorText": "Made by FastAI Team."
   },
   "SystemParams": {
-    "beianText": "",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
-    "pgIvfflatProbe": 20,
-    "sensitiveCheck": false
+    "pgIvfflatProbe": 20
   },
   "ChatModels": [
     {
@@ -63,5 +62,6 @@
       "name": "Embedding-2",
       "price": 0.2
     }
-  ]
+  ],
+  "plugins": {}
 }
