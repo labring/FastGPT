@@ -15,6 +15,7 @@ import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/events/pushBill';
 import { ChatModelItemType } from '@/types/model';
 import { UserModelSchema } from '@/types/mongoSchema';
+import { textCensor } from '@/service/api/plugins';
 
 export type ChatProps = {
   res: NextApiResponse;
@@ -61,6 +62,14 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   const { filterQuoteQA, quotePrompt } = filterQuote({
     quoteQA,
     model: modelConstantsData
+  });
+
+  await textCensor({
+    text: `${systemPrompt}
+    ${quotePrompt}
+    ${limitPrompt}
+    ${userChatInput}
+    `
   });
 
   const { messages, filterMessages } = getChatMessages({

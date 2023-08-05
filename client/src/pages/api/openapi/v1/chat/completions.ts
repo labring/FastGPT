@@ -414,13 +414,13 @@ function loadModules(
   });
 }
 
-function responseStatus({
+export function responseStatus({
   res,
   status,
   name
 }: {
   res: NextApiResponse;
-  status: 'running' | 'finish';
+  status?: 'running' | 'finish';
   name?: string;
 }) {
   if (!name) return;
@@ -428,7 +428,7 @@ function responseStatus({
     res,
     event: sseResponseEventEnum.moduleStatus,
     data: JSON.stringify({
-      status,
+      status: 'running',
       name
     })
   });
