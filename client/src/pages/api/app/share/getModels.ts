@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, App } from '@/service/mongo';
 import type { PagingData } from '@/types';
 import type { ShareAppItem } from '@/types/app';
-import { parseCookie } from '@/service/utils/auth';
+import { authUser } from '@/service/utils/auth';
 import { Types } from 'mongoose';
 
 /* 获取模型列表 */
@@ -17,13 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    let userId = '';
-
-    try {
-      userId = await parseCookie(req.headers.cookie);
-    } catch (error) {
-      error;
-    }
+    const { userId } = await authUser({ req, authToken: true });
 
     const regex = new RegExp(searchText, 'i');
 

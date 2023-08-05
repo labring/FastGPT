@@ -53,6 +53,7 @@ export const useUserStore = create<State>()(
           });
         },
         async updateUserInfo(user: UserUpdateParams) {
+          const oldInfo = (get().userInfo ? { ...get().userInfo } : null) as UserType | null;
           set((state) => {
             if (!state.userInfo) return;
             state.userInfo = {
@@ -60,7 +61,14 @@ export const useUserStore = create<State>()(
               ...user
             };
           });
-          await putUserInfo(user);
+          try {
+            await putUserInfo(user);
+          } catch (error) {
+            set((state) => {
+              state.userInfo = oldInfo;
+            });
+            return Promise.reject(error);
+          }
         },
         myApps: [],
         myCollectionApps: [],
