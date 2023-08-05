@@ -37,15 +37,15 @@ function App({ Component, pageProps }: AppProps) {
   const { i18n } = useTranslation();
 
   const [googleClientVerKey, setGoogleVerKey] = useState<string>();
-  const [baiduTongji, setBaiduTongji] = useState<string>();
+  const [baiduTongjiUrl, setBaiduTongjiUrl] = useState<string>();
 
   useEffect(() => {
     (async () => {
       const {
-        systemEnv: { googleClientVerKey, baiduTongji }
+        feConfigs: { googleClientVerKey, baiduTongjiUrl }
       } = await clientInitData();
       setGoogleVerKey(googleClientVerKey);
-      setBaiduTongji(baiduTongji);
+      setBaiduTongjiUrl(baiduTongjiUrl);
     })();
   }, []);
 
@@ -69,7 +69,7 @@ function App({ Component, pageProps }: AppProps) {
       <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
       <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
-      {baiduTongji && <Script src={baiduTongji} strategy="lazyOnload"></Script>}
+      {baiduTongjiUrl && <Script src={baiduTongjiUrl} strategy="lazyOnload"></Script>}
       {googleClientVerKey && (
         <>
           <Script

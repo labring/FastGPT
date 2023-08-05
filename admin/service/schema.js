@@ -95,27 +95,7 @@ const appSchema = new mongoose.Schema({
   updateTime: Date
 });
 
-const SystemSchema = new mongoose.Schema({
-  vectorMaxProcess: {
-    type: Number,
-    default: 10
-  },
-  qaMaxProcess: {
-    type: Number,
-    default: 10
-  },
-  pgIvfflatProbe: {
-    type: Number,
-    default: 10
-  },
-  sensitiveCheck: {
-    type: Boolean,
-    default: false
-  }
-});
-
 export const App = mongoose.models['app'] || mongoose.model('app', appSchema);
 export const Kb = mongoose.models['kb'] || mongoose.model('kb', kbSchema);
 export const User = mongoose.models['user'] || mongoose.model('user', UserSchema);
 export const Pay = mongoose.models['pay'] || mongoose.model('pay', paySchema);
-export const System = mongoose.models['system'] || mongoose.model('system', SystemSchema);

@@ -1,4 +1,4 @@
-import type { FeConfigsType, SystemEnvType } from '@/types';
+import type { FeConfigsType } from '@/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { readFileSync } from 'fs';
@@ -12,7 +12,6 @@ export type InitDateResponse = {
   chatModels: ChatModelItemType[];
   qaModels: QAModelItemType[];
   vectorModels: VectorModelItemType[];
-  systemEnv: SystemEnvType;
   feConfigs: FeConfigsType;
 };
 
@@ -22,7 +21,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   jsonRes<InitDateResponse>(res, {
     data: {
-      systemEnv: global.systemEnv,
       feConfigs: global.feConfigs,
       chatModels: global.chatModels,
       qaModels: global.qaModels,
@@ -34,8 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 const defaultSystemEnv = {
   vectorMaxProcess: 15,
   qaMaxProcess: 15,
-  pgIvfflatProbe: 20,
-  sensitiveCheck: false
+  pgIvfflatProbe: 20
 };
 const defaultFeConfigs = {
   show_emptyChat: true,
@@ -102,7 +99,7 @@ export async function getInitConfig() {
     global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
-    console.log('get init config error, set default');
+    console.log('get init config error, set default', error);
   }
 }
 

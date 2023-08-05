@@ -4,7 +4,7 @@ import { UserAuthTypeEnum } from '@/constants/common';
 let timer: any;
 import { useToast } from './useToast';
 import { getClientToken } from '@/utils/plugin/google';
-import { googleClientVerKey } from '@/store/static';
+import { feConfigs } from '@/store/static';
 
 export const useSendCode = () => {
   const { toast } = useToast();
@@ -27,7 +27,7 @@ export const useSendCode = () => {
         await sendAuthCode({
           username,
           type,
-          googleToken: await getClientToken(googleClientVerKey)
+          googleToken: await getClientToken(feConfigs.googleClientVerKey)
         });
         setCodeCountDown(60);
         timer = setInterval(() => {

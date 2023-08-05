@@ -28,10 +28,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 export async function sensitiveCheck({ input }: Props) {
-  if (!global.systemEnv.sensitiveCheck) {
-    return Promise.resolve('');
-  }
-
   const response = await axios({
     ...axiosConfig(),
     method: 'POST',
