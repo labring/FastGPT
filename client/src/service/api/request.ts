@@ -109,21 +109,21 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
  * @returns
  */
 export function GET<T>(url?: string, params = {}, config: ConfigType = {}): Promise<T> {
-  if (!url) return Promise.reject('no url');
+  if (!url) return Promise.reject('The Plugin is not installed');
   return request(url, params, config, 'GET');
 }
 
 export function POST<T>(url?: string, data = {}, config: ConfigType = {}): Promise<T> {
-  if (!url) return Promise.reject('no url');
+  if (!url) return Promise.reject('The Plugin is not installed');
   return request(url, data, config, 'POST');
 }
 
 export function PUT<T>(url?: string, data = {}, config: ConfigType = {}): Promise<T> {
-  if (!url) return Promise.reject('no url');
+  if (!url) return Promise.reject('The Plugin is not installed');
   return request(url, data, config, 'PUT');
 }
 
 export function DELETE<T>(url?: string, data = {}, config: ConfigType = {}): Promise<T> {
-  if (!url) return Promise.reject('no url');
+  if (!url) return Promise.reject('The Plugin is not installed');
   return request(url, data, config, 'DELETE');
 }

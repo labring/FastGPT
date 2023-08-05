@@ -37,8 +37,8 @@ export type PluginType = {
     sendUrl: string;
     authUrl: string;
   };
-  moderationsCheck?: {
-    url: string;
+  censor?: {
+    textUrl?: string;
   };
 };
 
