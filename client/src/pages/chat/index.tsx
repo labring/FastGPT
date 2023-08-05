@@ -79,8 +79,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       const newTitle = prompts[0].content?.slice(0, 20) || '新对话';
 
       // update history
-      if (completionChatId !== chatId && !controller.signal.aborted) {
-        forbidRefresh.current = true;
+      if (completionChatId !== chatId) {
         const newHistory: ChatHistoryItemType = {
           chatId: completionChatId,
           updateTime: new Date(),
@@ -89,12 +88,15 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
           top: false
         };
         updateHistory(newHistory);
-        router.replace({
-          query: {
-            chatId: completionChatId,
-            appId
-          }
-        });
+        if (controller.signal.reason !== 'leave') {
+          forbidRefresh.current = true;
+          router.replace({
+            query: {
+              chatId: completionChatId,
+              appId
+            }
+          });
+        }
       } else {
         const currentChat = history.find((item) => item.chatId === chatId);
         currentChat &&
@@ -116,7 +118,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     [appId, chatId, history, router, setChatData, updateHistory]
   );
 
-  // 删除一句话
+  // del one chat content
   const delOneHistoryItem = useCallback(
     async ({ contentId, index }: { contentId?: string; index: number }) => {
       if (!chatId || !contentId) return;
