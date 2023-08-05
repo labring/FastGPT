@@ -1,10 +1,10 @@
 import { UserModelSchema } from '@/types/mongoSchema';
 import { Configuration, OpenAIApi } from 'openai';
 
-export const openaiBaseUrl = 'https://api.openai.com/v1';
-export const baseUrl = process.env.ONEAPI_URL || process.env.OPENAI_BASE_URL || openaiBaseUrl;
+export const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+export const baseUrl = process.env.ONEAPI_URL || openaiBaseUrl;
 
-export const systemAIChatKey = process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
+export const systemAIChatKey = process.env.CHAT_API_KEY || '';
 
 export const getAIChatApi = (props?: UserModelSchema['openaiAccount']) => {
   return new OpenAIApi(
