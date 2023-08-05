@@ -1,9 +1,9 @@
 import type { NextApiRequest } from 'next';
-import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
 import { App, OpenApi, User, OutLink, KB } from '../mongo';
 import type { AppSchema } from '@/types/mongoSchema';
 import { ERROR_ENUM } from '../errorCode';
+import { authJWT } from './tools';
 
 export enum AuthUserTypeEnum {
   token = 'token',
@@ -11,26 +11,16 @@ export enum AuthUserTypeEnum {
   apikey = 'apikey'
 }
 
-export const parseCookie = (cookie?: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    // 获取 cookie
-    const cookies = Cookie.parse(cookie || '');
-    const token = cookies.token;
+export const authCookieToken = async (cookie?: string, token?: string): Promise<string> => {
+  // 获取 cookie
+  const cookies = Cookie.parse(cookie || '');
+  const cookieToken = cookies.token || token;
 
-    if (!token) {
-      return reject(ERROR_ENUM.unAuthorization);
-    }
+  if (!cookieToken) {
+    return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
 
-    const key = process.env.TOKEN_KEY as string;
-
-    jwt.verify(token, key, function (err, decoded: any) {
-      if (err || !decoded?.userId) {
-        reject(ERROR_ENUM.unAuthorization);
-        return;
-      }
-      resolve(decoded.userId);
-    });
-  });
+  return await authJWT(cookieToken);
 };
 
 /* auth balance */
@@ -117,8 +107,9 @@ export const authUser = async ({
     return userId;
   };
 
-  const { cookie, apikey, rootkey, userid, authorization } = (req.headers || {}) as {
+  const { cookie, token, apikey, rootkey, userid, authorization } = (req.headers || {}) as {
     cookie?: string;
+    token?: string;
     apikey?: string;
     rootkey?: string;
     userid?: string;
@@ -130,13 +121,13 @@ export const authUser = async ({
   let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
 
   if (authToken) {
-    uid = await parseCookie(cookie);
+    uid = await authCookieToken(cookie, token);
     authType = AuthUserTypeEnum.token;
   } else if (authRoot) {
     uid = await parseRootKey(rootkey, userid);
     authType = AuthUserTypeEnum.root;
-  } else if (cookie) {
-    uid = await parseCookie(cookie);
+  } else if (cookie || token) {
+    uid = await authCookieToken(cookie, token);
     authType = AuthUserTypeEnum.token;
   } else if (apikey) {
     uid = await parseOpenApiKey(apikey);

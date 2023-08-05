@@ -3,6 +3,7 @@ import { getErrText } from '@/utils/tools';
 import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { StartChatFnProps } from '@/components/ChatBox';
+import { getToken } from '@/utils/user';
 
 interface StreamFetchProps {
   url?: string;
@@ -24,7 +25,8 @@ export const streamFetch = ({
       const response = await window.fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          token: getToken()
         },
         signal: abortSignal.signal,
         body: JSON.stringify({

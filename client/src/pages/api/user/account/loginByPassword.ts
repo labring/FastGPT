@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { User } from '@/service/models/user';
-import { setCookie } from '@/service/utils/tools';
+import { generateToken, setCookie } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -32,11 +32,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('密码错误');
     }
 
-    setCookie(res, user._id);
+    const token = generateToken(user._id);
+    setCookie(res, token);
 
     jsonRes(res, {
       data: {
-        user
+        user,
+        token
       }
     });
   } catch (err) {

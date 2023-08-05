@@ -2,10 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { User } from '@/service/models/user';
-import { AuthCode } from '@/service/models/authCode';
 import { connectToDatabase } from '@/service/mongo';
-import { UserAuthTypeEnum } from '@/constants/common';
-import { setCookie } from '@/service/utils/tools';
 import { authUser } from '@/service/utils/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

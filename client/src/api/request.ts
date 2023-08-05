@@ -1,5 +1,5 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { clearCookie } from '@/utils/user';
+import { clearToken, getToken } from '@/utils/user';
 import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 
 interface ConfigType {
@@ -18,7 +18,7 @@ interface ResponseDataType {
  */
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
-    // config.headers.Authorization = getToken();
+    config.headers.token = getToken();
   }
 
   return config;
@@ -57,7 +57,7 @@ function responseError(err: any) {
   }
   // 有报错响应
   if (err?.code in TOKEN_ERROR_CODE) {
-    clearCookie();
+    clearToken();
     window.location.replace(
       `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
     );

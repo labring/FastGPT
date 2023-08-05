@@ -1,12 +1,21 @@
 import { PRICE_SCALE } from '@/constants/common';
 import { loginOut } from '@/api/user';
 
-export const clearCookie = () => {
+const tokenKey = 'token';
+export const clearToken = () => {
   try {
     loginOut();
+    localStorage.removeItem(tokenKey);
   } catch (error) {
     error;
   }
+};
+
+export const setToken = (token: string) => {
+  localStorage.setItem(tokenKey, token);
+};
+export const getToken = () => {
+  return localStorage.getItem(tokenKey) || '';
 };
 
 /**

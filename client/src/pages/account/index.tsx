@@ -3,7 +3,7 @@ import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { useGlobalStore } from '@/store/global';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import { clearCookie } from '@/utils/user';
+import { clearToken } from '@/utils/user';
 import { useUserStore } from '@/store/user';
 import { useConfirm } from '@/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
@@ -77,7 +77,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     (tab: string) => {
       if (tab === TabEnum.loginout) {
         openConfirm(() => {
-          clearCookie();
+          clearToken();
           setUserInfo(null);
           router.replace('/login');
         })();

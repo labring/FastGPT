@@ -331,6 +331,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     name: 'AI 对话',
     flowType: FlowModuleTypeEnum.chatNode,
     inputs: chatModelInput(formData),
+    showStatus: true,
     outputs: [
       {
         key: 'answerText',
@@ -426,6 +427,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
   {
     name: '知识库搜索',
     flowType: FlowModuleTypeEnum.kbSearchNode,
+    showStatus: true,
     inputs: [
       {
         key: 'kbList',
@@ -537,6 +539,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     name: 'AI 对话',
     flowType: FlowModuleTypeEnum.chatNode,
     inputs: chatModelInput(formData),
+    showStatus: true,
     outputs: [
       {
         key: 'answerText',
