@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, User, Pay, TrainingData } from '@/service/mongo';
+import { User, Pay, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
-import { getPayResult } from '@/service/utils/wxpay';
 import { startQueue } from '@/service/utils/tools';
+import { getWxPayQRResult } from '@/service/api/plugins';
 
 /* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,8 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { payId } = req.query as { payId: string };
 
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     // 查找订单记录校验
     const payOrder = await Pay.findById<PaySchema>(payId);
@@ -32,11 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('找不到用户');
     }
 
-    const payRes = await getPayResult(payOrder.orderId);
-
-    // 校验下是否超过一天
-    const orderTime = dayjs(payOrder.createTime);
-    const diffInHours = dayjs().diff(orderTime, 'hours');
+    const payRes = await getWxPayQRResult(payOrder.orderId);
 
     if (payRes.trade_state === 'SUCCESS') {
       // 订单已支付
@@ -76,12 +70,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: '更新订单失败,请重试'
       });
     }
+
+    // 校验下是否超过一天
+    const orderTime = dayjs(payOrder.createTime);
+    const diffInHours = dayjs().diff(orderTime, 'hours');
+
     if (payRes.trade_state === 'CLOSED' || diffInHours > 24) {
       // 订单已关闭
       await Pay.findByIdAndUpdate(payId, {
         status: 'CLOSED'
       });
       return jsonRes(res, {
+        code: 500,
         data: '订单已过期'
       });
     }
