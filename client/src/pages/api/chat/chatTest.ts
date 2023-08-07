@@ -54,7 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         history: gptMessage2ChatType(history),
         userChatInput: prompt
       },
-      stream: true
+      stream: true,
+      detail: true
     });
 
     sseResponse({

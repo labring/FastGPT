@@ -6,11 +6,11 @@ import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 import type { AppModuleItemType } from '@/types/app';
-import type { FlowModuleItemType, FlowModuleTemplateType } from '@/types/flow';
+import type { FlowModuleItemType } from '@/types/flow';
 import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
-import { EmptyModule, ModuleTemplates, ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
+import { EmptyModule, ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const adaptBill = (bill: BillSchema): UserBillType => {
@@ -41,7 +41,7 @@ export const gptMessage2ChatType = (messages: MessageItemType[]): ChatItemType[]
 
 export const textAdaptGptResponse = ({
   text,
-  model,
+  model = '',
   finish_reason = null,
   extraData = {}
 }: {
