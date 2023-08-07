@@ -25,7 +25,7 @@ const list = [
     ? [
         {
           icon: 'git',
-          label: 'Git项目地址',
+          label: 'GitHub 地址',
           link: 'https://github.com/labring/FastGPT'
         }
       ]

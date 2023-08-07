@@ -7,15 +7,13 @@ import { serviceSideProps } from '@/utils/i18n';
 import { useTranslation } from 'next-i18next';
 
 import styles from './index.module.scss';
-import axios from 'axios';
 import MyIcon from '@/components/Icon';
 
 const Home = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const { inviterId } = router.query as { inviterId: string };
-  const { isPc } = useGlobalStore();
-  const [star, setStar] = useState(1500);
+  const { isPc, gitStar } = useGlobalStore();
 
   useEffect(() => {
     if (inviterId) {
@@ -136,15 +134,6 @@ const Home = () => {
     }, 500);
   }, [isPc]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: git } = await axios.get('https://api.github.com/repos/labring/FastGPT');
-        setStar(git.stargazers_count);
-      } catch (error) {}
-    })();
-  }, []);
-
   return (
     <Flex
       className={styles.home}
@@ -200,7 +189,7 @@ const Home = () => {
               leftIcon={<MyIcon name={'git'} w={'20px'} />}
               onClick={() => window.open('https://github.com/labring/FastGPT', '_blank')}
             >
-              Stars {(star / 1000).toFixed(1)}k
+              Stars {(gitStar / 1000).toFixed(1)}k
             </Button>
           )}
           <Button
