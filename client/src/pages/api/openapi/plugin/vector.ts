@@ -44,7 +44,10 @@ export async function getVector({
 
   for (let i = 0; i < input.length; i++) {
     if (!input[i]) {
-      return Promise.reject('向量生成模块输入内容为空');
+      return Promise.reject({
+        code: 500,
+        message: '向量生成模块输入内容为空'
+      });
     }
   }
 

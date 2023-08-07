@@ -17,6 +17,10 @@ export async function generateVector(): Promise<any> {
 
   let trainingId = '';
   let userId = '';
+  let dataItems: {
+    q: string;
+    a: string;
+  }[] = [];
 
   try {
     const data = await TrainingData.findOneAndUpdate(
@@ -48,7 +52,7 @@ export async function generateVector(): Promise<any> {
     userId = String(data.userId);
     const kbId = String(data.kbId);
 
-    const dataItems = [
+    dataItems = [
       {
         q: data.q,
         a: data.a
@@ -91,9 +95,23 @@ export async function generateVector(): Promise<any> {
     }
 
     // message error or openai account error
-    if (err?.message === 'invalid message format') {
-      console.log('删除一个任务');
+    if (
+      err?.message === 'invalid message format' ||
+      err.response?.data?.error?.type === 'invalid_request_error'
+    ) {
+      console.log(dataItems);
+      try {
+        await TrainingData.findByIdAndUpdate(trainingId, {
+          lockTime: new Date('2998/5/5')
+        });
+      } catch (error) {}
+      return generateVector();
+    }
+
+    // err vector data
+    if (err?.code === 500) {
       await TrainingData.findByIdAndRemove(trainingId);
+      return generateVector();
     }
 
     // 账号余额不足，删除任务
