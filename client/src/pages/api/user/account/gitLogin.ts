@@ -17,6 +17,7 @@ type GithubAccessTokenType = {
   scope: string;
 };
 type GithubUserType = {
+  login: string;
   email: string;
   avatar_url: string;
 };
@@ -35,22 +36,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('access_token is null');
     }
 
-    const {
-      data: { email, avatar_url }
-    } = await axios.get<GithubUserType>('https://api.github.com/user', {
+    const { data } = await axios.get<GithubUserType>('https://api.github.com/user', {
       headers: {
         Authorization: `Bearer ${access_token}`
       }
     });
+    const { login, email, avatar_url } = data;
+    const username = email || login;
 
     try {
       jsonRes(res, {
-        data: await loginByUsername({ username: email, res })
+        data: await loginByUsername({ username, res })
       });
     } catch (err: any) {
       if (err?.code === 500) {
         jsonRes(res, {
-          data: await registerUser({ username: email, avatar: avatar_url, res })
+          data: await registerUser({ username, avatar: avatar_url, res })
         });
       }
       throw new Error(err);
@@ -71,7 +72,6 @@ export async function loginByUsername({
   res: NextApiResponse;
 }) {
   const user = await User.findOne({ username });
-  console.log(user, username);
 
   if (!user) {
     return Promise.reject({
