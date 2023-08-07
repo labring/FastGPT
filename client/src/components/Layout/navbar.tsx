@@ -118,9 +118,9 @@ const Navbar = ({ unread }: { unread: number }) => {
                 }
               : {
                   color: 'myGray.500',
-                  backgroundColor: 'transparent'
+                  backgroundColor: 'transparent',
+                  onClick: () => router.push(item.link)
                 })}
-            onClick={() => router.push(item.link)}
           >
             <MyIcon
               name={
