@@ -2,12 +2,13 @@
   "App": "应用",
   "Cancel": "取消",
   "Confirm": "确认",
-  "Warning": "提示",
   "Running": "运行中",
+  "Warning": "提示",
   "app": {
+    "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
-    "Confirm Save App Tip": "保存后将会覆盖高级编排配置，请确保该应用未使用高级编排功能。",
+    "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
     "Connection is invalid": "连接无效",
     "Connection type is different": "连接的类型不一致",
     "Input Field Settings": "输入字段编辑",
@@ -31,11 +32,11 @@
   "file": {
     "Click to download CSV template": "点击下载 CSV 模板",
     "Drag and drop": "拖拽文件至此，或点击",
+    "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式",
     "Release the mouse to upload the file": "松开鼠标上传文件",
     "select a document": "选择文件",
     "support": "支持 {{fileExtension}} 文件",
-    "upload error description": "单次只支持上传多个文件或者一个文件夹",
-    "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式"
+    "upload error description": "单次只支持上传多个文件或者一个文件夹"
   },
   "home": {
     "Quickly build AI question and answer library": "快速搭建 AI 问答系统",

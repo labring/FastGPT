@@ -11,6 +11,11 @@ const AppSchema = new Schema({
     type: String,
     required: true
   },
+  type: {
+    type: String,
+    default: 'advanced',
+    enum: ['basic', 'advanced']
+  },
   avatar: {
     type: String,
     default: '/icon/logo.png'
@@ -51,6 +56,7 @@ const AppSchema = new Schema({
     type: Array,
     default: []
   },
+  // 弃
   chat: {
     relatedKbs: {
       type: [Schema.Types.ObjectId],

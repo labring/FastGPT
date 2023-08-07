@@ -30,7 +30,7 @@ export const defaultHistory: ShareChatHistoryItemType = {
 const defaultShareChatData: ShareChatType = {
   userAvatar: HUMAN_ICON,
   app: {
-    name: 'AI',
+    name: '',
     avatar: '/icon/logo.png',
     intro: ''
   },

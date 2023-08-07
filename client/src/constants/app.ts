@@ -11,3 +11,8 @@ export enum VariableInputEnum {
   input = 'input',
   select = 'select'
 }
+
+export enum AppTypeEnum {
+  basic = 'basic',
+  advanced = 'advanced'
+}

@@ -9,7 +9,7 @@ import { authApp } from '@/service/utils/auth';
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, avatar, chat, share, intro, modules } = req.body as AppUpdateParams;
+    const { name, avatar, type, chat, share, intro, modules } = req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
     if (!appId) {
@@ -34,6 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       },
       {
         name,
+        type,
         avatar,
         intro,
         chat,

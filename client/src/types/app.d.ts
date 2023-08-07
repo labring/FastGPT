@@ -2,6 +2,7 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import { XYPosition } from 'reactflow';
 import {
   AppModuleItemTypeEnum,
+  AppTypeEnum,
   ModulesInputItemTypeEnum,
   VariableInputEnum
 } from '../constants/app';
@@ -19,6 +20,7 @@ export type AppListItemType = {
 
 export interface AppUpdateParams {
   name?: string;
+  type?: `${AppTypeEnum}`;
   avatar?: string;
   intro?: string;
   chat?: AppSchema['chat'];
