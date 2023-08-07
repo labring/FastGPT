@@ -28,7 +28,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
-  const { loading, setScreenWidth, isPc } = useGlobalStore();
+  const { loading, setScreenWidth, isPc, loadGitStar } = useGlobalStore();
   const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(
@@ -46,14 +46,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     const resize = throttle(() => {
       setScreenWidth(document.documentElement.clientWidth);
     }, 300);
-    resize();
 
     window.addEventListener('resize', resize);
+
+    resize();
+    loadGitStar();
 
     return () => {
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [loadGitStar, setScreenWidth]);
 
   const { data: unread = 0 } = useQuery(['getUnreadCount'], getUnreadCount, {
     enabled: !!userInfo,

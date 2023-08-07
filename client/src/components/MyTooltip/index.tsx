@@ -11,7 +11,7 @@ const MyTooltip = ({ children, forceShow = false, shouldWrapChildren = true, ...
   return isPc || forceShow ? (
     <Tooltip
       bg={'white'}
-      arrowShadowColor={' rgba(0,0,0,0.1)'}
+      arrowShadowColor={' rgba(0,0,0,0.05)'}
       hasArrow
       arrowSize={12}
       offset={[-15, 15]}

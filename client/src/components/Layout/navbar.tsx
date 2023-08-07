@@ -11,6 +11,8 @@ import Avatar from '../Avatar';
 import MyIcon from '../Icon';
 import Language from '../Language';
 import { useTranslation } from 'next-i18next';
+import { useGlobalStore } from '@/store/global';
+import MyTooltip from '../MyTooltip';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -21,6 +23,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
+  const { gitStar } = useGlobalStore();
   const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(
     () => [
@@ -158,16 +161,18 @@ const Navbar = ({ unread }: { unread: number }) => {
       )}
       <Language {...itemStyles} />
       {feConfigs?.show_git && (
-        <Link
-          as={NextLink}
-          href="https://github.com/labring/FastGPT"
-          target={'_blank'}
-          {...itemStyles}
-          mt={0}
-          color={'#9096a5'}
-        >
-          <MyIcon name={'git'} width={'22px'} height={'22px'} />
-        </Link>
+        <MyTooltip label={`Git Star: ${gitStar}`} placement={'right-end'}>
+          <Link
+            as={NextLink}
+            href="https://github.com/labring/FastGPT"
+            target={'_blank'}
+            {...itemStyles}
+            mt={0}
+            color={'#9096a5'}
+          >
+            <MyIcon name={'git'} width={'22px'} height={'22px'} />
+          </Link>
+        </MyTooltip>
       )}
     </Flex>
   );
