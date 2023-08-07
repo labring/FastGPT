@@ -129,16 +129,26 @@ export const pushGenerateVectorBill = async ({
 
     try {
       // 计算价格. 至少为1
-      const unitPrice = global.vectorModels.find((item) => item.model === model)?.price || 0.2;
+      const vectorModel =
+        global.vectorModels.find((item) => item.model === model) || global.vectorModels[0];
+      const unitPrice = vectorModel.price || 0.2;
       let total = unitPrice * tokenLen;
       total = total > 1 ? total : 1;
 
       // 插入 Bill 记录
       const res = await Bill.create({
         userId,
-        model,
+        model: vectorModel.model,
         appName: '索引生成',
-        total
+        total,
+        list: [
+          {
+            moduleName: '索引生成',
+            amount: total,
+            model: vectorModel.model,
+            tokenLen
+          }
+        ]
       });
       billId = res._id;
 

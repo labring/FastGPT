@@ -2,7 +2,6 @@ import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { getOpenAiEncMap } from './plugin/openai';
 import { getErrText } from './tools';
-import { OpenAiChatEnum } from '@/constants/model';
 import { uploadImg } from '@/api/system';
 
 /**
@@ -145,37 +144,38 @@ export const fileDownload = ({
 /**
  * text split into chunks
  * maxLen - one chunk len. max: 3500
- * slideLen - The size of the before and after Text
- * maxLen > slideLen
+ * overlapLen - The size of the before and after Text
+ * maxLen > overlapLen
  */
 export const splitText_token = ({ text, maxLen }: { text: string; maxLen: number }) => {
-  const slideLen = Math.floor(maxLen * 0.3);
+  const overlapLen = Math.floor(maxLen * 0.3); // Overlap length
 
   try {
-    const enc = getOpenAiEncMap();
-    // filter empty text. encode sentence
-    const encodeText = enc.encode(text);
-
+    const splitTexts = text.split(/(?<=[。！？.!?])/g);
     const chunks: string[] = [];
-    let tokens = 0;
 
-    let startIndex = 0;
-    let endIndex = Math.min(startIndex + maxLen, encodeText.length);
-    let chunkEncodeArr = encodeText.slice(startIndex, endIndex);
-
-    const decoder = new TextDecoder();
-
-    while (startIndex < encodeText.length) {
-      tokens += chunkEncodeArr.length;
-      chunks.push(decoder.decode(enc.decode(chunkEncodeArr)));
-
-      startIndex += maxLen - slideLen;
-      endIndex = Math.min(startIndex + maxLen, encodeText.length);
-      chunkEncodeArr = encodeText.slice(
-        Math.min(encodeText.length - slideLen, startIndex),
-        endIndex
-      );
+    let preChunk = '';
+    let chunk = '';
+    for (let i = 0; i < splitTexts.length; i++) {
+      const text = splitTexts[i];
+      chunk += text;
+      if (chunk.length > maxLen - overlapLen) {
+        preChunk += text;
+      }
+      if (chunk.length >= maxLen) {
+        chunks.push(chunk);
+        chunk = preChunk;
+        preChunk = '';
+      }
     }
+
+    if (chunk) {
+      chunks.push(chunk);
+    }
+
+    const enc = getOpenAiEncMap();
+    const encodeText = enc.encode(chunks.join(''));
+    const tokens = encodeText.length;
 
     return {
       chunks,

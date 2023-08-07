@@ -258,7 +258,9 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
               <Box>
                 段落长度
                 <MyTooltip
-                  label={'基于 Gpt3.5 的 Token 计算方法进行分段。前后段落会有 30% 的内容重叠。'}
+                  label={
+                    '按结束标点符号进行分段。前后段落会有 30% 的内容重叠。\n中文文档建议不要超过800，英文不要超过1500'
+                  }
                   forceShow
                 >
                   <QuestionOutlineIcon ml={1} />
@@ -269,7 +271,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
                 flex={1}
                 defaultValue={chunkLen}
                 min={300}
-                max={1000}
+                max={2000}
                 step={10}
                 onChange={(e) => {
                   setChunkLen(+e);
@@ -294,10 +296,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Box>
-              <Box ml={4}>
-                {}
-                {price}元
-              </Box>
+              <Box ml={4}>{price}元</Box>
             </Flex>
             <Flex mt={3}>
               {showRePreview && (

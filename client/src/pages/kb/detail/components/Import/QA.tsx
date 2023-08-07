@@ -1,18 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  useTheme,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
-  Image,
-  Textarea,
-  Input
-} from '@chakra-ui/react';
+import { Box, Flex, Button, useTheme, Image, Input } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
@@ -48,7 +35,7 @@ type FileItemType = {
 const QAImport = ({ kbId }: { kbId: string }) => {
   const model = qaModelList[0]?.model;
   const unitPrice = qaModelList[0]?.price || 3;
-  const chunkLen = qaModelList[0].maxToken / 2;
+  const chunkLen = qaModelList[0].maxToken * 0.45;
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
