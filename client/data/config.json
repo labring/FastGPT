@@ -22,7 +22,8 @@
       "contextMaxToken": 4000,
       "quoteMaxToken": 2000,
       "maxTemperature": 1.2,
-      "price": 1.5
+      "price": 1.5,
+      "defaultSystem": ""
     },
     {
       "model": "gpt-3.5-turbo-16k",
@@ -30,15 +31,8 @@
       "contextMaxToken": 16000,
       "quoteMaxToken": 8000,
       "maxTemperature": 1.2,
-      "price": 3
-    },
-    {
-      "model": "ERNIE-Bot",
-      "name": "文心一言",
-      "contextMaxToken": 3000,
-      "quoteMaxToken": 1500,
-      "maxTemperature": 1,
-      "price": 1.2
+      "price": 3,
+      "defaultSystem": ""
     },
     {
       "model": "gpt-4",
@@ -46,7 +40,8 @@
       "contextMaxToken": 8000,
       "quoteMaxToken": 4000,
       "maxTemperature": 1.2,
-      "price": 45
+      "price": 45,
+      "defaultSystem": ""
     }
   ],
   "QAModels": [
