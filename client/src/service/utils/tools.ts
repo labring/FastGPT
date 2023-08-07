@@ -83,6 +83,7 @@ export const sseResponse = ({
   event?: string;
   data: string;
 }) => {
+  if (res.closed) return;
   event && res.write(`event: ${event}\n`);
   res.write(`data: ${data}\n\n`);
 };
