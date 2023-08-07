@@ -14,6 +14,7 @@ import { getUnreadCount } from '@/api/user';
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
+  '/login/provider': true,
   '/chat/share': true,
   '/app/edit': true,
   '/chat': true
@@ -21,6 +22,7 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
+  '/login/provider': true,
   '/chat/share': true
 };
 

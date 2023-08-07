@@ -7,9 +7,11 @@
     "show_git": true,
     "beianText": "",
     "systemTitle": "FastAI",
-    "authorText": "Made by FastAI Team."
+    "authorText": "Made by FastAI Team.",
+    "gitLoginKey": ""
   },
   "SystemParams": {
+    "gitLoginSecret": "",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgIvfflatProbe": 20
