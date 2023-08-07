@@ -5,6 +5,8 @@ export type ChatModelItemType = {
   quoteMaxToken: number;
   maxTemperature: number;
   price: number;
+  censor?: boolean;
+  defaultSystem?: string;
 };
 export type QAModelItemType = {
   model: string;

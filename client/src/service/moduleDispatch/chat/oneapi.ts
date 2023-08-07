@@ -16,6 +16,7 @@ import { countModelPrice } from '@/service/events/pushBill';
 import { ChatModelItemType } from '@/types/model';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { textCensor } from '@/service/api/plugins';
+import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 
 export type ChatProps = {
   res: NextApiResponse;
@@ -66,13 +67,15 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     model: modelConstantsData
   });
 
-  await textCensor({
-    text: `${systemPrompt}
-    ${quotePrompt}
-    ${limitPrompt}
-    ${userChatInput}
-    `
-  });
+  if (modelConstantsData.censor) {
+    await textCensor({
+      text: `${systemPrompt}
+      ${quotePrompt}
+      ${limitPrompt}
+      ${userChatInput}
+      `
+    });
+  }
 
   const { messages, filterMessages } = getChatMessages({
     model: modelConstantsData,
@@ -98,7 +101,17 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
       model,
       temperature,
       max_tokens,
-      messages,
+      messages: [
+        ...(modelConstantsData.defaultSystem
+          ? [
+              {
+                role: ChatCompletionRequestMessageRoleEnum.System,
+                content: modelConstantsData.defaultSystem
+              }
+            ]
+          : []),
+        ...messages
+      ],
       // frequency_penalty: 0.5, // 越大，重复内容越少
       // presence_penalty: -0.5, // 越大，越容易出现新内容
       stream
