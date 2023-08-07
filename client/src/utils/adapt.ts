@@ -64,12 +64,16 @@ export const appModule2FlowNode = ({
   item,
   onChangeNode,
   onDelNode,
-  onDelEdge
+  onDelEdge,
+  onCopyNode,
+  onCollectionNode
 }: {
   item: AppModuleItemType;
   onChangeNode: FlowModuleItemType['onChangeNode'];
   onDelNode: FlowModuleItemType['onDelNode'];
   onDelEdge: FlowModuleItemType['onDelEdge'];
+  onCopyNode: FlowModuleItemType['onCopyNode'];
+  onCollectionNode: FlowModuleItemType['onCollectionNode'];
 }): Node<FlowModuleItemType> => {
   // init some static data
   const template =
@@ -109,7 +113,9 @@ export const appModule2FlowNode = ({
     }),
     onChangeNode,
     onDelNode,
-    onDelEdge
+    onDelEdge,
+    onCopyNode,
+    onCollectionNode
   };
 
   return {

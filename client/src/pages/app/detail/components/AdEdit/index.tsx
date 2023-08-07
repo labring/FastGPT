@@ -10,7 +10,7 @@ import ReactFlow, {
   Connection,
   useViewport
 } from 'reactflow';
-import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useTheme, useDisclosure, position } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import {
   edgeOptions,
@@ -126,6 +126,32 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     }, 100);
   }, []);
 
+  const onAddNode = useCallback(
+    ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
+      if (!reactFlowWrapper.current) return;
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
+      const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
+
+      setNodes((state) =>
+        state.concat(
+          appModule2FlowNode({
+            item: {
+              ...template,
+              moduleId: nanoid(),
+              position: { x: mouseX, y: mouseY }
+            },
+            onChangeNode,
+            onDelNode,
+            onDelEdge,
+            onCopyNode,
+            onCollectionNode
+          })
+        )
+      );
+    },
+    [x, zoom, y]
+  );
   const onDelNode = useCallback(
     (nodeId: string) => {
       setNodes((state) => state.filter((item) => item.id !== nodeId));
@@ -154,6 +180,45 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
       );
     },
     [setEdges]
+  );
+  const onCopyNode = useCallback(
+    (nodeId: string) => {
+      setNodes((nodes) => {
+        const node = nodes.find((node) => node.id === nodeId);
+        if (!node) return nodes;
+        const template = {
+          logo: node.data.logo,
+          name: node.data.name,
+          intro: node.data.intro,
+          description: node.data.description,
+          flowType: node.data.flowType,
+          inputs: node.data.inputs,
+          outputs: node.data.outputs,
+          showStatus: node.data.showStatus
+        };
+        return nodes.concat(
+          appModule2FlowNode({
+            item: {
+              ...template,
+              moduleId: nanoid(),
+              position: { x: node.position.x + 200, y: node.position.y + 50 }
+            },
+            onChangeNode,
+            onDelNode,
+            onDelEdge,
+            onCopyNode,
+            onCollectionNode
+          })
+        );
+      });
+    },
+    [setNodes]
+  );
+  const onCollectionNode = useCallback(
+    (nodeId: string) => {
+      console.log(nodes.find((node) => node.id === nodeId));
+    },
+    [nodes]
   );
 
   const flow2AppModules = useCallback(() => {
@@ -264,39 +329,12 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         })
       );
     },
-    [setNodes]
+    []
   );
 
-  const onAddNode = useCallback(
-    ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
-      if (!reactFlowWrapper.current) return;
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
-      const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
-
-      setNodes((state) =>
-        state.concat(
-          appModule2FlowNode({
-            item: {
-              ...template,
-              moduleId: nanoid(),
-              position: { x: mouseX, y: mouseY }
-            },
-            onChangeNode,
-            onDelNode,
-            onDelEdge
-          })
-        )
-      );
-    },
-    [onDelEdge, onChangeNode, onDelNode, setNodes, x, y, zoom]
-  );
-  const onDelConnect = useCallback(
-    (id: string) => {
-      setEdges((state) => state.filter((item) => item.id !== id));
-    },
-    [setEdges]
-  );
+  const onDelConnect = useCallback((id: string) => {
+    setEdges((state) => state.filter((item) => item.id !== id));
+  }, []);
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
       const source = nodes.find((node) => node.id === connect.source)?.data;
@@ -342,7 +380,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         )
       );
     },
-    [onDelConnect, setEdges, nodes]
+    [nodes]
   );
 
   const { mutate: onclickSave, isLoading } = useRequest({
@@ -373,19 +411,31 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
             item,
             onChangeNode,
             onDelNode,
-            onDelEdge
+            onDelEdge,
+            onCopyNode,
+            onCollectionNode
           })
         )
       );
 
       onFixView();
     },
-    [onDelConnect, setEdges, setNodes, onFixView, onChangeNode, onDelNode, onDelEdge]
+    [
+      onDelConnect,
+      setEdges,
+      setNodes,
+      onFixView,
+      onChangeNode,
+      onDelNode,
+      onDelEdge,
+      onCopyNode,
+      onCollectionNode
+    ]
   );
 
   useEffect(() => {
     initData(JSON.parse(JSON.stringify(app)));
-  }, [app, initData]);
+  }, [app]);
 
   return (
     <>

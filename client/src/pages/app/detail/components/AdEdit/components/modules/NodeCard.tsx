@@ -1,10 +1,11 @@
-import React from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import React, { useMemo } from 'react';
+import { Box, Flex, useTheme, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
 import type { FlowModuleItemType } from '@/types/flow';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -15,6 +16,7 @@ type Props = {
   minW?: string | number;
   moduleId: string;
   onDelNode: FlowModuleItemType['onDelNode'];
+  onCopyNode: FlowModuleItemType['onCopyNode'];
 };
 
 const NodeCard = ({
@@ -23,10 +25,38 @@ const NodeCard = ({
   name = '未知模块',
   description,
   minW = '300px',
+  onCopyNode,
   onDelNode,
   moduleId
 }: Props) => {
+  const { t } = useTranslation();
   const theme = useTheme();
+
+  const menuList = useMemo(
+    () => [
+      {
+        icon: 'copy',
+        label: t('common.Copy'),
+        onClick: () => onCopyNode(moduleId)
+      },
+      {
+        icon: 'delete',
+        label: t('common.Delete'),
+        onClick: () => onDelNode(moduleId)
+      },
+      // {
+      //   icon: 'collectionLight',
+      //   label: t('common.Collect'),
+      //   onClick: () => {}
+      // },
+      {
+        icon: 'back',
+        label: t('common.Cancel'),
+        onClick: () => {}
+      }
+    ],
+    [moduleId, onCopyNode, onDelNode, t]
+  );
 
   return (
     <Box
@@ -52,19 +82,27 @@ const NodeCard = ({
           </MyTooltip>
         )}
         <Box flex={1} />
-        <Flex
-          className={'nodrag'}
-          w={'22px'}
-          h={'22px'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          color={'myGray.600'}
-          _hover={{ color: 'red.600' }}
-          cursor={'pointer'}
-          onClick={() => onDelNode(moduleId)}
-        >
-          <MyIcon name="delete" w={'16px'} />
-        </Flex>
+        <Menu autoSelect={false} isLazy>
+          <MenuButton
+            className={'nodrag'}
+            _hover={{ bg: 'myWhite.600' }}
+            cursor={'pointer'}
+            borderRadius={'md'}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <MyIcon name={'more'} w={'14px'} p={2} />
+          </MenuButton>
+          <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
+            {menuList.map((item) => (
+              <MenuItem key={item.label} onClick={item.onClick} py={[2, 3]}>
+                <MyIcon name={item.icon as any} w={['14px', '16px']} />
+                <Box ml={[1, 2]}>{item.label}</Box>
+              </MenuItem>
+            ))}
+          </MenuList>
+        </Menu>
       </Flex>
       {children}
     </Box>

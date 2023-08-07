@@ -24,6 +24,10 @@
   },
   "common": {
     "Add": "Add",
+    "Cancel": "Cancel",
+    "Collect": "Collect",
+    "Copy": "Copy",
+    "Delete": "Delete",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",

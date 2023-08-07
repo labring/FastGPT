@@ -24,6 +24,10 @@
   },
   "common": {
     "Add": "添加",
+    "Cancel": "取消",
+    "Collect": "收藏",
+    "Copy": "复制",
+    "Delete": "删除",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Input": "输入",
