@@ -41,6 +41,7 @@ export type Props = CreateChatCompletionRequest &
   FastGptShareChatProps & {
     messages: MessageItemType[];
     stream?: boolean;
+    detail?: boolean;
     variables: Record<string, any>;
   };
 export type ChatResponseType = {
@@ -57,7 +58,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     res.end();
   });
 
-  let { chatId, appId, shareId, stream = false, messages = [], variables = {} } = req.body as Props;
+  let {
+    chatId,
+    appId,
+    shareId,
+    stream = false,
+    detail = false,
+    messages = [],
+    variables = {}
+  } = req.body as Props;
 
   try {
     if (!messages) {
@@ -133,7 +142,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         history: prompts,
         userChatInput: prompt.value
       },
-      stream
+      stream,
+      detail
     });
     // console.log(responseData, '===', answerText);
 
@@ -176,7 +186,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (stream) {
       sseResponse({
         res,
-        event: sseResponseEventEnum.answer,
+        event: detail ? sseResponseEventEnum.answer : undefined,
         data: textAdaptGptResponse({
           text: null,
           finish_reason: 'stop'
@@ -184,11 +194,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
       sseResponse({
         res,
-        event: sseResponseEventEnum.answer,
+        event: detail ? sseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
 
-      if (isOwner) {
+      if (isOwner && detail) {
         sseResponse({
           res,
           event: sseResponseEventEnum.appStreamResponse,
@@ -199,7 +209,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res.end();
     } else {
       res.json({
-        responseData,
+        ...(detail ? { responseData } : {}),
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -244,7 +254,8 @@ export async function dispatchModules({
   user,
   params = {},
   variables = {},
-  stream = false
+  stream = false,
+  detail = false
 }: {
   res: NextApiResponse;
   modules: AppModuleItemType[];
@@ -252,6 +263,7 @@ export async function dispatchModules({
   params?: Record<string, any>;
   variables?: Record<string, any>;
   stream?: boolean;
+  detail?: boolean;
 }) {
   const runningModules = loadModules(modules, variables);
 
@@ -322,7 +334,7 @@ export async function dispatchModules({
     if (res.closed) return Promise.resolve();
     console.log('run=========', module.flowType);
 
-    if (stream && module.showStatus) {
+    if (stream && detail && module.showStatus) {
       responseStatus({
         res,
         name: module.name,
@@ -338,6 +350,7 @@ export async function dispatchModules({
     const props: Record<string, any> = {
       res,
       stream,
+      detail,
       userOpenaiAccount: user?.openaiAccount,
       ...params
     };

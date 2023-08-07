@@ -31,6 +31,7 @@ export const streamFetch = ({
         signal: abortSignal.signal,
         body: JSON.stringify({
           ...data,
+          detail: true,
           stream: true
         })
       });

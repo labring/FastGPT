@@ -5,6 +5,7 @@ import type { NextApiResponse } from 'next';
 
 export type AnswerProps = {
   res: NextApiResponse;
+  detail?: boolean;
   text: string;
   stream: boolean;
 };
@@ -13,12 +14,12 @@ export type AnswerResponse = {
 };
 
 export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
-  const { res, text = '', stream } = props as AnswerProps;
+  const { res, detail, text = '', stream } = props as AnswerProps;
 
   if (stream) {
     sseResponse({
       res,
-      event: sseResponseEventEnum.answer,
+      event: detail ? sseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
         text: text.replace(/\\n/g, '\n')
       })

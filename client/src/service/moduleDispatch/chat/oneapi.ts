@@ -25,6 +25,7 @@ export type ChatProps = {
   history?: ChatItemType[];
   userChatInput: string;
   stream?: boolean;
+  detail?: boolean;
   quoteQA?: QuoteItemType[];
   systemPrompt?: string;
   limitPrompt?: string;
@@ -44,6 +45,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     temperature = 0,
     maxToken = 4000,
     stream = false,
+    detail = false,
     history = [],
     quoteQA = [],
     userChatInput,
@@ -111,7 +113,11 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   const { answerText, totalTokens, completeMessages } = await (async () => {
     if (stream) {
       // sse response
-      const { answer } = await streamResponse({ res, response });
+      const { answer } = await streamResponse({
+        res,
+        detail,
+        response
+      });
       // count tokens
       const completeMessages = filterMessages.concat({
         obj: ChatRoleEnum.AI,
@@ -282,7 +288,15 @@ function getMaxTokens({
   };
 }
 
-async function streamResponse({ res, response }: { res: NextApiResponse; response: any }) {
+async function streamResponse({
+  res,
+  detail,
+  response
+}: {
+  res: NextApiResponse;
+  detail: boolean;
+  response: any;
+}) {
   let answer = '';
   let error: any = null;
   const parseData = new SSEParseData();
@@ -301,7 +315,7 @@ async function streamResponse({ res, response }: { res: NextApiResponse; respons
 
         sseResponse({
           res,
-          event: sseResponseEventEnum.answer,
+          event: detail ? sseResponseEventEnum.answer : undefined,
           data: textAdaptGptResponse({
             text: content
           })
