@@ -2,12 +2,13 @@
   "App": "App",
   "Cancel": "No",
   "Confirm": "Yes",
-  "Warning": "Warning",
   "Running": "Running",
+  "Warning": "Warning",
   "app": {
+    "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
-    "Confirm Save App Tip": "After saving, the advanced orchestration configuration will be overwritten. Make sure that the application does not use advanced orchestration.",
+    "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
     "Input Field Settings": "Input Field Settings",
@@ -31,11 +32,11 @@
   "file": {
     "Click to download CSV template": "Click to download CSV template",
     "Drag and drop": "Drag and drop files here, or click",
+    "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "If the imported file is garbled, please convert CSV to UTF-8 encoding format",
     "Release the mouse to upload the file": "Release the mouse to upload the file",
     "select a document": "select a document",
     "support": "support {{fileExtension}} file",
-    "upload error description": "Only upload multiple files or one folder at a time",
-    "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "If the imported file is garbled, please convert CSV to UTF-8 encoding format"
+    "upload error description": "Only upload multiple files or one folder at a time"
   },
   "home": {
     "Quickly build AI question and answer library": "Quickly build AI question and answer library",

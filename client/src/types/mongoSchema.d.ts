@@ -5,6 +5,7 @@ import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
 import { ChatSourceEnum, OutLinkTypeEnum } from '@/constants/chat';
+import { AppTypeEnum } from '@/constants/app';
 
 export interface UserModelSchema {
   _id: string;
@@ -37,6 +38,7 @@ export interface AppSchema {
   _id: string;
   userId: string;
   name: string;
+  type: `${AppTypeEnum}`;
   avatar: string;
   intro: string;
   updateTime: number;

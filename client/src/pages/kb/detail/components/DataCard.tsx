@@ -208,9 +208,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
               <Box color={'myGray.1000'} mb={2}>
                 {item.q}
               </Box>
-              <Box color={'myGray.600'} className={'textEllipsis3'}>
-                {item.a}
-              </Box>
+              <Box color={'myGray.600'}>{item.a}</Box>
             </Box>
             <Flex py={2} px={4} h={'36px'} alignItems={'flex-end'} fontSize={'sm'}>
               <Box className={'textEllipsis'} flex={1}>

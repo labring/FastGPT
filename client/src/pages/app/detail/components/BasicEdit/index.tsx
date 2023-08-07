@@ -44,6 +44,8 @@ import { useRouter } from 'next/router';
 import { useToast } from '@/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
 import { delModelById } from '@/api/app';
+import { useTranslation } from 'react-i18next';
+import { getSpecialModule } from '@/components/ChatBox/utils';
 
 import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
@@ -52,11 +54,10 @@ import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import { useTranslation } from 'react-i18next';
-import { getSpecialModule } from '@/components/ChatBox/utils';
 
 import { addVariable } from '../VariableEditModal';
 import { KBSelectModal, KbParamsModal } from '../KBSelectModal';
+import { AppTypeEnum } from '@/constants/app';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -154,7 +155,8 @@ const Settings = ({ appId }: { appId: string }) => {
       const modules = appForm2Modules(data);
 
       await updateAppDetail(appDetail._id, {
-        modules
+        modules,
+        type: AppTypeEnum.basic
       });
     },
     successToast: '保存成功',
@@ -290,7 +292,13 @@ const Settings = ({ appId }: { appId: string }) => {
           isLoading={isSaving}
           fontSize={'sm'}
           size={['sm', 'md']}
-          onClick={openConfirmSave(handleSubmit((data) => onSubmitSave(data)))}
+          onClick={() => {
+            if (appDetail.type !== AppTypeEnum.basic) {
+              openConfirmSave(handleSubmit((data) => onSubmitSave(data)))();
+            } else {
+              handleSubmit((data) => onSubmitSave(data))();
+            }
+          }}
         >
           {isPc ? '保存并预览' : '保存'}
         </Button>
@@ -558,6 +566,7 @@ const Settings = ({ appId }: { appId: string }) => {
 };
 
 const ChatTest = ({ appId }: { appId: string }) => {
+  const { t } = useTranslation();
   const { appDetail, userInfo } = useUserStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const [modules, setModules] = useState<AppModuleItemType[]>([]);
@@ -602,7 +611,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
   }, [appDetail, resetChatBox]);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} py={4} overflowX={'auto'}>
+    <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4} overflowX={'auto'}>
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'} flex={1}>
           调试预览
@@ -632,6 +641,25 @@ const ChatTest = ({ appId }: { appId: string }) => {
           onDelMessage={() => {}}
         />
       </Box>
+      {appDetail.type !== AppTypeEnum.basic && (
+        <Flex
+          position={'absolute'}
+          top={0}
+          right={0}
+          left={0}
+          bottom={0}
+          bg={'rgba(255,255,255,0.6)'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          flexDirection={'column'}
+          fontSize={'lg'}
+          color={'black'}
+          whiteSpace={'pre-wrap'}
+          textAlign={'center'}
+        >
+          <Box>{t('app.Advance App TestTip')}</Box>
+        </Flex>
+      )}
     </Flex>
   );
 };

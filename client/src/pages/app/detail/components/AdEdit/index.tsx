@@ -77,6 +77,7 @@ const NodeHttp = dynamic(() => import('./components/Nodes/NodeHttp'), {
 
 import 'reactflow/dist/style.css';
 import styles from './index.module.scss';
+import { AppTypeEnum } from '@/constants/app';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
@@ -347,7 +348,8 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
       return updateAppDetail(app._id, {
-        modules: flow2AppModules()
+        modules: flow2AppModules(),
+        type: AppTypeEnum.advanced
       });
     },
     successToast: '保存配置成功',
