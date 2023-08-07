@@ -40,6 +40,10 @@ export type PluginType = {
   censor?: {
     textUrl?: string;
   };
+  pay?: {
+    getWxQRUrl?: string;
+    getWxQRResult?: string;
+  };
 };
 
 declare global {

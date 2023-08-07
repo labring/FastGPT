@@ -34,7 +34,7 @@ const PayRecordTable = () => {
         const data = await checkPayResult(payId);
         toast({
           title: data,
-          status: 'info'
+          status: 'success'
         });
         const res = await getPayOrders();
         setPayOrders(res);

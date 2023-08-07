@@ -9,9 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@alicloud/dysmsapi20170525": "^2.0.23",
-    "@alicloud/openapi-client": "^0.4.5",
-    "@alicloud/tea-util": "^1.4.5",
     "@chakra-ui/icons": "^2.0.17",
     "@chakra-ui/react": "^2.7.0",
     "@chakra-ui/system": "^2.5.8",
@@ -42,7 +39,6 @@
     "next": "13.1.6",
     "next-i18next": "^13.3.0",
     "nextjs-cors": "^2.1.2",
-    "nodemailer": "^6.9.1",
     "nprogress": "^0.2.0",
     "openai": "^3.3.0",
     "papaparse": "^5.4.1",
@@ -62,7 +58,6 @@
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
     "tunnel": "^0.0.6",
-    "wxpay-v3": "^3.0.2",
     "zustand": "^4.3.5"
   },
   "devDependencies": {
@@ -73,7 +68,6 @@
     "@types/jsonwebtoken": "^9.0.1",
     "@types/lodash": "^4.14.191",
     "@types/node": "18.14.0",
-    "@types/nodemailer": "^6.4.7",
     "@types/papaparse": "^5.3.7",
     "@types/pg": "^8.6.6",
     "@types/react": "18.0.28",
