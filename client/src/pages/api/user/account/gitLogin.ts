@@ -53,6 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         jsonRes(res, {
           data: await registerUser({ username, avatar: avatar_url, res })
         });
+        return;
       }
       throw new Error(err);
     }
@@ -103,7 +104,7 @@ export async function registerUser({
   const user = await User.findById(response._id);
 
   if (!user) {
-    throw new Error('获取用户信息异常');
+    return Promise.reject('获取用户信息异常');
   }
 
   const token = generateToken(user._id);
