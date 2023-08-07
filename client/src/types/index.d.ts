@@ -24,9 +24,11 @@ export type FeConfigsType = {
   beianText?: string;
   googleClientVerKey?: string;
   baiduTongjiUrl?: string;
+  gitLoginKey?: string;
 };
 export type SystemEnvType = {
   googleServiceVerKey?: string;
+  gitLoginSecret?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgIvfflatProbe: number;

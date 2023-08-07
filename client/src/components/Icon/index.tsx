@@ -23,6 +23,7 @@ const map = {
   wx: require('./icons/wx.svg').default,
   out: require('./icons/out.svg').default,
   git: require('./icons/git.svg').default,
+  gitFill: require('./icons/fill/git.svg').default,
   menu: require('./icons/menu.svg').default,
   edit: require('./icons/edit.svg').default,
   inform: require('./icons/inform.svg').default,

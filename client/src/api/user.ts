@@ -13,6 +13,7 @@ export const sendAuthCode = (data: {
 }) => POST('/user/sendAuthCode', data);
 
 export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
+export const gitLogin = (code: string) => GET<ResLogin>('/user/account/gitLogin', { code });
 
 export const postRegister = ({
   username,
