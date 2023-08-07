@@ -147,7 +147,7 @@ export const fileDownload = ({
  * overlapLen - The size of the before and after Text
  * maxLen > overlapLen
  */
-export const splitText_token = ({ text, maxLen }: { text: string; maxLen: number }) => {
+export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: number }) => {
   const overlapLen = Math.floor(maxLen * 0.3); // Overlap length
 
   try {

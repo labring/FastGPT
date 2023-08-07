@@ -16,7 +16,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
 import { postKbDataFromList } from '@/api/plugins/kb';
-import { splitText_token } from '@/utils/file';
+import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@/utils/user';
 import { vectorModelList } from '@/store/static';
@@ -96,7 +96,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
             })();
 
             if (icon && text) {
-              const splitRes = splitText_token({
+              const splitRes = splitText2Chunks({
                 text: text,
                 maxLen: chunkLen
               });
@@ -178,7 +178,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
   const onRePreview = useCallback(async () => {
     try {
       const splitRes = files.map((item) =>
-        splitText_token({
+        splitText2Chunks({
           text: item.text,
           maxLen: chunkLen
         })
