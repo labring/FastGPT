@@ -27,8 +27,6 @@ async function embedChatbot() {
     'transition: all 0.2s ease-in-out 0s; left: unset; transform: scale(1); :hover {transform: scale(1.1);} display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; z-index: 9999;';
   ChatBtnDiv.innerHTML = MessageIcon;
 
-  ChatBtn.appendChild(ChatBtnDiv);
-
   const iframe = document.createElement('iframe');
   iframe.allow = 'fullscreen;microphone';
   iframe.title = 'FastGpt Chat Window';
@@ -39,10 +37,6 @@ async function embedChatbot() {
     'visibility: hidden; border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 4rem; right: 1rem; width: 24rem; height: 40rem; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
 
   document.body.appendChild(iframe);
-
-  iframe.onload = () => {
-    document.body.appendChild(ChatBtn);
-  };
 
   ChatBtn.addEventListener('click', function () {
     const chatWindow = document.getElementById(chatWindowId);
@@ -57,5 +51,8 @@ async function embedChatbot() {
       ChatBtnDiv.innerHTML = MessageIcon;
     }
   });
+
+  ChatBtn.appendChild(ChatBtnDiv);
+  document.body.appendChild(ChatBtn);
 }
 document.body.onload = embedChatbot;
