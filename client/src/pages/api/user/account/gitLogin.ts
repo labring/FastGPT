@@ -41,8 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         Authorization: `Bearer ${access_token}`
       }
     });
-    const { login, email, avatar_url } = data;
-    const username = email || login;
+    const { login, avatar_url } = data;
+    const username = `git-${login}`;
 
     try {
       jsonRes(res, {
