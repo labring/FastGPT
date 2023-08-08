@@ -78,11 +78,13 @@ services:
       - pg
     restart: always
     environment:
+      # root 密码，用户名为: root
       - DEFAULT_ROOT_PSW=1234
+      # 中转地址，如果是用官方号，不需要管
+      - OPENAI_BASE_URL=https://api.openai.com/v1
+      - CHAT_API_KEY=sk-xxxx
       - DB_MAX_LINK=5 # database max link
-      # token加密凭证（随便填，作为登录凭证）
       - TOKEN_KEY=any
-      # root key, 最高权限，可以内部接口互相调用
       - ROOT_KEY=root_key
       # mongo 配置，不需要改
       - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
@@ -93,12 +95,7 @@ services:
       - PG_USER=username
       - PG_PASSWORD=password
       - PG_DB_NAME=postgres
-      # 用了中转的话，需要修改这个变量
-      - OPENAI_BASE_URL=https://api.openai.com/v1
-      # 用了 ONEAPI 则填写该地址
-      # - ONEAPI_URL=https://xxxx.cloud.sealos.io/v1
-      # OpenAI 的 key 或者 ONEAPI 的key，填了 ONEAPI_URL 则填写 ONEAPI 的 key
-      - CHAT_API_KEY=sk-xxxx
+
 networks:
   fastgpt:
 ```
@@ -142,8 +139,12 @@ image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
 network_mode: host
 restart: always
 container_name: fastgpt
-environment: # 可选的变量，不需要的话需要去掉
+environment:
+    # root 密码，用户名为: root
     - DEFAULT_ROOT_PSW=1234
+    # 中转地址，如果是用官方号，不需要管
+    - OPENAI_BASE_URL=https://api.openai.com/v1
+    - CHAT_API_KEY=sk-xxxx
     - DB_MAX_LINK=5 # database max link
     # token加密凭证（随便填，作为登录凭证）
     - TOKEN_KEY=any
@@ -158,12 +159,6 @@ environment: # 可选的变量，不需要的话需要去掉
     - PG_USER=username
     - PG_PASSWORD=password
     - PG_DB_NAME=postgres
-    # 用了中转的话，需要修改这个变量
-    - OPENAI_BASE_URL=https://api.openai.com/v1
-    # 用了 ONEAPI 则填写该地址
-    # - ONEAPI_URL=https://xxxx.cloud.sealos.io/v1
-    # OpenAI 的 key 或者 ONEAPI 的key，填了 ONEAPI_URL 则填写 ONEAPI 的 key
-    - CHAT_API_KEY=sk-xxxx
 ```
 
 ## 四、运行 docker-compose

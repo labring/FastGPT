@@ -1,6 +1,6 @@
 # 本地开发
 
-第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2c2g 的轻量小数据库实践。数据库部署教程：[Docker 快速部署](../deploy/docker)
+第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2c2g 的轻量小数据库实践。数据库部署教程：[Docker 快速部署](/docs/develop/deploy/docker)
 
 client 目录下为 FastGPT 核心代码。NextJS 框架前后端在一起的，api 服务位于 src/pages/api 内。
 
