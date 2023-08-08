@@ -83,7 +83,7 @@ const Navbar = () => {
       transition={'0.4s ease'}
       h={isOpenMenu ? '100vh' : 'auto'}
     >
-      <Flex maxW={'1000px'} m={'auto'} alignItems={'center'}>
+      <Flex maxW={'1300px'} m={'auto'} alignItems={'center'}>
         <Avatar src="/icon/logo.png" w={['30px', '38px']} />
         <Box
           className="textlg"
