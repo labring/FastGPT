@@ -15,7 +15,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）
 
-- [快开始本地开发](<[docSite/i18n/zh-Hans/docusaurus-plugin-content-docs/current/quick-start/dev.md](https://doc.fastgpt.run/docs/develop/dev)>)
+- [快开始本地开发](https://doc.fastgpt.run/docs/develop/dev)
 - [部署 FastGPT](https://doc.fastgpt.run/docs/category/deploy)
 
 ## :point_right: RoadMap
