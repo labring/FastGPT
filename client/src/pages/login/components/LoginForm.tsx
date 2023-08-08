@@ -107,7 +107,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           </FormErrorMessage>
         </FormControl>
         {feConfigs?.show_register && (
-          <Flex align={'center'} justifyContent={'space-between'} mt={6} color={'myBlue.600'}>
+          <Flex align={'center'} justifyContent={'space-between'} mt={3} color={'myBlue.600'}>
             <Box
               cursor={'pointer'}
               _hover={{ textDecoration: 'underline' }}
@@ -128,7 +128,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         )}
         <Button
           type="submit"
-          mt={8}
+          mt={6}
           w={'100%'}
           size={['md', 'lg']}
           colorScheme="blue"
