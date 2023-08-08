@@ -44,6 +44,7 @@ CHAT_API_KEY=sk-xxxxxx
 高流量推荐使用 MySQL 版本，支持多实例扩展。
 
 点击下方按键一键部署 👇
+
 [![](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Done-api)
 
 部署完后会跳转【应用管理】，数据库在另一个应用里。需要等待 1~3 分钟数据库运行后才能访问成功。
