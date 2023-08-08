@@ -5,35 +5,42 @@ import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
 import { feConfigs } from '@/store/static';
 import { serviceSideProps } from '@/utils/i18n';
-
-const list = [
-  {
-    icon: 'dbLight',
-    label: '我的知识库',
-    link: '/kb/list'
-  },
-  ...(feConfigs?.show_appStore
-    ? [
-        {
-          icon: 'appStoreLight',
-          label: 'AI应用市场',
-          link: '/appStore'
-        }
-      ]
-    : []),
-  ...(feConfigs?.show_git
-    ? [
-        {
-          icon: 'git',
-          label: 'GitHub 地址',
-          link: 'https://github.com/labring/FastGPT'
-        }
-      ]
-    : [])
-];
+import { useTranslation } from 'react-i18next';
 
 const Tools = () => {
+  const { t } = useTranslation();
   const router = useRouter();
+  const list = [
+    {
+      icon: 'dbLight',
+      label: '我的知识库',
+      link: '/kb/list'
+    },
+    ...(feConfigs?.show_appStore
+      ? [
+          {
+            icon: 'appStoreLight',
+            label: 'AI应用市场',
+            link: '/appStore'
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_git
+      ? [
+          {
+            icon: 'git',
+            label: 'GitHub 地址',
+            link: 'https://github.com/labring/FastGPT'
+          }
+        ]
+      : []),
+    {
+      icon: 'courseLight',
+      label: '使用文档',
+      link: 'https://doc.fastgpt.run/docs/intro'
+    }
+  ];
+
   return (
     <Box px={'5vw'}>
       {list.map((item) => (

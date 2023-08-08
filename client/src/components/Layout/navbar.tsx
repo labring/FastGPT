@@ -98,6 +98,7 @@ const Navbar = ({ unread }: { unread: number }) => {
     >
       {/* logo */}
       <Box
+        flex={'0 0 auto'}
         mb={5}
         border={'2px solid #fff'}
         borderRadius={'50%'}
@@ -144,6 +145,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Box>
         ))}
       </Box>
+
       {unread > 0 && (
         <Box>
           <Link
@@ -159,6 +161,20 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </Box>
       )}
+      <MyTooltip label={t('home.Docs')} placement={'right-end'}>
+        <Box
+          {...itemStyles}
+          mb={0}
+          color={'#9096a5'}
+          onClick={() => {
+            window.open(`https://doc.fastgpt.run/docs/intro`);
+          }}
+        >
+          <Badge count={unread}>
+            <MyIcon name={'courseLight'} width={'26px'} height={'26px'} />
+          </Badge>
+        </Box>
+      </MyTooltip>
       <Language {...itemStyles} />
       {feConfigs?.show_git && (
         <MyTooltip label={`Git Star: ${gitStar}`} placement={'right-end'}>
