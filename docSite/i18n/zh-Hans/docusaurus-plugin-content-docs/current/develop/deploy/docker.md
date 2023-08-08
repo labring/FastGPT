@@ -2,11 +2,11 @@
 
 ## 一、预先准备
 
-### 准备好代理环境（国外服务器可忽略）
+### 1. 准备好代理环境（国外服务器可忽略）
 
 确保可访问到 OpenAI，方案可参考：[sealos nginx 中转](../proxy/sealos)
 
-### OneAPI (可选，需要多模型和 key 轮询时使用)
+### 2. OneAPI (可选，需要多模型和 key 轮询时使用)
 
 推荐使用 [one-api](https://github.com/songquanpeng/one-api) 项目来管理 key 池，兼容 openai 、微软和国内主流模型等。
 
@@ -37,7 +37,7 @@ docker-compose -v
 version: '3.3'
 services:
   pg:
-    image: ghcr.io/c121914yu/fastgpt:latest # git
+    image: ankane/pgvector:v0.4.2 # git
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
     container_name: pg
     restart: always
@@ -175,3 +175,7 @@ docker-compose up -d
 如果需要域名访问，自行安装 Nginx。目前可以通过: `ip:3000` 直接访问(注意防火墙)。登录用户名为 root，密码为刚刚环境变量里设置的 `DEFAULT_ROOT_PSW`
 
 ## 一些问题
+
+### 1. 如何更新？
+
+执行 `docker-compose up -d` 会自动拉取最新镜像，一般情况下不需要执行额外操作。

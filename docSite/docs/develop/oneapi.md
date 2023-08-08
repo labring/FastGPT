@@ -1,16 +1,20 @@
-# 在 Sealos 1 分钟部署 one-api
+# Sealos 快速部署 OneAPI
 
-## 1. 进入 Sealos 公有云
+无需魔法，部署即可使用
 
-https://cloud.sealos.io/
+## SqlLite 版本
 
-## 2. 打开 AppLaunchpad(应用管理) 工具
+sqllite 版本适合个人，少并发
+
+## 一、[点击打开 Sealos 公有云](https://cloud.sealos.io/)
+
+## 二、打开 AppLaunchpad(应用管理) 工具
 
 ![step1](./imgs/step1.png)
 
-## 3. 点击创建新应用
+## 三、点击创建新应用
 
-## 4. 填写对应参数
+## 四、填写对应参数
 
 镜像：ghcr.io/songquanpeng/one-api:latest
 
@@ -22,7 +26,7 @@ https://cloud.sealos.io/
 
 ## 5. 访问
 
-点击 Sealos 提供的外网访问地址，即可访问 one-api 项目。
+点击 Sealos 提供的外网访问地址，即可访问 OneAPI 项目。
 ![step3](./imgs/step4.png)
 ![step3](./imgs/step5.png)
 
@@ -30,7 +34,17 @@ https://cloud.sealos.io/
 
 ```
 # 下面的地址是 Sealos 提供的，务必写上 v1
-ONEAPI_URL=https://xxxx.cloud.sealos.io/v1
+OPENAI_BASE_URL=https://xxxx.cloud.sealos.io/v1
 # 下面的 key 由 one-api 提供
-ONEAPI_KEY=sk-xxxxxx
+CHAT_API_KEY=sk-xxxxxx
 ```
+
+## MySQL 版本
+
+高流量推荐使用 MySQL 版本，支持多实例扩展。
+
+点击下方按键一键部署 👇
+
+[![](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Done-api)
+
+部署完后会跳转【应用管理】，数据库在另一个应用里。需要等待 1~3 分钟数据库运行后才能访问成功。
