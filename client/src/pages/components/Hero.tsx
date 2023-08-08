@@ -14,7 +14,7 @@ const Hero = () => {
   const { isPc, gitStar } = useGlobalStore();
 
   return (
-    <Flex flexDirection={'column'} pt={['24px', '50px']} alignItems={'center'}>
+    <Flex flexDirection={'column'} pt={['24px', '50px']} alignItems={'center'} userSelect={'none'}>
       <Box fontSize={['38px', '60px']} fontWeight={'bold'}>
         {t('home.slogan')}
       </Box>
@@ -60,7 +60,7 @@ const Hero = () => {
           minH={['auto', '400px']}
           src={isPc ? '/imgs/home/videobgpc.png' : '/imgs/home/videobgphone.png'}
           mx={['-10%', 'auto']}
-          maxW={['120%', '950px']}
+          maxW={['120%', '1000px']}
           alt=""
         />
         <MyIcon

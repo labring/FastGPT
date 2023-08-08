@@ -5,7 +5,6 @@
     "show_appStore": false,
     "show_userDetail": false,
     "show_git": true,
-    "beianText": "",
     "systemTitle": "FastAI",
     "authorText": "Made by FastAI Team.",
     "gitLoginKey": ""

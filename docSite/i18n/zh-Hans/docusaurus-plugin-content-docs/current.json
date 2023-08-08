@@ -2,8 +2,11 @@
   "sidebar.docSidebar.intro": {
     "message": "介绍"
   },
-  "sidebar.docSidebar.category.Quick Start": {
-    "message": "快速开始"
+  "sidebar.docSidebar.category.Develop": {
+    "message": "开发"
+  },
+  "sidebar.docSidebar.category.Proxy": {
+    "message": "Proxy 方案"
   },
   "sidebar.docSidebar.category.Deploy": {
     "message": "部署"

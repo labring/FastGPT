@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# FastGpt 是什么？
+# 快速了解 FastGpt
 
 FastGPT 是一个基于向量 + LLM 模型的 AI 问答系统。可以帮助你快捷、高效的将内部文档进行训练。提供了丰富的调试工具便于调整数据，并可以通过 Iframe 或 API 的形式接入到你现有的应用中。
 
@@ -11,33 +11,38 @@ FastGPT 是一个基于向量 + LLM 模型的 AI 问答系统。可以帮助你�
 | ![Demo](./imgs/intro1.png) | ![Demo](./imgs/intro2.png) |
 | ![Demo](./imgs/intro3.png) | ![Demo](./imgs/intro4.png) |
 
-#### 知识库原理图
+## FastGPT 能力
+
+### 1. AI 客服
+
+通过导入文档或已有问答对进行训练，让 AI 模型能根据你的文档进行回答问题。
+![Ability1](./imgs/ability1.png)
+
+### 2. 自动数据预处理
+
+提供手动输入、直接分段、LLM 自动处理和 CSV 等多种数据导入途径，兼顾精确和快速训练场景。
+![Ability1](./imgs/ability2.png)
+
+### 3. 工作流编排
+
+基于 Flow 模块的工作流编排，可以帮助你设计更加复杂的问答流程。例如查询数据库、查询库存、预约实验室等。
+
+![Ability1](./imgs/ability3.png)
+
+### 4. 无缝衔接的 OpenAPI
+
+FastGPT 对外 API 接口对齐 GPT 官方接口，你可以直接在现有的 GPT 应用中通过修改 BaseURL 和 Authorization 即可接入 FastGPT。
+![Ability1](./imgs/ability4.png)
+
+## FastGPT 特点
+
+1. 项目开源。FastGPT 遵循 Apache License 2.0 开源协议，你可以在 GitHub Clone FastGPT 进行二次开发和发布。FastGPT 社区版将保留核心的功能，商业版仅在社区版基础上使用 API 的形式进行扩展，不影响学习使用。
+2. 独特的 QA 结构。针对客服问答场景设计的 QA 结构，提高在大量数据场景中的准确性。
+3. 可视化工作流。通过 Flow 模块展示了从问题输入到模型输出的完整流程，便于调试和设计复杂流程。
+4. 无限扩展。基于 HTTP 进行扩展，无需修改 FastGPT 源码，也可快速接入现有的程序中。
+5. 便捷调试。提供搜索测试、引用修改、完整对话预览等多种调试途径。
+6. 支持多种模型：支持 GPT、Claude、文心一言等多类 LLM 模型，未来也将支持自定义的向量模型。
+
+## 知识库核心流程图
 
 ![KBProcess](./imgs/KBProcess.jpg?raw=true 'KBProcess')
-
-## 🏘️ 交流群
-
-添加 wx 进入：  
-![Demo](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
-
-## Powered by
-
-- [TuShan: 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
-- [Laf: 3 分钟快速接入三方应用](https://github.com/labring/laf)
-- [Sealos: 快速部署集群应用](https://github.com/labring/sealos)
-- [One API: 令牌管理 & 二次分发，支持 Azure](https://github.com/songquanpeng/one-api)
-
-## 👀 其他
-
-- [FastGpt 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
-- [docker 部署教程视频](https://www.bilibili.com/video/BV1jo4y147fT/)
-- [公众号接入视频教程](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGpt 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
-
-## 第三方生态
-
-- [luolinAI: 企微机器人，开箱即用](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
-
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=labring/FastGPT&type=Date)](https://star-history.com/#labring/FastGPT&Date)
