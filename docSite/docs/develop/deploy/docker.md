@@ -30,6 +30,8 @@ docker-compose -v
 
 ## 三、创建 docker-compose.yml 文件
 
+随便找一个目录，创建一个 `docker-compose.yml` 文件，粘贴下面的内容。只需要改 fastgpt 容器的 3 个参数即可启动。
+
 ```yml
 # 非 host 版本, 不使用本机代理
 version: '3.3'
