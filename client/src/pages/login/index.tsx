@@ -12,7 +12,7 @@ import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/utils/i18n';
 import { setToken } from '@/utils/user';
 import { feConfigs } from '@/store/static';
-import WxConcat from '@/components/WxConcat';
+import CommunityModal from '@/components/CommunityModal';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
@@ -115,7 +115,7 @@ const Login = () => {
         </Box>
       </Flex>
 
-      {isOpen && <WxConcat onClose={onClose} />}
+      {isOpen && <CommunityModal onClose={onClose} />}
     </Flex>
   );
 };

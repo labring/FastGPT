@@ -8,14 +8,15 @@ import { setToken } from '@/utils/user';
 import { gitLogin } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import Loading from '@/components/Loading';
+import { serviceSideProps } from '@/utils/i18n';
+import { useQuery } from '@tanstack/react-query';
 
-const provider = () => {
+const provider = ({ code }: { code: string }) => {
   const { loginStore } = useGlobalStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { toast } = useToast();
-  const { code } = router.query as { code?: string };
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -64,11 +65,21 @@ const provider = () => {
     }
   }, [code, loginStore, loginSuccess]);
 
-  useEffect(() => {
+  useQuery(['init', code], () => {
     authCode();
-  }, [authCode]);
+    return null;
+  });
 
   return <Loading />;
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      code: content?.query?.code,
+      ...(await serviceSideProps(content))
+    }
+  };
+}
 
 export default provider;

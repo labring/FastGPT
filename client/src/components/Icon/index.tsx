@@ -73,7 +73,8 @@ const map = {
   language_zh: require('./icons/language/zh.svg').default,
   outlink_share: require('./icons/outlink/share.svg').default,
   outlink_iframe: require('./icons/outlink/iframe.svg').default,
-  addCircle: require('./icons/circle/add.svg').default
+  addCircle: require('./icons/circle/add.svg').default,
+  playFill: require('./icons/fill/play.svg').default
 };
 
 export type IconName = keyof typeof map;

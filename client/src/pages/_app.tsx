@@ -65,7 +65,6 @@ function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Script src="/js/particles.js"></Script>
       <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
       <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
