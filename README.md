@@ -13,23 +13,20 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## 👨‍💻 开发
 
-项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）  
-[本地开发 Quick Start](docSite/i18n/zh-Hans/docusaurus-plugin-content-docs/current/quick-start/dev.md)
+项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）
 
-## 🚀 部署
-
-- [官方推荐 Sealos 部署](https://sealos.io/docs/examples/ai-applications/install-fastgpt-on-desktop) 无需服务器，代理和域名，高可用。
-- [docker-compose 部署](docSite/i18n/zh-Hans/docusaurus-plugin-content-docs/current/deploy/docker.md) 单机版。
-- [由社区贡献的宝塔部署和本地运行教程](https://www.bilibili.com/video/BV1tV4y1y7Mj/?vd_source=92041a1a395f852f9d89158eaa3f61b4) 单机版。
+- [快开始本地开发](<[docSite/i18n/zh-Hans/docusaurus-plugin-content-docs/current/quick-start/dev.md](https://doc.fastgpt.run/docs/develop/dev)>)
+- [部署 FastGPT](https://doc.fastgpt.run/docs/category/deploy)
 
 ## :point_right: RoadMap
 
 - [FastGpt RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte)
 
-## 🏘️ 交流群
+## 🏘️ 社区交流群
 
-添加 wx 进入：  
-![Demo](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
+| 交流群                                            | 小助手                                         |
+| ------------------------------------------------- | ---------------------------------------------- |
+| ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |
 
 ## Powered by
 

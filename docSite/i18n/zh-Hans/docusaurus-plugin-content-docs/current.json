@@ -14,8 +14,8 @@
   "sidebar.docSidebar.category.Datasets": {
     "message": "知识库实践"
   },
-  "sidebar.docSidebar.category.Flow AI": {
-    "message": "Flow 编排"
+  "sidebar.docSidebar.category.Flow Modules": {
+    "message": "高级编排"
   },
   "sidebar.docSidebar.category.Other": {
     "message": "其他"
