@@ -37,7 +37,7 @@ docker-compose -v
 version: '3.3'
 services:
   pg:
-    image: ghcr.io/c121914yu/fastgpt:latest # git
+    image: ankane/pgvector:v0.4.2 # git
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
     container_name: pg
     restart: always
