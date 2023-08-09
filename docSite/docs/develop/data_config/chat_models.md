@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# Other Chat Model Configuration
+# Config Chat Model
 
 By default, FastGPT is only configured with 3 models of GPT. If you need to integrate other models, you need to do some additional configuration.
 
