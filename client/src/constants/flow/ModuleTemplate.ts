@@ -261,7 +261,8 @@ export const KBSearchModule: FlowModuleTemplateType = {
     {
       key: 'quoteQA',
       label: '引用内容',
-      description: '搜索结果为空时不返回',
+      description:
+        '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
       type: FlowOutputItemTypeEnum.source,
       valueType: FlowValueTypeEnum.kbQuote,
       targets: []
@@ -916,7 +917,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           {
             key: 'quoteQA',
             label: '引用内容',
-            description: '搜索结果为空时不返回',
+            description:
+              '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
             type: 'source',
             valueType: 'kb_quote',
             targets: [
@@ -1892,7 +1894,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           {
             key: 'quoteQA',
             label: '引用内容',
-            description: '搜索结果为空时不返回',
+            description:
+              '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
             type: 'source',
             valueType: 'kb_quote',
             targets: [
