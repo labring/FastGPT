@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Config 配置文件说明
+# 快速介绍
 
 由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 client/data/config.json 看到默认的配置文件。
 
