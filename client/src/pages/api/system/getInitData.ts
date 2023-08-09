@@ -40,48 +40,48 @@ const defaultFeConfigs = {
   show_appStore: false,
   show_userDetail: false,
   show_git: true,
-  systemTitle: 'FastAI',
-  authorText: 'Made by FastAI Team.'
+  systemTitle: 'FastGPT',
+  authorText: 'Made by FastGPT Team.'
 };
 const defaultChatModels = [
   {
     model: 'gpt-3.5-turbo',
-    name: 'FastAI-4k',
+    name: 'GPT35-4k',
     contextMaxToken: 4000,
     quoteMaxToken: 2400,
     maxTemperature: 1.2,
-    price: 1.5
+    price: 0
   },
   {
     model: 'gpt-3.5-turbo-16k',
-    name: 'FastAI-16k',
+    name: 'GPT35-16k',
     contextMaxToken: 16000,
     quoteMaxToken: 8000,
     maxTemperature: 1.2,
-    price: 3
+    price: 0
   },
   {
     model: 'gpt-4',
-    name: 'FastAI-Plus',
+    name: 'GPT4-8k',
     contextMaxToken: 8000,
     quoteMaxToken: 4000,
     maxTemperature: 1.2,
-    price: 45
+    price: 0
   }
 ];
 const defaultQAModels = [
   {
     model: 'gpt-3.5-turbo-16k',
-    name: 'FastAI-16k',
+    name: 'GPT35-16k',
     maxToken: 16000,
-    price: 3
+    price: 0
   }
 ];
 const defaultVectorModels = [
   {
     model: 'text-embedding-ada-002',
     name: 'Embedding-2',
-    price: 0.2
+    price: 0
   }
 ];
 
