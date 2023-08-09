@@ -23,6 +23,9 @@
   "sidebar.docSidebar.category.Modules Intro": {
     "message": "模块介绍"
   },
+  "sidebar.docSidebar.category.Examples": {
+    "message": "例子"
+  },
   "sidebar.docSidebar.category.Other": {
     "message": "其他"
   }
