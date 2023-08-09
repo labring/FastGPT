@@ -20,6 +20,9 @@
   "sidebar.docSidebar.category.Flow Modules": {
     "message": "高级编排"
   },
+  "sidebar.docSidebar.category.Modules Intro": {
+    "message": "模块介绍"
+  },
   "sidebar.docSidebar.category.Other": {
     "message": "其他"
   }
