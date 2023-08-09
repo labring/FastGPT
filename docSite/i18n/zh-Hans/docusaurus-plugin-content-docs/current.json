@@ -8,6 +8,9 @@
   "sidebar.docSidebar.category.Proxy": {
     "message": "Proxy 方案"
   },
+  "sidebar.docSidebar.category.Data Config": {
+    "message": "Config 配置"
+  },
   "sidebar.docSidebar.category.Deploy": {
     "message": "部署"
   },

@@ -21,13 +21,17 @@ const nextConfig = {
       asyncWebAssembly: true,
       layers: true
     };
-    config.module.rules = config.module.rules.concat([
-      {
-        test: /\.svg$/i,
-        issuer: /\.[jt]sx?$/,
-        use: ['@svgr/webpack']
-      }
-    ]);
+    config.module = {
+      ...config.module,
+      rules: config.module.rules.concat([
+        {
+          test: /\.svg$/i,
+          issuer: /\.[jt]sx?$/,
+          use: ['@svgr/webpack']
+        }
+      ]),
+      exprContextCritical: false
+    };
 
     return config;
   }

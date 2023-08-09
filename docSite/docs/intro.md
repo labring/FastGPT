@@ -2,47 +2,45 @@
 sidebar_position: 1
 ---
 
-# 快速了解 FastGpt
+# Introduction to FastGpt
 
-FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开箱即用的数据处理、模型调用等能力。同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的问答场景！
-
-|                            |                            |
+FastGPT is a knowledge-based question-answering system built on top of the LLM language model. It provides out-of-the-box capabilities for data processing, model invocation, and more. Additionally, it offers a visual workflow editor called Flow to enable complex question-answering scenarios!
+| | |
 | -------------------------- | -------------------------- |
 | ![Demo](./imgs/intro1.png) | ![Demo](./imgs/intro2.png) |
 | ![Demo](./imgs/intro3.png) | ![Demo](./imgs/intro4.png) |
 
-## FastGPT 能力
+## FastGPT Capabilities
 
-### 1. AI 客服
+### 1. AI Customer Service
 
-通过导入文档或已有问答对进行训练，让 AI 模型能根据你的文档进行回答问题。
+Train the AI model by importing documents or existing question-answer pairs, allowing it to answer questions based on your documents.
 ![Ability1](./imgs/ability1.png)
 
-### 2. 自动数据预处理
+### 2. Automated Data Preprocessing
 
-提供手动输入、直接分段、LLM 自动处理和 CSV 等多种数据导入途径，兼顾精确和快速训练场景。
+Provides multiple ways to import data, including manual input, direct segmentation, LLM automatic processing, and CSV, to accommodate precise and fast training scenarios.
 ![Ability1](./imgs/ability2.png)
 
-### 3. 工作流编排
+### 3. Workflow Orchestration
 
-基于 Flow 模块的工作流编排，可以帮助你设计更加复杂的问答流程。例如查询数据库、查询库存、预约实验室等。
-
+Design more complex question-answering workflows using the Flow module. For example, querying databases, checking inventory, scheduling laboratory appointments, etc.
 ![Ability1](./imgs/ability3.png)
 
-### 4. 无缝衔接的 OpenAPI
+### 4. Seamless Integration with OpenAPI
 
-FastGPT 对外 API 接口对齐 GPT 官方接口，你可以直接在现有的 GPT 应用中通过修改 BaseURL 和 Authorization 即可接入 FastGPT。
+FastGPT's API interface aligns with the official GPT API, allowing you to integrate FastGPT into existing GPT applications by simply modifying the BaseURL and Authorization.
 ![Ability1](./imgs/ability4.png)
 
-## FastGPT 特点
+## FastGPT Features
 
-1. 项目开源。FastGPT 遵循 Apache License 2.0 开源协议，你可以在 GitHub Clone FastGPT 进行二次开发和发布。FastGPT 社区版将保留核心的功能，商业版仅在社区版基础上使用 API 的形式进行扩展，不影响学习使用。
-2. 独特的 QA 结构。针对客服问答场景设计的 QA 结构，提高在大量数据场景中的准确性。
-3. 可视化工作流。通过 Flow 模块展示了从问题输入到模型输出的完整流程，便于调试和设计复杂流程。
-4. 无限扩展。基于 HTTP 进行扩展，无需修改 FastGPT 源码，也可快速接入现有的程序中。
-5. 便捷调试。提供搜索测试、引用修改、完整对话预览等多种调试途径。
-6. 支持多种模型：支持 GPT、Claude、文心一言等多类 LLM 模型，未来也将支持自定义的向量模型。
+1. Open-source project. FastGPT follows the Apache License 2.0 open-source agreement. You can clone FastGPT from GitHub for further development and distribution. The community edition of FastGPT will retain core functionality, while the commercial edition extends it through APIs without affecting learning usage.
+2. Unique QA structure. Designed specifically for customer service question-answering scenarios, the QA structure improves accuracy in large-scale data scenarios.
+3. Visual workflow. The Flow module displays the complete process from question input to model output, facilitating debugging and designing complex workflows.
+4. Infinite scalability. Extensible via HTTP without modifying FastGPT source code, allowing for quick integration into existing programs.
+5. Convenient debugging. Provides various debugging methods, such as search testing, reference modification, and complete conversation preview.
+6. Support for multiple models: Supports various LLM models such as GPT, Claude, and Wenxin Yiyuan, and will also support custom vector models in the future.
 
-## 知识库核心流程图
+## Core Knowledge Base Process Diagram
 
 ![KBProcess](./imgs/KBProcess.jpg?raw=true 'KBProcess')
