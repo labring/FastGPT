@@ -324,7 +324,7 @@ async function streamResponse({
         const { data } = parseData.parse(item);
         if (!data || data === '[DONE]') return;
 
-        const content: string = data?.choices?.[0].delta.content || '';
+        const content: string = data?.choices?.[0]?.delta?.content || '';
         error = data.error;
         answer += content;
 

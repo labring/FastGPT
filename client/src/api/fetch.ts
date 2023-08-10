@@ -74,7 +74,7 @@ export const streamFetch = ({
             if (!eventName || !data) return;
 
             if (eventName === sseResponseEventEnum.answer && data !== '[DONE]') {
-              const answer: string = data?.choices?.[0].delta.content || '';
+              const answer: string = data?.choices?.[0]?.delta?.content || '';
               onMessage({ text: answer });
               responseText += answer;
             } else if (
