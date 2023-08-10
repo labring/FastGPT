@@ -129,11 +129,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               required: '密码不能为空',
               minLength: {
                 value: 4,
-                message: '密码最少4位最多12位'
+                message: '密码最少 4 位最多 20 位'
               },
               maxLength: {
-                value: 12,
-                message: '密码最少4位最多12位'
+                value: 20,
+                message: '密码最少 4 位最多 20 位'
               }
             })}
           ></Input>

@@ -22,11 +22,15 @@
     "New Chat": "新对话",
     "You need to a chat app": "你需要创建一个应用"
   },
+  "commom": {
+    "Password inconsistency": "两次密码不一致"
+  },
   "common": {
     "Add": "添加",
     "Cancel": "取消",
     "Collect": "收藏",
     "Copy": "复制",
+    "Course": "",
     "Delete": "删除",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",

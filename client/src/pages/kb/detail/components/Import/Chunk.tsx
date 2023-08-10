@@ -142,7 +142,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
 
       // subsection import
       let success = 0;
-      const step = 100;
+      const step = 500;
       for (let i = 0; i < chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,

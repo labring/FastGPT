@@ -90,15 +90,14 @@ export async function pushDataToKb({
   data.forEach((item) => {
     const text = item.q + item.a;
 
-    if (mode === TrainingModeEnum.qa) {
-      // count token
-      const token = modelToolMap.countTokens({
-        model: 'gpt-3.5-turbo-16k',
-        messages: [{ obj: 'System', value: item.q }]
-      });
-      if (token > modeMaxToken[TrainingModeEnum.qa]) {
-        return;
-      }
+    // count token
+    const token = modelToolMap.countTokens({
+      model: 'gpt-3.5-turbo',
+      messages: [{ obj: 'System', value: item.q }]
+    });
+
+    if (token > modeMaxToken[TrainingModeEnum.qa]) {
+      return;
     }
 
     if (!set.has(text)) {
