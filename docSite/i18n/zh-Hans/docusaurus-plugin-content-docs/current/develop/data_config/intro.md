@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # 快速介绍
 
-由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 client/data/config.json 看到默认的配置文件。
+由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 client/data/config.json 看到默认的配置文件。可以参考 [docker-compose 部署](/docs/develop/deploy/docker) 来挂载配置文件。
 
 开发环境下，你需要复制一份 config.json 成 config.local.json 文件才会生效。
 

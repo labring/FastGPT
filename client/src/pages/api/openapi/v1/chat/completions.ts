@@ -332,7 +332,7 @@ export async function dispatchModules({
   }
   async function moduleRun(module: RunningModuleItemType): Promise<any> {
     if (res.closed) return Promise.resolve();
-    console.log('run=========', module.flowType);
+    // console.log('run=========', module.flowType);
 
     if (stream && detail && module.showStatus) {
       responseStatus({

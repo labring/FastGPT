@@ -1,10 +1,28 @@
+<div align="center">
+
+<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.png" width="100" height="100" alt="fastgpt logo"></a>
+
 # FastGPT
 
 FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开箱即用的数据处理、模型调用等能力。同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的问答场景！
 
+</div>
+
+<p align="center">
+  <a href="https://fastgpt.run/">线上体验</a>
+  ·
+  <a href="https://doc.fastgpt.run/docs/intro">相关文档</a>
+  ·
+  <a href="https://doc.fastgpt.run/docs/develop/dev">本地开发</a>
+  ·
+  <a href="https://doc.fastgpt.run/docs/category/deploy">快速部署</a>
+  ·
+  <a href="https://github.com/labring/FastGPT#powered-by">相关项目</a>
+</p>
+
 ## 🛸 在线体验
 
-🎉 [fastgpt.run](https://fastgpt.run/)（服务器在新加坡，部分地区可能无法直连）
+[fastgpt.run](https://fastgpt.run/)（服务器在新加坡，部分地区可能无法直连）
 
 |                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
@@ -17,10 +35,12 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 - [快开始本地开发](https://doc.fastgpt.run/docs/develop/dev)
 - [部署 FastGPT](https://doc.fastgpt.run/docs/category/deploy)
+- [配置文件说明](https://doc.fastgpt.run/docs/category/data-config)
+- [V3 升级 V4 初始化](https://doc.fastgpt.run/docs/develop/deploy/v4init)
 
-## :point_right: RoadMap
+<!-- ## :point_right: RoadMap
 
-- [FastGpt RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte)
+- [FastGpt RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
 
 ## 🏘️ 社区交流群
 
@@ -28,7 +48,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 | ------------------------------------------------- | ---------------------------------------------- |
 | ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |
 
-## Powered by
+## 🎉 Powered by
 
 - [TuShan: 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
 - [Laf: 3 分钟快速接入三方应用](https://github.com/labring/laf)
