@@ -192,7 +192,7 @@ function filterQuote({
     maxToken: model.quoteMaxToken,
     messages: quoteQA.map((item, i) => ({
       obj: ChatRoleEnum.System,
-      value: `${i + 1}. [${item.q}\n${item.a}]`
+      value: item.a ? `{instruction:${item.q},output:${item.a}}` : `{instruction:${item.q}}`
     }))
   });
 
@@ -202,7 +202,9 @@ function filterQuote({
   const quotePrompt =
     filterQuoteQA.length > 0
       ? `下面是知识库内容:
-${filterQuoteQA.map((item) => `{Q:${item.q},A:${item.a}}`).join('\n')}
+${filterQuoteQA
+  .map((item) => (item.a ? `{instruction:${item.q},output:${item.a}}` : `{instruction:${item.q}}`))
+  .join('\n')}
 `
       : '';
 

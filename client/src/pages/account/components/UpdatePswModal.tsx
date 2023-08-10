@@ -6,9 +6,15 @@ import { useForm } from 'react-hook-form';
 import { useRequest } from '@/hooks/useRequest';
 import { updatePasswordByOld } from '@/api/user';
 
+type FormType = {
+  oldPsw: string;
+  newPsw: string;
+  confirmPsw: string;
+};
+
 const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { register, handleSubmit } = useForm({
+  const { register, handleSubmit } = useForm<FormType>({
     defaultValues: {
       oldPsw: '',
       newPsw: '',
@@ -17,7 +23,10 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   });
 
   const { mutate: onSubmit, isLoading } = useRequest({
-    mutationFn: (data) => {
+    mutationFn: (data: FormType) => {
+      if (data.newPsw !== data.confirmPsw) {
+        return Promise.reject(t('commom.Password inconsistency'));
+      }
       return updatePasswordByOld(data);
     },
     onSuccess() {
@@ -36,11 +45,31 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 70px'}>新密码:</Box>
-          <Input flex={1} type={'password'} {...register('newPsw', { required: true })}></Input>
+          <Input
+            flex={1}
+            type={'password'}
+            {...register('newPsw', {
+              required: true,
+              maxLength: {
+                value: 20,
+                message: '密码最少 4 位最多 20 位'
+              }
+            })}
+          ></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 70px'}>确认密码:</Box>
-          <Input flex={1} type={'password'} {...register('confirmPsw', { required: true })}></Input>
+          <Input
+            flex={1}
+            type={'password'}
+            {...register('confirmPsw', {
+              required: true,
+              maxLength: {
+                value: 20,
+                message: '密码最少 4 位最多 20 位'
+              }
+            })}
+          ></Input>
         </Flex>
       </ModalBody>
       <ModalFooter>

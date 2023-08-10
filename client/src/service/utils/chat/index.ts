@@ -21,13 +21,16 @@ export type StreamResponseType = {
 /* slice chat context by tokens */
 export const ChatContextFilter = ({
   model,
-  prompts,
+  prompts = [],
   maxTokens
 }: {
   model: string;
   prompts: ChatItemType[];
   maxTokens: number;
 }) => {
+  if (!Array.isArray(prompts)) {
+    return [];
+  }
   const rawTextLen = prompts.reduce((sum, item) => sum + item.value.length, 0);
 
   // If the text length is less than half of the maximum token, no calculation is required

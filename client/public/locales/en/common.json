@@ -22,6 +22,9 @@
     "New Chat": "New Chat",
     "You need to a chat app": "You need to a chat app"
   },
+  "commom": {
+    "Password inconsistency": "Password inconsistency"
+  },
   "common": {
     "Add": "Add",
     "Cancel": "Cancel",

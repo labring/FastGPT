@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ModalBody, ModalCloseButton, ModalHeader, Box, useTheme } from '@chakra-ui/react';
+import { ModalBody, Box, useTheme } from '@chakra-ui/react';
 import { getKbDataItemById } from '@/api/plugins/kb';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
@@ -9,13 +9,21 @@ import MyIcon from '@/components/Icon';
 import InputDataModal from '@/pages/kb/detail/components/InputDataModal';
 import MyModal from '../MyModal';
 
+type SearchType = {
+  kb_id?: string;
+  id?: string;
+  q: string;
+  a?: string;
+  source?: string | undefined;
+};
+
 const QuoteModal = ({
   onUpdateQuote,
   rawSearch = [],
   onClose
 }: {
   onUpdateQuote: (quoteId: string, sourceText: string) => Promise<void>;
-  rawSearch: QuoteItemType[];
+  rawSearch: SearchType[];
   onClose: () => void;
 }) => {
   const theme = useTheme();
@@ -32,7 +40,8 @@ const QuoteModal = ({
    * click edit, get new kbDataItem
    */
   const onclickEdit = useCallback(
-    async (item: QuoteItemType) => {
+    async (item: SearchType) => {
+      if (!item.id) return;
       try {
         setIsLoading(true);
         const data = (await getKbDataItemById(item.id)) as QuoteItemType;
@@ -77,9 +86,9 @@ const QuoteModal = ({
         }
       >
         <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
-          {rawSearch.map((item) => (
+          {rawSearch.map((item, i) => (
             <Box
-              key={item.id}
+              key={i}
               flex={'1 0 0'}
               p={2}
               borderRadius={'lg'}
@@ -91,31 +100,33 @@ const QuoteModal = ({
               {item.source && <Box color={'myGray.600'}>({item.source})</Box>}
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
-              <Box
-                className="edit"
-                display={'none'}
-                position={'absolute'}
-                right={0}
-                top={0}
-                bottom={0}
-                w={'40px'}
-                bg={'rgba(255,255,255,0.9)'}
-                alignItems={'center'}
-                justifyContent={'center'}
-                boxShadow={'-10px 0 10px rgba(255,255,255,1)'}
-              >
-                <MyIcon
-                  name={'edit'}
-                  w={'18px'}
-                  h={'18px'}
-                  cursor={'pointer'}
-                  color={'myGray.600'}
-                  _hover={{
-                    color: 'myBlue.700'
-                  }}
-                  onClick={() => onclickEdit(item)}
-                />
-              </Box>
+              {item.id && (
+                <Box
+                  className="edit"
+                  display={'none'}
+                  position={'absolute'}
+                  right={0}
+                  top={0}
+                  bottom={0}
+                  w={'40px'}
+                  bg={'rgba(255,255,255,0.9)'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  boxShadow={'-10px 0 10px rgba(255,255,255,1)'}
+                >
+                  <MyIcon
+                    name={'edit'}
+                    w={'18px'}
+                    h={'18px'}
+                    cursor={'pointer'}
+                    color={'myGray.600'}
+                    _hover={{
+                      color: 'myBlue.700'
+                    }}
+                    onClick={() => onclickEdit(item)}
+                  />
+                </Box>
+              )}
             </Box>
           ))}
         </ModalBody>

@@ -30,6 +30,10 @@ const maxTokens = 3000;
 export const dispatchClassifyQuestion = async (props: Record<string, any>): Promise<CQResponse> => {
   const { agents, systemPrompt, history = [], userChatInput, userOpenaiAccount } = props as CQProps;
 
+  if (!userChatInput) {
+    return Promise.reject('Input is empty');
+  }
+
   const messages: ChatItemType[] = [
     ...(systemPrompt
       ? [

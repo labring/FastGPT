@@ -13,7 +13,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect from './FileSelect';
 import { useRouter } from 'next/router';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-import { fileDownload, readCsvContent } from '@/utils/file';
+import { readCsvContent } from '@/utils/file';
 
 const fileExtension = '.csv';
 
@@ -98,7 +98,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
 
       // subsection import
       let success = 0;
-      const step = 100;
+      const step = 500;
       for (let i = 0; i < chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,

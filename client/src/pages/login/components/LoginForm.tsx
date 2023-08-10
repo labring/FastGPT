@@ -97,8 +97,8 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             {...register('password', {
               required: '密码不能为空',
               maxLength: {
-                value: 12,
-                message: '密码最多12位'
+                value: 20,
+                message: '密码最多 20 位'
               }
             })}
           ></Input>
