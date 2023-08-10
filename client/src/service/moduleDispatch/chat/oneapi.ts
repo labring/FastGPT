@@ -202,7 +202,7 @@ function filterQuote({
   const quotePrompt =
     filterQuoteQA.length > 0
       ? `下面是知识库内容:
-${filterQuoteQA.map((item, i) => `${i + 1}. [${item.q}\n${item.a}]`).join('\n')}
+${filterQuoteQA.map((item) => `{Q:${item.q},A:${item.a}}`).join('\n')}
 `
       : '';
 
@@ -229,7 +229,7 @@ function getChatMessages({
   const limitText = (() => {
     if (limitPrompt) return limitPrompt;
     if (quotePrompt && !limitPrompt) {
-      return '根据知识库内容回答问题，仅回复知识库提供的内容，不要对知识库内容做补充说明。';
+      return '严格按照知识库提供的内容回答，不要做过多补充。';
     }
     return '';
   })();
