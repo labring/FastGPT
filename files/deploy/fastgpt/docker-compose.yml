@@ -62,10 +62,10 @@ services:
       - PG_USER=username
       - PG_PASSWORD=password
       - PG_DB_NAME=postgres
-
+    volumes:
+      - ./config.json:/app/data/config.json
 networks:
   fastgpt:
-
 # host 版本, 不推荐。
 # version: '3.3'
 # services:

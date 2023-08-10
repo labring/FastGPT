@@ -97,7 +97,6 @@ services:
       - PG_USER=username
       - PG_PASSWORD=password
       - PG_DB_NAME=postgres
-
 networks:
   fastgpt:
 ```
@@ -179,3 +178,95 @@ docker-compose up -d
 ### 1. 如何更新？
 
 执行 `docker-compose up -d` 会自动拉取最新镜像，一般情况下不需要执行额外操作。
+
+### 2. 挂载配置文件
+
+在和 `docker-compose.yml` 同级目录，创建一个 `config.json` 文件，内容如下：
+
+```json
+{
+  "FeConfig": {
+    "show_emptyChat": true,
+    "show_register": false,
+    "show_appStore": false,
+    "show_userDetail": false,
+    "show_git": true,
+    "systemTitle": "FastGPT",
+    "authorText": "Made by FastGPT Team.",
+    "gitLoginKey": "",
+    "scripts": []
+  },
+  "SystemParams": {
+    "gitLoginSecret": "",
+    "vectorMaxProcess": 15,
+    "qaMaxProcess": 15,
+    "pgIvfflatProbe": 20
+  },
+  "plugins": {},
+  "ChatModels": [
+    {
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35-4k",
+      "contextMaxToken": 4000,
+      "quoteMaxToken": 2000,
+      "maxTemperature": 1.2,
+      "price": 0,
+      "defaultSystem": ""
+    },
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "contextMaxToken": 16000,
+      "quoteMaxToken": 8000,
+      "maxTemperature": 1.2,
+      "price": 0,
+      "defaultSystem": ""
+    },
+    {
+      "model": "gpt-4",
+      "name": "GPT4-8k",
+      "contextMaxToken": 8000,
+      "quoteMaxToken": 4000,
+      "maxTemperature": 1.2,
+      "price": 0,
+      "defaultSystem": ""
+    }
+  ],
+  "QAModels": [
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxToken": 16000,
+      "price": 0
+    }
+  ],
+  "VectorModels": [
+    {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "price": 0
+    }
+  ]
+}
+```
+
+修改 docker-compose.yml 中 fastgpt 容器内容，增加挂载。具体配置可参考 [config 配置说明](/docs/category/data-config)
+
+```yml
+fastgpt:
+  container_name: fastgpt
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+  ports:
+    - 3000:3000
+  networks:
+    - fastgpt
+  depends_on:
+    - mongo
+    - pg
+  restart: always
+  environment:
+    # root 密码，用户名为: root
+    - DEFAULT_ROOT_PSW=1234
+  volumes:
+    - ./config.json:/app/data/config.json
+```
