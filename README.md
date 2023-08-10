@@ -17,7 +17,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
   ·
   <a href="https://doc.fastgpt.run/docs/category/deploy">快速部署</a>
   ·
-  <a href="https://github.com/labring/FastGPT#powered-by">相关项目</a>
+  <a href="#powered-by">相关项目</a>
 </p>
 
 ## 🛸 在线体验

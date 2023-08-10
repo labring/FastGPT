@@ -22,8 +22,8 @@ Here are some basic configuration fields.
     "show_appStore": false, // Whether to display the app store (currently the permission is not properly set, so it is useless to open it)
     "show_userDetail": false, // Whether to display user details (account balance, OpenAI binding)
     "show_git": true, // Whether to display Git
-    "systemTitle": "FastAI", // The title of the system
-    "authorText": "Made by FastAI Team.", // Signature
+    "systemTitle": "FastGPT", // The title of the system
+    "authorText": "Made by FastGPT Team.", // Signature
     "gitLoginKey": "" // Git login credentials
 }
 ```

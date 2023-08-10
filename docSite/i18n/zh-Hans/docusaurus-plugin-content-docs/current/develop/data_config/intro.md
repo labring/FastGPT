@@ -22,8 +22,8 @@ sidebar_position: 1
     "show_appStore": false, // 是否展示应用市场（不过目前权限还没做好，放开也没用）
     "show_userDetail": false, // 是否展示用户详情（账号余额、OpenAI 绑定）
     "show_git": true, // 是否展示 Git
-    "systemTitle": "FastAI", // 系统的 title
-    "authorText": "Made by FastAI Team.", // 签名
+    "systemTitle": "FastGPT", // 系统的 title
+    "authorText": "Made by FastGPT Team.", // 签名
     "gitLoginKey": "" // Git 登录凭证
 }
 ```
