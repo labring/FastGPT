@@ -80,7 +80,7 @@ export async function generateVector(): Promise<any> {
 
     // delete data from training
     await TrainingData.findByIdAndDelete(data._id);
-    console.log(`生成向量成功: ${data._id}`);
+    // console.log(`生成向量成功: ${data._id}`);
 
     reduceQueue();
     generateVector();
