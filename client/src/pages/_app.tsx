@@ -15,6 +15,7 @@ import { useRouter } from 'next/router';
 
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
+import { FeConfigsType } from '@/types';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());
@@ -36,16 +37,16 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { i18n } = useTranslation();
 
+  const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
   const [googleClientVerKey, setGoogleVerKey] = useState<string>();
-  const [baiduTongjiUrl, setBaiduTongjiUrl] = useState<string>();
 
   useEffect(() => {
     (async () => {
       const {
-        feConfigs: { googleClientVerKey, baiduTongjiUrl }
+        feConfigs: { scripts, googleClientVerKey }
       } = await clientInitData();
+      setScripts(scripts || []);
       setGoogleVerKey(googleClientVerKey);
-      setBaiduTongjiUrl(baiduTongjiUrl);
     })();
   }, []);
 
@@ -68,12 +69,14 @@ function App({ Component, pageProps }: AppProps) {
       <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
       <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
-      {baiduTongjiUrl && <Script src={baiduTongjiUrl} strategy="lazyOnload"></Script>}
+      {scripts?.map((item, i) => (
+        <Script key={i} strategy="lazyOnload" {...item}></Script>
+      ))}
       {googleClientVerKey && (
         <>
           <Script
             src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleClientVerKey}`}
-            strategy="afterInteractive"
+            strategy="lazyOnload"
           ></Script>
         </>
       )}
