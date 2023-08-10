@@ -23,8 +23,8 @@ export type FeConfigsType = {
   authorText?: string;
   beianText?: string;
   googleClientVerKey?: string;
-  baiduTongjiUrl?: string;
   gitLoginKey?: string;
+  scripts?: { [key: string]: string }[];
 };
 export type SystemEnvType = {
   googleServiceVerKey?: string;
