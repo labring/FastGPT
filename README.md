@@ -17,7 +17,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
   ·
   <a href="https://doc.fastgpt.run/docs/category/deploy">快速部署</a>
   ·
-  <a href="#powered-by">相关项目</a>
+  <a href="https://github.com/labring/FastGPT#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">相关项目</a>
 </p>
 
 ## 🛸 在线体验
@@ -75,10 +75,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 - [系统配置文件说明](https://doc.fastgpt.run/docs/category/data-config)
 - [多模型配置](https://doc.fastgpt.run/docs/develop/data_config/chat_models)
 - [V3 升级 V4 初始化](https://doc.fastgpt.run/docs/develop/deploy/v4init)
-
-<!-- ## :point_right: RoadMap
-
-- [FastGpt RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
+- [API 文档](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh?pre_pathname=%2Fdrive%2Fhome%2F)
 
 ## 🏘️ 社区交流群
 
@@ -107,3 +104,11 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 ## 🌟 Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=labring/FastGPT&type=Date)](https://star-history.com/#labring/FastGPT&Date)
+
+## 使用协议
+
+本仓库遵循 [FstGPT Open Source License](./LICENSE) 开源协议。
+
+1. 允许作为后台服务直接商用，但不允许直接使用 saas 服务商用。
+2. 需保留相关版权信息。
+3. 完整请查看 [FstGPT Open Source License](./LICENSE)
