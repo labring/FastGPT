@@ -1,0 +1,32 @@
+{
+    "sidebar.docSidebar.intro": {
+        "message": "Introduction"
+    },
+    "sidebar.docSidebar.category.Develop": {
+        "message": "Development"
+    },
+    "sidebar.docSidebar.category.Proxy": {
+        "message": "Proxy Solutions"
+    },
+    "sidebar.docSidebar.category.Data Config": {
+        "message": "Config Configuration"
+    },
+    "sidebar.docSidebar.category.Deploy": {
+        "message": "Deployment"
+    },
+    "sidebar.docSidebar.category.Datasets": {
+        "message": "Knowledge Base Practices"
+    },
+    "sidebar.docSidebar.category.Flow Modules": {
+        "message": "Advanced Orchestration"
+    },
+    "sidebar.docSidebar.category.Modules Intro": {
+        "message": "Module Introduction"
+    },
+    "sidebar.docSidebar.category.Examples": {
+        "message": "Examples"
+    },
+    "sidebar.docSidebar.category.Other": {
+        "message": "Other"
+    }
+}

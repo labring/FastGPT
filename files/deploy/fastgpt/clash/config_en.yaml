@@ -1,0 +1,22 @@
+mixed-port: 7890
+allow-lan: false
+bind-address: '*'
+mode: rule
+log-level: warning
+dns:
+  enable: true
+  ipv6: false
+  nameserver:
+    - 8.8.8.8
+    - 8.8.4.4
+  cache-size: 400
+proxies:
+
+proxy-groups:
+  - { name: '♻️ Auto Select', type: url-test,  proxies: [HongKongV02×1.5, ABC, India01, Taiwan03, Singapore02, Singapore03, Japan01, Japan02, Singapore01,  USA01, USA02, Taiwan01, Taiwan02], url: 'https://api.openai.com', interval: 3600}
+rules:
+  - 'DOMAIN-SUFFIX,google.com,♻️ Auto Select'
+  - 'DOMAIN-SUFFIX,ai.fastgpt.run,♻️ Auto Select'
+  - 'DOMAIN-SUFFIX,openai.com,♻️ Auto Select'
+  - 'DOMAIN-SUFFIX,api.openai.com,♻️ Auto Select'
+  - 'MATCH,DIRECT'
