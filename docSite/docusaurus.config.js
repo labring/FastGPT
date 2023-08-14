@@ -46,7 +46,7 @@ const config = {
         title: 'FastGpt',
         logo: {
           alt: 'My Logo',
-          src: 'img/logo.png'
+          src: 'img/logo.svg'
         },
         items: [
           {

@@ -13,7 +13,7 @@ export const defaultApp: AppSchema = {
   userId: 'userId',
   name: '模型加载中',
   type: 'basic',
-  avatar: '/icon/logo.png',
+  avatar: '/icon/logo.svg',
   intro: '',
   updateTime: Date.now(),
   share: {
