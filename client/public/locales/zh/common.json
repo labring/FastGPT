@@ -37,6 +37,9 @@
     "Input": "输入",
     "Output": "输出"
   },
+  "dataset": {
+    "Confirm to delete the data": "确认删除该数据？"
+  },
   "file": {
     "Click to download CSV template": "点击下载 CSV 模板",
     "Drag and drop": "拖拽文件至此，或点击",

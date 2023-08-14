@@ -37,6 +37,9 @@
     "Input": "Input",
     "Output": "Output"
   },
+  "dataset": {
+    "Confirm to delete the data": "Confirm to delete the data?"
+  },
   "file": {
     "Click to download CSV template": "Click to download CSV template",
     "Drag and drop": "Drag and drop files here, or click",
