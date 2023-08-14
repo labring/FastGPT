@@ -16,15 +16,21 @@ import Papa from 'papaparse';
 import InputModal, { FormData as InputDataType } from './InputDataModal';
 import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
+import { useConfirm } from '@/hooks/useConfirm';
+import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
+  const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { openConfirm, ConfirmModal } = useConfirm({
+    content: t('dataset.Confirm to delete the data')
+  });
 
   const {
     data: kbDataList,
@@ -225,19 +231,21 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                 borderRadius={'md'}
                 _hover={{ color: 'red.600' }}
                 isLoading={isDeleting}
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  try {
-                    setIsDeleting(true);
-                    await delOneKbDataByDataId(item.id);
-                    refetchData(pageNum);
-                  } catch (error) {
-                    toast({
-                      title: getErrText(error),
-                      status: 'error'
-                    });
-                  }
-                  setIsDeleting(false);
+                  openConfirm(async () => {
+                    try {
+                      setIsDeleting(true);
+                      await delOneKbDataByDataId(item.id);
+                      refetchData(pageNum);
+                    } catch (error) {
+                      toast({
+                        title: getErrText(error),
+                        status: 'error'
+                      });
+                    }
+                    setIsDeleting(false);
+                  })();
                 }}
               />
             </Flex>
@@ -267,6 +275,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           onSuccess={() => refetchData()}
         />
       )}
+      <ConfirmModal />
     </Box>
   );
 };
