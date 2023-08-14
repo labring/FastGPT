@@ -182,11 +182,6 @@ A2:
       return generateQA();
     }
 
-    // unlock
-    await TrainingData.findByIdAndUpdate(trainingId, {
-      lockTime: new Date('2000/1/1')
-    });
-
     setTimeout(() => {
       generateQA();
     }, 1000);
