@@ -25,7 +25,7 @@ const defaultChatData: InitChatResponse = {
   appId: '',
   app: {
     name: 'FastGPT',
-    avatar: '/icon/logo.png',
+    avatar: '/icon/logo.svg',
     intro: '',
     canUse: false
   },

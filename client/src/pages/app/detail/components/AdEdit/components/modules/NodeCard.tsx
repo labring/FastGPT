@@ -21,7 +21,7 @@ type Props = {
 
 const NodeCard = ({
   children,
-  logo = '/icon/logo.png',
+  logo = '/icon/logo.svg',
   name = '未知模块',
   description,
   minW = '300px',

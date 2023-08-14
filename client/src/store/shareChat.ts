@@ -31,7 +31,7 @@ const defaultShareChatData: ShareChatType = {
   userAvatar: HUMAN_ICON,
   app: {
     name: '',
-    avatar: '/icon/logo.png',
+    avatar: '/icon/logo.svg',
     intro: ''
   },
   history: defaultHistory
