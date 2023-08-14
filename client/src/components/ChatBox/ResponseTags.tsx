@@ -1,14 +1,17 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ChatModuleEnum } from '@/constants/chat';
 import { ChatHistoryItemResType, ChatItemType, QuoteItemType } from '@/types/chat';
-import { Flex, BoxProps } from '@chakra-ui/react';
+import { Flex, BoxProps, useDisclosure } from '@chakra-ui/react';
+import { useTranslation } from 'react-i18next';
+import { useGlobalStore } from '@/store/global';
 import dynamic from 'next/dynamic';
 import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
+const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
 
-const ResponseDetailModal = ({
+const ResponseTags = ({
   chatId,
   contentId,
   responseData = []
@@ -17,27 +20,29 @@ const ResponseDetailModal = ({
   contentId?: string;
   responseData?: ChatHistoryItemResType[];
 }) => {
+  const { isPc } = useGlobalStore();
+  const { t } = useTranslation();
   const [quoteModalData, setQuoteModalData] = useState<QuoteItemType[]>();
   const [contextModalData, setContextModalData] = useState<ChatItemType[]>();
+  const {
+    isOpen: isOpenWholeModal,
+    onOpen: onOpenWholeModal,
+    onClose: onCloseWholeModal
+  } = useDisclosure();
 
   const {
-    tokens = 0,
     quoteList = [],
-    completeMessages = []
+    completeMessages = [],
+    tokens = 0
   } = useMemo(() => {
     const chatData = responseData.find((item) => item.moduleName === ChatModuleEnum.AIChat);
     if (!chatData) return {};
     return {
-      tokens: chatData.tokens,
       quoteList: chatData.quoteList,
-      completeMessages: chatData.completeMessages
+      completeMessages: chatData.completeMessages,
+      tokens: responseData.reduce((sum, item) => sum + (item.tokens || 0), 0)
     };
   }, [responseData]);
-
-  const isEmpty = useMemo(
-    () => quoteList.length === 0 && completeMessages.length === 0 && tokens === 0,
-    [completeMessages.length, quoteList.length, tokens]
-  );
 
   const updateQuote = useCallback(async (quoteId: string, sourceText: string) => {}, []);
 
@@ -46,7 +51,7 @@ const ResponseDetailModal = ({
     bg: 'transparent'
   };
 
-  return isEmpty ? null : (
+  return (
     <Flex alignItems={'center'} mt={2} flexWrap={'wrap'}>
       {quoteList.length > 0 && (
         <MyTooltip label="查看引用">
@@ -72,11 +77,17 @@ const ResponseDetailModal = ({
           </Tag>
         </MyTooltip>
       )}
-      {tokens > 0 && (
-        <Tag colorSchema="gray" cursor={'default'} {...TagStyles}>
-          {tokens}tokens
+      {isPc && tokens > 0 && (
+        <Tag colorSchema="purple" cursor={'default'} {...TagStyles}>
+          {tokens}Tokens
         </Tag>
       )}
+      <MyTooltip label={'点击查看完整响应值'}>
+        <Tag colorSchema="gray" cursor={'pointer'} {...TagStyles} onClick={onOpenWholeModal}>
+          {t('chat.Complete Response')}
+        </Tag>
+      </MyTooltip>
+
       {!!quoteModalData && (
         <QuoteModal
           rawSearch={quoteModalData}
@@ -87,8 +98,11 @@ const ResponseDetailModal = ({
       {!!contextModalData && (
         <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
       )}
+      {isOpenWholeModal && (
+        <WholeResponseModal response={responseData} onClose={onCloseWholeModal} />
+      )}
     </Flex>
   );
 };
 
-export default ResponseDetailModal;
+export default ResponseTags;
