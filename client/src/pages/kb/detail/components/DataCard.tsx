@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { Box, Card, IconButton, Flex, Button, Input, Grid } from '@chakra-ui/react';
 import type { KbDataItemType } from '@/types/plugin';
 import { usePagination } from '@/hooks/usePagination';
