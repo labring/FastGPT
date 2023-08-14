@@ -47,7 +47,7 @@ import Markdown from '@/components/Markdown';
 import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
 import dynamic from 'next/dynamic';
-const ResponseDetailModal = dynamic(() => import('./ResponseDetailModal'));
+const ResponseTags = dynamic(() => import('./ResponseTags'));
 
 import styles from './index.module.scss';
 
@@ -678,7 +678,7 @@ const ChatBox = (
                           source={item.value}
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
-                        <ResponseDetailModal
+                        <ResponseTags
                           chatId={chatId}
                           contentId={item._id}
                           responseData={item.responseData}

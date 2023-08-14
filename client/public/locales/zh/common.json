@@ -16,6 +16,7 @@
     "Output Field Settings": "输出字段编辑"
   },
   "chat": {
+    "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的聊天记录？",
     "Exit Chat": "退出聊天",
     "History": "记录",
