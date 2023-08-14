@@ -18,6 +18,10 @@ import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import Info from './components/Info';
 import { serviceSideProps } from '@/utils/i18n';
+import { useTranslation } from 'react-i18next';
+import { getTrainingQueueLen } from '@/api/plugins/kb';
+import MyTooltip from '@/components/MyTooltip';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
 const ImportData = dynamic(() => import('./components/Import'), {
   ssr: false
@@ -36,6 +40,7 @@ enum TabEnum {
 const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }) => {
   const InfoRef = useRef<ComponentRef>(null);
   const theme = useTheme();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useGlobalStore();
@@ -78,6 +83,10 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
     }
   });
 
+  const { data: trainingQueueLen = 0 } = useQuery(['getTrainingQueueLen'], getTrainingQueueLen, {
+    refetchInterval: 5000
+  });
+
   return (
     <PageContainer>
       <Box display={['block', 'flex']} h={'100%'} pt={[4, 0]}>
@@ -106,6 +115,18 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
                 setCurrentTab(e);
               }}
             />
+            <Box textAlign={'center'}>
+              <Flex justifyContent={'center'} alignItems={'center'}>
+                <MyIcon mr={1} name="overviewLight" w={'16px'} color={'green.500'} />
+                <Box>{t('dataset.System Data Queue')}</Box>
+                <MyTooltip label={t('dataset.Queue Desc')} placement={'top'}>
+                  <QuestionOutlineIcon ml={1} w={'16px'} cursor={'pointer'} />
+                </MyTooltip>
+              </Flex>
+              <Box mt={1} fontWeight={'bold'}>
+                {trainingQueueLen}
+              </Box>
+            </Box>
             <Flex
               alignItems={'center'}
               cursor={'pointer'}

@@ -26,7 +26,7 @@ export async function generateVector(): Promise<any> {
     const data = await TrainingData.findOneAndUpdate(
       {
         mode: TrainingModeEnum.index,
-        lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
+        lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
       },
       {
         lockTime: new Date()
