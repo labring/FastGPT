@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         avatar: data.avatar,
         name: data.name,
         userId: data.userId,
-        updateTime: data.updateTime,
+        model: data.model,
         tags: data.tags.join(' ')
       }
     });

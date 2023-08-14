@@ -1,6 +1,6 @@
 import { extendTheme, defineStyleConfig, ComponentStyleConfig } from '@chakra-ui/react';
 // @ts-ignore
-import { modalAnatomy, switchAnatomy, selectAnatomy, checkboxAnatomy } from '@chakra-ui/anatomy';
+import { modalAnatomy, switchAnatomy, selectAnatomy, numberInputAnatomy } from '@chakra-ui/anatomy';
 // @ts-ignore
 import { createMultiStyleConfigHelpers } from '@chakra-ui/styled-system';
 
@@ -11,13 +11,8 @@ const { definePartsStyle: switchPart, defineMultiStyleConfig: switchMultiStyle }
   createMultiStyleConfigHelpers(switchAnatomy.keys);
 const { definePartsStyle: selectPart, defineMultiStyleConfig: selectMultiStyle } =
   createMultiStyleConfigHelpers(selectAnatomy.keys);
-
-// modal 弹窗
-const ModalTheme = defineMultiStyleConfig({
-  baseStyle: definePartsStyle({
-    dialog: {}
-  })
-});
+const { definePartsStyle: numInputPart, defineMultiStyleConfig: numInputMultiStyle } =
+  createMultiStyleConfigHelpers(numberInputAnatomy.keys);
 
 // 按键
 const Button = defineStyleConfig({
@@ -122,15 +117,52 @@ const Input: ComponentStyleConfig = {
   }
 };
 
+const NumberInput = numInputMultiStyle({
+  variants: {
+    outline: numInputPart({
+      field: {
+        bg: 'myWhite.300',
+        border: '1px solid',
+        borderRadius: 'base',
+        borderColor: 'myGray.200',
+        _focus: {
+          borderColor: 'myBlue.600 !important',
+          boxShadow: '0px 0px 4px #A8DBFF !important',
+          bg: 'transparent'
+        },
+        _disabled: {
+          color: 'myGray.400 !important',
+          bg: 'myWhite.300 !important'
+        }
+      },
+      stepper: {
+        bg: 'transparent',
+        border: 'none',
+        color: 'myGray.600',
+        _active: {
+          color: 'myBlue.600'
+        }
+      }
+    })
+  },
+  defaultProps: {
+    variant: 'outline'
+  }
+});
+
 const Textarea: ComponentStyleConfig = {
   variants: {
     outline: {
       border: '1px solid',
       borderRadius: 'base',
       borderColor: 'myGray.200',
+      _hover: {
+        borderColor: ''
+      },
       _focus: {
         borderColor: 'myBlue.600',
-        boxShadow: '0px 0px 4px #A8DBFF'
+        boxShadow: '0px 0px 4px #A8DBFF',
+        bg: 'white'
       }
     }
   },
@@ -239,7 +271,14 @@ export const theme = extendTheme({
   borders: {
     sm: '1px solid #EFF0F1',
     base: '1px solid #DEE0E2',
-    md: '1px solid #BDC1C5'
+    md: '1px solid #DAE0E2',
+    lg: '1px solid #D0E0E2'
+  },
+  shadows: {
+    sm: '0 0 5px rgba(0,0,0,0.1)',
+    md: '0 0 8px rgba(0,0,0,0.1)',
+    base: '0 0 10px rgba(0,0,0,0.15)',
+    lg: '0 0 10px rgba(0,0,0,0.2)'
   },
   breakpoints: {
     sm: '900px',
@@ -255,11 +294,11 @@ export const theme = extendTheme({
     primary2: 'linear-gradient(to bottom right, #2152d9 0%,#3370ff 30%,#4e83fd 80%, #85b1ff 100%)'
   },
   components: {
-    Modal: ModalTheme,
     Button,
     Input,
     Textarea,
     Switch,
-    Select
+    Select,
+    NumberInput
   }
 });

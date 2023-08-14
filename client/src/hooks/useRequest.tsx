@@ -1,14 +1,17 @@
 import { useToast } from '@/hooks/useToast';
 import { useMutation } from '@tanstack/react-query';
 import type { UseMutationOptions } from '@tanstack/react-query';
+import { getErrText } from '@/utils/tools';
+import { useTranslation } from 'react-i18next';
 
 interface Props extends UseMutationOptions<any, any, any, any> {
-  successToast?: string;
-  errorToast?: string;
+  successToast?: string | null;
+  errorToast?: string | null;
 }
 
 export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...props }: Props) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const mutation = useMutation<unknown, unknown, any, unknown>({
     ...props,
     onSuccess(res, variables: void, context: unknown) {
@@ -23,7 +26,7 @@ export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...pr
       onError?.(err, variables, context);
       errorToast &&
         toast({
-          title: typeof err === 'string' ? err : err?.message || errorToast,
+          title: t(getErrText(err, errorToast)),
           status: 'error'
         });
     }

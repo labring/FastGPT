@@ -5,17 +5,22 @@ import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
-import { ChatModelMap, OpenAiChatEnum } from '@/constants/model';
+import type { AppModuleItemType } from '@/types/app';
+import type { FlowModuleItemType } from '@/types/flow';
+import type { Edge, Node } from 'reactflow';
+import { connectionLineStyle } from '@/constants/flow';
+import { customAlphabet } from 'nanoid';
+import { EmptyModule, ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const adaptBill = (bill: BillSchema): UserBillType => {
   return {
     id: bill._id,
-    type: bill.type,
-    modelName: ChatModelMap[bill.modelName as `${OpenAiChatEnum}`]?.name || bill.modelName,
+    source: bill.source,
     time: bill.time,
-    textLen: bill.textLen,
-    tokenLen: bill.tokenLen,
-    price: formatPrice(bill.price)
+    total: formatPrice(bill.total),
+    appName: bill.appName,
+    list: bill.list
   };
 };
 
@@ -36,7 +41,7 @@ export const gptMessage2ChatType = (messages: MessageItemType[]): ChatItemType[]
 
 export const textAdaptGptResponse = ({
   text,
-  model,
+  model = '',
   finish_reason = null,
   extraData = {}
 }: {
@@ -55,23 +60,96 @@ export const textAdaptGptResponse = ({
   });
 };
 
-const decoder = new TextDecoder();
-export const parseStreamChunk = (value: BufferSource) => {
-  const chunk = decoder.decode(value);
-  const chunkLines = chunk.split('\n\n').filter((item) => item);
-  const chunkResponse = chunkLines.map((item) => {
-    const splitEvent = item.split('\n');
-    if (splitEvent.length === 2) {
-      return {
-        event: splitEvent[0].replace('event: ', ''),
-        data: splitEvent[1].replace('data: ', '')
-      };
-    }
-    return {
-      event: '',
-      data: splitEvent[0].replace('data: ', '')
-    };
-  });
+export const appModule2FlowNode = ({
+  item,
+  onChangeNode,
+  onDelNode,
+  onDelEdge,
+  onCopyNode,
+  onCollectionNode
+}: {
+  item: AppModuleItemType;
+  onChangeNode: FlowModuleItemType['onChangeNode'];
+  onDelNode: FlowModuleItemType['onDelNode'];
+  onDelEdge: FlowModuleItemType['onDelEdge'];
+  onCopyNode: FlowModuleItemType['onCopyNode'];
+  onCollectionNode: FlowModuleItemType['onCollectionNode'];
+}): Node<FlowModuleItemType> => {
+  // init some static data
+  const template =
+    ModuleTemplatesFlat.find((template) => template.flowType === item.flowType) || EmptyModule;
 
-  return chunkResponse;
+  const concatInputs = template.inputs.concat(
+    item.inputs.filter(
+      (input) => input.label && !template.inputs.find((item) => item.key === input.key)
+    )
+  );
+  const concatOutputs = item.outputs.concat(
+    template.outputs.filter(
+      (templateOutput) => !item.outputs.find((item) => item.key === templateOutput.key)
+    )
+  );
+
+  // replace item data
+  const moduleItem: FlowModuleItemType = {
+    ...item,
+    ...template,
+    inputs: concatInputs.map((templateInput) => {
+      // use latest inputs
+      const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;
+      return {
+        ...templateInput,
+        value: itemInput.value
+      };
+    }),
+    outputs: concatOutputs.map((output) => {
+      // unChange outputs
+      const templateOutput = template.outputs.find((item) => item.key === output.key);
+
+      return {
+        ...(templateOutput ? templateOutput : output),
+        targets: output.targets || []
+      };
+    }),
+    onChangeNode,
+    onDelNode,
+    onDelEdge,
+    onCopyNode,
+    onCollectionNode
+  };
+
+  return {
+    id: item.moduleId,
+    type: item.flowType,
+    data: moduleItem,
+    position: item.position || { x: 0, y: 0 }
+  };
+};
+export const appModule2FlowEdge = ({
+  modules,
+  onDelete
+}: {
+  modules: AppModuleItemType[];
+  onDelete: (id: string) => void;
+}) => {
+  const edges: Edge[] = [];
+  modules.forEach((module) =>
+    module.outputs.forEach((output) =>
+      output.targets.forEach((target) => {
+        edges.push({
+          style: connectionLineStyle,
+          source: module.moduleId,
+          target: target.moduleId,
+          sourceHandle: output.key,
+          targetHandle: target.key,
+          id: nanoid(),
+          animated: true,
+          type: 'buttonedge',
+          data: { onDelete }
+        });
+      })
+    )
+  );
+
+  return edges;
 };

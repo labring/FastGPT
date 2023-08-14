@@ -1,13 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, User, Pay, TrainingData } from '@/service/mongo';
+import { User, Pay, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
-import { getPayResult } from '@/service/utils/wxpay';
-import { pushPromotionRecord } from '@/service/utils/promotion';
-import { PRICE_SCALE } from '@/constants/common';
 import { startQueue } from '@/service/utils/tools';
+import { getWxPayQRResult } from '@/service/api/plugins';
 
 /* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,8 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { payId } = req.query as { payId: string };
 
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     // 查找订单记录校验
     const payOrder = await Pay.findById<PaySchema>(payId);
@@ -33,19 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!user) {
       throw new Error('找不到用户');
     }
-    // 获取邀请者
-    const inviter = await (async () => {
-      if (user.inviterId) {
-        return User.findById(user.inviterId, '_id promotion');
-      }
-      return null;
-    })();
 
-    const payRes = await getPayResult(payOrder.orderId);
-
-    // 校验下是否超过一天
-    const orderTime = dayjs(payOrder.createTime);
-    const diffInHours = dayjs().diff(orderTime, 'hours');
+    const payRes = await getWxPayQRResult(payOrder.orderId);
 
     if (payRes.trade_state === 'SUCCESS') {
       // 订单已支付
@@ -65,16 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await User.findByIdAndUpdate(userId, {
             $inc: { balance: payOrder.price }
           });
-          // 推广佣金发放
-          if (inviter) {
-            pushPromotionRecord({
-              userId: inviter._id,
-              objUId: userId,
-              type: 'invite',
-              // amount 单位为元，需要除以缩放比例，最后乘比例
-              amount: (payOrder.price / PRICE_SCALE) * inviter.promotion.rate * 0.01
-            });
-          }
+
           unlockTask(userId);
           return jsonRes(res, {
             data: '支付成功'
@@ -94,12 +70,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: '更新订单失败,请重试'
       });
     }
+
+    // 校验下是否超过一天
+    const orderTime = dayjs(payOrder.createTime);
+    const diffInHours = dayjs().diff(orderTime, 'hours');
+
     if (payRes.trade_state === 'CLOSED' || diffInHours > 24) {
       // 订单已关闭
       await Pay.findByIdAndUpdate(payId, {
         status: 'CLOSED'
       });
       return jsonRes(res, {
+        code: 500,
         data: '订单已过期'
       });
     }

@@ -1,6 +1,6 @@
 import { GET, POST, PUT } from './request';
-import { createHashPassword, Obj2Query } from '@/utils/tools';
-import { ResLogin, PromotionRecordType } from './response/user';
+import { createHashPassword } from '@/utils/tools';
+import { ResLogin } from './response/user';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
@@ -12,15 +12,8 @@ export const sendAuthCode = (data: {
   googleToken: string;
 }) => POST('/user/sendAuthCode', data);
 
-export const getTokenLogin = () => GET<UserType>('/user/tokenLogin');
-
-/* get promotion init data */
-export const getPromotionInitData = () =>
-  GET<{
-    invitedAmount: number;
-    historyAmount: number;
-    residueAmount: number;
-  }>('/user/promotion/getPromotionData');
+export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
+export const gitLogin = (code: string) => GET<ResLogin>('/user/account/gitLogin', { code });
 
 export const postRegister = ({
   username,
@@ -33,7 +26,7 @@ export const postRegister = ({
   password: string;
   inviterId: string;
 }) =>
-  POST<ResLogin>('/user/register', {
+  POST<ResLogin>('/user/account/register', {
     username,
     code,
     inviterId,
@@ -49,21 +42,27 @@ export const postFindPassword = ({
   code: string;
   password: string;
 }) =>
-  POST<ResLogin>('/user/updatePasswordByCode', {
+  POST<ResLogin>('/user/account/updatePasswordByCode', {
     username,
     code,
     password: createHashPassword(password)
   });
 
+export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw: string }) =>
+  POST('/user/account/updatePasswordByOld', {
+    oldPsw: createHashPassword(oldPsw),
+    newPsw: createHashPassword(newPsw)
+  });
+
 export const postLogin = ({ username, password }: { username: string; password: string }) =>
-  POST<ResLogin>('/user/loginByPassword', {
+  POST<ResLogin>('/user/account/loginByPassword', {
     username,
     password: createHashPassword(password)
   });
 
-export const loginOut = () => GET('/user/loginout');
+export const loginOut = () => GET('/user/account/loginout');
 
-export const putUserInfo = (data: UserUpdateParams) => PUT('/user/update', data);
+export const putUserInfo = (data: UserUpdateParams) => PUT('/user/account/update', data);
 
 export const getUserBills = (data: RequestPaging) =>
   POST<PagingData<UserBillType>>(`/user/getBill`, data);
@@ -77,10 +76,6 @@ export const getPayCode = (amount: number) =>
   }>(`/user/getPayCode?amount=${amount}`);
 
 export const checkPayResult = (payId: string) => GET<number>(`/user/checkPayResult?payId=${payId}`);
-
-/* promotion records */
-export const getPromotionRecords = (data: RequestPaging) =>
-  GET<PromotionRecordType>(`/user/promotion/getPromotions?${Obj2Query(data)}`);
 
 export const getInforms = (data: RequestPaging) =>
   POST<PagingData<informSchema>>(`/user/inform/list`, data);

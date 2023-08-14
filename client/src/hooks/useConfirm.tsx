@@ -9,8 +9,12 @@ import {
   useDisclosure,
   Button
 } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 
-export const useConfirm = ({ title = '提示', content }: { title?: string; content: string }) => {
+export const useConfirm = (props: { title?: string; content: string }) => {
+  const { t } = useTranslation();
+  const { title = t('Warning'), content } = props;
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = useRef(null);
   const confirmCb = useRef<any>();
@@ -26,11 +30,16 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
       },
       [onOpen]
     ),
-    ConfirmChild: useCallback(
+    ConfirmModal: useCallback(
       () => (
-        <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
+        <AlertDialog
+          isOpen={isOpen}
+          leastDestructiveRef={cancelRef}
+          autoFocus={false}
+          onClose={onClose}
+        >
           <AlertDialogOverlay>
-            <AlertDialogContent>
+            <AlertDialogContent maxW={'min(90vw,400px)'}>
               <AlertDialogHeader fontSize="lg" fontWeight="bold">
                 {title}
               </AlertDialogHeader>
@@ -45,7 +54,7 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
                     typeof cancelCb.current === 'function' && cancelCb.current();
                   }}
                 >
-                  取消
+                  {t('Cancel')}
                 </Button>
                 <Button
                   ml={4}
@@ -54,7 +63,7 @@ export const useConfirm = ({ title = '提示', content }: { title?: string; cont
                     typeof confirmCb.current === 'function' && confirmCb.current();
                   }}
                 >
-                  确认
+                  {t('Confirm')}
                 </Button>
               </AlertDialogFooter>
             </AlertDialogContent>

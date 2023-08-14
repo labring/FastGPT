@@ -1,45 +1,47 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
-import MyIcon from '../Icon';
 import { Flex, Box } from '@chakra-ui/react';
 import { useChatStore } from '@/store/chat';
+import { useTranslation } from 'react-i18next';
 import Badge from '../Badge';
+import MyIcon from '../Icon';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
-  const { lastChatModelId, lastChatId } = useChatStore();
+  const { t } = useTranslation();
+  const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(
     () => [
       {
-        label: '聊天',
-        icon: 'tabbarChat',
-        link: `/chat?modelId=${lastChatModelId}&chatId=${lastChatId}`,
+        label: t('navbar.Chat'),
+        icon: 'chat',
+        link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
       },
       {
-        label: '应用',
+        label: t('navbar.Apps'),
         icon: 'tabbarModel',
-        link: `/model`,
-        activeLink: ['/model'],
+        link: `/app/list`,
+        activeLink: ['/app/list', '/app/detail'],
         unread: 0
       },
       {
-        label: '工具',
+        label: t('navbar.Tools'),
         icon: 'tabbarMore',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
       },
       {
-        label: '我的',
+        label: t('navbar.Account'),
         icon: 'tabbarMe',
-        link: '/number',
-        activeLink: ['/number'],
+        link: '/account',
+        activeLink: ['/account'],
         unread
       }
     ],
-    [lastChatId, lastChatModelId, unread]
+    [t, lastChatAppId, lastChatId, unread]
   );
 
   return (
@@ -64,7 +66,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
             pt={1}
             px={3}
             transform={'scale(0.9)'}
-            {...(item.activeLink.includes(router.asPath)
+            {...(item.activeLink.includes(router.pathname)
               ? {
                   color: '#7089f1'
                 }
@@ -72,7 +74,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
                   color: 'myGray.500'
                 })}
             _after={
-              item.activeLink.includes(router.asPath)
+              item.activeLink.includes(router.pathname)
                 ? {
                     content: '""',
                     position: 'absolute',

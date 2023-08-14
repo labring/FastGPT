@@ -1,5 +1,5 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { clearCookie } from '@/utils/user';
+import { clearToken, getToken } from '@/utils/user';
 import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 
 interface ConfigType {
@@ -18,7 +18,7 @@ interface ResponseDataType {
  */
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
-    // config.headers.Authorization = getToken();
+    config.headers.token = getToken();
   }
 
   return config;
@@ -57,11 +57,14 @@ function responseError(err: any) {
   }
   // 有报错响应
   if (err?.code in TOKEN_ERROR_CODE) {
-    clearCookie();
+    clearToken();
     window.location.replace(
       `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
     );
     return Promise.reject({ message: 'token过期，重新登录' });
+  }
+  if (err?.response?.data) {
+    return Promise.reject(err?.response?.data);
   }
   return Promise.reject(err);
 }
@@ -92,8 +95,8 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
       baseURL: '/api',
       url,
       method,
-      data: method === 'GET' ? null : data,
-      params: method === 'GET' ? data : null, // get请求不携带data，params放在url上
+      data: ['POST', 'PUT'].includes(method) ? data : null,
+      params: !['POST', 'PUT'].includes(method) ? data : null,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))
@@ -119,6 +122,6 @@ export function PUT<T>(url: string, data = {}, config: ConfigType = {}): Promise
   return request(url, data, config, 'PUT');
 }
 
-export function DELETE<T>(url: string, config: ConfigType = {}): Promise<T> {
-  return request(url, {}, config, 'DELETE');
+export function DELETE<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+  return request(url, data, config, 'DELETE');
 }

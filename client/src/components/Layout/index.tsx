@@ -14,11 +14,15 @@ import { getUnreadCount } from '@/api/user';
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
-  '/chat/share': true
+  '/login/provider': true,
+  '/chat/share': true,
+  '/app/edit': true,
+  '/chat': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
+  '/login/provider': true,
   '/chat/share': true
 };
 
@@ -26,7 +30,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
-  const { loading, setScreenWidth, isPc } = useGlobalStore();
+  const { loading, setScreenWidth, isPc, loadGitStar } = useGlobalStore();
   const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(
@@ -44,54 +48,59 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     const resize = throttle(() => {
       setScreenWidth(document.documentElement.clientWidth);
     }, 300);
-    resize();
 
     window.addEventListener('resize', resize);
+
+    resize();
+    loadGitStar();
 
     return () => {
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [loadGitStar, setScreenWidth]);
 
   const { data: unread = 0 } = useQuery(['getUnreadCount'], getUnreadCount, {
     enabled: !!userInfo,
-    refetchInterval: 5000
+    refetchInterval: 10000
   });
 
   return (
     <>
-      <Box
-        h={'100%'}
-        bgGradient={'linear(to-t,rgba(173, 206, 255, 0.05) 0%, rgba(173, 206, 255, 0.12) 100%)'}
-      >
-        <Box h={'100%'} display={['none', 'block']}>
-          {pcUnShowLayoutRoute[router.pathname] ? (
-            <Auth>{children}</Auth>
-          ) : (
-            <>
-              <Box h={'100%'} position={'fixed'} left={0} top={0} w={'60px'}>
-                <Navbar unread={unread} />
-              </Box>
-              <Box h={'100%'} ml={'60px'} overflow={'overlay'}>
+      <Box h={'100%'} bg={'myWhite.600'}>
+        {isPc === true && (
+          <>
+            {pcUnShowLayoutRoute[router.pathname] ? (
+              <Auth>{children}</Auth>
+            ) : (
+              <>
+                <Box h={'100%'} position={'fixed'} left={0} top={0} w={'70px'}>
+                  <Navbar unread={unread} />
+                </Box>
+                <Box h={'100%'} ml={'70px'} overflow={'overlay'}>
+                  <Auth>{children}</Auth>
+                </Box>
+              </>
+            )}
+          </>
+        )}
+        {isPc === false && (
+          <>
+            <Box h={'100%'} display={['block', 'none']}>
+              {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
                 <Auth>{children}</Auth>
-              </Box>
-            </>
-          )}
-        </Box>
-        <Box h={'100%'} display={['block', 'none']}>
-          {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
-            <Auth>{children}</Auth>
-          ) : (
-            <Flex h={'100%'} flexDirection={'column'}>
-              <Box flex={'1 0 0'} h={0} overflow={'overlay'}>
-                <Auth>{children}</Auth>
-              </Box>
-              <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-                <NavbarPhone unread={unread} />
-              </Box>
-            </Flex>
-          )}
-        </Box>
+              ) : (
+                <Flex h={'100%'} flexDirection={'column'}>
+                  <Box flex={'1 0 0'} h={0}>
+                    <Auth>{children}</Auth>
+                  </Box>
+                  <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
+                    <NavbarPhone unread={unread} />
+                  </Box>
+                </Flex>
+              )}
+            </Box>
+          </>
+        )}
       </Box>
       <Loading loading={loading} />
     </>

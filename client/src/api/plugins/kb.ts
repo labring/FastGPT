@@ -1,8 +1,7 @@
 import { GET, POST, PUT, DELETE } from '../request';
-import type { KbItemType } from '@/types/plugin';
+import type { KbItemType, KbListItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
 import { TrainingModeEnum } from '@/constants/plugin';
-import { type QuoteItemType } from '@/pages/api/openapi/kb/appKbSearch';
 import {
   Props as PushDataProps,
   Response as PushDateResponse
@@ -11,6 +10,8 @@ import {
   Props as SearchTestProps,
   Response as SearchTestResponse
 } from '@/pages/api/openapi/kb/searchTest';
+import { Response as KbDataItemType } from '@/pages/api/plugins/kb/data/getDataById';
+import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
 
 export type KbUpdateParams = {
   id: string;
@@ -20,7 +21,7 @@ export type KbUpdateParams = {
 };
 
 /* knowledge base */
-export const getKbList = () => GET<KbItemType[]>(`/plugins/kb/list`);
+export const getKbList = () => GET<KbListItemType[]>(`/plugins/kb/list`);
 
 export const getKbById = (id: string) => GET<KbItemType>(`/plugins/kb/detail?id=${id}`);
 
@@ -60,7 +61,7 @@ export const getTrainingData = (data: { kbId: string; init: boolean }) =>
   }>(`/plugins/kb/data/getTrainingData`, data);
 
 export const getKbDataItemById = (dataId: string) =>
-  GET<QuoteItemType>(`/plugins/kb/data/getDataById`, { dataId });
+  GET<KbDataItemType>(`/plugins/kb/data/getDataById`, { dataId });
 
 /**
  * 直接push数据
@@ -71,8 +72,7 @@ export const postKbDataFromList = (data: PushDataProps) =>
 /**
  * 更新一条数据
  */
-export const putKbDataById = (data: { dataId: string; a: string; q?: string }) =>
-  PUT('/openapi/kb/updateData', data);
+export const putKbDataById = (data: UpdateDataProps) => PUT('/openapi/kb/updateData', data);
 /**
  * 删除一条知识库数据
  */

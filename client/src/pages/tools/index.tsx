@@ -3,27 +3,44 @@ import { Box, Flex } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
-
-const list = [
-  {
-    icon: 'kb',
-    label: '我的知识库',
-    link: '/kb'
-  },
-  {
-    icon: 'appStore',
-    label: 'AI应用市场',
-    link: '/model/share'
-  },
-  {
-    icon: 'git',
-    label: 'Git项目地址',
-    link: 'https://github.com/c121914yu/FastGPT'
-  }
-];
+import { feConfigs } from '@/store/static';
+import { serviceSideProps } from '@/utils/i18n';
+import { useTranslation } from 'react-i18next';
 
 const Tools = () => {
+  const { t } = useTranslation();
   const router = useRouter();
+  const list = [
+    {
+      icon: 'dbLight',
+      label: '我的知识库',
+      link: '/kb/list'
+    },
+    ...(feConfigs?.show_appStore
+      ? [
+          {
+            icon: 'appStoreLight',
+            label: 'AI应用市场',
+            link: '/appStore'
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_git
+      ? [
+          {
+            icon: 'git',
+            label: 'GitHub 地址',
+            link: 'https://github.com/labring/FastGPT'
+          }
+        ]
+      : []),
+    {
+      icon: 'courseLight',
+      label: '使用文档',
+      link: 'https://doc.fastgpt.run/docs/intro'
+    }
+  ];
+
   return (
     <Box px={'5vw'}>
       {list.map((item) => (
@@ -47,5 +64,13 @@ const Tools = () => {
     </Box>
   );
 };
+
+export async function getServerSideProps(content: any) {
+  return {
+    props: {
+      ...(await serviceSideProps(content))
+    }
+  };
+}
 
 export default Tools;

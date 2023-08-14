@@ -2,39 +2,32 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import { getMyModels, getModelById } from '@/api/model';
+import { getMyModels, getModelById, putAppById } from '@/api/app';
 import { formatPrice } from '@/utils/user';
-import { getTokenLogin } from '@/api/user';
-import { defaultModel } from '@/constants/model';
-import { ModelListItemType } from '@/types/model';
-import { KbItemType } from '@/types/plugin';
+import { getTokenLogin, putUserInfo } from '@/api/user';
+import { defaultApp } from '@/constants/model';
+import { AppListItemType, AppUpdateParams } from '@/types/app';
+import type { KbItemType, KbListItemType } from '@/types/plugin';
 import { getKbList, getKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
-import type { ModelSchema } from '@/types/mongoSchema';
+import type { AppSchema } from '@/types/mongoSchema';
 
 type State = {
   userInfo: UserType | null;
   initUserInfo: () => Promise<UserType>;
   setUserInfo: (user: UserType | null) => void;
-  updateUserInfo: (user: UserUpdateParams) => void;
-  // model
-  lastModelId: string;
-  setLastModelId: (id: string) => void;
-  myModels: ModelListItemType[];
-  myCollectionModels: ModelListItemType[];
-  loadMyModels: (init?: boolean) => Promise<null>;
-  modelDetail: ModelSchema;
-  loadModelDetail: (id: string, init?: boolean) => Promise<ModelSchema>;
-  refreshModel: {
-    freshMyModels(): void;
-    updateModelDetail(model: ModelSchema): void;
-    removeModelDetail(modelId: string): void;
-  };
+  updateUserInfo: (user: UserUpdateParams) => Promise<void>;
+  myApps: AppListItemType[];
+  myCollectionApps: AppListItemType[];
+  loadMyApps: (init?: boolean) => Promise<AppListItemType[]>;
+  appDetail: AppSchema;
+  loadAppDetail: (id: string, init?: boolean) => Promise<AppSchema>;
+  updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
+  clearAppModules(): void;
   // kb
-  lastKbId: string;
-  setLastKbId: (id: string) => void;
-  myKbList: KbItemType[];
-  loadKbList: (init?: boolean) => Promise<KbItemType[]>;
+  myKbList: KbListItemType[];
+  loadKbList: () => Promise<any>;
+  setKbList(val: KbListItemType[]): void;
   kbDetail: KbItemType;
   getKbDetail: (id: string, init?: boolean) => Promise<KbItemType>;
 };
@@ -59,7 +52,8 @@ export const useUserStore = create<State>()(
               : null;
           });
         },
-        updateUserInfo(user: UserUpdateParams) {
+        async updateUserInfo(user: UserUpdateParams) {
+          const oldInfo = (get().userInfo ? { ...get().userInfo } : null) as UserType | null;
           set((state) => {
             if (!state.userInfo) return;
             state.userInfo = {
@@ -67,68 +61,64 @@ export const useUserStore = create<State>()(
               ...user
             };
           });
+          try {
+            await putUserInfo(user);
+          } catch (error) {
+            set((state) => {
+              state.userInfo = oldInfo;
+            });
+            return Promise.reject(error);
+          }
         },
-        lastModelId: '',
-        setLastModelId(id: string) {
-          set((state) => {
-            state.lastModelId = id;
-          });
-        },
-        myModels: [],
-        myCollectionModels: [],
-        async loadMyModels(init = false) {
-          if (get().myModels.length > 0 && !init) return null;
+        myApps: [],
+        myCollectionApps: [],
+        async loadMyApps(init = true) {
+          if (get().myApps.length > 0 && !init) return [];
           const res = await getMyModels();
           set((state) => {
-            state.myModels = res.myModels;
-            state.myCollectionModels = res.myCollectionModels;
-          });
-          return null;
-        },
-        modelDetail: defaultModel,
-        async loadModelDetail(id: string, init = false) {
-          if (id === get().modelDetail._id && !init) return get().modelDetail;
-
-          const res = await getModelById(id);
-          set((state) => {
-            state.modelDetail = res;
+            state.myApps = res;
           });
           return res;
         },
-        refreshModel: {
-          freshMyModels() {
-            get().loadMyModels(true);
-          },
-          updateModelDetail(model: ModelSchema) {
-            set((state) => {
-              state.modelDetail = model;
-            });
-            get().loadMyModels(true);
-          },
-          removeModelDetail(modelId: string) {
-            if (modelId === get().modelDetail._id) {
-              set((state) => {
-                state.modelDetail = defaultModel;
-                state.lastModelId = '';
-              });
-            }
-            get().loadMyModels(true);
-          }
-        },
-        lastKbId: '',
-        setLastKbId(id: string) {
+        appDetail: defaultApp,
+        async loadAppDetail(id: string, init = false) {
+          if (id === get().appDetail._id && !init) return get().appDetail;
+
+          const res = await getModelById(id);
           set((state) => {
-            state.lastKbId = id;
+            state.appDetail = res;
+          });
+          return res;
+        },
+        async updateAppDetail(appId: string, data: AppUpdateParams) {
+          await putAppById(appId, data);
+          set((state) => {
+            state.appDetail = {
+              ...state.appDetail,
+              ...data
+            };
+          });
+        },
+        clearAppModules() {
+          set((state) => {
+            state.appDetail = {
+              ...state.appDetail,
+              modules: []
+            };
           });
         },
         myKbList: [],
-        async loadKbList(init = false) {
-          if (get().myKbList.length > 0 && !init) return get().myKbList;
+        async loadKbList() {
           const res = await getKbList();
           set((state) => {
             state.myKbList = res;
           });
           return res;
+        },
+        setKbList(val: KbListItemType[]) {
+          set((state) => {
+            state.myKbList = val;
+          });
         },
         kbDetail: defaultKbDetail,
         async getKbDetail(id: string, init = false) {
@@ -145,10 +135,7 @@ export const useUserStore = create<State>()(
       })),
       {
         name: 'userStore',
-        partialize: (state) => ({
-          lastModelId: state.lastModelId,
-          lastKbId: state.lastKbId
-        })
+        partialize: (state) => ({})
       }
     )
   )

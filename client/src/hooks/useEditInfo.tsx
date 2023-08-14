@@ -1,16 +1,6 @@
 import React, { useCallback, useRef } from 'react';
-import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
-  Input,
-  useDisclosure,
-  Button
-} from '@chakra-ui/react';
+import { ModalFooter, ModalBody, Input, useDisclosure, Button } from '@chakra-ui/react';
+import MyModal from '@/components/MyModal';
 
 export const useEditInfo = ({
   title,
@@ -58,28 +48,23 @@ export const useEditInfo = ({
   // eslint-disable-next-line react/display-name
   const EditModal = useCallback(
     () => (
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>{title}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Input
-              ref={inputRef}
-              defaultValue={defaultValue.current}
-              placeholder={placeholder}
-              autoFocus
-              maxLength={20}
-            />
-          </ModalBody>
-          <ModalFooter>
-            <Button mr={3} variant={'base'} onClick={onClose}>
-              取消
-            </Button>
-            <Button onClick={onclickConfirm}>确认</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <MyModal isOpen={isOpen} onClose={onClose} title={title}>
+        <ModalBody>
+          <Input
+            ref={inputRef}
+            defaultValue={defaultValue.current}
+            placeholder={placeholder}
+            autoFocus
+            maxLength={20}
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Button mr={3} variant={'base'} onClick={onClose}>
+            取消
+          </Button>
+          <Button onClick={onclickConfirm}>确认</Button>
+        </ModalFooter>
+      </MyModal>
     ),
     [isOpen, onClose, onclickConfirm, placeholder, title]
   );

@@ -1,103 +1,115 @@
-import { Props, ChatResponseType } from '@/pages/api/openapi/v1/chat/completions';
-import { sseResponseEventEnum } from '@/constants/chat';
+import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getErrText } from '@/utils/tools';
-import { parseStreamChunk } from '@/utils/adapt';
+import { parseStreamChunk, SSEParseData } from '@/utils/sse';
+import type { ChatHistoryItemResType } from '@/types/chat';
+import { StartChatFnProps } from '@/components/ChatBox';
+import { getToken } from '@/utils/user';
 
 interface StreamFetchProps {
-  data: Props;
-  onMessage: (text: string) => void;
+  url?: string;
+  data: Record<string, any>;
+  onMessage: StartChatFnProps['generatingMessage'];
   abortSignal: AbortController;
 }
-export const streamFetch = ({ data, onMessage, abortSignal }: StreamFetchProps) =>
-  new Promise<ChatResponseType & { responseText: string; errMsg: string }>(
-    async (resolve, reject) => {
-      try {
-        const response = await window.fetch('/api/openapi/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          signal: abortSignal.signal,
-          body: JSON.stringify({
-            ...data,
-            stream: true
-          })
-        });
+export const streamFetch = ({
+  url = '/api/openapi/v1/chat/completions',
+  data,
+  onMessage,
+  abortSignal
+}: StreamFetchProps) =>
+  new Promise<{
+    responseText: string;
+    [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
+  }>(async (resolve, reject) => {
+    try {
+      const response = await window.fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          token: getToken()
+        },
+        signal: abortSignal.signal,
+        body: JSON.stringify({
+          ...data,
+          detail: true,
+          stream: true
+        })
+      });
 
-        if (response.status !== 200) {
-          const err = await response.json();
-          return reject(err);
-        }
+      if (!response?.body) {
+        throw new Error('Request Error');
+      }
 
-        if (!response?.body) {
-          throw new Error('Request Error');
-        }
+      const reader = response.body?.getReader();
 
-        const reader = response.body?.getReader();
+      // response data
+      let responseText = '';
+      let errMsg = '';
+      let responseData: ChatHistoryItemResType[] = [];
 
-        // response data
-        let responseText = '';
-        let newChatId = '';
-        let quoteLen = 0;
-        let errMsg = '';
+      const parseData = new SSEParseData();
 
-        const read = async () => {
-          try {
-            const { done, value } = await reader.read();
-            if (done) {
-              if (response.status === 200) {
-                return resolve({
-                  responseText,
-                  newChatId,
-                  quoteLen,
-                  errMsg
-                });
-              } else {
-                return reject('响应过程出现异常~');
-              }
-            }
-            const chunkResponse = parseStreamChunk(value);
-
-            chunkResponse.forEach((item) => {
-              // parse json data
-              const data = (() => {
-                try {
-                  return JSON.parse(item.data);
-                } catch (error) {
-                  return item.data;
-                }
-              })();
-
-              if (item.event === sseResponseEventEnum.answer && data !== '[DONE]') {
-                const answer: string = data?.choices?.[0].delta.content || '';
-                onMessage(answer);
-                responseText += answer;
-              } else if (item.event === sseResponseEventEnum.chatResponse) {
-                const chatResponse = data as ChatResponseType;
-                newChatId = chatResponse.newChatId;
-                quoteLen = chatResponse.quoteLen || 0;
-              } else if (item.event === sseResponseEventEnum.error) {
-                errMsg = getErrText(data, '流响应错误');
-              }
-            });
-            read();
-          } catch (err: any) {
-            if (err?.message === 'The user aborted a request.') {
+      const read = async () => {
+        try {
+          const { done, value } = await reader.read();
+          if (done) {
+            if (response.status === 200 && !errMsg) {
               return resolve({
                 responseText,
-                newChatId,
-                quoteLen,
-                errMsg
+                responseData
+              });
+            } else {
+              return reject({
+                message: errMsg || '响应过程出现异常~',
+                responseText
               });
             }
-            reject(getErrText(err, '请求异常'));
           }
-        };
-        read();
-      } catch (err: any) {
-        console.log(err);
+          const chunkResponse = parseStreamChunk(value);
 
-        reject(getErrText(err, '请求异常'));
-      }
+          chunkResponse.forEach((item) => {
+            // parse json data
+            const { eventName, data } = parseData.parse(item);
+
+            if (!eventName || !data) return;
+
+            if (eventName === sseResponseEventEnum.answer && data !== '[DONE]') {
+              const answer: string = data?.choices?.[0]?.delta?.content || '';
+              onMessage({ text: answer });
+              responseText += answer;
+            } else if (
+              eventName === sseResponseEventEnum.moduleStatus &&
+              data?.name &&
+              data?.status
+            ) {
+              onMessage(data);
+            } else if (
+              eventName === sseResponseEventEnum.appStreamResponse &&
+              Array.isArray(data)
+            ) {
+              responseData = data;
+            } else if (eventName === sseResponseEventEnum.error) {
+              errMsg = getErrText(data, '流响应错误');
+            }
+          });
+          read();
+        } catch (err: any) {
+          if (err?.message === 'The user aborted a request.') {
+            return resolve({
+              responseText,
+              responseData
+            });
+          }
+          reject({
+            responseText,
+            message: getErrText(err, '请求异常')
+          });
+        }
+      };
+      read();
+    } catch (err: any) {
+      console.log(err, 'fetch error');
+
+      reject(getErrText(err, '请求异常'));
     }
-  );
+  });

@@ -1,0 +1,24 @@
+#nprogress .bar {
+  background: '#1237b3' !important; //自定义颜色
+}
+
+.textEllipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.textEllipsis3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.grecaptcha-badge {
+  display: none !important;
+}
+.textlg {
+  background: linear-gradient(to bottom right, #1237b3 0%, #3370ff 40%, #4e83fd 80%, #85b1ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

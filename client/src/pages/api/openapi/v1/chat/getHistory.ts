@@ -36,28 +36,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 export async function getChatHistory({
   chatId,
   userId,
-  limit = 50
+  limit = 20
 }: Props & { userId: string }): Promise<Response> {
   if (!chatId) {
     return { history: [] };
   }
 
   const history = await Chat.aggregate([
-    { $match: { _id: new Types.ObjectId(chatId), userId: new Types.ObjectId(userId) } },
+    { $match: { chatId, userId: new Types.ObjectId(userId) } },
     {
       $project: {
         content: {
-          $slice: ['$content', -limit] // 返回 content 数组的最后50个元素
+          $slice: ['$content', -limit] // 返回 content 数组的最后20个元素
         }
       }
     },
     { $unwind: '$content' },
     {
       $project: {
-        _id: '$content._id',
         obj: '$content.obj',
-        value: '$content.value',
-        quote: '$content.quote'
+        value: '$content.value'
       }
     }
   ]);

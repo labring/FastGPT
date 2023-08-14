@@ -1,0 +1,58 @@
+import React from 'react';
+import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from 'reactflow';
+import { Flex } from '@chakra-ui/react';
+import MyIcon from '@/components/Icon';
+
+const ButtonEdge = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  markerEnd,
+  data
+}: EdgeProps<{
+  onDelete: (id: string) => void;
+}>) => {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition
+  });
+
+  return (
+    <>
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <EdgeLabelRenderer>
+        <Flex
+          alignItems={'center'}
+          justifyContent={'center'}
+          position={'absolute'}
+          transform={`translate(-50%, -50%) translate(${labelX}px,${labelY}px)`}
+          pointerEvents={'all'}
+          w={'20px'}
+          h={'20px'}
+          bg={'white'}
+          borderRadius={'20px'}
+          color={'black'}
+          cursor={'pointer'}
+          border={'1px solid #fff'}
+          _hover={{
+            boxShadow: '0 0 6px 2px rgba(0, 0, 0, 0.08)'
+          }}
+          onClick={() => data?.onDelete(id)}
+        >
+          <MyIcon name="closeSolid" w={'100%'} color={'myGray.600'}></MyIcon>
+        </Flex>
+      </EdgeLabelRenderer>
+    </>
+  );
+};
+
+export default React.memo(ButtonEdge);

@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ShareChat, User } from '@/service/mongo';
+import { connectToDatabase, OutLink, User } from '@/service/mongo';
 import type { InitShareChatResponse } from '@/api/response/chat';
-import { authModel } from '@/service/utils/auth';
-import { hashPassword } from '@/service/utils/tools';
+import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
+import { getChatModelNameList, getSpecialModule } from '@/components/ChatBox/utils';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { shareId, password = '' } = req.query as {
+    let { shareId } = req.query as {
       shareId: string;
-      password: string;
     };
 
     if (!shareId) {
@@ -21,38 +20,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // get shareChat
-    const shareChat = await ShareChat.findById(shareId);
+    const shareChat = await OutLink.findOne({ shareId });
 
     if (!shareChat) {
-      throw new Error('分享链接已失效');
-    }
-
-    if (shareChat.password !== hashPassword(password)) {
       return jsonRes(res, {
         code: 501,
-        message: '密码不正确'
+        error: '分享链接已失效'
       });
     }
 
     // 校验使用权限
-    const { model } = await authModel({
-      modelId: shareChat.modelId,
-      userId: String(shareChat.userId),
-      authOwner: false
-    });
-
-    const user = await User.findById(shareChat.userId, 'avatar');
+    const [{ app }, user] = await Promise.all([
+      authApp({
+        appId: shareChat.appId,
+        userId: String(shareChat.userId),
+        authOwner: false
+      }),
+      User.findById(shareChat.userId, 'avatar')
+    ]);
 
     jsonRes<InitShareChatResponse>(res, {
       data: {
-        maxContext: shareChat.maxContext,
         userAvatar: user?.avatar || HUMAN_ICON,
-        model: {
-          name: model.name,
-          avatar: model.avatar,
-          intro: model.intro
-        },
-        chatModel: model.chat.chatModel
+        app: {
+          ...getSpecialModule(app.modules),
+          chatModels: getChatModelNameList(app.modules),
+          name: app.name,
+          avatar: app.avatar,
+          intro: app.intro
+        }
       }
     });
   } catch (err) {

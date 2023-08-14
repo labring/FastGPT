@@ -1,70 +1,36 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { OpenAiChatEnum } from '@/constants/model';
 
-import {
-  ChatSiteItemType,
-  HistoryItemType,
-  ShareChatHistoryItemType,
-  ChatType,
-  ShareChatType
-} from '@/types/chat';
-import { getChatHistory } from '@/api/chat';
-import { HUMAN_ICON } from '@/constants/chat';
-
-type SetShareChatHistoryItem = {
-  historyId: string;
-  shareId: string;
-  title: string;
-  latestChat: string;
-  chats: ChatSiteItemType[];
-};
+import { ChatHistoryItemType } from '@/types/chat';
+import type { InitChatResponse } from '@/api/response/chat';
+import { delChatHistoryById, getChatHistory, clearChatHistoryByAppId } from '@/api/chat';
 
 type State = {
-  history: HistoryItemType[];
-  loadHistory: (data: { pageNum: number; init?: boolean }) => Promise<null>;
-  forbidLoadChatData: boolean;
-  setForbidLoadChatData: (val: boolean) => void;
-  chatData: ChatType;
-  setChatData: (e?: ChatType | ((e: ChatType) => ChatType)) => void;
-  lastChatModelId: string;
-  setLastChatModelId: (id: string) => void;
+  history: ChatHistoryItemType[];
+  loadHistory: (data: { appId?: string }) => Promise<null>;
+  delHistory(history: string): Promise<void>;
+  clearHistory(appId: string): Promise<void>;
+  updateHistory: (history: ChatHistoryItemType) => void;
+  chatData: InitChatResponse;
+  setChatData: (e: InitChatResponse | ((e: InitChatResponse) => InitChatResponse)) => void;
+  lastChatAppId: string;
+  setLastChatAppId: (id: string) => void;
   lastChatId: string;
   setLastChatId: (id: string) => void;
-
-  shareChatData: ShareChatType;
-  setShareChatData: (e?: ShareChatType | ((e: ShareChatType) => ShareChatType)) => void;
-  password: string;
-  setPassword: (val: string) => void;
-  shareChatHistory: ShareChatHistoryItemType[];
-  setShareChatHistory: (e: SetShareChatHistoryItem) => void;
-  delShareHistoryById: (historyId: string) => void;
-  delShareChatHistoryItemById: (historyId: string, index: number) => void;
-  delShareChatHistory: (shareId?: string) => void;
 };
 
-const defaultChatData: ChatType = {
-  chatId: 'chatId',
-  modelId: 'modelId',
-  model: {
-    name: '',
+const defaultChatData: InitChatResponse = {
+  chatId: '',
+  appId: '',
+  app: {
+    name: 'FastGPT',
     avatar: '/icon/logo.png',
     intro: '',
     canUse: false
   },
-  chatModel: OpenAiChatEnum.GPT3516k,
-  history: []
-};
-const defaultShareChatData: ShareChatType = {
-  maxContext: 5,
-  userAvatar: HUMAN_ICON,
-  model: {
-    name: '',
-    avatar: '/icon/logo.png',
-    intro: ''
-  },
-  chatModel: OpenAiChatEnum.GPT3516k,
+  title: '新对话',
+  variables: {},
   history: []
 };
 
@@ -72,10 +38,10 @@ export const useChatStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
-        lastChatModelId: '',
-        setLastChatModelId(id: string) {
+        lastChatAppId: '',
+        setLastChatAppId(id: string) {
           set((state) => {
-            state.lastChatModelId = id;
+            state.lastChatAppId = id;
           });
         },
         lastChatId: '',
@@ -85,10 +51,12 @@ export const useChatStore = create<State>()(
           });
         },
         history: [],
-        async loadHistory({ pageNum, init = false }: { pageNum: number; init?: boolean }) {
-          if (get().history.length > 0 && !init) return null;
+        async loadHistory({ appId }) {
+          const oneHistory = get().history[0];
+          if (oneHistory && oneHistory.appId === appId) return null;
           const data = await getChatHistory({
-            pageNum,
+            appId,
+            pageNum: 1,
             pageSize: 20
           });
           set((state) => {
@@ -96,14 +64,38 @@ export const useChatStore = create<State>()(
           });
           return null;
         },
-        forbidLoadChatData: false,
-        setForbidLoadChatData(val: boolean) {
+        async delHistory(chatId) {
           set((state) => {
-            state.forbidLoadChatData = val;
+            state.history = state.history.filter((item) => item.chatId !== chatId);
+          });
+          await delChatHistoryById(chatId);
+        },
+        async clearHistory(appId) {
+          set((state) => {
+            state.history = [];
+          });
+          await clearChatHistoryByAppId(appId);
+        },
+        updateHistory(history) {
+          const index = get().history.findIndex((item) => item.chatId === history.chatId);
+          set((state) => {
+            const newHistory = (() => {
+              if (index > -1) {
+                return [
+                  history,
+                  ...get().history.slice(0, index),
+                  ...get().history.slice(index + 1)
+                ];
+              } else {
+                return [history, ...state.history];
+              }
+            })();
+
+            state.history = newHistory;
           });
         },
         chatData: defaultChatData,
-        setChatData(e: ChatType | ((e: ChatType) => ChatType) = defaultChatData) {
+        setChatData(e = defaultChatData) {
           if (typeof e === 'function') {
             set((state) => {
               state.chatData = e(state.chatData);
@@ -113,114 +105,13 @@ export const useChatStore = create<State>()(
               state.chatData = e;
             });
           }
-        },
-        shareChatData: defaultShareChatData,
-        setShareChatData(
-          e: ShareChatType | ((e: ShareChatType) => ShareChatType) = defaultShareChatData
-        ) {
-          if (typeof e === 'function') {
-            set((state) => {
-              state.shareChatData = e(state.shareChatData);
-            });
-          } else {
-            set((state) => {
-              state.shareChatData = e;
-            });
-          }
-        },
-        password: '',
-        setPassword(val: string) {
-          set((state) => {
-            state.password = val;
-          });
-        },
-        shareChatHistory: [],
-        setShareChatHistory({
-          historyId,
-          shareId,
-          title,
-          latestChat,
-          chats = []
-        }: SetShareChatHistoryItem) {
-          set((state) => {
-            const history = state.shareChatHistory.find((item) => item._id === historyId);
-            let historyList: ShareChatHistoryItemType[] = [];
-            if (history) {
-              historyList = state.shareChatHistory.map((item) =>
-                item._id === historyId
-                  ? {
-                      ...item,
-                      title,
-                      latestChat,
-                      updateTime: new Date(),
-                      chats
-                    }
-                  : item
-              );
-            } else {
-              historyList = [
-                ...state.shareChatHistory,
-                {
-                  _id: historyId,
-                  shareId,
-                  title,
-                  latestChat,
-                  updateTime: new Date(),
-                  chats
-                }
-              ];
-            }
-
-            // @ts-ignore
-            historyList.sort((a, b) => new Date(b.updateTime) - new Date(a.updateTime));
-
-            state.shareChatHistory = historyList.slice(0, 30);
-          });
-        },
-        delShareHistoryById(historyId: string) {
-          set((state) => {
-            state.shareChatHistory = state.shareChatHistory.filter(
-              (item) => item._id !== historyId
-            );
-          });
-        },
-        delShareChatHistoryItemById(historyId: string, index: number) {
-          set((state) => {
-            // update history store
-            const newHistoryList = state.shareChatHistory.map((item) =>
-              item._id === historyId
-                ? {
-                    ...item,
-                    chats: [...item.chats.slice(0, index), ...item.chats.slice(index + 1)]
-                  }
-                : item
-            );
-            state.shareChatHistory = newHistoryList;
-
-            // update chatData
-            state.shareChatData.history =
-              newHistoryList.find((item) => item._id === historyId)?.chats || [];
-          });
-        },
-        delShareChatHistory(shareId?: string) {
-          set((state) => {
-            if (shareId) {
-              state.shareChatHistory = state.shareChatHistory.filter(
-                (item) => item.shareId !== shareId
-              );
-            } else {
-              state.shareChatHistory = [];
-            }
-          });
         }
       })),
       {
         name: 'chatStore',
         partialize: (state) => ({
-          lastChatModelId: state.lastChatModelId,
-          lastChatId: state.lastChatId,
-          password: state.password,
-          shareChatHistory: state.shareChatHistory
+          lastChatAppId: state.lastChatAppId,
+          lastChatId: state.lastChatId
         })
       }
     )

@@ -1,8 +1,11 @@
 import type { ChatItemType } from './chat';
 import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/model';
 import type { DataType } from './data';
-import { BillTypeEnum, InformTypeEnum } from '@/constants/user';
+import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
+import type { AppModuleItemType } from './app';
+import { ChatSourceEnum, OutLinkTypeEnum } from '@/constants/chat';
+import { AppTypeEnum } from '@/constants/app';
 
 export interface UserModelSchema {
   _id: string;
@@ -14,8 +17,9 @@ export interface UserModelSchema {
   promotionAmount: number;
   openaiKey: string;
   createTime: number;
-  promotion: {
-    rate: number;
+  openaiAccount?: {
+    key: string;
+    baseUrl: string;
   };
   limit: {
     exportKbTime?: Date;
@@ -30,14 +34,21 @@ export interface AuthCodeSchema {
   expiredTime: number;
 }
 
-export interface ModelSchema {
+export interface AppSchema {
   _id: string;
   userId: string;
   name: string;
+  type: `${AppTypeEnum}`;
   avatar: string;
   intro: string;
   updateTime: number;
-  chat: {
+  share: {
+    isShare: boolean;
+    isShareDetail: boolean;
+    collection: number;
+  };
+  modules: AppModuleItemType[];
+  chat?: {
     relatedKbs: string[];
     searchSimilarity: number;
     searchLimit: number;
@@ -48,23 +59,12 @@ export interface ModelSchema {
     maxToken: number;
     chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
   };
-  share: {
-    isShare: boolean;
-    isShareDetail: boolean;
-    collection: number;
-  };
-}
-
-export interface ModelPopulate extends ModelSchema {
-  userId: UserModelSchema;
 }
 
 export interface CollectionSchema {
-  modelId: string;
+  appId: string;
   userId: string;
 }
-
-export type ModelDataType = 0 | 1;
 
 export interface TrainingDataSchema {
   _id: string;
@@ -72,6 +72,7 @@ export interface TrainingDataSchema {
   kbId: string;
   expireAt: Date;
   lockTime: Date;
+  model: string;
   mode: `${TrainingModeEnum}`;
   prompt: string;
   q: string;
@@ -81,31 +82,34 @@ export interface TrainingDataSchema {
 
 export interface ChatSchema {
   _id: string;
+  chatId: string;
   userId: string;
-  modelId: string;
-  expiredTime: number;
+  appId: string;
   updateTime: Date;
   title: string;
   customTitle: string;
-  latestChat: string;
   top: boolean;
+  variables: Record<string, any>;
+  source: `${ChatSourceEnum}`;
+  shareId?: string;
   content: ChatItemType[];
 }
-export interface ChatPopulate extends ChatSchema {
-  userId: UserModelSchema;
-  modelId: ModelSchema;
-}
 
+export type BillListItemType = {
+  moduleName: string;
+  amount: number;
+  model?: string;
+  tokenLen?: number;
+};
 export interface BillSchema {
   _id: string;
   userId: string;
-  type: `${BillTypeEnum}`;
-  modelName: ChatModelType | EmbeddingModelType;
-  chatId: string;
+  appName: string;
+  appId?: string;
+  source: `${BillSourceEnum}`;
   time: Date;
-  textLen: number;
-  tokenLen: number;
-  price: number;
+  total: number;
+  list: BillListItemType[];
 }
 
 export interface PaySchema {
@@ -134,15 +138,15 @@ export interface PromotionRecordSchema {
   amount: number;
 }
 
-export interface ShareChatSchema {
+export interface OutLinkSchema {
   _id: string;
+  shareId: string;
   userId: string;
-  modelId: string;
-  password: string;
+  appId: string;
   name: string;
-  tokens: number;
-  maxContext: number;
+  total: number;
   lastTime: Date;
+  type: `${OutLinkTypeEnum}`;
 }
 
 export interface kbSchema {
@@ -151,6 +155,7 @@ export interface kbSchema {
   updateTime: Date;
   avatar: string;
   name: string;
+  model: string;
   tags: string[];
 }
 

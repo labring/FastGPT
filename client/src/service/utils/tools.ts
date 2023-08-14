@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { generateQA } from '../events/generateQA';
 import { generateVector } from '../events/generateVector';
-import { sseResponseEventEnum } from '@/constants/chat';
+import { ERROR_ENUM } from '../errorCode';
 
 /* 密码加密 */
 export const hashPassword = (psw: string) => {
@@ -23,28 +23,29 @@ export const generateToken = (userId: string) => {
   );
   return token;
 };
+// auth token
+export const authJWT = (token: string) =>
+  new Promise<string>((resolve, reject) => {
+    const key = process.env.TOKEN_KEY as string;
 
+    jwt.verify(token, key, function (err, decoded: any) {
+      if (err || !decoded?.userId) {
+        reject(ERROR_ENUM.unAuthorization);
+        return;
+      }
+      resolve(decoded.userId);
+    });
+  });
 /* set cookie */
-export const setCookie = (res: NextApiResponse, userId: string) => {
-  res.setHeader('Set-Cookie', `token=${generateToken(userId)}; Path=/; HttpOnly; Max-Age=604800`);
+export const setCookie = (res: NextApiResponse, token: string) => {
+  res.setHeader(
+    'Set-Cookie',
+    `token=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=None; Secure;`
+  );
 };
 /* clear cookie */
 export const clearCookie = (res: NextApiResponse) => {
   res.setHeader('Set-Cookie', 'token=; Path=/; Max-Age=0');
-};
-
-/* openai axios config */
-export const axiosConfig = (apikey: string) => {
-  const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-
-  return {
-    baseURL: apikey === process.env.ONEAPI_KEY ? process.env.ONEAPI_URL : openaiBaseUrl, // 此处仅对非 npm 模块有效
-    httpsAgent: global.httpsAgent,
-    headers: {
-      Authorization: `Bearer ${apikey}`,
-      auth: process.env.OPENAI_BASE_URL_AUTH || ''
-    }
-  };
 };
 
 export function withNextCors(handler: NextApiHandler): NextApiHandler {
@@ -79,9 +80,10 @@ export const sseResponse = ({
   data
 }: {
   res: NextApiResponse;
-  event?: `${sseResponseEventEnum}`;
+  event?: string;
   data: string;
 }) => {
+  if (res.closed) return;
   event && res.write(`event: ${event}\n`);
   res.write(`data: ${data}\n\n`);
 };

@@ -7,5 +7,6 @@ export const defaultKbDetail: KbItemType = {
   avatar: '/icon/logo.png',
   name: '',
   tags: '',
-  totalData: 0
+  totalData: 0,
+  model: 'text-embedding-ada-002'
 };

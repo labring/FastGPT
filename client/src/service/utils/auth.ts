@@ -1,38 +1,39 @@
 import type { NextApiRequest } from 'next';
-import jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
-import { Chat, Model, OpenApi, User, ShareChat, KB } from '../mongo';
-import type { ModelSchema } from '@/types/mongoSchema';
-import type { ChatItemType } from '@/types/chat';
-import mongoose from 'mongoose';
-import { defaultModel } from '@/constants/model';
-import { formatPrice } from '@/utils/user';
+import { App, OpenApi, User, OutLink, KB } from '../mongo';
+import type { AppSchema } from '@/types/mongoSchema';
 import { ERROR_ENUM } from '../errorCode';
-import { ChatModelType, OpenAiChatEnum } from '@/constants/model';
-import { hashPassword } from '@/service/utils/tools';
+import { authJWT } from './tools';
 
-export type AuthType = 'token' | 'root' | 'apikey';
+export enum AuthUserTypeEnum {
+  token = 'token',
+  root = 'root',
+  apikey = 'apikey'
+}
 
-export const parseCookie = (cookie?: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    // 获取 cookie
-    const cookies = Cookie.parse(cookie || '');
-    const token = cookies.token;
+export const authCookieToken = async (cookie?: string, token?: string): Promise<string> => {
+  // 获取 cookie
+  const cookies = Cookie.parse(cookie || '');
+  const cookieToken = cookies.token || token;
 
-    if (!token) {
-      return reject(ERROR_ENUM.unAuthorization);
-    }
+  if (!cookieToken) {
+    return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
 
-    const key = process.env.TOKEN_KEY as string;
+  return await authJWT(cookieToken);
+};
 
-    jwt.verify(token, key, function (err, decoded: any) {
-      if (err || !decoded?.userId) {
-        reject(ERROR_ENUM.unAuthorization);
-        return;
-      }
-      resolve(decoded.userId);
-    });
-  });
+/* auth balance */
+export const authBalanceByUid = async (uid: string) => {
+  const user = await User.findById(uid);
+  if (!user) {
+    return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
+
+  if (user.balance <= 0) {
+    return Promise.reject(ERROR_ENUM.insufficientQuota);
+  }
+  return user;
 };
 
 /* uniform auth user */
@@ -106,8 +107,9 @@ export const authUser = async ({
     return userId;
   };
 
-  const { cookie, apikey, rootkey, userid, authorization } = (req.headers || {}) as {
+  const { cookie, token, apikey, rootkey, userid, authorization } = (req.headers || {}) as {
     cookie?: string;
+    token?: string;
     apikey?: string;
     rootkey?: string;
     userid?: string;
@@ -116,111 +118,65 @@ export const authUser = async ({
 
   let uid = '';
   let appId = '';
-  let authType: AuthType = 'token';
+  let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
 
   if (authToken) {
-    uid = await parseCookie(cookie);
-    authType = 'token';
+    uid = await authCookieToken(cookie, token);
+    authType = AuthUserTypeEnum.token;
   } else if (authRoot) {
     uid = await parseRootKey(rootkey, userid);
-    authType = 'root';
-  } else if (cookie) {
-    uid = await parseCookie(cookie);
-    authType = 'token';
+    authType = AuthUserTypeEnum.root;
+  } else if (cookie || token) {
+    uid = await authCookieToken(cookie, token);
+    authType = AuthUserTypeEnum.token;
   } else if (apikey) {
     uid = await parseOpenApiKey(apikey);
-    authType = 'apikey';
+    authType = AuthUserTypeEnum.apikey;
   } else if (authorization) {
     const authResponse = await parseAuthorization(authorization);
     uid = authResponse.uid;
     appId = authResponse.appId;
-    authType = 'apikey';
+    authType = AuthUserTypeEnum.apikey;
   } else if (rootkey) {
     uid = await parseRootKey(rootkey, userid);
-    authType = 'root';
+    authType = AuthUserTypeEnum.root;
   } else {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
   // balance check
-  if (authBalance) {
-    const user = await User.findById(uid);
-    if (!user) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
+  const user = await (() => {
+    if (authBalance) {
+      return authBalanceByUid(uid);
     }
-
-    if (!user.openaiKey && formatPrice(user.balance) <= 0) {
-      return Promise.reject(ERROR_ENUM.insufficientQuota);
-    }
-  }
+  })();
 
   return {
     userId: uid,
     appId,
-    authType
-  };
-};
-
-/* random get openai api key */
-export const getSystemOpenAiKey = () => {
-  return process.env.ONEAPI_KEY || process.env.OPENAIKEY || '';
-};
-
-/* 获取 api 请求的 key */
-export const getApiKey = async ({
-  model,
-  userId,
-  mustPay = false
-}: {
-  model: ChatModelType;
-  userId: string;
-  mustPay?: boolean;
-}) => {
-  const user = await User.findById(userId, 'openaiKey balance');
-  if (!user) {
-    return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
-
-  const userOpenAiKey = user.openaiKey || '';
-  const systemAuthKey = getSystemOpenAiKey();
-
-  // 有自己的key
-  if (!mustPay && userOpenAiKey) {
-    return {
-      userOpenAiKey,
-      systemAuthKey: ''
-    };
-  }
-
-  // 平台账号余额校验
-  if (formatPrice(user.balance) <= 0) {
-    return Promise.reject(ERROR_ENUM.insufficientQuota);
-  }
-
-  return {
-    userOpenAiKey: '',
-    systemAuthKey
+    authType,
+    user
   };
 };
 
 // 模型使用权校验
-export const authModel = async ({
-  modelId,
+export const authApp = async ({
+  appId,
   userId,
   authUser = true,
   authOwner = true,
   reserveDetail = false
 }: {
-  modelId: string;
+  appId: string;
   userId: string;
   authUser?: boolean;
   authOwner?: boolean;
   reserveDetail?: boolean; // focus reserve detail
 }) => {
-  // 获取 model 数据
-  const model = await Model.findById<ModelSchema>(modelId);
-  if (!model) {
-    return Promise.reject('模型不存在');
+  // 获取 app 数据
+  const app = await App.findById<AppSchema>(appId);
+  if (!app) {
+    return Promise.reject('App is not exists');
   }
 
   /* 
@@ -228,21 +184,13 @@ export const authModel = async ({
     1. authOwner=true or authUser = true ,  just owner can use
     2. authUser = false and share, anyone can use
   */
-  if (authOwner || (authUser && !model.share.isShare)) {
-    if (userId !== String(model.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
-  }
-
-  // do not share detail info
-  if (!reserveDetail && !model.share.isShareDetail && userId !== String(model.userId)) {
-    model.chat = {
-      ...defaultModel.chat,
-      chatModel: model.chat.chatModel
-    };
+  if (authOwner || (authUser && !app.share.isShare)) {
+    if (userId !== String(app.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
   }
 
   return {
-    model,
-    showModelDetail: userId === String(model.userId)
+    app,
+    showModelDetail: userId === String(app.userId)
   };
 };
 
@@ -258,89 +206,23 @@ export const authKb = async ({ kbId, userId }: { kbId: string; userId: string })
   return Promise.reject(ERROR_ENUM.unAuthKb);
 };
 
-// 获取对话校验
-export const authChat = async ({
-  modelId,
-  chatId,
-  req
-}: {
-  modelId: string;
-  chatId?: string;
-  req: NextApiRequest;
-}) => {
-  const { userId } = await authUser({ req, authToken: true });
-
-  // 获取 model 数据
-  const { model, showModelDetail } = await authModel({
-    modelId,
-    userId,
-    authOwner: false,
-    reserveDetail: true
-  });
-
-  // 聊天内容
-  let content: ChatItemType[] = [];
-
-  if (chatId) {
-    // 获取 chat 数据
-    content = await Chat.aggregate([
-      { $match: { _id: new mongoose.Types.ObjectId(chatId) } },
-      {
-        $project: {
-          content: {
-            $slice: ['$content', -50] // 返回 content 数组的最后50个元素
-          }
-        }
-      },
-      { $unwind: '$content' },
-      {
-        $project: {
-          obj: '$content.obj',
-          value: '$content.value',
-          quote: '$content.quote'
-        }
-      }
-    ]);
-  }
-  // 获取 user 的 apiKey
-  const { userOpenAiKey, systemAuthKey } = await getApiKey({
-    model: model.chat.chatModel,
-    userId
-  });
-
-  return {
-    userOpenAiKey,
-    systemAuthKey,
-    content,
-    userId,
-    model,
-    showModelDetail
-  };
-};
-export const authShareChat = async ({
-  shareId,
-  password
-}: {
-  shareId: string;
-  password: string;
-}) => {
+export const authShareChat = async ({ shareId }: { shareId: string }) => {
   // get shareChat
-  const shareChat = await ShareChat.findById(shareId);
+  const shareChat = await OutLink.findOne({ shareId });
 
   if (!shareChat) {
     return Promise.reject('分享链接已失效');
   }
 
-  if (shareChat.password !== hashPassword(password)) {
-    return Promise.reject({
-      code: 501,
-      message: '密码不正确'
-    });
-  }
+  const uid = String(shareChat.userId);
+
+  // authBalance
+  const user = await authBalanceByUid(uid);
 
   return {
+    user,
     userId: String(shareChat.userId),
-    appId: String(shareChat.modelId),
-    authType: 'token' as AuthType
+    appId: String(shareChat.appId),
+    authType: AuthUserTypeEnum.token
   };
 };

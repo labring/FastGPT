@@ -6,6 +6,7 @@ import { postFindPassword } from '@/api/user';
 import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
+import { feConfigs } from '@/store/static';
 
 interface Props {
   setPageType: Dispatch<`${PageTypeEnum}`>;
@@ -73,7 +74,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
-        找回 FastGPT 账号
+        找回 {feConfigs?.systemTitle} 账号
       </Box>
       <form onSubmit={handleSubmit(onclickFindPassword)}>
         <FormControl mt={5} isInvalid={!!errors.username}>
@@ -128,11 +129,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               required: '密码不能为空',
               minLength: {
                 value: 4,
-                message: '密码最少4位最多12位'
+                message: '密码最少 4 位最多 20 位'
               },
               maxLength: {
-                value: 12,
-                message: '密码最少4位最多12位'
+                value: 20,
+                message: '密码最少 4 位最多 20 位'
               }
             })}
           ></Input>

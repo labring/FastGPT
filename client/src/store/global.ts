@@ -1,50 +1,72 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { InitDateResponse } from '@/pages/api/system/getInitData';
-import { getInitData } from '@/api/system';
+import axios from 'axios';
+
+type LoginStoreType = { provider: 'git'; lastRoute: string };
 
 type State = {
-  initData: InitDateResponse;
-  loadInitData: () => Promise<void>;
+  loginStore?: LoginStoreType;
+  setLoginStore: (e: LoginStoreType) => void;
   loading: boolean;
   setLoading: (val: boolean) => null;
   screenWidth: number;
   setScreenWidth: (val: number) => void;
-  isPc: boolean;
+  isPc?: boolean;
+  initIsPc(val: boolean): void;
+  gitStar: number;
+  loadGitStar: () => Promise<void>;
 };
 
 export const useGlobalStore = create<State>()(
   devtools(
-    immer((set, get) => ({
-      initData: {
-        beianText: '',
-        googleVerKey: '',
-        baiduTongji: false
-      },
-      async loadInitData() {
-        try {
-          const res = await getInitData();
+    persist(
+      immer((set, get) => ({
+        loginStore: undefined,
+        setLoginStore(e) {
           set((state) => {
-            state.initData = res;
+            state.loginStore = e;
           });
-        } catch (error) {}
-      },
-      loading: false,
-      setLoading: (val: boolean) => {
-        set((state) => {
-          state.loading = val;
-        });
-        return null;
-      },
-      screenWidth: 600,
-      setScreenWidth(val: number) {
-        set((state) => {
-          state.screenWidth = val;
-          state.isPc = val < 900 ? false : true;
-        });
-      },
-      isPc: false
-    }))
+        },
+        loading: false,
+        setLoading: (val: boolean) => {
+          set((state) => {
+            state.loading = val;
+          });
+          return null;
+        },
+        screenWidth: 600,
+        setScreenWidth(val: number) {
+          set((state) => {
+            state.screenWidth = val;
+            state.isPc = val < 900 ? false : true;
+          });
+        },
+        isPc: undefined,
+        initIsPc(val: boolean) {
+          if (get().isPc !== undefined) return;
+
+          set((state) => {
+            state.isPc = val;
+          });
+        },
+        gitStar: 2700,
+        async loadGitStar() {
+          try {
+            const { data: git } = await axios.get('https://api.github.com/repos/labring/FastGPT');
+
+            set((state) => {
+              state.gitStar = git.stargazers_count;
+            });
+          } catch (error) {}
+        }
+      })),
+      {
+        name: 'globalStore',
+        partialize: (state) => ({
+          loginStore: state.loginStore
+        })
+      }
+    )
   )
 );

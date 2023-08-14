@@ -4,7 +4,7 @@ import { connectToDatabase, Chat } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 
 export type Props = {
-  chatId: '' | string;
+  chatId: string;
   customTitle?: string;
   top?: boolean;
 };
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await Chat.findOneAndUpdate(
       {
-        _id: chatId,
+        chatId,
         userId
       },
       {

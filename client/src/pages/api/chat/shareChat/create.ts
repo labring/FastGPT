@@ -1,35 +1,39 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, ShareChat } from '@/service/mongo';
-import { authModel, authUser } from '@/service/utils/auth';
-import type { ShareChatEditType } from '@/types/model';
+import { connectToDatabase, OutLink } from '@/service/mongo';
+import { authApp, authUser } from '@/service/utils/auth';
+import type { ShareChatEditType } from '@/types/app';
+import { customAlphabet } from 'nanoid';
+import { OutLinkTypeEnum } from '@/constants/chat';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 /* create a shareChat */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { modelId, name, maxContext, password } = req.body as ShareChatEditType & {
-      modelId: string;
+    const { appId, name } = req.body as ShareChatEditType & {
+      appId: string;
     };
 
     await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
-    await authModel({
-      modelId,
+    await authApp({
+      appId,
       userId,
       authOwner: false
     });
 
-    const { _id } = await ShareChat.create({
+    const shareId = nanoid();
+    await OutLink.create({
+      shareId,
       userId,
-      modelId,
+      appId,
       name,
-      password,
-      maxContext
+      type: OutLinkTypeEnum.share
     });
 
     jsonRes(res, {
-      data: _id
+      data: shareId
     });
   } catch (err) {
     jsonRes(res, {

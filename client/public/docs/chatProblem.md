@@ -1,15 +1,19 @@
 ### 常见问题
 
-**Git 地址**: [项目地址，完全开源，随便用。](https://github.com/c121914yu/FastGPT)
+**一键部署**：V4 版本未正式开源，目前仅提供一键部署方案:
+
+[![](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
+
+**Git 地址**: [项目地址。V4-beta 暂未开源，在正式版发布后会开源。](https://github.com/labring/FastGPT)
+**反馈问卷**: 如果你遇到任何使用问题或有期望的功能，可以[填写该问卷](https://www.wjx.cn/vm/rLIw1uD.aspx#)
 **问题文档**: [先看文档，再提问](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)  
 **价格表**
-如果使用了自己的 Api Key，网页上 openai 模型聊天不会计费。可以在账号页，看到详细账单。
 | 计费项 | 价格: 元/ 1K tokens（包含上下文）|
 | --- | --- |
-| 知识库 - 索引 | 0.001 |
-| chatgpt - 对话 | 0.015 |
-| chatgpt16K - 对话 | 0.03 |
-| gpt4 - 对话 | 0.45 |
+| 知识库 - 索引 | 0.002 |
+| FastAI4k - 对话 | 0.015 |
+| FastAI16k - 对话 | 0.03 |
+| FastAI-Plus - 对话 | 0.45 |
 | 文件拆分 | 0.03 |
 
 **其他问题**

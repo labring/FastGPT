@@ -5,6 +5,7 @@ node_modules/
 out/
 # production
 build/
+.astro/
 
 # misc
 .DS_Store

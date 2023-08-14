@@ -1,27 +1,22 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { ChatSchema as ChatType } from '@/types/mongoSchema';
-import { ChatRoleMap } from '@/constants/chat';
+import { ChatRoleMap, TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatSourceEnum, ChatSourceMap } from '@/constants/chat';
 
 const ChatSchema = new Schema({
+  chatId: {
+    type: String,
+    require: true
+  },
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user',
     required: true
   },
-  modelId: {
+  appId: {
     type: Schema.Types.ObjectId,
     ref: 'model',
     required: true
-  },
-  expiredTime: {
-    // 过期时间
-    type: Number,
-    default: () => new Date()
-  },
-  loadAmount: {
-    // 剩余加载次数
-    type: Number,
-    default: -1
   },
   updateTime: {
     type: Date,
@@ -35,12 +30,20 @@ const ChatSchema = new Schema({
     type: String,
     default: ''
   },
-  latestChat: {
-    type: String,
-    default: ''
-  },
   top: {
     type: Boolean
+  },
+  variables: {
+    type: Object,
+    default: {}
+  },
+  source: {
+    type: String,
+    enum: Object.keys(ChatSourceMap),
+    required: true
+  },
+  shareId: {
+    type: String
   },
   content: {
     type: [
@@ -54,25 +57,39 @@ const ChatSchema = new Schema({
           type: String,
           default: ''
         },
-        quote: {
+        [TaskResponseKeyEnum.responseData]: {
           type: [
             {
-              id: String,
-              q: String,
-              a: String,
-              source: String
+              moduleName: String,
+              price: String,
+              model: String,
+              tokens: Number,
+              question: String,
+              answer: String,
+              temperature: Number,
+              maxToken: Number,
+              quoteList: Array,
+              completeMessages: Array,
+              similarity: Number,
+              limit: Number,
+              cqList: Array,
+              cqResult: String
             }
           ],
           default: []
-        },
-        systemPrompt: {
-          type: String,
-          default: ''
         }
       }
     ],
     default: []
   }
 });
+
+try {
+  ChatSchema.index({ userId: 1 });
+  ChatSchema.index({ updateTime: -1 });
+  ChatSchema.index({ appId: 1 });
+} catch (error) {
+  console.log(error);
+}
 
 export const Chat: Model<ChatType> = models['chat'] || model('chat', ChatSchema);

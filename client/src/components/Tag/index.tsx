@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { Box, type BoxProps } from '@chakra-ui/react';
+import { Flex, type FlexProps } from '@chakra-ui/react';
 
-interface Props extends BoxProps {
-  children: string;
+interface Props extends FlexProps {
+  children: React.ReactNode | React.ReactNode[];
   colorSchema?: 'blue' | 'green' | 'gray';
 }
 
@@ -10,14 +10,14 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
   const theme = useMemo(() => {
     const map = {
       blue: {
-        borderColor: 'myBlue.700',
+        borderColor: 'myBlue.600',
         bg: '#F2FBFF',
         color: 'myBlue.700'
       },
       green: {
-        borderColor: '#52C41A',
-        bg: '#EDFFED',
-        color: '#52C41A'
+        borderColor: '#67c13b',
+        bg: '#f8fff8',
+        color: '#67c13b'
       },
       gray: {
         borderColor: '#979797',
@@ -27,20 +27,21 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
     };
     return map[colorSchema];
   }, [colorSchema]);
+
   return (
-    <Box
-      display={'inline-block'}
+    <Flex
       border={'1px solid'}
       px={2}
       lineHeight={1}
-      py={'2px'}
+      py={1}
       borderRadius={'md'}
       fontSize={'xs'}
+      alignItems={'center'}
       {...theme}
       {...props}
     >
       {children}
-    </Box>
+    </Flex>
   );
 };
 

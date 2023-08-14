@@ -7,7 +7,9 @@ import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
-import { postCreateModel } from '@/api/model';
+import { postCreateApp } from '@/api/app';
+import { appTemplates } from '@/constants/flow/ModuleTemplate';
+import { feConfigs } from '@/store/static';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -63,9 +65,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           title: `注册成功`,
           status: 'success'
         });
-        // aut register a model
-        postCreateModel({
-          name: '应用1'
+        // auto register template app
+        appTemplates.forEach((template) => {
+          postCreateApp({
+            avatar: template.avatar,
+            name: template.name,
+            modules: template.modules
+          });
         });
       } catch (error: any) {
         toast({
@@ -81,7 +87,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
-        注册 FastGPT 账号
+        注册 {feConfigs?.systemTitle} 账号
       </Box>
       <form onSubmit={handleSubmit(onclickRegister)}>
         <FormControl mt={5} isInvalid={!!errors.username}>
@@ -136,11 +142,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               required: '密码不能为空',
               minLength: {
                 value: 4,
-                message: '密码最少4位最多12位'
+                message: '密码最少 4 位最多 20 位'
               },
               maxLength: {
-                value: 12,
-                message: '密码最少4位最多12位'
+                value: 20,
+                message: '密码最少 4 位最多 20 位'
               }
             })}
           ></Input>

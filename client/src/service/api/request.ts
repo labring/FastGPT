@@ -1,8 +1,11 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import { clearToken, getToken } from '@/utils/user';
+import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 
 interface ConfigType {
   headers?: { [key: string]: string };
   hold?: boolean;
+  timeout?: number;
 }
 interface ResponseDataType {
   code: number;
@@ -15,7 +18,7 @@ interface ResponseDataType {
  */
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
-    config.headers.rootkey = process.env.ROOT_KEY;
+    // config.headers.token = getToken();
   }
 
   return config;
@@ -32,8 +35,9 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
  */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
+    console.log('error->', data, 'data is empty');
     return Promise.reject('服务器异常');
-  } else if (data.code < 200 || data.code >= 400) {
+  } else if (data?.code && (data.code < 200 || data.code >= 400)) {
     return Promise.reject(data);
   }
   return data.data;
@@ -49,15 +53,25 @@ function responseError(err: any) {
   if (typeof err === 'string') {
     return Promise.reject({ message: err });
   }
+  // 有报错响应
+  if (err?.code in TOKEN_ERROR_CODE) {
+    clearToken();
+    window.location.replace(
+      `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
+    );
+    return Promise.reject({ message: 'token过期，重新登录' });
+  }
+  if (err?.response?.data) {
+    return Promise.reject(err?.response?.data);
+  }
   return Promise.reject(err);
 }
 
 /* 创建请求实例 */
-export const instance = axios.create({
+const instance = axios.create({
   timeout: 60000, // 超时时间
-  baseURL: `http://localhost:${process.env.PORT || 3000}/api`,
   headers: {
-    rootkey: process.env.ROOT_KEY
+    'content-type': 'application/json'
   }
 });
 
@@ -78,8 +92,8 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
     .request({
       url,
       method,
-      data: method === 'GET' ? null : data,
-      params: method === 'GET' ? data : null, // get请求不携带data，params放在url上
+      data: ['POST', 'PUT'].includes(method) ? data : null,
+      params: !['POST', 'PUT'].includes(method) ? data : null,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))
@@ -93,30 +107,22 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
  * @param {Object} config
  * @returns
  */
-export function GET<T = { data: any }>(
-  url: string,
-  params = {},
-  config: ConfigType = {}
-): Promise<T> {
+export function GET<T>(url?: string, params = {}, config: ConfigType = {}): Promise<T> {
+  if (!url) return Promise.reject('The Plugin is not installed');
   return request(url, params, config, 'GET');
 }
 
-export function POST<T = { data: any }>(
-  url: string,
-  data = {},
-  config: ConfigType = {}
-): Promise<T> {
+export function POST<T>(url?: string, data = {}, config: ConfigType = {}): Promise<T> {
+  if (!url) return Promise.reject('The Plugin is not installed');
   return request(url, data, config, 'POST');
 }
 
-export function PUT<T = { data: any }>(
-  url: string,
-  data = {},
-  config: ConfigType = {}
-): Promise<T> {
+export function PUT<T>(url?: string, data = {}, config: ConfigType = {}): Promise<T> {
+  if (!url) return Promise.reject('The Plugin is not installed');
   return request(url, data, config, 'PUT');
 }
 
-export function DELETE<T = { data: any }>(url: string, config: ConfigType = {}): Promise<T> {
-  return request(url, {}, config, 'DELETE');
+export function DELETE<T>(url?: string, data = {}, config: ConfigType = {}): Promise<T> {
+  if (!url) return Promise.reject('The Plugin is not installed');
+  return request(url, data, config, 'DELETE');
 }

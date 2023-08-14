@@ -1,15 +1,14 @@
 import { TrainingData } from '@/service/mongo';
-import { getApiKey } from '../utils/auth';
-import { OpenAiChatEnum } from '@/constants/model';
 import { pushSplitDataBill } from '@/service/events/pushBill';
-import { openaiAccountError } from '../errorCode';
-import { modelServiceToolMap } from '../utils/chat';
-import { ChatRoleEnum } from '@/constants/chat';
-import { BillTypeEnum } from '@/constants/user';
 import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
+import { authBalanceByUid } from '../utils/auth';
+import { axiosConfig, getAIChatApi } from '../ai/openai';
+import { ChatCompletionRequestMessage } from 'openai';
+import { modelToolMap } from '@/utils/plugin';
+import { gptMessage2ChatType } from '@/utils/adapt';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -37,7 +36,8 @@ export async function generateQA(): Promise<any> {
       kbId: 1,
       prompt: 1,
       q: 1,
-      source: 1
+      source: 1,
+      model: 1
     });
 
     // task preemption
@@ -51,54 +51,69 @@ export async function generateQA(): Promise<any> {
     userId = String(data.userId);
     const kbId = String(data.kbId);
 
-    // 余额校验并获取 openapi Key
-    const { systemAuthKey } = await getApiKey({
-      model: OpenAiChatEnum.GPT35,
-      userId,
-      mustPay: true
-    });
+    await authBalanceByUid(userId);
 
     const startTime = Date.now();
 
+    const chatAPI = getAIChatApi();
+
     // 请求 chatgpt 获取回答
     const response = await Promise.all(
-      [data.q].map((text) =>
-        modelServiceToolMap
-          .chatCompletion({
-            model: OpenAiChatEnum.GPT3516k,
-            apiKey: systemAuthKey,
-            temperature: 0.8,
-            messages: [
-              {
-                obj: ChatRoleEnum.System,
-                value: `你是出题人.
-${data.prompt || '用户会发送一段长文本'}.
-从中选出 25 个问题和答案. 答案详细完整. 按格式回答: Q1:
+      [data.q].map((text) => {
+        const modelTokenLimit =
+          chatModels.find((item) => item.model === data.model)?.contextMaxToken || 16000;
+        const messages: ChatCompletionRequestMessage[] = [
+          {
+            role: 'system',
+            content: `你是出题人.
+${data.prompt || '我会发送一段长文本'}.
+从中提取出 25 个问题和答案. 答案详细完整. 按下面格式返回: 
+Q1:
 A1:
 Q2:
 A2:
 ...`
-              },
-              {
-                obj: 'Human',
-                value: text
-              }
-            ],
-            stream: false
-          })
-          .then(({ totalTokens, responseText, responseMessages }) => {
-            const result = formatSplitText(responseText); // 格式化后的QA对
+          },
+          {
+            role: 'user',
+            content: text
+          }
+        ];
+
+        const promptsToken = modelToolMap.countTokens({
+          messages: gptMessage2ChatType(messages)
+        });
+        const maxToken = modelTokenLimit - promptsToken;
+
+        return chatAPI
+          .createChatCompletion(
+            {
+              model: data.model,
+              temperature: 0.8,
+              messages,
+              stream: false,
+              max_tokens: maxToken
+            },
+            {
+              timeout: 480000,
+              ...axiosConfig()
+            }
+          )
+          .then((res) => {
+            const answer = res.data.choices?.[0].message?.content;
+            const totalTokens = res.data.usage?.total_tokens || 0;
+
+            const result = formatSplitText(answer || ''); // 格式化后的QA对
             console.log(`split result length: `, result.length);
             // 计费
             pushSplitDataBill({
-              isPay: result.length > 0,
               userId: data.userId,
-              type: BillTypeEnum.QA,
-              textLen: responseMessages.map((item) => item.value).join('').length,
-              totalTokens
+              totalTokens,
+              model: data.model,
+              appName: 'QA 拆分'
             });
             return {
-              rawContent: responseText,
+              rawContent: answer,
               result
             };
           })
@@ -106,8 +121,8 @@ A2:
             console.log('QA拆分错误');
             console.log(err.response?.status, err.response?.statusText, err.response?.data);
             return Promise.reject(err);
-          })
-      )
+          });
+      })
     );
 
     const responseList = response.map((item) => item.result).flat();
@@ -120,6 +135,7 @@ A2:
         source: data.source
       })),
       userId,
+      model: global.vectorModels[0].model,
       mode: TrainingModeEnum.index
     });
 
@@ -141,11 +157,7 @@ A2:
     }
 
     // message error or openai account error
-    if (
-      err?.message === 'invalid message format' ||
-      err.response?.statusText === 'Unauthorized' ||
-      openaiAccountError[err?.response?.data?.error?.code || err?.response?.data?.error?.type]
-    ) {
+    if (err?.message === 'invalid message format') {
       await TrainingData.findByIdAndRemove(trainingId);
     }
 

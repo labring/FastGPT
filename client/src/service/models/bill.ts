@@ -1,7 +1,6 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { ChatModelMap, embeddingModel } from '@/constants/model';
 import { BillSchema as BillType } from '@/types/mongoSchema';
-import { BillTypeMap } from '@/constants/user';
+import { BillSourceEnum, BillSourceMap } from '@/constants/user';
 
 const BillSchema = new Schema({
   userId: {
@@ -9,43 +8,55 @@ const BillSchema = new Schema({
     ref: 'user',
     required: true
   },
-  type: {
+  appName: {
     type: String,
-    enum: Object.keys(BillTypeMap),
-    required: true
+    default: ''
   },
-  modelName: {
-    type: String,
-    enum: [...Object.keys(ChatModelMap), embeddingModel],
-    required: true
-  },
-  chatId: {
+  appId: {
     type: Schema.Types.ObjectId,
-    ref: 'chat'
+    ref: 'model',
+    required: false
   },
   time: {
     type: Date,
     default: () => new Date()
   },
-  textLen: {
-    // 提示词+响应的总字数
+  total: {
     type: Number,
     required: true
   },
-  tokenLen: {
-    // 折算成 token 的数量
-    type: Number,
-    required: true
+  source: {
+    type: String,
+    enum: Object.keys(BillSourceMap),
+    default: BillSourceEnum.fastgpt
   },
-  price: {
-    type: Number,
-    required: true
+  list: {
+    type: [
+      {
+        moduleName: {
+          type: String,
+          required: true
+        },
+        amount: {
+          type: Number,
+          required: true
+        },
+        model: {
+          type: String
+        },
+        tokenLen: {
+          type: Number
+        }
+      }
+    ],
+    default: []
   }
 });
 
 try {
-  BillSchema.index({ time: -1 });
   BillSchema.index({ userId: 1 });
+  // BillSchema.index({ time: -1 });
+  BillSchema.index({ time: 1 }, { expireAfterSeconds: 90 * 24 * 60 });
 } catch (error) {
   console.log(error);
 }

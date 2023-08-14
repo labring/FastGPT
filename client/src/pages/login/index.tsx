@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import styles from './index.module.scss';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { Box, Flex, Image, useDisclosure } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
 import { useGlobalStore } from '@/store/global';
 import type { ResLogin } from '@/api/response/user';
@@ -9,6 +9,10 @@ import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
+import { serviceSideProps } from '@/utils/i18n';
+import { setToken } from '@/utils/user';
+import { feConfigs } from '@/store/static';
+import CommunityModal from '@/components/CommunityModal';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
@@ -17,37 +21,23 @@ const Login = () => {
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { isPc } = useGlobalStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
-  const { setUserInfo, setLastModelId, loadMyModels, loadKbList, setLastKbId } = useUserStore();
-  const { setLastChatId, setLastChatModelId, loadHistory } = useChatStore();
+  const { setUserInfo } = useUserStore();
+  const { setLastChatId, setLastChatAppId } = useChatStore();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       // init store
       setLastChatId('');
-      setLastModelId('');
-      setLastChatModelId('');
-      setLastKbId('');
-      loadMyModels(true);
-      loadKbList(true);
-      loadHistory({ pageNum: 1, init: true });
+      setLastChatAppId('');
 
       setUserInfo(res.user);
+      setToken(res.token);
       setTimeout(() => {
-        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/model');
+        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/list');
       }, 100);
     },
-    [
-      lastRoute,
-      loadHistory,
-      loadKbList,
-      loadMyModels,
-      router,
-      setLastChatId,
-      setLastChatModelId,
-      setLastKbId,
-      setLastModelId,
-      setUserInfo
-    ]
+    [lastRoute, router, setLastChatId, setLastChatAppId, setUserInfo]
   );
 
   function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {
@@ -61,10 +51,6 @@ const Login = () => {
 
     return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
   }
-
-  useEffect(() => {
-    router.prefetch('/model');
-  }, [router]);
 
   return (
     <Flex
@@ -101,6 +87,7 @@ const Login = () => {
         )}
 
         <Box
+          position={'relative'}
           order={1}
           flex={`0 0 ${isPc ? '400px' : '100%'}`}
           height={'100%'}
@@ -111,10 +98,32 @@ const Login = () => {
           borderRadius={isPc ? 'md' : 'none'}
         >
           <DynamicComponent type={pageType} />
+
+          {feConfigs?.show_register && (
+            <Box
+              fontSize={'sm'}
+              color={'myGray.600'}
+              cursor={'pointer'}
+              position={'absolute'}
+              right={5}
+              bottom={3}
+              onClick={onOpen}
+            >
+              无法登录，点击联系
+            </Box>
+          )}
         </Box>
       </Flex>
+
+      {isOpen && <CommunityModal onClose={onClose} />}
     </Flex>
   );
 };
+
+export async function getServerSideProps(context: any) {
+  return {
+    props: { ...(await serviceSideProps(context)) }
+  };
+}
 
 export default Login;

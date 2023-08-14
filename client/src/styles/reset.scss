@@ -1,3 +1,6 @@
+@import './reactflow.scss';
+@import './default.scss';
+
 body,
 h1,
 h2,
@@ -70,23 +73,6 @@ textarea::placeholder {
 
 #__next {
   height: 100%;
-}
-#nprogress .bar {
-  background: '#1237b3' !important; //自定义颜色
-}
-
-.textEllipsis {
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.grecaptcha-badge {
-  display: none !important;
-}
-.textlg {
-  background: linear-gradient(to bottom right, #1237b3 0%, #3370ff 40%, #4e83fd 80%, #85b1ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 @media (max-width: 900px) {

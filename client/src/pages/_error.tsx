@@ -1,4 +1,13 @@
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 function Error() {
+  const router = useRouter();
+  useEffect(() => {
+    setTimeout(() => {
+      router.replace('/app/list');
+    }, 2000);
+  }, []);
+
   return (
     <p>
       部分系统不兼容，导致页面崩溃。如果可以，请联系作者，反馈下具体操作和页面。大部分是 苹果 的
