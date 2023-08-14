@@ -6,6 +6,7 @@ import { User } from './models/user';
 import { PRICE_SCALE } from '@/constants/common';
 import { connectPg, PgClient } from './pg';
 import { createHashPassword } from '@/utils/tools';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 /**
  * connect MongoDB and init data
@@ -92,7 +93,7 @@ async function initPg() {
     await connectPg();
     await PgClient.query(`
       CREATE EXTENSION IF NOT EXISTS vector;
-      CREATE TABLE IF NOT EXISTS modelData (
+      CREATE TABLE IF NOT EXISTS ${PgTrainingTableName} (
           id BIGSERIAL PRIMARY KEY,
           vector VECTOR(1536) NOT NULL,
           user_id VARCHAR(50) NOT NULL,
@@ -101,9 +102,9 @@ async function initPg() {
           q TEXT NOT NULL,
           a TEXT NOT NULL
       );
-      CREATE INDEX IF NOT EXISTS modelData_userId_index ON modelData USING HASH (user_id);
-      CREATE INDEX IF NOT EXISTS modelData_kbId_index ON modelData USING HASH (kb_id);
-      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON modelData (md5(q), md5(a), user_id, kb_id);
+      CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgTrainingTableName} USING HASH (user_id);
+      CREATE INDEX IF NOT EXISTS modelData_kbId_index ON ${PgTrainingTableName} USING HASH (kb_id);
+      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON ${PgTrainingTableName} (md5(q), md5(a), user_id, kb_id);
     `);
     console.log('init pg successful');
   } catch (error) {

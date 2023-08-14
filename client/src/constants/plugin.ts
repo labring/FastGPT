@@ -6,3 +6,5 @@ export const TrainingTypeMap = {
   [TrainingModeEnum.qa]: 'qa',
   [TrainingModeEnum.index]: 'index'
 };
+
+export const PgTrainingTableName = 'modeldata';
