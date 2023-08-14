@@ -120,7 +120,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
                 <MyIcon mr={1} name="overviewLight" w={'16px'} color={'green.500'} />
                 <Box>{t('dataset.System Data Queue')}</Box>
                 <MyTooltip label={t('dataset.Queue Desc')} placement={'top'}>
-                  <QuestionOutlineIcon ml={1} w={'16px'} cursor={'pointer'} />
+                  <QuestionOutlineIcon ml={1} w={'16px'} />
                 </MyTooltip>
               </Flex>
               <Box mt={1} fontWeight={'bold'}>
