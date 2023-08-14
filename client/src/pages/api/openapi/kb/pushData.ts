@@ -4,7 +4,7 @@ import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { authKb } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { TrainingModeEnum } from '@/constants/plugin';
+import { PgTrainingTableName, TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
 import { modelToolMap } from '@/utils/plugin';
@@ -129,7 +129,7 @@ export async function pushDataToKb({
         try {
           const { rows } = await PgClient.query(`
             SELECT COUNT(*) > 0 AS exists
-            FROM  modelData 
+            FROM  ${PgTrainingTableName} 
             WHERE md5(q)=md5('${q}') AND md5(a)=md5('${a}') AND user_id='${userId}' AND kb_id='${kbId}'
           `);
           const exists = rows[0]?.exists || false;

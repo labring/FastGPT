@@ -4,6 +4,7 @@ import { connectToDatabase, KB, App, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { Types } from 'mongoose';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // delete all pg data
-    await PgClient.delete('modelData', {
+    await PgClient.delete(PgTrainingTableName, {
       where: [['user_id', userId], 'AND', ['kb_id', id]]
     });
 

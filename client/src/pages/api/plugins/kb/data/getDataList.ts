@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import type { KbDataItemType } from '@/types/plugin';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -41,14 +42,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     ];
 
     const [searchRes, total] = await Promise.all([
-      PgClient.select<KbDataItemType>('modelData', {
+      PgClient.select<KbDataItemType>(PgTrainingTableName, {
         fields: ['id', 'q', 'a', 'source'],
         where,
         order: [{ field: 'id', mode: 'DESC' }],
         limit: pageSize,
         offset: pageSize * (pageNum - 1)
       }),
-      PgClient.count('modelData', {
+      PgClient.count(PgTrainingTableName, {
         fields: ['id'],
         where
       })

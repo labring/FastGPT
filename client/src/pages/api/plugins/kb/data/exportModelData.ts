@@ -3,6 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, User } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -38,16 +39,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 统计数据
-    const count = await PgClient.count('modelData', {
+    const count = await PgClient.count(PgTrainingTableName, {
       where: [['kb_id', kbId], 'AND', ['user_id', userId]]
     });
     // 从 pg 中获取所有数据
-    const pgData = await PgClient.select<{ q: string; a: string; source: string }>('modelData', {
-      where: [['kb_id', kbId], 'AND', ['user_id', userId]],
-      fields: ['q', 'a', 'source'],
-      order: [{ field: 'id', mode: 'DESC' }],
-      limit: count
-    });
+    const pgData = await PgClient.select<{ q: string; a: string; source: string }>(
+      PgTrainingTableName,
+      {
+        where: [['kb_id', kbId], 'AND', ['user_id', userId]],
+        fields: ['q', 'a', 'source'],
+        order: [{ field: 'id', mode: 'DESC' }],
+        limit: count
+      }
+    );
 
     const data: [string, string, string][] = pgData.rows.map((item) => [
       item.q.replace(/\n/g, '\\n'),
