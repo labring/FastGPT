@@ -133,7 +133,14 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
 
   return (
     <Box display={['block', 'flex']} h={['auto', '100%']}>
-      <Box flex={1} minW={['auto', '400px']} w={['100%', 0]} p={[4, 8]}>
+      <Flex
+        flexDirection={'column'}
+        flex={'1 0 0'}
+        h={'100%'}
+        minW={['auto', '400px']}
+        w={['100%', 0]}
+        p={[4, 8]}
+      >
         <FileSelect
           fileExtension={fileExtension}
           onSelectFile={onSelectFile}
@@ -147,7 +154,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
 
         {!emptyFiles && (
           <>
-            <Box py={4} maxH={'400px'}>
+            <Box py={4} px={2} maxH={'400px'} overflow={'auto'}>
               {files.map((item) => (
                 <Flex
                   key={item.id}
@@ -193,7 +200,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
             </Flex>
           </>
         )}
-      </Box>
+      </Flex>
       {!emptyFiles && (
         <Box flex={'2 0 0'} w={['100%', 0]} h={'100%'} pt={[4, 8]} overflow={'overlay'}>
           <Box px={[4, 8]} fontSize={['lg', 'xl']} fontWeight={'bold'}>
