@@ -9,7 +9,6 @@ import 'katex/dist/katex.min.css';
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
-import Link from './Link';
 import CodeLight from './CodeLight';
 
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
@@ -50,7 +49,6 @@ const Markdown = ({
 }) => {
   const components = useMemo(
     () => ({
-      a: Link,
       img: Image,
       pre: 'div',
       p: 'div',
@@ -68,6 +66,7 @@ const Markdown = ({
       rehypePlugins={[RehypeKatex]}
       // @ts-ignore
       components={components}
+      linkTarget={'_blank'}
     >
       {source}
     </ReactMarkdown>
