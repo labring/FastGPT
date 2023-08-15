@@ -63,6 +63,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   }
 
   const { filterQuoteQA, quotePrompt } = filterQuote({
+    history,
     quoteQA,
     model: modelConstantsData
   });
@@ -181,23 +182,32 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
 };
 
 function filterQuote({
+  history = [],
   quoteQA = [],
   model
 }: {
+  history: ChatProps['history'];
   quoteQA: ChatProps['quoteQA'];
   model: ChatModelItemType;
 }) {
+  // concat history quote
+  const historyQuote =
+    history[history.length - 1]?.responseData
+      ?.find((item) => item.moduleName === ChatModuleEnum.AIChat)
+      ?.quoteList?.filter((item) => !quoteQA.find((quote) => quote.id === item.id)) || [];
+  const concatQuote = quoteQA.concat(historyQuote.slice(0, 3));
+
   const sliceResult = modelToolMap.tokenSlice({
     model: model.model,
     maxToken: model.quoteMaxToken,
-    messages: quoteQA.map((item, i) => ({
+    messages: concatQuote.map((item, i) => ({
       obj: ChatRoleEnum.System,
       value: item.a ? `{instruction:${item.q},output:${item.a}}` : `{instruction:${item.q}}`
     }))
   });
 
   // slice filterSearch
-  const filterQuoteQA = quoteQA.slice(0, sliceResult.length);
+  const filterQuoteQA = concatQuote.slice(0, sliceResult.length);
 
   const quotePrompt =
     filterQuoteQA.length > 0

@@ -5,6 +5,7 @@ import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, Chat } from '@/service/mongo';
 import { Types } from 'mongoose';
 import type { ChatItemType } from '@/types/chat';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 
 export type Props = {
   chatId?: string;
@@ -55,10 +56,12 @@ export async function getChatHistory({
     {
       $project: {
         obj: '$content.obj',
-        value: '$content.value'
+        value: '$content.value',
+        [TaskResponseKeyEnum.responseData]: `$content.responseData`
       }
     }
   ]);
+  console.log(history);
 
   return { history };
 }

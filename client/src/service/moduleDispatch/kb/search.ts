@@ -9,7 +9,6 @@ import { PgTrainingTableName } from '@/constants/plugin';
 
 type KBSearchProps = {
   kbList: SelectedKbType;
-  history: ChatItemType[];
   similarity: number;
   limit: number;
   userChatInput: string;
@@ -22,13 +21,7 @@ export type KBSearchResponse = {
 };
 
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
-  const {
-    kbList = [],
-    history = [],
-    similarity = 0.8,
-    limit = 5,
-    userChatInput
-  } = props as KBSearchProps;
+  const { kbList = [], similarity = 0.8, limit = 5, userChatInput } = props as KBSearchProps;
 
   if (kbList.length === 0) {
     return Promise.reject("You didn't choose the knowledge base");

@@ -54,6 +54,7 @@ import styles from './index.module.scss';
 const textareaMinH = '22px';
 type generatingMessageProps = { text?: string; name?: string; status?: 'running' | 'finish' };
 export type StartChatFnProps = {
+  chatList: ChatSiteItemType[];
   messages: MessageItemType[];
   controller: AbortController;
   variables: Record<string, any>;
@@ -311,6 +312,7 @@ const ChatBox = (
         const messages = adaptChatItem_openAI({ messages: newChatList, reserveId: true });
 
         const { responseData } = await onStartChat({
+          chatList: newChatList,
           messages,
           controller: abortSignal,
           generatingMessage,

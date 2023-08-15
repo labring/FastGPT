@@ -4,16 +4,14 @@ import { authUser } from '@/service/utils/auth';
 import { sseErrRes } from '@/service/response';
 import { sseResponseEventEnum } from '@/constants/chat';
 import { sseResponse } from '@/service/utils/tools';
-import { type ChatCompletionRequestMessage } from 'openai';
 import { AppModuleItemType } from '@/types/app';
 import { dispatchModules } from '../openapi/v1/chat/completions';
-import { gptMessage2ChatType } from '@/utils/adapt';
 import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
+import { ChatItemType } from '@/types/chat';
 
-export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
 export type Props = {
-  history: MessageItemType[];
+  history: ChatItemType[];
   prompt: string;
   modules: AppModuleItemType[];
   variables: Record<string, any>;
@@ -51,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       variables,
       user,
       params: {
-        history: gptMessage2ChatType(history),
+        history,
         userChatInput: prompt
       },
       stream: true,
