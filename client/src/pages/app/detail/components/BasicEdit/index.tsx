@@ -572,19 +572,19 @@ const ChatTest = ({ appId }: { appId: string }) => {
   const [modules, setModules] = useState<AppModuleItemType[]>([]);
 
   const startChat = useCallback(
-    async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
+    async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
       const historyMaxLen =
         modules
           ?.find((item) => item.flowType === FlowModuleTypeEnum.historyNode)
           ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
-      const history = messages.slice(-historyMaxLen - 2, -2);
+      const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
         url: '/api/chat/chatTest',
         data: {
           history,
-          prompt: messages[messages.length - 2].content,
+          prompt: chatList[chatList.length - 2].value,
           modules,
           variables,
           appId,

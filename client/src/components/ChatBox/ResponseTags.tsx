@@ -51,7 +51,7 @@ const ResponseTags = ({
     bg: 'transparent'
   };
 
-  return (
+  return responseData.length === 0 ? null : (
     <Flex alignItems={'center'} mt={2} flexWrap={'wrap'}>
       {quoteList.length > 0 && (
         <MyTooltip label="查看引用">
