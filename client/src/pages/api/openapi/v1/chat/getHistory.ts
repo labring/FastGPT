@@ -61,7 +61,6 @@ export async function getChatHistory({
       }
     }
   ]);
-  console.log(history);
 
   return { history };
 }
