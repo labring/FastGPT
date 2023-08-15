@@ -58,7 +58,7 @@ const NodeExtract = ({
                       <Tr>
                         <Th>字段 key</Th>
                         <Th>字段描述</Th>
-                        <Th>必填</Th>
+                        <Th>必须</Th>
                         <Th></Th>
                       </Tr>
                     </Thead>

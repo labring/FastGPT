@@ -44,12 +44,16 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       id: TabEnum.bill,
       Component: <BillTable />
     },
-    {
-      icon: 'payRecordLight',
-      label: 'user.Recharge Record',
-      id: TabEnum.pay,
-      Component: <PayRecordTable />
-    },
+    ...(feConfigs?.show_userDetail
+      ? [
+          {
+            icon: 'payRecordLight',
+            label: 'user.Recharge Record',
+            id: TabEnum.pay,
+            Component: <PayRecordTable />
+          }
+        ]
+      : []),
     {
       icon: 'informLight',
       label: 'user.Notice',

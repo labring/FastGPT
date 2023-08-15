@@ -1,4 +1,4 @@
-# Sealos 快速部署 OneAPI
+# 部署 OneAPI，实现多模型
 
 无需魔法，部署即可使用
 
