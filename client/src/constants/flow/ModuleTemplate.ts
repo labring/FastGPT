@@ -278,7 +278,6 @@ export const AnswerModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: SpecialInputKeyEnum.answerText,
-      value: '',
       type: FlowInputItemTypeEnum.textarea,
       valueType: FlowValueTypeEnum.string,
       label: '回复的内容',
@@ -331,8 +330,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
       label: '系统提示词',
       description:
         '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
-      placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统',
-      value: ''
+      placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统'
     },
     Input_Template_History,
     Input_Template_UserChatInput,
@@ -393,9 +391,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       label: '提取要求描述',
       description: '写一段提取要求，告诉 AI 需要提取哪些内容',
       required: true,
-      placeholder:
-        '例如: \n1. 你是一个实验室预约助手。根据用户问题，提取出姓名、实验室号和预约时间',
-      value: ''
+      placeholder: '例如: \n1. 你是一个实验室预约助手。根据用户问题，提取出姓名、实验室号和预约时间'
     },
     Input_Template_History,
     {
