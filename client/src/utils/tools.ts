@@ -1,15 +1,21 @@
 import crypto from 'crypto';
 import { useToast } from '@/hooks/useToast';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 
 /**
  * copy text data
  */
 export const useCopyData = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
 
   return {
-    copyData: async (data: string, title: string = '复制成功', duration = 1000) => {
+    copyData: async (
+      data: string,
+      title: string | null = t('common.Copy Successful'),
+      duration = 1000
+    ) => {
       try {
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(data);

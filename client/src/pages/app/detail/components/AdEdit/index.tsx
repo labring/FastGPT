@@ -10,7 +10,7 @@ import ReactFlow, {
   Connection,
   useViewport
 } from 'reactflow';
-import { Box, Flex, IconButton, useTheme, useDisclosure, position } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import {
   edgeOptions,
@@ -33,6 +33,7 @@ import type { AppSchema } from '@/types/mongoSchema';
 import { useUserStore } from '@/store/user';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'next-i18next';
+import { useCopyData } from '@/utils/tools';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
@@ -41,6 +42,9 @@ import MyTooltip from '@/components/MyTooltip';
 import TemplateList from './components/TemplateList';
 import ChatTest, { type ChatTestComponentRef } from './components/ChatTest';
 
+const ImportSettings = dynamic(() => import('./components/ImportSettings'), {
+  ssr: false
+});
 const NodeChat = dynamic(() => import('./components/Nodes/NodeChat'), {
   ssr: false
 });
@@ -98,14 +102,17 @@ const nodeTypes = {
 const edgeTypes = {
   buttonedge: ButtonEdge
 };
-type Props = { app: AppSchema; fullScreen: boolean; onFullScreen: (val: boolean) => void };
+type Props = { app: AppSchema; onCloseSettings: () => void };
 
-const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
+const AppEdit = ({ app, onCloseSettings }: Props) => {
   const theme = useTheme();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { copyData } = useCopyData();
+
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const ChatTestRef = useRef<ChatTestComponentRef>(null);
+
   const { updateAppDetail } = useUserStore();
   const { x, y, zoom } = useViewport();
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
@@ -115,6 +122,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
     onOpen: onOpenTemplate,
     onClose: onCloseTemplate
   } = useDisclosure();
+  const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
   const [testModules, setTestModules] = useState<AppModuleItemType[]>();
 
@@ -398,15 +406,15 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   });
 
   const initData = useCallback(
-    (app: AppSchema) => {
+    (modules: AppModuleItemType[]) => {
       const edges = appModule2FlowEdge({
-        modules: app.modules,
+        modules,
         onDelete: onDelConnect
       });
       setEdges(edges);
 
       setNodes(
-        app.modules.map((item) =>
+        modules.map((item) =>
           appModule2FlowNode({
             item,
             onChangeNode,
@@ -434,8 +442,8 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
   );
 
   useEffect(() => {
-    initData(JSON.parse(JSON.stringify(app)));
-  }, [app]);
+    initData(JSON.parse(JSON.stringify(app.modules)));
+  }, [app.modules]);
 
   return (
     <>
@@ -447,49 +455,53 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         alignItems={'center'}
         userSelect={'none'}
       >
-        {fullScreen ? (
-          <>
-            <MyTooltip label={'返回'} offset={[10, 10]}>
-              <IconButton
-                size={'sm'}
-                icon={<MyIcon name={'back'} w={'14px'} />}
-                borderRadius={'md'}
-                borderColor={'myGray.300'}
-                variant={'base'}
-                aria-label={''}
-                onClick={() => {
-                  onFullScreen(false);
-                  onFixView();
-                }}
-              />
-            </MyTooltip>
-            <Box ml={5} fontSize={['lg', '2xl']} flex={1}>
-              {app.name}
-            </Box>
-          </>
-        ) : (
-          <>
-            <Box fontSize={['lg', '2xl']} flex={1}>
-              应用编排
-            </Box>
-            <MyTooltip label={'全屏'}>
-              <IconButton
-                mr={6}
-                icon={<MyIcon name={'fullScreenLight'} w={['14px', '16px']} />}
-                borderRadius={'lg'}
-                variant={'base'}
-                aria-label={'fullScreenLight'}
-                onClick={() => {
-                  onFullScreen(true);
-                  onFixView();
-                }}
-              />
-            </MyTooltip>
-          </>
-        )}
+        <MyTooltip label={'返回'} offset={[10, 10]}>
+          <IconButton
+            size={'sm'}
+            icon={<MyIcon name={'back'} w={'14px'} />}
+            borderRadius={'md'}
+            borderColor={'myGray.300'}
+            variant={'base'}
+            aria-label={''}
+            onClick={() => {
+              onCloseSettings();
+              onFixView();
+            }}
+          />
+        </MyTooltip>
+        <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
+          {app.name}
+        </Box>
+
+        <MyTooltip label={t('app.Import Configs')}>
+          <IconButton
+            mr={[3, 6]}
+            icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
+            borderRadius={'lg'}
+            variant={'base'}
+            aria-label={'save'}
+            onClick={onOpenImport}
+          />
+        </MyTooltip>
+        <MyTooltip label={t('app.Export Configs')}>
+          <IconButton
+            mr={[3, 6]}
+            icon={<MyIcon name={'export'} w={['14px', '16px']} />}
+            borderRadius={'lg'}
+            variant={'base'}
+            aria-label={'save'}
+            onClick={() =>
+              copyData(
+                JSON.stringify(flow2AppModules(), null, 2),
+                t('app.Export Config Successful')
+              )
+            }
+          />
+        </MyTooltip>
+
         {testModules ? (
           <IconButton
-            mr={6}
+            mr={[3, 6]}
             icon={<SmallCloseIcon fontSize={'25px'} />}
             variant={'base'}
             color={'myGray.600'}
@@ -500,7 +512,7 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
         ) : (
           <MyTooltip label={'测试对话'}>
             <IconButton
-              mr={6}
+              mr={[3, 6]}
               icon={<MyIcon name={'chat'} w={['14px', '16px']} />}
               borderRadius={'lg'}
               aria-label={'save'}
@@ -591,20 +603,24 @@ const AppEdit = ({ app, fullScreen, onFullScreen }: Props) => {
           onClose={() => setTestModules(undefined)}
         />
       </Box>
+      {isOpenImport && (
+        <ImportSettings
+          onClose={onCloseImport}
+          onSuccess={(data) => {
+            setEdges([]);
+            setNodes([]);
+            setTimeout(() => {
+              initData(data);
+            }, 10);
+          }}
+        />
+      )}
     </>
   );
 };
 
 const Flow = (data: Props) => (
-  <Box
-    h={'100%'}
-    position={data.fullScreen ? 'fixed' : 'relative'}
-    zIndex={999}
-    top={0}
-    left={0}
-    right={0}
-    bottom={0}
-  >
+  <Box h={'100%'} position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
     <ReactFlowProvider>
       <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
         {!!data.app._id && <AppEdit {...data} />}
