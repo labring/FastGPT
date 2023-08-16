@@ -56,7 +56,7 @@ const NodeHttp = ({
                 moduleId,
                 type: 'outputs',
                 key,
-                value: outputs.concat([
+                value: [
                   {
                     key,
                     label: `出参${outputs.length}`,
@@ -65,7 +65,7 @@ const NodeHttp = ({
                     edit: true,
                     targets: []
                   }
-                ])
+                ].concat(outputs as any)
               });
             }}
           >

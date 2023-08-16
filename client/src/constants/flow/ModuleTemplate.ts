@@ -158,8 +158,7 @@ export const ChatModule: FlowModuleTemplateType = {
       label: '系统提示词',
       valueType: FlowValueTypeEnum.string,
       description: ChatModelSystemTip,
-      placeholder: ChatModelSystemTip,
-      value: ''
+      placeholder: ChatModelSystemTip
     },
     {
       key: 'limitPrompt',
@@ -167,8 +166,7 @@ export const ChatModule: FlowModuleTemplateType = {
       valueType: FlowValueTypeEnum.string,
       label: '限定词',
       description: ChatModelLimitTip,
-      placeholder: ChatModelLimitTip,
-      value: ''
+      placeholder: ChatModelLimitTip
     },
     Input_Template_TFSwitch,
     {
