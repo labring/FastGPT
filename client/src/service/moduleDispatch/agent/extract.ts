@@ -25,7 +25,7 @@ export type Response = {
 
 const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_extract_data';
-const maxTokens = 3000;
+const maxTokens = 4000;
 
 export async function dispatchContentExtract({
   userOpenaiAccount,
@@ -66,7 +66,7 @@ export async function dispatchContentExtract({
     };
   });
 
-  //   function body
+  // function body
   const agentFunction = {
     name: agentFunName,
     description: `${description}\n如果内容不存在，返回空字符串。`,
