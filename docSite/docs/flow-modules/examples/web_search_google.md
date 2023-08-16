@@ -440,7 +440,7 @@ Copy the following configuration, click the Import button in the upper right cor
 ]
 ```
 
-**Process Description**
+## Process Description
 
 1. The extraction module extracts the user's question into search keywords.
 2. The search keywords are passed to the HTTP module.

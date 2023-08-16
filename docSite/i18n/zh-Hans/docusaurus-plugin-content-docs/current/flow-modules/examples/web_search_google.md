@@ -53,7 +53,7 @@ export default async function (ctx: FunctionContext) {
 }
 ```
 
-## 编排
+## 模块编排
 
 复制下面配置，点击高级编排右上角的导入按键，导入该配置，导入后将接口地址复制到 【HTTP 模块】。
 
@@ -441,7 +441,7 @@ export default async function (ctx: FunctionContext) {
 ]
 ```
 
-**流程说明**
+## 流程说明
 
 1. 提取模块将用户的问题提取成搜索关键词
 2. 将搜索关键词传入 HTTP 模块
