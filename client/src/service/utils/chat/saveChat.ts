@@ -23,54 +23,68 @@ export async function saveChat({
   shareId,
   content
 }: Props) {
-  const chatHistory = await Chat.findOne(
-    {
-      chatId,
-      userId
-    },
-    '_id'
-  );
-
-  const promise = [];
-
-  if (chatHistory) {
-    promise.push(
-      Chat.updateOne(
-        { chatId, userId },
-        {
-          $push: {
-            content: {
-              $each: content,
-              $slice: -50
-            }
-          },
-          title: content[0].value.slice(0, 20),
-          updateTime: new Date()
-        }
-      )
-    );
-  } else {
-    promise.push(
-      Chat.create({
+  try {
+    const chatHistory = await Chat.findOne(
+      {
         chatId,
-        userId,
-        appId,
-        variables,
-        title: content[0].value.slice(0, 20),
-        source,
-        shareId,
-        content: content
-      })
+        userId
+      },
+      '_id'
+    );
+
+    const promise = [];
+
+    if (chatHistory) {
+      promise.push(
+        Chat.updateOne(
+          { chatId, userId },
+          {
+            $push: {
+              content: {
+                $each: content,
+                $slice: -40
+              }
+            },
+            title: content[0].value.slice(0, 20),
+            updateTime: new Date()
+          }
+        )
+      );
+    } else {
+      promise.push(
+        Chat.create({
+          chatId,
+          userId,
+          appId,
+          variables,
+          title: content[0].value.slice(0, 20),
+          source,
+          shareId,
+          content: content
+        })
+      );
+    }
+
+    if (isOwner && source === ChatSourceEnum.online) {
+      promise.push(
+        App.findByIdAndUpdate(appId, {
+          updateTime: new Date()
+        })
+      );
+    }
+
+    await Promise.all(promise);
+  } catch (error) {
+    Chat.updateOne(
+      { chatId, userId },
+      {
+        $push: {
+          content: {
+            $each: [],
+            $slice: -10
+          }
+        }
+      }
     );
   }
-
-  if (isOwner && source === ChatSourceEnum.online) {
-    promise.push(
-      App.findByIdAndUpdate(appId, {
-        updateTime: new Date()
-      })
-    );
-  }
-
-  await Promise.all(promise);
 }
