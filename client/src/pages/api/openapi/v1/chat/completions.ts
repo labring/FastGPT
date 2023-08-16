@@ -28,7 +28,7 @@ import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
 
-export type MessageItemType = ChatCompletionRequestMessage & { _id?: string };
+export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
   appId?: string;
@@ -172,7 +172,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         content: [
           prompt,
           {
-            _id: messages[messages.length - 1]._id,
+            dataId: messages[messages.length - 1].dataId,
             obj: ChatRoleEnum.AI,
             value: answerText,
             responseData

@@ -97,6 +97,7 @@ export interface ChatSchema {
 }
 
 export interface ChatItemSchema extends ChatItemType {
+  dataId: string;
   chatId: string;
   userId: string;
   appId: string;

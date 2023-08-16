@@ -1,8 +1,15 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { ChatItemSchema as ChatItemType } from '@/types/mongoSchema';
 import { ChatRoleMap, TaskResponseKeyEnum } from '@/constants/chat';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
-const ChatSchema = new Schema({
+const ChatItemSchema = new Schema({
+  dataId: {
+    type: String,
+    require: true,
+    default: () => nanoid()
+  },
   chatId: {
     type: String,
     require: true
@@ -54,10 +61,12 @@ const ChatSchema = new Schema({
 });
 
 try {
-  ChatSchema.index({ userId: 1 });
-  ChatSchema.index({ appId: 1 });
+  ChatItemSchema.index({ time: -1 });
+  ChatItemSchema.index({ userId: 1 });
+  ChatItemSchema.index({ appId: 1 });
 } catch (error) {
   console.log(error);
 }
 
-export const ChatItem: Model<ChatItemType> = models['chatItem'] || model('chatItem', ChatSchema);
+export const ChatItem: Model<ChatItemType> =
+  models['chatItem'] || model('chatItem', ChatItemSchema);

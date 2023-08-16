@@ -1,11 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Chat } from '@/service/mongo';
+import { Chat, ChatItem } from '@/service/mongo';
 import type { InitChatResponse } from '@/api/response/chat';
 import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';
-import mongoose from 'mongoose';
 import type { ChatSchema } from '@/types/mongoSchema';
 import { getSpecialModule, getChatModelNameList } from '@/components/ChatBox/utils';
 import { TaskResponseKeyEnum } from '@/constants/chat';
@@ -27,8 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    await connectToDatabase();
-
     // 校验使用权限
     const app = (
       await authApp({
@@ -39,48 +36,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     ).app;
 
-    // 历史记录
+    // get app and history
     const { chat, history = [] }: { chat?: ChatSchema; history?: ChatItemType[] } =
       await (async () => {
         if (chatId) {
           // auth chatId
           const [chat, history] = await Promise.all([
-            Chat.findOne({
-              chatId,
-              userId
-            }),
-            Chat.aggregate([
+            Chat.findOne(
               {
-                $match: {
-                  chatId,
-                  userId: new mongoose.Types.ObjectId(userId)
-                }
+                chatId,
+                userId
               },
+              'title variables'
+            ),
+            ChatItem.find(
               {
-                $project: {
-                  content: {
-                    $slice: ['$content', -30] // 返回 content 数组的最后 30 个元素
-                  }
-                }
+                chatId,
+                userId
               },
-              { $unwind: '$content' },
-              {
-                $project: {
-                  _id: '$content._id',
-                  obj: '$content.obj',
-                  value: '$content.value',
-                  [TaskResponseKeyEnum.responseData]: `$content.${TaskResponseKeyEnum.responseData}`
-                }
-              }
-            ])
+              `dataId obj value ${TaskResponseKeyEnum.responseData}`
+            )
+              .sort({ _id: -1 })
+              .limit(30)
           ]);
           if (!chat) {
             throw new Error('聊天框不存在');
           }
-          return { history, chat };
+          history.reverse();
+          return { app, history, chat };
         }
         return {};
       })();
+
+    if (!app) {
+      throw new Error('Auth App Error');
+    }
 
     const isOwner = String(app.userId) === userId;
 
@@ -108,3 +98,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    }
+  }
+};

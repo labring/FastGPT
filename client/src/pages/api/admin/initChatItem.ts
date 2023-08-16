@@ -3,6 +3,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, Chat, ChatItem } from '@/service/mongo';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -11,18 +13,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { limit = 1000 } = req.body as { limit: number };
     let skip = 0;
+
     const total = await Chat.countDocuments({
       content: { $exists: true, $not: { $size: 0 } },
       isInit: { $ne: true }
     });
+    const totalChat = await Chat.aggregate([
+      {
+        $project: {
+          contentLength: { $size: '$content' }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalLength: { $sum: '$contentLength' }
+        }
+      }
+    ]);
+
+    console.log('chatLen:', total, totalChat);
+
     let promise = Promise.resolve();
-    console.log(total);
 
     for (let i = 0; i < total; i += limit) {
       const skipVal = skip;
       skip += limit;
       promise = promise
-        .then(() => init(limit, skipVal))
+        .then(() => init(limit))
         .then(() => {
           console.log(skipVal);
         });
@@ -39,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function init(limit: number, skip: number) {
+async function init(limit: number) {
   // 遍历 app
   const chats = await Chat.find(
     {
@@ -48,30 +66,34 @@ async function init(limit: number, skip: number) {
     },
     '_id userId appId chatId content'
   )
-    .limit(limit)
-    .skip(skip);
+    .sort({ updateTime: -1 })
+    .limit(limit);
 
   await Promise.all(
-    chats
-      .map((chat) => {
-        const inserts = chat.content
-          .map((item) => ({
-            chatId: chat.chatId,
-            userId: chat.userId,
-            appId: chat.appId,
-            obj: item.obj,
-            value: item.value,
-            responseData: item.responseData
-          }))
-          .filter((item) => item.chatId && item.userId && item.appId && item.obj && item.value);
+    chats.map(async (chat) => {
+      const inserts = chat.content
+        .map((item) => ({
+          dataId: nanoid(),
+          chatId: chat.chatId,
+          userId: chat.userId,
+          appId: chat.appId,
+          obj: item.obj,
+          value: item.value,
+          responseData: item.responseData
+        }))
+        .filter((item) => item.chatId && item.userId && item.appId && item.obj && item.value)
+        .slice(-30);
 
-        return [
-          Chat.findByIdAndUpdate(chat._id, {
-            isInit: true
-          }),
-          ChatItem.insertMany(inserts)
-        ];
-      })
-      .flat()
+      try {
+        await Promise.all(inserts.map((item) => ChatItem.create(item)));
+        await Chat.findByIdAndUpdate(chat._id, {
+          isInit: true
+        });
+      } catch (error) {
+        console.log(error);
+
+        await ChatItem.deleteMany({ chatId: chat.chatId });
+      }
+    })
   );
 }
