@@ -11,9 +11,15 @@
     "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
+    "Export Config Successful": "The configuration has been copied. Please check for important data",
+    "Export Configs": "Export Configs",
+    "Import Config": "Import Config",
+    "Import Config Failed": "Failed to import the configuration, please ensure that the configuration is normal!",
+    "Import Configs": "Import Configs",
     "Input Field Settings": "Input Field Settings",
     "My Apps": "My Apps",
-    "Output Field Settings": "Output Field Settings"
+    "Output Field Settings": "Output Field Settings",
+    "Paste Config": "Paste Config"
   },
   "chat": {
     "Complete Response": "Complete Response",
@@ -31,12 +37,14 @@
     "Cancel": "Cancel",
     "Collect": "Collect",
     "Copy": "Copy",
+    "Copy Successful": "Copy Successful",
     "Course": "",
     "Delete": "Delete",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
-    "Output": "Output"
+    "Output": "Output",
+    "export": ""
   },
   "dataset": {
     "Confirm to delete the data": "Confirm to delete the data?",
