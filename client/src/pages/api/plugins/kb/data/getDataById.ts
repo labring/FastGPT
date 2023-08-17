@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import type { KbDataItemType } from '@/types/plugin';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 export type Response = {
   id: string;
@@ -28,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const where: any = [['user_id', userId], 'AND', ['id', dataId]];
 
-    const searchRes = await PgClient.select<KbDataItemType>('modelData', {
+    const searchRes = await PgClient.select<KbDataItemType>(PgTrainingTableName, {
       fields: ['kb_id', 'id', 'q', 'a', 'source'],
       where,
       limit: 1

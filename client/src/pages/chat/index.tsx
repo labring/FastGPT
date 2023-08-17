@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { getInitChatSiteInfo, delChatRecordByIndex, putChatHistory } from '@/api/chat';
+import { getInitChatSiteInfo, delChatRecordById, putChatHistory } from '@/api/chat';
 import {
   Box,
   Flex,
@@ -128,7 +128,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
           ...state,
           history: state.history.filter((_, i) => i !== index)
         }));
-        await delChatRecordByIndex({ chatId, contentId });
+        await delChatRecordById({ chatId, contentId });
       } catch (err) {
         console.log(err);
       }

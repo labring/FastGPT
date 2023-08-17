@@ -5,10 +5,10 @@ import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice } from '@/service/events/pushBill';
 import type { SelectedKbType } from '@/types/plugin';
 import type { QuoteItemType } from '@/types/chat';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 type KBSearchProps = {
   kbList: SelectedKbType;
-  history: ChatItemType[];
   similarity: number;
   limit: number;
   userChatInput: string;
@@ -21,13 +21,7 @@ export type KBSearchResponse = {
 };
 
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
-  const {
-    kbList = [],
-    history = [],
-    similarity = 0.8,
-    limit = 5,
-    userChatInput
-  } = props as KBSearchProps;
+  const { kbList = [], similarity = 0.8, limit = 5, userChatInput } = props as KBSearchProps;
 
   if (kbList.length === 0) {
     return Promise.reject("You didn't choose the knowledge base");
@@ -48,7 +42,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   const res: any = await PgClient.query(
     `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
-    select kb_id,id,q,a,source from modelData where kb_id IN (${kbList
+    select kb_id,id,q,a,source from ${PgTrainingTableName} where kb_id IN (${kbList
       .map((item) => `'${item.kbId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]

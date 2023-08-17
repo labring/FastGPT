@@ -90,6 +90,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     maxToken,
     filterMessages
   });
+  // console.log(messages);
 
   // FastGpt temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
@@ -190,7 +191,7 @@ function filterQuote({
   const sliceResult = modelToolMap.tokenSlice({
     model: model.model,
     maxToken: model.quoteMaxToken,
-    messages: quoteQA.map((item, i) => ({
+    messages: quoteQA.map((item) => ({
       obj: ChatRoleEnum.System,
       value: item.a ? `{instruction:${item.q},output:${item.a}}` : `{instruction:${item.q}}`
     }))

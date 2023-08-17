@@ -92,7 +92,16 @@ export interface ChatSchema {
   variables: Record<string, any>;
   source: `${ChatSourceEnum}`;
   shareId?: string;
+  isInit: boolean;
   content: ChatItemType[];
+}
+
+export interface ChatItemSchema extends ChatItemType {
+  dataId: string;
+  chatId: string;
+  userId: string;
+  appId: string;
+  time: Date;
 }
 
 export type BillListItemType = {

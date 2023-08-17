@@ -33,7 +33,7 @@ export const gptMessage2ChatType = (messages: MessageItemType[]): ChatItemType[]
   };
 
   return messages.map((item) => ({
-    _id: item._id,
+    dataId: item.dataId,
     obj: roleMap[item.role],
     value: item.content || ''
   }));

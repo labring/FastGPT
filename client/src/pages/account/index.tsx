@@ -11,6 +11,7 @@ import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/utils/i18n';
+import { feConfigs } from '@/store/static';
 
 const BillTable = dynamic(() => import('./components/BillTable'), {
   ssr: false
@@ -44,12 +45,16 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       id: TabEnum.bill,
       Component: <BillTable />
     },
-    {
-      icon: 'payRecordLight',
-      label: 'user.Recharge Record',
-      id: TabEnum.pay,
-      Component: <PayRecordTable />
-    },
+    ...(feConfigs?.show_userDetail
+      ? [
+          {
+            icon: 'payRecordLight',
+            label: 'user.Recharge Record',
+            id: TabEnum.pay,
+            Component: <PayRecordTable />
+          }
+        ]
+      : []),
     {
       icon: 'informLight',
       label: 'user.Notice',

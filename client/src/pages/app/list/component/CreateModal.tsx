@@ -39,7 +39,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   const { isPc } = useGlobalStore();
   const { register, setValue, getValues, handleSubmit } = useForm<FormType>({
     defaultValues: {
-      avatar: '/icon/logo.png',
+      avatar: '/icon/logo.svg',
       name: '',
       templateId: appTemplates[0].id
     }

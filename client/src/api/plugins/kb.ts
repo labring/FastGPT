@@ -60,6 +60,9 @@ export const getTrainingData = (data: { kbId: string; init: boolean }) =>
     vectorListLen: number;
   }>(`/plugins/kb/data/getTrainingData`, data);
 
+/* get length of system training queue */
+export const getTrainingQueueLen = () => GET<number>(`/plugins/kb/data/getQueueLen`);
+
 export const getKbDataItemById = (dataId: string) =>
   GET<KbDataItemType>(`/plugins/kb/data/getDataById`, { dataId });
 

@@ -202,7 +202,14 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
 
   return (
     <Box display={['block', 'flex']} h={['auto', '100%']}>
-      <Box flex={1} minW={['auto', '400px']} w={['100%', 0]} p={[4, 8]}>
+      <Flex
+        flexDirection={'column'}
+        flex={'1 0 0'}
+        h={'100%'}
+        minW={['auto', '400px']}
+        w={['100%', 0]}
+        p={[4, 8]}
+      >
         <FileSelect
           fileExtension={fileExtension}
           onSelectFile={onSelectFile}
@@ -212,7 +219,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
 
         {!emptyFiles && (
           <>
-            <Box py={4} maxH={'400px'}>
+            <Box py={4} px={2} maxH={'400px'} overflow={'auto'}>
               {files.map((item) => (
                 <Flex
                   key={item.id}
@@ -314,7 +321,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
             </Flex>
           </>
         )}
-      </Box>
+      </Flex>
       {!emptyFiles && (
         <Box flex={'2 0 0'} w={['100%', 0]} h={'100%'}>
           {previewFile ? (
@@ -373,7 +380,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
                 {files.map((file) =>
                   file.chunks.map((item, i) => (
                     <Box
-                      key={item}
+                      key={i}
                       py={4}
                       bg={'myWhite.500'}
                       my={2}

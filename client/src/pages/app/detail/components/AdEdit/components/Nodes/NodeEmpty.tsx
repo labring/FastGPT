@@ -3,7 +3,7 @@ import { NodeProps } from 'reactflow';
 import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@/types/flow';
 
-const NodeAnswer = ({ data: { ...props } }: NodeProps<FlowModuleItemType>) => {
-  return <NodeCard {...props}></NodeCard>;
+const NodeAnswer = ({ data }: NodeProps<FlowModuleItemType>) => {
+  return <NodeCard {...data}></NodeCard>;
 };
 export default React.memo(NodeAnswer);

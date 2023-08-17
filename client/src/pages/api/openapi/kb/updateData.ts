@@ -5,6 +5,7 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { KB, connectToDatabase } from '@/service/mongo';
 import { getVector } from '../plugin/vector';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 export type Props = {
   dataId: string;
@@ -46,7 +47,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     })();
 
     // 更新 pg 内容.仅修改a，不需要更新向量。
-    await PgClient.update('modelData', {
+    await PgClient.update(PgTrainingTableName, {
       where: [['id', dataId], 'AND', ['user_id', userId]],
       values: [
         { key: 'source', value: '手动修改' },

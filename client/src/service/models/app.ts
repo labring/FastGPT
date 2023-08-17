@@ -18,7 +18,7 @@ const AppSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: '/icon/logo.png'
+    default: '/icon/logo.svg'
   },
   intro: {
     type: String,

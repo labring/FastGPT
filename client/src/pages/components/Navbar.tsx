@@ -84,7 +84,7 @@ const Navbar = () => {
       h={isOpenMenu ? '100vh' : 'auto'}
     >
       <Flex maxW={'1300px'} m={'auto'} alignItems={'center'}>
-        <Avatar src="/icon/logo.png" w={['30px', '38px']} />
+        <Avatar src="/icon/logo.svg" w={['30px', '38px']} />
         <Box
           className="textlg"
           fontSize={['3xl', '4xl']}

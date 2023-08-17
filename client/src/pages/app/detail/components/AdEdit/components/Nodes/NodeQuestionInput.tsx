@@ -8,11 +8,9 @@ import { SystemInputEnum } from '@/constants/app';
 import { FlowValueTypeEnum } from '@/constants/flow';
 import SourceHandle from '../render/SourceHandle';
 
-const QuestionInputNode = ({
-  data: { inputs, outputs, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const QuestionInputNode = ({ data }: NodeProps<FlowModuleItemType>) => {
   return (
-    <NodeCard minW={'240px'} {...props}>
+    <NodeCard minW={'240px'} {...data}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'} textAlign={'end'}>
         <Box position={'relative'}>
           用户问题

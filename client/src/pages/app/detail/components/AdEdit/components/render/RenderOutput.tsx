@@ -85,7 +85,14 @@ const Label = ({
                 value: outputs.map((output) => (output.key === outputKey ? data : output))
               });
             } else {
-              const storeOutputs = outputs.filter((output) => output.key !== editField.key);
+              let index = 0;
+              const storeOutputs = outputs.filter((output, i) => {
+                if (output.key !== editField.key) {
+                  return true;
+                }
+                index = i;
+                return false;
+              });
 
               onChangeNode({
                 moduleId,
@@ -94,11 +101,13 @@ const Label = ({
                 value: storeOutputs
               });
               setTimeout(() => {
+                storeOutputs.splice(index, 0, data);
+                console.log(index, storeOutputs);
                 onChangeNode({
                   moduleId,
                   type: 'outputs',
                   key: '',
-                  value: storeOutputs.concat(data)
+                  value: [...storeOutputs]
                 });
               }, 10);
             }

@@ -171,11 +171,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
           {currentTab === TabEnum.basicEdit && <BasicEdit appId={appId} />}
           {currentTab === TabEnum.adEdit && appDetail && (
-            <AdEdit
-              app={appDetail}
-              fullScreen={true}
-              onFullScreen={() => setCurrentTab(TabEnum.basicEdit)}
-            />
+            <AdEdit app={appDetail} onCloseSettings={() => setCurrentTab(TabEnum.basicEdit)} />
           )}
           {currentTab === TabEnum.API && <API appId={appId} />}
           {currentTab === TabEnum.outLink && <OutLink appId={appId} />}

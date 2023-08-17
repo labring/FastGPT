@@ -1,5 +1,5 @@
 <div align="center">
-<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.png" width="100" height="100" alt="fastgpt logo"></a>
+<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 

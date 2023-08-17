@@ -11,11 +11,19 @@
     "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
+    "Copy Module Config": "Copy config",
+    "Export Config Successful": "The configuration has been copied. Please check for important data",
+    "Export Configs": "Export Configs",
+    "Import Config": "Import Config",
+    "Import Config Failed": "Failed to import the configuration, please ensure that the configuration is normal!",
+    "Import Configs": "Import Configs",
     "Input Field Settings": "Input Field Settings",
     "My Apps": "My Apps",
-    "Output Field Settings": "Output Field Settings"
+    "Output Field Settings": "Output Field Settings",
+    "Paste Config": "Paste Config"
   },
   "chat": {
+    "Complete Response": "Complete Response",
     "Confirm to clear history": "Confirm to clear history?",
     "Exit Chat": "Exit",
     "History": "History",
@@ -30,12 +38,19 @@
     "Cancel": "Cancel",
     "Collect": "Collect",
     "Copy": "Copy",
+    "Copy Successful": "Copy Successful",
     "Course": "",
     "Delete": "Delete",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
-    "Output": "Output"
+    "Output": "Output",
+    "export": ""
+  },
+  "dataset": {
+    "Confirm to delete the data": "Confirm to delete the data?",
+    "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
+    "System Data Queue": "Data Queue"
   },
   "file": {
     "Click to download CSV template": "Click to download CSV template",

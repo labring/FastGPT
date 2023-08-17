@@ -1,7 +1,7 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { ChatSchema as ChatType } from '@/types/mongoSchema';
 import { ChatRoleMap, TaskResponseKeyEnum } from '@/constants/chat';
-import { ChatSourceEnum, ChatSourceMap } from '@/constants/chat';
+import { ChatSourceMap } from '@/constants/chat';
 
 const ChatSchema = new Schema({
   chatId: {
@@ -44,6 +44,10 @@ const ChatSchema = new Schema({
   },
   shareId: {
     type: String
+  },
+  isInit: {
+    type: Boolean,
+    default: false
   },
   content: {
     type: [

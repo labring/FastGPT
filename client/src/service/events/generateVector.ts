@@ -26,7 +26,7 @@ export async function generateVector(): Promise<any> {
     const data = await TrainingData.findOneAndUpdate(
       {
         mode: TrainingModeEnum.index,
-        lockTime: { $lte: new Date(Date.now() - 2 * 60 * 1000) }
+        lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
       },
       {
         lockTime: new Date()
@@ -134,12 +134,6 @@ export async function generateVector(): Promise<any> {
       );
       return generateVector();
     }
-
-    // unlock
-    err.response?.statusText !== 'Too Many Requests' &&
-      (await TrainingData.findByIdAndUpdate(trainingId, {
-        lockTime: new Date('2000/1/1')
-      }));
 
     setTimeout(() => {
       generateVector();

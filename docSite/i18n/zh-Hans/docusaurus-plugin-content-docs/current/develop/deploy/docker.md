@@ -37,7 +37,7 @@ docker-compose -v
 version: '3.3'
 services:
   pg:
-    image: ankane/pgvector:v0.4.2 # git
+    image: ankane/pgvector:v0.4.2 # docker
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
     container_name: pg
     restart: always
@@ -70,7 +70,7 @@ services:
   fastgpt:
     container_name: fastgpt
     # image: c121914yu/fast-gpt:latest # docker hub
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+    image: ghcr.io/labring/fastgpt:latest # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -89,7 +89,8 @@ services:
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
       # mongo 配置，不需要改
-      - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
+      - MONGODB_URI=mongodb://username:password@mongo:27017 # 如果这个连不上，尝试下面的
+      # - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
       - MONGODB_NAME=fastgpt
       # pg配置.
       - PG_HOST=pg
@@ -136,7 +137,7 @@ volumes:
 fastgpt:
 # image: ghcr.io/c121914yu/fastgpt:latest # github
 # image: c121914yu/fast-gpt:latest # docker hub
-image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+image: ghcr.io/labring/fastgpt:latest # 阿里云
 network_mode: host
 restart: always
 container_name: fastgpt
@@ -152,7 +153,8 @@ environment:
     # root key, 最高权限，可以内部接口互相调用
     - ROOT_KEY=root_key
     # mongo 配置，不需要改
-    - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
+    - MONGODB_URI=mongodb://username:password@0.0.0.0:27017
+    # - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
     - MONGODB_NAME=fastgpt
     # pg 配置
     - PG_HOST=0.0.0.0

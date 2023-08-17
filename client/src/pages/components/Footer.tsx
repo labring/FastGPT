@@ -84,7 +84,7 @@ const Footer = () => {
     >
       <Box flex={1}>
         <Flex alignItems={'center'}>
-          <Avatar src="/icon/logo.png" w={['24px', '30px']} />
+          <Avatar src="/icon/logo.svg" w={['24px', '30px']} />
           <Box
             className="textlg"
             fontSize={['xl', '2xl']}

@@ -26,6 +26,12 @@ const PayRecordTable = () => {
   const [payOrders, setPayOrders] = useState<PaySchema[]>([]);
   const { toast } = useToast();
 
+  const { isInitialLoading, refetch } = useQuery(['initPayOrder'], getPayOrders, {
+    onSuccess(res) {
+      setPayOrders(res);
+    }
+  });
+
   const handleRefreshPayOrder = useCallback(
     async (payId: string) => {
       setIsLoading(true);
@@ -36,8 +42,6 @@ const PayRecordTable = () => {
           title: data,
           status: 'success'
         });
-        const res = await getPayOrders();
-        setPayOrders(res);
       } catch (error: any) {
         toast({
           title: error?.message,
@@ -45,17 +49,14 @@ const PayRecordTable = () => {
         });
         console.log(error);
       }
+      try {
+        refetch();
+      } catch (error) {}
 
       setIsLoading(false);
     },
-    [setIsLoading, toast]
+    [refetch, setIsLoading, toast]
   );
-
-  const { isInitialLoading } = useQuery(['initPayOrder'], getPayOrders, {
-    onSuccess(res) {
-      setPayOrders(res);
-    }
-  });
 
   return (
     <Box position={'relative'} h={'100%'}>

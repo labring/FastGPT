@@ -6,7 +6,7 @@ import { ClassifyQuestionAgentItemType } from './app';
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
 export type ChatItemType = {
-  _id?: string;
+  dataId?: string;
   obj: `${ChatRoleEnum}`;
   value: string;
   [TaskResponseKeyEnum.responseData]?: ChatHistoryItemResType[];

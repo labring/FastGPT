@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 export const connectPg = async () => {
   if (global.pgClient) {
@@ -173,7 +174,7 @@ export const insertKbItem = ({
     source?: string;
   }[];
 }) => {
-  return PgClient.insert('modelData', {
+  return PgClient.insert(PgTrainingTableName, {
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },

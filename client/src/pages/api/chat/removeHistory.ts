@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Chat } from '@/service/mongo';
+import { connectToDatabase, Chat, ChatItem } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 
 type Props = {
@@ -17,16 +17,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     if (chatId) {
-      await Chat.findOneAndRemove({
-        chatId,
-        userId
-      });
+      await Promise.all([
+        Chat.findOneAndRemove({
+          chatId,
+          userId
+        }),
+        ChatItem.deleteMany({
+          userId,
+          chatId
+        })
+      ]);
     }
     if (appId) {
-      await Chat.deleteMany({
-        appId,
-        userId
-      });
+      await Promise.all([
+        Chat.deleteMany({
+          appId,
+          userId
+        }),
+        ChatItem.deleteMany({
+          userId,
+          appId
+        })
+      ]);
     }
 
     jsonRes(res);
