@@ -182,8 +182,9 @@ export const ChatModule: FlowModuleTemplateType = {
     {
       key: TaskResponseKeyEnum.answerText,
       label: '模型回复',
-      description: '直接响应，无需配置',
-      type: FlowOutputItemTypeEnum.hidden,
+      description: '如果外接了内容，会在回复结束时自动添加\n\n',
+      valueType: FlowValueTypeEnum.string,
+      type: FlowOutputItemTypeEnum.source,
       targets: []
     },
     {
@@ -285,7 +286,16 @@ export const AnswerModule: FlowModuleTemplateType = {
         '可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容'
     }
   ],
-  outputs: []
+  outputs: [
+    {
+      key: 'finish',
+      label: '回复结束',
+      description: '回复完成后触发',
+      valueType: FlowValueTypeEnum.boolean,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    }
+  ]
 };
 export const TFSwitchModule: FlowModuleTemplateType = {
   logo: '',

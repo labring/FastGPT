@@ -8,13 +8,9 @@ export const connectPg = async () => {
   }
 
   global.pgClient = new Pool({
-    host: process.env.PG_HOST,
-    port: process.env.PG_PORT ? +process.env.PG_PORT : 5432,
-    user: process.env.PG_USER,
-    password: process.env.PG_PASSWORD,
-    database: process.env.PG_DB_NAME,
+    connectionString: process.env.PG_URL,
     max: Number(process.env.DB_MAX_LINK || 5),
-    idleTimeoutMillis: 30000,
+    keepAlive: true,
     connectionTimeoutMillis: 5000
   });
 

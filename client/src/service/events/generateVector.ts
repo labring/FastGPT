@@ -44,7 +44,7 @@ export async function generateVector(): Promise<any> {
     // task preemption
     if (!data) {
       reduceQueue();
-      global.vectorQueueLen <= 0 && console.log(`没有需要【索引】的数据, ${global.vectorQueueLen}`);
+      global.vectorQueueLen <= 0 && console.log(`【索引】任务完成`);
       return;
     }
 
