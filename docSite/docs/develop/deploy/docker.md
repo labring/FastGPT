@@ -70,7 +70,7 @@ services:
   fastgpt:
     container_name: fastgpt
     # image: c121914yu/fast-gpt:latest # docker hub
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+    image: ghcr.io/labring/fastgpt:latest # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -89,7 +89,8 @@ services:
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
       # mongo 配置，不需要改
-      - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
+      - MONGODB_URI=mongodb://username:password@mongo:27017
+      # - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
       - MONGODB_NAME=fastgpt
       # pg配置.
       - PG_HOST=pg
@@ -105,61 +106,58 @@ networks:
 # host 版本, 不推荐。
 version: '3.3'
 services:
-pg:
-image: ankane/pgvector:v0.4.2 # dockerhub
-# image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
-container_name: pg
-restart: always
-ports: # 生产环境建议不要暴露
-    - 5432:5432
-environment:
-    # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
-    - POSTGRES_USER=username
-    - POSTGRES_PASSWORD=password
-    - POSTGRES_DB=postgres
-volumes:
-    - ./pg/data:/var/lib/postgresql/data
-mongo:
-image: mongo:5.0.18
-# image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
-container_name: mongo
-restart: always
-ports: # 生产环境建议不要暴露
-    - 27017:27017
-environment:
-    # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
-    - MONGO_INITDB_ROOT_USERNAME=username
-    - MONGO_INITDB_ROOT_PASSWORD=password
-volumes:
-    - ./mongo/data:/data/db
-    - ./mongo/logs:/var/log/mongodb
-fastgpt:
-# image: ghcr.io/c121914yu/fastgpt:latest # github
-# image: c121914yu/fast-gpt:latest # docker hub
-image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
-network_mode: host
-restart: always
-container_name: fastgpt
-environment:
-    # root 密码，用户名为: root
-    - DEFAULT_ROOT_PSW=1234
-    # 中转地址，如果是用官方号，不需要管
-    - OPENAI_BASE_URL=https://api.openai.com/v1
-    - CHAT_API_KEY=sk-xxxx
-    - DB_MAX_LINK=5 # database max link
-    # token加密凭证（随便填，作为登录凭证）
-    - TOKEN_KEY=any
-    # root key, 最高权限，可以内部接口互相调用
-    - ROOT_KEY=root_key
-    # mongo 配置，不需要改
-    - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
-    - MONGODB_NAME=fastgpt
-    # pg 配置
-    - PG_HOST=0.0.0.0
-    - PG_PORT=5432
-    - PG_USER=username
-    - PG_PASSWORD=password
-    - PG_DB_NAME=postgres
+  pg:
+    image: ankane/pgvector:v0.4.2 # dockerhub
+    container_name: pg
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 5432:5432
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./pg/data:/var/lib/postgresql/data
+  mongo:
+    image: mongo:5.0.18
+    container_name: mongo
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 27017:27017
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - MONGO_INITDB_ROOT_USERNAME=username
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - ./mongo/data:/data/db
+      - ./mongo/logs:/var/log/mongodb
+  fastgpt:
+    image: ghcr.io/c121914yu/fastgpt:latest # github
+    network_mode: host
+    restart: always
+    container_name: fastgpt
+    environment:
+      # root 密码，用户名为: root
+      - DEFAULT_ROOT_PSW=1234
+      # 中转地址，如果是用官方号，不需要管
+      - OPENAI_BASE_URL=https://api.openai.com/v1
+      - CHAT_API_KEY=sk-xxxx
+      - DB_MAX_LINK=5 # database max link
+      # token加密凭证（随便填，作为登录凭证）
+      - TOKEN_KEY=any
+      # root key, 最高权限，可以内部接口互相调用
+      - ROOT_KEY=root_key
+      # mongo 配置，不需要改
+      - MONGODB_URI=mongodb://username:password@0.0.0.0:27017
+      # - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/?authSource=admin
+      - MONGODB_NAME=fastgpt
+      # pg 配置
+      - PG_HOST=0.0.0.0
+      - PG_PORT=5432
+      - PG_USER=username
+      - PG_PASSWORD=password
+      - PG_DB_NAME=postgres
 ```
 
 ## 四、运行 docker-compose

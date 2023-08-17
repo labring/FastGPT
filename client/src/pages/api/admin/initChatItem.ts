@@ -81,8 +81,7 @@ async function init(limit: number) {
           value: item.value,
           responseData: item.responseData
         }))
-        .filter((item) => item.chatId && item.userId && item.appId && item.obj && item.value)
-        .slice(-30);
+        .filter((item) => item.chatId && item.userId && item.appId && item.obj && item.value);
 
       try {
         await Promise.all(inserts.map((item) => ChatItem.create(item)));
