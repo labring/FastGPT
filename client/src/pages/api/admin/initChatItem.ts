@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authUser({ req, authRoot: true });
     await connectToDatabase();
 
-    const { limit = 1000 } = req.body as { limit: number };
+    const { limit = 100 } = req.body as { limit: number };
     let skip = 0;
 
     const total = await Chat.countDocuments({
