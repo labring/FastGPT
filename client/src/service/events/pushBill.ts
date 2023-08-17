@@ -3,6 +3,7 @@ import { BillSourceEnum } from '@/constants/user';
 import { getModel } from '../utils/data';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@/utils/user';
+import { addLog } from '../utils/tools';
 
 export const pushTaskBill = async ({
   appName,
@@ -48,7 +49,11 @@ export const pushTaskBill = async ({
       : [])
   ]);
 
-  console.log('finish bill:', formatPrice(total));
+  addLog.info(`finish completions`, {
+    source,
+    userId,
+    price: formatPrice(total)
+  });
 };
 
 export const updateShareChatBill = async ({
@@ -66,8 +71,8 @@ export const updateShareChatBill = async ({
         lastTime: new Date()
       }
     );
-  } catch (error) {
-    console.log('update shareChat error', error);
+  } catch (err) {
+    addLog.error('update shareChat error', { err });
   }
 };
 
@@ -82,7 +87,7 @@ export const pushSplitDataBill = async ({
   totalTokens: number;
   appName: string;
 }) => {
-  console.log(`splitData generate success. token len: ${totalTokens}.`);
+  addLog.info('splitData generate success', { totalTokens });
 
   let billId;
 
@@ -107,8 +112,8 @@ export const pushSplitDataBill = async ({
     await User.findByIdAndUpdate(userId, {
       $inc: { balance: -total }
     });
-  } catch (error) {
-    console.log('创建账单失败:', error);
+  } catch (err) {
+    addLog.error('Create completions bill error', { err });
     billId && Bill.findByIdAndDelete(billId);
   }
 };
@@ -156,8 +161,8 @@ export const pushGenerateVectorBill = async ({
       await User.findByIdAndUpdate(userId, {
         $inc: { balance: -total }
       });
-    } catch (error) {
-      console.log('创建账单失败:', error);
+    } catch (err) {
+      addLog.error('Create generateVector bill error', { err });
       billId && Bill.findByIdAndDelete(billId);
     }
   } catch (error) {
