@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/hooks/useRequest';
 import { UserType } from '@/types/user';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const OpenAIAccountModal = ({
   defaultData,
   onSuccess,
@@ -32,8 +34,8 @@ const OpenAIAccountModal = ({
     <MyModal isOpen onClose={onClose} title={t('user.OpenAI Account Setting')}>
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          如果你填写了该内容，在线上平台使用 OpenAI Chat
-          模型不会计费（不包含知识库训练、索引生成、分享窗口和 API 调用）
+          {t('如果你填写了该内容，在线上平台使用 OpenAI Chat')}
+          {t('模型不会计费（不包含知识库训练、索引生成、分享窗口和 API 调用')}
         </Box>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 65px'}>API Key:</Box>
@@ -44,16 +46,16 @@ const OpenAIAccountModal = ({
           <Input
             flex={1}
             {...register('baseUrl')}
-            placeholder={'中转地址，未自动补全 "v1"'}
+            placeholder={t('中转地址，未自动补全 "v1"')}
           ></Input>
         </Flex>
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'base'} onClick={onClose}>
-          取消
+          {t('取消')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          确认
+          {t('确认')}
         </Button>
       </ModalFooter>
     </MyModal>

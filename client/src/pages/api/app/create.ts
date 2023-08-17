@@ -5,7 +5,9 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { App } from '@/service/models/app';
 import { AppModuleItemType } from '@/types/app';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export type Props = {
   name: string;
   avatar?: string;
@@ -17,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { name, avatar, modules } = req.body as Props;
 
     if (!name || !Array.isArray(modules)) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     // 凭证校验
@@ -30,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userId
     });
     if (authCount >= 50) {
-      throw new Error('上限 50 个应用');
+      throw new Error(t('上限 50 个应用'));
     }
 
     // 创建模型

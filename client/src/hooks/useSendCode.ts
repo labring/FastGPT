@@ -5,19 +5,21 @@ let timer: any;
 import { useToast } from './useToast';
 import { getClientToken } from '@/utils/plugin/google';
 import { feConfigs } from '@/store/static';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export const useSendCode = () => {
   const { toast } = useToast();
   const [codeSending, setCodeSending] = useState(false);
   const [codeCountDown, setCodeCountDown] = useState(0);
   const sendCodeText = useMemo(() => {
     if (codeCountDown >= 10) {
-      return `${codeCountDown}s后重新获取`;
+      return t(`${codeCountDown}s后重新获取`);
     }
     if (codeCountDown > 0) {
-      return `0${codeCountDown}s后重新获取`;
+      return t(`0${codeCountDown}s后重新获取`);
     }
-    return '获取验证码';
+    return t('获取验证码');
   }, [codeCountDown]);
 
   const sendCode = useCallback(
@@ -39,13 +41,13 @@ export const useSendCode = () => {
           });
         }, 1000);
         toast({
-          title: '验证码已发送',
+          title: t('验证码已发送'),
           status: 'success',
           position: 'top'
         });
       } catch (error: any) {
         toast({
-          title: error.message || '发送验证码异常',
+          title: error.message || t('发送验证码异常'),
           status: 'error'
         });
       }

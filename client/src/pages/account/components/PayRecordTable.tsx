@@ -20,7 +20,9 @@ import { useGlobalStore } from '@/store/global';
 import { useToast } from '@/hooks/useToast';
 import { useLoading } from '@/hooks/useLoading';
 import MyIcon from '@/components/Icon';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const PayRecordTable = () => {
   const { Loading, setIsLoading } = useLoading();
   const [payOrders, setPayOrders] = useState<PaySchema[]>([]);
@@ -63,7 +65,7 @@ const PayRecordTable = () => {
         <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            无支付记录~
+            {t('无支付记录~')}
           </Box>
         </Flex>
       ) : (
@@ -71,10 +73,10 @@ const PayRecordTable = () => {
           <Table>
             <Thead>
               <Tr>
-                <Th>订单号</Th>
-                <Th>时间</Th>
-                <Th>金额</Th>
-                <Th>状态</Th>
+                <Th>{t('订单号')}</Th>
+                <Th>{t('时间')}</Th>
+                <Th>{t('金额')}</Th>
+                <Th>{t('状态')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -90,7 +92,7 @@ const PayRecordTable = () => {
                   <Td>
                     {item.status === 'NOTPAY' && (
                       <Button onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
-                        更新
+                        {t('更新')}
                       </Button>
                     )}
                   </Td>

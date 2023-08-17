@@ -6,7 +6,9 @@ import { connectToDatabase, App } from '@/service/mongo';
 import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowInputItemType } from '@/types/flow';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const chatModelInput = ({
   model,
   temperature,
@@ -26,13 +28,13 @@ const chatModelInput = ({
     key: 'model',
     value: model,
     type: 'custom',
-    label: '对话模型',
+    label: t('对话模型'),
     connected: true
   },
   {
     key: 'temperature',
     value: temperature,
-    label: '温度',
+    label: t('温度'),
     type: 'slider',
     connected: true
   },
@@ -40,19 +42,19 @@ const chatModelInput = ({
     key: 'maxToken',
     value: maxToken,
     type: 'custom',
-    label: '回复上限',
+    label: t('回复上限'),
     connected: true
   },
   {
     key: 'systemPrompt',
     value: systemPrompt,
     type: 'textarea',
-    label: '系统提示词',
+    label: t('系统提示词'),
     connected: true
   },
   {
     key: 'limitPrompt',
-    label: '限定词',
+    label: t('限定词'),
     type: 'textarea',
     value: limitPrompt,
     connected: true
@@ -60,25 +62,25 @@ const chatModelInput = ({
   {
     key: 'switch',
     type: 'target',
-    label: '触发器',
+    label: t('触发器'),
     connected: kbList.length > 0
   },
   {
     key: 'quoteQA',
     type: 'target',
-    label: '引用内容',
+    label: t('引用内容'),
     connected: kbList.length > 0
   },
   {
     key: 'history',
     type: 'target',
-    label: '聊天记录',
+    label: t('聊天记录'),
     connected: true
   },
   {
     key: 'userChatInput',
     type: 'target',
-    label: '用户问题',
+    label: t('用户问题'),
     connected: true
   }
 ];

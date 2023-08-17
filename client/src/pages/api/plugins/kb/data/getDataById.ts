@@ -4,7 +4,9 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import type { KbDataItemType } from '@/types/plugin';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export type Response = {
   id: string;
   q: string;
@@ -18,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       dataId: string;
     };
     if (!dataId) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     // 凭证校验

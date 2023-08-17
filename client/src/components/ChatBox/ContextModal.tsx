@@ -2,7 +2,9 @@ import React from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
 import { ChatItemType } from '@/types/chat';
 import MyModal from '../MyModal';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const ContextModal = ({
   context = [],
   onClose
@@ -16,7 +18,7 @@ const ContextModal = ({
     <MyModal
       isOpen={true}
       onClose={onClose}
-      title={`完整对话记录(${context.length}条)`}
+      title={t(`完整对话记录(${context.length}条)`)}
       h={['90vh', '80vh']}
       minW={['90vw', '600px']}
       isCentered

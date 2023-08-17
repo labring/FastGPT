@@ -1,7 +1,9 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { clearToken, getToken } from '@/utils/user';
 import { TOKEN_ERROR_CODE } from '@/service/errorCode';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 interface ConfigType {
   headers?: { [key: string]: string };
   hold?: boolean;
@@ -36,7 +38,7 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
     console.log('error->', data, 'data is empty');
-    return Promise.reject('服务器异常');
+    return Promise.reject(t('服务器异常'));
   } else if (data.code < 200 || data.code >= 400) {
     return Promise.reject(data);
   }
@@ -47,10 +49,10 @@ function checkRes(data: ResponseDataType) {
  * 响应错误
  */
 function responseError(err: any) {
-  console.log('error->', '请求错误', err);
+  console.log('error->', t('请求错误'), err);
 
   if (!err) {
-    return Promise.reject({ message: '未知错误' });
+    return Promise.reject({ message: t('未知错误') });
   }
   if (typeof err === 'string') {
     return Promise.reject({ message: err });
@@ -61,7 +63,7 @@ function responseError(err: any) {
     window.location.replace(
       `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
     );
-    return Promise.reject({ message: 'token过期，重新登录' });
+    return Promise.reject({ message: t('token过期，重新登录') });
   }
   if (err?.response?.data) {
     return Promise.reject(err?.response?.data);

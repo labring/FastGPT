@@ -4,7 +4,9 @@ import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { StartChatFnProps } from '@/components/ChatBox';
 import { getToken } from '@/utils/user';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 interface StreamFetchProps {
   url?: string;
   data: Record<string, any>;
@@ -60,7 +62,7 @@ export const streamFetch = ({
               });
             } else {
               return reject({
-                message: errMsg || '响应过程出现异常~',
+                message: errMsg || t('响应过程出现异常~'),
                 responseText
               });
             }
@@ -89,7 +91,7 @@ export const streamFetch = ({
             ) {
               responseData = data;
             } else if (eventName === sseResponseEventEnum.error) {
-              errMsg = getErrText(data, '流响应错误');
+              errMsg = getErrText(data, t('流响应错误'));
             }
           });
           read();
@@ -102,7 +104,7 @@ export const streamFetch = ({
           }
           reject({
             responseText,
-            message: getErrText(err, '请求异常')
+            message: getErrText(err, t('请求异常'))
           });
         }
       };
@@ -110,6 +112,6 @@ export const streamFetch = ({
     } catch (err: any) {
       console.log(err, 'fetch error');
 
-      reject(getErrText(err, '请求异常'));
+      reject(getErrText(err, t('请求异常')));
     }
   });

@@ -7,7 +7,9 @@ import { FlowModuleItemType } from '@/types/flow';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import Label from '../modules/Label';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const NodeTFSwitch = ({ data: { inputs, outputs, ...props } }: NodeProps<FlowModuleItemType>) => {
   return (
     <NodeCard minW={'220px'} {...props}>
@@ -18,7 +20,7 @@ const NodeTFSwitch = ({ data: { inputs, outputs, ...props } }: NodeProps<FlowMod
             required
             description="接收到 false、0、null、undefined或空字符串时，执行 False，反之执行 True"
           >
-            输入
+            {t('输入')}
           </Label>
           <Handle
             style={{

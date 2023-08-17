@@ -7,7 +7,9 @@ import type { informSchema } from '@/types/mongoSchema';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useGlobalStore } from '@/store/global';
 import MyIcon from '@/components/Icon';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const BillTable = () => {
   const theme = useTheme();
   const { Loading } = useLoading();
@@ -72,7 +74,7 @@ const BillTable = () => {
         <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'} pt={'-48px'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            暂无通知~
+            {t('暂无通知~')}
           </Box>
         </Flex>
       )}

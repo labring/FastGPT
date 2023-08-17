@@ -4,13 +4,15 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { User } from '@/service/models/user';
 import { generateToken, setCookie } from '@/service/utils/tools';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     await connectToDatabase();
@@ -20,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       username
     });
     if (!authUser) {
-      throw new Error('用户未注册');
+      throw new Error(t('用户未注册'));
     }
 
     const user = await User.findOne({
@@ -29,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (!user) {
-      throw new Error('密码错误');
+      throw new Error(t('密码错误'));
     }
 
     const token = generateToken(user._id);

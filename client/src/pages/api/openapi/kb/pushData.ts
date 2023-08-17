@@ -8,7 +8,9 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
 import { modelToolMap } from '@/utils/plugin';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export type DateItemType = { a: string; q: string; source?: string };
 
 export type Props = {
@@ -33,18 +35,18 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { kbId, data, mode, prompt, model } = req.body as Props;
 
     if (!kbId || !Array.isArray(data) || !model) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     // auth model
     if (mode === TrainingModeEnum.qa && !global.qaModels.find((item) => item.model === model)) {
-      throw new Error('不支持的 QA 拆分模型');
+      throw new Error(t('不支持的 QA 拆分模型'));
     }
     if (
       mode === TrainingModeEnum.index &&
       !global.vectorModels.find((item) => item.model === model)
     ) {
-      throw new Error('不支持的向量生成模型');
+      throw new Error(t('不支持的向量生成模型'));
     }
 
     await connectToDatabase();
@@ -119,7 +121,7 @@ export async function pushDataToKb({
         }
 
         if (!q) {
-          return Promise.reject('q为空');
+          return Promise.reject(t('q为空'));
         }
 
         q = q.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
@@ -135,7 +137,7 @@ export async function pushDataToKb({
           const exists = rows[0]?.exists || false;
 
           if (exists) {
-            return Promise.reject('已经存在');
+            return Promise.reject(t('已经存在'));
           }
         } catch (error) {
           console.log(error);

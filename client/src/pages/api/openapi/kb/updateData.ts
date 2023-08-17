@@ -5,7 +5,9 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { KB, connectToDatabase } from '@/service/mongo';
 import { getVector } from '../plugin/vector';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export type Props = {
   dataId: string;
   kbId: string;
@@ -18,7 +20,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { dataId, a = '', q = '', kbId } = req.body as Props;
 
     if (!dataId) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     await connectToDatabase();
@@ -49,7 +51,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     await PgClient.update('modelData', {
       where: [['id', dataId], 'AND', ['user_id', userId]],
       values: [
-        { key: 'source', value: '手动修改' },
+        { key: 'source', value: t('手动修改') },
         { key: 'a', value: a.replace(/'/g, '"') },
         ...(q
           ? [

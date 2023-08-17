@@ -6,13 +6,15 @@ import { connectToDatabase } from '@/service/mongo';
 import { generateToken, setCookie } from '@/service/utils/tools';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { authCode } from '@/service/api/plugins';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { username, code, password, inviterId } = req.body;
 
     if (!username || !code || !password) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     await connectToDatabase();
@@ -30,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     if (authRepeat) {
-      throw new Error('该用户已被注册');
+      throw new Error(t('该用户已被注册'));
     }
 
     const response = await User.create({
@@ -43,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const user = await User.findById(response._id);
 
     if (!user) {
-      throw new Error('获取用户信息异常');
+      throw new Error(t('获取用户信息异常'));
     }
 
     const token = generateToken(user._id);

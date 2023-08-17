@@ -7,7 +7,9 @@ import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const ResponseDetailModal = ({
   chatId,
   contentId,
@@ -49,7 +51,7 @@ const ResponseDetailModal = ({
   return isEmpty ? null : (
     <Flex alignItems={'center'} mt={2} flexWrap={'wrap'}>
       {quoteList.length > 0 && (
-        <MyTooltip label="查看引用">
+        <MyTooltip label={t('查看引用')}>
           <Tag
             colorSchema="blue"
             cursor={'pointer'}
@@ -61,7 +63,7 @@ const ResponseDetailModal = ({
         </MyTooltip>
       )}
       {completeMessages.length > 0 && (
-        <MyTooltip label={'点击查看完整对话记录'}>
+        <MyTooltip label={t('点击查看完整对话记录')}>
           <Tag
             colorSchema="green"
             cursor={'pointer'}

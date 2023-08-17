@@ -12,7 +12,9 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import SourceHandle from '../render/SourceHandle';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const NodeCQNode = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
 }: NodeProps<FlowModuleItemType>) => {
@@ -66,7 +68,10 @@ const NodeCQNode = ({
                       }}
                     />
                     <Box flex={1}>
-                      <Box flex={1}>类型{i + 1}</Box>
+                      <Box flex={1}>
+                        {t('类型')}
+                        {i + 1}
+                      </Box>
                       <Box position={'relative'}>
                         <Input
                           mt={1}
@@ -126,7 +131,7 @@ const NodeCQNode = ({
                     });
                   }}
                 >
-                  添加问题类型
+                  {t('添加问题类型')}
                 </Button>
               </Box>
             )

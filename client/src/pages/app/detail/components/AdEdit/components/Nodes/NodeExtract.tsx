@@ -14,7 +14,9 @@ import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const NodeExtract = ({
   data: { inputs, outputs, moduleId, onChangeNode, onDelEdge, ...props }
 }: NodeProps<FlowModuleItemType>) => {
@@ -49,16 +51,16 @@ const NodeExtract = ({
                       })
                     }
                   >
-                    新增字段
+                    {t('新增字段')}
                   </Button>
                 </Box>
                 <TableContainer>
                   <Table>
                     <Thead>
                       <Tr>
-                        <Th>字段 key</Th>
-                        <Th>字段描述</Th>
-                        <Th>必填</Th>
+                        <Th>{t('字段 key')}</Th>
+                        <Th>{t('字段描述')}</Th>
+                        <Th>{t('必填')}</Th>
                         <Th></Th>
                       </Tr>
                     </Thead>
@@ -160,8 +162,8 @@ const NodeExtract = ({
                 key: '',
                 value: outputs.concat({
                   key: data.key,
-                  label: `提取结果-${data.desc}`,
-                  description: '无法提取时不会返回',
+                  label: t(`提取结果-${data.desc}`),
+                  description: t('无法提取时不会返回'),
                   valueType: FlowValueTypeEnum.string,
                   type: FlowOutputItemTypeEnum.source,
                   targets: []
@@ -178,7 +180,7 @@ const NodeExtract = ({
                     output.key === data.key
                       ? {
                           ...output,
-                          label: `提取结果-${data.desc}`
+                          label: t(`提取结果-${data.desc}`)
                         }
                       : output
                   )
@@ -200,8 +202,8 @@ const NodeExtract = ({
                     key: '',
                     value: newOutputs.concat({
                       key: data.key,
-                      label: `提取结果-${data.desc}`,
-                      description: '无法提取时不会返回',
+                      label: t(`提取结果-${data.desc}`),
+                      description: t('无法提取时不会返回'),
                       valueType: FlowValueTypeEnum.string,
                       type: FlowOutputItemTypeEnum.source,
                       targets: []

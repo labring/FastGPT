@@ -1,7 +1,9 @@
 import React, { useCallback, useRef } from 'react';
 import { ModalFooter, ModalBody, Input, useDisclosure, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export const useEditInfo = ({
   title,
   placeholder = ''
@@ -60,7 +62,7 @@ export const useEditInfo = ({
         </ModalBody>
         <ModalFooter>
           <Button mr={3} variant={'base'} onClick={onClose}>
-            取消
+            {t('取消')}
           </Button>
           <Button onClick={onclickConfirm}>确认</Button>
         </ModalFooter>

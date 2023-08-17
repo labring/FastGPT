@@ -20,22 +20,24 @@ import { FlowInputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
 import { FlowInputItemType } from '@/types/flow';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const typeSelectList = [
   {
-    label: '字符串',
+    label: t('字符串'),
     value: FlowValueTypeEnum.string
   },
   {
-    label: '数字',
+    label: t('数字'),
     value: FlowValueTypeEnum.number
   },
   {
-    label: '布尔',
+    label: t('布尔'),
     value: FlowValueTypeEnum.boolean
   },
   {
-    label: '任意',
+    label: t('任意'),
     value: FlowValueTypeEnum.any
   }
 ];

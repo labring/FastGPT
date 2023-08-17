@@ -5,7 +5,9 @@ import { connectToDatabase, OpenApi } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { userId } = await authUser({ req, authToken: true });
@@ -15,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const count = await OpenApi.find({ userId }).countDocuments();
 
     if (count >= 10) {
-      throw new Error('最多 10 组 API 秘钥');
+      throw new Error(t('最多 10 组 API 秘钥'));
     }
 
     const apiKey = `fastgpt-${nanoid()}`;

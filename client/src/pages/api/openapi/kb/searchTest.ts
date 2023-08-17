@@ -5,7 +5,9 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { getVector } from '../plugin/vector';
 import type { KbTestItemType } from '@/types/plugin';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export type Props = {
   model: string;
   kbId: string;
@@ -18,14 +20,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { kbId, text, model } = req.body as Props;
 
     if (!kbId || !text || !model) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     // 凭证校验
     const { userId } = await authUser({ req });
 
     if (!userId) {
-      throw new Error('缺少用户ID');
+      throw new Error(t('缺少用户ID'));
     }
 
     const { vectors } = await getVector({

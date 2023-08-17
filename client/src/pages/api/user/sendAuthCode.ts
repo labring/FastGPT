@@ -4,7 +4,9 @@ import { UserAuthTypeEnum } from '@/constants/common';
 import { authGoogleToken } from '@/utils/plugin/google';
 import requestIp from 'request-ip';
 import { sendCode } from '@/service/api/plugins';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { username, type, googleToken } = req.body as {
@@ -14,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     if (!username || !type) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     // google auth
@@ -36,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     jsonRes(res, {
-      message: '发送验证码成功'
+      message: t('发送验证码成功')
     });
   } catch (err) {
     jsonRes(res, {

@@ -11,7 +11,9 @@ import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import VariableEditModal from '../../../VariableEditModal';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
   key: 'key',
@@ -65,9 +67,9 @@ const NodeUserGuide = ({
             <Table>
               <Thead>
                 <Tr>
-                  <Th>变量名</Th>
-                  <Th>变量 key</Th>
-                  <Th>必填</Th>
+                  <Th>{t('变量名')}</Th>
+                  <Th>{t('变量 ke')}y</Th>
+                  <Th>{t('必填')}</Th>
                   <Th></Th>
                 </Tr>
               </Thead>
@@ -111,7 +113,7 @@ const NodeUserGuide = ({
                 setEditVariable(newVariable);
               }}
             >
-              新增
+              {t('新增')}
             </Button>
           </Box>
         </Container>

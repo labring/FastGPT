@@ -5,13 +5,15 @@ import { authUser } from '@/service/utils/auth';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { Types } from 'mongoose';
 import { startQueue } from '@/service/utils/tools';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { kbId, init = false } = req.body as { kbId: string; init: boolean };
     if (!kbId) {
-      throw new Error('参数错误');
+      throw new Error(t('参数错误'));
     }
     await connectToDatabase();
 

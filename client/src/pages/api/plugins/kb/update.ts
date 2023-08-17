@@ -3,13 +3,15 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import type { KbUpdateParams } from '@/api/plugins/kb';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { id, name, tags, avatar } = req.body as KbUpdateParams;
 
     if (!id || !name) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     // 凭证校验

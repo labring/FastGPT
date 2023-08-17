@@ -6,7 +6,9 @@ import type { FlowModuleItemType } from '@/types/flow';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 type Props = {
   children?: React.ReactNode | React.ReactNode[] | string;
   logo: string;
@@ -22,7 +24,7 @@ type Props = {
 const NodeCard = ({
   children,
   logo = '/icon/logo.png',
-  name = '未知模块',
+  name = t('未知模块'),
   description,
   minW = '300px',
   onCopyNode,

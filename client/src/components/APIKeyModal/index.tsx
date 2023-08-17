@@ -23,7 +23,9 @@ import { getErrText, useCopyData } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
 import MyIcon from '../Icon';
 import MyModal from '../MyModal';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const APIKeyModal = ({ onClose }: { onClose: () => void }) => {
   const { Loading } = useLoading();
   const { toast } = useToast();
@@ -63,7 +65,7 @@ const APIKeyModal = ({ onClose }: { onClose: () => void }) => {
           API 秘钥管理
         </Box>
         <Box fontSize={'sm'} color={'myGray.600'}>
-          如果你不想 API 秘钥被滥用，请勿将秘钥直接放置在前端使用~
+          {t('如果你不想 API 秘钥被滥用，请勿将秘钥直接放置在前端使用~')}
         </Box>
       </Box>
       <ModalBody minH={'300px'} maxH={['70vh', '500px']} overflow={'overlay'}>
@@ -72,8 +74,8 @@ const APIKeyModal = ({ onClose }: { onClose: () => void }) => {
             <Thead>
               <Tr>
                 <Th>Api Key</Th>
-                <Th>创建时间</Th>
-                <Th>最后一次使用时间</Th>
+                <Th>{t('创建时间')}</Th>
+                <Th>{t('最后一次使用时间')}</Th>
                 <Th />
               </Tr>
             </Thead>
@@ -85,7 +87,7 @@ const APIKeyModal = ({ onClose }: { onClose: () => void }) => {
                   <Td>
                     {lastUsedTime
                       ? dayjs(lastUsedTime).format('YYYY/MM/DD HH:mm:ss')
-                      : '没有使用过'}
+                      : t('没有使用过')}
                   </Td>
                   <Td>
                     <IconButton
@@ -110,7 +112,7 @@ const APIKeyModal = ({ onClose }: { onClose: () => void }) => {
           leftIcon={<AddIcon color={'myGray.600'} fontSize={'sm'} />}
           onClick={() => onclickCreateApiKey()}
         >
-          新建秘钥
+          {t('新建秘钥')}
         </Button>
       </ModalFooter>
 
@@ -118,10 +120,10 @@ const APIKeyModal = ({ onClose }: { onClose: () => void }) => {
       <MyModal isOpen={!!apiKey} w={'400px'} onClose={() => setApiKey('')}>
         <Box py={3} px={5}>
           <Box fontWeight={'bold'} fontSize={'2xl'}>
-            新的 API 秘钥
+            {t('新的 API 秘钥')}
           </Box>
           <Box fontSize={'sm'} color={'myGray.600'}>
-            请保管好你的秘钥，秘钥不会再次展示~
+            {t('请保管好你的秘钥，秘钥不会再次展示~')}
           </Box>
         </Box>
         <ModalBody>

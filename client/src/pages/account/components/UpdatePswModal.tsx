@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/hooks/useRequest';
 import { updatePasswordByOld } from '@/api/user';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 type FormType = {
   oldPsw: string;
   newPsw: string;
@@ -40,11 +42,11 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
     <MyModal isOpen onClose={onClose} title={t('user.Update Password')}>
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 70px'}>旧密码:</Box>
+          <Box flex={'0 0 70px'}>{t('旧密码:')}</Box>
           <Input flex={1} type={'password'} {...register('oldPsw', { required: true })}></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'}>新密码:</Box>
+          <Box flex={'0 0 70px'}>{t('新密码:')}</Box>
           <Input
             flex={1}
             type={'password'}
@@ -52,13 +54,13 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
               required: true,
               maxLength: {
                 value: 20,
-                message: '密码最少 4 位最多 20 位'
+                message: t('密码最少 4 位最多 20 位')
               }
             })}
           ></Input>
         </Flex>
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={'0 0 70px'}>确认密码:</Box>
+          <Box flex={'0 0 70px'}>{t('确认密码:')}</Box>
           <Input
             flex={1}
             type={'password'}
@@ -66,7 +68,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
               required: true,
               maxLength: {
                 value: 20,
-                message: '密码最少 4 位最多 20 位'
+                message: t('密码最少 4 位最多 20 位')
               }
             })}
           ></Input>
@@ -74,10 +76,10 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'base'} onClick={onClose}>
-          取消
+          {t('取消')}
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          确认
+          {t('确认')}
         </Button>
       </ModalFooter>
     </MyModal>

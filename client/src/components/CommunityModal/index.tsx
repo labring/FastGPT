@@ -3,12 +3,14 @@ import { Button, ModalFooter, ModalBody } from '@chakra-ui/react';
 import MyModal from '../MyModal';
 import { useTranslation } from 'react-i18next';
 import Markdown from '../Markdown';
+import { useTranslation } from 'react-i18next';
 
-const md = `
+const { t } = useTranslation();
+const md = t(`
 | 交流群 | 小助手 |
 | ----------------------- | -------------------- |
 | ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |
-`;
+`);
 
 const CommunityModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -20,7 +22,7 @@ const CommunityModal = ({ onClose }: { onClose: () => void }) => {
 
       <ModalFooter>
         <Button variant={'base'} onClick={onClose}>
-          关闭
+          {t('关闭')}
         </Button>
       </ModalFooter>
     </MyModal>

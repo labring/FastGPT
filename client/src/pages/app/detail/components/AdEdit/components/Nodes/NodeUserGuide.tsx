@@ -9,7 +9,9 @@ import { SystemInputEnum } from '@/constants/app';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { welcomeTextTip } from '@/constants/flow/ModuleTemplate';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const NodeUserGuide = ({
   data: { inputs, outputs, onChangeNode, ...props }
 }: NodeProps<FlowModuleItemType>) => {
@@ -25,7 +27,7 @@ const NodeUserGuide = ({
           <>
             <Flex mb={1} alignItems={'center'}>
               <MyIcon name={'welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
-              <Box>开场白</Box>
+              <Box>{t('开场白')}</Box>
               <MyTooltip label={welcomeTextTip} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>

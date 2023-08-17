@@ -4,7 +4,9 @@ import { authBalanceByUid, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
 import { pushGenerateVectorBill } from '@/service/events/pushBill';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 type Props = {
   model: string;
   input: string[];
@@ -20,7 +22,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     let { input, model } = req.query as Props;
 
     if (!Array.isArray(input)) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     jsonRes<Response>(res, {
@@ -46,7 +48,7 @@ export async function getVector({
     if (!input[i]) {
       return Promise.reject({
         code: 500,
-        message: '向量生成模块输入内容为空'
+        message: t('向量生成模块输入内容为空')
       });
     }
   }

@@ -3,7 +3,9 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, User } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     let { kbId } = req.query as {
@@ -11,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     if (!kbId) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     await connectToDatabase();
@@ -34,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
 
     if (!authTimes) {
-      throw new Error('上次导出未到半小时，每半小时仅可导出一次。');
+      throw new Error(t('上次导出未到半小时，每半小时仅可导出一次。'));
     }
 
     // 统计数据

@@ -4,7 +4,10 @@ import { connectToDatabase, KB, App, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { Types } from 'mongoose';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
+t;
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { id } = req.query as {
@@ -12,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     if (!id) {
-      throw new Error('缺少参数');
+      throw new Error(t('缺少参数'));
     }
 
     // 凭证校验

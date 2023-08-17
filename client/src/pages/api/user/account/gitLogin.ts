@@ -7,7 +7,9 @@ import axios from 'axios';
 import { parseQueryString } from '@/utils/tools';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 type GithubAccessTokenType = {
   access_token: string;
   expires_in: number;
@@ -104,7 +106,7 @@ export async function registerUser({
   const user = await User.findById(response._id);
 
   if (!user) {
-    return Promise.reject('获取用户信息异常');
+    return Promise.reject(t('获取用户信息异常'));
   }
 
   const token = generateToken(user._id);

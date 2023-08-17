@@ -3,7 +3,9 @@ import { useRouter } from 'next/router';
 import { useToast } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const unAuthPage: { [key: string]: boolean } = {
   '/': true,
   '/login': true,
@@ -15,7 +17,7 @@ const unAuthPage: { [key: string]: boolean } = {
 const Auth = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const toast = useToast({
-    title: '请先登录',
+    title: t('请先登录'),
     position: 'top',
     status: 'warning'
   });

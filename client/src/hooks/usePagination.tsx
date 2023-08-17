@@ -5,7 +5,9 @@ import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from './useToast';
 import { throttle } from 'lodash';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const thresholdVal = 100;
 
 export const usePagination = <T = any,>({
@@ -44,7 +46,7 @@ export const usePagination = <T = any,>({
         onChange && onChange(num);
       } catch (error: any) {
         toast({
-          title: error?.message || '获取数据异常',
+          title: error?.message || t('获取数据异常'),
           status: 'error'
         });
         console.log(error);
@@ -120,9 +122,9 @@ export const usePagination = <T = any,>({
   const ScrollData = useCallback(
     ({ children, ...props }: { children: React.ReactNode }) => {
       const loadText = useMemo(() => {
-        if (isLoading) return '请求中……';
-        if (total <= data.length) return '已加载全部';
-        return '点击加载更多';
+        if (isLoading) return t('请求中……');
+        if (total <= data.length) return t('已加载全部');
+        return t('点击加载更多');
       }, []);
 
       return (
@@ -133,9 +135,9 @@ export const usePagination = <T = any,>({
             fontSize={'xs'}
             color={'blackAlpha.500'}
             textAlign={'center'}
-            cursor={loadText === '点击加载更多' ? 'pointer' : 'default'}
+            cursor={loadText === t('点击加载更多') ? 'pointer' : 'default'}
             onClick={() => {
-              if (loadText !== '点击加载更多') return;
+              if (loadText !== t('点击加载更多')) return;
               mutate(pageNum + 1);
             }}
           >

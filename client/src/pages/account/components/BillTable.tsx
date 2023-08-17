@@ -24,7 +24,9 @@ import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { useTranslation } from 'next-i18next';
 const BillDetail = dynamic(() => import('./BillDetail'));
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const BillTable = () => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
@@ -69,10 +71,13 @@ const BillTable = () => {
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
                 <Td>{BillSourceMap[item.source]}</Td>
                 <Td>{item.appName || '-'}</Td>
-                <Td>{item.total}元</Td>
+                <Td>
+                  {item.total}
+                  {t('元')}
+                </Td>
                 <Td>
                   <Button size={'sm'} variant={'base'} onClick={() => setBillDetail(item)}>
-                    详情
+                    {t('详情')}
                   </Button>
                 </Td>
               </Tr>

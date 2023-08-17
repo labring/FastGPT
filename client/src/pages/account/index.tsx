@@ -11,7 +11,9 @@ import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/utils/i18n';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const BillTable = dynamic(() => import('./components/BillTable'), {
   ssr: false
 });
@@ -65,7 +67,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   ]);
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: '确认退出登录？'
+    content: t('确认退出登录？')
   });
 
   const router = useRouter();

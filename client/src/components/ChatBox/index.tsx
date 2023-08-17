@@ -50,6 +50,9 @@ import dynamic from 'next/dynamic';
 const ResponseDetailModal = dynamic(() => import('./ResponseDetailModal'));
 
 import styles from './index.module.scss';
+import { useTranslation } from 'react-i18next';
+
+const { t } = useTranslation();
 
 const textareaMinH = '22px';
 type generatingMessageProps = { text?: string; name?: string; status?: 'running' | 'finish' };
@@ -262,7 +265,7 @@ const ChatBox = (
     async (variables: Record<string, any> = {}, inputVal = '') => {
       if (isChatting) {
         toast({
-          title: '正在聊天中...请等待结束',
+          title: t('正在聊天中...请等待结束'),
           status: 'warning'
         });
         return;
@@ -272,7 +275,7 @@ const ChatBox = (
 
       if (!val) {
         toast({
-          title: '内容为空',
+          title: t('内容为空'),
           status: 'warning'
         });
         return;
@@ -338,7 +341,7 @@ const ChatBox = (
         }, 100);
       } catch (err: any) {
         toast({
-          title: getErrText(err, '聊天出错了~'),
+          title: getErrText(err, t('聊天出错了~')),
           status: 'error',
           duration: 5000,
           isClosable: true
@@ -538,7 +541,7 @@ const ChatBox = (
                       setVariables(data);
                     })}
                   >
-                    {'开始对话'}
+                    {t('开始对话')}
                   </Button>
                 )}
               </Card>
@@ -564,7 +567,7 @@ const ChatBox = (
                   <>
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
                       <Flex {...controlContainerStyle} justifyContent={'flex-end'} mr={3}>
-                        <MyTooltip label={'复制'}>
+                        <MyTooltip label={t('复制')}>
                           <MyIcon
                             {...controlIconStyle}
                             name={'copy'}
@@ -573,7 +576,7 @@ const ChatBox = (
                           />
                         </MyTooltip>
                         {onDelMessage && (
-                          <MyTooltip label={'删除'}>
+                          <MyTooltip label={t('删除')}>
                             <MyIcon
                               {...controlIconStyle}
                               mr={0}
@@ -612,7 +615,7 @@ const ChatBox = (
                     <Flex w={'100%'} alignItems={'flex-end'}>
                       <ChatAvatar src={appAvatar} type={'AI'} />
                       <Flex {...controlContainerStyle} ml={3}>
-                        <MyTooltip label={'复制'}>
+                        <MyTooltip label={t('复制')}>
                           <MyIcon
                             {...controlIconStyle}
                             name={'copy'}
@@ -621,7 +624,7 @@ const ChatBox = (
                           />
                         </MyTooltip>
                         {onDelMessage && (
-                          <MyTooltip label={'删除'}>
+                          <MyTooltip label={t('删除')}>
                             <MyIcon
                               {...controlIconStyle}
                               name={'delete'}
@@ -639,7 +642,7 @@ const ChatBox = (
                           </MyTooltip>
                         )}
                         {hasVoiceApi && (
-                          <MyTooltip label={'语音播报'}>
+                          <MyTooltip label={t('语音播报')}>
                             <MyIcon
                               {...controlIconStyle}
                               name={'voice'}
@@ -831,7 +834,7 @@ export const useChatBox = () => {
             fileDownload({
               text: html,
               type: 'text/html',
-              filename: '聊天记录.html'
+              filename: t('聊天记录.html')
             });
         },
         pdf: () => {
@@ -841,7 +844,7 @@ export const useChatBox = () => {
             // @ts-ignore
             html2pdf(html, {
               margin: 0,
-              filename: `聊天记录.pdf`
+              filename: t(`聊天记录.pdf`)
             });
         }
       };

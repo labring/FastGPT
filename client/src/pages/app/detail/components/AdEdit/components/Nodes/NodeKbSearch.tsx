@@ -12,7 +12,9 @@ import RenderOutput from '../render/RenderOutput';
 import { KBSelectModal } from '../../../KBSelectModal';
 import type { SelectedKbType } from '@/types/plugin';
 import Avatar from '@/components/Avatar';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const KBSelect = ({
   activeKbs = [],
   onChange
@@ -39,7 +41,7 @@ const KBSelect = ({
     <>
       <Grid gridTemplateColumns={'1fr 1fr'} gridGap={4}>
         <Button h={'36px'} onClick={onOpenKbSelect}>
-          选择知识库
+          {t('选择知识库')}
         </Button>
         {showKbList.map((item) => (
           <Flex

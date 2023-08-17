@@ -15,7 +15,9 @@ import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const PayModal = dynamic(() => import('./PayModal'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
@@ -63,7 +65,7 @@ const UserInfo = () => {
       });
       reset(data);
       toast({
-        title: '更新数据成功',
+        title: t('更新数据成功'),
         status: 'success'
       });
     },
@@ -87,7 +89,7 @@ const UserInfo = () => {
         });
       } catch (err: any) {
         toast({
-          title: typeof err === 'string' ? err : '头像选择异常',
+          title: typeof err === 'string' ? err : t('头像选择异常'),
           status: 'warning'
         });
       }
@@ -109,7 +111,7 @@ const UserInfo = () => {
         cursor={'pointer'}
         onClick={onOpenSelectFile}
       >
-        <MyTooltip label={'更换头像'}>
+        <MyTooltip label={t('更换头像')}>
           <Box
             w={['44px', '54px']}
             h={['44px', '54px']}
@@ -161,7 +163,7 @@ const UserInfo = () => {
 
             <Divider my={3} />
 
-            <MyTooltip label={'点击配置账号'}>
+            <MyTooltip label={t('点击配置账号')}>
               <Flex
                 w={['85%', '300px']}
                 py={3}
@@ -177,7 +179,7 @@ const UserInfo = () => {
               >
                 <Avatar src={'/imgs/openai.png'} w={'18px'} />
                 <Box ml={2} flex={1}>
-                  OpenAI 账号
+                  {t('OpenAI 账号')}
                 </Box>
                 <Box
                   w={'9px'}

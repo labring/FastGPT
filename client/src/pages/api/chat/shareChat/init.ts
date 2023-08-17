@@ -5,7 +5,9 @@ import type { InitShareChatResponse } from '@/api/response/chat';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
 import { getChatModelNameList, getSpecialModule } from '@/components/ChatBox/utils';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -25,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!shareChat) {
       return jsonRes(res, {
         code: 501,
-        error: '分享链接已失效'
+        error: t('分享链接已失效')
       });
     }
 

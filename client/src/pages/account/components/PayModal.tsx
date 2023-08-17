@@ -8,7 +8,9 @@ import { getErrText } from '@/utils/tools';
 import { useTranslation } from 'react-i18next';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
+import { useTranslation } from 'react-i18next';
 
+const { t } = useTranslation();
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -53,7 +55,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       onSuccess(res) {
         if (!res) return;
         toast({
-          title: '充值成功',
+          title: t('充值成功'),
           status: 'success'
         });
         router.reload();
@@ -97,20 +99,25 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
               ></Input>
             </Box>
             <Markdown
-              source={`
+              source={t(`
 | 计费项 | 价格: 元/ 1K tokens(包含上下文)|
 | --- | --- |
 | 知识库 - 索引 | 0.002 |
 | FastAI4k - 对话 | 0.015 |
 | FastAI16k - 对话 | 0.03 |
 | FastAI-Plus - 对话 | 0.45 |
-| 文件拆分 | 0.03 |`}
+| 文件拆分 | 0.03 |`)}
             />
           </>
         )}
         {/* 付费二维码 */}
         <Box textAlign={'center'}>
-          {payId && <Box mb={3}>请微信扫码支付: {inputVal}元，请勿关闭页面</Box>}
+          {payId && (
+            <Box mb={3}>
+              {t('请微信扫码支付')}: {inputVal}
+              {t('元')},{t('请勿关闭页面')}
+            </Box>
+          )}
           <Box id={'payQRCode'} display={'inline-block'}></Box>
         </Box>
       </ModalBody>
@@ -119,7 +126,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
         {!payId && (
           <>
             <Button variant={'base'} onClick={onClose}>
-              取消
+              {t('取消')}
             </Button>
             <Button
               ml={3}
@@ -127,7 +134,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
               isDisabled={!inputVal || inputVal === 0}
               onClick={handleClickPay}
             >
-              获取充值二维码
+              {t('获取充值二维码')}
             </Button>
           </>
         )}
