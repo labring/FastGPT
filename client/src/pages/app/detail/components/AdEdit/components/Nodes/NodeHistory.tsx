@@ -7,22 +7,17 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeHistory = ({
-  data: { inputs, outputs, onChangeNode, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const NodeHistory = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { inputs, outputs, moduleId, onChangeNode } = data;
   return (
-    <NodeCard minW={'300px'} {...props}>
+    <NodeCard minW={'300px'} {...data}>
       <Divider text="Input" />
       <Container>
-        <RenderInput moduleId={props.moduleId} onChangeNode={onChangeNode} flowInputList={inputs} />
+        <RenderInput moduleId={moduleId} onChangeNode={onChangeNode} flowInputList={inputs} />
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput
-          onChangeNode={onChangeNode}
-          moduleId={props.moduleId}
-          flowOutputList={outputs}
-        />
+        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
       </Container>
     </NodeCard>
   );

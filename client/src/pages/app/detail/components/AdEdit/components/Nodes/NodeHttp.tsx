@@ -13,11 +13,10 @@ import { FlowInputItemTypeEnum, FlowOutputItemTypeEnum, FlowValueTypeEnum } from
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-const NodeHttp = ({
-  data: { moduleId, inputs, outputs, onChangeNode, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { moduleId, inputs, outputs, onChangeNode } = data;
   return (
-    <NodeCard minW={'350px'} moduleId={moduleId} {...props}>
+    <NodeCard minW={'350px'} {...data}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
         <RenderInput moduleId={moduleId} onChangeNode={onChangeNode} flowInputList={inputs} />
         <Button

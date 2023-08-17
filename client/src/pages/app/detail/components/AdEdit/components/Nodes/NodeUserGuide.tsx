@@ -10,9 +10,8 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { welcomeTextTip } from '@/constants/flow/ModuleTemplate';
 
-const NodeUserGuide = ({
-  data: { inputs, outputs, onChangeNode, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { inputs, moduleId, onChangeNode } = data;
   const welcomeText = useMemo(
     () => inputs.find((item) => item.key === SystemInputEnum.welcomeText),
     [inputs]
@@ -20,7 +19,7 @@ const NodeUserGuide = ({
 
   return (
     <>
-      <NodeCard minW={'300px'} {...props}>
+      <NodeCard minW={'300px'} {...data}>
         <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
           <>
             <Flex mb={1} alignItems={'center'}>
@@ -40,7 +39,7 @@ const NodeUserGuide = ({
                 placeholder={welcomeTextTip}
                 onChange={(e) => {
                   onChangeNode({
-                    moduleId: props.moduleId,
+                    moduleId,
                     key: SystemInputEnum.welcomeText,
                     type: 'inputs',
                     value: {

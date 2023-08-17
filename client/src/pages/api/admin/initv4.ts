@@ -408,9 +408,7 @@ async function init(limit: number, skip: number) {
       // userId: '63f9a14228d2a688d8dc9e1b'
     },
     '_id chat'
-  )
-    .limit(limit)
-    .skip(skip);
+  ).limit(limit);
 
   return Promise.all(
     apps.map(async (app) => {

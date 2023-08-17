@@ -6,29 +6,25 @@ import type { FlowModuleItemType } from '@/types/flow';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'react-i18next';
+import { useCopyData } from '@/utils/tools';
 
-type Props = {
+type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
-  logo: string;
-  name: string;
-  description?: string;
-  intro: string;
   minW?: string | number;
-  moduleId: string;
-  onDelNode: FlowModuleItemType['onDelNode'];
-  onCopyNode: FlowModuleItemType['onCopyNode'];
 };
 
-const NodeCard = ({
-  children,
-  logo = '/icon/logo.svg',
-  name = '未知模块',
-  description,
-  minW = '300px',
-  onCopyNode,
-  onDelNode,
-  moduleId
-}: Props) => {
+const NodeCard = (props: Props) => {
+  const {
+    children,
+    logo = '/icon/logo.svg',
+    name = '未知模块',
+    description,
+    minW = '300px',
+    onCopyNode,
+    onDelNode,
+    moduleId
+  } = props;
+  const { copyData } = useCopyData();
   const { t } = useTranslation();
   const theme = useTheme();
 
@@ -39,16 +35,22 @@ const NodeCard = ({
         label: t('common.Copy'),
         onClick: () => onCopyNode(moduleId)
       },
+      // {
+      //   icon: 'settingLight',
+      //   label: t('app.Copy Module Config'),
+      //   onClick: () => {
+      //     const copyProps = { ...props };
+      //     delete copyProps.children;
+      //     delete copyProps.children;
+      //     console.log(copyProps);
+      //   }
+      // },
       {
         icon: 'delete',
         label: t('common.Delete'),
         onClick: () => onDelNode(moduleId)
       },
-      // {
-      //   icon: 'collectionLight',
-      //   label: t('common.Collect'),
-      //   onClick: () => {}
-      // },
+
       {
         icon: 'back',
         label: t('common.Cancel'),

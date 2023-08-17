@@ -1,5 +1,5 @@
 import { ChatItemType } from '@/types/chat';
-import { Chat, App } from '@/service/mongo';
+import { Chat, App, ChatItem } from '@/service/mongo';
 import { ChatSourceEnum } from '@/constants/chat';
 
 type Props = {
@@ -32,36 +32,40 @@ export async function saveChat({
       '_id'
     );
 
-    const promise = [];
+    const promise: any[] = [
+      ChatItem.insertMany(
+        content.map((item) => ({
+          chatId,
+          userId,
+          appId,
+          ...item
+        }))
+      )
+    ];
 
     if (chatHistory) {
-      promise.push(
+      promise.push([
         Chat.updateOne(
           { chatId, userId },
           {
-            $push: {
-              content: {
-                $each: content,
-                $slice: -40
-              }
-            },
             title: content[0].value.slice(0, 20),
             updateTime: new Date()
           }
         )
-      );
+      ]);
     } else {
       promise.push(
-        Chat.create({
-          chatId,
-          userId,
-          appId,
-          variables,
-          title: content[0].value.slice(0, 20),
-          source,
-          shareId,
-          content: content
-        })
+        ...[
+          Chat.create({
+            chatId,
+            userId,
+            appId,
+            variables,
+            title: content[0].value.slice(0, 20),
+            source,
+            shareId
+          })
+        ]
       );
     }
 

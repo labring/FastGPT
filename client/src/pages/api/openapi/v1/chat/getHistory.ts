@@ -2,10 +2,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
-import { connectToDatabase, Chat } from '@/service/mongo';
+import { connectToDatabase, ChatItem } from '@/service/mongo';
 import { Types } from 'mongoose';
 import type { ChatItemType } from '@/types/chat';
-import { TaskResponseKeyEnum } from '@/constants/chat';
 
 export type Props = {
   chatId?: string;
@@ -37,30 +36,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 export async function getChatHistory({
   chatId,
   userId,
-  limit = 20
+  limit = 30
 }: Props & { userId: string }): Promise<Response> {
   if (!chatId) {
     return { history: [] };
   }
 
-  const history = await Chat.aggregate([
-    { $match: { chatId, userId: new Types.ObjectId(userId) } },
+  const history = await ChatItem.aggregate([
     {
-      $project: {
-        content: {
-          $slice: ['$content', -limit] // 返回 content 数组的最后20个元素
-        }
+      $match: {
+        chatId,
+        userId: new Types.ObjectId(userId)
       }
     },
-    { $unwind: '$content' },
+    {
+      $sort: {
+        _id: -1
+      }
+    },
+    {
+      $limit: limit
+    },
     {
       $project: {
-        obj: '$content.obj',
-        value: '$content.value',
-        [TaskResponseKeyEnum.responseData]: `$content.responseData`
+        dataId: 1,
+        obj: 1,
+        value: 1
       }
     }
   ]);
+
+  history.reverse();
 
   return { history };
 }

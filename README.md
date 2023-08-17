@@ -27,14 +27,6 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 | ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
-## ⚡快速部署
-
-> Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
-
-[![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
-
-由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
-
 ## 💡 功能
 
 1. 强大的可视化编排，轻松构建 AI 应用
@@ -76,12 +68,21 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）
 
-- [快开始本地开发](https://doc.fastgpt.run/docs/develop/dev)
-- [部署 FastGPT](https://doc.fastgpt.run/docs/category/deploy)
-- [系统配置文件说明](https://doc.fastgpt.run/docs/category/data-config)
-- [多模型配置](https://doc.fastgpt.run/docs/develop/data_config/chat_models)
-- [V3 升级 V4 初始化](https://doc.fastgpt.run/docs/develop/deploy/v4init)
-- [API 文档](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh?pre_pathname=%2Fdrive%2Fhome%2F)
+- **⚡ 快速部署**
+
+  > Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
+
+  [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
+
+  由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
+
+* [快开始本地开发](https://doc.fastgpt.run/docs/develop/dev)
+* [部署 FastGPT](https://doc.fastgpt.run/docs/category/deploy)
+* [系统配置文件说明](https://doc.fastgpt.run/docs/category/data-config)
+* [多模型配置](https://doc.fastgpt.run/docs/develop/data_config/chat_models)
+* [V3 升级 V4 初始化](https://doc.fastgpt.run/docs/develop/deploy/v4init)
+* [升级 v4.1 初始化](https://doc.fastgpt.run/docs/develop/deploy/initv4.1)
+* [API 文档](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh?pre_pathname=%2Fdrive%2Fhome%2F)
 
 ## 🏘️ 社区交流群
 

@@ -15,14 +15,13 @@ import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 
-const NodeExtract = ({
-  data: { inputs, outputs, moduleId, onChangeNode, onDelEdge, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { inputs, outputs, moduleId, onChangeNode, onDelEdge } = data;
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
 
   return (
-    <NodeCard minW={'400px'} moduleId={moduleId} {...props}>
+    <NodeCard minW={'400px'} {...data}>
       <Divider text="Input" />
       <Container>
         <RenderInput

@@ -40,6 +40,7 @@ import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { TaskResponseKeyEnum, getDefaultChatVariables } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
+import { customAlphabet } from 'nanoid';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -50,6 +51,8 @@ import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 
 import styles from './index.module.scss';
+
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 const textareaMinH = '22px';
 type generatingMessageProps = { text?: string; name?: string; status?: 'running' | 'finish' };
@@ -282,13 +285,13 @@ const ChatBox = (
       const newChatList: ChatSiteItemType[] = [
         ...chatHistory,
         {
-          _id: String(new Types.ObjectId()),
+          dataId: nanoid(),
           obj: 'Human',
           value: val,
           status: 'finish'
         },
         {
-          _id: String(new Types.ObjectId()),
+          dataId: nanoid(),
           obj: 'AI',
           value: '',
           status: 'loading'
@@ -552,7 +555,7 @@ const ChatBox = (
             {chatHistory.map((item, index) => (
               <Flex
                 position={'relative'}
-                key={item._id}
+                key={item.dataId}
                 flexDirection={'column'}
                 alignItems={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
                 py={5}
@@ -583,10 +586,10 @@ const ChatBox = (
                               _hover={{ color: 'red.600' }}
                               onClick={() => {
                                 setChatHistory((state) =>
-                                  state.filter((chat) => chat._id !== item._id)
+                                  state.filter((chat) => chat.dataId !== item.dataId)
                                 );
                                 onDelMessage({
-                                  contentId: item._id,
+                                  contentId: item.dataId,
                                   index
                                 });
                               }}
@@ -630,10 +633,10 @@ const ChatBox = (
                               _hover={{ color: 'red.600' }}
                               onClick={() => {
                                 setChatHistory((state) =>
-                                  state.filter((chat) => chat._id !== item._id)
+                                  state.filter((chat) => chat.dataId !== item.dataId)
                                 );
                                 onDelMessage({
-                                  contentId: item._id,
+                                  contentId: item.dataId,
                                   index
                                 });
                               }}
@@ -682,7 +685,7 @@ const ChatBox = (
                         />
                         <ResponseTags
                           chatId={chatId}
-                          contentId={item._id}
+                          contentId={item.dataId}
                           responseData={item.responseData}
                         />
                       </Card>

@@ -45,9 +45,7 @@ async function init(limit: number, skip: number) {
       chatId: { $exists: false }
     },
     '_id'
-  )
-    .limit(limit)
-    .skip(skip);
+  ).limit(limit);
 
   await Promise.all(
     chats.map((chat) =>

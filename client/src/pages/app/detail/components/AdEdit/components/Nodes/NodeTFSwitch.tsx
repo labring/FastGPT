@@ -8,9 +8,9 @@ import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import Label from '../modules/Label';
 
-const NodeTFSwitch = ({ data: { inputs, outputs, ...props } }: NodeProps<FlowModuleItemType>) => {
+const NodeTFSwitch = ({ data }: NodeProps<FlowModuleItemType>) => {
   return (
-    <NodeCard minW={'220px'} {...props}>
+    <NodeCard minW={'220px'} {...data}>
       <Divider text="输入输出" />
       <Container h={'100px'} py={0} px={0} display={'flex'} alignItems={'center'}>
         <Box flex={1} pl={'12px'}>

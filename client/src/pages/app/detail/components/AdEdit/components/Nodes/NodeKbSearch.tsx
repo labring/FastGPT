@@ -69,11 +69,10 @@ const KBSelect = ({
   );
 };
 
-const NodeKbSearch = ({
-  data: { moduleId, inputs, outputs, onChangeNode, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const NodeKbSearch = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { moduleId, inputs, outputs, onChangeNode } = data;
   return (
-    <NodeCard minW={'400px'} moduleId={moduleId} {...props}>
+    <NodeCard minW={'400px'} {...data}>
       <Divider text="Input" />
       <Container>
         <RenderInput

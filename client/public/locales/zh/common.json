@@ -11,6 +11,7 @@
     "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
     "Connection is invalid": "连接无效",
     "Connection type is different": "连接的类型不一致",
+    "Copy Module Config": "复制配置",
     "Export Config Successful": "已复制配置，请注意检查是否有重要数据",
     "Export Configs": "导出配置",
     "Import Config": "导入配置",

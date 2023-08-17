@@ -10,6 +10,8 @@ In the development environment, you need to make a copy of `config.json` as `con
 
 This configuration file contains customization of the frontend page, system-level parameters, and AI dialogue models, etc.
 
+**Note: The configuration instructions below are only a partial introduction. You need to mount the entire config.json file and not just a part of it. You can directly modify the provided config.json file based on the instructions below.**
+
 ## Brief Explanation of Basic Fields
 
 Here are some basic configuration fields.

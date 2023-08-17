@@ -41,7 +41,7 @@ export const adaptChatItem_openAI = ({
     [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System
   };
   return messages.map((item) => ({
-    ...(reserveId && { _id: item._id }),
+    ...(reserveId && { dataId: item.dataId }),
     role: map[item.obj] || ChatCompletionRequestMessageRoleEnum.System,
     content: item.value || ''
   }));
