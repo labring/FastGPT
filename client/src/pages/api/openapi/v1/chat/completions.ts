@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser, authApp, authShareChat, AuthUserTypeEnum } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
-import { withNextCors } from '@/service/utils/tools';
+import { addLog, withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
 import {
   dispatchHistory,
@@ -181,7 +181,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
     }
 
-    console.log(`finish time: ${(Date.now() - startTime) / 1000}s`);
+    addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     if (stream) {
       sseResponse({
@@ -351,6 +351,7 @@ export async function dispatchModules({
       res,
       stream,
       detail,
+      outputs: module.outputs,
       userOpenaiAccount: user?.openaiAccount,
       ...params
     };

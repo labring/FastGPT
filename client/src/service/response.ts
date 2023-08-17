@@ -7,7 +7,7 @@ import {
   ERROR_RESPONSE,
   ERROR_ENUM
 } from './errorCode';
-import { clearCookie, sseResponse } from './utils/tools';
+import { clearCookie, sseResponse, addLog } from './utils/tools';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -52,7 +52,24 @@ export const jsonRes = <T = any>(
     } else if (openaiError[error?.response?.statusText]) {
       msg = openaiError[error.response.statusText];
     }
-    console.log(error);
+
+    addLog.error(msg, {
+      message: error.message,
+      stack: error.stack,
+      ...(error.config && {
+        config: {
+          headers: error.config.headers,
+          url: error.config.url,
+          data: error.config.data
+        }
+      }),
+      ...(error.response && {
+        response: {
+          status: error.response.status,
+          statusText: error.response.statusText
+        }
+      })
+    });
   }
 
   res.status(code).json({
@@ -92,7 +109,24 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   } else if (openaiError[error?.response?.statusText]) {
     msg = openaiError[error.response.statusText];
   }
-  console.log('sse error => ', error);
+
+  addLog.error(`sse error: ${msg}`, {
+    message: error.message,
+    stack: error.stack,
+    ...(error.config && {
+      config: {
+        headers: error.config.headers,
+        url: error.config.url,
+        data: error.config.data
+      }
+    }),
+    ...(error.response && {
+      response: {
+        status: error.response.status,
+        statusText: error.response.statusText
+      }
+    })
+  });
 
   sseResponse({
     res,

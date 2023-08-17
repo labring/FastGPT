@@ -7,6 +7,8 @@ import { PRICE_SCALE } from '@/constants/common';
 import { connectPg, PgClient } from './pg';
 import { createHashPassword } from '@/utils/tools';
 import { PgTrainingTableName } from '@/constants/plugin';
+import { createLogger, format, transports } from 'winston';
+import 'winston-mongodb';
 
 /**
  * connect MongoDB and init data
@@ -32,6 +34,9 @@ export async function connectToDatabase(): Promise<void> {
     });
   }
 
+  // logger
+  initLogger();
+
   // init function
   getInitConfig();
 
@@ -39,7 +44,6 @@ export async function connectToDatabase(): Promise<void> {
     mongoose.set('strictQuery', true);
     global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
       bufferCommands: true,
-      dbName: process.env.MONGODB_NAME,
       maxConnecting: Number(process.env.DB_MAX_LINK || 5),
       maxPoolSize: Number(process.env.DB_MAX_LINK || 5),
       minPoolSize: 2
@@ -57,6 +61,37 @@ export async function connectToDatabase(): Promise<void> {
   startQueue();
 }
 
+function initLogger() {
+  global.logger = createLogger({
+    transports: [
+      new transports.MongoDB({
+        db: process.env.MONGODB_URI as string,
+        collection: 'server_logs',
+        options: {
+          useUnifiedTopology: true
+        },
+        cappedSize: 500000000,
+        tryReconnect: true,
+        metaKey: 'meta',
+        format: format.combine(format.timestamp(), format.json())
+      }),
+      new transports.Console({
+        format: format.combine(
+          format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+          format.printf((info) => {
+            if (info.level === 'error') {
+              console.log(info.meta);
+              return `${info.level}: ${[info.timestamp]}: ${info.message}`;
+            }
+            return `${info.level}: ${[info.timestamp]}: ${info.message}${
+              info.meta ? `: ${JSON.stringify(info.meta)}` : ''
+            }`;
+          })
+        )
+      })
+    ]
+  });
+}
 async function initRootUser() {
   try {
     const rootUser = await User.findOne({

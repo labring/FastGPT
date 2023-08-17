@@ -43,7 +43,7 @@ export async function generateQA(): Promise<any> {
     // task preemption
     if (!data) {
       reduceQueue();
-      global.qaQueueLen <= 0 && console.log(`没有需要【QA】的数据, ${global.qaQueueLen}`);
+      global.qaQueueLen <= 0 && console.log(`【QA】任务完成`);
       return;
     }
 
