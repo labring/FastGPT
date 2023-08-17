@@ -15,8 +15,6 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
   ·
   <a href="https://doc.fastgpt.run/docs/develop/dev">本地开发</a>
   ·
-  <a href="https://doc.fastgpt.run/docs/category/deploy">快速部署</a>
-  ·
   <a href="https://github.com/labring/FastGPT#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">相关项目</a>
 </p>
 
@@ -28,6 +26,14 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 | ---------------------------------- | ---------------------------------- |
 | ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
+
+## ⚡快速部署
+
+> Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
+
+[![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
+
+由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
 
 ## 💡 功能
 
