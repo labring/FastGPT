@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
+import { jsonRes } from '@/service/response';
 
 const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
   const { url } = req.body;
@@ -26,31 +27,25 @@ const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
     const article = reader.parse();
 
     if (!article) {
-      return res.status(400).json({ error: 'Unable to parse the main content of the page' });
+        jsonRes(res, {
+            code: 500,
+            error: '页面获取失败或页面为空'
+          });
+          return;
     }
 
-    return res.status(200).json({ content: article.content });
+    jsonRes(res, {
+        code: 200,
+        data: article.content
+      });
+    
   } catch (error:any) {
-    console.error(error);
-
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      return res.status(error.response.status).json({
-        error: `Request failed with status code ${error.response.status}`,
-      });
-    } else if (error.request) {
-      // The request was made but no response was received
-      return res.status(500).json({
-        error: 'No response received from the server',
-      });
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      return res.status(500).json({
-        error: 'An error occurred while processing the request',
+    jsonRes(res, {
+        code: 500,
+        error: error
       });
     }
-  }
+  
 };
 
 export default fetchContent;
