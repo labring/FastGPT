@@ -11,6 +11,7 @@
     "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
+    "Copy Module Config": "Copy config",
     "Export Config Successful": "The configuration has been copied. Please check for important data",
     "Export Configs": "Export Configs",
     "Import Config": "Import Config",

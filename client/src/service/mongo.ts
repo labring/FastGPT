@@ -113,6 +113,7 @@ async function initPg() {
 }
 
 export * from './models/chat';
+export * from './models/chatItem';
 export * from './models/app';
 export * from './models/user';
 export * from './models/bill';

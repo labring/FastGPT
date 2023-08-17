@@ -28,19 +28,9 @@ export const delChatHistoryById = (chatId: string) => DELETE(`/chat/removeHistor
 export const clearChatHistoryByAppId = (appId: string) => DELETE(`/chat/removeHistory`, { appId });
 
 /**
- * update history quote status
- */
-export const updateHistoryQuote = (params: {
-  chatId: string;
-  contentId: string;
-  quoteId: string;
-  sourceText: string;
-}) => PUT(`/chat/history/updateHistoryQuote`, params);
-
-/**
  * 删除一句对话
  */
-export const delChatRecordByIndex = (data: { chatId: string; contentId: string }) =>
+export const delChatRecordById = (data: { chatId: string; contentId: string }) =>
   DELETE(`/chat/delChatRecordByContentId`, data);
 
 /**
