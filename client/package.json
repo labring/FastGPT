@@ -59,7 +59,7 @@
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
     "tunnel": "^0.0.6",
-    "jsdom": "^22.1.0"
+    "jsdom": "^22.1.0",
     "winston": "^3.10.0",
     "winston-mongodb": "^5.1.1",
     "zustand": "^4.3.5"
