@@ -147,10 +147,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 onClick={onclickGit}
               />
             </Flex>
-            <Box mt={3} textAlign={'center'} fontSize={'sm'} color={'myGray.600'}>
-              由于 Git 登录设计缺陷，我们重新设计了 Git 登录，已使用 Git
-              注册的账号将会丢失关联，如果你希望重新绑定原来的账号，可以点击右下角的【联系方式】，我们会手动为你重新绑定。不需要重新关联的，将会注册新的账号。
-            </Box>
           </>
         )}
       </form>

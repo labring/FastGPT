@@ -22,9 +22,8 @@ export const defaultVariable: VariableItemType = {
   enums: [{ value: '' }]
 };
 
-const NodeUserGuide = ({
-  data: { inputs, outputs, onChangeNode, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { inputs, moduleId, onChangeNode } = data;
   const variables = useMemo(
     () =>
       (inputs.find((item) => item.key === SystemInputEnum.variables)
@@ -37,7 +36,7 @@ const NodeUserGuide = ({
   const updateVariables = useCallback(
     (value: VariableItemType[]) => {
       onChangeNode({
-        moduleId: props.moduleId,
+        moduleId,
         key: SystemInputEnum.variables,
         type: 'inputs',
         value: {
@@ -46,7 +45,7 @@ const NodeUserGuide = ({
         }
       });
     },
-    [inputs, onChangeNode, props.moduleId]
+    [inputs, onChangeNode, moduleId]
   );
 
   const onclickSubmit = useCallback(
@@ -59,7 +58,7 @@ const NodeUserGuide = ({
 
   return (
     <>
-      <NodeCard minW={'300px'} {...props}>
+      <NodeCard minW={'300px'} {...data}>
         <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
           <TableContainer>
             <Table>

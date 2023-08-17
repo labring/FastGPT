@@ -13,16 +13,15 @@ import MySlider from '@/components/Slider';
 import { Box } from '@chakra-ui/react';
 import { formatPrice } from '@/utils/user';
 
-const NodeChat = ({
-  data: { moduleId, inputs, outputs, onChangeNode, ...props }
-}: NodeProps<FlowModuleItemType>) => {
+const NodeChat = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { moduleId, inputs, outputs, onChangeNode } = data;
   const outputsLen = useMemo(
     () => outputs.filter((item) => item.type !== FlowOutputItemTypeEnum.hidden).length,
     [outputs]
   );
 
   return (
-    <NodeCard minW={'400px'} moduleId={moduleId} {...props}>
+    <NodeCard minW={'400px'} {...data}>
       <Divider text="Input" />
       <Container>
         <RenderInput
