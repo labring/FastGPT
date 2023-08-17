@@ -2,6 +2,7 @@ import type { Mongoose } from 'mongoose';
 import type { Agent } from 'http';
 import type { Pool } from 'pg';
 import type { Tiktoken } from '@dqbd/tiktoken';
+import type { Logger } from 'winston';
 import { ChatModelItemType, QAModelItemType, VectorModelItemType } from './model';
 
 export type PagingData<T> = {
@@ -55,6 +56,9 @@ declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
   var OpenAiEncMap: Tiktoken;
+
+  var logger: Logger;
+
   var sendInformQueue: (() => Promise<void>)[];
   var sendInformQueueLen: number;
 

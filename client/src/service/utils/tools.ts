@@ -65,6 +65,7 @@ export function withNextCors(handler: NextApiHandler): NextApiHandler {
   };
 }
 
+/* start task */
 export const startQueue = () => {
   for (let i = 0; i < global.systemEnv.qaMaxProcess; i++) {
     generateQA();
@@ -86,4 +87,14 @@ export const sseResponse = ({
   if (res.closed) return;
   event && res.write(`event: ${event}\n`);
   res.write(`data: ${data}\n\n`);
+};
+
+/* add logger */
+export const addLog = {
+  info: (msg: string, obj?: Record<string, any>) => {
+    global.logger.info(msg, { meta: obj });
+  },
+  error: (msg: string, obj?: Record<string, any>) => {
+    global.logger.error(msg, { meta: obj });
+  }
 };

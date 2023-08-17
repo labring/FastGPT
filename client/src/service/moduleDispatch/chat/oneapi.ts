@@ -57,6 +57,9 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     userOpenaiAccount,
     outputs
   } = props as ChatProps;
+  if (!userChatInput) {
+    return Promise.reject('Question is empty');
+  }
 
   // temperature adapt
   const modelConstantsData = getChatModel(model);
@@ -320,7 +323,6 @@ function targetResponse({
 }) {
   const targets =
     outputs.find((output) => output.key === TaskResponseKeyEnum.answerText)?.targets || [];
-  console.log(outputs);
 
   if (targets.length === 0) return;
   sseResponse({
