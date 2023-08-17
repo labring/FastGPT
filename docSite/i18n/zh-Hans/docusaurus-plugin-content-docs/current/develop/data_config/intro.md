@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # 快速介绍
@@ -9,6 +9,8 @@ sidebar_position: 1
 开发环境下，你需要复制一份 config.json 成 config.local.json 文件才会生效。
 
 这个配置文件中包含了前端页面定制、系统级参数、AI 对话的模型等……
+
+**注意：下面的配置介绍仅是局部介绍，你需要完整挂载整个 config.jso ，不能仅挂载一部分。你可以直接在给的 config.json 基础上根据下面的介绍进行修改。**
 
 ## 基础字段粗略说明
 
