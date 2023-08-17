@@ -11,6 +11,7 @@ export type AnswerProps = {
 };
 export type AnswerResponse = {
   [TaskResponseKeyEnum.answerText]: string;
+  finish: boolean;
 };
 
 export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
@@ -27,6 +28,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   }
 
   return {
-    [TaskResponseKeyEnum.answerText]: text
+    [TaskResponseKeyEnum.answerText]: text,
+    finish: true
   };
 };

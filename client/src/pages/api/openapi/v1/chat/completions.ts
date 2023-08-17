@@ -351,6 +351,7 @@ export async function dispatchModules({
       res,
       stream,
       detail,
+      outputs: module.outputs,
       userOpenaiAccount: user?.openaiAccount,
       ...params
     };

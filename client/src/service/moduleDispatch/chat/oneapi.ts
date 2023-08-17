@@ -17,6 +17,7 @@ import { ChatModelItemType } from '@/types/model';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { textCensor } from '@/service/api/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
+import { AppModuleItemType } from '@/types/app';
 
 export type ChatProps = {
   res: NextApiResponse;
@@ -31,6 +32,7 @@ export type ChatProps = {
   systemPrompt?: string;
   limitPrompt?: string;
   userOpenaiAccount: UserModelSchema['openaiAccount'];
+  outputs: AppModuleItemType['outputs'];
 };
 export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
@@ -52,7 +54,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     userChatInput,
     systemPrompt = '',
     limitPrompt = '',
-    userOpenaiAccount
+    userOpenaiAccount,
+    outputs
   } = props as ChatProps;
 
   // temperature adapt
@@ -141,6 +144,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
       const totalTokens = countOpenAIToken({
         messages: completeMessages
       });
+
+      targetResponse({ res, detail, outputs });
 
       return {
         answerText: answer,
@@ -302,6 +307,29 @@ function getMaxTokens({
   return {
     max_tokens: maxToken
   };
+}
+
+function targetResponse({
+  res,
+  outputs,
+  detail
+}: {
+  res: NextApiResponse;
+  outputs: AppModuleItemType['outputs'];
+  detail: boolean;
+}) {
+  const targets =
+    outputs.find((output) => output.key === TaskResponseKeyEnum.answerText)?.targets || [];
+  console.log(outputs);
+
+  if (targets.length === 0) return;
+  sseResponse({
+    res,
+    event: detail ? sseResponseEventEnum.answer : undefined,
+    data: textAdaptGptResponse({
+      text: '\n'
+    })
+  });
 }
 
 async function streamResponse({
