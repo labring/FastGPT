@@ -80,8 +80,8 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 * [部署 FastGPT](https://doc.fastgpt.run/docs/category/deploy)
 * [系统配置文件说明](https://doc.fastgpt.run/docs/category/data-config)
 * [多模型配置](https://doc.fastgpt.run/docs/develop/data_config/chat_models)
-* [V3 升级 V4 初始化](https://doc.fastgpt.run/docs/develop/deploy/v4init)
-* [升级 v4.1 初始化](https://doc.fastgpt.run/docs/develop/deploy/initv4.1)
+* [V3 升级 V4 初始化](https://doc.fastgpt.run/docs/develop/update/40init)
+* [升级 v4.1 初始化](https://doc.fastgpt.run/docs/develop/update/41init)
 * [API 文档](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh?pre_pathname=%2Fdrive%2Fhome%2F)
 
 ## 🏘️ 社区交流群

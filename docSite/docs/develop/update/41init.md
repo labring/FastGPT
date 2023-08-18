@@ -7,8 +7,10 @@
 优化了 PG 和 Mongo 的连接变量，只需要 1 个 url 即可。
 
 ```
-MONGODB_URI=mongodb://username:password@0.0.0.0:27017/fastgpt
-PG_URL=postgresql://username:password@0.0.0.0:5432/postgres
+# mongo 配置，不需要改. 如果连不上，可能需要去掉 ?authSource=admin
+- MONGODB_URI=mongodb://username:password@mongo:27017/fastgpt?authSource=admin
+# pg配置. 不需要改
+- PG_URL=postgresql://username:password@pg:5432/postgres
 ```
 
 ## 执行初始化 API
