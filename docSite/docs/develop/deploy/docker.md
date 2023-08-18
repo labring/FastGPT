@@ -88,8 +88,8 @@ services:
       - DB_MAX_LINK=5 # database max link
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
-      # mongo 配置，不需要改
-      - MONGODB_URI=mongodb://username:password@mongo:27017/fastgpt
+      # mongo 配置，不需要改. 如果连不上，可能需要去掉 ?authSource=admin
+      - MONGODB_URI=mongodb://username:password@mongo:27017/fastgpt?authSource=admin
       # pg配置. 不需要改
       - PG_URL=postgresql://username:password@pg:5432/postgres
 networks:
@@ -142,8 +142,8 @@ services:
       - TOKEN_KEY=any
       # root key, 最高权限，可以内部接口互相调用
       - ROOT_KEY=root_key
-      # mongo 配置，不需要改
-      - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/fastgpt
+      # mongo 配置，不需要改. 如果连不上，可能需要去掉 ?authSource=admin
+      - MONGODB_URI=mongodb://username:password@0.0.0.0:27017/fastgpt?authSource=admin
       # pg配置. 不需要改
       - PG_URL=postgresql://username:password@0.0.0.0:5432/postgres
 ```
