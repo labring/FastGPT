@@ -255,8 +255,10 @@ fastgpt:
     - pg
   restart: always
   environment:
+    ......
     # root 密码，用户名为: root
     - DEFAULT_ROOT_PSW=1234
+    ......
   volumes:
     - ./config.json:/app/data/config.json
 ```
