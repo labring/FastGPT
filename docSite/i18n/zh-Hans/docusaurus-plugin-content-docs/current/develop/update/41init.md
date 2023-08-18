@@ -15,6 +15,6 @@
 
 ## 执行初始化 API
 
-部署新版项目，并发起 3 个 HTTP 请求（记得携带 headers.rootkey，这个值是环境变量里的）
+部署新版项目，并发起 1 个 HTTP 请求（记得携带 headers.rootkey，这个值是环境变量里的）
 
 https://xxxxx/api/admin/initChatItem
