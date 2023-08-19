@@ -182,7 +182,7 @@ export const ChatModule: FlowModuleTemplateType = {
     {
       key: TaskResponseKeyEnum.answerText,
       label: '模型回复',
-      description: '如果外接了内容，会在回复结束时自动添加\n\n',
+      description: '将在 stream 回复完毕后触发',
       valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
       targets: []

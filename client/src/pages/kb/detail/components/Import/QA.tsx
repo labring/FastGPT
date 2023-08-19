@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Box, Flex, Button, useTheme, Image, Input } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
-import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { useMutation } from '@tanstack/react-query';
 import { postKbDataFromList } from '@/api/plugins/kb';
 import { splitText2Chunks } from '@/utils/file';
@@ -14,23 +13,11 @@ import CloseIcon from '@/components/Icon/close';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { fileImgs } from '@/constants/common';
-import { customAlphabet } from 'nanoid';
 import { TrainingModeEnum } from '@/constants/plugin';
-import FileSelect from './FileSelect';
+import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
-
-type FileItemType = {
-  id: string;
-  filename: string;
-  text: string;
-  icon: string;
-  chunks: string[];
-  tokens: number;
-};
 
 const QAImport = ({ kbId }: { kbId: string }) => {
   const model = qaModelList[0]?.model;
@@ -40,7 +27,6 @@ const QAImport = ({ kbId }: { kbId: string }) => {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [selecting, setSelecting] = useState(false);
   const [files, setFiles] = useState<FileItemType[]>([]);
   const [showRePreview, setShowRePreview] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItemType>();
@@ -62,77 +48,13 @@ const QAImport = ({ kbId }: { kbId: string }) => {
     content: `该任务无法终止！导入后会自动调用大模型生成问答对，会有一些细节丢失，请确认！如果余额不足，未完成的任务会被暂停。`
   });
 
-  const onSelectFile = useCallback(
-    async (files: File[]) => {
-      setSelecting(true);
-      try {
-        let promise = Promise.resolve();
-        files.forEach((file) => {
-          promise = promise.then(async () => {
-            const extension = file?.name?.split('.')?.pop()?.toLowerCase();
-            const icon = fileImgs.find((item) => new RegExp(item.reg).test(file.name))?.src;
-            const text = await (async () => {
-              switch (extension) {
-                case 'txt':
-                case 'md':
-                  return readTxtContent(file);
-                case 'pdf':
-                  return readPdfContent(file);
-                case 'doc':
-                case 'docx':
-                  return readDocContent(file);
-              }
-              return '';
-            })();
-
-            if (icon && text) {
-              const splitRes = splitText2Chunks({
-                text: text,
-                maxLen: chunkLen
-              });
-
-              setFiles((state) => [
-                {
-                  id: nanoid(),
-                  filename: file.name,
-                  text,
-                  icon,
-                  ...splitRes
-                },
-                ...state
-              ]);
-            }
-          });
-        });
-        await promise;
-      } catch (error: any) {
-        console.log(error);
-        toast({
-          title: typeof error === 'string' ? error : '解析文件失败',
-          status: 'error'
-        });
-      }
-      setSelecting(false);
-    },
-    [chunkLen, toast]
-  );
-
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
-      const chunks: { a: string; q: string; source: string }[] = [];
-      files.forEach((file) =>
-        file.chunks.forEach((chunk) => {
-          chunks.push({
-            q: chunk,
-            a: '',
-            source: file.filename
-          });
-        })
-      );
+      const chunks = files.map((file) => file.chunks).flat();
 
       // subsection import
       let success = 0;
-      const step = 500;
+      const step = 300;
       for (let i = 0; i < chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
@@ -168,18 +90,22 @@ const QAImport = ({ kbId }: { kbId: string }) => {
 
   const onRePreview = useCallback(async () => {
     try {
-      const splitRes = files.map((item) =>
-        splitText2Chunks({
-          text: item.text,
-          maxLen: chunkLen
-        })
-      );
-
       setFiles((state) =>
-        state.map((file, index) => ({
-          ...file,
-          ...splitRes[index]
-        }))
+        state.map((file) => {
+          const splitRes = splitText2Chunks({
+            text: file.text,
+            maxLen: chunkLen
+          });
+          return {
+            ...file,
+            tokens: splitRes.tokens,
+            chunks: splitRes.chunks.map((chunk) => ({
+              q: chunk,
+              a: '',
+              source: file.filename
+            }))
+          };
+        })
       );
       setPreviewFile(undefined);
       setShowRePreview(false);
@@ -189,7 +115,12 @@ const QAImport = ({ kbId }: { kbId: string }) => {
         title: getErrText(error, '文本分段异常')
       });
     }
-  }, [chunkLen, files, toast]);
+  }, [chunkLen, toast]);
+
+  const filenameStyles = {
+    className: 'textEllipsis',
+    maxW: '400px'
+  };
 
   return (
     <Box display={['block', 'flex']} h={['auto', '100%']}>
@@ -203,8 +134,10 @@ const QAImport = ({ kbId }: { kbId: string }) => {
       >
         <FileSelect
           fileExtension={fileExtension}
-          onSelectFile={onSelectFile}
-          isLoading={selecting}
+          onPushFiles={(files) => {
+            setFiles((state) => files.concat(state));
+          }}
+          chunkLen={chunkLen}
           py={emptyFiles ? '100px' : 5}
         />
 
@@ -232,7 +165,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
                   onClick={() => setPreviewFile(item)}
                 >
                   <Image src={item.icon} w={'16px'} alt={''} />
-                  <Box ml={2} flex={'1 0 0'} pr={3} className="textEllipsis">
+                  <Box ml={2} flex={'1 0 0'} pr={3} {...filenameStyles}>
                     {item.filename}
                   </Box>
                   <MyIcon
@@ -314,7 +247,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
               pt={[4, 8]}
               bg={'myWhite.400'}
             >
-              <Box px={[4, 8]} fontSize={['lg', 'xl']} fontWeight={'bold'}>
+              <Box px={[4, 8]} fontSize={['lg', 'xl']} fontWeight={'bold'} {...filenameStyles}>
                 {previewFile.filename}
               </Box>
               <CloseIcon
@@ -353,14 +286,21 @@ const QAImport = ({ kbId }: { kbId: string }) => {
             </Box>
           ) : (
             <Box h={'100%'} pt={[4, 8]} overflow={'overlay'}>
-              <Box px={[4, 8]} fontSize={['lg', 'xl']} fontWeight={'bold'}>
-                分段预览({totalChunk}组)
-              </Box>
+              <Flex px={[4, 8]} alignItems={'center'}>
+                <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
+                  分段预览({totalChunk}组)
+                </Box>
+                {totalChunk > 100 && (
+                  <Box ml={2} fontSize={'sm'} color={'myhGray.500'}>
+                    仅展示部分
+                  </Box>
+                )}
+              </Flex>
               <Box px={[4, 8]} overflow={'overlay'}>
                 {files.map((file) =>
-                  file.chunks.map((item, i) => (
+                  file.chunks.slice(0, 30).map((chunk, i) => (
                     <Box
-                      key={item}
+                      key={i}
                       py={4}
                       bg={'myWhite.500'}
                       my={2}
@@ -371,6 +311,9 @@ const QAImport = ({ kbId }: { kbId: string }) => {
                       <Flex mb={1} px={4} userSelect={'none'}>
                         <Box px={3} py={'1px'} border={theme.borders.base} borderRadius={'md'}>
                           # {i + 1}
+                        </Box>
+                        <Box ml={2} fontSize={'sm'} color={'myhGray.500'} {...filenameStyles}>
+                          {file.filename}
                         </Box>
                         <Box flex={1} />
                         <DeleteIcon
@@ -397,11 +340,12 @@ const QAImport = ({ kbId }: { kbId: string }) => {
                         whiteSpace={'pre-wrap'}
                         wordBreak={'break-all'}
                         contentEditable
-                        dangerouslySetInnerHTML={{ __html: item }}
+                        dangerouslySetInnerHTML={{ __html: chunk.q }}
                         onBlur={(e) => {
                           // @ts-ignore
                           const val = e.target.innerText;
 
+                          /* delete file */
                           if (val === '') {
                             setFiles((state) =>
                               state.map((stateFile) =>
@@ -417,14 +361,16 @@ const QAImport = ({ kbId }: { kbId: string }) => {
                               )
                             );
                           } else {
-                            setFiles((state) =>
-                              state.map((stateFile) =>
-                                stateFile.id === file.id
+                            // update file
+                            setFiles((stateFiles) =>
+                              stateFiles.map((stateFile) =>
+                                file.id === stateFile.id
                                   ? {
-                                      ...file,
-                                      chunks: file.chunks.map((chunk, index) =>
-                                        i === index ? val : chunk
-                                      )
+                                      ...stateFile,
+                                      chunks: stateFile.chunks.map((chunk, index) => ({
+                                        ...chunk,
+                                        q: i === index ? val : chunk.q
+                                      }))
                                     }
                                   : stateFile
                               )
