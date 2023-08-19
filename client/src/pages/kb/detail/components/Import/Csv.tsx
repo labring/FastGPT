@@ -8,20 +8,11 @@ import { getErrText } from '@/utils/tools';
 import { vectorModelList } from '@/store/static';
 import MyIcon from '@/components/Icon';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
-import { customAlphabet } from 'nanoid';
 import { TrainingModeEnum } from '@/constants/plugin';
-import FileSelect from './FileSelect';
+import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-import { readCsvContent } from '@/utils/file';
 
 const fileExtension = '.csv';
-
-type FileItemType = {
-  id: string;
-  filename: string;
-  chunks: { q: string; a: string; source?: string }[];
-};
 
 const CsvImport = ({ kbId }: { kbId: string }) => {
   const model = vectorModelList[0]?.model;
@@ -29,7 +20,6 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [selecting, setSelecting] = useState(false);
   const [files, setFiles] = useState<FileItemType[]>([]);
   const [successChunks, setSuccessChunks] = useState(0);
 
@@ -43,58 +33,9 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
     content: `该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。`
   });
 
-  const onSelectFile = useCallback(
-    async (files: File[]) => {
-      setSelecting(true);
-      try {
-        let promise = Promise.resolve();
-        files
-          .filter((file) => /csv$/.test(file.name))
-          .forEach((file) => {
-            promise = promise.then(async () => {
-              const { header, data } = await readCsvContent(file);
-              if (header[0] !== 'question' || header[1] !== 'answer') {
-                throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
-              }
-
-              setFiles((state) => [
-                {
-                  id: nanoid(),
-                  filename: file.name,
-                  chunks: data.map((item) => ({
-                    q: item[0],
-                    a: item[1],
-                    source: item[2]
-                  }))
-                },
-                ...state
-              ]);
-            });
-          });
-        await promise;
-      } catch (error: any) {
-        console.log(error);
-        toast({
-          title: getErrText(error, '解析文件失败'),
-          status: 'error'
-        });
-      }
-      setSelecting(false);
-    },
-    [toast]
-  );
-
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
-      const chunks: { a: string; q: string; source: string }[] = [];
-      files.forEach((file) =>
-        file.chunks.forEach((chunk) => {
-          chunks.push({
-            ...chunk,
-            source: chunk.source || file.filename
-          });
-        })
-      );
+      const chunks = files.map((file) => file.chunks).flat();
 
       // subsection import
       let success = 0;
@@ -131,6 +72,10 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
     }
   });
 
+  const filenameStyles = {
+    className: 'textEllipsis',
+    maxW: '400px'
+  };
   return (
     <Box display={['block', 'flex']} h={['auto', '100%']}>
       <Flex
@@ -143,11 +88,12 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
       >
         <FileSelect
           fileExtension={fileExtension}
-          onSelectFile={onSelectFile}
-          isLoading={selecting}
           tipText={
             'file.If the imported file is garbled, please convert CSV to UTF-8 encoding format'
           }
+          onPushFiles={(files) => setFiles((state) => files.concat(state))}
+          showUrlFetch={false}
+          showCreateFile={false}
           py={emptyFiles ? '100px' : 5}
           isCsv
         />
@@ -169,7 +115,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
                   _hover={{ ...hoverDeleteStyles }}
                 >
                   <Image src={'/imgs/files/csv.svg'} w={'16px'} alt={''} />
-                  <Box ml={2} flex={'1 0 0'} pr={3} className="textEllipsis">
+                  <Box ml={2} flex={'1 0 0'} pr={3} {...filenameStyles}>
                     {item.filename}
                   </Box>
                   <MyIcon
@@ -203,9 +149,16 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
       </Flex>
       {!emptyFiles && (
         <Box flex={'2 0 0'} w={['100%', 0]} h={'100%'} pt={[4, 8]} overflow={'overlay'}>
-          <Box px={[4, 8]} fontSize={['lg', 'xl']} fontWeight={'bold'}>
-            数据预览({totalChunk}组)
-          </Box>
+          <Flex px={[4, 8]} alignItems={'center'}>
+            <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
+              分段预览({totalChunk}组)
+            </Box>
+            {totalChunk > 100 && (
+              <Box ml={2} fontSize={'sm'} color={'myhGray.500'}>
+                仅展示部分
+              </Box>
+            )}
+          </Flex>
           <Box px={[4, 8]} overflow={'overlay'}>
             {files.map((file) =>
               file.chunks.slice(0, 100).map((item, i) => (

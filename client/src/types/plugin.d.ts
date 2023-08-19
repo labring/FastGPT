@@ -28,3 +28,8 @@ export type KbTestItemType = {
   time: Date;
   results: (KbDataItemType & { score: number })[];
 };
+
+export type FetchResultItem = {
+  url: string;
+  content: string;
+};

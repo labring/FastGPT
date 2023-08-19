@@ -54,9 +54,14 @@
   },
   "file": {
     "Click to download CSV template": "点击下载 CSV 模板",
-    "Drag and drop": "拖拽文件至此，或点击",
+    "Create File": "创建新文件",
+    "Create file": "创建文件",
+    "Drag and drop": "拖拽文件至此",
+    "Fetch Url": "链接读取",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式",
     "Release the mouse to upload the file": "松开鼠标上传文件",
+    "Select a maximum of 10 files": "最多选择10个文件",
+    "max 10": "最多选择 10 个文件",
     "select a document": "选择文件",
     "support": "支持 {{fileExtension}} 文件",
     "upload error description": "单次只支持上传多个文件或者一个文件夹"
