@@ -5,12 +5,9 @@ import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
+import type { FetchResultItem } from '@/types/plugin';
+import { simpleText } from '@/utils/file';
 
-type FetchResultItem = {
-  url: string;
-  title: string;
-  content: string;
-};
 export type UrlFetchResponse = FetchResultItem[];
 
 const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -38,10 +35,11 @@ const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
           const reader = new Readability(dom.window.document);
           const article = reader.parse();
 
+          const content = article?.textContent || '';
+
           return {
             url,
-            title: article?.title || '',
-            content: article?.textContent || ''
+            content: simpleText(`${article?.title}\n${content}`)
           };
         })
       )

@@ -2,30 +2,53 @@ import MyIcon from '@/components/Icon';
 import { useLoading } from '@/hooks/useLoading';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
-import { fileDownload } from '@/utils/file';
-import { Box, Flex, Text, type BoxProps } from '@chakra-ui/react';
+import { fileDownload, readCsvContent, simpleText, splitText2Chunks } from '@/utils/file';
+import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
+import { fileImgs } from '@/constants/common';
 import { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
+import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
+import { customAlphabet } from 'nanoid';
+import dynamic from 'next/dynamic';
+import MyTooltip from '@/components/MyTooltip';
+import { FetchResultItem } from '@/types/plugin';
 
+const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
+const CreateFileModal = dynamic(() => import('./CreateFileModal'));
+
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+const csvTemplate = `question,answer,source\n"什么是 laf","laf 是一个云函数开发平台……","laf git doc"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……","sealos git doc"`;
+
+export type FileItemType = {
+  id: string;
+  filename: string;
+  chunks: { q: string; a: string; source?: string }[];
+  text: string;
+  icon: string;
+  tokens: number;
+};
 interface Props extends BoxProps {
   fileExtension: string;
+  onPushFiles: (files: FileItemType[]) => void;
   tipText?: string;
-  onSelectFile: (files: File[]) => Promise<void>;
-  isLoading?: boolean;
+  chunkLen?: number;
   isCsv?: boolean;
+  showUrlFetch?: boolean;
+  showCreateFile?: boolean;
 }
 
 const FileSelect = ({
   fileExtension,
-  onSelectFile,
-  isLoading,
+  onPushFiles,
   tipText,
+  chunkLen = 500,
   isCsv = false,
+  showUrlFetch = true,
+  showCreateFile = true,
   ...props
 }: Props) => {
   const { Loading: FileSelectLoading } = useLoading();
   const { t } = useTranslation();
-  const csvTemplate = `question,answer,source\n"什么是 laf","laf 是一个云函数开发平台……","laf git doc"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……","sealos git doc"`;
 
   const { toast } = useToast();
 
@@ -35,6 +58,154 @@ const FileSelect = ({
   });
 
   const [isDragging, setIsDragging] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+
+  const {
+    isOpen: isOpenUrlFetch,
+    onOpen: onOpenUrlFetch,
+    onClose: onCloseUrlFetch
+  } = useDisclosure();
+  const {
+    isOpen: isOpenCreateFile,
+    onOpen: onOpenCreateFile,
+    onClose: onCloseCreateFile
+  } = useDisclosure();
+
+  const onSelectFile = useCallback(
+    async (files: File[]) => {
+      setSelecting(true);
+      try {
+        // Parse file by file
+        let promise = Promise.resolve<FileItemType[]>([]);
+        files.forEach((file) => {
+          promise = promise.then(async (result) => {
+            const extension = file?.name?.split('.')?.pop()?.toLowerCase();
+
+            /* text file */
+            const icon = fileImgs.find((item) => new RegExp(item.reg).test(file.name))?.src;
+            let text = await (async () => {
+              switch (extension) {
+                case 'txt':
+                case 'md':
+                  return readTxtContent(file);
+                case 'pdf':
+                  return readPdfContent(file);
+                case 'doc':
+                case 'docx':
+                  return readDocContent(file);
+              }
+              return '';
+            })();
+
+            if (!icon) return result;
+
+            if (text) {
+              text = simpleText(text);
+              const splitRes = splitText2Chunks({
+                text,
+                maxLen: chunkLen
+              });
+              const fileItem: FileItemType = {
+                id: nanoid(),
+                filename: file.name,
+                icon,
+                text,
+                tokens: splitRes.tokens,
+                chunks: splitRes.chunks.map((chunk) => ({
+                  q: chunk,
+                  a: '',
+                  source: file.name
+                }))
+              };
+              return [fileItem].concat(result);
+            }
+
+            /* csv file */
+            if (extension === 'csv') {
+              const { header, data } = await readCsvContent(file);
+              if (header[0] !== 'question' || header[1] !== 'answer') {
+                throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
+              }
+              const fileItem: FileItemType = {
+                id: nanoid(),
+                filename: file.name,
+                icon,
+                tokens: 0,
+                text: '',
+                chunks: data.map((item) => ({
+                  q: item[0],
+                  a: item[1],
+                  source: item[2] || file.name
+                }))
+              };
+              return [fileItem].concat(result);
+            }
+            return result;
+          });
+        });
+
+        const chunkFiles = await promise;
+
+        onPushFiles(chunkFiles);
+      } catch (error: any) {
+        console.log(error);
+        toast({
+          title: typeof error === 'string' ? error : '解析文件失败',
+          status: 'error'
+        });
+      }
+      setSelecting(false);
+    },
+    [chunkLen, onPushFiles, toast]
+  );
+  const onUrlFetch = useCallback(
+    (e: FetchResultItem[]) => {
+      const result = e.map(({ url, content }) => {
+        const splitRes = splitText2Chunks({
+          text: content,
+          maxLen: chunkLen
+        });
+        return {
+          id: nanoid(),
+          filename: url,
+          icon: '/imgs/files/url.svg',
+          text: content,
+          tokens: splitRes.tokens,
+          chunks: splitRes.chunks.map((chunk) => ({
+            q: chunk,
+            a: '',
+            source: url
+          }))
+        };
+      });
+      onPushFiles(result);
+    },
+    [chunkLen, onPushFiles]
+  );
+  const onCreateFile = useCallback(
+    ({ filename, content }: { filename: string; content: string }) => {
+      content = simpleText(content);
+      const splitRes = splitText2Chunks({
+        text: content,
+        maxLen: chunkLen
+      });
+      onPushFiles([
+        {
+          id: nanoid(),
+          filename,
+          icon: '/imgs/files/txt.svg',
+          text: content,
+          tokens: splitRes.tokens,
+          chunks: splitRes.chunks.map((chunk) => ({
+            q: chunk,
+            a: '',
+            source: filename
+          }))
+        }
+      ]);
+    },
+    [chunkLen, onPushFiles]
+  );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -46,56 +217,69 @@ const FileSelect = ({
     setIsDragging(false);
   };
 
-  const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const handleDrop = useCallback(
+    async (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragging(false);
 
-    const items = e.dataTransfer.items;
-    const fileList: File[] = [];
+      const items = e.dataTransfer.items;
+      const fileList: File[] = [];
 
-    if (e.dataTransfer.items.length <= 1) {
-      const traverseFileTree = async (item: any) => {
-        return new Promise<void>((resolve, reject) => {
-          if (item.isFile) {
-            item.file((file: File) => {
-              fileList.push(file);
-              resolve();
-            });
-          } else if (item.isDirectory) {
-            const dirReader = item.createReader();
-            dirReader.readEntries(async (entries: any[]) => {
-              for (let i = 0; i < entries.length; i++) {
-                await traverseFileTree(entries[i]);
-              }
-              resolve();
-            });
+      if (e.dataTransfer.items.length <= 1) {
+        const traverseFileTree = async (item: any) => {
+          return new Promise<void>((resolve, reject) => {
+            if (item.isFile) {
+              item.file((file: File) => {
+                fileList.push(file);
+                resolve();
+              });
+            } else if (item.isDirectory) {
+              const dirReader = item.createReader();
+              dirReader.readEntries(async (entries: any[]) => {
+                for (let i = 0; i < entries.length; i++) {
+                  await traverseFileTree(entries[i]);
+                }
+                resolve();
+              });
+            }
+          });
+        };
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i].webkitGetAsEntry();
+          if (item) {
+            await traverseFileTree(item);
           }
-        });
-      };
+        }
+      } else {
+        const files = Array.from(e.dataTransfer.files);
+        let isErr = files.some((item) => item.type === '');
+        if (isErr) {
+          return toast({
+            title: t('file.upload error description'),
+            status: 'error'
+          });
+        }
 
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i].webkitGetAsEntry();
-        if (item) {
-          await traverseFileTree(item);
+        for (let i = 0; i < files.length; i++) {
+          fileList.push(files[i]);
         }
       }
-    } else {
-      const files = Array.from(e.dataTransfer.files);
-      let isErr = files.some((item) => item.type === '');
-      if (isErr) {
-        return toast({
-          title: t('file.upload error description'),
-          status: 'error'
-        });
-      }
 
-      for (let i = 0; i < files.length; i++) {
-        fileList.push(files[i]);
-      }
+      onSelectFile(fileList);
+    },
+    [onSelectFile, t, toast]
+  );
+
+  const SelectTextStyles: BoxProps = {
+    ml: 1,
+    as: 'span',
+    cursor: 'pointer',
+    color: 'myBlue.700',
+    _hover: {
+      textDecoration: 'underline'
     }
-
-    onSelectFile(fileList);
-  }, []);
+  };
 
   return (
     <Box
@@ -120,10 +304,28 @@ const FileSelect = ({
           t('file.Release the mouse to upload the file')
         ) : (
           <Box>
-            {t('file.Drag and drop')}
-            <Text ml={1} as={'span'} cursor={'pointer'} color={'myBlue.700'} onClick={onOpen}>
-              {t('file.select a document')}
-            </Text>
+            {t('file.Drag and drop')},
+            <MyTooltip label={t('file.max 10')}>
+              <Box {...SelectTextStyles} onClick={onOpen}>
+                {t('file.select a document')}
+              </Box>
+            </MyTooltip>
+            {showUrlFetch && (
+              <>
+                ,
+                <Box {...SelectTextStyles} onClick={onOpenUrlFetch}>
+                  {t('file.Fetch Url')}
+                </Box>
+              </>
+            )}
+            {showCreateFile && (
+              <>
+                ,
+                <Box {...SelectTextStyles} onClick={onOpenCreateFile}>
+                  {t('file.Create file')}
+                </Box>
+              </>
+            )}
           </Box>
         )}
       </Flex>
@@ -151,8 +353,10 @@ const FileSelect = ({
           {t('file.Click to download CSV template')}
         </Box>
       )}
-      <FileSelectLoading loading={isLoading} fixed={false} />
+      <FileSelectLoading loading={selecting} fixed={false} />
       <File onSelect={onSelectFile} />
+      {isOpenUrlFetch && <UrlFetchModal onClose={onCloseUrlFetch} onSuccess={onUrlFetch} />}
+      {isOpenCreateFile && <CreateFileModal onClose={onCloseCreateFile} onSuccess={onCreateFile} />}
     </Box>
   );
 };

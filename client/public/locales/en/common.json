@@ -54,9 +54,14 @@
   },
   "file": {
     "Click to download CSV template": "Click to download CSV template",
-    "Drag and drop": "Drag and drop files here, or click",
+    "Create File": "Create File",
+    "Create file": "Create file",
+    "Drag and drop": "Drag and drop files here",
+    "Fetch Url": "Fetch Url",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "If the imported file is garbled, please convert CSV to UTF-8 encoding format",
     "Release the mouse to upload the file": "Release the mouse to upload the file",
+    "Select a maximum of 10 files": "Select a maximum of 10 files",
+    "max 10": "Max 10 files",
     "select a document": "select a document",
     "support": "support {{fileExtension}} file",
     "upload error description": "Only upload multiple files or one folder at a time"
