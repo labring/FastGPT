@@ -201,7 +201,7 @@ function filterQuote({
     maxToken: model.quoteMaxToken,
     messages: quoteQA.map((item) => ({
       obj: ChatRoleEnum.System,
-      value: item.a ? `{instruction:${item.q},output:${item.a}}` : `{instruction:${item.q}}`
+      value: item.a ? `{user:${item.q},assistant:${item.a}}` : `{instruction:${item.q}}`
     }))
   });
 
@@ -210,11 +210,11 @@ function filterQuote({
 
   const quotePrompt =
     filterQuoteQA.length > 0
-      ? `下面是知识库内容:
-${filterQuoteQA
-  .map((item) => (item.a ? `{instruction:${item.q},output:${item.a}}` : `{instruction:${item.q}}`))
-  .join('\n')}
-`
+      ? `${filterQuoteQA
+          .map((item) =>
+            item.a ? `{user:${item.q},assistant:${item.a}}` : `{instruction:${item.q}}`
+          )
+          .join('\n')}`
       : '';
 
   return {
@@ -240,7 +240,7 @@ function getChatMessages({
   const limitText = (() => {
     if (limitPrompt) return limitPrompt;
     if (quotePrompt && !limitPrompt) {
-      return '严格按照知识库提供的内容回答，不要做过多补充。';
+      return '根据我上文提供的内容回答下面问题，不要进行额外补充。';
     }
     return '';
   })();
