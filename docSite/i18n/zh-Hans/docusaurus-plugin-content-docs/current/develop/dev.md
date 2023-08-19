@@ -33,5 +33,5 @@ pnpm dev
 ## 镜像打包
 
 ```bash
-docker build -t c121914yu/fastgpt .
+docker build -t dockername/fastgpt .
 ```

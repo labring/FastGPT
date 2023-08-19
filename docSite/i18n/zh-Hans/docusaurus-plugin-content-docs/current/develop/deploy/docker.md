@@ -69,8 +69,8 @@ services:
       - ./mongo/data:/data/db
   fastgpt:
     container_name: fastgpt
-    # image: c121914yu/fast-gpt:latest # docker hub
-    image: ghcr.io/labring/fastgpt:latest # 阿里云
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+    image: ghcr.io/labring/fastgpt:latest # github
     ports:
       - 3000:3000
     networks:
@@ -129,9 +129,8 @@ volumes:
     - ./mongo/data:/data/db
     - ./mongo/logs:/var/log/mongodb
 fastgpt:
-# image: ghcr.io/c121914yu/fastgpt:latest # github
-# image: c121914yu/fast-gpt:latest # docker hub
-image: ghcr.io/labring/fastgpt:latest # 阿里云
+# image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+image: ghcr.io/labring/fastgpt:latest # git
 network_mode: host
 restart: always
 container_name: fastgpt
