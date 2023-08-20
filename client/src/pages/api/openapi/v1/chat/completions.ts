@@ -94,9 +94,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!user) {
       throw new Error('Account is error');
     }
-    if (authType === AuthUserTypeEnum.apikey || shareId) {
-      user.openaiAccount = undefined;
-    }
+    // if (authType === AuthUserTypeEnum.apikey || shareId) {
+    //   user.openaiAccount = undefined;
+    // }
 
     appId = appId ? appId : authAppid;
     if (!appId) {
