@@ -12,7 +12,11 @@ import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/utils/i18n';
 import { feConfigs } from '@/store/static';
+import { useTranslation } from 'react-i18next';
 
+const Promotion = dynamic(() => import('./components/Promotion'), {
+  ssr: false
+});
 const BillTable = dynamic(() => import('./components/BillTable'), {
   ssr: false
 });
@@ -25,6 +29,7 @@ const InformTable = dynamic(() => import('./components/InformTable'), {
 
 enum TabEnum {
   'info' = 'info',
+  'promotion' = 'promotion',
   'bill' = 'bill',
   'pay' = 'pay',
   'inform' = 'inform',
@@ -32,40 +37,42 @@ enum TabEnum {
 }
 
 const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
+  const { t } = useTranslation();
   const tabList = useRef([
     {
       icon: 'meLight',
-      label: 'user.Personal Information',
-      id: TabEnum.info,
-      Component: <BillTable />
+      label: t('user.Personal Information'),
+      id: TabEnum.info
     },
+
     {
       icon: 'billRecordLight',
-      label: 'user.Usage Record',
-      id: TabEnum.bill,
-      Component: <BillTable />
+      label: t('user.Usage Record'),
+      id: TabEnum.bill
     },
     ...(feConfigs?.show_userDetail
       ? [
           {
+            icon: 'promotionLight',
+            label: t('user.Promotion Record'),
+            id: TabEnum.promotion
+          },
+          {
             icon: 'payRecordLight',
-            label: 'user.Recharge Record',
-            id: TabEnum.pay,
-            Component: <PayRecordTable />
+            label: t('user.Recharge Record'),
+            id: TabEnum.pay
           }
         ]
       : []),
     {
       icon: 'informLight',
-      label: 'user.Notice',
-      id: TabEnum.inform,
-      Component: <InformTable />
+      label: t('user.Notice'),
+      id: TabEnum.inform
     },
     {
       icon: 'loginoutLight',
-      label: 'user.Sign Out',
-      id: TabEnum.loginout,
-      Component: () => <></>
+      label: t('user.Sign Out'),
+      id: TabEnum.loginout
     }
   ]);
 
@@ -122,7 +129,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           <Box mb={3}>
             <Tabs
               m={'auto'}
-              w={'90%'}
               size={isPc ? 'md' : 'sm'}
               list={tabList.current.map((item) => ({
                 id: item.id,
@@ -136,6 +142,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
         <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
           {currentTab === TabEnum.info && <UserInfo />}
+          {currentTab === TabEnum.promotion && <Promotion />}
           {currentTab === TabEnum.bill && <BillTable />}
           {currentTab === TabEnum.pay && <PayRecordTable />}
           {currentTab === TabEnum.inform && <InformTable />}

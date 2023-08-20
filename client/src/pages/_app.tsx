@@ -35,6 +35,7 @@ const queryClient = new QueryClient({
 
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+  const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
 
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
@@ -49,6 +50,10 @@ function App({ Component, pageProps }: AppProps) {
       setGoogleVerKey(googleClientVerKey);
     })();
   }, []);
+
+  useEffect(() => {
+    hiId && localStorage.setItem('inviterId', hiId);
+  }, [hiId]);
 
   useEffect(() => {
     const lang = getLangStore() || 'zh';

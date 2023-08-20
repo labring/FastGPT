@@ -1,6 +1,6 @@
 import { GET, POST, PUT } from './request';
 import { createHashPassword } from '@/utils/tools';
-import { ResLogin } from './response/user';
+import type { ResLogin, PromotionRecordType } from './response/user';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
@@ -13,7 +13,8 @@ export const sendAuthCode = (data: {
 }) => POST('/user/sendAuthCode', data);
 
 export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
-export const gitLogin = (code: string) => GET<ResLogin>('/user/account/gitLogin', { code });
+export const gitLogin = (params: { code: string; inviterId?: string }) =>
+  GET<ResLogin>('/user/account/gitLogin', params);
 
 export const postRegister = ({
   username,
@@ -82,3 +83,14 @@ export const getInforms = (data: RequestPaging) =>
 
 export const getUnreadCount = () => GET<number>(`/user/inform/countUnread`);
 export const readInform = (id: string) => GET(`/user/inform/read`, { id });
+
+/* get promotion init data */
+export const getPromotionInitData = () =>
+  GET<{
+    invitedAmount: number;
+    earningsAmount: number;
+  }>('/user/promotion/getPromotionData');
+
+/* promotion records */
+export const getPromotionRecords = (data: RequestPaging) =>
+  POST<PromotionRecordType>(`/user/promotion/getPromotions`, data);

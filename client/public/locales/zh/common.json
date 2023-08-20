@@ -119,17 +119,26 @@
   },
   "user": {
     "Account": "账号",
+    "Amount of earnings": "收益（￥）",
+    "Amount of inviter": "累计邀请人数",
     "Application Name": "应用名",
     "Avatar": "头像",
     "Balance": "余额",
     "Bill Detail": "账单详情",
     "Change": "变更",
+    "Copy invite url": "复制邀请链接",
+    "Invite Url": "邀请链接",
+    "Invite url tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n此外，好友使用手机号注册时，你将立即获得 5 元奖励。",
     "Notice": "通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
     "Password": "密码",
     "Pay": "充值",
     "Personal Information": "个人信息",
+    "Promotion": "",
+    "Promotion Rate": "返现比例",
+    "Promotion Record": "推广记录",
+    "Promotion rate tip": "好友充值时你将获得一定比例的余额奖励",
     "Recharge Record": "充值记录",
     "Replace": "更换",
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
@@ -140,6 +149,10 @@
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
     "Update password succseful": "修改密码成功",
-    "Usage Record": "使用记录"
+    "Usage Record": "使用记录",
+    "promption": {
+      "register": "好友注册",
+      "pay": "好友充值"
+    }
   }
 }

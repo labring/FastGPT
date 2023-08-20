@@ -24,7 +24,7 @@ type GithubUserType = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { code } = req.query as { code: string };
+    const { code, inviterId } = req.query as { code: string; inviterId?: string };
 
     const { data: gitAccessToken } = await axios.post<string>(
       `https://github.com/login/oauth/access_token?client_id=${global.feConfigs.gitLoginKey}&client_secret=${global.systemEnv.gitLoginSecret}&code=${code}`
@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     } catch (err: any) {
       if (err?.code === 500) {
         jsonRes(res, {
-          data: await registerUser({ username, avatar: avatar_url, res })
+          data: await registerUser({ username, avatar: avatar_url, res, inviterId })
         });
         return;
       }
@@ -88,17 +88,21 @@ export async function loginByUsername({
 export async function registerUser({
   username,
   avatar,
+  inviterId,
   res
 }: {
   username: string;
   avatar?: string;
+  inviterId?: string;
   res: NextApiResponse;
 }) {
   const response = await User.create({
     username,
     avatar,
-    password: nanoid()
+    password: nanoid(),
+    inviterId
   });
+  console.log(response, '-=-=-=');
 
   // 根据 id 获取用户信息
   const user = await User.findById(response._id);

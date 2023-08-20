@@ -5,6 +5,7 @@ export interface UserType {
   username: string;
   avatar: string;
   balance: number;
+  promotionRate: UserModelSchema['promotionRate'];
   openaiAccount: UserModelSchema['openaiAccount'];
 }
 

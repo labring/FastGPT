@@ -26,7 +26,6 @@ const UserSchema = new Schema({
     default: '/icon/human.png'
   },
   balance: {
-    // 平台余额，不可提现
     type: Number,
     default: 2 * PRICE_SCALE
   },
@@ -34,6 +33,10 @@ const UserSchema = new Schema({
     // 谁邀请注册的
     type: Schema.Types.ObjectId,
     ref: 'user'
+  },
+  promotionRate: {
+    type: Number,
+    default: 15
   },
   limit: {
     exportKbTime: {

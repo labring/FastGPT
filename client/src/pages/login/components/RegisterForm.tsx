@@ -24,7 +24,6 @@ interface RegisterType {
 }
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
-  const { inviterId = '' } = useRouter().query as { inviterId: string };
   const { toast } = useToast();
   const {
     register,
@@ -58,7 +57,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             username,
             code,
             password,
-            inviterId: inviterId || localStorage.getItem('inviterId') || ''
+            inviterId: localStorage.getItem('inviterId') || ''
           })
         );
         toast({
@@ -81,7 +80,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       }
       setRequesting(false);
     },
-    [inviterId, loginSuccess, toast]
+    [loginSuccess, toast]
   );
 
   return (
