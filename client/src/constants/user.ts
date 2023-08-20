@@ -16,16 +16,9 @@ export const BillSourceMap: Record<`${BillSourceEnum}`, string> = {
 };
 
 export enum PromotionEnum {
-  invite = 'invite',
-  shareModel = 'shareModel',
-  withdraw = 'withdraw'
+  register = 'register',
+  pay = 'pay'
 }
-
-export const PromotionTypeMap = {
-  [PromotionEnum.invite]: '好友充值',
-  [PromotionEnum.shareModel]: '应用分享',
-  [PromotionEnum.withdraw]: '提现'
-};
 
 export enum InformTypeEnum {
   system = 'system'

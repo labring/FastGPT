@@ -42,6 +42,7 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
       p={sizeMap.outP}
       borderRadius={'sm'}
       fontSize={sizeMap.fontSize}
+      overflowX={'auto'}
       {...props}
     >
       {list.map((item) => (
@@ -50,6 +51,8 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
           py={sizeMap.inlineP}
           textAlign={'center'}
           borderBottom={'2px solid transparent'}
+          px={3}
+          whiteSpace={'nowrap'}
           {...(activeId === item.id
             ? {
                 color: 'myBlue.700',

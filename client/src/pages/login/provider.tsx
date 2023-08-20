@@ -44,7 +44,10 @@ const provider = ({ code }: { code: string }) => {
     try {
       const res = await (async () => {
         if (loginStore.provider === 'git') {
-          return gitLogin(code);
+          return gitLogin({
+            code,
+            inviterId: localStorage.getItem('inviterId') || ''
+          });
         }
         return null;
       })();

@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import type { GridProps } from '@chakra-ui/react';
 import MyIcon, { type IconName } from '../Icon';
-import { useTranslation } from 'next-i18next';
 
 // @ts-ignore
 export interface Props extends GridProps {
@@ -13,7 +12,6 @@ export interface Props extends GridProps {
 }
 
 const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
-  const { t } = useTranslation();
   const sizeMap = useMemo(() => {
     switch (size) {
       case 'sm':
@@ -63,7 +61,7 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
           }}
         >
           <MyIcon mr={2} name={item.icon as IconName} w={'16px'} />
-          {t(item.label)}
+          {item.label}
         </Flex>
       ))}
     </Box>

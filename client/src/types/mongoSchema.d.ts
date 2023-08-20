@@ -13,8 +13,8 @@ export interface UserModelSchema {
   password: string;
   avatar: string;
   balance: number;
+  promotionRate: number;
   inviterId?: string;
-  promotionAmount: number;
   openaiKey: string;
   createTime: number;
   openaiAccount?: {
