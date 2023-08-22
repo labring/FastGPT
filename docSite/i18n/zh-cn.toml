@@ -1,0 +1,32 @@
+[lang_select_title]
+    other = "语言切换"
+
+[search_title]
+    other = "搜索"
+
+[search_navigate]
+    other = "导航"
+
+[search_select]
+    other = "选中"
+
+[search_close]
+    other = "关闭"
+
+[search_cancel]
+    other = "取消"
+
+[search_no_results]
+    other = "没有结果："
+
+[feedback_yes]
+    other = "Yes"
+
+[feedback_no]
+    other = "No"
+
+[feedback_helpful]
+    other = "Was this page helpful?"
+
+[feedback_submit]
+    other = "提交"
