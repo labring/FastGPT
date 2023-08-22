@@ -19,7 +19,7 @@ const PromotionRecordSchema = new Schema({
   type: {
     type: String,
     required: true,
-    enum: ['invite', 'register']
+    enum: ['pay', 'register']
   },
   amount: {
     type: Number,

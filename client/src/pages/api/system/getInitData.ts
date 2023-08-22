@@ -97,7 +97,6 @@ export async function getInitConfig() {
     global.chatModels = res.ChatModels || defaultChatModels;
     global.qaModels = res.QAModels || defaultQAModels;
     global.vectorModels = res.VectorModels || defaultVectorModels;
-    global.systemPlugins = res.plugins || {};
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);
@@ -110,5 +109,4 @@ export function setDefaultData() {
   global.chatModels = defaultChatModels;
   global.qaModels = defaultQAModels;
   global.vectorModels = defaultVectorModels;
-  global.systemPlugins = {};
 }

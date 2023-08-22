@@ -109,7 +109,7 @@ const Promotion = () => {
               <Tr>
                 <Th>时间</Th>
                 <Th>类型</Th>
-                <Th>金额</Th>
+                <Th>金额(￥)</Th>
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>

@@ -15,7 +15,7 @@ import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/events/pushBill';
 import { ChatModelItemType } from '@/types/model';
 import { UserModelSchema } from '@/types/mongoSchema';
-import { textCensor } from '@/service/api/plugins';
+import { textCensor } from '@/api/service/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { AppModuleItemType } from '@/types/app';
 
