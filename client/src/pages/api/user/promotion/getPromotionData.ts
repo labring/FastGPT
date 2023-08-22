@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     jsonRes(res, {
       data: {
         invitedAmount,
-        historyAmount: countHistory[0]?.totalAmount || 0
+        earningsAmount: countHistory[0]?.totalAmount || 0
       }
     });
   } catch (err) {

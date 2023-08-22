@@ -28,25 +28,11 @@ export type FeConfigsType = {
   scripts?: { [key: string]: string }[];
 };
 export type SystemEnvType = {
-  googleServiceVerKey?: string;
+  pluginBaseUrl?: string;
   gitLoginSecret?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgIvfflatProbe: number;
-};
-
-export type PluginType = {
-  authCode?: {
-    sendUrl: string;
-    authUrl: string;
-  };
-  censor?: {
-    textUrl?: string;
-  };
-  pay?: {
-    getWxQRUrl?: string;
-    getWxQRResult?: string;
-  };
 };
 
 declare global {
@@ -64,7 +50,6 @@ declare global {
 
   var feConfigs: FeConfigsType;
   var systemEnv: SystemEnvType;
-  var systemPlugins: PluginType;
   var chatModels: ChatModelItemType[];
   var qaModels: QAModelItemType[];
   var vectorModels: VectorModelItemType[];

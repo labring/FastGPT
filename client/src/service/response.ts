@@ -54,16 +54,16 @@ export const jsonRes = <T = any>(
     }
 
     addLog.error(msg, {
-      message: error.message,
-      stack: error.stack,
-      ...(error.config && {
+      message: msg,
+      stack: error?.stack,
+      ...(error?.config && {
         config: {
           headers: error.config.headers,
           url: error.config.url,
           data: error.config.data
         }
       }),
-      ...(error.response && {
+      ...(error?.response && {
         response: {
           status: error.response.status,
           statusText: error.response.statusText
@@ -111,16 +111,16 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   }
 
   addLog.error(`sse error: ${msg}`, {
-    message: error.message,
-    stack: error.stack,
-    ...(error.config && {
+    message: msg,
+    stack: error?.stack,
+    ...(error?.config && {
       config: {
         headers: error.config.headers,
         url: error.config.url,
         data: error.config.data
       }
     }),
-    ...(error.response && {
+    ...(error?.response && {
       response: {
         status: error.response.status,
         statusText: error.response.statusText

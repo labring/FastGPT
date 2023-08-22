@@ -16,7 +16,6 @@
     "qaMaxProcess": 15,
     "pgIvfflatProbe": 20
   },
-  "plugins": {},
   "ChatModels": [
     {
       "model": "gpt-3.5-turbo",

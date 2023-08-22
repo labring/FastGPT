@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import { sendAuthCode } from '@/api/user';
 import { UserAuthTypeEnum } from '@/constants/common';
-let timer: any;
 import { useToast } from './useToast';
-import { getClientToken } from '@/utils/plugin/google';
 import { feConfigs } from '@/store/static';
+import { getErrText } from '@/utils/tools';
+
+let timer: any;
 
 export const useSendCode = () => {
   const { toast } = useToast();
@@ -45,7 +46,7 @@ export const useSendCode = () => {
         });
       } catch (error: any) {
         toast({
-          title: error.message || '发送验证码异常',
+          title: getErrText(error, '验证码发送异常'),
           status: 'error'
         });
       }
@@ -61,3 +62,20 @@ export const useSendCode = () => {
     codeCountDown
   };
 };
+
+export function getClientToken(googleClientVerKey?: string) {
+  if (!googleClientVerKey || typeof window.grecaptcha === 'undefined' || !window.grecaptcha?.ready)
+    return '';
+  return new Promise<string>((resolve, reject) => {
+    window.grecaptcha.ready(async () => {
+      try {
+        const token = await window.grecaptcha.execute(googleClientVerKey, {
+          action: 'submit'
+        });
+        resolve(token);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
