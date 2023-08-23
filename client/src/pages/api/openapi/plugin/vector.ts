@@ -67,13 +67,13 @@ export async function getVector({
       }
     )
     .then((res) => {
-      if (!res.data?.usage?.total_tokens) {
+      if (!res.data?.data?.[0]?.embedding) {
         // @ts-ignore
         return Promise.reject(res.data?.error?.message || 'Embedding Error');
       }
       return {
         tokenLen: res.data.usage.total_tokens || 0,
-        vectors: res.data.data.map((item) => item.embedding)
+        vectors: res.data.data.map((item) => unityDimensional(item.embedding))
       };
     });
 
@@ -85,4 +85,13 @@ export async function getVector({
     });
 
   return result;
+}
+
+function unityDimensional(vector: number[]) {
+  let resultVector = vector;
+  const vectorLen = vector.length;
+
+  const zeroVector = new Array(1536 - vectorLen).fill(0);
+
+  return resultVector.concat(zeroVector);
 }
