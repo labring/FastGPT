@@ -1,13 +1,14 @@
-# Workflow to build and deploy site to Vercel using Hugo
+name: deploy-docs
 
-# Name of Workflow
-name: deploy-production
-
-# Controls when the action will run. Triggers the workflow on push
-# events but only for the vercel branch
 on:
+  workflow_dispatch:
   push:
-    branches: [docs]
+    paths:
+      - 'docSite/**'
+    branches:
+      - 'main'
+    tags:
+      - 'v*.*.*'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
