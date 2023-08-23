@@ -239,7 +239,7 @@ function getChatMessages({
     if (limitPrompt)
       return `Use the provided content delimited by triple quotes to answer questions.${limitPrompt}`;
     if (quotePrompt && !limitPrompt) {
-      return `Use the provided content delimited by triple quotes to answer questions.Your task is to answer the question using only the provided conetnt and to cite the passage(s) of the conetnt used to answer the question. If the conetnt does not contain the information needed to answer this question then simply write: "你的问题没有在知识库中体现".`;
+      return `Use the provided content delimited by triple quotes to answer questions.Your task is to answer the question using only the provided content. If the content does not contain the information needed to answer this question then simply write: "你的问题没有在知识库中体现".`;
     }
     return ``;
   })();
