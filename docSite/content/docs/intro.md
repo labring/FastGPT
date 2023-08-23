@@ -1,7 +1,7 @@
 ---
-title: "快速了解 FastGPT"
-description: "FastGPT 的能力与优势"
-icon: "rocket_launch"
+title: '快速了解 FastGPT'
+description: 'FastGPT 的能力与优势'
+icon: 'rocket_launch'
 draft: false
 toc: true
 weight: -100
@@ -13,8 +13,8 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 FastGPT 在线体验：[https://fastgpt.run](https://fastgpt.run)
 {{% /alert %}}
 
-|                            |                            |
-| -------------------------- | -------------------------- |
+|                       |                       |
+| --------------------- | --------------------- |
 | ![](/imgs/intro1.png) | ![](/imgs/intro2.png) |
 | ![](/imgs/intro3.png) | ![](/imgs/intro4.png) |
 
@@ -53,27 +53,27 @@ FastGPT 对外的 API 接口对齐了 OpenAI 官方接口，可以直接接入�
 ## FastGPT 特点
 
 1. **项目完全开源**
-   
+
    FastGPT 遵循 Apache License 2.0 开源协议，你可以 [Fork](https://github.com/labring/FastGPT/fork) 之后进行二次开发和发布。FastGPT 社区版将保留核心功能，商业版仅在社区版基础上使用 API 的形式进行扩展，不影响学习使用。
 
 2. **独特的 QA 结构**
-   
+
    针对客服问答场景设计的 QA 结构，提高在大量数据场景中的问答准确性。
 
 3. **可视化工作流**
-   
+
    通过 Flow 模块展示了从问题输入到模型输出的完整流程，便于调试和设计复杂流程。
 
 4. **无限扩展**
-   
+
    基于 API 进行扩展，无需修改 FastGPT 源码，也可快速接入现有的程序中。
 
 5. **便于调试**
-   
+
    提供搜索测试、引用修改、完整对话预览等多种调试途径。
 
 6. **支持多种模型**
-   
+
    支持 GPT、Claude、文心一言等多种 LLM 模型，未来也将支持自定义的向量模型。
 
 ## 知识库核心流程图
