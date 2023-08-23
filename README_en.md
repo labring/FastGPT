@@ -12,9 +12,9 @@ FastGPT is a knowledge-based question answering system based on the LLM language
 ·
 <a href="https://doc.fastgpt.run/docs/intro">Document</a>
 ·
-<a href="https://doc.fastgpt.run/docs/develop/dev">Development</a>
+<a href="https://doc.fastgpt.run/docs/development">Development</a>
 ·
-<a href="https://doc.fastgpt.run/docs/category/deploy">Deploy</a>
+<a href="https://doc.fastgpt.run/docs/installation">Deploy</a>
 ·
 <a href="#powered-by">Power By</a>
 </p>
@@ -77,11 +77,11 @@ FastGPT is a knowledge-based question answering system based on the LLM language
 
 Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 
-- [Getting Started with Local Development](https://doc.fastgpt.run/docs/develop/dev)
-- [Deploying FastGPT](https://doc.fastgpt.run/docs/category/deploy)
-- [System Configuration File Explanation](https://doc.fastgpt.run/docs/category/data-config)
-- [Multi-model Configuration](https://doc.fastgpt.run/docs/develop/data_config/chat_models)
-- [V3 Upgrade V4 Initialization](https://doc.fastgpt.run/docs/develop/deploy/v4init)
+- [Getting Started with Local Development](https://doc.fastgpt.run/docs/development)
+- [Deploying FastGPT](https://doc.fastgpt.run/docs/installation)
+- [System Configuration File Explanation](https://doc.fastgpt.run/docs/installation/reference)
+- [Multi-model Configuration](https://doc.fastgpt.run/docs/installation/reference/models)
+- [V3 Upgrade V4 Initialization](https://doc.fastgpt.run/docs/installation/upgrading)
 
 <!-- ## :point_right: RoadMap
 - [FastGpt RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
