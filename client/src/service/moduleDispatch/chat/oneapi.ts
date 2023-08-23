@@ -201,7 +201,7 @@ function filterQuote({
     maxToken: model.quoteMaxToken,
     messages: quoteQA.map((item) => ({
       obj: ChatRoleEnum.System,
-      value: item.a ? `{user:${item.q},assistant:${item.a}}` : `{instruction:${item.q}}`
+      value: item.a ? `${item.q}\n${item.a}` : item.q
     }))
   });
 
@@ -210,11 +210,9 @@ function filterQuote({
 
   const quotePrompt =
     filterQuoteQA.length > 0
-      ? `${filterQuoteQA
-          .map((item) =>
-            item.a ? `{user:${item.q},assistant:${item.a}}` : `{instruction:${item.q}}`
-          )
-          .join('\n')}`
+      ? `"""${filterQuoteQA
+          .map((item) => (item.a ? `${item.q}\n${item.a}` : item.q))
+          .join('\n\n')}"""`
       : '';
 
   return {
@@ -238,22 +236,15 @@ function getChatMessages({
   model: ChatModelItemType;
 }) {
   const limitText = (() => {
-    if (limitPrompt) return limitPrompt;
+    if (limitPrompt)
+      return `Use the provided content delimited by triple quotes to answer questions.${limitPrompt}`;
     if (quotePrompt && !limitPrompt) {
-      return '根据我上文提供的内容回答下面问题，不要进行额外补充。';
+      return `Use the provided content delimited by triple quotes to answer questions.Your task is to answer the question using only the provided conetnt and to cite the passage(s) of the conetnt used to answer the question. If the conetnt does not contain the information needed to answer this question then simply write: "你的问题没有在知识库中体现".`;
     }
-    return '';
+    return ``;
   })();
 
   const messages: ChatItemType[] = [
-    ...(quotePrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: quotePrompt
-          }
-        ]
-      : []),
     ...(systemPrompt
       ? [
           {
@@ -262,7 +253,14 @@ function getChatMessages({
           }
         ]
       : []),
-    ...history,
+    ...(quotePrompt
+      ? [
+          {
+            obj: ChatRoleEnum.System,
+            value: quotePrompt
+          }
+        ]
+      : []),
     ...(limitText
       ? [
           {
@@ -271,6 +269,7 @@ function getChatMessages({
           }
         ]
       : []),
+    ...history,
     {
       obj: ChatRoleEnum.Human,
       value: userChatInput
@@ -301,6 +300,7 @@ function getMaxTokens({
 }) {
   const tokensLimit = model.contextMaxToken;
   /* count response max token */
+
   const promptsToken = modelToolMap.countTokens({
     model: model.model,
     messages: filterMessages

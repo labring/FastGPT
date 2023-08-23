@@ -14,18 +14,10 @@ import { serviceSideProps } from '@/utils/i18n';
 import { feConfigs } from '@/store/static';
 import { useTranslation } from 'react-i18next';
 
-const Promotion = dynamic(() => import('./components/Promotion'), {
-  ssr: false
-});
-const BillTable = dynamic(() => import('./components/BillTable'), {
-  ssr: false
-});
-const PayRecordTable = dynamic(() => import('./components/PayRecordTable'), {
-  ssr: false
-});
-const InformTable = dynamic(() => import('./components/InformTable'), {
-  ssr: false
-});
+const Promotion = dynamic(() => import('./components/Promotion'));
+const BillTable = dynamic(() => import('./components/BillTable'));
+const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
+const InformTable = dynamic(() => import('./components/InformTable'));
 
 enum TabEnum {
   'info' = 'info',

@@ -10,7 +10,7 @@ import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import { clientInitData, feConfigs } from '@/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
-import { getLangStore } from '@/utils/i18n';
+import { getLangStore, setLangStore } from '@/utils/i18n';
 import { useRouter } from 'next/router';
 
 import 'nprogress/nprogress.css';
@@ -58,6 +58,7 @@ function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     const lang = getLangStore() || 'zh';
     i18n?.changeLanguage?.(lang);
+    setLangStore(lang);
   }, [router.asPath]);
 
   return (
