@@ -239,8 +239,7 @@ const ChatBox = (
   // 复制内容
   const onclickCopy = useCallback(
     (value: string) => {
-      const val = value.replace(/\n+/g, '\n');
-      copyData(val);
+      copyData(value);
     },
     [copyData]
   );
@@ -272,7 +271,7 @@ const ChatBox = (
         return;
       }
       // get input value
-      const val = inputVal.trim().replace(/\n\s*/g, '\n');
+      const val = inputVal.trim();
 
       if (!val) {
         toast({

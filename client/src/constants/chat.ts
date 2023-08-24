@@ -56,7 +56,8 @@ export enum ChatModuleEnum {
   'AIChat' = 'AI Chat',
   'KBSearch' = 'KB Search',
   'CQ' = 'Classify Question',
-  'Extract' = 'Content Extract'
+  'Extract' = 'Content Extract',
+  'Http' = 'Http'
 }
 
 export enum OutLinkTypeEnum {
