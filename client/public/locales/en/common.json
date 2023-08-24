@@ -4,9 +4,12 @@
   "Confirm": "Yes",
   "Running": "Running",
   "Warning": "Warning",
+  "UnKnow": "UnKnow",
   "app": {
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
+    "Chat Logs Tips": "Logs record the app's online, shared, and API conversations",
+    "Chat logs": "Chat Logs",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
     "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
@@ -18,6 +21,11 @@
     "Import Config Failed": "Failed to import the configuration, please ensure that the configuration is normal!",
     "Import Configs": "Import Configs",
     "Input Field Settings": "Input Field Settings",
+    "Logs Empty": "Logs is empty",
+    "Logs Message Total": "Message Count",
+    "Logs Source": "Source",
+    "Logs Time": "Time",
+    "Logs Title": "Title",
     "My Apps": "My Apps",
     "Output Field Settings": "Output Field Settings",
     "Paste Config": "Paste Config"
@@ -28,7 +36,13 @@
     "Exit Chat": "Exit",
     "History": "History",
     "New Chat": "New Chat",
-    "You need to a chat app": "You need to a chat app"
+    "You need to a chat app": "You need to a chat app",
+    "logs": {
+      "api": "API",
+      "online": "Online Chat",
+      "share": "Share",
+      "test": "Test Chat "
+    }
   },
   "commom": {
     "Password inconsistency": "Password inconsistency"
@@ -149,6 +163,10 @@
     "Update Password": "Update Password",
     "Update password failed": "Update password failed",
     "Update password succseful": "Update password succseful",
-    "Usage Record": "Usage"
+    "Usage Record": "Usage",
+    "promotion": {
+      "pay": "",
+      "register": ""
+    }
   }
 }

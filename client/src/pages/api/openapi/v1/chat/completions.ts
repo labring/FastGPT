@@ -27,6 +27,7 @@ import { pushTaskBill } from '@/service/events/pushBill';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
+import { SystemInputEnum } from '@/constants/app';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -302,6 +303,8 @@ export async function dispatchModules({
 
         if (!set.has(module.moduleId) && checkInputFinish()) {
           set.add(module.moduleId);
+          // remove switch
+          updateInputValue(SystemInputEnum.switch, undefined);
           return moduleRun(module);
         }
       })
@@ -324,6 +327,7 @@ export async function dispatchModules({
             // find module
             const targetModule = runningModules.find((item) => item.moduleId === target.moduleId);
             if (!targetModule) return;
+
             return moduleInput(targetModule, { [target.key]: outputItem.value });
           })
         );
@@ -332,7 +336,6 @@ export async function dispatchModules({
   }
   async function moduleRun(module: RunningModuleItemType): Promise<any> {
     if (res.closed) return Promise.resolve();
-    // console.log('run=========', module.flowType);
 
     if (stream && detail && module.showStatus) {
       responseStatus({

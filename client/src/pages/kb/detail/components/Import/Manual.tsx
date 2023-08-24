@@ -65,7 +65,7 @@ const ManualImport = ({ kbId }: { kbId: string }) => {
   });
 
   return (
-    <Box p={[4, 8]}>
+    <Box p={[4, 8]} h={'100%'} overflow={'overlay'}>
       <Box display={'flex'} flexDirection={['column', 'row']}>
         <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['50%', '100%']}>
           <Box h={'30px'}>{'匹配的知识点'}</Box>

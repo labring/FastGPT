@@ -51,3 +51,6 @@ export const getAppTotalUsage = (data: { appId: string }) =>
     start: addDays(new Date(), -13),
     end: addDays(new Date(), 1)
   }).then((res) => (res.length === 0 ? [{ date: new Date(), total: 0 }] : res));
+
+export const getAppChatLogs = (data: RequestPaging & { appId: string }) =>
+  POST(`/chat/getChatLogs`, data);

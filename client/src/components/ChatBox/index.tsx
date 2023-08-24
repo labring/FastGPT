@@ -141,7 +141,7 @@ const ChatBox = (
     variableModules?: VariableItemType[];
     welcomeText?: string;
     onUpdateVariable?: (e: Record<string, any>) => void;
-    onStartChat: (e: StartChatFnProps) => Promise<{
+    onStartChat?: (e: StartChatFnProps) => Promise<{
       responseText: string;
       [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
     }>;
@@ -239,8 +239,7 @@ const ChatBox = (
   // 复制内容
   const onclickCopy = useCallback(
     (value: string) => {
-      const val = value.replace(/\n+/g, '\n');
-      copyData(val);
+      copyData(value);
     },
     [copyData]
   );
@@ -264,6 +263,7 @@ const ChatBox = (
    */
   const sendPrompt = useCallback(
     async (variables: Record<string, any> = {}, inputVal = '') => {
+      if (!onStartChat) return;
       if (isChatting) {
         toast({
           title: '正在聊天中...请等待结束',
@@ -272,7 +272,7 @@ const ChatBox = (
         return;
       }
       // get input value
-      const val = inputVal.trim().replace(/\n\s*/g, '\n');
+      const val = inputVal.trim();
 
       if (!val) {
         toast({
@@ -698,7 +698,7 @@ const ChatBox = (
         </Box>
       </Box>
       {/* input */}
-      {variableIsFinish ? (
+      {onStartChat && variableIsFinish ? (
         <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
           <Box
             py={'18px'}

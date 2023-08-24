@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PgTrainingTableName } from '@/constants/plugin';
 
-export const connectPg = async () => {
+export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
     return global.pgClient;
   }
@@ -17,6 +17,7 @@ export const connectPg = async () => {
   global.pgClient.on('error', (err) => {
     console.log(err);
     global.pgClient = null;
+    connectPg();
   });
 
   try {
@@ -25,7 +26,7 @@ export const connectPg = async () => {
     return global.pgClient;
   } catch (error) {
     global.pgClient = null;
-    return Promise.reject(error);
+    return connectPg();
   }
 };
 
