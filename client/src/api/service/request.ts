@@ -1,4 +1,5 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import { baseUrl } from '../../service/ai/openai';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -60,7 +61,6 @@ function responseError(err: any) {
 
 /* 创建请求实例 */
 const instance = axios.create({
-  baseURL: global.systemEnv.pluginBaseUrl,
   timeout: 60000, // 超时时间
   headers: {
     'content-type': 'application/json'
@@ -73,8 +73,8 @@ instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
-  if (!global.systemEnv.pluginBaseUrl) {
-    return Promise.reject('请安装商业版插件~');
+  if (!global.systemEnv?.pluginBaseUrl) {
+    return Promise.reject('商业版插件加载中...');
   }
 
   /* 去空 */
@@ -86,6 +86,7 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
 
   return instance
     .request({
+      baseURL: global.systemEnv.pluginBaseUrl,
       url,
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,
