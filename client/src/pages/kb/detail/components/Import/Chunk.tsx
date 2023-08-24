@@ -132,7 +132,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
   };
 
   return (
-    <Box display={['block', 'flex']} h={['auto', '100%']}>
+    <Box display={['block', 'flex']} h={['auto', '100%']} overflow={'overlay'}>
       <Flex
         flexDirection={'column'}
         flex={'1 0 0'}
@@ -152,7 +152,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
 
         {!emptyFiles && (
           <>
-            <Box py={4} px={2} maxH={'400px'} overflow={'auto'}>
+            <Box py={4} px={2} minH={['auto', '100px']} maxH={'400px'} overflow={'auto'}>
               {files.map((item) => (
                 <Flex
                   key={item.id}
