@@ -1,7 +1,7 @@
 ---
-title: "Docker Compose 快速部署"
-description: "使用 Docker Compose 快速部署 FastGPT"
-icon: ""
+title: 'Docker Compose 快速部署'
+description: '使用 Docker Compose 快速部署 FastGPT'
+icon: ''
 draft: false
 toc: true
 weight: 720
@@ -26,6 +26,7 @@ weight: 720
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="Linux" >}}
 {{< markdownify >}}
+
 ```bash
 # 安装 Docker
 curl -sSL https://get.daocloud.io/docker | sh
@@ -37,6 +38,7 @@ chmod +x /usr/local/bin/docker-compose
 docker -v
 docker-compose -v
 ```
+
 {{< /markdownify >}}
 {{< /tab >}}
 {{< tab tabName="MacOS" >}}
@@ -49,35 +51,38 @@ brew install orbstack
 
 或者直接[下载安装包](https://orbstack.dev/download)进行安装。
 {{< /markdownify >}}
- {{< /tab >}}
+{{< /tab >}}
 {{< tab tabName="Windows" >}}
 {{< markdownify >}}
-我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
 
-可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
+> 我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
+>
+> 可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
+>
+> 也可以直接[在 WSL 2 中安装命令行版本的 Docker](https://nickjanetakis.com/blog/install-docker-in-wsl-2-without-docker-desktop)。
 
-也可以直接[在 WSL 2 中安装命令行版本的 Docker](https://nickjanetakis.com/blog/install-docker-in-wsl-2-without-docker-desktop)。
 {{< /markdownify >}}
 {{< /tab >}}
 {{< /tabs >}}
 
 ## 创建 docker-compose.yml 文件
 
-先创建一个目录（例如 fastgpt）并进入该目录：
+先创建一个目录（例如 fastgpt）并进入该目录，创建一个 docker-compose.yml 文件：
 
 ```bash
 mkdir fastgpt
 cd fastgpt
+touch docker-compose.yml
 ```
 
-创建一个 docker-compose.yml 文件，粘贴下面的内容：
+粘贴下面的内容，仅需把 `CHAT_API_KEY` 修改成 openai key 即可。如果需要使用中转或 oneapi 还需要修改 `OPENAI_BASE_URL`:
 
 ```yaml
 # 非 host 版本, 不使用本机代理
 version: '3.3'
 services:
   pg:
-    image: ankane/pgvector:v0.4.2
+    image: ankane/pgvector:v0.4.2 # docker
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
     container_name: pg
     restart: always
@@ -109,8 +114,8 @@ services:
       - ./mongo/data:/data/db
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:latest # git
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
+    image: ghcr.io/labring/fastgpt:latest # github
     ports:
       - 3000:3000
     networks:
@@ -128,20 +133,13 @@ services:
       - DB_MAX_LINK=5 # database max link
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
-      # mongo 配置，不需要改
-      - MONGODB_URI=mongodb://username:password@mongo:27017/?authSource=admin
-      - MONGODB_NAME=fastgpt
-      # pg配置
-      - PG_HOST=pg
-      - PG_PORT=5432
-      - PG_USER=username
-      - PG_PASSWORD=password
-      - PG_DB_NAME=postgres
+      # mongo 配置，不需要改. 如果连不上，可能需要去掉 ?authSource=admin
+      - MONGODB_URI=mongodb://username:password@mongo:27017/fastgpt?authSource=admin
+      # pg配置. 不需要改
+      - PG_URL=postgresql://username:password@pg:5432/postgres
 networks:
   fastgpt:
 ```
-
-> 只需要改 fastgpt 容器的 3 个参数即可启动。
 
 ## 启动容器
 
@@ -152,7 +150,7 @@ docker-compose up -d
 
 ## 访问 FastGPT
 
-目前可以通过 `ip:3000`` 直接访问(注意防火墙)。登录用户名为 `root`，密码为刚刚环境变量里设置的 `DEFAULT_ROOT_PSW`。
+目前可以通过 ` ip:3000`` 直接访问(注意防火墙)。登录用户名为  `root`，密码为刚刚环境变量里设置的 `DEFAULT_ROOT_PSW`。
 
 如果需要域名访问，请自行安装并配置 Nginx。
 
@@ -239,7 +237,6 @@ docker-compose up -d
 fastgpt:
   container_name: fastgpt
     image: ghcr.io/labring/fastgpt:latest # github
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
   ports:
     - 3000:3000
   networks:
@@ -249,8 +246,9 @@ fastgpt:
     - pg
   restart: always
   environment:
-    # root 密码，用户名为: root
+    ...
     - DEFAULT_ROOT_PSW=1234
+    ...
   volumes:
     - ./config.json:/app/data/config.json
 ```

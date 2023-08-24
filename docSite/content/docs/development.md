@@ -1,8 +1,8 @@
 ---
 weight: 500
-title: "开发指南"
-description: "对 FastGPT 进行开发调试"
-icon: "developer_guide"
+title: '开发指南'
+description: '对 FastGPT 进行开发调试'
+icon: 'developer_guide'
 draft: false
 images: []
 ---
@@ -23,7 +23,7 @@ images: []
 
 要设置一个可工作的开发环境，只需 Fork 项目的 Git 存储库，并部署一个数据库，然后开始进行开发测试。
 
-### Fork存储库
+### Fork 存储库
 
 您需要 Fork [存储库](https://github.com/labring/FastGPT)。
 
@@ -49,13 +49,15 @@ client 目录下为 FastGPT 核心代码。NextJS 框架前后端放在一起，
 
 **2. config 配置文件**
 
-复制 data/config.json 文件，生成一个 data/config.local.json 配置文件。
+复制 data/config.json 文件，生成一个 data/config.local.json 配置文件。具体的参数说明，可参考 [config 配置说名](/docs/installation/reference/configuration)
+
+**注意：json 配置文件不能包含注释，介绍中为了方便看才加入的注释**
 
 这个文件大部分时候不需要修改。只需要关注 SystemParams 里的参数：
 
-+ `vectorMaxProcess`: 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置10~15。
-+ `qaMaxProcess`: QA 生成最大进程
-+ `pgIvfflatProbe`: PostgreSQL vector 搜索探针，没有添加 vector 索引时可忽略。
+- `vectorMaxProcess`: 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
+- `qaMaxProcess`: QA 生成最大进程
+- `pgIvfflatProbe`: PostgreSQL vector 搜索探针，没有添加 vector 索引时可忽略。
 
 ### 运行
 
