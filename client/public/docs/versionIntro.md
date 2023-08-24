@@ -1,7 +1,8 @@
-### Fast GPT V4.1
+### Fast GPT V4.2
 
-1. 新增 - 高级编排导入导出功能
-2. 优化对话存储结构
-3. 优化日志存储
-4. [点击查看高级编排介绍文档](https://doc.fastgpt.run/docs/workflow)
-5. 填写个人 OpenAI 账号后，分享和 API 功能也不会走平台余额扣费。
+1. 新增 - 应用日志初版，可观测到所有对话记录
+2. 新增 - 好友邀请链接，[点击查看](/account?currentTab=promotion)
+3. 新增 - Iframe 嵌入页面图标可拖拽
+4. 优化 - 知识库搜索提示词
+5. 优化 - [使用文档](https://doc.fastgpt.run/docs/intro/)
+6. [点击查看高级编排介绍文档](https://doc.fastgpt.run/docs/workflow)

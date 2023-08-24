@@ -96,6 +96,7 @@ const QuoteModal = ({
               _notLast={{ mb: 2 }}
               position={'relative'}
               _hover={{ '& .edit': { display: 'flex' } }}
+              overflow={'hidden'}
             >
               {item.source && <Box color={'myGray.600'}>({item.source})</Box>}
               <Box>{item.q}</Box>

@@ -1,0 +1,237 @@
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  Flex,
+  Box,
+  TableContainer,
+  Table,
+  Thead,
+  Tr,
+  Th,
+  Td,
+  Tbody,
+  useTheme
+} from '@chakra-ui/react';
+import MyIcon from '@/components/Icon';
+import { useTranslation } from 'next-i18next';
+import { usePagination } from '@/hooks/usePagination';
+import { getAppChatLogs } from '@/api/app';
+import dayjs from 'dayjs';
+import { ChatSourceMap, HUMAN_ICON } from '@/constants/chat';
+import { AppLogsListItemType } from '@/types/app';
+import { useGlobalStore } from '@/store/global';
+import MyTooltip from '@/components/MyTooltip';
+import ChatBox, { type ComponentRef } from '@/components/ChatBox';
+import { useQuery } from '@tanstack/react-query';
+import { getInitChatSiteInfo } from '@/api/chat';
+import Tag from '@/components/Tag';
+
+const Logs = ({ appId }: { appId: string }) => {
+  const { t } = useTranslation();
+  const { isPc } = useGlobalStore();
+
+  const {
+    data: logs,
+    isLoading,
+    Pagination,
+    getData,
+    pageNum
+  } = usePagination<AppLogsListItemType>({
+    api: getAppChatLogs,
+    pageSize: 20,
+    params: {
+      appId
+    }
+  });
+
+  const [detailLogsId, setDetailLogsId] = useState<string>();
+
+  return (
+    <Flex flexDirection={'column'} h={'100%'} pt={[1, 5]} position={'relative'}>
+      <Box px={[4, 8]}>
+        {isPc && (
+          <>
+            <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2}>
+              {t('app.Chat logs')}
+            </Box>
+            <Box color={'myGray.500'} fontSize={'sm'}>
+              {t('app.Chat Logs Tips')}
+            </Box>
+          </>
+        )}
+      </Box>
+
+      {/* table */}
+      <TableContainer mt={[0, 3]} flex={'1 0 0'} h={0} overflowY={'auto'} px={[4, 8]}>
+        <Table variant={'simple'} fontSize={'sm'}>
+          <Thead>
+            <Tr>
+              <Th>{t('app.Logs Source')}</Th>
+              <Th>{t('app.Logs Time')}</Th>
+              <Th>{t('app.Logs Title')}</Th>
+              <Th>{t('app.Logs Message Total')}</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {logs.map((item) => (
+              <Tr
+                key={item.id}
+                _hover={{ bg: 'myWhite.600' }}
+                cursor={'pointer'}
+                title={'点击查看对话详情'}
+                onClick={() => setDetailLogsId(item.id)}
+              >
+                <Td>{t(ChatSourceMap[item.source]?.name || 'UnKnow')}</Td>
+                <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Td>
+                <Td className="textEllipsis" maxW={'250px'}>
+                  {item.title}
+                </Td>
+                <Td>{item.messageCount}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+      <Box p={4}>
+        <Pagination />
+      </Box>
+      {logs.length === 0 && !isLoading && (
+        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
+          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+          <Box mt={2} color={'myGray.500'}>
+            {t('app.Logs Empty')}
+          </Box>
+        </Flex>
+      )}
+      {!!detailLogsId && (
+        <DetailLogsModal
+          appId={appId}
+          chatId={detailLogsId}
+          onClose={() => setDetailLogsId(undefined)}
+        />
+      )}
+    </Flex>
+  );
+};
+
+export default Logs;
+
+function DetailLogsModal({
+  appId,
+  chatId,
+  onClose
+}: {
+  appId: string;
+  chatId: string;
+  onClose: () => void;
+}) {
+  const ChatBoxRef = useRef<ComponentRef>(null);
+  const { isPc } = useGlobalStore();
+  const theme = useTheme();
+
+  const { data: chat } = useQuery(
+    ['getChatDetail', chatId],
+    () => getInitChatSiteInfo({ appId, chatId }),
+    {
+      onSuccess(res) {
+        const history = res.history.map((item) => ({
+          ...item,
+          status: 'finish' as any
+        }));
+        ChatBoxRef.current?.resetHistory(history);
+        ChatBoxRef.current?.resetVariables(res.variables);
+        if (res.history.length > 0) {
+          setTimeout(() => {
+            ChatBoxRef.current?.scrollToBottom('auto');
+          }, 500);
+        }
+      }
+    }
+  );
+
+  const history = useMemo(() => (chat?.history ? chat.history : []), [chat]);
+
+  const title = useMemo(() => {
+    return history[history.length - 2]?.value?.slice(0, 8);
+  }, [history]);
+
+  return (
+    <>
+      <Flex
+        zIndex={3}
+        flexDirection={'column'}
+        position={['fixed', 'absolute']}
+        top={[0, '2%']}
+        right={0}
+        h={['100%', '96%']}
+        w={'100%'}
+        maxW={['100%', '600px']}
+        bg={'white'}
+        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
+        borderRadius={'md'}
+        overflow={'hidden'}
+        transition={'.2s ease'}
+      >
+        <Flex
+          alignItems={'center'}
+          px={[3, 5]}
+          h={['46px', '60px']}
+          borderBottom={theme.borders.base}
+          borderBottomColor={'gray.200'}
+          color={'myGray.900'}
+        >
+          {isPc ? (
+            <>
+              <Box mr={3} color={'myGray.1000'}>
+                {title}
+              </Box>
+              <Tag>
+                <MyIcon name={'history'} w={'14px'} />
+                <Box ml={1}>{`${history.length}条记录`}</Box>
+              </Tag>
+              {!!chat?.app?.chatModels && (
+                <Tag ml={2} colorSchema={'green'}>
+                  <MyIcon name={'chatModelTag'} w={'14px'} />
+                  <Box ml={1}>{chat.app.chatModels.join(',')}</Box>
+                </Tag>
+              )}
+              <Box flex={1} />
+            </>
+          ) : (
+            <>
+              <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
+                <Box ml={1} className="textEllipsis">
+                  {title}
+                </Box>
+              </Flex>
+            </>
+          )}
+
+          <Flex
+            alignItems={'center'}
+            justifyContent={'center'}
+            w={'20px'}
+            h={'20px'}
+            borderRadius={'50%'}
+            cursor={'pointer'}
+            _hover={{ bg: 'myGray.100' }}
+            onClick={onClose}
+          >
+            <MyIcon name={'closeLight'} w={'12px'} h={'12px'} color={'myGray.700'} />
+          </Flex>
+        </Flex>
+        <Box pt={2} flex={'1 0 0'}>
+          <ChatBox
+            ref={ChatBoxRef}
+            chatId={chatId}
+            appAvatar={chat?.app.avatar}
+            userAvatar={HUMAN_ICON}
+            variableModules={chat?.app.variableModules}
+            welcomeText={chat?.app.welcomeText}
+            onUpdateVariable={(e) => {}}
+          />
+        </Box>
+      </Flex>
+      <Box zIndex={2} position={'fixed'} top={0} left={0} bottom={0} right={0} onClick={onClose} />
+    </>
+  );
+}

@@ -158,7 +158,8 @@ export const ChatModule: FlowModuleTemplateType = {
       label: '系统提示词',
       valueType: FlowValueTypeEnum.string,
       description: ChatModelSystemTip,
-      placeholder: ChatModelSystemTip
+      placeholder: ChatModelSystemTip,
+      value: ''
     },
     {
       key: 'limitPrompt',
@@ -166,7 +167,8 @@ export const ChatModule: FlowModuleTemplateType = {
       valueType: FlowValueTypeEnum.string,
       label: '限定词',
       description: ChatModelLimitTip,
-      placeholder: ChatModelLimitTip
+      placeholder: ChatModelLimitTip,
+      value: ''
     },
     Input_Template_TFSwitch,
     {
@@ -281,6 +283,7 @@ export const AnswerModule: FlowModuleTemplateType = {
       key: SpecialInputKeyEnum.answerText,
       type: FlowInputItemTypeEnum.textarea,
       valueType: FlowValueTypeEnum.string,
+      value: '',
       label: '回复的内容',
       description:
         '可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容'
@@ -337,6 +340,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
       valueType: FlowValueTypeEnum.string,
+      value: '',
       label: '系统提示词',
       description:
         '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
@@ -398,6 +402,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       key: ContextExtractEnum.description,
       type: FlowInputItemTypeEnum.textarea,
       valueType: FlowValueTypeEnum.string,
+      value: '',
       label: '提取要求描述',
       description: '写一段提取要求，告诉 AI 需要提取哪些内容',
       required: true,

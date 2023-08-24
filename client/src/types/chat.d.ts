@@ -71,4 +71,7 @@ export type ChatHistoryItemResType = {
   // content extract
   extractDescription?: string;
   extractResult?: Record<string, any>;
+
+  // http
+  httpResult?: Record<string, any>;
 };

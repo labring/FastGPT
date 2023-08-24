@@ -12,7 +12,7 @@ export type UrlFetchResponse = FetchResultItem[];
 
 const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    const { urlList = [] } = req.body as { urlList: string[] };
+    let { urlList = [] } = req.body as { urlList: string[] };
 
     if (!urlList || urlList.length === 0) {
       throw new Error('urlList is empty');
@@ -20,27 +20,36 @@ const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
 
     await authUser({ req });
 
+    urlList = urlList.filter((url) => /^(http|https):\/\/[^ "]+$/.test(url));
+
     const response = (
       await Promise.allSettled(
         urlList.map(async (url) => {
-          const fetchRes = await axios.get(url, {
-            timeout: 30000
-          });
+          try {
+            const fetchRes = await axios.get(url, {
+              timeout: 30000
+            });
 
-          const dom = new JSDOM(fetchRes.data, {
-            url,
-            contentType: 'text/html'
-          });
+            const dom = new JSDOM(fetchRes.data, {
+              url,
+              contentType: 'text/html'
+            });
 
-          const reader = new Readability(dom.window.document);
-          const article = reader.parse();
+            const reader = new Readability(dom.window.document);
+            const article = reader.parse();
 
-          const content = article?.textContent || '';
+            const content = article?.textContent || '';
 
-          return {
-            url,
-            content: simpleText(`${article?.title}\n${content}`)
-          };
+            return {
+              url,
+              content: simpleText(`${article?.title}\n${content}`)
+            };
+          } catch (error) {
+            return {
+              url,
+              content: ''
+            };
+          }
         })
       )
     )

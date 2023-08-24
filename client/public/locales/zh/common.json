@@ -4,9 +4,12 @@
   "Confirm": "确认",
   "Running": "运行中",
   "Warning": "提示",
+  "UnKnow": "未知",
   "app": {
     "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
+    "Chat Logs Tips": "日志会记录该应用的在线、分享和 API 对话记录",
+    "Chat logs": "对话日志",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
     "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
     "Connection is invalid": "连接无效",
@@ -18,6 +21,11 @@
     "Import Config Failed": "导入配置失败，请确保配置正常！",
     "Import Configs": "导入配置",
     "Input Field Settings": "输入字段编辑",
+    "Logs Empty": "还没有日志噢~",
+    "Logs Message Total": "消息总数",
+    "Logs Source": "来源",
+    "Logs Time": "时间",
+    "Logs Title": "标题",
     "My Apps": "我的应用",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置"
@@ -28,7 +36,13 @@
     "Exit Chat": "退出聊天",
     "History": "记录",
     "New Chat": "新对话",
-    "You need to a chat app": "你需要创建一个应用"
+    "You need to a chat app": "你需要创建一个应用",
+    "logs": {
+      "api": "API 调用",
+      "online": "在线使用",
+      "share": "外部链接调用",
+      "test": "测试"
+    }
   },
   "commom": {
     "Password inconsistency": "两次密码不一致"
@@ -151,8 +165,8 @@
     "Update password succseful": "修改密码成功",
     "Usage Record": "使用记录",
     "promotion": {
-      "register": "好友注册",
-      "pay": "好友充值"
+      "pay": "好友充值",
+      "register": "好友注册"
     }
   }
 }

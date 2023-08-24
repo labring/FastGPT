@@ -31,7 +31,7 @@ export const ChatRoleMap = {
 };
 
 export enum ChatSourceEnum {
-  'test' = 'test',
+  test = 'test',
   online = 'online',
   share = 'share',
   api = 'api'
@@ -39,16 +39,16 @@ export enum ChatSourceEnum {
 
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
-    name: '调试测试'
+    name: 'chat.logs.test'
   },
   [ChatSourceEnum.online]: {
-    name: '在线使用'
+    name: 'chat.logs.online'
   },
   [ChatSourceEnum.share]: {
-    name: '链接分享'
+    name: 'chat.logs.share'
   },
   [ChatSourceEnum.api]: {
-    name: 'API调用'
+    name: 'chat.logs.api'
   }
 };
 
@@ -56,7 +56,8 @@ export enum ChatModuleEnum {
   'AIChat' = 'AI Chat',
   'KBSearch' = 'KB Search',
   'CQ' = 'Classify Question',
-  'Extract' = 'Content Extract'
+  'Extract' = 'Content Extract',
+  'Http' = 'Http'
 }
 
 export enum OutLinkTypeEnum {
