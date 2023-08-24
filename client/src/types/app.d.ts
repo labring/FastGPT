@@ -7,7 +7,7 @@ import {
   VariableInputEnum
 } from '../constants/app';
 import type { FlowInputItemType, FlowOutputItemType, FlowOutputTargetItemType } from './flow';
-import type { AppSchema, kbSchema } from './mongoSchema';
+import type { AppSchema, ChatSchema, kbSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
 import { FlowValueTypeEnum } from '@/constants/flow';
 
@@ -106,4 +106,13 @@ export type RunningModuleItemType = {
       key: string;
     }[];
   }[];
+};
+
+export type AppLogsListItemType = {
+  id: string;
+  source: ChatSchema['source'];
+  time: Date;
+  title: string;
+  messageCount: number;
+  callbackCount: number;
 };

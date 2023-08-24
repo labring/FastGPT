@@ -26,6 +26,9 @@ const OutLink = dynamic(() => import('./components/OutLink'), {
 const API = dynamic(() => import('./components/API'), {
   ssr: false
 });
+const Logs = dynamic(() => import('./components/Logs'), {
+  ssr: false
+});
 
 enum TabEnum {
   'basicEdit' = 'basicEdit',
@@ -150,7 +153,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           </Flex>
         </Box>
         {/* phone tab */}
-        <Box display={['block', 'none']} textAlign={'center'} px={5} py={3}>
+        <Box display={['block', 'none']} textAlign={'center'} py={3}>
           <Box className="textlg" fontSize={'xl'} fontWeight={'bold'}>
             {appDetail.name}
           </Box>
@@ -176,6 +179,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             <AdEdit app={appDetail} onCloseSettings={() => setCurrentTab(TabEnum.basicEdit)} />
           )}
           {currentTab === TabEnum.API && <API appId={appId} />}
+          {currentTab === TabEnum.logs && <Logs appId={appId} />}
           {currentTab === TabEnum.outLink && <OutLink appId={appId} />}
         </Box>
       </Flex>
