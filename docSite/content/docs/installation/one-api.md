@@ -29,7 +29,7 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 
 **2. 打开 AppLaunchpad(应用管理) 工具**
 
-![step1](/imgs/oneapi/step1.png)
+![step1](/imgs/oneapi-step1.png)
 
 **3. 点击创建新应用**
 
@@ -37,10 +37,10 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 
 镜像：ghcr.io/songquanpeng/one-api:latest
 
-![step2](/imgs/oneapi/step2.png)
+![step2](/imgs/oneapi-step2.png)
 打开外网访问开关后，Sealos 会自动分配一个可访问的地址，不需要自己配置。
 
-![step3](/imgs/oneapi/step3.png)
+![step3](/imgs/oneapi-step3.png)
 填写完参数后，点击右上角部署即可。
 
 ## 使用步骤
@@ -48,18 +48,18 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 **1. 登录 one-api**
 
 打开 【one-api 应用详情】，找到访问地址：
-![step4](/imgs/oneapi/step4.png)
+![step4](/imgs/oneapi-step4.png)
 
 登录 one-api
-![step5](/imgs/oneapi/step5.png)
+![step5](/imgs/oneapi-step5.png)
 
 **2. 创建渠道和令牌**
 
 在 one-api 中添加对应渠道，直接点击 【添加基础模型】，不要遗漏了向量模型
-![step6](/imgs/oneapi/step6.png)
+![step6](/imgs/oneapi-step6.png)
 
 创建一个令牌
-![step7](/imgs/oneapi/step7.png)
+![step7](/imgs/oneapi-step7.png)
 
 **3. 修改 FastGPT 的环境变量**
 
