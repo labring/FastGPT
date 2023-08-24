@@ -1,7 +1,7 @@
 ---
-title: "联网 GPT"
-description: "将 FastGPT 外接搜索引擎"
-icon: "search"
+title: '联网 GPT'
+description: '将 FastGPT 外接搜索引擎'
+icon: 'search'
 draft: false
 toc: true
 weight: 441
@@ -11,11 +11,11 @@ weight: 441
 
 ![](/imgs/google_search_2.png)
 
-如上图，利用 HTTP 模块，你可以轻松的外接一个搜索引擎。这里以调用 Google Search API 为例。
+如上图，利用 HTTP 模块，你可以轻松的外接一个搜索引擎。这里以调用 Google Search API 为例。注意：本文主要是为了介绍 HTTP 模型，具体的搜索效果需要依赖提示词和搜索引擎，这两部分可能需要更多的调试。
 
 ## 注册 Google Search API
 
-[参考这篇文章](https://zhuanlan.zhihu.com/p/174666017)
+[参考这篇文章](https://zhuanlan.zhihu.com/p/174666017)，每天可以免费使用 100 次。
 
 ## 写一个 Google Search 接口
 

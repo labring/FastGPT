@@ -150,7 +150,7 @@ docker-compose up -d
 
 ## 访问 FastGPT
 
-目前可以通过 ` ip:3000`` 直接访问(注意防火墙)。登录用户名为  `root`，密码为刚刚环境变量里设置的 `DEFAULT_ROOT_PSW`。
+目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为刚刚环境变量里设置的 `DEFAULT_ROOT_PSW`。
 
 如果需要域名访问，请自行安装并配置 Nginx。
 

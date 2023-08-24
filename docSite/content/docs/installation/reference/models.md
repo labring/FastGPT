@@ -1,7 +1,7 @@
 ---
-title: "多模型支持"
-description: "如何接入除了 GPT 以外的其他大模型"
-icon: "model_training"
+title: '多模型支持'
+description: '快速接入除了 GPT 以外的其他大模型'
+icon: 'model_training'
 draft: false
 toc: true
 weight: 752
@@ -11,11 +11,9 @@ weight: 752
 
 ## 部署 one-api
 
-首先你需要部署一个 [one-api](/docs/installation/one-api/)，并添加对应的【渠道】
+首先你需要部署一个 [one-api](/docs/installation/one-api/)，并添加对应的【渠道】和【令牌】，并修改 FastGPT 环境变量，具体可参考 [快速部署 one-api](/docs/installation/one-api)
 
-![](/imgs/chatmodels1.png)
-
-## 添加 FastGPT 配置
+## 添加 FastGPT 配置文件
 
 可以在 `/client/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是对话模型配置：
 
@@ -52,7 +50,7 @@ weight: 752
 ],
 ```
 
-### 添加新模型
+### 添加新的对话模型
 
 以添加文心一言为例:
 
@@ -71,4 +69,4 @@ weight: 752
 ]
 ```
 
-添加完后，重启应用即可在选择文心一言模型进行对话。
+添加完后，重启 FastGPT 即可在选择文心一言模型进行对话。
