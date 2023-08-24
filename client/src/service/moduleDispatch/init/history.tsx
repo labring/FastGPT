@@ -10,6 +10,6 @@ export const dispatchHistory = (props: Record<string, any>) => {
   const { maxContext = 5, history = [] } = props as HistoryProps;
 
   return {
-    history: history.slice(-maxContext)
+    history: maxContext > 0 ? history.slice(-maxContext) : []
   };
 };
