@@ -20,11 +20,9 @@ async function embedChatbot() {
   const ChatBtn = document.createElement('div');
   ChatBtn.id = chatBtnId;
   ChatBtn.style.cssText =
-    'position: fixed; bottom: 1rem; right: 1rem; width: 40px; height: 40px; cursor: pointer; z-index: 2147483647; ';
+    'position: fixed; bottom: 1rem; right: 1rem; width: 40px; height: 40px; cursor: pointer; z-index: 2147483647; transition: 0;';
 
   const ChatBtnDiv = document.createElement('div');
-  ChatBtnDiv.style.cssText =
-    'transition: all 0.2s ease-in-out 0s; left: unset; transform: scale(1); :hover {transform: scale(1.1);} display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; z-index: 9999;';
   ChatBtnDiv.innerHTML = MessageIcon;
 
   const iframe = document.createElement('iframe');
@@ -38,7 +36,15 @@ async function embedChatbot() {
 
   document.body.appendChild(iframe);
 
+  let chatBtnDragged = false;
+  let chatBtnDown = false;
+  let chatBtnMouseX;
+  let chatBtnMouseY;
   ChatBtn.addEventListener('click', function () {
+    if (chatBtnDragged) {
+      chatBtnDragged = false;
+      return;
+    }
     const chatWindow = document.getElementById(chatWindowId);
 
     if (!chatWindow) return;
@@ -50,6 +56,31 @@ async function embedChatbot() {
       chatWindow.style.visibility = 'hidden';
       ChatBtnDiv.innerHTML = MessageIcon;
     }
+  });
+
+  ChatBtn.addEventListener('mousedown', (e) => {
+    if (!chatBtnMouseX && !chatBtnMouseY) {
+      chatBtnMouseX = e.clientX;
+      chatBtnMouseY = e.clientY;
+    }
+
+    chatBtnDown = true;
+  });
+  ChatBtn.addEventListener('mousemove', (e) => {
+    if (!chatBtnDown) return;
+    chatBtnDragged = true;
+    const transformX = e.clientX - chatBtnMouseX;
+    const transformY = e.clientY - chatBtnMouseY;
+
+    ChatBtn.style.transform = `translate3d(${transformX}px, ${transformY}px, 0)`;
+
+    e.stopPropagation();
+  });
+  ChatBtn.addEventListener('mouseup', (e) => {
+    chatBtnDown = false;
+  });
+  ChatBtn.addEventListener('mouseleave', (e) => {
+    chatBtnDown = false;
   });
 
   ChatBtn.appendChild(ChatBtnDiv);

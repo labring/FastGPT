@@ -80,7 +80,7 @@ const Logs = ({ appId }: { appId: string }) => {
                 title={'点击查看对话详情'}
                 onClick={() => setDetailLogsId(item.id)}
               >
-                <Td>{t(ChatSourceMap[item.source]?.name)}</Td>
+                <Td>{t(ChatSourceMap[item.source]?.name || 'UnKnow')}</Td>
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Td>
                 <Td className="textEllipsis" maxW={'250px'}>
                   {item.title}
