@@ -211,7 +211,7 @@ function filterQuote({
   const quotePrompt =
     filterQuoteQA.length > 0
       ? `"""${filterQuoteQA
-          .map((item) => (item.a ? `${item.q}\n${item.a}` : item.q))
+          .map((item) => (item.a ? `[${item.q}\n${item.a}]` : `[${item.q}]`))
           .join('\n\n')}"""`
       : '';
 
