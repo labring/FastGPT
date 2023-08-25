@@ -3,8 +3,8 @@
   "Cancel": "No",
   "Confirm": "Yes",
   "Running": "Running",
-  "Warning": "Warning",
   "UnKnow": "UnKnow",
+  "Warning": "Warning",
   "app": {
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
@@ -120,8 +120,8 @@
     "Start Now": "Start Now",
     "Visual AI orchestration": "Visual AI orchestration",
     "Why FastGPT": "",
-    "desc": "",
-    "slogan": ""
+    "desc": "AI knowledge base question and answer platform based on LLM large model",
+    "slogan": "Let the AI know more about you"
   },
   "navbar": {
     "Account": "Account",
