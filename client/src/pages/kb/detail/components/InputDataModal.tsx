@@ -56,7 +56,6 @@ const InputDataModal = ({
         };
         const { insertLen } = await postKbDataFromList({
           kbId,
-          model: vectorModelList[0].model,
           mode: TrainingModeEnum.index,
           data: [data]
         });

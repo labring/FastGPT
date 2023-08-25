@@ -40,7 +40,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         return getVector({
           userId,
           input: [q],
-          model: kb.model
+          model: kb.vectorModel
         });
       }
       return { vectors: [[]] };
