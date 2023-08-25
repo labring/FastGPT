@@ -181,7 +181,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
       tokens: totalTokens,
       question: userChatInput,
       answer: answerText,
-      maxToken,
+      maxToken: max_tokens,
       quoteList: filterQuoteQA,
       completeMessages
     },
@@ -237,7 +237,7 @@ function getChatMessages({
 }) {
   const limitText = (() => {
     if (limitPrompt)
-      return `Use the provided content delimited by triple quotes to answer questions.${limitPrompt}`;
+      return `Use the provided content delimited by triple quotes to answer questions. ${limitPrompt}`;
     if (quotePrompt && !limitPrompt) {
       return `Use the provided content delimited by triple quotes to answer questions.Your task is to answer the question using only the provided content. If the content does not contain the information needed to answer this question then simply write: "你的问题没有在知识库中体现".`;
     }

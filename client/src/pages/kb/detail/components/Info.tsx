@@ -7,7 +7,7 @@ import React, {
   ForwardedRef
 } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Button, FormControl, IconButton, Input, Card } from '@chakra-ui/react';
+import { Box, Flex, Button, FormControl, IconButton, Input } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
 import { delKbById, putKbById } from '@/api/plugins/kb';
 import { useSelectFile } from '@/hooks/useSelectFile';
@@ -17,8 +17,6 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
 import { compressImg } from '@/utils/file';
 import type { KbItemType } from '@/types/plugin';
-import { vectorModelList } from '@/store/static';
-import MySelect from '@/components/Select';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
@@ -138,7 +136,6 @@ const Info = (
 
   useImperativeHandle(ref, () => ({
     initInput: (tags: string) => {
-      console.log(tags);
       if (InputRef.current) {
         InputRef.current.value = tags;
       }
@@ -153,20 +150,27 @@ const Info = (
         </Box>
         <Box flex={1}>{kbDetail._id}</Box>
       </Flex>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          索引模型
+        </Box>
+        <Box flex={[1, '0 0 300px']}>{getValues('vectorModelName')}</Box>
+      </Flex>
       <Flex mt={5} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           知识库头像
         </Box>
         <Box flex={[1, '0 0 300px']}>
-          <Avatar
-            m={'auto'}
-            src={getValues('avatar')}
-            w={['32px', '40px']}
-            h={['32px', '40px']}
-            cursor={'pointer'}
-            title={'点击切换头像'}
-            onClick={onOpenSelectFile}
-          />
+          <MyTooltip label={'点击切换头像'}>
+            <Avatar
+              m={'auto'}
+              src={getValues('avatar')}
+              w={['32px', '40px']}
+              h={['32px', '40px']}
+              cursor={'pointer'}
+              onClick={onOpenSelectFile}
+            />
+          </MyTooltip>
         </Box>
       </Flex>
       <FormControl mt={8} w={'100%'} display={'flex'} alignItems={'center'}>
@@ -180,27 +184,9 @@ const Info = (
           })}
         />
       </FormControl>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          索引模型
-        </Box>
-        <Box flex={[1, '0 0 300px']}>
-          <MySelect
-            w={'100%'}
-            value={getValues('model')}
-            list={vectorModelList.map((item) => ({
-              label: item.name,
-              value: item.model
-            }))}
-            onchange={(res) => {
-              setValue('model', res);
-            }}
-          />
-        </Box>
-      </Flex>
       <Flex mt={8} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          分类标签
+          标签
           <MyTooltip label={'用空格隔开多个标签，便于搜索'} forceShow>
             <QuestionOutlineIcon ml={1} />
           </MyTooltip>
@@ -208,6 +194,7 @@ const Info = (
         <Input
           flex={[1, '0 0 300px']}
           ref={InputRef}
+          defaultValue={getValues('tags')}
           placeholder={'标签,使用空格分割。'}
           maxLength={30}
           onChange={(e) => {
@@ -226,7 +213,6 @@ const Info = (
             ))}
         </Flex>
       </Flex>
-
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}></Box>
         <Button

@@ -100,9 +100,8 @@ export async function registerUser({
     username,
     avatar,
     password: nanoid(),
-    inviterId
+    inviterId: inviterId ? inviterId : undefined
   });
-  console.log(response, '-=-=-=');
 
   // 根据 id 获取用户信息
   const user = await User.findById(response._id);

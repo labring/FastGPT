@@ -72,7 +72,7 @@ export interface TrainingDataSchema {
   kbId: string;
   expireAt: Date;
   lockTime: Date;
-  model: string;
+  vectorModel: string;
   mode: `${TrainingModeEnum}`;
   prompt: string;
   q: string;
@@ -164,7 +164,7 @@ export interface kbSchema {
   updateTime: Date;
   avatar: string;
   name: string;
-  model: string;
+  vectorModel: string;
   tags: string[];
 }
 

@@ -9,7 +9,12 @@ import { delay } from '@/utils/tools';
 import { FeConfigsType } from '@/types';
 
 export let chatModelList: ChatModelItemType[] = [];
-export let qaModelList: QAModelItemType[] = [];
+export let qaModel: QAModelItemType = {
+  model: 'gpt-3.5-turbo-16k',
+  name: 'GPT35-16k',
+  maxToken: 16000,
+  price: 0
+};
 export let vectorModelList: VectorModelItemType[] = [];
 export let feConfigs: FeConfigsType = {};
 
@@ -20,7 +25,7 @@ export const clientInitData = async (): Promise<InitDateResponse> => {
     const res = await getInitData();
 
     chatModelList = res.chatModels;
-    qaModelList = res.qaModels;
+    qaModel = res.qaModel;
     vectorModelList = res.vectorModels;
     feConfigs = res.feConfigs;
 

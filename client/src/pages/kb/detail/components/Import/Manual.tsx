@@ -1,11 +1,9 @@
-import React, { useCallback, useState } from 'react';
-import { Box, type BoxProps, Flex, Textarea, useTheme, Button } from '@chakra-ui/react';
-import MyRadio from '@/components/Radio/index';
+import React from 'react';
+import { Box, Textarea, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/useToast';
 import { useRequest } from '@/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
-import { vectorModelList } from '@/store/static';
 import { postKbDataFromList } from '@/api/plugins/kb';
 import { TrainingModeEnum } from '@/constants/plugin';
 
@@ -35,7 +33,6 @@ const ManualImport = ({ kbId }: { kbId: string }) => {
         };
         const { insertLen } = await postKbDataFromList({
           kbId,
-          model: vectorModelList[0].model,
           mode: TrainingModeEnum.index,
           data: [data]
         });

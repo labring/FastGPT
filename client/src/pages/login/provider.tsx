@@ -46,7 +46,7 @@ const provider = ({ code }: { code: string }) => {
         if (loginStore.provider === 'git') {
           return gitLogin({
             code,
-            inviterId: localStorage.getItem('inviterId') || ''
+            inviterId: localStorage.getItem('inviterId') || undefined
           });
         }
         return null;

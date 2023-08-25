@@ -12,20 +12,14 @@ import {
 } from '@/pages/api/openapi/kb/searchTest';
 import { Response as KbDataItemType } from '@/pages/api/plugins/kb/data/getDataById';
 import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
-
-export type KbUpdateParams = {
-  id: string;
-  name: string;
-  tags: string;
-  avatar: string;
-};
+import type { KbUpdateParams, CreateKbParams } from '../request/kb';
 
 /* knowledge base */
 export const getKbList = () => GET<KbListItemType[]>(`/plugins/kb/list`);
 
 export const getKbById = (id: string) => GET<KbItemType>(`/plugins/kb/detail?id=${id}`);
 
-export const postCreateKb = (data: { name: string }) => POST<string>(`/plugins/kb/create`, data);
+export const postCreateKb = (data: CreateKbParams) => POST<string>(`/plugins/kb/create`, data);
 
 export const putKbById = (data: KbUpdateParams) => PUT(`/plugins/kb/update`, data);
 

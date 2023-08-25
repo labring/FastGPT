@@ -38,7 +38,7 @@ export async function generateVector(): Promise<any> {
       q: 1,
       a: 1,
       source: 1,
-      model: 1
+      vectorModel: 1
     });
 
     // task preemption
@@ -61,7 +61,7 @@ export async function generateVector(): Promise<any> {
 
     // 生成词向量
     const { vectors } = await getVector({
-      model: data.model,
+      model: data.vectorModel,
       input: dataItems.map((item) => item.q),
       userId
     });

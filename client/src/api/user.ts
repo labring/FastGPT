@@ -25,7 +25,7 @@ export const postRegister = ({
   username: string;
   code: string;
   password: string;
-  inviterId: string;
+  inviterId?: string;
 }) =>
   POST<ResLogin>(`/plusApi/user/account/register`, {
     username,
