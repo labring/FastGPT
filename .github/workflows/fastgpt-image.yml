@@ -77,3 +77,28 @@ jobs:
         run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}} ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
       - name: Push image to Docker Hub
         run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
+  push-to-ali-hub:
+    needs: build-fastgpt-images
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Login to Ali Hub
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Set DOCKER_REPO_TAGGED based on branch or tag
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+      - name: Pull image from GitHub Container Registry
+        run: docker pull ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}}
+      - name: Tag image with Docker Hub repository name and version tag
+        run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt:${{env.IMAGE_TAG}} ${{ secrets.ALI_IMAGE_NAME }}:${{env.IMAGE_TAG}}
+      - name: Push image to Docker Hub
+        run: docker push ${{ secrets.ALI_IMAGE_NAME }}:${{env.IMAGE_TAG}}

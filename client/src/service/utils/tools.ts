@@ -92,9 +92,9 @@ export const sseResponse = ({
 /* add logger */
 export const addLog = {
   info: (msg: string, obj?: Record<string, any>) => {
-    global.logger.info(msg, { meta: obj });
+    global.logger?.info(msg, { meta: obj });
   },
   error: (msg: string, obj?: Record<string, any>) => {
-    global.logger.error(msg, { meta: obj });
+    global.logger?.error(msg, { meta: obj });
   }
 };
