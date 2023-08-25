@@ -1,5 +1,14 @@
 import React, { useCallback } from 'react';
-import { Box, Card, Flex, Grid, useTheme, Button, IconButton } from '@chakra-ui/react';
+import {
+  Box,
+  Card,
+  Flex,
+  Grid,
+  useTheme,
+  Button,
+  IconButton,
+  useDisclosure
+} from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
 import PageContainer from '@/components/PageContainer';
@@ -7,12 +16,14 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
-import { delKbById, postCreateKb } from '@/api/plugins/kb';
-import { useRequest } from '@/hooks/useRequest';
+import { delKbById } from '@/api/plugins/kb';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import Tag from '@/components/Tag';
 import { serviceSideProps } from '@/utils/i18n';
+import dynamic from 'next/dynamic';
+
+const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 
 const Kb = () => {
   const theme = useTheme();
@@ -24,7 +35,13 @@ const Kb = () => {
   });
   const { myKbList, loadKbList, setKbList } = useUserStore();
 
-  useQuery(['loadKbList'], () => loadKbList());
+  const {
+    isOpen: isOpenCreateModal,
+    onOpen: onOpenCreateModal,
+    onClose: onCloseCreateModal
+  } = useDisclosure();
+
+  const { refetch } = useQuery(['loadKbList'], () => loadKbList());
 
   /* 点击删除 */
   const onclickDelKb = useCallback(
@@ -46,32 +63,13 @@ const Kb = () => {
     [toast, setKbList, myKbList]
   );
 
-  /* create a new kb and router to it */
-  const { mutate: onclickCreate, isLoading } = useRequest({
-    mutationFn: async () => {
-      const name = `知识库${myKbList.length + 1}`;
-      const id = await postCreateKb({ name });
-      return id;
-    },
-    successToast: '创建成功',
-    errorToast: '创建知识库出现意外',
-    onSuccess(id) {
-      router.push(`/kb/detail?kbId=${id}`);
-    }
-  });
-
   return (
     <PageContainer>
       <Flex pt={3} px={5} alignItems={'center'}>
         <Box flex={1} className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
           我的知识库
         </Box>
-        <Button
-          isLoading={isLoading}
-          leftIcon={<AddIcon />}
-          variant={'base'}
-          onClick={onclickCreate}
-        >
+        <Button leftIcon={<AddIcon />} variant={'base'} onClick={onOpenCreateModal}>
           新建
         </Button>
       </Flex>
@@ -141,6 +139,10 @@ const Kb = () => {
                 ))}
               </Flex>
             </Box>
+            <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+              <MyIcon mr={1} name="kbTest" w={'12px'} />
+              <Box color={'myGray.500'}>{kb.vectorModelName}</Box>
+            </Flex>
           </Card>
         ))}
       </Grid>
@@ -153,6 +155,7 @@ const Kb = () => {
         </Flex>
       )}
       <ConfirmModal />
+      {isOpenCreateModal && <CreateModal onClose={onCloseCreateModal} />}
     </PageContainer>
   );
 };

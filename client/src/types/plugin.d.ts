@@ -7,10 +7,15 @@ export type KbListItemType = {
   avatar: string;
   name: string;
   tags: string[];
+  vectorModelName: string;
 };
 /* kb type */
-export interface KbItemType extends kbSchema {
-  totalData: number;
+export interface KbItemType {
+  _id: string;
+  avatar: string;
+  name: string;
+  userId: string;
+  vectorModelName: string;
   tags: string;
 }
 

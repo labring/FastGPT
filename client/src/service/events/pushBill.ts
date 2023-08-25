@@ -76,13 +76,11 @@ export const updateShareChatBill = async ({
   }
 };
 
-export const pushSplitDataBill = async ({
+export const pushQABill = async ({
   userId,
   totalTokens,
-  model,
   appName
 }: {
-  model: string;
   userId: string;
   totalTokens: number;
   appName: string;
@@ -95,7 +93,7 @@ export const pushSplitDataBill = async ({
     await connectToDatabase();
 
     // 获取模型单价格, 都是用 gpt35 拆分
-    const unitPrice = global.chatModels.find((item) => item.model === model)?.price || 3;
+    const unitPrice = global.qaModel.price || 3;
     // 计算价格
     const total = unitPrice * totalTokens;
 

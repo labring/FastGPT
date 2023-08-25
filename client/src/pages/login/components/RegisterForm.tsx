@@ -57,7 +57,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             username,
             code,
             password,
-            inviterId: localStorage.getItem('inviterId') || ''
+            inviterId: localStorage.getItem('inviterId') || undefined
           })
         );
         toast({

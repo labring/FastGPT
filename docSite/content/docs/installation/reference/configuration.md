@@ -96,14 +96,12 @@ weight: 751
       "defaultSystem": ""
     }
   ],
-  "QAModels": [
-    {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
-      "maxToken": 16000,
-      "price": 0
-    }
-  ],
+  "QAModel": {
+    "model": "gpt-3.5-turbo-16k",
+    "name": "GPT35-16k",
+    "maxToken": 16000,
+    "price": 0
+  },
   "VectorModels": [
     {
       "model": "text-embedding-ada-002",

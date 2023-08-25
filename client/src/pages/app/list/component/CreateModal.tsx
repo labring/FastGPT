@@ -101,8 +101,8 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             <Avatar
               flexShrink={0}
               src={getValues('avatar')}
-              w={['32px', '36px']}
-              h={['32px', '36px']}
+              w={['28px', '32px']}
+              h={['28px', '32px']}
               cursor={'pointer'}
               borderRadius={'md'}
               onClick={onOpenSelectFile}

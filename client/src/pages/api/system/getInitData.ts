@@ -10,7 +10,7 @@ import {
 
 export type InitDateResponse = {
   chatModels: ChatModelItemType[];
-  qaModels: QAModelItemType[];
+  qaModel: QAModelItemType;
   vectorModels: VectorModelItemType[];
   feConfigs: FeConfigsType;
 };
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     data: {
       feConfigs: global.feConfigs,
       chatModels: global.chatModels,
-      qaModels: global.qaModels,
+      qaModel: global.qaModel,
       vectorModels: global.vectorModels
     }
   });
@@ -69,14 +69,13 @@ const defaultChatModels = [
     price: 0
   }
 ];
-const defaultQAModels = [
-  {
-    model: 'gpt-3.5-turbo-16k',
-    name: 'GPT35-16k',
-    maxToken: 16000,
-    price: 0
-  }
-];
+const defaultQAModel = {
+  model: 'gpt-3.5-turbo-16k',
+  name: 'GPT35-16k',
+  maxToken: 16000,
+  price: 0
+};
+
 const defaultVectorModels = [
   {
     model: 'text-embedding-ada-002',
@@ -95,7 +94,7 @@ export async function getInitConfig() {
     global.systemEnv = res.SystemParams || defaultSystemEnv;
     global.feConfigs = res.FeConfig || defaultFeConfigs;
     global.chatModels = res.ChatModels || defaultChatModels;
-    global.qaModels = res.QAModels || defaultQAModels;
+    global.qaModel = res.QAModel || defaultQAModel;
     global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
@@ -107,6 +106,6 @@ export function setDefaultData() {
   global.systemEnv = defaultSystemEnv;
   global.feConfigs = defaultFeConfigs;
   global.chatModels = defaultChatModels;
-  global.qaModels = defaultQAModels;
+  global.qaModel = defaultQAModel;
   global.vectorModels = defaultVectorModels;
 }

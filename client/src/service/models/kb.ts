@@ -19,7 +19,7 @@ const kbSchema = new Schema({
     type: String,
     required: true
   },
-  model: {
+  vectorModel: {
     type: String,
     required: true,
     default: 'text-embedding-ada-002'

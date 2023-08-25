@@ -7,7 +7,7 @@ import { postKbDataFromList } from '@/api/plugins/kb';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@/utils/user';
-import { qaModelList } from '@/store/static';
+import { qaModel } from '@/store/static';
 import MyIcon from '@/components/Icon';
 import CloseIcon from '@/components/Icon/close';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
@@ -20,9 +20,8 @@ import { useRouter } from 'next/router';
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const QAImport = ({ kbId }: { kbId: string }) => {
-  const model = qaModelList[0]?.model;
-  const unitPrice = qaModelList[0]?.price || 3;
-  const chunkLen = qaModelList[0].maxToken * 0.45;
+  const unitPrice = qaModel.price || 3;
+  const chunkLen = qaModel.maxToken * 0.45;
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
@@ -58,7 +57,6 @@ const QAImport = ({ kbId }: { kbId: string }) => {
       for (let i = 0; i < chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
-          model,
           data: chunks.slice(i, i + step),
           mode: TrainingModeEnum.qa,
           prompt: prompt || '下面是一段长文本'

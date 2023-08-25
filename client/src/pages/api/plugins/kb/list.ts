@@ -3,6 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { KbListItemType } from '@/types/plugin';
+import { getModel } from '@/service/utils/data';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -15,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       {
         userId
       },
-      '_id avatar name tags'
+      '_id avatar name tags vectorModel'
     ).sort({ updateTime: -1 });
 
     const data = await Promise.all(
@@ -23,7 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         _id: item._id,
         avatar: item.avatar,
         name: item.name,
-        tags: item.tags
+        tags: item.tags,
+        vectorModelName: getModel(item.vectorModel)?.name || 'UnKnow'
       }))
     );
 

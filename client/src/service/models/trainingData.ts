@@ -28,9 +28,10 @@ const TrainingDataSchema = new Schema({
     enum: Object.keys(TrainingTypeMap),
     required: true
   },
-  model: {
+  vectorModel: {
     type: String,
-    required: true
+    required: true,
+    default: 'text-embedding-ada-002'
   },
   prompt: {
     // qa split prompt

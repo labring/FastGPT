@@ -43,7 +43,6 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
       for (let i = 0; i < chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
-          model,
           data: chunks.slice(i, i + step),
           mode: TrainingModeEnum.index
         });

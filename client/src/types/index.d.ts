@@ -51,7 +51,7 @@ declare global {
   var feConfigs: FeConfigsType;
   var systemEnv: SystemEnvType;
   var chatModels: ChatModelItemType[];
-  var qaModels: QAModelItemType[];
+  var qaModel: QAModelItemType;
   var vectorModels: VectorModelItemType[];
 
   interface Window {
