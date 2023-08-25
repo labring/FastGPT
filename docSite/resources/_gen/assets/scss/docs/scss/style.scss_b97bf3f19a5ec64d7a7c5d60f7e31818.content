@@ -1,10 +1,10 @@
 @charset "UTF-8";
-/* Template Name: LotusLabs Docs
+/* Template Name: Lotus Docs
    Author: Colin Wilson
    E-mail: colin@aigis.uk
    Created: October 2022
-   Version: 1.0.0
-   File Description: Main Css file of the docs template
+   Version: 1.1.0
+   File Description: Main CSS file for Lotus Docs
 */
 @font-face {
   font-family: 'Material Symbols Outlined';
