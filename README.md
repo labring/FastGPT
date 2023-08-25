@@ -113,9 +113,9 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## 使用协议
 
-本仓库遵循 [FstGPT Open Source License](./LICENSE) 开源协议。
+本仓库遵循 [FastGPT Open Source License](./LICENSE) 开源协议。
 
 1. 允许作为后台服务直接商用，但不允许直接使用 saas 服务商用。
 2. 需保留相关版权信息。
-3. 完整请查看 [FstGPT Open Source License](./LICENSE)
+3. 完整请查看 [FastGPT Open Source License](./LICENSE)
 4. 联系方式：yujinlong@sealos.io, [点击查看定价策略](https://fael3z0zfze.feishu.cn/docx/F155dbirfo8vDDx2WgWc6extnwf)
