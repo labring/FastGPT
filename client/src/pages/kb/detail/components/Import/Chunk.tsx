@@ -19,7 +19,6 @@ import { postKbDataFromList } from '@/api/plugins/kb';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@/utils/user';
-import { vectorModelList } from '@/store/static';
 import MyIcon from '@/components/Icon';
 import CloseIcon from '@/components/Icon/close';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
@@ -27,17 +26,20 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
+import { useUserStore } from '@/store/user';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const ChunkImport = ({ kbId }: { kbId: string }) => {
-  const model = vectorModelList[0]?.model || 'text-embedding-ada-002';
-  const unitPrice = vectorModelList[0]?.price || 0.2;
+  const { kbDetail } = useUserStore();
+
+  const vectorModel = kbDetail.vectorModel;
+  const unitPrice = vectorModel?.price || 0.2;
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
 
-  const [chunkLen, setChunkLen] = useState(500);
+  const [chunkLen, setChunkLen] = useState(vectorModel?.defaultToken || 300);
   const [showRePreview, setShowRePreview] = useState(false);
   const [files, setFiles] = useState<FileItemType[]>([]);
   const [previewFile, setPreviewFile] = useState<FileItemType>();
@@ -205,24 +207,34 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Box>
-              <NumberInput
-                ml={4}
+              <Box
                 flex={1}
-                defaultValue={chunkLen}
-                min={300}
-                max={2000}
-                step={10}
-                onChange={(e) => {
-                  setChunkLen(+e);
-                  setShowRePreview(true);
+                css={{
+                  '& > span': {
+                    display: 'block'
+                  }
                 }}
               >
-                <NumberInputField />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
+                <MyTooltip label={`范围: 100~${kbDetail.vectorModel.maxToken}`}>
+                  <NumberInput
+                    ml={4}
+                    defaultValue={chunkLen}
+                    min={100}
+                    max={kbDetail.vectorModel.maxToken}
+                    step={10}
+                    onChange={(e) => {
+                      setChunkLen(+e);
+                      setShowRePreview(true);
+                    }}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </MyTooltip>
+              </Box>
             </Flex>
             {/* price */}
             <Flex py={5} alignItems={'center'}>

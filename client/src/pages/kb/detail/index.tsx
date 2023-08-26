@@ -165,12 +165,14 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
           </Box>
         )}
 
-        <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
-          {currentTab === TabEnum.data && <DataCard kbId={kbId} />}
-          {currentTab === TabEnum.import && <ImportData kbId={kbId} />}
-          {currentTab === TabEnum.test && <Test kbId={kbId} />}
-          {currentTab === TabEnum.info && <Info ref={InfoRef} kbId={kbId} form={form} />}
-        </Box>
+        {!!kbDetail._id && (
+          <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
+            {currentTab === TabEnum.data && <DataCard kbId={kbId} />}
+            {currentTab === TabEnum.import && <ImportData kbId={kbId} />}
+            {currentTab === TabEnum.test && <Test kbId={kbId} />}
+            {currentTab === TabEnum.info && <Info ref={InfoRef} kbId={kbId} form={form} />}
+          </Box>
+        )}
       </Box>
     </PageContainer>
   );

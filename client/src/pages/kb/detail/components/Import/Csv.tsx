@@ -11,11 +11,13 @@ import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
+import { useUserStore } from '@/store/user';
 
 const fileExtension = '.csv';
 
 const CsvImport = ({ kbId }: { kbId: string }) => {
-  const model = vectorModelList[0]?.model;
+  const { kbDetail } = useUserStore();
+
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
@@ -37,13 +39,22 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
     mutationFn: async () => {
       const chunks = files.map((file) => file.chunks).flat();
 
+      const filterChunks = chunks.filter((item) => item.q.length < kbDetail.vectorModel.maxToken);
+
+      if (filterChunks.length !== chunks.length) {
+        toast({
+          title: `${chunks.length - filterChunks.length}条数据超出长度，已被过滤`,
+          status: 'info'
+        });
+      }
+
       // subsection import
       let success = 0;
       const step = 500;
-      for (let i = 0; i < chunks.length; i += step) {
+      for (let i = 0; i < filterChunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
-          data: chunks.slice(i, i + step),
+          data: filterChunks.slice(i, i + step),
           mode: TrainingModeEnum.index
         });
 

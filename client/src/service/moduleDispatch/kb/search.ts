@@ -1,5 +1,5 @@
 import { PgClient } from '@/service/pg';
-import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatModuleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice } from '@/service/events/pushBill';
@@ -21,7 +21,7 @@ export type KBSearchResponse = {
 };
 
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
-  const { kbList = [], similarity = 0.8, limit = 5, userChatInput } = props as KBSearchProps;
+  const { kbList = [], similarity = 0.4, limit = 5, userChatInput } = props as KBSearchProps;
 
   if (kbList.length === 0) {
     return Promise.reject("You didn't choose the knowledge base");
@@ -32,7 +32,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   }
 
   // get vector
-  const vectorModel = global.vectorModels[0];
+  const vectorModel = kbList[0]?.vectorModel;
   const { vectors, tokenLen } = await getVector({
     model: vectorModel.model,
     input: [userChatInput]

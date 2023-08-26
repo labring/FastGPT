@@ -10,13 +10,15 @@ import InputDataModal, { type FormData } from './InputDataModal';
 import { useGlobalStore } from '@/store/global';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
-import { vectorModelList } from '@/store/static';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { useUserStore } from '@/store/user';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = ({ kbId }: { kbId: string }) => {
+  const { kbDetail } = useUserStore();
+
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useGlobalStore();
@@ -31,7 +33,7 @@ const Test = ({ kbId }: { kbId: string }) => {
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => searchText({ model: vectorModelList[0].model, kbId, text: inputText.trim() }),
+    mutationFn: () => searchText({ kbId, text: inputText.trim() }),
     onSuccess(res) {
       const testItem = {
         id: nanoid(),
@@ -75,12 +77,15 @@ const Test = ({ kbId }: { kbId: string }) => {
             rows={6}
             resize={'none'}
             variant={'unstyled'}
-            maxLength={1000}
+            maxLength={kbDetail.vectorModel.maxToken}
             placeholder="输入需要测试的文本"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
           />
-          <Flex justifyContent={'flex-end'}>
+          <Flex alignItems={'center'} justifyContent={'flex-end'}>
+            <Box mr={3} color={'myGray.500'}>
+              {inputText.length}
+            </Box>
             <Button isDisabled={inputText === ''} isLoading={isLoading} onClick={mutate}>
               测试
             </Button>
@@ -174,6 +179,7 @@ const Test = ({ kbId }: { kbId: string }) => {
             <Grid
               mt={1}
               gridTemplateColumns={[
+                'repeat(1,1fr)',
                 'repeat(1,1fr)',
                 'repeat(1,1fr)',
                 'repeat(1,1fr)',

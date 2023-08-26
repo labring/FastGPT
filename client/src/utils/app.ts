@@ -49,7 +49,7 @@ export const getDefaultAppForm = (): EditFormType => {
     },
     kb: {
       list: [],
-      searchSimilarity: 0.8,
+      searchSimilarity: 0.4,
       searchLimit: 5,
       searchEmptyText: ''
     },

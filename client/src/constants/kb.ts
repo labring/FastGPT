@@ -6,5 +6,11 @@ export const defaultKbDetail: KbItemType = {
   avatar: '/icon/logo.svg',
   name: '',
   tags: '',
-  vectorModelName: 'text-embedding-ada-002'
+  vectorModel: {
+    model: 'text-embedding-ada-002',
+    name: 'Embedding-2',
+    price: 0.2,
+    defaultToken: 500,
+    maxToken: 8000
+  }
 };
