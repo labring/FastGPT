@@ -32,7 +32,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   }
 
   // get vector
-  const vectorModel = kbList[0]?.vectorModel;
+  const vectorModel = kbList[0]?.vectorModel || global.vectorModels[0];
   const { vectors, tokenLen } = await getVector({
     model: vectorModel.model,
     input: [userChatInput]
