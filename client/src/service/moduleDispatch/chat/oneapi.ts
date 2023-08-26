@@ -211,7 +211,7 @@ function filterQuote({
   const quotePrompt =
     filterQuoteQA.length > 0
       ? `"""${filterQuoteQA
-          .map((item) => (item.a ? `[${item.q}\n${item.a}]` : `[${item.q}]`))
+          .map((item) => (item.a ? `[${item.q}\n${item.a}]` : `${item.q}`))
           .join('\n\n')}"""`
       : '';
 
@@ -236,12 +236,13 @@ function getChatMessages({
   model: ChatModelItemType;
 }) {
   const limitText = (() => {
-    if (limitPrompt)
-      return `Use the provided content delimited by triple quotes to answer questions. ${limitPrompt}`;
-    if (quotePrompt && !limitPrompt) {
-      return `Use the provided content delimited by triple quotes to answer questions.Your task is to answer the question using only the provided content. If the content does not contain the information needed to answer this question then simply write: "你的问题没有在知识库中体现".`;
+    if (!quotePrompt) {
+      return limitPrompt;
     }
-    return ``;
+    if (limitPrompt) {
+      return `Use the provided documents delimited by triple quotes to answer questions. ${limitPrompt}`;
+    }
+    return `Use the provided documents delimited by triple quotes to answer questions.Your task is to answer the question using only the provided documents. If the documents does not contain the information needed to answer this question then simply write: "你的问题没有在知识库中体现"`;
   })();
 
   const messages: ChatItemType[] = [
@@ -261,6 +262,7 @@ function getChatMessages({
           }
         ]
       : []),
+    ...history,
     ...(limitText
       ? [
           {
@@ -269,7 +271,6 @@ function getChatMessages({
           }
         ]
       : []),
-    ...history,
     {
       obj: ChatRoleEnum.Human,
       value: userChatInput
