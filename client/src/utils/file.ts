@@ -282,9 +282,7 @@ export const simpleText = (text: string) => {
   text = text.replace(/\n{2,}/g, '\n');
   text = text.replace(/\s{2,}/g, ' ');
 
-  text = text.replace(/\\x([0-9A-Fa-f]{2})/g, function (match, hex) {
-    return String.fromCharCode(parseInt(hex, 16));
-  });
+  text = text.replace(/[\x00-\x1F]/g, ' ');
 
   return text;
 };

@@ -102,6 +102,8 @@ export interface ChatItemSchema extends ChatItemType {
   userId: string;
   appId: string;
   time: Date;
+  userFeedback?: string;
+  adminFeedback?: string;
 }
 
 export type BillListItemType = {

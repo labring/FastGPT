@@ -53,8 +53,8 @@ export async function generateVector(): Promise<any> {
 
     dataItems = [
       {
-        q: data.q,
-        a: data.a
+        q: data.q.replace(/[\x00-\x1F]/g, ' '),
+        a: data.a.replace(/[\x00-\x1F]/g, ' ')
       }
     ];
 
@@ -109,28 +109,30 @@ export async function generateVector(): Promise<any> {
 
     // err vector data
     if (err?.code === 500) {
-      await TrainingData.findByIdAndRemove(trainingId);
+      await TrainingData.findByIdAndDelete(trainingId);
       return generateVector();
     }
 
     // 账号余额不足，删除任务
     if (userId && err === ERROR_ENUM.insufficientQuota) {
-      sendInform({
-        type: 'system',
-        title: '索引生成任务中止',
-        content:
-          '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-        userId
-      });
-      console.log('余额不足，暂停向量生成任务');
-      await TrainingData.updateMany(
-        {
+      try {
+        sendInform({
+          type: 'system',
+          title: '索引生成任务中止',
+          content:
+            '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
           userId
-        },
-        {
-          lockTime: new Date('2999/5/5')
-        }
-      );
+        });
+        console.log('余额不足，暂停向量生成任务');
+        await TrainingData.updateMany(
+          {
+            userId
+          },
+          {
+            lockTime: new Date('2999/5/5')
+          }
+        );
+      } catch (error) {}
       return generateVector();
     }
 
