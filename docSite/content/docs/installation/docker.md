@@ -162,72 +162,7 @@ docker-compose up -d
 
 ### 如何自定义配置文件？
 
-需要在 `docker-compose.yml` 同级目录创建一个 `config.json` 文件，内容如下：
-
-```json
-{
-  "FeConfig": {
-    "show_emptyChat": true,
-    "show_register": false,
-    "show_appStore": false,
-    "show_userDetail": false,
-    "show_git": true,
-    "systemTitle": "FastGPT",
-    "authorText": "Made by FastGPT Team.",
-    "gitLoginKey": "",
-    "scripts": []
-  },
-  "SystemParams": {
-    "gitLoginSecret": "",
-    "vectorMaxProcess": 15,
-    "qaMaxProcess": 15,
-    "pgIvfflatProbe": 20
-  },
-  "plugins": {},
-  "ChatModels": [
-    {
-      "model": "gpt-3.5-turbo",
-      "name": "GPT35-4k",
-      "contextMaxToken": 4000,
-      "quoteMaxToken": 2000,
-      "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
-    },
-    {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
-      "contextMaxToken": 16000,
-      "quoteMaxToken": 8000,
-      "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
-    },
-    {
-      "model": "gpt-4",
-      "name": "GPT4-8k",
-      "contextMaxToken": 8000,
-      "quoteMaxToken": 4000,
-      "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
-    }
-  ],
-  "QAModel": {
-    "model": "gpt-3.5-turbo-16k",
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0
-  },
-  "VectorModels": [
-    {
-      "model": "text-embedding-ada-002",
-      "name": "Embedding-2",
-      "price": 0
-    }
-  ]
-}
-```
+需要在 `docker-compose.yml` 同级目录创建一个 `config.json` 文件，内容参考: [配置详解](/docs/installation/reference/configuration/)
 
 然后修改 `docker-compose.yml` 中的 `fastgpt` 容器内容，增加挂载选项即可：
 

@@ -106,7 +106,9 @@ weight: 751
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "price": 0
+      "price": 0,
+      "defaultToken": 500,
+      "maxToken": 3000
     }
   ]
 }
