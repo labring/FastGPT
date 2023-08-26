@@ -1,3 +1,4 @@
+<!-- change -->
 <style>
     .medium-zoom-overlay,
     .medium-zoom-image--opened {
@@ -5,43 +6,43 @@
     }
 </style>
 
-{{ $dayjs := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/dayjs.min.js") }}
-{{ $relativeTime := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/relativeTime.min.js") }}
-{{ $app := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/app.js") -}}
+{{ $dayjs := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/dayjs.min.js") }}
+{{ $relativeTime := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/relativeTime.min.js") }}
+{{ $app := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/app.js") -}}
 
 {{ $slice := slice $dayjs $relativeTime $app -}}
 
 {{ if and (.Site.Params.docsearch.appID) (.Site.Params.docsearch.apiKey) -}}
-    {{ $docsearch := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/docsearch.min.js") }}
+    {{ $docsearch := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/docsearch.min.js") }}
     {{ $slice = $slice | append $docsearch -}}
 {{ end }}
 
 {{ if site.Params.docs.toc | default true }}
     {{ if eq .Site.Params.docs.scrollSpy true -}}
-        {{ $simplescrollspy := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/simple-scrollspy.min.js") }}
+        {{ $simplescrollspy := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/simple-scrollspy.min.js") }}
         {{ $slice = $slice | append $simplescrollspy -}}
     {{ end -}}
 
     {{ if eq .Site.Params.docs.scrollSpy true -}}
-        {{ $scrollspyScript := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/scrollspy-script.js") }}
+        {{ $scrollspyScript := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/scrollspy-script.js") }}
         {{ $scrollspyScript := $scrollspyScript | js.Build -}}
         {{ $slice = $slice | append $scrollspyScript -}}
     {{ end -}}
 {{ end -}}
 
 {{ if site.Params.docs.tocMobile | default true }}
-    {{ $tocmobilescrollspy := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/toc-mobile-scrollspy.js") }}
+    {{ $tocmobilescrollspy := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/toc-mobile-scrollspy.js") }}
     {{ $slice = $slice | append $tocmobilescrollspy -}}
 {{ end -}}
 
 {{ if eq .Site.Params.docs.prism true -}}
-    {{ $prism := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/prism.js") }}
+    {{ $prism := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/prism.js") }}
     {{ $prism := $prism | js.Build -}}
     {{ $slice = $slice | append $prism -}}
 {{ end -}}
 
 <!-- Bootstrap JS -->
-{{ $js := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/bootstrap.js") }}
+{{ $js := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/bootstrap.js") }}
 {{ $params := dict }}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
 {{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2018" "params" $params }}
@@ -51,7 +52,7 @@
 {{ end }}
     <script src="{{ $js.RelPermalink }}" {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end -}} defer></script>
 
-{{ $js := $slice | resources.Concat (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/bundle.js") -}}
+{{ $js := $slice | resources.Concat (printf "/%s/%s" ($.Scratch.Get "pathName") "js/bundle.js") -}}
 
 {{- if not .Site.IsServer }}
     {{- $js := $js | minify | fingerprint "sha384" }}
@@ -60,6 +61,7 @@
     <script type="text/javascript" src="{{ $js.Permalink }}" defer></script>
 {{- end }}
 
+<!-- change -->
 <script
   src="https://cdn.jsdelivr.us/npm/medium-zoom/dist/medium-zoom.min.js"
   crossorigin="anonymous"
