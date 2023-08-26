@@ -1,4 +1,3 @@
-import { openaiAccountError } from '../errorCode';
 import { insertKbItem } from '@/service/pg';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { TrainingData } from '../models/trainingData';

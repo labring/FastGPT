@@ -141,7 +141,7 @@ const Kb = () => {
             </Box>
             <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
               <MyIcon mr={1} name="kbTest" w={'12px'} />
-              <Box color={'myGray.500'}>{kb.vectorModelName}</Box>
+              <Box color={'myGray.500'}>{kb.vectorModel.name}</Box>
             </Flex>
           </Card>
         ))}

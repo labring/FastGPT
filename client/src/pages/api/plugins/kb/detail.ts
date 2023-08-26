@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { getModel } from '@/service/utils/data';
+import { getVectorModel } from '@/service/utils/data';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         avatar: data.avatar,
         name: data.name,
         userId: data.userId,
-        vectorModelName: getModel(data.vectorModel)?.name || 'Unknown',
+        vectorModel: getVectorModel(data.vectorModel),
         tags: data.tags.join(' ')
       }
     });

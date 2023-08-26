@@ -17,5 +17,7 @@ export type QAModelItemType = {
 export type VectorModelItemType = {
   model: string;
   name: string;
+  defaultToken: number;
   price: number;
+  maxToken: number;
 };

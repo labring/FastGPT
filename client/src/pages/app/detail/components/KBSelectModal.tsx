@@ -16,9 +16,11 @@ import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { SelectedKbType } from '@/types/plugin';
 import { useGlobalStore } from '@/store/global';
+import { useToast } from '@/hooks/useToast';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
+import MyIcon from '@/components/Icon';
 
 export type KbParamsType = {
   searchSimilarity: number;
@@ -40,6 +42,7 @@ export const KBSelectModal = ({
   const theme = useTheme();
   const [selectedKbList, setSelectedKbList] = useState<SelectedKbType>(activeKbs);
   const { isPc } = useGlobalStore();
+  const { toast } = useToast();
 
   return (
     <MyModal
@@ -50,7 +53,13 @@ export const KBSelectModal = ({
       onClose={onClose}
     >
       <Flex flexDirection={'column'} h={['90vh', 'auto']}>
-        <ModalHeader>关联的知识库({selectedKbList.length})</ModalHeader>
+        <ModalHeader>
+          <Box>关联的知识库({selectedKbList.length})</Box>
+          <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'normal'}>
+            仅能选择同一个索引模型的知识库
+          </Box>
+        </ModalHeader>
+
         <ModalBody
           flex={['1 0 0', '0 0 auto']}
           maxH={'80vh'}
@@ -58,6 +67,7 @@ export const KBSelectModal = ({
           display={'grid'}
           gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
           gridGap={3}
+          userSelect={'none'}
         >
           {kbList.map((item) =>
             (() => {
@@ -84,7 +94,18 @@ export const KBSelectModal = ({
                     if (selected) {
                       setSelectedKbList((state) => state.filter((kb) => kb.kbId !== item._id));
                     } else {
-                      setSelectedKbList((state) => [...state, { kbId: item._id }]);
+                      const vectorModel = selectedKbList[0]?.vectorModel?.model;
+
+                      if (vectorModel && vectorModel !== item.vectorModel.model) {
+                        return toast({
+                          status: 'warning',
+                          title: '仅能选择同一个索引模型的知识库'
+                        });
+                      }
+                      setSelectedKbList((state) => [
+                        ...state,
+                        { kbId: item._id, vectorModel: item.vectorModel }
+                      ]);
                     }
                   }}
                 >
@@ -93,6 +114,10 @@ export const KBSelectModal = ({
                     <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg', 'xl']}>
                       {item.name}
                     </Box>
+                  </Flex>
+                  <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+                    <MyIcon mr={1} name="kbTest" w={'12px'} />
+                    <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
                   </Flex>
                 </Card>
               );
@@ -138,7 +163,10 @@ export const KbParamsModal = ({
           <Box display={['block', 'flex']} py={5} pt={[0, 5]}>
             <Box flex={'0 0 100px'} mb={[8, 0]}>
               相似度
-              <MyTooltip label={'高相似度推荐0.8及以上。'} forceShow>
+              <MyTooltip
+                label={'不同索引模型的相似度有区别，请通过搜索测试来选择合适的数值'}
+                forceShow
+              >
                 <QuestionOutlineIcon ml={1} />
               </MyTooltip>
             </Box>

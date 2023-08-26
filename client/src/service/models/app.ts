@@ -65,7 +65,7 @@ const AppSchema = new Schema({
     },
     searchSimilarity: {
       type: Number,
-      default: 0.8
+      default: 0.4
     },
     searchLimit: {
       type: Number,

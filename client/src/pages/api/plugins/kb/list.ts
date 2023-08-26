@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { KbListItemType } from '@/types/plugin';
-import { getModel } from '@/service/utils/data';
+import { getVectorModel } from '@/service/utils/data';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         avatar: item.avatar,
         name: item.name,
         tags: item.tags,
-        vectorModelName: getModel(item.vectorModel)?.name || 'UnKnow'
+        vectorModel: getVectorModel(item.vectorModel)
       }))
     );
 

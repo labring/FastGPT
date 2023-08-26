@@ -6,9 +6,9 @@ import { withNextCors } from '@/service/utils/tools';
 import { getVector } from '../plugin/vector';
 import type { KbTestItemType } from '@/types/plugin';
 import { PgTrainingTableName } from '@/constants/plugin';
+import { KB } from '@/service/mongo';
 
 export type Props = {
-  model: string;
   kbId: string;
   text: string;
 };
@@ -16,21 +16,24 @@ export type Response = KbTestItemType['results'];
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { kbId, text, model } = req.body as Props;
+    const { kbId, text } = req.body as Props;
 
-    if (!kbId || !text || !model) {
+    if (!kbId || !text) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req });
+    const [{ userId }, kb] = await Promise.all([
+      authUser({ req }),
+      KB.findById(kbId, 'vectorModel')
+    ]);
 
-    if (!userId) {
+    if (!userId || !kb) {
       throw new Error('缺少用户ID');
     }
 
     const { vectors } = await getVector({
-      model,
+      model: kb.vectorModel,
       userId,
       input: [text]
     });

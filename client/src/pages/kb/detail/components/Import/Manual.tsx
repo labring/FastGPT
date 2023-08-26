@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Textarea, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/useToast';
@@ -6,14 +6,18 @@ import { useRequest } from '@/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
 import { postKbDataFromList } from '@/api/plugins/kb';
 import { TrainingModeEnum } from '@/constants/plugin';
+import { useUserStore } from '@/store/user';
 
 type ManualFormType = { q: string; a: string };
 
 const ManualImport = ({ kbId }: { kbId: string }) => {
+  const { kbDetail } = useUserStore();
+
   const { register, handleSubmit, reset } = useForm({
     defaultValues: { q: '', a: '' }
   });
   const { toast } = useToast();
+  const [qLen, setQLen] = useState(0);
 
   const { mutate: onImportData, isLoading } = useRequest({
     mutationFn: async (e: ManualFormType) => {
@@ -64,16 +68,22 @@ const ManualImport = ({ kbId }: { kbId: string }) => {
   return (
     <Box p={[4, 8]} h={'100%'} overflow={'overlay'}>
       <Box display={'flex'} flexDirection={['column', 'row']}>
-        <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['50%', '100%']}>
+        <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['50%', '100%']} position={'relative'}>
           <Box h={'30px'}>{'匹配的知识点'}</Box>
           <Textarea
-            placeholder={'匹配的知识点。这部分内容会被搜索，请把控内容的质量。总和最多 3000 字。'}
-            maxLength={3000}
+            placeholder={`匹配的知识点。这部分内容会被搜索，请把控内容的质量。最多 ${kbDetail.vectorModel.maxToken} 字。`}
+            maxLength={kbDetail.vectorModel.maxToken}
             h={['250px', '500px']}
             {...register(`q`, {
-              required: true
+              required: true,
+              onChange(e) {
+                setQLen(e.target.value.length);
+              }
             })}
           />
+          <Box position={'absolute'} color={'myGray.500'} right={5} bottom={3} zIndex={99}>
+            {qLen}
+          </Box>
         </Box>
         <Box flex={1} h={['50%', '100%']}>
           <Box h={'30px'}>补充知识</Box>
