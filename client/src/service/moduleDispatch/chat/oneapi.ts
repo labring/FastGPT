@@ -239,10 +239,12 @@ function getChatMessages({
     if (!quotePrompt) {
       return limitPrompt;
     }
+    const defaultPrompt =
+      '三引号引用的内容是你的补充知识，它们是最新的，根据引用内容来回答我的问题。';
     if (limitPrompt) {
-      return `Use the provided documents delimited by triple quotes to answer questions. ${limitPrompt}`;
+      return `${defaultPrompt}${limitPrompt}`;
     }
-    return `Use the provided documents delimited by triple quotes to answer questions.Your task is to answer the question using only the provided documents. If the documents does not contain the information needed to answer this question then simply write: "你的问题没有在知识库中体现"`;
+    return `${defaultPrompt}你仅回答引用包含的内容，如果问题不包含在引用中，你直接回复: "你的问题没有在知识库中体现"`;
   })();
 
   const messages: ChatItemType[] = [

@@ -53,4 +53,4 @@ export const getAppTotalUsage = (data: { appId: string }) =>
   }).then((res) => (res.length === 0 ? [{ date: new Date(), total: 0 }] : res));
 
 export const getAppChatLogs = (data: RequestPaging & { appId: string }) =>
-  POST(`/chat/getChatLogs`, data);
+  POST(`/app/getChatLogs`, data);

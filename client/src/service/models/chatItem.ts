@@ -37,6 +37,12 @@ const ChatItemSchema = new Schema({
     type: String,
     default: ''
   },
+  userFeedback: {
+    type: String
+  },
+  adminFeedback: {
+    type: String
+  },
   [TaskResponseKeyEnum.responseData]: {
     type: [
       {
@@ -65,6 +71,7 @@ try {
   ChatItemSchema.index({ userId: 1 });
   ChatItemSchema.index({ appId: 1 });
   ChatItemSchema.index({ chatId: 1 });
+  ChatItemSchema.index({ userFeedback: 1 });
 } catch (error) {
   console.log(error);
 }

@@ -105,11 +105,12 @@ A2:
             const result = formatSplitText(answer || ''); // 格式化后的QA对
             console.log(`split result length: `, result.length);
             // 计费
-            pushQABill({
-              userId: data.userId,
-              totalTokens,
-              appName: 'QA 拆分'
-            });
+            result.length > 0 &&
+              pushQABill({
+                userId: data.userId,
+                totalTokens,
+                appName: 'QA 拆分'
+              });
             return {
               rawContent: answer,
               result
