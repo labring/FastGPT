@@ -17,6 +17,7 @@ const fileExtension = '.csv';
 
 const CsvImport = ({ kbId }: { kbId: string }) => {
   const { kbDetail } = useUserStore();
+  const maxToken = kbDetail.vectorModel?.maxToken || 2000;
 
   const theme = useTheme();
   const router = useRouter();
@@ -39,7 +40,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
     mutationFn: async () => {
       const chunks = files.map((file) => file.chunks).flat();
 
-      const filterChunks = chunks.filter((item) => item.q.length < kbDetail.vectorModel.maxToken);
+      const filterChunks = chunks.filter((item) => item.q.length < maxToken);
 
       if (filterChunks.length !== chunks.length) {
         toast({

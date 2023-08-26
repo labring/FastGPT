@@ -12,6 +12,7 @@ type ManualFormType = { q: string; a: string };
 
 const ManualImport = ({ kbId }: { kbId: string }) => {
   const { kbDetail } = useUserStore();
+  const maxToken = kbDetail.vectorModel?.maxToken || 2000;
 
   const { register, handleSubmit, reset } = useForm({
     defaultValues: { q: '', a: '' }
@@ -71,8 +72,8 @@ const ManualImport = ({ kbId }: { kbId: string }) => {
         <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['50%', '100%']} position={'relative'}>
           <Box h={'30px'}>{'匹配的知识点'}</Box>
           <Textarea
-            placeholder={`匹配的知识点。这部分内容会被搜索，请把控内容的质量。最多 ${kbDetail.vectorModel.maxToken} 字。`}
-            maxLength={kbDetail.vectorModel.maxToken}
+            placeholder={`匹配的知识点。这部分内容会被搜索，请把控内容的质量。最多 ${maxToken} 字。`}
+            maxLength={maxToken}
             h={['250px', '500px']}
             {...register(`q`, {
               required: true,
