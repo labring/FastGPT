@@ -27,17 +27,17 @@
     <meta name="website" content="https://lotusdocs.dev" />
     <meta name="Version" content="v0.1.0" />
     <!-- favicon -->
-    {{ block "favicon" . }}{{ partialCached (printf "%s/%s" (.Site.Params.docs.pathName | default "docs") "head/favicon.html") . }}{{ end }}
+    {{ block "favicon" . }}{{ partialCached (printf "%s/%s" ($.Scratch.Get "pathName") "head/favicon.html") . }}{{ end }}
     <!-- Dark Mode -->
     {{ if eq .Site.Params.docs.darkMode true -}}
-        {{ $darkModeInit := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/darkmode-init.js") | js.Build | minify -}}
+        {{ $darkModeInit := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/darkmode-init.js") | js.Build | minify -}}
         <script>{{ $darkModeInit.Content | safeJS }}</script>
     {{ end -}}
     <!-- FlexSearch -->
     {{ if or (not (isset .Site.Params.flexsearch "enabled")) (eq .Site.Params.flexsearch.enabled true) -}}
         {{ if and (.Site.Params.docsearch.appID) (.Site.Params.docsearch.apiKey) -}}
         {{ else }}
-            {{ $flexSearch := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "js/flexsearch.bundle.js") }}
+            {{ $flexSearch := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/flexsearch.bundle.js") }}
             {{- if not .Site.IsServer }}
                 {{ $flexSearch := $flexSearch | minify | fingerprint "sha384" }}
                 <script type="text/javascript" src="{{ $flexSearch.Permalink }}" integrity="{{ $flexSearch.Data.Integrity }}" crossorigin="anonymous"></script>
@@ -53,8 +53,8 @@
     {{- if hugo.IsProduction}}
         {{- $options := dict "enableSourceMap" false "outputStyle" "compressed" }}
     {{- end }}
-    {{- $style := resources.Get (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "scss/style.scss") }}
-    {{- $style = $style | resources.ExecuteAsTemplate (printf "/%s/%s" (.Site.Params.docs.pathName | default "docs") "scss/style.scss") . | resources.ToCSS $options }}
+    {{- $style := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/style.scss") }}
+    {{- $style = $style | resources.ExecuteAsTemplate (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/style.scss") . | resources.ToCSS $options }}
     {{- if hugo.IsProduction }}
         {{- $style = $style | minify | fingerprint "sha384" }}
     {{- end -}}
@@ -62,7 +62,7 @@
     <!-- Plausible Analytics Config -->
     {{- if not .Site.IsServer }}
     {{ if and (.Site.Params.plausible.scriptURL | default "https://plausible.io") (.Site.Params.plausible.dataDomain) -}}
-        {{- partialCached (printf "%s/%s" (.Site.Params.docs.pathName | default "docs") "head/plausible") . }}
+        {{- partialCached (printf "%s/%s" ($.Scratch.Get "pathName") "head/plausible") . }}
     {{- end -}}
     {{- end -}}
     <!-- Google Analytics v4 Config -->

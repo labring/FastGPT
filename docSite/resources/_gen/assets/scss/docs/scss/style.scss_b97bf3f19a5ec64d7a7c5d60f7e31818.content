@@ -3,7 +3,7 @@
    Author: Colin Wilson
    E-mail: colin@aigis.uk
    Created: October 2022
-   Version: 1.1.0
+   Version: 1.2.0
    File Description: Main CSS file for Lotus Docs
 */
 @font-face {
@@ -9696,13 +9696,11 @@ img {
   max-width: 100%; }
 
 .docs-content .main-content ul {
-  list-style: none;
-  line-height: 26px;
   padding-left: 0; }
-  .docs-content .main-content ul li {
+  .docs-content .main-content ul > li {
     position: relative;
     padding-left: 32px; }
-  .docs-content .main-content ul li::before {
+  .docs-content .main-content ul > li::before {
     content: "";
     position: absolute;
     width: 6px;
@@ -9713,13 +9711,12 @@ img {
     background: var(--gray-500); }
 
 .docs-content .main-content ol {
-  list-style: none;
-  line-height: 26px; }
-  .docs-content .main-content ol li {
+  counter-reset: listitem; }
+  .docs-content .main-content ol > li {
     counter-increment: listitem;
     position: relative;
     padding-left: 32px; }
-  .docs-content .main-content ol li::before {
+  .docs-content .main-content ol > li::before {
     content: counter(listitem);
     background: var(--ordered-list-bg);
     color: var(--ordered-list-color);
@@ -9734,6 +9731,11 @@ img {
     position: absolute;
     left: 0;
     top: 3px; }
+
+.docs-content .main-content ol,
+.docs-content .main-content ul {
+  list-style: none;
+  line-height: 26px; }
 
 .docs-content .main-content blockquote {
   margin-bottom: 1rem;
@@ -9822,11 +9824,20 @@ img {
       overflow-y: overlay;
       position: relative;
       border-right: 1px solid var(--sidebar-border-color);
-      scrollbar-width: none; }
+      scrollbar-width: thin;
+      scrollbar-color: var(--sidebar-bg) var(--sidebar-bg); }
       .page-wrapper .sidebar-wrapper .sidebar-content.desktop {
         overflow-y: hidden; }
-      .page-wrapper .sidebar-wrapper .sidebar-content::-webkit-scrollbar {
-        display: none; }
+    .page-wrapper .sidebar-wrapper .sidebar-content:hover {
+      scrollbar-color: var(--sidebar-scrollbar-thumb-color) var(--sidebar-bg); }
+    .page-wrapper .sidebar-wrapper .sidebar-content::-webkit-scrollbar {
+      width: 5px;
+      height: 8px; }
+    .page-wrapper .sidebar-wrapper .sidebar-content::-webkit-scrollbar-track {
+      background: var(--sidebar-bg);
+      display: none; }
+    .page-wrapper .sidebar-wrapper .sidebar-content:hover::-webkit-scrollbar-thumb {
+      background: var(--sidebar-scrollbar-thumb-color); }
     .page-wrapper .sidebar-wrapper .sidebar-brand {
       background: var(--sidebar-bg);
       padding: 10px 20px;
@@ -9837,6 +9848,7 @@ img {
       .page-wrapper .sidebar-wrapper .sidebar-brand > a {
         text-transform: uppercase;
         font-weight: bold;
+        flex-grow: 1;
         transition: all 0.3s ease; }
         .page-wrapper .sidebar-wrapper .sidebar-brand > a:focus {
           outline: none; }
@@ -10580,17 +10592,8 @@ button:not(:disabled) {
   background-size: 1.5rem;
   filter: invert(1) grayscale(100%) brightness(200%); }
 
-@media (min-width: 768px) {
-  .alert-dismissible .btn-close {
-    background-size: 1.25rem; } }
-
 [data-global-alert="closed"] #announcement {
   display: none; }
-
-.alert code {
-  background: #e7e8e9;
-  color: #000;
-  padding: 0.25rem 0.5rem; }
 
 :root {
   --card-title-color: var(--text-default);
@@ -10598,7 +10601,7 @@ button:not(:disabled) {
 
 [data-dark-mode] {
   --card-title-color: var(--text-default);
-  --card-text-color: #6c757d; }
+  --card-text-color: var(--gray-500); }
 
 .card {
   background: var(--card-bg);
@@ -10617,7 +10620,8 @@ button:not(:disabled) {
   color: var(--card-title-color); }
 
 .card-text {
-  color: var(--card-text-color); }
+  color: var(--card-text-color);
+  font-weight: 500; }
 
 :root {
   --form-border-color: var(--gray-200);
@@ -10655,12 +10659,12 @@ button:not(:disabled) {
   background-color: var(--body-bg);
   text-align: left; }
   .form-control:focus {
-    border-color: #2f55d4;
+    border-color: var(--primary);
     box-shadow: none; }
   .form-control[readonly] {
-    background-color: #fff; }
+    background-color: var(--white); }
   .form-control:disabled {
-    background-color: #dee2e6; }
+    background-color: var(--gray-300); }
   .form-control::placeholder {
     color: var(--form-control-placeholder-color); }
 
@@ -10673,7 +10677,7 @@ button:not(:disabled) {
   border: 1px solid var(--form-check-input-border-color);
   background-color: var(--body-bg); }
   .form-check-input:focus {
-    border-color: #2f55d4;
+    border-color: var(--primary);
     box-shadow: none; }
   .form-check-input.form-check-input:checked {
     background-color: var(--form-check-input-background-color);
@@ -10699,7 +10703,6 @@ table td:last-child, table th:last-child {
 .table {
   --bs-table-color: var(--text-default);
   --bs-table-bg: transparent;
-  --bs-table-border-color: var(--bs-border-color);
   --bs-table-accent-bg: none;
   --bs-table-striped-color: var(--text-default);
   --bs-table-striped-bg: var(--alert-primary-bg);
@@ -11127,30 +11130,6 @@ table td:last-child, table th:last-child {
 
 .rounded-lg {
   border-radius: 30px !important; }
-
-.border-primary {
-  border-color: #2f55d4 !important; }
-
-.border-secondary {
-  border-color: #6c757d !important; }
-
-.border-success {
-  border-color: #2eca8b !important; }
-
-.border-info {
-  border-color: #17a2b8 !important; }
-
-.border-warning {
-  border-color: #f17425 !important; }
-
-.border-danger {
-  border-color: #e43f52 !important; }
-
-.border-light {
-  border-color: #f8f9fa !important; }
-
-.border-dark {
-  border-color: #0e1420 !important; }
 
 .bg-white-color {
   background: var(--bg-white-color); }
