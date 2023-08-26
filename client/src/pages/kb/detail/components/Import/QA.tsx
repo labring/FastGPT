@@ -187,20 +187,20 @@ const QAImport = ({ kbId }: { kbId: string }) => {
               <Box mb={2}>
                 QA 拆分引导词{' '}
                 <MyTooltip
-                  label={`可输入关于文件内容的范围介绍，例如:\n1. 关于 Laf 的介绍\n2. xxx的简历`}
+                  label={`可输入关于文件内容的范围介绍，例如:\n1. Laf 的介绍\n2. xxx的简历\n最终会补全为: 关于{输入的内容}`}
                   forceShow
                 >
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Box>
               <Flex alignItems={'center'} fontSize={'sm'}>
-                <Box mr={2}>下面是</Box>
+                <Box mr={2}>关于</Box>
                 <Input
                   flex={1}
                   placeholder={'Laf 云函数的介绍'}
                   bg={'myWhite.500'}
                   defaultValue={prompt}
-                  onBlur={(e) => (e.target.value ? setPrompt(`下面是"${e.target.value}"`) : '')}
+                  onBlur={(e) => (e.target.value ? setPrompt(`关于"${e.target.value}"`) : '')}
                 />
               </Flex>
             </Box>
