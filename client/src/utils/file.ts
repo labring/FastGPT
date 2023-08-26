@@ -148,7 +148,7 @@ export const fileDownload = ({
  * maxLen > overlapLen
  */
 export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: number }) => {
-  const overlapLen = Math.floor(maxLen * 0.3); // Overlap length
+  const overlapLen = Math.floor(maxLen * 0.25); // Overlap length
 
   try {
     const splitTexts = text.split(/(?<=[。！？；.!?;])/g);
@@ -281,6 +281,10 @@ export const simpleText = (text: string) => {
   text = text.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
   text = text.replace(/\n{2,}/g, '\n');
   text = text.replace(/\s{2,}/g, ' ');
-  text = text.replace(/[^\x00-\x7F]/g, ' ');
+
+  text = text.replace(/\\x([0-9A-Fa-f]{2})/g, function (match, hex) {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+
   return text;
 };
