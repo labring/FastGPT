@@ -1,7 +1,7 @@
 ---
-title: "接入 ChatGLM2-6B"
-description: " 将 FastGPT 接入私有化模型 ChatGLM2-6B"
-icon: "model_training"
+title: '接入 ChatGLM2-6B'
+description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
+icon: 'model_training'
 draft: false
 toc: true
 weight: 753
@@ -23,30 +23,31 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 ## 推荐配置
 
-依据官方数据，同样是生成 8192 长度，量化等级为 FP16 要占用 12.8GB  显存、int8 为 8.1GB 显存、int4 为 5.1GB 显存，量化后会稍微影响性能，但不多。
+依据官方数据，同样是生成 8192 长度，量化等级为 FP16 要占用 12.8GB 显存、int8 为 8.1GB 显存、int4 为 5.1GB 显存，量化后会稍微影响性能，但不多。
 
 因此推荐配置如下：
 
 {{< table "table-hover table-striped" >}}
-| 类型 | 内存    | 显存    | 硬盘空间 | 启动命令                  |
+| 类型 | 内存 | 显存 | 硬盘空间 | 启动命令 |
 |------|---------|---------|----------|--------------------------|
-| fp16 | >=16GB  | >=16GB  | >=25GB   | python openai_api.py 16  |
-| int8 | >=16GB  | >=9GB   | >=25GB   | python openai_api.py 8   |
-| int4 | >=16GB  | >=6GB   | >=25GB   | python openai_api.py 4   |
+| fp16 | >=16GB | >=16GB | >=25GB | python openai_api.py 16 |
+| int8 | >=16GB | >=9GB | >=25GB | python openai_api.py 8 |
+| int4 | >=16GB | >=6GB | >=25GB | python openai_api.py 4 |
 {{< /table >}}
 
 ## 环境配置
 
-+ Python 3.8.10
-+ CUDA 11.8
-+ 科学上网环境
+- Python 3.8.10
+- CUDA 11.8
+- 科学上网环境
 
 ## 部署步骤
 
 1. 根据上面的环境配置配置好环境，具体教程自行 GPT；
-2. 在命令行输入命令 `pip install -r requirments.txt`；
-3. 打开你需要启动的 py 文件，在代码的第 76 行配置 token，这里的 token 只是加一层验证，防止接口被人盗用；
-4. 执行命令 `python openai_api.py 16`。这里的数字根据上面的配置进行选择。
+2. 下载 [python 文件](https://github.com/labring/FastGPT/blob/main/files/models/ChatGLM2/openai_api.py)
+3. 在命令行输入命令 `pip install -r requirments.txt`；
+4. 打开你需要启动的 py 文件，在代码的第 76 行配置 token，这里的 token 只是加一层验证，防止接口被人盗用；
+5. 执行命令 `python openai_api.py 16`。这里的数字根据上面的配置进行选择。
 
 然后等待模型下载，直到模型加载完毕为止。如果出现报错先问 GPT。
 
@@ -60,7 +61,11 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 ```bash
 OPENAI_BASE_URL=http://127.0.0.1:6006/v1
-OPENAIKEY=sk-aaabbbcccdddeeefffggghhhiiijjjkkk # 这里是你在代码中配置的 token，这里的 OPENAIKEY 可以任意填写
+CHAT_API_KEY=sk-aaabbbcccdddeeefffggghhhiiijjjkkk # 这里是你在代码中配置的 token，这里的 OPENAIKEY 可以任意填写
 ```
 
 这样就成功接入 ChatGLM2-6B 了。
+
+## 注意
+
+1. docker 部署时，给的推荐配置是组网模型，无法连接到本地的网络，以为这无法请求 0.0.0.0:6006。可以使用 host 模式，或者将模型发布到服务器上，并通过 oneapi 引入该模型。
