@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, ChatItem, connectToDatabase } from '@/service/mongo';
+import { Chat, connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import type { PagingData } from '@/types';
 import { AppLogsListItemType } from '@/types/app';
@@ -38,7 +38,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             from: 'chatitems',
             localField: 'chatId',
             foreignField: 'chatId',
-            as: 'messageCount'
+            as: 'chatitems'
+          }
+        },
+        {
+          $addFields: {
+            feedbackCount: {
+              $size: {
+                $filter: {
+                  input: '$chatitems',
+                  as: 'item',
+                  cond: { $ifNull: ['$$item.userFeedback', false] }
+                }
+              }
+            },
+            markCount: {
+              $size: {
+                $filter: {
+                  input: '$chatitems',
+                  as: 'item',
+                  cond: { $ifNull: ['$$item.adminFeedback', false] }
+                }
+              }
+            }
           }
         },
         {
@@ -47,8 +69,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             title: 1,
             source: 1,
             time: '$updateTime',
-            messageCount: { $size: '$messageCount' },
-            callbackCount: { $literal: 0 }
+            messageCount: { $size: '$chatitems' },
+            feedbackCount: 1,
+            markCount: 1
           }
         }
       ]),

@@ -11,6 +11,6 @@ export const defaultKbDetail: KbItemType = {
     name: 'Embedding-2',
     price: 0.2,
     defaultToken: 500,
-    maxToken: 8000
+    maxToken: 3000
   }
 };

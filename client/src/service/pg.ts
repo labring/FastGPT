@@ -142,7 +142,9 @@ class Pg {
     }
 
     const fields = props.values[0].map((item) => item.key).join(',');
-    const sql = `INSERT INTO ${table} (${fields}) VALUES ${this.getInsertValStr(props.values)} `;
+    const sql = `INSERT INTO ${table} (${fields}) VALUES ${this.getInsertValStr(
+      props.values
+    )} RETURNING id`;
     const pg = await connectPg();
     return pg.query(sql);
   }
