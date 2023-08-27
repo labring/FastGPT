@@ -211,8 +211,10 @@ function filterQuote({
   const quotePrompt =
     filterQuoteQA.length > 0
       ? `"""${filterQuoteQA
-          .map((item) => (item.a ? `[${item.q}\n${item.a}]` : `${item.q}`))
-          .join('\n\n')}"""`
+          .map((item) =>
+            item.a ? `{instruction:"${item.q}",output:"${item.a}"}` : `{instruction:"${item.q}"}`
+          )
+          .join('\n')}"""`
       : '';
 
   return {
@@ -240,11 +242,11 @@ function getChatMessages({
       return limitPrompt;
     }
     const defaultPrompt =
-      '三引号引用的内容是你的补充知识，它们是最新的，根据引用内容来回答我的问题。';
+      '三引号是我提供给你的专属知识，它们拥有最高优先级。instruction 是相关介绍，output 是预期回答，使用引用内容来回答我下面的问题。';
     if (limitPrompt) {
       return `${defaultPrompt}${limitPrompt}`;
     }
-    return `${defaultPrompt}你仅回答引用包含的内容，如果问题不包含在引用中，你直接回复: "你的问题没有在知识库中体现"`;
+    return `${defaultPrompt}\n回答内容限制：你仅回答三引号中提及的内容，下面我提出的问题与引用内容无关时，你可以直接回复: "你的问题没有在知识库中体现"`;
   })();
 
   const messages: ChatItemType[] = [

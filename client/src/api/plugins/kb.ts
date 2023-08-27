@@ -67,6 +67,14 @@ export const postKbDataFromList = (data: PushDataProps) =>
   POST<PushDateResponse>(`/openapi/kb/pushData`, data);
 
 /**
+ * insert one data to dataset
+ */
+export const insertData2Kb = (data: {
+  kbId: string;
+  data: { a: string; q: string; source?: string };
+}) => POST<string>(`/plugins/kb/data/insertData`, data);
+
+/**
  * 更新一条数据
  */
 export const putKbDataById = (data: UpdateDataProps) => PUT('/openapi/kb/updateData', data);

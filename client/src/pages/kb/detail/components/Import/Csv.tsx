@@ -38,7 +38,10 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
 
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
-      const chunks = files.map((file) => file.chunks).flat();
+      const chunks = files
+        .map((file) => file.chunks)
+        .flat()
+        .filter((item) => item?.q);
 
       const filterChunks = chunks.filter((item) => item.q.length < maxToken);
 

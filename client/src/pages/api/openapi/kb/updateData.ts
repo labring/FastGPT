@@ -25,7 +25,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     await connectToDatabase();
 
     // auth user and get kb
-    const [{ userId }, kb] = await Promise.all([authUser({ req }), KB.findById(kbId, 'model')]);
+    const [{ userId }, kb] = await Promise.all([
+      authUser({ req }),
+      KB.findById(kbId, 'vectorModel')
+    ]);
 
     if (!kb) {
       throw new Error("Can't find database");

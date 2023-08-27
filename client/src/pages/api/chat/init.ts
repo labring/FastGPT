@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 chatId,
                 userId
               },
-              `dataId obj value ${TaskResponseKeyEnum.responseData}`
+              `dataId obj value adminFeedback userFeedback ${TaskResponseKeyEnum.responseData}`
             )
               .sort({ _id: -1 })
               .limit(30)

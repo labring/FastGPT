@@ -5,6 +5,7 @@ import { RequestPaging } from '../types/index';
 import type { OutLinkSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/app';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
+import { AdminUpdateFeedbackParams } from './request/chat';
 
 /**
  * 获取初始化聊天内容
@@ -64,3 +65,9 @@ export const getShareChatList = (appId: string) =>
  * delete a  shareChat
  */
 export const delShareChatById = (id: string) => DELETE(`/chat/shareChat/delete?id=${id}`);
+
+export const userUpdateChatFeedback = (data: { chatItemId: string; userFeedback?: string }) =>
+  POST('/chat/feedback/userUpdate', data);
+
+export const adminUpdateChatFeedback = (data: AdminUpdateFeedbackParams) =>
+  POST('/chat/feedback/adminUpdate', data);
