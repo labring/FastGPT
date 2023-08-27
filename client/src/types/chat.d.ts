@@ -2,6 +2,7 @@ import { ChatRoleEnum } from '@/constants/chat';
 import type { InitChatResponse, InitShareChatResponse } from '@/api/response/chat';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
+import { ChatItemSchema } from './mongoSchema';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
@@ -9,6 +10,8 @@ export type ChatItemType = {
   dataId?: string;
   obj: `${ChatRoleEnum}`;
   value: string;
+  userFeedback?: string;
+  adminFeedback?: ChatItemSchema['adminFeedback'];
   [TaskResponseKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
 

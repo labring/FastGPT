@@ -41,7 +41,11 @@ const ChatItemSchema = new Schema({
     type: String
   },
   adminFeedback: {
-    type: String
+    type: {
+      kbId: String,
+      dataId: String,
+      content: String
+    }
   },
   [TaskResponseKeyEnum.responseData]: {
     type: [

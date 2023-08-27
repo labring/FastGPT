@@ -9,7 +9,9 @@ import {
   Th,
   Td,
   Tbody,
-  useTheme
+  useTheme,
+  useDisclosure,
+  ModalBody
 } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
@@ -24,10 +26,17 @@ import ChatBox, { type ComponentRef } from '@/components/ChatBox';
 import { useQuery } from '@tanstack/react-query';
 import { getInitChatSiteInfo } from '@/api/chat';
 import Tag from '@/components/Tag';
+import MyModal from '@/components/MyModal';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { isPc } = useGlobalStore();
+
+  const {
+    isOpen: isOpenMarkDesc,
+    onOpen: onOpenMarkDesc,
+    onClose: onCloseMarkDesc
+  } = useDisclosure();
 
   const {
     data: logs,
@@ -54,7 +63,16 @@ const Logs = ({ appId }: { appId: string }) => {
               {t('app.Chat logs')}
             </Box>
             <Box color={'myGray.500'} fontSize={'sm'}>
-              {t('app.Chat Logs Tips')}
+              {t('app.Chat Logs Tips')},{' '}
+              <Box
+                as={'span'}
+                mr={2}
+                textDecoration={'underline'}
+                cursor={'pointer'}
+                onClick={onOpenMarkDesc}
+              >
+                {t('chat.Read Mark Description')}
+              </Box>
             </Box>
           </>
         )}
@@ -69,6 +87,8 @@ const Logs = ({ appId }: { appId: string }) => {
               <Th>{t('app.Logs Time')}</Th>
               <Th>{t('app.Logs Title')}</Th>
               <Th>{t('app.Logs Message Total')}</Th>
+              <Th>{t('app.Feedback Count')}</Th>
+              <Th>{t('app.Mark Count')}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -86,6 +106,27 @@ const Logs = ({ appId }: { appId: string }) => {
                   {item.title}
                 </Td>
                 <Td>{item.messageCount}</Td>
+                <Td w={'100px'}>
+                  {!!item?.feedbackCount ? (
+                    <Box display={'inline-block'}>
+                      <Flex
+                        bg={'#FFF2EC'}
+                        color={'#C96330'}
+                        px={3}
+                        py={1}
+                        alignItems={'center'}
+                        borderRadius={'lg'}
+                        fontWeight={'bold'}
+                      >
+                        <MyIcon mr={1} name={'badLight'} color={'#C96330'} w={'14px'} />
+                        {item.feedbackCount}
+                      </Flex>
+                    </Box>
+                  ) : (
+                    <>-</>
+                  )}
+                </Td>
+                <Td>{item.markCount}</Td>
               </Tr>
             ))}
           </Tbody>
@@ -109,6 +150,13 @@ const Logs = ({ appId }: { appId: string }) => {
           onClose={() => setDetailLogsId(undefined)}
         />
       )}
+      <MyModal
+        isOpen={isOpenMarkDesc}
+        onClose={onCloseMarkDesc}
+        title={t('chat.Mark Description Title')}
+      >
+        <ModalBody whiteSpace={'pre-wrap'}>{t('chat.Mark Description')}</ModalBody>
+      </MyModal>
     </Flex>
   );
 };
@@ -222,6 +270,7 @@ function DetailLogsModal({
         <Box pt={2} flex={'1 0 0'}>
           <ChatBox
             ref={ChatBoxRef}
+            isLogs
             chatId={chatId}
             appAvatar={chat?.app.avatar}
             userAvatar={HUMAN_ICON}

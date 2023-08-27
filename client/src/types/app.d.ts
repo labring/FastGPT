@@ -114,5 +114,6 @@ export type AppLogsListItemType = {
   time: Date;
   title: string;
   messageCount: number;
-  callbackCount: number;
+  feedbackCount: number;
+  markCount: number;
 };

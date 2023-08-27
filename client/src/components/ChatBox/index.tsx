@@ -25,7 +25,6 @@ import {
 } from '@/utils/tools';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
-import { Types } from 'mongoose';
 import { EventNameEnum } from '../Markdown/constant';
 
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
@@ -41,6 +40,7 @@ import { useGlobalStore } from '@/store/global';
 import { TaskResponseKeyEnum, getDefaultChatVariables } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
+import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/api/chat';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -49,6 +49,10 @@ import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
 import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
+const FeedbackModal = dynamic(() => import('./FeedbackModal'));
+const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
+const SelectDataset = dynamic(() => import('./SelectDataset'));
+const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputDataModal'));
 
 import styles from './index.module.scss';
 
@@ -124,6 +128,7 @@ const ChatAvatar = ({ src, type }: { src?: string; type: 'Human' | 'AI' }) => {
 
 const ChatBox = (
   {
+    isLogs = false,
     showEmptyIntro = false,
     chatId,
     appAvatar,
@@ -134,6 +139,7 @@ const ChatBox = (
     onStartChat,
     onDelMessage
   }: {
+    isLogs?: boolean;
     showEmptyIntro?: boolean;
     chatId?: string;
     appAvatar?: string;
@@ -162,6 +168,19 @@ const ChatBox = (
   const [refresh, setRefresh] = useState(false);
   const [variables, setVariables] = useState<Record<string, any>>({});
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
+  const [feedbackId, setFeedbackId] = useState<string>();
+  const [readFeedbackData, setReadFeedbackData] = useState<{
+    chatItemId: string;
+    content: string;
+    isMarked: boolean;
+  }>();
+  const [adminMarkData, setAdminMarkData] = useState<{
+    kbId?: string;
+    chatItemId: string;
+    dataId?: string;
+    q: string;
+    a: string;
+  }>();
 
   const isChatting = useMemo(
     () =>
@@ -409,7 +428,7 @@ const ChatBox = (
   const controlContainerStyle = {
     className: 'control',
     color: 'myGray.400',
-    display: ['flex', 'none'],
+    display: isLogs ? 'flex' : ['flex', 'none'],
     pl: 1,
     mt: 2
   };
@@ -643,7 +662,7 @@ const ChatBox = (
                             />
                           </MyTooltip>
                         )}
-                        {hasVoiceApi && (
+                        {!isLogs && hasVoiceApi && (
                           <MyTooltip label={'语音播报'}>
                             <MyIcon
                               {...controlIconStyle}
@@ -653,7 +672,93 @@ const ChatBox = (
                             />
                           </MyTooltip>
                         )}
+                        {/* admin mark icon */}
+                        {isLogs && (
+                          <MyTooltip label={t('chat.Mark')}>
+                            <MyIcon
+                              {...controlIconStyle}
+                              name={'markLight'}
+                              _hover={{ color: '#67c13b' }}
+                              onClick={() => {
+                                if (!item.dataId) return;
+                                if (item.adminFeedback) {
+                                  setAdminMarkData({
+                                    chatItemId: item.dataId,
+                                    kbId: item.adminFeedback.kbId,
+                                    dataId: item.adminFeedback.dataId,
+                                    q: chatHistory[index - 1]?.value || '',
+                                    a: item.adminFeedback.content
+                                  });
+                                } else {
+                                  setAdminMarkData({
+                                    chatItemId: item.dataId,
+                                    q: chatHistory[index - 1]?.value || '',
+                                    a: item.value
+                                  });
+                                }
+                              }}
+                            />
+                          </MyTooltip>
+                        )}
+                        {/* user feed back icon */}
+                        {item.dataId &&
+                          (isLogs ? (
+                            <MyTooltip label={t('chat.Read User Feedback')}>
+                              <MyIcon
+                                display={item.userFeedback ? 'block' : 'none'}
+                                {...controlIconStyle}
+                                color={'white'}
+                                bg={'#FC9663'}
+                                fontWeight={'bold'}
+                                name={'badLight'}
+                                onClick={() =>
+                                  setReadFeedbackData({
+                                    chatItemId: item.dataId || '',
+                                    content: item.userFeedback || '',
+                                    isMarked: !!item.adminFeedback
+                                  })
+                                }
+                              />
+                            </MyTooltip>
+                          ) : (
+                            <MyTooltip
+                              label={
+                                item.userFeedback
+                                  ? `取消反馈。\n您当前反馈内容为:\n${item.userFeedback}`
+                                  : '反馈'
+                              }
+                            >
+                              <MyIcon
+                                {...controlIconStyle}
+                                {...(!!item.userFeedback
+                                  ? {
+                                      color: 'white',
+                                      bg: '#FC9663',
+                                      fontWeight: 'bold',
+                                      onClick: () => {
+                                        if (!item.dataId) return;
+                                        setChatHistory((state) =>
+                                          state.map((chatItem) =>
+                                            chatItem.dataId === item.dataId
+                                              ? { ...chatItem, userFeedback: undefined }
+                                              : chatItem
+                                          )
+                                        );
+                                        try {
+                                          userUpdateChatFeedback({ chatItemId: item.dataId });
+                                        } catch (error) {}
+                                      }
+                                    }
+                                  : {
+                                      _hover: { color: '#FB7C3C' },
+                                      onClick: () => setFeedbackId(item.dataId)
+                                    })}
+                                name={'badLight'}
+                              />
+                            </MyTooltip>
+                          ))}
                       </Flex>
+                      {/* chatting status */}
                       {statusBoxData && index === chatHistory.length - 1 && (
                         <Flex
                           ml={3}
@@ -688,6 +793,19 @@ const ChatBox = (
                           contentId={item.dataId}
                           responseData={item.responseData}
                         />
+                        {/* admin mark content */}
+                        {isLogs && item.adminFeedback && (
+                          <Box>
+                            <Flex alignItems={'center'} py={2}>
+                              <MyIcon name={'markLight'} w={'14px'} color={'myGray.900'} />
+                              <Box ml={2} color={'myGray.500'}>
+                                {t('chat.Admin Mark Content')}
+                              </Box>
+                              <Box h={'1px'} bg={'myGray.300'} flex={'1'} />
+                            </Flex>
+                            <Box>{item.adminFeedback.content}</Box>
+                          </Box>
+                        )}
                       </Card>
                     </Box>
                   </>
@@ -782,6 +900,115 @@ const ChatBox = (
           </Box>
         </Box>
       ) : null}
+
+      {/* user feedback modal */}
+      {!!feedbackId && (
+        <FeedbackModal
+          chatItemId={feedbackId}
+          onClose={() => setFeedbackId(undefined)}
+          onSuccess={(content: string) => {
+            setChatHistory((state) =>
+              state.map((item) =>
+                item.dataId === feedbackId ? { ...item, userFeedback: content } : item
+              )
+            );
+            setFeedbackId(undefined);
+          }}
+        />
+      )}
+      {/* admin read feedback modal */}
+      {!!readFeedbackData && (
+        <ReadFeedbackModal
+          {...readFeedbackData}
+          onClose={() => setReadFeedbackData(undefined)}
+          onMark={() => {
+            const index = chatHistory.findIndex(
+              (item) => item.dataId === readFeedbackData.chatItemId
+            );
+            if (index === -1) return setReadFeedbackData(undefined);
+            setAdminMarkData({
+              chatItemId: readFeedbackData.chatItemId,
+              q: chatHistory[index - 1]?.value || '',
+              a: chatHistory[index]?.value || ''
+            });
+          }}
+          onSuccess={() => {
+            setChatHistory((state) =>
+              state.map((chatItem) =>
+                chatItem.dataId === readFeedbackData.chatItemId
+                  ? { ...chatItem, userFeedback: undefined }
+                  : chatItem
+              )
+            );
+            setReadFeedbackData(undefined);
+          }}
+        />
+      )}
+      {/* select one dataset to insert markData */}
+      {adminMarkData && !adminMarkData.kbId && (
+        <SelectDataset
+          onClose={() => setAdminMarkData(undefined)}
+          // @ts-ignore
+          onSuccess={(kbId) => setAdminMarkData((state) => ({ ...state, kbId }))}
+        />
+      )}
+      {/* edit markData modal */}
+      {adminMarkData && adminMarkData.kbId && (
+        <InputDataModal
+          onClose={() => setAdminMarkData(undefined)}
+          onSuccess={async (data) => {
+            if (!adminMarkData.kbId || !data.dataId) {
+              return setAdminMarkData(undefined);
+            }
+            const adminFeedback = {
+              kbId: adminMarkData.kbId,
+              dataId: data.dataId,
+              content: data.a
+            };
+
+            // update dom
+            setChatHistory((state) =>
+              state.map((chatItem) =>
+                chatItem.dataId === adminMarkData.chatItemId
+                  ? {
+                      ...chatItem,
+                      adminFeedback
+                    }
+                  : chatItem
+              )
+            );
+            // request to update adminFeedback
+            try {
+              adminUpdateChatFeedback({
+                chatItemId: adminMarkData.chatItemId,
+                ...adminFeedback
+              });
+
+              if (readFeedbackData) {
+                userUpdateChatFeedback({
+                  chatItemId: readFeedbackData.chatItemId,
+                  userFeedback: undefined
+                });
+                setChatHistory((state) =>
+                  state.map((chatItem) =>
+                    chatItem.dataId === readFeedbackData.chatItemId
+                      ? { ...chatItem, userFeedback: undefined }
+                      : chatItem
+                  )
+                );
+                setReadFeedbackData(undefined);
+              }
+            } catch (error) {}
+            setAdminMarkData(undefined);
+          }}
+          kbId={adminMarkData.kbId}
+          defaultValues={{
+            dataId: adminMarkData.dataId,
+            q: adminMarkData.q,
+            a: adminMarkData.a
+          }}
+        />
+      )}
     </Flex>
   );
 };
