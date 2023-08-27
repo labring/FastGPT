@@ -30,9 +30,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const [data, total] = await Promise.all([
       Chat.aggregate([
         { $match: where },
-        { $sort: { updateTime: -1 } },
-        { $skip: (pageNum - 1) * pageSize },
-        { $limit: pageSize },
         {
           $lookup: {
             from: 'chatitems',
@@ -63,6 +60,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         },
+        { $sort: { feedbackCount: -1, updateTime: -1 } },
+        { $skip: (pageNum - 1) * pageSize },
+        { $limit: pageSize },
         {
           $project: {
             id: '$chatId',
