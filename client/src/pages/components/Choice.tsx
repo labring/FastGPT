@@ -1,8 +1,8 @@
 import { Box, Image, Flex, Grid, useTheme } from '@chakra-ui/react';
-import React, { useRef } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
-import MyIcon from '@/components/Icon';
+import { feConfigs } from '@/store/static';
 
 const Choice = () => {
   const theme = useTheme();
@@ -12,7 +12,7 @@ const Choice = () => {
     {
       icon: '/imgs/home/icon_1.svg',
       title: t('home.Choice Open'),
-      desc: t('home.Choice Open Desc'),
+      desc: t('home.Choice Open Desc', { title: feConfigs.systemTitle }),
       tooltip: '前往 GitHub',
       onClick: () => window.open('https://github.com/labring/FastGPT', '_blank')
     },
@@ -57,7 +57,7 @@ const Choice = () => {
         fontSize={['22px', '30px']}
         fontWeight={'bold'}
       >
-        {t('home.Why FastGPT')}
+        {t('home.Why FastGPT', { title: feConfigs.systemTitle })}
       </Box>
       <Grid px={[5, 0]} gridTemplateColumns={['1fr', `1fr 1fr`, 'repeat(3,1fr)']} gridGap={6}>
         {list.map((item) => (

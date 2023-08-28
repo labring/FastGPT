@@ -4,6 +4,7 @@ import type { AppListItemType, AppUpdateParams } from '@/types/app';
 import { RequestPaging } from '../types/index';
 import type { Props as CreateAppProps } from '@/pages/api/app/create';
 import { addDays } from 'date-fns';
+import { GetAppChatLogsParams } from './request/app';
 
 /**
  * 获取模型列表
@@ -52,5 +53,4 @@ export const getAppTotalUsage = (data: { appId: string }) =>
     end: addDays(new Date(), 1)
   }).then((res) => (res.length === 0 ? [{ date: new Date(), total: 0 }] : res));
 
-export const getAppChatLogs = (data: RequestPaging & { appId: string }) =>
-  POST(`/app/getChatLogs`, data);
+export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/app/getChatLogs`, data);

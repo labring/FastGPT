@@ -5,14 +5,18 @@ import { authUser } from '@/service/utils/auth';
 import type { PagingData } from '@/types';
 import { AppLogsListItemType } from '@/types/app';
 import { Types } from 'mongoose';
+import { addDays } from 'date-fns';
+import { GetAppChatLogsParams } from '@/api/request/app';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const {
       pageNum = 1,
       pageSize = 20,
-      appId
-    } = req.body as { pageNum: number; pageSize: number; appId: string };
+      appId,
+      dateStart = addDays(new Date(), -7),
+      dateEnd = new Date()
+    } = req.body as GetAppChatLogsParams;
 
     if (!appId) {
       throw new Error('缺少参数');
@@ -24,7 +28,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const where = {
       appId: new Types.ObjectId(appId),
-      userId: new Types.ObjectId(userId)
+      userId: new Types.ObjectId(userId),
+      updateTime: {
+        $gte: new Date(dateStart),
+        $lte: new Date(dateEnd)
+      }
     };
 
     const [data, total] = await Promise.all([
