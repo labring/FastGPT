@@ -64,7 +64,7 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>{feConfigs?.systemTitle || 'FastGPT'}</title>
+        <title>{feConfigs?.systemTitle || 'AI'}</title>
         <meta name="description" content="Embedding + LLM, Build AI knowledge base" />
         <meta
           name="viewport"

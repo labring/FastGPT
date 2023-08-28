@@ -16,7 +16,7 @@ const Footer = () => {
         label: t('home.Footer Product'),
         child: [
           {
-            label: t('home.Footer FastGPT Cloud'),
+            label: t('home.Footer FastGPT Cloud', { title: feConfigs.systemTitle }),
             onClick: () => {
               router.push('/app/list');
             }
@@ -96,7 +96,7 @@ const Footer = () => {
           </Box>
         </Flex>
         <Box mt={5} fontSize={'sm'} color={'myGray.600'} maxW={'380px'} textAlign={'justify'}>
-          {t('home.FastGPT Desc')}
+          {t('home.FastGPT Desc', { title: feConfigs.systemTitle })}
         </Box>
       </Box>
       {list.map((item) => (

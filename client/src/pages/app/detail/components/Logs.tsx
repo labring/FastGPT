@@ -21,16 +21,22 @@ import dayjs from 'dayjs';
 import { ChatSourceMap, HUMAN_ICON } from '@/constants/chat';
 import { AppLogsListItemType } from '@/types/app';
 import { useGlobalStore } from '@/store/global';
-import MyTooltip from '@/components/MyTooltip';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';
 import { useQuery } from '@tanstack/react-query';
 import { getInitChatSiteInfo } from '@/api/chat';
 import Tag from '@/components/Tag';
 import MyModal from '@/components/MyModal';
+import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
+import { addDays } from 'date-fns';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { isPc } = useGlobalStore();
+
+  const [dateRange, setDateRange] = useState<DateRangeType>({
+    from: addDays(new Date(), -7),
+    to: new Date()
+  });
 
   const {
     isOpen: isOpenMarkDesc,
@@ -48,7 +54,9 @@ const Logs = ({ appId }: { appId: string }) => {
     api: getAppChatLogs,
     pageSize: 20,
     params: {
-      appId
+      appId,
+      dateStart: dateRange.from || new Date(),
+      dateEnd: addDays(dateRange.to || new Date(), 1)
     }
   });
 
@@ -132,9 +140,6 @@ const Logs = ({ appId }: { appId: string }) => {
           </Tbody>
         </Table>
       </TableContainer>
-      <Box p={4}>
-        <Pagination />
-      </Box>
       {logs.length === 0 && !isLoading && (
         <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
@@ -143,6 +148,18 @@ const Logs = ({ appId }: { appId: string }) => {
           </Box>
         </Flex>
       )}
+      <Flex w={'100%'} p={4} alignItems={'center'} justifyContent={'flex-end'}>
+        <DateRangePicker
+          defaultDate={dateRange}
+          position="top"
+          onChange={setDateRange}
+          onSuccess={() => getData(1)}
+        />
+        <Box ml={3}>
+          <Pagination />
+        </Box>
+      </Flex>
+
       {!!detailLogsId && (
         <DetailLogsModal
           appId={appId}
