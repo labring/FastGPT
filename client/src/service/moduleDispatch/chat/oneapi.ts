@@ -68,7 +68,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { filterQuoteQA, quotePrompt } = filterQuote({
+  const { filterQuoteQA, quotePrompt, hasQuoteOutput } = filterQuote({
     quoteQA,
     model: modelConstantsData
   });
@@ -89,7 +89,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     quotePrompt,
     userChatInput,
     systemPrompt,
-    limitPrompt
+    limitPrompt,
+    hasQuoteOutput
   });
   const { max_tokens } = getMaxTokens({
     model: modelConstantsData,
@@ -219,7 +220,8 @@ function filterQuote({
 
   return {
     filterQuoteQA,
-    quotePrompt
+    quotePrompt,
+    hasQuoteOutput: !!filterQuoteQA.find((item) => item.a)
   };
 }
 function getChatMessages({
@@ -228,7 +230,8 @@ function getChatMessages({
   systemPrompt,
   limitPrompt,
   userChatInput,
-  model
+  model,
+  hasQuoteOutput
 }: {
   quotePrompt: string;
   history: ChatProps['history'];
@@ -236,13 +239,15 @@ function getChatMessages({
   limitPrompt: string;
   userChatInput: string;
   model: ChatModelItemType;
+  hasQuoteOutput: boolean;
 }) {
   const limitText = (() => {
     if (!quotePrompt) {
       return limitPrompt;
     }
-    const defaultPrompt =
-      '三引号是我提供给你的专属知识，它们拥有最高优先级。instruction 是相关介绍，output 是预期回答，使用引用内容来回答我下面的问题。';
+    const defaultPrompt = `三引号引用的内容是我提供给你的知识，它们拥有最高优先级。instruction 是相关介绍${
+      hasQuoteOutput ? '，output 是预期回答或补充' : ''
+    }，使用引用内容来回答我下面的问题。`;
     if (limitPrompt) {
       return `${defaultPrompt}${limitPrompt}`;
     }

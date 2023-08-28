@@ -163,7 +163,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           maxW={['60%', '300px']}
           size={'sm'}
           value={searchText}
-          placeholder="根据匹配知识，补充知识和来源进行搜索"
+          placeholder="根据匹配知识，预期答案和来源进行搜索"
           onChange={(e) => {
             setSearchText(e.target.value);
             getFirstData();
