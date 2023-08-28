@@ -37,7 +37,6 @@ weight: 751
 ...
 // 这个配置文件是系统级参数
 "SystemParams": {
-    "gitLoginSecret": "", //  Git 登录凭证
     "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
     "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
     "pgIvfflatProbe": 20  // pg vector 搜索探针。没有设置索引前可忽略，通常 50w 组以上才需要设置。
@@ -61,7 +60,6 @@ weight: 751
     "scripts": []
   },
   "SystemParams": {
-    "gitLoginSecret": "",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgIvfflatProbe": 20

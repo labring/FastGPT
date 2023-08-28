@@ -29,7 +29,6 @@ export type FeConfigsType = {
 };
 export type SystemEnvType = {
   pluginBaseUrl?: string;
-  gitLoginSecret?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgIvfflatProbe: number;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { ResLogin } from '@/api/response/user';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
+import { getErrText } from '@/utils/tools';
 
 const provider = ({ code }: { code: string }) => {
   const { loginStore } = useGlobalStore();
@@ -56,15 +57,19 @@ const provider = ({ code }: { code: string }) => {
           status: 'warning',
           title: '登录异常'
         });
-        return router.replace('/login');
+        return setTimeout(() => {
+          router.replace('/login');
+        }, 1000);
       }
       loginSuccess(res);
     } catch (error) {
       toast({
         status: 'warning',
-        title: '登录异常'
+        title: getErrText(error, '登录异常')
       });
-      router.replace('/login');
+      setTimeout(() => {
+        router.replace('/login');
+      }, 1000);
     }
   }, [code, loginStore, loginSuccess]);
 
