@@ -164,7 +164,7 @@ const InputDataModal = ({
           </Box>
           <Box flex={1} h={['50%', '100%']}>
             <Flex>
-              <Box h={'30px'}>{'补充知识'}</Box>
+              <Box h={'30px'}>{'预期答案'}</Box>
               <MyTooltip
                 label={'匹配的知识点被命中后，这部分内容会随匹配知识点一起注入模型，引导模型回答'}
               >
@@ -173,7 +173,7 @@ const InputDataModal = ({
             </Flex>
             <Textarea
               placeholder={
-                '补充知识。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，你可以讲一些细节的内容填写在这里。总和最多 3000 字。'
+                '预期答案。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，通常是问题的答案。总和最多 3000 字。'
               }
               maxLength={3000}
               resize={'none'}
