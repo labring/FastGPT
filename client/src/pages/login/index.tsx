@@ -99,7 +99,7 @@ const Login = () => {
         >
           <DynamicComponent type={pageType} />
 
-          {feConfigs?.show_register && (
+          {feConfigs?.show_loginTip && (
             <Box
               fontSize={'sm'}
               color={'myGray.600'}

@@ -4,6 +4,7 @@
     "show_register": false,
     "show_appStore": false,
     "show_userDetail": false,
+    "show_loginTip": false,
     "show_git": true,
     "systemTitle": "FastGPT",
     "authorText": "Made by FastGPT Team.",
