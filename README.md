@@ -85,9 +85,9 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## 🏘️ 社区交流群
 
-| 交流群                                                | 小助手                                         |
-| ----------------------------------------------------- | ---------------------------------------------- |
-| ![](https://otnvvf-imgs.oss.laf.run/wxqun300-222.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |
+添加 wx 小助手加入：
+
+![](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
 
 ## 👀 其他
 
