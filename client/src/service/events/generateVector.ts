@@ -53,8 +53,8 @@ export async function generateVector(): Promise<any> {
 
     dataItems = [
       {
-        q: data.q.replace(/[\x00-\x1F]/g, ' '),
-        a: data.a.replace(/[\x00-\x1F]/g, ' ')
+        q: data.q.replace(/[\x00-\x08]/g, ' '),
+        a: data.a.replace(/[\x00-\x08]/g, ' ')
       }
     ];
 
