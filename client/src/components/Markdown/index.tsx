@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
@@ -15,7 +15,7 @@ const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
 const MdImage = dynamic(() => import('./img/Image'));
 const ChatGuide = dynamic(() => import('./chat/Guide'));
 
-function Code({ inline, className, children, onClick }: any) {
+function Code({ inline, className, children }: any) {
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1];
 
@@ -24,7 +24,7 @@ function Code({ inline, className, children, onClick }: any) {
   }
 
   if (codeType === 'guide') {
-    return <ChatGuide text={String(children)} onClick={onClick} />;
+    return <ChatGuide text={String(children)} />;
   }
 
   return (
@@ -33,28 +33,19 @@ function Code({ inline, className, children, onClick }: any) {
     </CodeLight>
   );
 }
-
 function Image({ src }: { src?: string }) {
   return <MdImage src={src} />;
 }
 
-const Markdown = ({
-  source,
-  isChatting = false,
-  onClick
-}: {
-  source: string;
-  isChatting?: boolean;
-  onClick?: (e: any) => void;
-}) => {
+const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
   const components = useMemo(
     () => ({
       img: Image,
       pre: 'div',
       p: 'div',
-      code: (props: any) => <Code {...props} onClick={onClick} />
+      code: Code
     }),
-    [onClick]
+    []
   );
 
   return (

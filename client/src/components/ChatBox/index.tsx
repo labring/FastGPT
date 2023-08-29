@@ -25,7 +25,7 @@ import {
 } from '@/utils/tools';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
-import { EventNameEnum } from '../Markdown/constant';
+import { event } from '@/utils/plugin/eventbus';
 
 import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { useMarkdown } from '@/hooks/useMarkdown';
@@ -475,6 +475,16 @@ const ChatBox = (
   }, [router.query]);
 
   useEffect(() => {
+    event.on('guideClick', ({ text }: { text: string }) => {
+      if (!text) return;
+      handleSubmit((data) => sendPrompt(data, text))();
+    });
+
+    return () => {
+      event.off('guideClick');
+    };
+  }, [handleSubmit, sendPrompt]);
+  useEffect(() => {
     const listen = () => {
       cancelBroadcast();
     };
@@ -497,15 +507,7 @@ const ChatBox = (
               <ChatAvatar src={appAvatar} type={'AI'} />
               {/* message */}
               <Card order={2} mt={2} {...MessageCardStyle} bg={'white'} maxW={messageCardMaxW}>
-                <Markdown
-                  source={`~~~guide \n${welcomeText}`}
-                  isChatting={false}
-                  onClick={(e) => {
-                    const val = e?.data;
-                    if (e?.event !== EventNameEnum.guideClick || !val) return;
-                    handleSubmit((data) => sendPrompt(data, val))();
-                  }}
-                />
+                <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
               </Card>
             </Flex>
           )}

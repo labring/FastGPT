@@ -282,7 +282,7 @@ export const simpleText = (text: string) => {
   text = text.replace(/\n{2,}/g, '\n');
   text = text.replace(/\s{2,}/g, ' ');
 
-  text = text.replace(/[\x00-\x1F]/g, ' ');
+  text = text.replace(/[\x00-\x08]/g, ' ');
 
   return text;
 };

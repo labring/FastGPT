@@ -22,6 +22,7 @@ const MdImage = ({ src }: { src?: string }) => {
         fallbackStrategy={'onError'}
         cursor={succeed ? 'pointer' : 'default'}
         loading="eager"
+        objectFit={'contain'}
         onLoad={() => {
           setIsLoading(false);
           setSucceed(true);

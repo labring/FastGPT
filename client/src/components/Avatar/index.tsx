@@ -8,8 +8,8 @@ const Avatar = ({ w = '30px', ...props }: ImageProps) => {
     <Image
       fallbackSrc={LOGO_ICON}
       fallbackStrategy={'onError'}
-      borderRadius={'50%'}
-      objectFit={'cover'}
+      borderRadius={'md'}
+      objectFit={'contain'}
       alt=""
       w={w}
       h={w}
