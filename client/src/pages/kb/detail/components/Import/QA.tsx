@@ -53,7 +53,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
 
       // subsection import
       let success = 0;
-      const step = 300;
+      const step = 200;
       for (let i = 0; i < chunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
