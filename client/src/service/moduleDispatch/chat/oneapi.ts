@@ -21,7 +21,7 @@ import { AppModuleItemType } from '@/types/app';
 
 export type ChatProps = {
   res: NextApiResponse;
-  model: `${OpenAiChatEnum}`;
+  model: string;
   temperature?: number;
   maxToken?: number;
   history?: ChatItemType[];
@@ -44,7 +44,7 @@ export type ChatResponse = {
 export const dispatchChatCompletion = async (props: Record<string, any>): Promise<ChatResponse> => {
   let {
     res,
-    model,
+    model = global.chatModels[0]?.model,
     temperature = 0,
     maxToken = 4000,
     stream = false,
