@@ -54,7 +54,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
 
       // subsection import
       let success = 0;
-      const step = 500;
+      const step = 300;
       for (let i = 0; i < filterChunks.length; i += step) {
         const { insertLen } = await postKbDataFromList({
           kbId,
