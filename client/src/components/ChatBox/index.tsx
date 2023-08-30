@@ -75,6 +75,12 @@ export type ComponentRef = {
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };
 
+enum FeedbackTypeEnum {
+  user = 'user',
+  admin = 'admin',
+  hidden = 'hidden'
+}
+
 const VariableLabel = ({
   required = false,
   children
@@ -128,7 +134,9 @@ const ChatAvatar = ({ src, type }: { src?: string; type: 'Human' | 'AI' }) => {
 
 const ChatBox = (
   {
-    isLogs = false,
+    feedbackType = FeedbackTypeEnum.hidden,
+    showMarkIcon = false,
+    showVoiceIcon = true,
     showEmptyIntro = false,
     chatId,
     appAvatar,
@@ -139,7 +147,9 @@ const ChatBox = (
     onStartChat,
     onDelMessage
   }: {
-    isLogs?: boolean;
+    feedbackType?: `${FeedbackTypeEnum}`;
+    showMarkIcon?: boolean;
+    showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     chatId?: string;
     appAvatar?: string;
@@ -428,7 +438,7 @@ const ChatBox = (
   const controlContainerStyle = {
     className: 'control',
     color: 'myGray.400',
-    display: isLogs ? 'flex' : ['flex', 'none'],
+    display: feedbackType === FeedbackTypeEnum.admin ? 'flex' : ['flex', 'none'],
     pl: 1,
     mt: 2
   };
@@ -544,7 +554,9 @@ const ChatBox = (
                           label: item.value,
                           value: item.value
                         }))}
-                        value={getValues(item.key)}
+                        {...register(item.key, {
+                          required: item.required
+                        })}
                         onchange={(e) => {
                           setValue(item.key, e);
                           setRefresh(!refresh);
@@ -664,7 +676,7 @@ const ChatBox = (
                             />
                           </MyTooltip>
                         )}
-                        {!isLogs && hasVoiceApi && (
+                        {showVoiceIcon && hasVoiceApi && (
                           <MyTooltip label={'语音播报'}>
                             <MyIcon
                               {...controlIconStyle}
@@ -675,7 +687,7 @@ const ChatBox = (
                           </MyTooltip>
                         )}
                         {/* admin mark icon */}
-                        {isLogs && (
+                        {showMarkIcon && (
                           <MyTooltip label={t('chat.Mark')}>
                             <MyIcon
                               {...controlIconStyle}
@@ -702,63 +714,62 @@ const ChatBox = (
                             />
                           </MyTooltip>
                         )}
-                        {/* user feed back icon */}
-                        {item.dataId &&
-                          (isLogs ? (
-                            <MyTooltip label={t('chat.Read User Feedback')}>
-                              <MyIcon
-                                display={item.userFeedback ? 'block' : 'none'}
-                                {...controlIconStyle}
-                                color={'white'}
-                                bg={'#FC9663'}
-                                fontWeight={'bold'}
-                                name={'badLight'}
-                                onClick={() =>
-                                  setReadFeedbackData({
-                                    chatItemId: item.dataId || '',
-                                    content: item.userFeedback || '',
-                                    isMarked: !!item.adminFeedback
-                                  })
-                                }
-                              />
-                            </MyTooltip>
-                          ) : (
-                            <MyTooltip
-                              label={
-                                item.userFeedback
-                                  ? `取消反馈。\n您当前反馈内容为:\n${item.userFeedback}`
-                                  : '反馈'
+                        {feedbackType === FeedbackTypeEnum.admin && (
+                          <MyTooltip label={t('chat.Read User Feedback')}>
+                            <MyIcon
+                              display={item.userFeedback ? 'block' : 'none'}
+                              {...controlIconStyle}
+                              color={'white'}
+                              bg={'#FC9663'}
+                              fontWeight={'bold'}
+                              name={'badLight'}
+                              onClick={() =>
+                                setReadFeedbackData({
+                                  chatItemId: item.dataId || '',
+                                  content: item.userFeedback || '',
+                                  isMarked: !!item.adminFeedback
+                                })
                               }
-                            >
-                              <MyIcon
-                                {...controlIconStyle}
-                                {...(!!item.userFeedback
-                                  ? {
-                                      color: 'white',
-                                      bg: '#FC9663',
-                                      fontWeight: 'bold',
-                                      onClick: () => {
-                                        if (!item.dataId) return;
-                                        setChatHistory((state) =>
-                                          state.map((chatItem) =>
-                                            chatItem.dataId === item.dataId
-                                              ? { ...chatItem, userFeedback: undefined }
-                                              : chatItem
-                                          )
-                                        );
-                                        try {
-                                          userUpdateChatFeedback({ chatItemId: item.dataId });
-                                        } catch (error) {}
-                                      }
+                            />
+                          </MyTooltip>
+                        )}
+                        {feedbackType === FeedbackTypeEnum.user && (
+                          <MyTooltip
+                            label={
+                              item.userFeedback
+                                ? `取消反馈。\n您当前反馈内容为:\n${item.userFeedback}`
+                                : '反馈'
+                            }
+                          >
+                            <MyIcon
+                              {...controlIconStyle}
+                              {...(!!item.userFeedback
+                                ? {
+                                    color: 'white',
+                                    bg: '#FC9663',
+                                    fontWeight: 'bold',
+                                    onClick: () => {
+                                      if (!item.dataId) return;
+                                      setChatHistory((state) =>
+                                        state.map((chatItem) =>
+                                          chatItem.dataId === item.dataId
+                                            ? { ...chatItem, userFeedback: undefined }
+                                            : chatItem
+                                        )
+                                      );
+                                      try {
+                                        userUpdateChatFeedback({ chatItemId: item.dataId });
+                                      } catch (error) {}
                                     }
-                                  : {
-                                      _hover: { color: '#FB7C3C' },
-                                      onClick: () => setFeedbackId(item.dataId)
-                                    })}
-                                name={'badLight'}
-                              />
-                            </MyTooltip>
-                          ))}
+                                  }
+                                : {
+                                    _hover: { color: '#FB7C3C' },
+                                    onClick: () => setFeedbackId(item.dataId)
+                                  })}
+                              name={'badLight'}
+                            />
+                          </MyTooltip>
+                        )}
                       </Flex>
                       {/* chatting status */}
                       {statusBoxData && index === chatHistory.length - 1 && (
@@ -796,7 +807,7 @@ const ChatBox = (
                           responseData={item.responseData}
                         />
                         {/* admin mark content */}
-                        {isLogs && item.adminFeedback && (
+                        {showMarkIcon && item.adminFeedback && (
                           <Box>
                             <Flex alignItems={'center'} py={2}>
                               <MyIcon name={'markLight'} w={'14px'} color={'myGray.900'} />

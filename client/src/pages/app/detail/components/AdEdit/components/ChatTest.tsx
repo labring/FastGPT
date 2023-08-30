@@ -113,6 +113,7 @@ const ChatTest = (
             ref={ChatBoxRef}
             appAvatar={app.avatar}
             userAvatar={userInfo?.avatar}
+            showMarkIcon
             {...getSpecialModule(modules)}
             onStartChat={startChat}
             onDelMessage={() => {}}
