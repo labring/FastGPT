@@ -226,6 +226,7 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
               userAvatar={shareChatData.userAvatar}
               variableModules={shareChatData.app.variableModules}
               welcomeText={shareChatData.app.welcomeText}
+              feedbackType={'user'}
               onUpdateVariable={(e) => {
                 setShareChatData((state) => ({
                   ...state,

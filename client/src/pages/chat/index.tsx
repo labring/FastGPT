@@ -362,6 +362,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
                 variableModules={chatData.app.variableModules}
+                feedbackType={'user'}
                 welcomeText={chatData.app.welcomeText}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
