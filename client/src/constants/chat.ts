@@ -1,7 +1,5 @@
 import dayjs from 'dayjs';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 export enum sseResponseEventEnum {
   error = 'error',
   answer = 'answer',
@@ -22,13 +20,13 @@ export enum TaskResponseKeyEnum {
 
 export const ChatRoleMap = {
   [ChatRoleEnum.System]: {
-    name: t('系统提示词')
+    name: 'system prompt word'
   },
   [ChatRoleEnum.Human]: {
-    name: t('用户')
+    name: 'user'
   },
   [ChatRoleEnum.AI]: {
-    name: t('AI')
+    name: 'AI'
   }
 };
 

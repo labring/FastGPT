@@ -1,7 +1,3 @@
-import { useTranslation } from 'react-i18next';
-
-const { t } = useTranslation();
-
 export enum BillSourceEnum {
   fastgpt = 'fastgpt',
   api = 'api',
@@ -14,9 +10,9 @@ export enum PageTypeEnum {
 }
 
 export const BillSourceMap: Record<`${BillSourceEnum}`, string> = {
-  [BillSourceEnum.fastgpt]: 'FastGpt 平台',
+  [BillSourceEnum.fastgpt]: 'FastGpt platform',
   [BillSourceEnum.api]: 'Api',
-  [BillSourceEnum.shareLink]: t('免登录链接')
+  [BillSourceEnum.shareLink]: 'Login free link'
 };
 
 export enum PromotionEnum {
@@ -26,9 +22,9 @@ export enum PromotionEnum {
 }
 
 export const PromotionTypeMap = {
-  [PromotionEnum.invite]: t('好友充值'),
-  [PromotionEnum.shareModel]: t('应用分享'),
-  [PromotionEnum.withdraw]: t('提现')
+  [PromotionEnum.invite]: 'friend recharge',
+  [PromotionEnum.shareModel]: 'app sharing',
+  [PromotionEnum.withdraw]: 'withdraw'
 };
 
 export enum InformTypeEnum {
@@ -37,7 +33,7 @@ export enum InformTypeEnum {
 
 export const InformTypeMap = {
   [InformTypeEnum.system]: {
-    label: t('系统通知')
+    label: 'system notification'
   }
 };
 

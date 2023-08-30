@@ -5,9 +5,7 @@ import { connectToDatabase, Inform, User } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { InformTypeEnum } from '@/constants/user';
 import { startSendInform } from '@/service/events/sendInform';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 export type Props = {
   type: `${InformTypeEnum}`;
   title: string;
@@ -23,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     jsonRes(res, {
       data: await sendInform(req.body),
-      message: t('发送通知成功')
+      message: 'Notification sent successfully'
     });
   } catch (err) {
     jsonRes(res, {

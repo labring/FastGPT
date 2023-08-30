@@ -1,4 +1,3 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
@@ -6,9 +5,7 @@ import { connectToDatabase, App } from '@/service/mongo';
 import { FlowModuleTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowInputItemType } from '@/types/flow';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 const chatModelInput = ({
   model,
   temperature,
@@ -28,13 +25,13 @@ const chatModelInput = ({
     key: 'model',
     value: model,
     type: 'custom',
-    label: t('对话模型'),
+    label: '对话模型',
     connected: true
   },
   {
     key: 'temperature',
     value: temperature,
-    label: t('温度'),
+    label: '温度',
     type: 'slider',
     connected: true
   },
@@ -42,19 +39,19 @@ const chatModelInput = ({
     key: 'maxToken',
     value: maxToken,
     type: 'custom',
-    label: t('回复上限'),
+    label: '回复上限',
     connected: true
   },
   {
     key: 'systemPrompt',
     value: systemPrompt,
     type: 'textarea',
-    label: t('系统提示词'),
+    label: '系统提示词',
     connected: true
   },
   {
     key: 'limitPrompt',
-    label: t('限定词'),
+    label: '限定词',
     type: 'textarea',
     value: limitPrompt,
     connected: true
@@ -62,25 +59,25 @@ const chatModelInput = ({
   {
     key: 'switch',
     type: 'target',
-    label: t('触发器'),
+    label: '触发器',
     connected: kbList.length > 0
   },
   {
     key: 'quoteQA',
     type: 'target',
-    label: t('引用内容'),
+    label: '引用内容',
     connected: kbList.length > 0
   },
   {
     key: 'history',
     type: 'target',
-    label: t('聊天记录'),
+    label: '聊天记录',
     connected: true
   },
   {
     key: 'userChatInput',
     type: 'target',
-    label: t('用户问题'),
+    label: '用户问题',
     connected: true
   }
 ];
@@ -410,9 +407,7 @@ async function init(limit: number, skip: number) {
       // userId: '63f9a14228d2a688d8dc9e1b'
     },
     '_id chat'
-  )
-    .limit(limit)
-    .skip(skip);
+  ).limit(limit);
 
   return Promise.all(
     apps.map(async (app) => {

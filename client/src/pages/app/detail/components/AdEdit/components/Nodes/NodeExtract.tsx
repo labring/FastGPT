@@ -14,9 +14,7 @@ import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 const NodeExtract = ({
   data: { inputs, outputs, moduleId, onChangeNode, onDelEdge, ...props }
 }: NodeProps<FlowModuleItemType>) => {

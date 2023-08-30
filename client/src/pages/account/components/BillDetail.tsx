@@ -17,9 +17,7 @@ import { BillSourceMap } from '@/constants/user';
 import { formatPrice } from '@/utils/user';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void }) => {
   const { t } = useTranslation();
 

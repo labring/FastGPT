@@ -15,9 +15,7 @@ import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 const PayModal = dynamic(() => import('./PayModal'), {
   loading: () => <Loading fixed={false} />,
   ssr: false

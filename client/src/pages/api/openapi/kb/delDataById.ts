@@ -3,9 +3,7 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     let { dataId } = req.query as {
@@ -13,7 +11,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     };
 
     if (!dataId) {
-      throw new Error(t('缺少参数'));
+      throw new Error('Missing parameters');
     }
 
     // 凭证校验

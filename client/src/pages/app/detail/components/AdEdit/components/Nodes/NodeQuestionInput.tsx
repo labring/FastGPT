@@ -7,9 +7,7 @@ import Container from '../modules/Container';
 import { SystemInputEnum } from '@/constants/app';
 import { FlowValueTypeEnum } from '@/constants/flow';
 import SourceHandle from '../render/SourceHandle';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 const QuestionInputNode = ({
   data: { inputs, outputs, ...props }
 }: NodeProps<FlowModuleItemType>) => {
@@ -17,7 +15,7 @@ const QuestionInputNode = ({
     <NodeCard minW={'240px'} {...props}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'} textAlign={'end'}>
         <Box position={'relative'}>
-          {t('用户问题')}
+          {'user question'}
           <SourceHandle
             handleKey={SystemInputEnum.userChatInput}
             valueType={FlowValueTypeEnum.string}

@@ -5,11 +5,10 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { getVector } from '../plugin/vector';
 import type { KbTestItemType } from '@/types/plugin';
-import { useTranslation } from 'react-i18next';
+import { PgTrainingTableName } from '@/constants/plugin';
+import { KB } from '@/service/mongo';
 
-const { t } = useTranslation();
 export type Props = {
-  model: string;
   kbId: string;
   text: string;
 };
@@ -17,21 +16,24 @@ export type Response = KbTestItemType['results'];
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { kbId, text, model } = req.body as Props;
+    const { kbId, text } = req.body as Props;
 
-    if (!kbId || !text || !model) {
-      throw new Error(t('缺少参数'));
+    if (!kbId || !text) {
+      throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req });
+    const [{ userId }, kb] = await Promise.all([
+      authUser({ req }),
+      KB.findById(kbId, 'vectorModel')
+    ]);
 
-    if (!userId) {
-      throw new Error(t('缺少用户ID'));
+    if (!userId || !kb) {
+      throw new Error('缺少用户ID');
     }
 
     const { vectors } = await getVector({
-      model,
+      model: kb.vectorModel,
       userId,
       input: [text]
     });
@@ -41,7 +43,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
         select id,q,a,source,(vector <#> '[${
           vectors[0]
-        }]') * -1 AS score from modelData where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
+        }]') * -1 AS score from ${PgTrainingTableName} where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
         vectors[0]
       }]' limit 12;
         COMMIT;`

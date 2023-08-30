@@ -68,7 +68,7 @@ const NodeUserGuide = ({
               <Thead>
                 <Tr>
                   <Th>{t('变量名')}</Th>
-                  <Th>{t('变量 ke')}y</Th>
+                  <Th>{t('变量 key')}</Th>
                   <Th>{t('必填')}</Th>
                   <Th></Th>
                 </Tr>

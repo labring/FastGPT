@@ -67,7 +67,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   ]);
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('Confirm to log out?')
+    content: t('account.Confirm to log out?')
   });
 
   const router = useRouter();

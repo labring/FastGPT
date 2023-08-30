@@ -12,9 +12,7 @@ import RenderOutput from '../render/RenderOutput';
 import { FlowInputItemTypeEnum, FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 const NodeHttp = ({
   data: { moduleId, inputs, outputs, onChangeNode, ...props }
 }: NodeProps<FlowModuleItemType>) => {
@@ -36,13 +34,13 @@ const NodeHttp = ({
                 key,
                 valueType: FlowValueTypeEnum.string,
                 type: FlowInputItemTypeEnum.target,
-                label: `入参${inputs.length - 1}`,
+                label: `entering${inputs.length - 1}`,
                 edit: true
               }
             });
           }}
         >
-          {t('添加入参')}
+          {'add parameters'}
         </Button>
       </Container>
       <Divider text="Output" />
@@ -61,7 +59,7 @@ const NodeHttp = ({
                 value: outputs.concat([
                   {
                     key,
-                    label: `出参${outputs.length}`,
+                    label: `ginseng${outputs.length}`,
                     valueType: FlowValueTypeEnum.string,
                     type: FlowOutputItemTypeEnum.source,
                     edit: true,
@@ -71,7 +69,7 @@ const NodeHttp = ({
               });
             }}
           >
-            {t('添加出参')}
+            {'Add out parameters'}
           </Button>
         </Box>
       </Container>

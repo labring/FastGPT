@@ -6,9 +6,7 @@ import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { startQueue } from '@/service/utils/tools';
 import { getWxPayQRResult } from '@/service/api/plugins';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 /* 校验支付结果 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -20,16 +18,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const payOrder = await Pay.findById<PaySchema>(payId);
 
     if (!payOrder) {
-      throw new Error(t('订单不存在'));
+      throw new Error('order does not exist');
     }
     if (payOrder.status !== 'NOTPAY') {
-      throw new Error(t('订单已结算'));
+      throw new Error('Order has been settled');
     }
 
     // 获取当前用户
     const user = await User.findById(userId);
     if (!user) {
-      throw new Error(t('找不到用户'));
+      throw new Error('user not found');
     }
 
     const payRes = await getWxPayQRResult(payOrder.orderId);
@@ -55,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           unlockTask(userId);
           return jsonRes(res, {
-            data: t('支付成功')
+            data: 'payment successful'
           });
         }
       } catch (error) {
@@ -69,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       return jsonRes(res, {
         code: 500,
-        data: t('更新订单失败,请重试')
+        data: 'Failed to update order, please try again'
       });
     }
 
@@ -84,10 +82,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       return jsonRes(res, {
         code: 500,
-        data: t('订单已过期')
+        data: 'order has expired'
       });
     }
-    throw new Error(payRes?.trade_state_desc || t('订单无效'));
+    throw new Error(payRes?.trade_state_desc || 'invalid order');
   } catch (err) {
     // console.log(err);
     jsonRes(res, {

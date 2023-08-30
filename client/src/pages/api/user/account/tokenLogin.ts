@@ -4,9 +4,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { User } from '@/service/models/user';
 import { authUser } from '@/service/utils/auth';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { userId } = await authUser({ req, authToken: true });
@@ -17,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = await User.findById(userId);
 
     if (!user) {
-      throw new Error(t('账号异常'));
+      throw new Error('Abnormal account');
     }
 
     jsonRes(res, {

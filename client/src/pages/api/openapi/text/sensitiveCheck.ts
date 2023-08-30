@@ -4,9 +4,7 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import axios from 'axios';
 import { axiosConfig } from '@/service/ai/openai';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 export type Props = {
   input: string;
 };
@@ -45,7 +43,7 @@ export async function sensitiveCheck({ input }: Props) {
 
   for (const val of values) {
     if (val > 0.2) {
-      return Promise.reject(t('您的内容不合规'));
+      return Promise.reject('Your content is non-compliant');
     }
   }
 

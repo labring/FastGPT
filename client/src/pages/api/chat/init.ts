@@ -9,9 +9,7 @@ import mongoose from 'mongoose';
 import type { ChatSchema } from '@/types/mongoSchema';
 import { getSpecialModule, getChatModelNameList } from '@/components/ChatBox/utils';
 import { TaskResponseKeyEnum } from '@/constants/chat';
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -77,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ])
           ]);
           if (!chat) {
-            throw new Error(t('聊天框不存在'));
+            throw new Error('chat box does not exist');
           }
           return { history, chat };
         }
@@ -98,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           intro: app.intro,
           canUse: app.share.isShare || isOwner
         },
-        title: chat?.title || t('新对话'),
+        title: chat?.title || 'new dialogue',
         variables: chat?.variables || {},
         history
       }

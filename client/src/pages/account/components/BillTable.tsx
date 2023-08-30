@@ -24,9 +24,7 @@ import dynamic from 'next/dynamic';
 import { useGlobalStore } from '@/store/global';
 import { useTranslation } from 'next-i18next';
 const BillDetail = dynamic(() => import('./BillDetail'));
-import { useTranslation } from 'react-i18next';
 
-const { t } = useTranslation();
 const BillTable = () => {
   const { t } = useTranslation();
   const { Loading } = useLoading();

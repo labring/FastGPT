@@ -4,10 +4,8 @@ import { connectToDatabase, KB, App, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { Types } from 'mongoose';
-import { useTranslation } from 'react-i18next';
+import { PgTrainingTableName } from '@/constants/plugin';
 
-const { t } = useTranslation();
-t;
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { id } = req.query as {
@@ -15,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     if (!id) {
-      throw new Error(t('缺少参数'));
+      throw new Error('Missing parameters');
     }
 
     // 凭证校验
@@ -24,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
 
     // delete all pg data
-    await PgClient.delete('modelData', {
+    await PgClient.delete(PgTrainingTableName, {
       where: [['user_id', userId], 'AND', ['kb_id', id]]
     });
 
