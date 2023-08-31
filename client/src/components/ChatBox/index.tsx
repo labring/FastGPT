@@ -201,7 +201,7 @@ const ChatBox = (
   // compute variable input is finish.
   const [variableInputFinish, setVariableInputFinish] = useState(false);
   const variableIsFinish = useMemo(() => {
-    if (!variableModules || chatHistory.length > 0) return true;
+    if (!variableModules || variableModules.length === 0 || chatHistory.length > 0) return true;
 
     for (let i = 0; i < variableModules.length; i++) {
       const item = variableModules[i];
