@@ -1,8 +1,8 @@
 ---
-weight: 400
-title: "高级编排"
-description: "FastGPT 高级编排文档"
-icon: "family_history"
+weight: 10
+title: '高级编排'
+description: 'FastGPT 高级编排文档'
+icon: 'family_history'
 draft: false
 images: []
 ---
