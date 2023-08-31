@@ -1,6 +1,5 @@
 import type { NextApiResponse } from 'next';
 import { sseResponse } from '@/service/utils/tools';
-import { OpenAiChatEnum } from '@/constants/model';
 import { adaptChatItem_openAI, countOpenAIToken } from '@/utils/plugin/openai';
 import { modelToolMap } from '@/utils/plugin';
 import { ChatContextFilter } from '@/service/utils/chat/index';
@@ -198,7 +197,6 @@ function filterQuote({
   model: ChatModelItemType;
 }) {
   const sliceResult = modelToolMap.tokenSlice({
-    model: model.model,
     maxToken: model.quoteMaxToken,
     messages: quoteQA.map((item) => ({
       obj: ChatRoleEnum.System,
@@ -312,7 +310,6 @@ function getMaxTokens({
   /* count response max token */
 
   const promptsToken = modelToolMap.countTokens({
-    model: model.model,
     messages: filterMessages
   });
   maxToken = maxToken + promptsToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
@@ -383,7 +380,6 @@ async function streamResponse({
   }
 
   if (error) {
-    console.log(error);
     return Promise.reject(error);
   }
 

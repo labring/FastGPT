@@ -4,13 +4,10 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import type { ChatItemType } from '@/types/chat';
 import { countOpenAIToken } from '@/utils/plugin/openai';
-import { OpenAiChatEnum } from '@/constants/model';
-
-type ModelType = `${OpenAiChatEnum}`;
 
 type Props = {
   messages: ChatItemType[];
-  model: ModelType;
+  model: string;
   maxLen: number;
 };
 type Response = ChatItemType[];
@@ -28,7 +25,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return jsonRes<Response>(res, {
       data: gpt_chatItemTokenSlice({
         messages,
-        model,
         maxToken: maxLen
       })
     });
@@ -42,11 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export function gpt_chatItemTokenSlice({
   messages,
-  model = 'gpt-3.5-turbo',
   maxToken
 }: {
   messages: ChatItemType[];
-  model?: string;
   maxToken: number;
 }) {
   let result: ChatItemType[] = [];
@@ -54,7 +48,7 @@ export function gpt_chatItemTokenSlice({
   for (let i = 0; i < messages.length; i++) {
     const msgs = [...result, messages[i]];
 
-    const tokens = countOpenAIToken({ messages: msgs, model });
+    const tokens = countOpenAIToken({ messages: msgs });
 
     if (tokens < maxToken) {
       result = msgs;

@@ -198,6 +198,8 @@ const ChatBox = (
       chatHistory[chatHistory.length - 1]?.status !== 'finish',
     [chatHistory]
   );
+  // compute variable input is finish.
+  const [variableInputFinish, setVariableInputFinish] = useState(false);
   const variableIsFinish = useMemo(() => {
     if (!variableModules || chatHistory.length > 0) return true;
 
@@ -208,8 +210,8 @@ const ChatBox = (
       }
     }
 
-    return true;
-  }, [chatHistory.length, variableModules, variables]);
+    return variableInputFinish;
+  }, [chatHistory.length, variableInputFinish, variableModules, variables]);
 
   const { register, reset, getValues, setValue, handleSubmit } = useForm<Record<string, any>>({
     defaultValues: variables
@@ -408,6 +410,7 @@ const ChatBox = (
     ]
   );
 
+  // output data
   useImperativeHandle(ref, () => ({
     getChatHistory: () => chatHistory,
     resetVariables(e) {
@@ -420,6 +423,7 @@ const ChatBox = (
       setVariables(e || defaultVal);
     },
     resetHistory(e) {
+      setVariableInputFinish(!!e.length);
       setChatHistory(e);
     },
     scrollToBottom
@@ -554,9 +558,7 @@ const ChatBox = (
                           label: item.value,
                           value: item.value
                         }))}
-                        {...register(item.key, {
-                          required: item.required
-                        })}
+                        value={getValues(item.key)}
                         onchange={(e) => {
                           setValue(item.key, e);
                           setRefresh(!refresh);
@@ -574,6 +576,7 @@ const ChatBox = (
                     onClick={handleSubmit((data) => {
                       onUpdateVariable?.(data);
                       setVariables(data);
+                      setVariableInputFinish(true);
                     })}
                   >
                     {'开始对话'}

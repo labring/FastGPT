@@ -31,7 +31,8 @@
     "Mark Count": "标注答案数量",
     "My Apps": "我的应用",
     "Output Field Settings": "输出字段编辑",
-    "Paste Config": "粘贴配置"
+    "Paste Config": "粘贴配置",
+    "Variable Key Repeat Tip": "变量 key 重复"
   },
   "chat": {
     "Admin Mark Content": "纠正后的回复",

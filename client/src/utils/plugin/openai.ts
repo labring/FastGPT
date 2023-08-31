@@ -47,21 +47,13 @@ export const adaptChatItem_openAI = ({
   }));
 };
 
-export function countOpenAIToken({
-  messages,
-  model = 'gpt-3.5-turbo'
-}: {
-  messages: ChatItemType[];
-  model?: string;
-}) {
-  const diffVal = model.startsWith('gpt-3.5-turbo') ? 3 : 2;
-
+export function countOpenAIToken({ messages }: { messages: ChatItemType[] }) {
   const adaptMessages = adaptChatItem_openAI({ messages, reserveId: true });
   const token = adaptMessages.reduce((sum, item) => {
     const text = `${item.role}\n${item.content}`;
     const enc = getOpenAiEncMap();
     const encodeText = enc.encode(text);
-    const tokens = encodeText.length + diffVal;
+    const tokens = encodeText.length + 3; // 补充估算值
     return sum + tokens;
   }, 0);
 

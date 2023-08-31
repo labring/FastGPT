@@ -204,6 +204,6 @@ export const defaultVariable: VariableItemType = {
   enums: [{ value: '' }]
 };
 export const addVariable = () => {
-  const newVariable = { ...defaultVariable, id: nanoid() };
+  const newVariable = { ...defaultVariable, key: nanoid(), id: nanoid() };
   return newVariable;
 };
