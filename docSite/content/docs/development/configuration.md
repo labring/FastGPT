@@ -69,9 +69,9 @@ weight: 100
     {
       "model": "gpt-3.5-turbo",
       "name": "GPT35-4k",
-      "contextMaxToken": 4000,
-      "quoteMaxToken": 2000,
-      "maxTemperature": 1.2,
+      "contextMaxToken": 4000, // 最大token，均按 gpt35 计算
+      "quoteMaxToken": 2000, // 引用内容最大 token
+      "maxTemperature": 1.2, // 最大温度
       "price": 0,
       "defaultSystem": ""
     },
