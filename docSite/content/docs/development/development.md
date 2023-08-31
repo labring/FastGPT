@@ -4,7 +4,7 @@ description: '对 FastGPT 进行开发调试'
 icon: 'developer_guide'
 draft: false
 toc: true
-weight: 0
+weight: -10
 ---
 
 本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.run)。
