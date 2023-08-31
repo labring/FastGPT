@@ -162,7 +162,7 @@ docker-compose up -d
 
 ### 如何自定义配置文件？
 
-需要在 `docker-compose.yml` 同级目录创建一个 `config.json` 文件，内容参考: [配置详解](/docs/installation/reference/configuration/)
+需要在 `docker-compose.yml` 同级目录创建一个 `config.json` 文件，内容参考: [配置详解](/docs/development/configuration)
 
 然后修改 `docker-compose.yml` 中的 `fastgpt` 容器内容，增加挂载选项即可：
 
@@ -186,4 +186,4 @@ fastgpt:
     - ./config.json:/app/data/config.json
 ```
 
-> 参考[配置详解](/docs/installation/reference/configuration/)
+> 参考[配置详解](/docs/development/configuration)
