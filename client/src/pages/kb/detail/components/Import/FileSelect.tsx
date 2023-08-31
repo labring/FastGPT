@@ -76,76 +76,76 @@ const FileSelect = ({
       setSelecting(true);
       try {
         // Parse file by file
-        let promise = Promise.resolve<FileItemType[]>([]);
-        files.forEach((file) => {
-          promise = promise.then(async (result) => {
-            const extension = file?.name?.split('.')?.pop()?.toLowerCase();
+        const chunkFiles: FileItemType[] = [];
 
-            /* text file */
-            const icon = fileImgs.find((item) => new RegExp(item.reg).test(file.name))?.src;
-            let text = await (async () => {
-              switch (extension) {
-                case 'txt':
-                case 'md':
-                  return readTxtContent(file);
-                case 'pdf':
-                  return readPdfContent(file);
-                case 'doc':
-                case 'docx':
-                  return readDocContent(file);
-              }
-              return '';
-            })();
+        for await (let file of files) {
+          const extension = file?.name?.split('.')?.pop()?.toLowerCase();
 
-            if (!icon) return result;
+          /* text file */
+          const icon = fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(file.name))?.src;
 
-            if (text) {
-              text = simpleText(text);
-              const splitRes = splitText2Chunks({
-                text,
-                maxLen: chunkLen
-              });
-              const fileItem: FileItemType = {
-                id: nanoid(),
-                filename: file.name,
-                icon,
-                text,
-                tokens: splitRes.tokens,
-                chunks: splitRes.chunks.map((chunk) => ({
-                  q: chunk,
-                  a: '',
-                  source: file.name
-                }))
-              };
-              return [fileItem].concat(result);
+          if (!icon) {
+            continue;
+          }
+
+          let text = await (async () => {
+            switch (extension) {
+              case 'txt':
+              case 'md':
+                return readTxtContent(file);
+              case 'pdf':
+                return readPdfContent(file);
+              case 'doc':
+              case 'docx':
+                return readDocContent(file);
             }
+            return '';
+          })();
 
-            /* csv file */
-            if (extension === 'csv') {
-              const { header, data } = await readCsvContent(file);
-              if (header[0] !== 'question' || header[1] !== 'answer') {
-                throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
-              }
-              const fileItem: FileItemType = {
-                id: nanoid(),
-                filename: file.name,
-                icon,
-                tokens: 0,
-                text: '',
-                chunks: data.map((item) => ({
-                  q: item[0],
-                  a: item[1],
-                  source: item[2] || file.name
-                }))
-              };
-              return [fileItem].concat(result);
+          if (text) {
+            text = simpleText(text);
+            const splitRes = splitText2Chunks({
+              text,
+              maxLen: chunkLen
+            });
+            const fileItem: FileItemType = {
+              id: nanoid(),
+              filename: file.name,
+              icon,
+              text,
+              tokens: splitRes.tokens,
+              chunks: splitRes.chunks.map((chunk) => ({
+                q: chunk,
+                a: '',
+                source: file.name
+              }))
+            };
+            chunkFiles.unshift(fileItem);
+            continue;
+          }
+
+          /* csv file */
+          if (extension === 'csv') {
+            const { header, data } = await readCsvContent(file);
+            if (header[0] !== 'question' || header[1] !== 'answer') {
+              throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
             }
-            return result;
-          });
-        });
+            const fileItem: FileItemType = {
+              id: nanoid(),
+              filename: file.name,
+              icon,
+              tokens: 0,
+              text: '',
+              chunks: data.map((item) => ({
+                q: item[0],
+                a: item[1],
+                source: item[2] || file.name
+              }))
+            };
 
-        const chunkFiles = await promise;
-
+            chunkFiles.unshift(fileItem);
+          }
+        }
         onPushFiles(chunkFiles);
       } catch (error: any) {
         console.log(error);

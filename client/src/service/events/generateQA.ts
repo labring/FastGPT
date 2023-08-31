@@ -9,6 +9,7 @@ import { axiosConfig, getAIChatApi } from '../ai/openai';
 import { ChatCompletionRequestMessage } from 'openai';
 import { modelToolMap } from '@/utils/plugin';
 import { gptMessage2ChatType } from '@/utils/adapt';
+import { addLog } from '../utils/tools';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -105,12 +106,16 @@ A2:
             const result = formatSplitText(answer || ''); // 格式化后的QA对
             console.log(`split result length: `, result.length);
             // 计费
-            result.length > 0 &&
+            if (result.length > 0) {
               pushQABill({
                 userId: data.userId,
                 totalTokens,
                 appName: 'QA 拆分'
               });
+            } else {
+              addLog.info(`QA result 0:`, { answer });
+            }
+
             return {
               rawContent: answer,
               result
