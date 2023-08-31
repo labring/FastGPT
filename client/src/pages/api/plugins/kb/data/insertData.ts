@@ -35,7 +35,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // token check
     const token = modelToolMap.countTokens({
-      model: 'gpt-3.5-turbo',
       messages: [{ obj: 'System', value: q }]
     });
 

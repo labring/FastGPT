@@ -104,7 +104,6 @@ export async function pushDataToKb({
 
     // count q token
     const token = modelToolMap.countTokens({
-      model: 'gpt-3.5-turbo',
       messages: [{ obj: 'System', value: item.q }]
     });
 

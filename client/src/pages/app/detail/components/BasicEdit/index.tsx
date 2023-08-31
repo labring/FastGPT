@@ -532,6 +532,13 @@ const Settings = ({ appId }: { appId: string }) => {
                 variables.map((item) => (item.id === variable.id ? variable : item))
               );
             } else {
+              // auth same key
+              if (variables.find((item) => item.key === variable.key)) {
+                return toast({
+                  status: 'warning',
+                  title: t('app.Variable Key Repeat Tip')
+                });
+              }
               appendVariable(variable);
             }
 

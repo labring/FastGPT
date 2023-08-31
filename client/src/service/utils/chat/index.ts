@@ -1,7 +1,6 @@
 import { ChatItemType } from '@/types/chat';
 import { modelToolMap } from '@/utils/plugin';
 import { ChatRoleEnum } from '@/constants/chat';
-import { OpenAiChatEnum } from '@/constants/model';
 import type { NextApiResponse } from 'next';
 
 export type ChatCompletionResponseType = {
@@ -14,7 +13,7 @@ export type StreamResponseType = {
   chatResponse: any;
   prompts: ChatItemType[];
   res: NextApiResponse;
-  model: `${OpenAiChatEnum}`;
+  model: string;
   [key: string]: any;
 };
 
@@ -45,7 +44,6 @@ export const ChatContextFilter = ({
 
   // reduce  token of systemPrompt
   maxTokens -= modelToolMap.countTokens({
-    model,
     messages: systemPrompts
   });
 
@@ -57,7 +55,6 @@ export const ChatContextFilter = ({
     chats.unshift(chatPrompts[i]);
 
     const tokens = modelToolMap.countTokens({
-      model,
       messages: chats
     });
 

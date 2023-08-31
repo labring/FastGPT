@@ -10,7 +10,7 @@ import type { VariableItemType } from '@/types/app';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import VariableEditModal from '../../../VariableEditModal';
+import VariableEditModal, { addVariable } from '../../../VariableEditModal';
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
@@ -105,7 +105,7 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
               variant={'base'}
               leftIcon={<AddIcon fontSize={'10px'} />}
               onClick={() => {
-                const newVariable = { ...defaultVariable, id: nanoid() };
+                const newVariable = addVariable();
                 updateVariables(variables.concat(newVariable));
                 setEditVariable(newVariable);
               }}
