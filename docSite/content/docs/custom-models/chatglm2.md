@@ -66,6 +66,59 @@ CHAT_API_KEY=sk-aaabbbcccdddeeefffggghhhiiijjjkkk # 这里是你在代码中配�
 
 这样就成功接入 ChatGLM2-6B 了。
 
-## 注意
+## docker 部署
 
-1. docker 部署时，给的推荐配置是组网模型，无法连接到本地的网络，以为这无法请求 0.0.0.0:6006。可以使用 host 模式，或者将模型发布到服务器上，并通过 oneapi 引入该模型。
+## 部署镜像
+
+镜像名: `stawky/chatglm2:latest`  
+国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt/chatglm2:latest`
+端口号: 6006
+镜像默认sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
+
+## 接入 OneAPI
+
+为chatglm2添加一个渠道，参数如下：
+
+![](/imgs/model-m3e1.png)
+
+这里我填入chatglm2作为语言模型
+## 测试
+
+curl 例子：
+
+```bash
+curl --location --request POST 'https://domain/v1/chat/completions' \
+--header 'Authorization: Bearer sk-aaabbbcccdddeeefffggghhhiiijjjkkk' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "chatglm2",
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+```
+
+Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneAPI 填写的自定义模型。
+
+## 接入 FastGPT
+
+修改 config.json 配置文件，在 VectorModels 中加入 chatglm2和M3E 模型：
+
+```json
+  "ChatModels": [
+    //已有模型
+    {
+      "model": "chatglm2",
+      "name": "chatglm2",
+      "contextMaxToken": 8000,
+      "quoteMaxToken": 4000,
+      "maxTemperature": 1.2,
+      "price": 0,
+      "defaultSystem": ""
+    }
+  ],
+```
+
+## 测试使用
+
+chatglm2 模型的使用方法如下：
+模型选择chatglm2即可
+

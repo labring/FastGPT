@@ -14,6 +14,7 @@ FastGPT 默认使用了 openai 的 embedding 向量模型，如果你想私有�
 ## 部署镜像
 
 镜像名: `stawky/m3e-large-api:latest`  
+国内镜像： `registry.cn-guangzhou.aliyuncs.com/kbgpt/m3e-large-api:latest`
 端口号: 6008
 
 ## 接入 OneAPI
