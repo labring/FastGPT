@@ -4,7 +4,7 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 753
+weight: 100
 ---
 
 ## 前言
@@ -35,13 +35,15 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 | int4 | >=16GB | >=6GB | >=25GB | python openai_api.py 4 |
 {{< /table >}}
 
-## 环境配置
+## 部署
+
+### 环境要求
 
 - Python 3.8.10
 - CUDA 11.8
 - 科学上网环境
 
-## 部署步骤
+### 源码部署
 
 1. 根据上面的环境配置配置好环境，具体教程自行 GPT；
 2. 下载 [python 文件](https://github.com/labring/FastGPT/blob/main/files/models/ChatGLM2/openai_api.py)
@@ -57,31 +59,23 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 > 这里的 `http://0.0.0.0:6006` 就是连接地址。
 
-然后现在回到 .env.local 文件，依照以下方式配置地址：
+### docker 部署
 
-```bash
-OPENAI_BASE_URL=http://127.0.0.1:6006/v1
-CHAT_API_KEY=sk-aaabbbcccdddeeefffggghhhiiijjjkkk # 这里是你在代码中配置的 token，这里的 OPENAIKEY 可以任意填写
-```
-
-这样就成功接入 ChatGLM2-6B 了。
-
-## docker 部署
-
-## 部署镜像
+**镜像和端口**
 
 镜像名: `stawky/chatglm2:latest`  
 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt/chatglm2:latest`
 端口号: 6006
-镜像默认sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
+镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
 
 ## 接入 OneAPI
 
-为chatglm2添加一个渠道，参数如下：
+为 chatglm2 添加一个渠道，参数如下：
 
 ![](/imgs/model-m3e1.png)
 
-这里我填入chatglm2作为语言模型
+这里我填入 chatglm2 作为语言模型
+
 ## 测试
 
 curl 例子：
@@ -100,7 +94,7 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneA
 
 ## 接入 FastGPT
 
-修改 config.json 配置文件，在 VectorModels 中加入 chatglm2和M3E 模型：
+修改 config.json 配置文件，在 VectorModels 中加入 chatglm2 和 M3E 模型：
 
 ```json
   "ChatModels": [
@@ -120,5 +114,4 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneA
 ## 测试使用
 
 chatglm2 模型的使用方法如下：
-模型选择chatglm2即可
-
+模型选择 chatglm2 即可

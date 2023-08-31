@@ -4,27 +4,28 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2和m3e-large'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 100
+weight: 200
 ---
 
 ## 前言
 
-FastGPT 默认使用了 openai 的 LLM模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。
+FastGPT 默认使用了 openai 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
 
 ## 部署镜像
 
 镜像名: `stawky/chatglm2-m3e:latest`  
 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt/chatglm2-m3e:latest`
 端口号: 6006
-镜像默认sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
+镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
 
 ## 接入 OneAPI
 
-为chatglm2和m3e-large各添加一个渠道，参数如下：
+为 chatglm2 和 m3e-large 各添加一个渠道，参数如下：
 
 ![](/imgs/model-m3e1.png)
 
-这里我填入m3e作为向量模型，chatglm2作为语言模型
+这里我填入 m3e 作为向量模型，chatglm2 作为语言模型
+
 ## 测试
 
 curl 例子：
@@ -53,7 +54,7 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneA
 
 ## 接入 FastGPT
 
-修改 config.json 配置文件，在 VectorModels 中加入 chatglm2和M3E 模型：
+修改 config.json 配置文件，在 VectorModels 中加入 chatglm2 和 M3E 模型：
 
 ```json
   "ChatModels": [
@@ -88,7 +89,9 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneA
 ```
 
 ## 测试使用
+
 M3E 模型的使用方法如下：
+
 1. 创建知识库时候选择 M3E 模型。
 
 注意，一旦选择后，知识库将无法修改向量模型。
@@ -107,4 +110,4 @@ M3E 模型的使用方法如下：
 ![](/imgs/model-m3e4.png)
 
 chatglm2 模型的使用方法如下：
-模型选择chatglm2即可
+模型选择 chatglm2 即可
