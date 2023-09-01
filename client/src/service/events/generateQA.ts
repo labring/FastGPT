@@ -5,7 +5,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
 import { authBalanceByUid } from '../utils/auth';
-import { axiosConfig, getAIChatApi } from '../ai/openai';
+import { axiosConfig, getAIChatApi } from '../lib/openai';
 import { ChatCompletionRequestMessage } from 'openai';
 import { modelToolMap } from '@/utils/plugin';
 import { gptMessage2ChatType } from '@/utils/adapt';
