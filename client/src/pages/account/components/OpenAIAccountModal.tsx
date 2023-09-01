@@ -43,7 +43,7 @@ const OpenAIAccountModal = ({
           <Input
             flex={1}
             {...register('baseUrl')}
-            placeholder={'中转地址，未自动补全 "v1"'}
+            placeholder={'请求地址，默认为 openai 官方。可填中转地址，未自动补全 "v1"'}
           ></Input>
         </Flex>
       </ModalBody>

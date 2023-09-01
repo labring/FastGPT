@@ -9,7 +9,7 @@
   "app": {
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
-    "Chat Logs Tips": "Logs record the app's online, shared, and API conversations",
+    "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
     "Chat logs": "Chat Logs",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
     "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
@@ -110,6 +110,8 @@
     "Choice Desc": "FastGPT follows the Apache License 2.0 open source protocol",
     "Choice Extension": "Infinite Extension",
     "Choice Extension Desc": "HTTP based extension, easy to achieve custom functions",
+    "Choice Fast": "Fast",
+    "Choice Fast Desc": "{{title}} provides out-of-the-box visual actions to build AI applications point-by-point",
     "Choice Models": "Multiple Models",
     "Choice Models Desc": "Supports multiple models such as GPT, Claude, Spark, and ChatGLM",
     "Choice Open": "Open",

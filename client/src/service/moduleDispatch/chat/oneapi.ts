@@ -124,7 +124,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
       stream
     },
     {
-      timeout: stream ? 60000 : 480000,
+      timeout: stream ? 120000 : 480000,
       responseType: stream ? 'stream' : 'json',
       ...axiosConfig(userOpenaiAccount)
     }

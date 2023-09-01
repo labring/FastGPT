@@ -9,7 +9,7 @@
   "app": {
     "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
-    "Chat Logs Tips": "日志会记录该应用的在线、分享和 API 对话记录",
+    "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
     "Chat logs": "对话日志",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
     "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
@@ -110,6 +110,8 @@
     "Choice Desc": "",
     "Choice Extension": "无限扩展",
     "Choice Extension Desc": "基于 HTTP 实现扩展，轻松实现定制功能",
+    "Choice Fast": "开箱即用",
+    "Choice Fast Desc": "{{title}} 提供开箱即用的可视化操作，点点点即可构建 AI 应用",
     "Choice Models": "支持多种模型",
     "Choice Models Desc": "支持 GPT、Claude、Spark、ChatGLM等多模型",
     "Choice Open": "更开放",
