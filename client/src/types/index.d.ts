@@ -19,8 +19,9 @@ export type FeConfigsType = {
   show_register?: boolean;
   show_appStore?: boolean;
   show_userDetail?: boolean;
-  show_loginTip?: boolean;
+  show_contact?: boolean;
   show_git?: boolean;
+  show_doc?: boolean;
   systemTitle?: string;
   authorText?: string;
   beianText?: string;
