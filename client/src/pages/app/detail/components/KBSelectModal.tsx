@@ -214,7 +214,7 @@ export const KbParamsModal = ({
                 rows={5}
                 maxLength={500}
                 placeholder={
-                  '若填写该内容，没有搜索到对应内容时，将直接回复填写的内容。\n为了连贯上下文，FastGpt 会取部分上一个聊天的搜索记录作为补充，因此在连续对话时，该功能可能会失效。'
+                  '若填写该内容，没有搜索到对应内容时，将直接回复填写的内容。\n为了连贯上下文，FastGPT 会取部分上一个聊天的搜索记录作为补充，因此在连续对话时，该功能可能会失效。'
                 }
                 {...register('searchEmptyText')}
               ></Textarea>
