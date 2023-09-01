@@ -83,7 +83,7 @@
   },
   "dataset": {
     "Confirm to delete the data": "确认删除该数据？",
-    "Queue Desc": "该数据是指整个系统当前待训练的数量。FastGPT 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
+    "Queue Desc": "该数据是指整个系统当前待训练的数量。{{title}} 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
     "System Data Queue": "排队长度"
   },
   "file": {
