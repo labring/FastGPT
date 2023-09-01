@@ -1,6 +1,8 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PgTrainingTableName } from '@/constants/plugin';
+import { exit } from 'process';
+import { addLog } from './utils/tools';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -184,3 +186,27 @@ export const insertKbItem = ({
     ])
   });
 };
+
+export async function initPg() {
+  try {
+    await connectPg();
+    await PgClient.query(`
+      CREATE EXTENSION IF NOT EXISTS vector;
+      CREATE TABLE IF NOT EXISTS ${PgTrainingTableName} (
+          id BIGSERIAL PRIMARY KEY,
+          vector VECTOR(1536) NOT NULL,
+          user_id VARCHAR(50) NOT NULL,
+          kb_id VARCHAR(50) NOT NULL,
+          source VARCHAR(100),
+          q TEXT NOT NULL,
+          a TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgTrainingTableName} USING HASH (user_id);
+      CREATE INDEX IF NOT EXISTS modelData_kbId_index ON ${PgTrainingTableName} USING HASH (kb_id);
+      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON ${PgTrainingTableName} (md5(q), md5(a), user_id, kb_id);
+    `);
+    console.log('init pg successful');
+  } catch (error) {
+    addLog.error('init pg error', error);
+  }
+}

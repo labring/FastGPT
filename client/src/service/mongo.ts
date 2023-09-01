@@ -4,9 +4,8 @@ import { startQueue } from './utils/tools';
 import { getInitConfig } from '@/pages/api/system/getInitData';
 import { User } from './models/user';
 import { PRICE_SCALE } from '@/constants/common';
-import { connectPg, PgClient } from './pg';
+import { initPg } from './pg';
 import { createHashPassword } from '@/utils/tools';
-import { PgTrainingTableName } from '@/constants/plugin';
 import { createLogger, format, transports } from 'winston';
 import 'winston-mongodb';
 
@@ -81,9 +80,9 @@ function initLogger() {
           format.printf((info) => {
             if (info.level === 'error') {
               console.log(info.meta);
-              return `${info.level}: ${[info.timestamp]}: ${info.message}`;
+              return `[${info.level.toLocaleUpperCase()}]: ${[info.timestamp]}: ${info.message}`;
             }
-            return `${info.level}: ${[info.timestamp]}: ${info.message}${
+            return `[${info.level.toLocaleUpperCase()}]: ${[info.timestamp]}: ${info.message}${
               info.meta ? `: ${JSON.stringify(info.meta)}` : ''
             }`;
           })
@@ -121,29 +120,6 @@ async function initRootUser() {
     });
   } catch (error) {
     console.log('init root user error', error);
-  }
-}
-async function initPg() {
-  try {
-    await connectPg();
-    await PgClient.query(`
-      CREATE EXTENSION IF NOT EXISTS vector;
-      CREATE TABLE IF NOT EXISTS ${PgTrainingTableName} (
-          id BIGSERIAL PRIMARY KEY,
-          vector VECTOR(1536) NOT NULL,
-          user_id VARCHAR(50) NOT NULL,
-          kb_id VARCHAR(50) NOT NULL,
-          source VARCHAR(100),
-          q TEXT NOT NULL,
-          a TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgTrainingTableName} USING HASH (user_id);
-      CREATE INDEX IF NOT EXISTS modelData_kbId_index ON ${PgTrainingTableName} USING HASH (kb_id);
-      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON ${PgTrainingTableName} (md5(q), md5(a), user_id, kb_id);
-    `);
-    console.log('init pg successful');
-  } catch (error) {
-    console.log('init pg error', error);
   }
 }
 

@@ -53,23 +53,7 @@ export const jsonRes = <T = any>(
       msg = openaiError[error.response.statusText];
     }
 
-    addLog.error(msg, {
-      message: msg,
-      stack: error?.stack,
-      ...(error?.config && {
-        config: {
-          headers: error.config.headers,
-          url: error.config.url,
-          data: error.config.data
-        }
-      }),
-      ...(error?.response && {
-        response: {
-          status: error.response.status,
-          statusText: error.response.statusText
-        }
-      })
-    });
+    addLog.error(`response error: ${msg}`, error);
   }
 
   res.status(code).json({
@@ -110,23 +94,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     msg = openaiError[error.response.statusText];
   }
 
-  addLog.error(`sse error: ${msg}`, {
-    message: msg,
-    stack: error?.stack,
-    ...(error?.config && {
-      config: {
-        headers: error.config.headers,
-        url: error.config.url,
-        data: error.config.data
-      }
-    }),
-    ...(error?.response && {
-      response: {
-        status: error.response.status,
-        statusText: error.response.statusText
-      }
-    })
-  });
+  addLog.error(`sse error: ${msg}`, error);
 
   sseResponse({
     res,
