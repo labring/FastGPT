@@ -27,7 +27,7 @@ async function embedChatbot() {
 
   const iframe = document.createElement('iframe');
   iframe.allow = 'fullscreen;microphone';
-  iframe.title = 'FastGpt Chat Window';
+  iframe.title = 'FastGPT Chat Window';
   iframe.id = chatWindowId;
   iframe.src = botSrc;
 

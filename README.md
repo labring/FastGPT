@@ -91,10 +91,10 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## 👀 其他
 
-- [FastGpt 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
+- [FastGPT 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
 - [docker 部署教程视频](https://www.bilibili.com/video/BV1jo4y147fT/)
 - [公众号接入视频教程](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGpt 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
+- [FastGPT 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
 
 ## 💪 相关项目
 
