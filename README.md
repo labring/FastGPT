@@ -76,10 +76,10 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
   由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
 
-* [快开始本地开发](https://doc.fastgpt.run/docs/development)
+* [快开始本地开发](https://doc.fastgpt.run/docs/development/intro/)
 * [部署 FastGPT](https://doc.fastgpt.run/docs/installation)
-* [系统配置文件说明](https://doc.fastgpt.run/docs/installation/reference)
-* [多模型配置](https://doc.fastgpt.run/docs/installation/reference/models)
+* [系统配置文件说明](https://doc.fastgpt.run/docs/development/configuration/)
+* [多模型配置](https://doc.fastgpt.run/docs/installation/one-api/)
 * [版本升级](https://doc.fastgpt.run/docs/installation/upgrading)
 * [API 文档](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh?pre_pathname=%2Fdrive%2Fhome%2F)
 
