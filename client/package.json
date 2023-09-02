@@ -25,6 +25,7 @@
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.7",
     "echarts": "^5.4.1",
+    "echarts-gl": "^2.0.9",
     "formidable": "^2.1.1",
     "framer-motion": "^9.0.6",
     "hyperdown": "^2.4.29",
