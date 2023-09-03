@@ -4,6 +4,7 @@ import type { Pool } from 'pg';
 import type { Tiktoken } from '@dqbd/tiktoken';
 import type { Logger } from 'winston';
 import { ChatModelItemType, QAModelItemType, VectorModelItemType } from './model';
+import { TrackEventName } from '@/constants/common';
 
 export type PagingData<T> = {
   pageNum: number;
@@ -60,5 +61,8 @@ declare global {
     particlesJS: any;
     grecaptcha: any;
     QRCode: any;
+    umami?: {
+      track: (event: `${TrackEventName}`, data: any) => void;
+    };
   }
 }

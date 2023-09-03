@@ -252,7 +252,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       </Head>
       {/* pc show myself apps */}
       {isPc && (
-        <Box p={5} borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
+        <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
           <SliderApps appId={appId} />
         </Box>
       )}

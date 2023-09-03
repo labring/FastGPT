@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat, ChatItem } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
+import { ChatSourceEnum } from '@/constants/chat';
 
 type Props = {
   chatId?: string;
@@ -29,14 +30,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ]);
     }
     if (appId) {
+      const chats = await Chat.find({
+        appId,
+        userId,
+        source: ChatSourceEnum.online
+      }).select('_id');
+      const chatIds = chats.map((chat) => chat._id);
+
       await Promise.all([
         Chat.deleteMany({
-          appId,
-          userId
+          _id: { $in: chatIds }
         }),
         ChatItem.deleteMany({
-          userId,
-          appId
+          chatId: { $in: chatIds }
         })
       ]);
     }

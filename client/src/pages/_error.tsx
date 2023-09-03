@@ -1,10 +1,19 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { serviceSideProps } from '@/utils/i18n';
 function Error() {
   const router = useRouter();
   useEffect(() => {
     setTimeout(() => {
-      router.replace('/app/list');
+      window.umami?.track('pageError', {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        appName: navigator.appName
+      });
+    }, 1000);
+
+    setTimeout(() => {
+      router.back();
     }, 2000);
   }, []);
 
@@ -14,6 +23,14 @@ function Error() {
       safari 浏览器导致，可以尝试更换 chrome 浏览器。
     </p>
   );
+}
+
+export async function getServerSideProps(context: any) {
+  console.log(context);
+
+  return {
+    props: { ...(await serviceSideProps(context)) }
+  };
 }
 
 export default Error;
