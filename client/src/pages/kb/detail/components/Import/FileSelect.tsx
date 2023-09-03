@@ -109,7 +109,7 @@ const FileSelect = ({
               }
               return '';
             })(),
-            uploadFiles(files, (percent) => {
+            uploadFiles([file], (percent) => {
               if (percent < 100) {
                 setSelectingText(
                   t('file.Uploading', { name: file.name.slice(0, 20), percent }) || ''
