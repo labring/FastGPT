@@ -12,6 +12,7 @@ import { clientInitData, feConfigs } from '@/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
 import { getLangStore, setLangStore } from '@/utils/i18n';
 import { useRouter } from 'next/router';
+import { useGlobalStore } from '@/store/global';
 
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
@@ -37,6 +38,7 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
+  const { setLastRoute } = useGlobalStore();
 
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
   const [googleClientVerKey, setGoogleVerKey] = useState<string>();
@@ -75,6 +77,10 @@ function App({ Component, pageProps }: AppProps) {
     const lang = getLangStore() || 'zh';
     i18n?.changeLanguage?.(lang);
     setLangStore(lang);
+
+    return () => {
+      setLastRoute(router.asPath);
+    };
   }, [router.asPath]);
 
   return (

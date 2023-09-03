@@ -1,14 +1,22 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/utils/i18n';
+import { useGlobalStore } from '@/store/global';
+import { addLog } from '@/service/utils/tools';
+import { getErrText } from '@/utils/tools';
+
 function Error() {
   const router = useRouter();
+  const { lastRoute } = useGlobalStore();
+
   useEffect(() => {
     setTimeout(() => {
       window.umami?.track('pageError', {
         userAgent: navigator.userAgent,
         platform: navigator.platform,
-        appName: navigator.appName
+        appName: navigator.appName,
+        lastRoute,
+        route: router.asPath
       });
     }, 1000);
 
@@ -26,7 +34,9 @@ function Error() {
 }
 
 export async function getServerSideProps(context: any) {
-  console.log(context);
+  console.log('[render error]: ', context);
+
+  addLog.error(getErrText(context?.res));
 
   return {
     props: { ...(await serviceSideProps(context)) }
