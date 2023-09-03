@@ -207,8 +207,7 @@ const Test = ({ kbId }: { kbId: string }) => {
 
                       setEditData({
                         dataId: data.id,
-                        q: data.q,
-                        a: data.a
+                        ...data
                       });
                     } catch (err) {
                       toast({

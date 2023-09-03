@@ -6,15 +6,12 @@ import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import { QuoteItemType } from '@/types/chat';
 import MyIcon from '@/components/Icon';
-import InputDataModal from '@/pages/kb/detail/components/InputDataModal';
+import InputDataModal, { RawFileText } from '@/pages/kb/detail/components/InputDataModal';
 import MyModal from '../MyModal';
+import { KbDataItemType } from '@/types/plugin';
 
-type SearchType = {
+type SearchType = KbDataItemType & {
   kb_id?: string;
-  id?: string;
-  q: string;
-  a?: string;
-  source?: string | undefined;
 };
 
 const QuoteModal = ({
@@ -29,12 +26,7 @@ const QuoteModal = ({
   const theme = useTheme();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
-  const [editDataItem, setEditDataItem] = useState<{
-    kbId: string;
-    dataId: string;
-    a: string;
-    q: string;
-  }>();
+  const [editDataItem, setEditDataItem] = useState<QuoteItemType>();
 
   /**
    * click edit, get new kbDataItem
@@ -44,19 +36,14 @@ const QuoteModal = ({
       if (!item.id) return;
       try {
         setIsLoading(true);
-        const data = (await getKbDataItemById(item.id)) as QuoteItemType;
+        const data = await getKbDataItemById(item.id);
 
         if (!data) {
           onUpdateQuote(item.id, '已删除');
           throw new Error('该数据已被删除');
         }
 
-        setEditDataItem({
-          kbId: data.kb_id,
-          dataId: data.id,
-          q: data.q,
-          a: data.a
-        });
+        setEditDataItem(data);
       } catch (err) {
         toast({
           status: 'warning',
@@ -85,7 +72,13 @@ const QuoteModal = ({
           </>
         }
       >
-        <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
+        <ModalBody
+          pt={0}
+          whiteSpace={'pre-wrap'}
+          textAlign={'justify'}
+          wordBreak={'break-all'}
+          fontSize={'sm'}
+        >
           {rawSearch.map((item, i) => (
             <Box
               key={i}
@@ -98,7 +91,7 @@ const QuoteModal = ({
               _hover={{ '& .edit': { display: 'flex' } }}
               overflow={'hidden'}
             >
-              {item.source && <Box color={'myGray.600'}>({item.source})</Box>}
+              {item.source && <RawFileText filename={item.source} fileId={item.file_id} />}
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
               {item.id && (
@@ -136,10 +129,13 @@ const QuoteModal = ({
       {editDataItem && (
         <InputDataModal
           onClose={() => setEditDataItem(undefined)}
-          onSuccess={() => onUpdateQuote(editDataItem.dataId, '手动修改')}
-          onDelete={() => onUpdateQuote(editDataItem.dataId, '已删除')}
-          kbId={editDataItem.kbId}
-          defaultValues={editDataItem}
+          onSuccess={() => onUpdateQuote(editDataItem.id, '手动修改')}
+          onDelete={() => onUpdateQuote(editDataItem.id, '已删除')}
+          kbId={editDataItem.kb_id}
+          defaultValues={{
+            ...editDataItem,
+            dataId: editDataItem.id
+          }}
         />
       )}
     </>

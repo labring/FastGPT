@@ -15,7 +15,8 @@ export const fileImgs = [
 
 export enum TrackEventName {
   windowError = 'windowError',
-  pageError = 'pageError'
+  pageError = 'pageError',
+  wordReadError = 'wordReadError'
 }
 
 export const htmlTemplate = `<!DOCTYPE html>

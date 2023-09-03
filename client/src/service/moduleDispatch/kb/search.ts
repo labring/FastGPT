@@ -42,7 +42,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   const res: any = await PgClient.query(
     `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
-    select kb_id,id,q,a,source from ${PgTrainingTableName} where kb_id IN (${kbList
+    select kb_id,id,q,a,source,file_id from ${PgTrainingTableName} where kb_id IN (${kbList
       .map((item) => `'${item.kbId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]

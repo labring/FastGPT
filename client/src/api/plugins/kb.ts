@@ -1,5 +1,5 @@
 import { GET, POST, PUT, DELETE } from '../request';
-import type { KbItemType, KbListItemType } from '@/types/plugin';
+import type { DatasetItemType, KbItemType, KbListItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
 import { TrainingModeEnum } from '@/constants/plugin';
 import {
@@ -13,6 +13,7 @@ import {
 import { Response as KbDataItemType } from '@/pages/api/plugins/kb/data/getDataById';
 import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
 import type { KbUpdateParams, CreateKbParams } from '../request/kb';
+import { QuoteItemType } from '@/types/chat';
 
 /* knowledge base */
 export const getKbList = () => GET<KbListItemType[]>(`/plugins/kb/list`);
@@ -58,7 +59,7 @@ export const getTrainingData = (data: { kbId: string; init: boolean }) =>
 export const getTrainingQueueLen = () => GET<number>(`/plugins/kb/data/getQueueLen`);
 
 export const getKbDataItemById = (dataId: string) =>
-  GET<KbDataItemType>(`/plugins/kb/data/getDataById`, { dataId });
+  GET<QuoteItemType>(`/plugins/kb/data/getDataById`, { dataId });
 
 /**
  * 直接push数据
@@ -69,10 +70,8 @@ export const postKbDataFromList = (data: PushDataProps) =>
 /**
  * insert one data to dataset
  */
-export const insertData2Kb = (data: {
-  kbId: string;
-  data: { a: string; q: string; source?: string };
-}) => POST<string>(`/plugins/kb/data/insertData`, data);
+export const insertData2Kb = (data: { kbId: string; data: DatasetItemType }) =>
+  POST<string>(`/plugins/kb/data/insertData`, data);
 
 /**
  * 更新一条数据

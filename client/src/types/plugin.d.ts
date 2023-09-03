@@ -20,12 +20,15 @@ export interface KbItemType {
   tags: string;
 }
 
-export interface KbDataItemType {
-  id: string;
+export type DatasetItemType = {
   q: string; // 提问词
   a: string; // 原文
-  source: string;
-}
+  source?: string;
+  file_id?: string;
+};
+export type KbDataItemType = DatasetItemType & {
+  id: string;
+};
 
 export type KbTestItemType = {
   id: string;

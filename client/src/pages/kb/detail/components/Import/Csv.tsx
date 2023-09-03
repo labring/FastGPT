@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Flex, Button, useTheme, Image } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
 import { postKbDataFromList } from '@/api/plugins/kb';
 import { getErrText } from '@/utils/tools';
-import { vectorModelList } from '@/store/static';
 import MyIcon from '@/components/Icon';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import { TrainingModeEnum } from '@/constants/plugin';
