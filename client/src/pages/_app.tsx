@@ -42,6 +42,7 @@ function App({ Component, pageProps }: AppProps) {
   const [googleClientVerKey, setGoogleVerKey] = useState<string>();
 
   useEffect(() => {
+    // get init data
     (async () => {
       const {
         feConfigs: { scripts, googleClientVerKey }
@@ -49,6 +50,21 @@ function App({ Component, pageProps }: AppProps) {
       setScripts(scripts || []);
       setGoogleVerKey(googleClientVerKey);
     })();
+    // add window error track
+    window.onerror = function (msg, url) {
+      window.umami?.track('windowError', {
+        device: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          appName: navigator.appName
+        },
+        msg,
+        url
+      });
+    };
+    return () => {
+      window.onerror = null;
+    };
   }, []);
 
   useEffect(() => {

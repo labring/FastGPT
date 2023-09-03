@@ -13,6 +13,11 @@ export const fileImgs = [
   { suffix: 'md', src: '/imgs/files/markdown.svg' }
 ];
 
+export enum TrackEventName {
+  windowError = 'windowError',
+  pageError = 'pageError'
+}
+
 export const htmlTemplate = `<!DOCTYPE html>
 <html lang="en">
   <head>
