@@ -43,7 +43,15 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 打开外网访问开关后，Sealos 会自动分配一个可访问的地址，不需要自己配置。
 
 ![step3](/imgs/oneapi-step3.png)
-填写完参数后，点击右上角部署即可。
+填写完参数后，点击右上角部署即可。环境变量：
+
+```
+SESSION_SECRET=SESSION_SECRET
+CHANNEL_TEST_FREQUENCY=30
+POLLING_INTERVAL=60
+BATCH_UPDATE_ENABLED=true
+BATCH_UPDATE_INTERVAL=60
+```
 
 ## 使用步骤
 
