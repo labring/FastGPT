@@ -31,6 +31,7 @@
     "i18next": "^22.5.1",
     "immer": "^9.0.19",
     "js-cookie": "^3.0.5",
+    "jschardet": "^3.0.0",
     "jsdom": "^22.1.0",
     "jsonwebtoken": "^9.0.0",
     "lodash": "^4.17.21",

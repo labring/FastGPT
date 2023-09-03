@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { Box, Flex, Button, Textarea, IconButton } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, IconButton, BoxProps } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { insertData2Kb, putKbDataById, delOneKbDataByDataId } from '@/api/plugins/kb';
+import { getFileViewUrl } from '@/api/system';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
@@ -10,8 +11,10 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
+import { DatasetItemType } from '@/types/plugin';
+import { useTranslation } from 'react-i18next';
 
-export type FormData = { dataId?: string; a: string; q: string; source?: string };
+export type FormData = { dataId?: string } & DatasetItemType;
 
 const InputDataModal = ({
   onClose,
@@ -29,12 +32,13 @@ const InputDataModal = ({
   kbId: string;
   defaultValues?: FormData;
 }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const { kbDetail, getKbDetail } = useUserStore();
 
-  const { register, handleSubmit, reset } = useForm<FormData>({
+  const { getValues, register, handleSubmit, reset } = useForm<FormData>({
     defaultValues
   });
 
@@ -183,7 +187,16 @@ const InputDataModal = ({
           </Box>
         </Box>
 
-        <Flex px={6} pt={2} pb={4} alignItems={'center'}>
+        <Flex px={6} pt={['34px', 2]} pb={4} alignItems={'center'} position={'relative'}>
+          <RawFileText
+            fileId={getValues('file_id')}
+            filename={getValues('source')}
+            position={'absolute'}
+            left={'50%'}
+            top={['16px', '50%']}
+            transform={'translate(-50%,-50%)'}
+          />
+
           <Box flex={1}>
             {defaultValues.dataId && onDelete && (
               <IconButton
@@ -217,15 +230,17 @@ const InputDataModal = ({
               />
             )}
           </Box>
-          <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
-            取消
-          </Button>
-          <Button
-            isLoading={loading}
-            onClick={handleSubmit(defaultValues.dataId ? updateData : sureImportData)}
-          >
-            {defaultValues.dataId ? '确认变更' : '确认导入'}
-          </Button>
+          <Box>
+            <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
+              取消
+            </Button>
+            <Button
+              isLoading={loading}
+              onClick={handleSubmit(defaultValues.dataId ? updateData : sureImportData)}
+            >
+              {defaultValues.dataId ? '确认变更' : '确认导入'}
+            </Button>
+          </Box>
         </Flex>
       </Flex>
     </MyModal>
@@ -233,3 +248,44 @@ const InputDataModal = ({
 };
 
 export default InputDataModal;
+
+interface RawFileTextProps extends BoxProps {
+  filename?: string;
+  fileId?: string;
+}
+export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProps) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  return (
+    <MyTooltip label={fileId ? t('file.Click to view file') || '' : ''} shouldWrapChildren={false}>
+      <Box
+        color={'myGray.600'}
+        display={'inline-block'}
+        {...(!!fileId
+          ? {
+              cursor: 'pointer',
+              textDecoration: ['underline', 'none'],
+              _hover: {
+                textDecoration: 'underline'
+              },
+              onClick: async () => {
+                try {
+                  const url = await getFileViewUrl(fileId);
+                  const asPath = `${location.origin}${url}`;
+                  window.open(asPath, '_blank');
+                } catch (error) {
+                  toast({
+                    title: getErrText(error, '获取文件地址失败'),
+                    status: 'error'
+                  });
+                }
+              }
+            }
+          : {})}
+        {...props}
+      >
+        {filename}
+      </Box>
+    </MyTooltip>
+  );
+}

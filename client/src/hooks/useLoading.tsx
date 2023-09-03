@@ -5,8 +5,16 @@ export const useLoading = (props?: { defaultLoading: boolean }) => {
   const [isLoading, setIsLoading] = useState(props?.defaultLoading || false);
 
   const Loading = useCallback(
-    ({ loading, fixed = true }: { loading?: boolean; fixed?: boolean }): JSX.Element | null => {
-      return isLoading || loading ? <LoadingComponent fixed={fixed} /> : null;
+    ({
+      loading,
+      fixed = true,
+      text = ''
+    }: {
+      loading?: boolean;
+      fixed?: boolean;
+      text?: string;
+    }): JSX.Element | null => {
+      return isLoading || loading ? <LoadingComponent fixed={fixed} text={text} /> : null;
     },
     [isLoading]
   );

@@ -2,7 +2,13 @@ import MyIcon from '@/components/Icon';
 import { useLoading } from '@/hooks/useLoading';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
-import { fileDownload, readCsvContent, simpleText, splitText2Chunks } from '@/utils/file';
+import {
+  fileDownload,
+  readCsvContent,
+  simpleText,
+  splitText2Chunks,
+  uploadFiles
+} from '@/utils/file';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import { fileImgs } from '@/constants/common';
 import { DragEvent, useCallback, useState } from 'react';
@@ -11,7 +17,8 @@ import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
-import { FetchResultItem } from '@/types/plugin';
+import { FetchResultItem, DatasetItemType } from '@/types/plugin';
+import { getErrText } from '@/utils/tools';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -22,7 +29,7 @@ const csvTemplate = `question,answer,source\n"什么是 laf","laf 是一个云�
 export type FileItemType = {
   id: string;
   filename: string;
-  chunks: { q: string; a: string; source?: string }[];
+  chunks: DatasetItemType[];
   text: string;
   icon: string;
   tokens: number;
@@ -58,7 +65,7 @@ const FileSelect = ({
   });
 
   const [isDragging, setIsDragging] = useState(false);
-  const [selecting, setSelecting] = useState(false);
+  const [selectingText, setSelectingText] = useState<string>();
 
   const {
     isOpen: isOpenUrlFetch,
@@ -73,7 +80,6 @@ const FileSelect = ({
 
   const onSelectFile = useCallback(
     async (files: File[]) => {
-      setSelecting(true);
       try {
         // Parse file by file
         const chunkFiles: FileItemType[] = [];
@@ -88,19 +94,31 @@ const FileSelect = ({
             continue;
           }
 
-          let text = await (async () => {
-            switch (extension) {
-              case 'txt':
-              case 'md':
-                return readTxtContent(file);
-              case 'pdf':
-                return readPdfContent(file);
-              case 'doc':
-              case 'docx':
-                return readDocContent(file);
-            }
-            return '';
-          })();
+          // parse and upload files
+          let [text, filesId] = await Promise.all([
+            (async () => {
+              switch (extension) {
+                case 'txt':
+                case 'md':
+                  return readTxtContent(file);
+                case 'pdf':
+                  return readPdfContent(file);
+                case 'doc':
+                case 'docx':
+                  return readDocContent(file);
+              }
+              return '';
+            })(),
+            uploadFiles(files, (percent) => {
+              if (percent < 100) {
+                setSelectingText(
+                  t('file.Uploading', { name: file.name.slice(0, 20), percent }) || ''
+                );
+              } else {
+                setSelectingText(t('file.Parse', { name: file.name.slice(0, 20) }) || '');
+              }
+            })
+          ]);
 
           if (text) {
             text = simpleText(text);
@@ -117,7 +135,8 @@ const FileSelect = ({
               chunks: splitRes.chunks.map((chunk) => ({
                 q: chunk,
                 a: '',
-                source: file.name
+                source: file.name,
+                file_id: filesId[0]
               }))
             };
             chunkFiles.unshift(fileItem);
@@ -139,7 +158,8 @@ const FileSelect = ({
               chunks: data.map((item) => ({
                 q: item[0],
                 a: item[1],
-                source: item[2] || file.name
+                source: item[2] || file.name,
+                file_id: filesId[0]
               }))
             };
 
@@ -150,13 +170,13 @@ const FileSelect = ({
       } catch (error: any) {
         console.log(error);
         toast({
-          title: typeof error === 'string' ? error : '解析文件失败',
+          title: getErrText(error, '解析文件失败'),
           status: 'error'
         });
       }
-      setSelecting(false);
+      setSelectingText(undefined);
     },
-    [chunkLen, onPushFiles, toast]
+    [chunkLen, onPushFiles, t, toast]
   );
   const onUrlFetch = useCallback(
     (e: FetchResultItem[]) => {
@@ -353,7 +373,9 @@ const FileSelect = ({
           {t('file.Click to download CSV template')}
         </Box>
       )}
-      <FileSelectLoading loading={selecting} fixed={false} />
+      {selectingText !== undefined && (
+        <FileSelectLoading loading text={selectingText} fixed={false} />
+      )}
       <File onSelect={onSelectFile} />
       {isOpenUrlFetch && <UrlFetchModal onClose={onCloseUrlFetch} onSuccess={onUrlFetch} />}
       {isOpenCreateFile && <CreateFileModal onClose={onCloseCreateFile} onSuccess={onCreateFile} />}

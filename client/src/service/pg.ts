@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PgTrainingTableName } from '@/constants/plugin';
-import { exit } from 'process';
 import { addLog } from './utils/tools';
+import { DatasetItemType } from '@/types/plugin';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -45,7 +45,7 @@ type DeleteProps = {
   where: WhereProps;
 };
 
-type ValuesProps = { key: string; value: string | number }[];
+type ValuesProps = { key: string; value?: string | number }[];
 type UpdateProps = {
   values: ValuesProps;
   where: WhereProps;
@@ -168,18 +168,16 @@ export const insertKbItem = ({
 }: {
   userId: string;
   kbId: string;
-  data: {
+  data: (DatasetItemType & {
     vector: number[];
-    q: string;
-    a: string;
-    source?: string;
-  }[];
+  })[];
 }) => {
   return PgClient.insert(PgTrainingTableName, {
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
       { key: 'source', value: item.source?.slice(0, 30)?.trim() || '' },
+      { key: 'file_id', value: item.file_id },
       { key: 'q', value: item.q.replace(/'/g, '"') },
       { key: 'a', value: item.a.replace(/'/g, '"') },
       { key: 'vector', value: `[${item.vector}]` }
@@ -196,10 +194,11 @@ export async function initPg() {
           id BIGSERIAL PRIMARY KEY,
           vector VECTOR(1536) NOT NULL,
           user_id VARCHAR(50) NOT NULL,
-          kb_id VARCHAR(50) NOT NULL,
+          kb_id VARCHAR(50),
           source VARCHAR(100),
+          file_id VARCHAR(100),
           q TEXT NOT NULL,
-          a TEXT NOT NULL
+          a TEXT
       );
       CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgTrainingTableName} USING HASH (user_id);
       CREATE INDEX IF NOT EXISTS modelData_kbId_index ON ${PgTrainingTableName} USING HASH (kb_id);

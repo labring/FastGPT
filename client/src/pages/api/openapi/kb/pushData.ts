@@ -9,12 +9,11 @@ import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
 import { modelToolMap } from '@/utils/plugin';
 import { getVectorModel } from '@/service/utils/data';
-
-export type DateItemType = { a: string; q: string; source?: string };
+import { DatasetItemType } from '@/types/plugin';
 
 export type Props = {
   kbId: string;
-  data: DateItemType[];
+  data: DatasetItemType[];
   mode: `${TrainingModeEnum}`;
   prompt?: string;
 };
@@ -95,7 +94,7 @@ export async function pushDataToKb({
 
   // 过滤重复的 qa 内容
   const set = new Set();
-  const filterData: DateItemType[] = [];
+  const filterData: DatasetItemType[] = [];
 
   data.forEach((item) => {
     if (!item.q) return;
@@ -120,13 +119,10 @@ export async function pushDataToKb({
   // 数据库去重
   const insertData = (
     await Promise.allSettled(
-      filterData.map(async ({ q, a = '', source }) => {
+      filterData.map(async (data) => {
+        let { q, a } = data;
         if (mode !== TrainingModeEnum.index) {
-          return Promise.resolve({
-            q,
-            a,
-            source
-          });
+          return Promise.resolve(data);
         }
 
         if (!q) {
@@ -152,23 +148,17 @@ export async function pushDataToKb({
           console.log(error);
           error;
         }
-        return Promise.resolve({
-          q,
-          a,
-          source
-        });
+        return Promise.resolve(data);
       })
     )
   )
     .filter((item) => item.status === 'fulfilled')
-    .map<DateItemType>((item: any) => item.value);
+    .map<DatasetItemType>((item: any) => item.value);
 
   // 插入记录
   const insertRes = await TrainingData.insertMany(
     insertData.map((item) => ({
-      q: item.q,
-      a: item.a,
-      source: item.source,
+      ...item,
       userId,
       kbId,
       mode,

@@ -38,6 +38,7 @@ export async function generateVector(): Promise<any> {
       q: 1,
       a: 1,
       source: 1,
+      file_id: 1,
       vectorModel: 1
     });
 
@@ -74,6 +75,7 @@ export async function generateVector(): Promise<any> {
         q: dataItems[i].q,
         a: dataItems[i].a,
         source: data.source,
+        file_id: data.file_id,
         vector
       }))
     });

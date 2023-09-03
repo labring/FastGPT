@@ -28,9 +28,10 @@ class UploadModel {
     limits: {
       fieldSize: maxSize
     },
+    preservePath: true,
     storage: multer.diskStorage({
       filename: (_req, file, cb) => {
-        const { ext } = path.parse(file.originalname);
+        const { ext } = path.parse(decodeURIComponent(file.originalname));
         cb(null, nanoid() + ext);
       }
     })
@@ -44,8 +45,13 @@ class UploadModel {
           return reject(error);
         }
 
-        // @ts-ignore
-        resolve({ files: req.files });
+        resolve({
+          // @ts-ignore
+          files: req.files?.map((file) => ({
+            ...file,
+            originalname: decodeURIComponent(file.originalname)
+          }))
+        });
       });
     });
   }
@@ -56,9 +62,9 @@ const upload = new UploadModel();
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { userId } = await authUser({ req });
+    const { userId } = await authUser({ req, authToken: true });
 
-    const { files } = await upload.doUpload(req, res);
+    const { files = [] } = await upload.doUpload(req, res);
 
     const gridFs = new GridFSStorage('dataset', userId);
 

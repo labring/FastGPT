@@ -71,6 +71,9 @@ dependencies:
   js-cookie:
     specifier: ^3.0.5
     version: registry.npmmirror.com/js-cookie@3.0.5
+  jschardet:
+    specifier: ^3.0.0
+    version: registry.npmmirror.com/jschardet@3.0.0
   jsdom:
     specifier: ^22.1.0
     version: registry.npmmirror.com/jsdom@22.1.0
@@ -8917,6 +8920,13 @@ packages:
     dependencies:
       argparse: registry.npmmirror.com/argparse@2.0.1
     dev: true
+
+  registry.npmmirror.com/jschardet@3.0.0:
+    resolution: {integrity: sha512-lJH6tJ77V8Nzd5QWRkFYCLc13a3vADkh3r/Fi8HupZGWk2OVVDfnZP8V/VgQgZ+lzW0kG2UGb5hFgt3V3ndotQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/jschardet/-/jschardet-3.0.0.tgz}
+    name: jschardet
+    version: 3.0.0
+    engines: {node: '>=0.1.90'}
+    dev: false
 
   registry.npmmirror.com/jsdom@22.1.0:
     resolution: {integrity: sha512-/9AVW7xNbsBv6GfWho4TTNjEo9fe6Zhf9O7s0Fhhr3u+awPwAJMKwAMXnkk5vBxflqLW9hTHX/0cs+P3gW+cQw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/jsdom/-/jsdom-22.1.0.tgz}
