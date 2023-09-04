@@ -79,7 +79,7 @@ export class GridFSStorage {
       return Promise.reject(`file not found`);
     }
 
-    if (String(file.metadata?.userId) !== this.uid) {
+    if (file.metadata?.userId !== this.uid) {
       return Promise.reject(ERROR_ENUM.unAuthFile);
     }
 
@@ -98,6 +98,16 @@ export class GridFSStorage {
 
     await bucket.delete(new Types.ObjectId(id));
     return true;
+  }
+
+  async deleteFilesByKbId(kbId: string) {
+    if (!kbId) return;
+    const bucket = this.GridFSBucket();
+    const files = await bucket
+      .find({ ['metadata.kbId']: kbId, ['metadata.userId']: this.uid }, { projection: { _id: 1 } })
+      .toArray();
+
+    return Promise.all(files.map((file) => this.delete(String(file._id))));
   }
 
   async download(id: string) {

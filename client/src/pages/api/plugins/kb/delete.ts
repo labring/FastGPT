@@ -5,6 +5,7 @@ import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { Types } from 'mongoose';
 import { PgTrainingTableName } from '@/constants/plugin';
+import { GridFSStorage } from '@/service/lib/gridfs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,24 +22,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    // delete all pg data
-    await PgClient.delete(PgTrainingTableName, {
-      where: [['user_id', userId], 'AND', ['kb_id', id]]
-    });
-
     // delete training data
     await TrainingData.deleteMany({
       userId,
       kbId: id
     });
 
-    // delete related app
-    await App.updateMany(
-      {
-        userId
-      },
-      { $pull: { 'chat.relatedKbs': new Types.ObjectId(id) } }
-    );
+    // delete all pg data
+    await PgClient.delete(PgTrainingTableName, {
+      where: [['user_id', userId], 'AND', ['kb_id', id]]
+    });
+
+    // delete related files
+    const gridFs = new GridFSStorage('dataset', userId);
+    await gridFs.deleteFilesByKbId(id);
 
     // delete kb data
     await KB.findOneAndDelete({

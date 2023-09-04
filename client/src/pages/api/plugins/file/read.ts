@@ -26,8 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const encoding = jschardet.detect(buffer)?.encoding;
 
-    res.setHeader('encoding', encoding);
-    res.setHeader('Content-Type', file.contentType);
+    res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.filename)}"`);
 

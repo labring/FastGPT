@@ -19,6 +19,7 @@ import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
 import { FetchResultItem, DatasetItemType } from '@/types/plugin';
 import { getErrText } from '@/utils/tools';
+import { useUserStore } from '@/store/user';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -54,6 +55,7 @@ const FileSelect = ({
   showCreateFile = true,
   ...props
 }: Props) => {
+  const { kbDetail } = useUserStore();
   const { Loading: FileSelectLoading } = useLoading();
   const { t } = useTranslation();
 
@@ -109,7 +111,7 @@ const FileSelect = ({
               }
               return '';
             })(),
-            uploadFiles([file], (percent) => {
+            uploadFiles([file], { kbId: kbDetail._id }, (percent) => {
               if (percent < 100) {
                 setSelectingText(
                   t('file.Uploading', { name: file.name.slice(0, 20), percent }) || ''
