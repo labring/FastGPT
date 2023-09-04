@@ -16,6 +16,12 @@ FastGPT 默认使用了 openai 的 embedding 向量模型，如果你想私有�
 镜像名: `stawky/m3e-large-api:latest`  
 国内镜像： `registry.cn-guangzhou.aliyuncs.com/kbgpt/m3e-large-api:latest`
 端口号: 6008
+环境变量：
+
+```
+# 设置安全凭证
+sk-key=xxxx
+```
 
 ## 接入 OneAPI
 
@@ -29,7 +35,7 @@ curl 例子：
 
 ```bash
 curl --location --request POST 'https://domain/v1/embeddings' \
---header 'Authorization: Bearer sk-key' \
+--header 'Authorization: Bearer xxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "model": "m3e",

@@ -4,7 +4,7 @@ description: '将 FastGPT 外接搜索引擎'
 icon: 'search'
 draft: false
 toc: true
-weight: 441
+weight: 500
 ---
 
 ![](/imgs/google_search_1.png)
