@@ -119,12 +119,10 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
           : []),
         ...messages
       ],
-      // frequency_penalty: 0.5, // 越大，重复内容越少
-      // presence_penalty: -0.5, // 越大，越容易出现新内容
       stream
     },
     {
-      timeout: stream ? 120000 : 480000,
+      timeout: 480000,
       responseType: stream ? 'stream' : 'json',
       ...axiosConfig(userOpenaiAccount)
     }
