@@ -8,7 +8,7 @@ import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { SSEParseData, parseStreamChunk } from '@/utils/sse';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/events/pushBill';
@@ -98,7 +98,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   });
   // console.log(messages);
 
-  // FastGpt temperature range: 1~10
+  // FastGPT temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
   const chatAPI = getAIChatApi(userOpenaiAccount);
@@ -119,12 +119,10 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
           : []),
         ...messages
       ],
-      // frequency_penalty: 0.5, // 越大，重复内容越少
-      // presence_penalty: -0.5, // 越大，越容易出现新内容
       stream
     },
     {
-      timeout: stream ? 120000 : 480000,
+      timeout: 480000,
       responseType: stream ? 'stream' : 'json',
       ...axiosConfig(userOpenaiAccount)
     }

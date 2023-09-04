@@ -198,8 +198,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
             onClick={() =>
               setEditInputData({
                 dataId: item.id,
-                q: item.q,
-                a: item.a
+                ...item
               })
             }
           >

@@ -31,26 +31,24 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 1. 强大的可视化编排，轻松构建 AI 应用
    - [x] 提供简易模式，无需操作编排
-   - [x] 用户对话前引导
-   - [x] 全局变量
+   - [x] 用户对话前引导, 全局字符串变量
    - [x] 知识库搜索
    - [x] 多 LLM 模型对话
    - [x] 文本内容提取成结构化数据
    - [x] HTTP 扩展
-   - [ ] 沙盒 JS 运行模块
+   - [ ] 嵌入 Laf，实现在线编写 HTTP 模块
    - [ ] 连续对话引导
    - [ ] 对话多路线选择
-   - [ ] 源文件引用追踪
+   - [x] 源文件引用追踪
+   - [ ] 自定义文件阅读器
 2. 丰富的知识库预处理
    - [x] 多库复用，混用
    - [x] chunk 记录修改和删除
-   - [x] 支持直接分段导入
-   - [x] 支持 QA 拆分导入
-   - [x] 支持手动输入内容
-   - [x] 支持 url 读取导入
-   - [x] 支持 CSV 批量导入问答对
+   - [x] 支持 手动输入, 直接分段, QA 拆分导入
+   - [x] 支持 url 读取、 CSV 批量导入
    - [x] 支持知识库单独设置向量模型
-   - [ ] 源文件存储
+   - [x] 源文件存储
+   - [x] 文件学习 Agent
 3. 多种效果测试渠道
    - [x] 知识库单点搜索测试
    - [x] 对话时反馈引用并可修改与删除
@@ -91,10 +89,10 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## 👀 其他
 
-- [FastGpt 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
+- [FastGPT 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
 - [docker 部署教程视频](https://www.bilibili.com/video/BV1jo4y147fT/)
 - [公众号接入视频教程](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGpt 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
+- [FastGPT 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
 
 ## 💪 相关项目
 

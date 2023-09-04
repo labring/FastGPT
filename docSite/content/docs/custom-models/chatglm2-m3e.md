@@ -14,7 +14,7 @@ FastGPT 默认使用了 openai 的 LLM 模型和向量模型，如果想要私�
 ## 部署镜像
 
 镜像名: `stawky/chatglm2-m3e:latest`  
-国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt/chatglm2-m3e:latest`
+国内镜像名: `registry.cn-hangzhou.aliyuncs.com/kbgpt/chatglm2-m3e:latest`
 端口号: 6006
 镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
 

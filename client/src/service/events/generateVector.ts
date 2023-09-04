@@ -4,6 +4,7 @@ import { TrainingData } from '../models/trainingData';
 import { ERROR_ENUM } from '../errorCode';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { sendInform } from '@/pages/api/user/inform/send';
+import { addLog } from '../utils/tools';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -37,6 +38,7 @@ export async function generateVector(): Promise<any> {
       q: 1,
       a: 1,
       source: 1,
+      file_id: 1,
       vectorModel: 1
     });
 
@@ -73,6 +75,7 @@ export async function generateVector(): Promise<any> {
         q: dataItems[i].q,
         a: dataItems[i].a,
         source: data.source,
+        file_id: data.file_id,
         vector
       }))
     });
@@ -87,10 +90,15 @@ export async function generateVector(): Promise<any> {
     reduceQueue();
     // log
     if (err?.response) {
-      console.log('openai error: 生成向量错误');
-      console.log(err.response?.status, err.response?.statusText, err.response?.data);
+      addLog.info('openai error: 生成向量错误', {
+        status: err.response?.status,
+        stateusText: err.response?.statusText,
+        data: err.response?.data
+      });
     } else {
-      console.log('生成向量错误:', err);
+      addLog.info('openai error: 生成向量错误', {
+        err
+      });
     }
 
     // message error or openai account error
@@ -98,7 +106,9 @@ export async function generateVector(): Promise<any> {
       err?.message === 'invalid message format' ||
       err.response?.data?.error?.type === 'invalid_request_error'
     ) {
-      console.log(dataItems);
+      addLog.info('invalid message format', {
+        dataItems
+      });
       try {
         await TrainingData.findByIdAndUpdate(trainingId, {
           lockTime: new Date('2998/5/5')

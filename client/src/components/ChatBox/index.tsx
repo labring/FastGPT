@@ -439,13 +439,20 @@ const ChatBox = (
     border: theme.borders.base,
     mr: 3
   };
-  const controlContainerStyle = {
-    className: 'control',
-    color: 'myGray.400',
-    display: feedbackType === FeedbackTypeEnum.admin ? 'flex' : ['flex', 'none'],
-    pl: 1,
-    mt: 2
-  };
+  const controlContainerStyle = useCallback((status: ChatSiteItemType['status']) => {
+    return {
+      className: 'control',
+      color: 'myGray.400',
+      display:
+        status === 'finish'
+          ? feedbackType === FeedbackTypeEnum.admin
+            ? 'flex'
+            : ['flex', 'none']
+          : 'none',
+      pl: 1,
+      mt: 2
+    };
+  }, []);
   const MessageCardStyle: BoxProps = {
     px: 4,
     py: 3,
@@ -604,7 +611,11 @@ const ChatBox = (
                 {item.obj === 'Human' && (
                   <>
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
-                      <Flex {...controlContainerStyle} justifyContent={'flex-end'} mr={3}>
+                      <Flex
+                        {...controlContainerStyle(item.status)}
+                        justifyContent={'flex-end'}
+                        mr={3}
+                      >
                         <MyTooltip label={'复制'}>
                           <MyIcon
                             {...controlIconStyle}
@@ -652,7 +663,7 @@ const ChatBox = (
                   <>
                     <Flex w={'100%'} alignItems={'flex-end'}>
                       <ChatAvatar src={appAvatar} type={'AI'} />
-                      <Flex {...controlContainerStyle} ml={3}>
+                      <Flex {...controlContainerStyle(item.status)} ml={3}>
                         <MyTooltip label={'复制'}>
                           <MyIcon
                             {...controlIconStyle}

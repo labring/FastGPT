@@ -12,6 +12,7 @@ import { clientInitData, feConfigs } from '@/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
 import { getLangStore, setLangStore } from '@/utils/i18n';
 import { useRouter } from 'next/router';
+import { useGlobalStore } from '@/store/global';
 
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
@@ -37,11 +38,13 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
+  const { setLastRoute } = useGlobalStore();
 
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
   const [googleClientVerKey, setGoogleVerKey] = useState<string>();
 
   useEffect(() => {
+    // get init data
     (async () => {
       const {
         feConfigs: { scripts, googleClientVerKey }
@@ -49,6 +52,21 @@ function App({ Component, pageProps }: AppProps) {
       setScripts(scripts || []);
       setGoogleVerKey(googleClientVerKey);
     })();
+    // add window error track
+    window.onerror = function (msg, url) {
+      window.umami?.track('windowError', {
+        device: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          appName: navigator.appName
+        },
+        msg,
+        url
+      });
+    };
+    return () => {
+      window.onerror = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -59,6 +77,10 @@ function App({ Component, pageProps }: AppProps) {
     const lang = getLangStore() || 'zh';
     i18n?.changeLanguage?.(lang);
     setLangStore(lang);
+
+    return () => {
+      setLastRoute(router.asPath);
+    };
   }, [router.asPath]);
 
   return (

@@ -5,7 +5,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
 import { authBalanceByUid } from '../utils/auth';
-import { axiosConfig, getAIChatApi } from '../ai/openai';
+import { axiosConfig, getAIChatApi } from '../lib/openai';
 import { ChatCompletionRequestMessage } from 'openai';
 import { modelToolMap } from '@/utils/plugin';
 import { gptMessage2ChatType } from '@/utils/adapt';
@@ -38,7 +38,7 @@ export async function generateQA(): Promise<any> {
       prompt: 1,
       q: 1,
       source: 1,
-      model: 1
+      file_id: 1
     });
 
     // task preemption
@@ -136,7 +136,8 @@ A2:
       kbId,
       data: responseList.map((item) => ({
         ...item,
-        source: data.source
+        source: data.source,
+        file_id: data.file_id
       })),
       userId,
       mode: TrainingModeEnum.index

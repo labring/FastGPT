@@ -1,4 +1,9 @@
-import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, {
+  Method,
+  InternalAxiosRequestConfig,
+  AxiosResponse,
+  AxiosProgressEvent
+} from 'axios';
 import { clearToken, getToken } from '@/utils/user';
 import { TOKEN_ERROR_CODE } from '@/service/errorCode';
 
@@ -6,6 +11,7 @@ interface ConfigType {
   headers?: { [key: string]: string };
   hold?: boolean;
   timeout?: number;
+  onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
 }
 interface ResponseDataType {
   code: number;

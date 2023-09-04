@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authBalanceByUid, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import { pushGenerateVectorBill } from '@/service/events/pushBill';
 
 type Props = {

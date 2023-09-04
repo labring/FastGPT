@@ -21,7 +21,13 @@ const ContextModal = ({
       minW={['90vw', '600px']}
       isCentered
     >
-      <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} fontSize={'sm'}>
+      <ModalBody
+        pt={0}
+        whiteSpace={'pre-wrap'}
+        textAlign={'justify'}
+        wordBreak={'break-all'}
+        fontSize={'sm'}
+      >
         {context.map((item, i) => (
           <Box
             key={i}

@@ -2,7 +2,28 @@ import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { getOpenAiEncMap } from './plugin/openai';
 import { getErrText } from './tools';
-import { uploadImg } from '@/api/system';
+import { uploadImg, postUploadFiles } from '@/api/system';
+
+/**
+ * upload file to mongo gridfs
+ */
+export const uploadFiles = (
+  files: File[],
+  metadata: Record<string, any> = {},
+  percentListen?: (percent: number) => void
+) => {
+  const form = new FormData();
+  form.append('metadata', JSON.stringify(metadata));
+  files.forEach((file) => {
+    form.append('file', file, encodeURIComponent(file.name));
+  });
+  return postUploadFiles(form, (e) => {
+    if (!e.total) return;
+
+    const percent = Math.round((e.loaded / e.total) * 100);
+    percentListen && percentListen(percent);
+  });
+};
 
 /**
  * 读取 txt 文件内容
@@ -37,7 +58,11 @@ export const readPdfContent = (file: File) =>
       const readPDFPage = async (doc: any, pageNo: number) => {
         const page = await doc.getPage(pageNo);
         const tokenizedText = await page.getTextContent();
-        const pageText = tokenizedText.items.map((token: any) => token.str).join(' ');
+
+        const pageText = tokenizedText.items
+          .map((token: any) => token.str)
+          .filter((item: string) => item)
+          .join('');
         return pageText;
       };
 
@@ -54,12 +79,12 @@ export const readPdfContent = (file: File) =>
           const pageTexts = await Promise.all(pageTextPromises);
           resolve(pageTexts.join('\n'));
         } catch (err) {
-          console.log(err, 'pdfjs error');
+          console.log(err, 'pdf load error');
           reject('解析 PDF 失败');
         }
       };
       reader.onerror = (err) => {
-        console.log(err, 'reader error');
+        console.log(err, 'pdf load error');
         reject('解析 PDF 失败');
       };
     } catch (error) {
@@ -83,10 +108,18 @@ export const readDocContent = (file: File) =>
           });
           resolve(res?.value);
         } catch (error) {
+          window.umami?.track('wordReadError', {
+            err: error?.toString()
+          });
+          console.log('error doc read:', error);
+
           reject('读取 doc 文件失败, 请转换成 PDF');
         }
       };
       reader.onerror = (err) => {
+        window.umami?.track('wordReadError', {
+          err: err?.toString()
+        });
         console.log('error doc read:', err);
 
         reject('读取 doc 文件失败');

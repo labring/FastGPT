@@ -8,10 +8,11 @@ import { insertKbItem, PgClient } from '@/service/pg';
 import { modelToolMap } from '@/utils/plugin';
 import { getVectorModel } from '@/service/utils/data';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
+import { DatasetItemType } from '@/types/plugin';
 
 export type Props = {
   kbId: string;
-  data: { a: string; q: string; source?: string };
+  data: DatasetItemType;
 };
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

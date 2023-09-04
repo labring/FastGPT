@@ -2,7 +2,7 @@ import { adaptChatItem_openAI } from '@/utils/plugin/openai';
 import { ChatContextFilter } from '@/service/utils/chat/index';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { countModelPrice } from '@/service/events/pushBill';
