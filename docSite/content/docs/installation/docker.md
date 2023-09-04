@@ -146,7 +146,7 @@ networks:
 
 ```bash
 # 在 docker-compose.yml 同级目录下执行
-docker-compose up -d --pull
+docker-compose up -d
 ```
 
 ## 访问 FastGPT
@@ -159,7 +159,12 @@ docker-compose up -d --pull
 
 ### 如何更新？
 
-执行 `docker-compose up -d --pull` 会自动拉取最新镜像，一般情况下不需要执行额外操作。
+执行下面命令会自动拉取最新镜像，一般情况下不需要执行额外操作。
+
+```bash
+docker-compose pull
+docker-compose up -d
+```
 
 ### 如何自定义配置文件？
 
