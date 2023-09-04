@@ -39,9 +39,13 @@ const defaultFeConfigs = {
   show_register: false,
   show_appStore: false,
   show_userDetail: false,
+  show_contact: true,
   show_git: true,
+  show_doc: true,
   systemTitle: 'FastGPT',
-  authorText: 'Made by FastGPT Team.'
+  authorText: 'Made by FastGPT Team.',
+  gitLoginKey: '',
+  scripts: []
 };
 const defaultChatModels = [
   {
