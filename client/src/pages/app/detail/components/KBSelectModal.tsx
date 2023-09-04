@@ -128,8 +128,13 @@ export const KBSelectModal = ({
         <ModalFooter>
           <Button
             onClick={() => {
+              // filter out the kb that is not in the kbList
+              const filterKbList = selectedKbList.filter((kb) => {
+                return kbList.find((item) => item._id === kb.kbId);
+              });
+
               onClose();
-              onChange(selectedKbList);
+              onChange(filterKbList);
             }}
           >
             完成
