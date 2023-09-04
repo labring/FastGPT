@@ -38,7 +38,7 @@ class UploadModel {
   }).any();
 
   async doUpload(req: NextApiRequest, res: NextApiResponse) {
-    return new Promise<{ files: FileType[] }>((resolve, reject) => {
+    return new Promise<{ files: FileType[]; metadata: Record<string, any> }>((resolve, reject) => {
       // @ts-ignore
       this.uploader(req, res, (error) => {
         if (error) {
@@ -46,11 +46,22 @@ class UploadModel {
         }
 
         resolve({
-          // @ts-ignore
-          files: req.files?.map((file) => ({
-            ...file,
-            originalname: decodeURIComponent(file.originalname)
-          }))
+          files:
+            // @ts-ignore
+            req.files?.map((file) => ({
+              ...file,
+              originalname: decodeURIComponent(file.originalname)
+            })) || [],
+          metadata: (() => {
+            if (!req.body?.metadata) return {};
+            try {
+              return JSON.parse(req.body.metadata);
+            } catch (error) {
+              console.log(error);
+
+              return {};
+            }
+          })()
         });
       });
     });
@@ -64,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
     const { userId } = await authUser({ req, authToken: true });
 
-    const { files = [] } = await upload.doUpload(req, res);
+    const { files, metadata } = await upload.doUpload(req, res);
 
     const gridFs = new GridFSStorage('dataset', userId);
 
@@ -74,8 +85,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           path: file.path,
           filename: file.originalname,
           metadata: {
+            ...metadata,
             contentType: file.mimetype,
-            encoding: file.encoding,
             userId
           }
         })

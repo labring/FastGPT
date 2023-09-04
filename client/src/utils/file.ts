@@ -7,8 +7,13 @@ import { uploadImg, postUploadFiles } from '@/api/system';
 /**
  * upload file to mongo gridfs
  */
-export const uploadFiles = (files: File[], percentListen?: (percent: number) => void) => {
+export const uploadFiles = (
+  files: File[],
+  metadata: Record<string, any> = {},
+  percentListen?: (percent: number) => void
+) => {
   const form = new FormData();
+  form.append('metadata', JSON.stringify(metadata));
   files.forEach((file) => {
     form.append('file', file, encodeURIComponent(file.name));
   });
