@@ -1,6 +1,6 @@
 #!/bin/bash
 docker-compose pull
-docker-compose up -d
+docker-compose up -d --pull
 
 echo "Docker Compose 重新拉取镜像完成！"
 
