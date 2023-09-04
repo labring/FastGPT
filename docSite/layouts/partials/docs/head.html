@@ -1,74 +1,76 @@
 <head>
-    <meta charset="utf-8" />
-    <title>
-        {{- $url := replace .Permalink ( printf "%s" .Site.BaseURL) "" }}
-        {{- if eq $url "/" }}
-            {{- .Site.Title }}
-        {{- else }}
-            {{- if .Params.heading }}
-                {{ .Params.heading }}
-            {{ else }}
-                {{- if eq .Title .Site.Title }}
-                    {{- .Title }}
-                {{- else }}
-                    {{ .Site.Params.docs.Title | default (.Site.Title) }} | {{ .Title }}
-                {{- end }}
-            {{- end }}
-        {{- end -}}
-    </title>
-    {{- if not hugo.IsProduction }}
-    <meta name="robots" content="noindex">
-    {{- end }}
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A Modern Documentation Theme for Hugo" />
-    <meta name="keywords" content="Documentation, Hugo, Hugo Theme, Bootstrap" />
-    <meta name="author" content="Colin Wilson - Lotus Labs" />
-    <meta name="email" content="support@aigis.uk" />
-    <meta name="website" content="https://lotusdocs.dev" />
-    <meta name="Version" content="v0.1.0" />
-    <!-- favicon -->
-    {{ block "favicon" . }}{{ partialCached (printf "%s/%s" ($.Scratch.Get "pathName") "head/favicon.html") . }}{{ end }}
-    <!-- Dark Mode -->
-    {{ if eq .Site.Params.docs.darkMode true -}}
-        {{ $darkModeInit := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/darkmode-init.js") | js.Build | minify -}}
-        <script>{{ $darkModeInit.Content | safeJS }}</script>
-    {{ end -}}
-    <!-- FlexSearch -->
-    {{ if or (not (isset .Site.Params.flexsearch "enabled")) (eq .Site.Params.flexsearch.enabled true) -}}
-        {{ if and (.Site.Params.docsearch.appID) (.Site.Params.docsearch.apiKey) -}}
-        {{ else }}
-            {{ $flexSearch := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/flexsearch.bundle.js") }}
-            {{- if not .Site.IsServer }}
-                {{ $flexSearch := $flexSearch | minify | fingerprint "sha384" }}
-                <script type="text/javascript" src="{{ $flexSearch.Permalink }}" integrity="{{ $flexSearch.Data.Integrity }}" crossorigin="anonymous"></script>
-                {{ else }}
-                <script type="text/javascript" src="{{ $flexSearch.Permalink }}"></script>
-            {{ end }}
-        {{ end }}
-    {{ end }}
-    <!-- Google Fonts -->
-    {{- partialCached "google-fonts" . }}
-    <!-- Custom CSS -->
-    {{- $options := dict "enableSourceMap" true }}
-    {{- if hugo.IsProduction}}
-        {{- $options := dict "enableSourceMap" false "outputStyle" "compressed" }}
-    {{- end }}
-    {{- $style := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/style.scss") }}
-    {{- $style = $style | resources.ExecuteAsTemplate (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/style.scss") . | resources.ToCSS $options }}
-    {{- if hugo.IsProduction }}
-        {{- $style = $style | minify | fingerprint "sha384" }}
-    {{- end -}}
-    <link rel="stylesheet" href="{{ $style.RelPermalink }}" {{ if hugo.IsProduction }}integrity="{{ $style.Data.Integrity }}"{{ end -}} crossorigin="anonymous">
-    <!-- Plausible Analytics Config -->
-    {{- if not .Site.IsServer }}
-    {{ if and (.Site.Params.plausible.scriptURL | default "https://plausible.io") (.Site.Params.plausible.dataDomain) -}}
-        {{- partialCached (printf "%s/%s" ($.Scratch.Get "pathName") "head/plausible") . }}
-    {{- end -}}
-    {{- end -}}
-    <!-- Google Analytics v4 Config -->
-    {{- if not .Site.IsServer }}
-    {{- if .Site.GoogleAnalytics }}
-        {{- template "_internal/google_analytics.html" . -}}
-    {{- end -}}
-    {{- end -}}
+  <meta charset="utf-8" />
+  <title>
+    {{- $url := replace .Permalink ( printf "%s" .Site.BaseURL) "" }} {{- if eq $url "/" }} {{-
+    .Site.Title }} {{- else }} {{- if .Params.heading }} {{ .Params.heading }} {{ else }} {{- if eq
+    .Title .Site.Title }} {{- .Title }} {{- else }} {{ .Site.Params.docs.Title | default
+    (.Site.Title) }} | {{ .Title }} {{- end }} {{- end }} {{- end -}}
+  </title>
+  {{- if not hugo.IsProduction }}
+  <meta name="robots" content="noindex" />
+  {{- end }}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A Modern Documentation Theme for Hugo" />
+  <meta name="keywords" content="Documentation, Hugo, Hugo Theme, Bootstrap" />
+  <meta name="author" content="Colin Wilson - Lotus Labs" />
+  <meta name="email" content="support@aigis.uk" />
+  <meta name="website" content="https://lotusdocs.dev" />
+  <meta name="Version" content="v0.1.0" />
+  <!-- favicon -->
+  {{ block "favicon" . }}{{ partialCached (printf "%s/%s" ($.Scratch.Get "pathName")
+  "head/favicon.html") . }}{{ end }}
+  <!-- Dark Mode -->
+  {{ if eq .Site.Params.docs.darkMode true -}} {{ $darkModeInit := resources.Get (printf "/%s/%s"
+  ($.Scratch.Get "pathName") "js/darkmode-init.js") | js.Build | minify -}}
+  <script>
+    {
+      {
+        $darkModeInit.Content | safeJS;
+      }
+    }
+  </script>
+  {{ end -}}
+  <!-- FlexSearch -->
+  {{ if or (not (isset .Site.Params.flexsearch "enabled")) (eq .Site.Params.flexsearch.enabled true)
+  -}} {{ if and (.Site.Params.docsearch.appID) (.Site.Params.docsearch.apiKey) -}} {{ else }} {{
+  $flexSearch := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName")
+  "js/flexsearch.bundle.js") }} {{- if not .Site.IsServer }} {{ $flexSearch := $flexSearch | minify
+  | fingerprint "sha384" }}
+  <script
+    type="text/javascript"
+    src="{{ $flexSearch.Permalink }}"
+    integrity="{{ $flexSearch.Data.Integrity }}"
+    crossorigin="anonymous"
+  ></script>
+  {{ else }}
+  <script type="text/javascript" src="{{ $flexSearch.Permalink }}"></script>
+  {{ end }} {{ end }} {{ end }}
+  <!-- Google Fonts -->
+  {{- partialCached "google-fonts" . }}
+  <!-- Custom CSS -->
+  {{- $options := dict "enableSourceMap" true }} {{- if hugo.IsProduction}} {{- $options := dict
+  "enableSourceMap" false "outputStyle" "compressed" }} {{- end }} {{- $style := resources.Get
+  (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/style.scss") }} {{- $style = $style |
+  resources.ExecuteAsTemplate (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/style.scss") . |
+  resources.ToCSS $options }} {{- if hugo.IsProduction }} {{- $style = $style | minify | fingerprint
+  "sha384" }} {{- end -}}
+  <link
+    rel="stylesheet"
+    href="{{ $style.RelPermalink }}"
+    {{
+    if
+    hugo.IsProduction
+    }}integrity="{{ $style.Data.Integrity }}"
+    {{
+    end
+    -}}
+    crossorigin="anonymous"
+  />
+  <!-- Plausible Analytics Config -->
+  {{- if not .Site.IsServer }} {{ if and (.Site.Params.plausible.scriptURL | default
+  "https://plausible.io") (.Site.Params.plausible.dataDomain) -}} {{- partialCached (printf "%s/%s"
+  ($.Scratch.Get "pathName") "head/plausible") . }} {{- end -}} {{- end -}}
+  <!-- Google Analytics v4 Config -->
+  {{- if not .Site.IsServer }} {{- if .Site.GoogleAnalytics }} {{- template
+  "_internal/google_analytics.html" . -}} {{- end -}} {{- end -}}
 </head>
