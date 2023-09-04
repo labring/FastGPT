@@ -565,6 +565,9 @@ const ChatBox = (
                           label: item.value,
                           value: item.value
                         }))}
+                        {...register(item.key, {
+                          required: item.required
+                        })}
                         value={getValues(item.key)}
                         onchange={(e) => {
                           setValue(item.key, e);
