@@ -32,6 +32,7 @@ export class SSEParseData {
     }
 
     try {
+      if(item.data.includes('ping') ) return {}
       const formatData = this.storeReadData + item.data;
       const parseData = JSON.parse(formatData);
       const eventName = this.storeEventName;
