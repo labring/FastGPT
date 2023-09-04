@@ -570,7 +570,7 @@ const AppEdit = ({ app, onCloseSettings }: Props) => {
           fitView
           nodes={nodes}
           edges={edges}
-          minZoom={0.4}
+          minZoom={0.1}
           maxZoom={1.5}
           defaultEdgeOptions={edgeOptions}
           connectionLineStyle={connectionLineStyle}
