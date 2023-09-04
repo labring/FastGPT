@@ -519,7 +519,7 @@ const ChatBox = (
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
-        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+        <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
 
           {!!welcomeText && (
