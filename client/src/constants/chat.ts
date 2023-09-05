@@ -67,7 +67,3 @@ export enum OutLinkTypeEnum {
 
 export const HUMAN_ICON = `/icon/human.png`;
 export const LOGO_ICON = `/icon/logo.svg`;
-
-export const getDefaultChatVariables = () => ({
-  cTime: dayjs().format('YYYY/MM/DD HH:mm:ss')
-});

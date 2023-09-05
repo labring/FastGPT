@@ -17,6 +17,7 @@ export interface UserModelSchema {
   inviterId?: string;
   openaiKey: string;
   createTime: number;
+  timezone: string;
   openaiAccount?: {
     key: string;
     baseUrl: string;
