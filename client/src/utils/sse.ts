@@ -32,7 +32,6 @@ export class SSEParseData {
     }
 
     try {
-      if(item.data.includes('ping') ) return {}
       const formatData = this.storeReadData + item.data;
       const parseData = JSON.parse(formatData);
       const eventName = this.storeEventName;
@@ -45,7 +44,7 @@ export class SSEParseData {
         data: parseData
       };
     } catch (error) {
-      if (typeof item.data === 'string') {
+      if (typeof item.data === 'string' && !item.data.startsWith(": ping")) {
         this.storeReadData += item.data;
       } else {
         this.storeReadData = '';
