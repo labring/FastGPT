@@ -9,7 +9,13 @@ weight: -10
 
 本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.run)。
 
-### 安装依赖项
+
+## Tips
+
+1. 用户默认的市区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
+
+
+## 前置依赖项
 
 您需要在计算机上安装和配置以下依赖项才能构建 [FastGPT](https://fastgpt.run)：
 
