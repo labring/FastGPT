@@ -10,7 +10,7 @@ import { axiosConfig, getAIChatApi, openaiBaseUrl } from '@/service/lib/openai';
 /* update user info */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { avatar, openaiAccount } = req.body as UserUpdateParams;
+    const { avatar, timezone, openaiAccount } = req.body as UserUpdateParams;
 
     const { userId } = await authUser({ req, authToken: true });
 
@@ -46,6 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       },
       {
         ...(avatar && { avatar }),
+        ...(timezone && { timezone }),
         openaiAccount: openaiAccount?.key ? openaiAccount : null
       }
     );

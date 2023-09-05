@@ -3,6 +3,7 @@ import { Menu, MenuButton, MenuItem, MenuList, MenuButtonProps } from '@chakra-u
 import { getLangStore, LangEnum, setLangStore } from '@/utils/i18n';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/router';
 
 const langMap = {
   [LangEnum.en]: {
@@ -16,6 +17,7 @@ const langMap = {
 };
 
 const Language = (props: MenuButtonProps) => {
+  const router = useRouter();
   const { i18n } = useTranslation();
 
   const [language, setLanguage] = useState<`${LangEnum}`>(getLangStore());
@@ -43,6 +45,7 @@ const Language = (props: MenuButtonProps) => {
               setLangStore(lang);
               setLanguage(lang);
               i18n?.changeLanguage?.(lang);
+              router.reload();
             }}
           >
             {lang.label}

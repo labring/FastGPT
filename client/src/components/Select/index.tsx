@@ -21,7 +21,7 @@ interface Props extends ButtonProps {
 }
 
 const MySelect = (
-  { placeholder, value, width = 'auto', list, onchange, ...props }: Props,
+  { placeholder, value, width = '100%', list, onchange, ...props }: Props,
   selectRef: any
 ) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -94,6 +94,8 @@ const MySelect = (
           }
           zIndex={99}
           transform={'translateY(35px) !important'}
+          maxH={'40vh'}
+          overflowY={'auto'}
         >
           {list.map((item) => (
             <MenuItem

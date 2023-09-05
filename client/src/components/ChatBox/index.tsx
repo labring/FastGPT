@@ -37,7 +37,7 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { TaskResponseKeyEnum, getDefaultChatVariables } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
 import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/api/chat';
@@ -350,10 +350,7 @@ const ChatBox = (
           messages,
           controller: abortSignal,
           generatingMessage,
-          variables: {
-            ...getDefaultChatVariables(),
-            ...variables
-          }
+          variables
         });
 
         // set finish status

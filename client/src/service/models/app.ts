@@ -57,48 +57,7 @@ const AppSchema = new Schema({
     default: []
   },
   // 弃
-  chat: {
-    relatedKbs: {
-      type: [Schema.Types.ObjectId],
-      ref: 'kb',
-      default: []
-    },
-    searchSimilarity: {
-      type: Number,
-      default: 0.4
-    },
-    searchLimit: {
-      type: Number,
-      default: 5
-    },
-    searchEmptyText: {
-      type: String,
-      default: ''
-    },
-    systemPrompt: {
-      type: String,
-      default: ''
-    },
-    limitPrompt: {
-      type: String,
-      default: ''
-    },
-    maxToken: {
-      type: Number,
-      default: 4000,
-      min: 100
-    },
-    temperature: {
-      type: Number,
-      min: 0,
-      max: 10,
-      default: 0
-    },
-    chatModel: {
-      // 聊天时使用的模型
-      type: String
-    }
-  }
+  chat: Object
 });
 
 try {
