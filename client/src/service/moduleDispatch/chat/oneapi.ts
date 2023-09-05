@@ -237,25 +237,16 @@ function getChatMessages({
   model: ChatModelItemType;
   hasQuoteOutput: boolean;
 }) {
-  const limitText = (() => {
-    if (!quotePrompt) {
-      return limitPrompt;
-    }
-    const defaultPrompt = `三引号引用的内容是我提供给你的知识，它们拥有最高优先级。instruction 是相关介绍${
-      hasQuoteOutput ? '，output 是预期回答或补充' : ''
-    }，使用引用内容来回答我下面的问题。`;
-    if (limitPrompt) {
-      return `${defaultPrompt}${limitPrompt}`;
-    }
-    return `${defaultPrompt}\n回答内容限制：你仅回答三引号中提及的内容，下面我提出的问题与引用内容无关时，你可以直接回复: "你的问题没有在知识库中体现"`;
-  })();
+  const { quoteGuidePrompt } = getDefaultPrompt({ hasQuoteOutput });
+
+  const systemText = `${quotePrompt ? `${quoteGuidePrompt}\n\n` : ''}${systemPrompt}`;
 
   const messages: ChatItemType[] = [
-    ...(systemPrompt
+    ...(systemText
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: systemPrompt
+            value: systemText
           }
         ]
       : []),
@@ -268,11 +259,11 @@ function getChatMessages({
         ]
       : []),
     ...history,
-    ...(limitText
+    ...(limitPrompt
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: limitText
+            value: limitPrompt
           }
         ]
       : []),
@@ -383,5 +374,13 @@ async function streamResponse({
 
   return {
     answer
+  };
+}
+
+function getDefaultPrompt({ hasQuoteOutput }: { hasQuoteOutput?: boolean }) {
+  return {
+    quoteGuidePrompt: `三引号引用的内容是我提供给你的知识库，它们拥有最高优先级。instruction 是相关介绍${
+      hasQuoteOutput ? '，output 是预期回答或补充。' : '。'
+    }`
   };
 }
