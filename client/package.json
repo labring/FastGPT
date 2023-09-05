@@ -62,6 +62,7 @@
     "remark-math": "^5.1.1",
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
+    "timezones-list": "^3.0.2",
     "tunnel": "^0.0.6",
     "winston": "^3.10.0",
     "winston-mongodb": "^5.1.1",

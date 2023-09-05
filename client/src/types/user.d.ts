@@ -5,6 +5,7 @@ export interface UserType {
   username: string;
   avatar: string;
   balance: number;
+  timezone: string;
   promotionRate: UserModelSchema['promotionRate'];
   openaiAccount: UserModelSchema['openaiAccount'];
 }
@@ -12,6 +13,7 @@ export interface UserType {
 export interface UserUpdateParams {
   balance?: number;
   avatar?: string;
+  timezone?: string;
   openaiAccount?: UserModelSchema['openaiAccount'];
 }
 

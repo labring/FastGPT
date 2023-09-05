@@ -28,6 +28,7 @@ import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { SystemInputEnum } from '@/constants/app';
+import { getSystemTime } from '@/utils/user';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -95,9 +96,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!user) {
       throw new Error('Account is error');
     }
-    // if (authType === AuthUserTypeEnum.apikey || shareId) {
-    //   user.openaiAccount = undefined;
-    // }
 
     appId = appId ? appId : authAppid;
     if (!appId) {
@@ -249,6 +247,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 });
 
+/* running */
 export async function dispatchModules({
   res,
   modules,
@@ -260,12 +259,16 @@ export async function dispatchModules({
 }: {
   res: NextApiResponse;
   modules: AppModuleItemType[];
-  user?: UserModelSchema;
+  user: UserModelSchema;
   params?: Record<string, any>;
   variables?: Record<string, any>;
   stream?: boolean;
   detail?: boolean;
 }) {
+  variables = {
+    ...getSystemVariable({ timezone: user.timezone }),
+    ...variables
+  };
   const runningModules = loadModules(modules, variables);
 
   // let storeData: Record<string, any> = {}; // after module used
@@ -390,6 +393,7 @@ export async function dispatchModules({
   };
 }
 
+/* init store modules to running modules */
 function loadModules(
   modules: AppModuleItemType[],
   variables: Record<string, any>
@@ -431,6 +435,7 @@ function loadModules(
   });
 }
 
+/* sse response modules staus */
 export function responseStatus({
   res,
   status,
@@ -449,6 +454,13 @@ export function responseStatus({
       name
     })
   });
+}
+
+/* get system variable */
+export function getSystemVariable({ timezone }: { timezone: string }) {
+  return {
+    cTime: getSystemTime(timezone)
+  };
 }
 
 export const config = {

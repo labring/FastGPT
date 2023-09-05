@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
 import { App, OpenApi, User, OutLink, KB } from '../mongo';
-import type { AppSchema } from '@/types/mongoSchema';
+import type { AppSchema, UserModelSchema } from '@/types/mongoSchema';
 import { ERROR_ENUM } from '../errorCode';
 import { authJWT } from './tools';
 
@@ -25,7 +25,10 @@ export const authCookieToken = async (cookie?: string, token?: string): Promise<
 
 /* auth balance */
 export const authBalanceByUid = async (uid: string) => {
-  const user = await User.findById(uid);
+  const user = await User.findById<UserModelSchema>(
+    uid,
+    '_id username balance openaiAccount timezone'
+  );
   if (!user) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }

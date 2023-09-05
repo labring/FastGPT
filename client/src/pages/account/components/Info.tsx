@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { Box, Flex, Button, useDisclosure, useTheme, Divider } from '@chakra-ui/react';
+import React, { useCallback, useRef } from 'react';
+import { Box, Flex, Button, useDisclosure, useTheme, Divider, Select } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@/hooks/useToast';
@@ -11,6 +11,7 @@ import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
 import { feConfigs } from '@/store/static';
 import { useTranslation } from 'next-i18next';
+import { timezoneList } from '@/utils/user';
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -33,6 +34,7 @@ const UserInfo = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
+  const timezones = useRef(timezoneList());
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
@@ -59,6 +61,7 @@ const UserInfo = () => {
     async (data: UserType) => {
       await updateUserInfo({
         avatar: data.avatar,
+        timezone: data.timezone,
         openaiAccount: data.openaiAccount
       });
       reset(data);
@@ -102,7 +105,13 @@ const UserInfo = () => {
   });
 
   return (
-    <Box display={['block', 'flex']} py={[2, 10]} justifyContent={'center'} fontSize={['lg', 'xl']}>
+    <Box
+      display={['block', 'flex']}
+      py={[2, 10]}
+      justifyContent={'center'}
+      alignItems={'flex-start'}
+      fontSize={['lg', 'xl']}
+    >
       <Flex
         flexDirection={'column'}
         alignItems={'center'}
@@ -135,11 +144,27 @@ const UserInfo = () => {
         mt={[6, 0]}
       >
         <Flex alignItems={'center'} w={['85%', '300px']}>
-          <Box flex={'0 0 50px'}>{t('user.Account')}:&nbsp;</Box>
+          <Box flex={'0 0 80px'}>{t('user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
-          <Box flex={'0 0 50px'}>{t('user.Password')}:&nbsp;</Box>
+          <Box flex={'0 0 80px'}>{t('user.Timezone')}:&nbsp;</Box>
+          <Select
+            value={userInfo?.timezone}
+            onChange={(e) => {
+              if (!userInfo) return;
+              onclickSave({ ...userInfo, timezone: e.target.value });
+            }}
+          >
+            {timezones.current.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.name}
+              </option>
+            ))}
+          </Select>
+        </Flex>
+        <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
+          <Box flex={'0 0 80px'}>{t('user.Password')}:&nbsp;</Box>
           <Box flex={1}>*****</Box>
           <Button size={['sm', 'md']} variant={'base'} ml={5} onClick={onOpenUpdatePsw}>
             {t('user.Change')}
@@ -149,7 +174,7 @@ const UserInfo = () => {
           <>
             <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
               <Flex alignItems={'center'}>
-                <Box flex={'0 0 50px'}>{t('user.Balance')}:&nbsp;</Box>
+                <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
                 <Box flex={1}>
                   <strong>{userInfo?.balance.toFixed(3)}</strong> 元
                 </Box>

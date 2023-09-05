@@ -6,6 +6,16 @@ export enum LangEnum {
   'zh' = 'zh',
   'en' = 'en'
 }
+export const langMap = {
+  [LangEnum.en]: {
+    label: 'English',
+    icon: 'language_en'
+  },
+  [LangEnum.zh]: {
+    label: '简体中文',
+    icon: 'language_zh'
+  }
+};
 
 export const setLangStore = (value: `${LangEnum}`) => {
   return Cookies.set(LANG_KEY, value, { expires: 7, sameSite: 'None', secure: true });
@@ -16,10 +26,12 @@ export const getLangStore = () => {
 };
 
 export const serviceSideProps = (content: any) => {
-  return serverSideTranslations(
-    content.req.cookies[LANG_KEY] || 'en',
-    undefined,
-    null,
-    content.locales
-  );
+  const acceptLanguage = (content.req.headers['accept-language'] as string) || '';
+  const acceptLanguageList = acceptLanguage.split(/,|;/g);
+  // @ts-ignore
+  const firstLang = acceptLanguageList.find((lang) => langMap[lang]);
+
+  const language = content.req.cookies[LANG_KEY] || firstLang || 'zh';
+
+  return serverSideTranslations(language, undefined, null, content.locales);
 };
