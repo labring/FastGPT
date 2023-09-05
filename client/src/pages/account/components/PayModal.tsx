@@ -104,7 +104,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
 | FastAI4k - 对话 | 0.015 |
 | FastAI16k - 对话 | 0.03 |
 | FastAI-Plus - 对话 | 0.45 |
-| 文件拆分 | 0.03 |`}
+| 文件QA拆分 | 0.03 |`}
             />
           </>
         )}

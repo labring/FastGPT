@@ -67,13 +67,17 @@ const ChatHistorySlider = ({
 
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
 
+  const isShare = useMemo(() => !appId || !userInfo, [appId, userInfo]);
+
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditInfo({
     title: '自定义历史记录标题',
     placeholder: '如果设置为空，会自动跟随聊天记录。'
   });
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('chat.Confirm to clear history')
+    content: isShare
+      ? t('chat.Confirm to clear share chat histroy')
+      : t('chat.Confirm to clear history')
   });
 
   const concatHistory = useMemo<HistoryItemType[]>(
@@ -81,8 +85,6 @@ const ChatHistorySlider = ({
       !activeChatId ? [{ id: activeChatId, title: t('chat.New Chat') }].concat(history) : history,
     [activeChatId, history, t]
   );
-
-  const isShare = useMemo(() => !appId || !userInfo, [appId, userInfo]);
 
   useQuery(['init'], () => {
     if (isShare) {
