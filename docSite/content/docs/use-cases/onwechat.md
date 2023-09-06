@@ -47,7 +47,7 @@ services:
       OPEN_AI_API_KEY: 'fastgpt-z51pkjqm9nrk03a1rx2funoy-642adec15f04d67d4613efdb'
       OPEN_AI_API_BASE: 'https://fastgpt.run/api/openapi/v1'
       MODEL: 'gpt-3.5-turbo'
-      CHANNEL_TYPE: 'wx',
+      CHANNEL_TYPE: 'wx'
       PROXY: ''
       HOT_RELOAD: 'False'
       SINGLE_CHAT_PREFIX: '["bot", "@bot"]'
