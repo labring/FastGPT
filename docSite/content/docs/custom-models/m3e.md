@@ -23,7 +23,7 @@ FastGPT 默认使用了 openai 的 embedding 向量模型，如果你想私有�
 sk-key=xxxx
 ```
 
-## 接入 OneAPI
+## 接入 One API
 
 添加一个渠道，参数如下：
 
@@ -43,7 +43,7 @@ curl --location --request POST 'https://domain/v1/embeddings' \
 }'
 ```
 
-Authorization 为 sk-key。model 为刚刚在 OneAPI 填写的自定义模型。
+Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型。
 
 ## 接入 FastGPT
 
