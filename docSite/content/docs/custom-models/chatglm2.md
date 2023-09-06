@@ -68,7 +68,7 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 端口号: 6006
 镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
 
-## 接入 OneAPI
+## 接入 One API
 
 为 chatglm2 添加一个渠道，参数如下：
 
@@ -90,7 +90,7 @@ curl --location --request POST 'https://domain/v1/chat/completions' \
 }'
 ```
 
-Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneAPI 填写的自定义模型。
+Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One API 填写的自定义模型。
 
 ## 接入 FastGPT
 
