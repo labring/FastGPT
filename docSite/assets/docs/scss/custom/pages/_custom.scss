@@ -5,3 +5,20 @@
     margin: 0 auto !important;
     border-radius: .25rem;
 }
+
+div.code-toolbar {
+    padding-top: 1.95rem !important;
+}
+
+.docs-content .main-content pre code::before {
+    background: #fc625d;
+    border-radius: 50%;
+    box-shadow: 20px 0 #fdbc40, 40px 0 #35cd4b;
+    content: ' ';
+    height: 12px;
+    left: 12px;
+    margin-top: -21px;
+    position: absolute;
+    width: 12px;
+    z-index: 1;
+}
