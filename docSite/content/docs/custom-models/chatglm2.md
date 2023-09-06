@@ -63,10 +63,10 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 **镜像和端口**
 
-镜像名: `stawky/chatglm2:latest`  
-国内镜像名: `registry.cn-hangzhou.aliyuncs.com/kbgpt/chatglm2:latest`
-端口号: 6006
-镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
++ 镜像名: `stawky/chatglm2:latest`  
++ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/kbgpt/chatglm2:latest`
++ 端口号: 6006
++ 镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
 
 ## 接入 One API
 
@@ -114,4 +114,5 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
 ## 测试使用
 
 chatglm2 模型的使用方法如下：
+
 模型选择 chatglm2 即可
