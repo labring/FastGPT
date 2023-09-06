@@ -27,7 +27,7 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 因此推荐配置如下：
 
-{{< table "table-hover table-striped" >}}
+{{< table "table-hover table-striped-columns" >}}
 | 类型 | 内存 | 显存 | 硬盘空间 | 启动命令 |
 |------|---------|---------|----------|--------------------------|
 | fp16 | >=16GB | >=16GB | >=25GB | python openai_api.py 16 |
