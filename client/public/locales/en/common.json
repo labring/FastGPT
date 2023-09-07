@@ -63,10 +63,8 @@
       "online": "Online Chat",
       "share": "Share",
       "test": "Test Chat "
-    }
-  },
-  "commom": {
-    "Password inconsistency": "Password inconsistency"
+    },
+    "retry": "Retry"
   },
   "common": {
     "Add": "Add",
@@ -80,7 +78,8 @@
     "Filed is repeated": "",
     "Input": "Input",
     "Output": "Output",
-    "export": ""
+    "export": "",
+    "Password inconsistency": "Password inconsistency"
   },
   "dataset": {
     "Confirm to delete the data": "Confirm to delete the data?",

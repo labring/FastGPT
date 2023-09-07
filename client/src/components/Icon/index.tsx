@@ -79,7 +79,8 @@ const map = {
   promotionLight: require('./icons/light/promotion.svg').default,
   logsLight: require('./icons/light/logs.svg').default,
   badLight: require('./icons/light/bad.svg').default,
-  markLight: require('./icons/light/mark.svg').default
+  markLight: require('./icons/light/mark.svg').default,
+  retryLight: require('./icons/light/retry.svg').default
 };
 
 export type IconName = keyof typeof map;

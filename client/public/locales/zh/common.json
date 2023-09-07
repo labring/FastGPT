@@ -63,10 +63,8 @@
       "online": "在线使用",
       "share": "外部链接调用",
       "test": "测试"
-    }
-  },
-  "commom": {
-    "Password inconsistency": "两次密码不一致"
+    },
+    "retry": "重新生成"
   },
   "common": {
     "Add": "添加",
@@ -80,7 +78,8 @@
     "Filed is repeated": "字段重复了",
     "Input": "输入",
     "Output": "输出",
-    "export": ""
+    "export": "",
+    "Password inconsistency": "两次密码不一致"
   },
   "dataset": {
     "Confirm to delete the data": "确认删除该数据？",
