@@ -51,9 +51,18 @@ export function countOpenAIToken({ messages }: { messages: ChatItemType[] }) {
   const adaptMessages = adaptChatItem_openAI({ messages, reserveId: true });
   const token = adaptMessages.reduce((sum, item) => {
     const text = `${item.role}\n${item.content}`;
-    const enc = getOpenAiEncMap();
-    const encodeText = enc.encode(text);
-    const tokens = encodeText.length + 3; // 补充估算值
+
+    /* use textLen as tokens if encode error */
+    const tokens = (() => {
+      try {
+        const enc = getOpenAiEncMap();
+        const encodeText = enc.encode(text);
+        return encodeText.length + 3; // 补充估算值
+      } catch (error) {
+        return text.length;
+      }
+    })();
+
     return sum + tokens;
   }, 0);
 
@@ -62,9 +71,14 @@ export function countOpenAIToken({ messages }: { messages: ChatItemType[] }) {
 
 export const openAiSliceTextByToken = ({ text, length }: { text: string; length: number }) => {
   const enc = getOpenAiEncMap();
-  const encodeText = enc.encode(text);
-  const decoder = new TextDecoder();
-  return decoder.decode(enc.decode(encodeText.slice(0, length)));
+
+  try {
+    const encodeText = enc.encode(text);
+    const decoder = new TextDecoder();
+    return decoder.decode(enc.decode(encodeText.slice(0, length)));
+  } catch (error) {
+    return text.slice(0, length);
+  }
 };
 
 export const authOpenAiKey = async (key: string) => {
