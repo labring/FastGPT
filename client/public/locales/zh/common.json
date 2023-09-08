@@ -78,6 +78,7 @@
     "Copy Successful": "复制成功",
     "Course": "",
     "Delete": "删除",
+    "Delete Success": "删除成功",
     "Delete Warning": "删除警告",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
@@ -156,8 +157,10 @@
   },
   "kb": {
     "Create Folder": "创建文件夹",
+    "Delete Dataset Error": "删除知识库异常",
     "Edit Folder": "编辑文件夹",
     "Folder Name": "输入文件夹名称",
+    "My Dataset": "我的知识库",
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
   },

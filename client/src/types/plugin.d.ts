@@ -7,6 +7,11 @@ export type KbListItemType = Omit<kbSchema, 'vectorModel'> & {
   vectorModel: VectorModelItemType;
 };
 
+export type KbPathItemType = {
+  parentId: string;
+  parentName: string;
+};
+
 /* kb type */
 export interface KbItemType {
   _id: string;

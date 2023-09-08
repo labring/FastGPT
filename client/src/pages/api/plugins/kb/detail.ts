@@ -33,7 +33,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         _id: data._id,
         avatar: data.avatar,
         name: data.name,
-        userId: data.userId
+        userId: data.userId,
+        vectorModel: getVectorModel(data.vectorModel),
+        tags: data.tags.join(' ')
       }
     });
   } catch (err) {

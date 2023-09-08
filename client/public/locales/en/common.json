@@ -78,6 +78,7 @@
     "Copy Successful": "Copy Successful",
     "Course": "",
     "Delete": "Delete",
+    "Delete Success": "Delete Successful",
     "Delete Warning": "Warning",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
@@ -156,8 +157,10 @@
   },
   "kb": {
     "Create Folder": "Create Folder",
+    "Delete Dataset Error": "Delete dataset failed",
     "Edit Folder": "Edit Folder",
     "Folder Name": "Input folder name",
+    "My Dataset": "My Dataset",
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
   },

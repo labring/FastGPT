@@ -138,7 +138,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
               px={3}
               borderRadius={'md'}
               _hover={{ bg: 'myGray.100' }}
-              onClick={() => router.replace('/kb/list')}
+              onClick={() => router.back()}
             >
               <IconButton
                 mr={3}

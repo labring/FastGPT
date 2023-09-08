@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Flex,
@@ -17,7 +17,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
-import { delKbById } from '@/api/plugins/kb';
+import { delKbById, getKbPaths } from '@/api/plugins/kb';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -26,7 +26,8 @@ import dynamic from 'next/dynamic';
 import { FolderAvatarSrc, KbTypeEnum } from '@/constants/kb';
 import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
-import { getErrText } from '@/utils/tools';
+import { useRequest } from '@/hooks/useRequest';
+import { useGlobalStore } from '@/store/global';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const EditFolderModal = dynamic(() => import('./component/EditFolderModal'), { ssr: false });
@@ -37,6 +38,7 @@ const Kb = () => {
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
   const { toast } = useToast();
+  const { setLoading } = useGlobalStore();
 
   const DeleteTipsMap = useRef({
     [KbTypeEnum.folder]: t('kb.deleteFolderTips'),
@@ -59,34 +61,81 @@ const Kb = () => {
     name?: string;
   }>();
 
-  const { refetch } = useQuery(['loadKbList', parentId], () => loadKbList(parentId));
-
   /* 点击删除 */
-  const onclickDelKb = useCallback(
-    async (id: string) => {
-      try {
-        delKbById(id);
-        toast({
-          title: '删除成功',
-          status: 'success'
-        });
-        setKbList(myKbList.filter((item) => item._id !== id));
-      } catch (err: any) {
-        toast({
-          title: getErrText(err, '删除失败'),
-          status: 'error'
-        });
-      }
+  const { mutate: onclickDelKb } = useRequest({
+    mutationFn: async (id: string) => {
+      setLoading(true);
+      await delKbById(id);
+      return id;
     },
-    [toast, setKbList, myKbList]
+    onSuccess(id: string) {
+      setKbList(myKbList.filter((item) => item._id !== id));
+    },
+    onSettled() {
+      setLoading(false);
+    },
+    successToast: t('common.Delete Success'),
+    errorToast: t('kb.Delete Dataset Error')
+  });
+
+  const { data, refetch } = useQuery(['loadKbList', parentId], () => {
+    return Promise.all([loadKbList(parentId), getKbPaths(parentId)]);
+  });
+
+  const paths = useMemo(
+    () => [
+      {
+        parentId: '',
+        parentName: t('kb.My Dataset')
+      },
+      ...(data?.[1] || [])
+    ],
+    [data, t]
   );
 
   return (
     <PageContainer>
       <Flex pt={3} px={5} alignItems={'center'}>
-        <Box flex={1} className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-          我的知识库
-        </Box>
+        {/* url path */}
+        {!!parentId ? (
+          <Flex flex={1}>
+            {paths.map((item, i) => (
+              <Flex key={item.parentId} mr={2} alignItems={'center'}>
+                <Box
+                  fontSize={'lg'}
+                  px={2}
+                  py={1}
+                  borderRadius={'md'}
+                  {...(i === paths.length - 1
+                    ? {
+                        cursor: 'default'
+                      }
+                    : {
+                        cursor: 'pointer',
+                        _hover: {
+                          bg: 'myGray.100'
+                        },
+                        onClick: () => {
+                          router.push({
+                            query: {
+                              parentId: item.parentId
+                            }
+                          });
+                        }
+                      })}
+                >
+                  {item.parentName}
+                </Box>
+                {i !== paths.length - 1 && <MyIcon name={'rightArrowLight'} color={'myGray.500'} />}
+              </Flex>
+            ))}
+          </Flex>
+        ) : (
+          <Box flex={1} className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
+            我的知识库
+          </Box>
+        )}
+
         <MyMenu
           offset={[-30, 10]}
           width={120}
@@ -177,6 +226,7 @@ const Kb = () => {
             <Flex alignItems={'center'} h={'38px'}>
               <Avatar src={kb.avatar} borderRadius={'lg'} w={'28px'} />
               <Box ml={3}>{kb.name}</Box>
+
               <IconButton
                 className="delete"
                 position={'absolute'}

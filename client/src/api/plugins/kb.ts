@@ -1,5 +1,5 @@
 import { GET, POST, PUT, DELETE } from '../request';
-import type { DatasetItemType, KbItemType, KbListItemType } from '@/types/plugin';
+import type { DatasetItemType, KbItemType, KbListItemType, KbPathItemType } from '@/types/plugin';
 import { RequestPaging } from '@/types/index';
 import { TrainingModeEnum } from '@/constants/plugin';
 import {
@@ -10,7 +10,6 @@ import {
   Props as SearchTestProps,
   Response as SearchTestResponse
 } from '@/pages/api/openapi/kb/searchTest';
-import { Response as KbDataItemType } from '@/pages/api/plugins/kb/data/getDataById';
 import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
 import type { KbUpdateParams, CreateKbParams } from '../request/kb';
 import { QuoteItemType } from '@/types/chat';
@@ -18,6 +17,9 @@ import { QuoteItemType } from '@/types/chat';
 /* knowledge base */
 export const getKbList = (parentId?: string) =>
   GET<KbListItemType[]>(`/plugins/kb/list`, { parentId });
+
+export const getKbPaths = (parentId?: string) =>
+  GET<KbPathItemType[]>('/plugins/kb/paths', { parentId });
 
 export const getKbById = (id: string) => GET<KbItemType>(`/plugins/kb/detail?id=${id}`);
 
