@@ -26,7 +26,7 @@ type State = {
   clearAppModules(): void;
   // kb
   myKbList: KbListItemType[];
-  loadKbList: (parentId: string) => Promise<any>;
+  loadKbList: (parentId?: string) => Promise<any>;
   setKbList(val: KbListItemType[]): void;
   kbDetail: KbItemType;
   getKbDetail: (id: string, init?: boolean) => Promise<KbItemType>;

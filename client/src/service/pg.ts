@@ -13,6 +13,7 @@ export const connectPg = async (): Promise<Pool> => {
     connectionString: process.env.PG_URL,
     max: Number(process.env.DB_MAX_LINK || 5),
     keepAlive: true,
+    idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000
   });
 

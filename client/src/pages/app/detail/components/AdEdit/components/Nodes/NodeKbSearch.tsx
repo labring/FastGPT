@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import { FlowModuleItemType } from '@/types/flow';
 import { Flex, Box, Button, useTheme, useDisclosure, Grid } from '@chakra-ui/react';
@@ -33,7 +33,7 @@ const KBSelect = ({
     [myKbList, activeKbs]
   );
 
-  useQuery(['initkb'], loadKbList);
+  useQuery(['initkb'], () => loadKbList());
 
   return (
     <>

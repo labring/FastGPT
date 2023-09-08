@@ -32,7 +32,7 @@ const SelectDataset = ({
   const { myKbList, loadKbList } = useUserStore();
   const [selectedId, setSelectedId] = useState<string>();
 
-  useQuery(['loadKbList'], loadKbList);
+  useQuery(['loadKbList'], () => loadKbList());
 
   return (
     <MyModal isOpen={true} onClose={onClose} w={'100%'} maxW={['90vw', '900px']} isCentered={!isPc}>
