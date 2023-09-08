@@ -11,10 +11,9 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
-import { KbListItemType } from '@/types/plugin';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import type { SelectedKbType } from '@/types/plugin';
+import type { KbListItemType, SelectedKbType } from '@/types/plugin';
 import { useGlobalStore } from '@/store/global';
 import { useToast } from '@/hooks/useToast';
 import MySlider from '@/components/Slider';

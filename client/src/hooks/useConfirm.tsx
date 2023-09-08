@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogBody,
@@ -11,20 +11,24 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
-export const useConfirm = (props: { title?: string; content: string }) => {
+export const useConfirm = (props: { title?: string | null; content?: string | null }) => {
   const { t } = useTranslation();
   const { title = t('Warning'), content } = props;
+  const [customContent, setCustomContent] = useState(content);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+
   const cancelRef = useRef(null);
   const confirmCb = useRef<any>();
   const cancelCb = useRef<any>();
 
   return {
     openConfirm: useCallback(
-      (confirm?: any, cancel?: any) => {
+      (confirm?: any, cancel?: any, customContent?: string) => {
         confirmCb.current = confirm;
         cancelCb.current = cancel;
+
+        customContent && setCustomContent(customContent);
 
         return onOpen;
       },
@@ -44,7 +48,7 @@ export const useConfirm = (props: { title?: string; content: string }) => {
                 {title}
               </AlertDialogHeader>
 
-              <AlertDialogBody>{content}</AlertDialogBody>
+              <AlertDialogBody>{customContent}</AlertDialogBody>
 
               <AlertDialogFooter>
                 <Button
@@ -70,7 +74,7 @@ export const useConfirm = (props: { title?: string; content: string }) => {
           </AlertDialogOverlay>
         </AlertDialog>
       ),
-      [content, isOpen, onClose, title]
+      [customContent, isOpen, onClose, t, title]
     )
   };
 };

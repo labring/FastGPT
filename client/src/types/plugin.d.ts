@@ -3,13 +3,10 @@ import type { kbSchema } from './mongoSchema';
 
 export type SelectedKbType = { kbId: string; vectorModel: VectorModelItemType }[];
 
-export type KbListItemType = {
-  _id: string;
-  avatar: string;
-  name: string;
-  tags: string[];
+export type KbListItemType = Omit<kbSchema, 'vectorModel'> & {
   vectorModel: VectorModelItemType;
 };
+
 /* kb type */
 export interface KbItemType {
   _id: string;

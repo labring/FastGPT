@@ -2,6 +2,10 @@
   "App": "应用",
   "Cancel": "取消",
   "Confirm": "确认",
+  "Create New": "新建",
+  "Dataset": "知识库",
+  "Folder": "文件夹",
+  "Name": "名称",
   "Running": "运行中",
   "Select value is empty": "选择的内容为空",
   "UnKnow": "未知",
@@ -74,12 +78,14 @@
     "Copy Successful": "复制成功",
     "Course": "",
     "Delete": "删除",
+    "Delete Warning": "删除警告",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Input": "输入",
     "Output": "输出",
-    "export": "",
-    "Password inconsistency": "两次密码不一致"
+    "Password inconsistency": "两次密码不一致",
+    "Rename": "重命名",
+    "export": ""
   },
   "dataset": {
     "Confirm to delete the data": "确认删除该数据？",
@@ -147,6 +153,13 @@
     "Why FastGPT": "为什么选择 {{title}}",
     "desc": "基于 LLM 大模型的 AI 知识库问答平台",
     "slogan": "让 AI 更懂你的知识"
+  },
+  "kb": {
+    "Create Folder": "创建文件夹",
+    "Edit Folder": "编辑文件夹",
+    "Folder Name": "输入文件夹名称",
+    "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
+    "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
   },
   "navbar": {
     "Account": "账号",

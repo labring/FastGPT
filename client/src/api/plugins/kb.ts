@@ -16,7 +16,8 @@ import type { KbUpdateParams, CreateKbParams } from '../request/kb';
 import { QuoteItemType } from '@/types/chat';
 
 /* knowledge base */
-export const getKbList = () => GET<KbListItemType[]>(`/plugins/kb/list`);
+export const getKbList = (parentId?: string) =>
+  GET<KbListItemType[]>(`/plugins/kb/list`, { parentId });
 
 export const getKbById = (id: string) => GET<KbItemType>(`/plugins/kb/detail?id=${id}`);
 

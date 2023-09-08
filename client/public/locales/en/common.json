@@ -2,6 +2,10 @@
   "App": "App",
   "Cancel": "No",
   "Confirm": "Yes",
+  "Create New": "Create",
+  "Dataset": "Dataset",
+  "Folder": "Folder",
+  "Name": "Name",
   "Running": "Running",
   "Select value is empty": "Select value is empty",
   "UnKnow": "UnKnow",
@@ -74,12 +78,14 @@
     "Copy Successful": "Copy Successful",
     "Course": "",
     "Delete": "Delete",
+    "Delete Warning": "Warning",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
     "Output": "Output",
-    "export": "",
-    "Password inconsistency": "Password inconsistency"
+    "Password inconsistency": "Password inconsistency",
+    "Rename": "Rename",
+    "export": ""
   },
   "dataset": {
     "Confirm to delete the data": "Confirm to delete the data?",
@@ -147,6 +153,13 @@
     "Why FastGPT": "Why {{title}}",
     "desc": "AI knowledge base question and answer platform based on LLM large model",
     "slogan": "Let the AI know more about you"
+  },
+  "kb": {
+    "Create Folder": "Create Folder",
+    "Edit Folder": "Edit Folder",
+    "Folder Name": "Input folder name",
+    "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
+    "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
   },
   "navbar": {
     "Account": "Account",

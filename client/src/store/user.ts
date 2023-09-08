@@ -8,7 +8,7 @@ import { getTokenLogin, putUserInfo } from '@/api/user';
 import { defaultApp } from '@/constants/model';
 import { AppListItemType, AppUpdateParams } from '@/types/app';
 import type { KbItemType, KbListItemType } from '@/types/plugin';
-import { getKbList, getKbById } from '@/api/plugins/kb';
+import { getKbList, getKbById, putKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
 import type { AppSchema } from '@/types/mongoSchema';
 
@@ -26,7 +26,7 @@ type State = {
   clearAppModules(): void;
   // kb
   myKbList: KbListItemType[];
-  loadKbList: () => Promise<any>;
+  loadKbList: (parentId: string) => Promise<any>;
   setKbList(val: KbListItemType[]): void;
   kbDetail: KbItemType;
   getKbDetail: (id: string, init?: boolean) => Promise<KbItemType>;
@@ -108,14 +108,14 @@ export const useUserStore = create<State>()(
           });
         },
         myKbList: [],
-        async loadKbList() {
-          const res = await getKbList();
+        async loadKbList(parentId) {
+          const res = await getKbList(parentId);
           set((state) => {
             state.myKbList = res;
           });
           return res;
         },
-        setKbList(val: KbListItemType[]) {
+        setKbList(val) {
           set((state) => {
             state.myKbList = val;
           });
