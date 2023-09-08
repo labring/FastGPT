@@ -64,9 +64,14 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 **镜像和端口**
 
 + 镜像名: `stawky/chatglm2:latest`  
-+ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/kbgpt/chatglm2:latest`
++ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
 + 端口号: 6006
-+ 镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
+
+```
+# 设置安全凭证（即oneapi中的渠道密钥）
+默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。
+```
 
 ## 接入 One API
 
