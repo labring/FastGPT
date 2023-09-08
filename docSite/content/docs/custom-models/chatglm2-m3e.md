@@ -14,9 +14,14 @@ FastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私�
 ## 部署镜像
 
 + 镜像名: `stawky/chatglm2-m3e:latest`  
-+ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/kbgpt/chatglm2-m3e:latest`
++ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest`
 + 端口号: 6006
-+ 镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
+
+```
+# 设置安全凭证（即oneapi中的渠道密钥）
+默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。
+```
 
 ## 接入 [One API](/docs/installation/one-api/)
 
