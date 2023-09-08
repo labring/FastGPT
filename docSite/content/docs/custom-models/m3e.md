@@ -14,13 +14,14 @@ FastGPT 默认使用了 openai 的 embedding 向量模型，如果你想私有�
 ## 部署镜像
 
 镜像名: `stawky/m3e-large-api:latest`  
-国内镜像： `registry.cn-guangzhou.aliyuncs.com/kbgpt/m3e-large-api:latest`
+国内镜像： `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/m3e-large-api:latest`
 端口号: 6008
 环境变量：
 
 ```
-# 设置安全凭证
-sk-key=xxxx
+# 设置安全凭证（即oneapi中的渠道密钥）
+默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。
 ```
 
 ## 接入 One API
