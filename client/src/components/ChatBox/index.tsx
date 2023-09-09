@@ -55,6 +55,7 @@ const SelectDataset = dynamic(() => import('./SelectDataset'));
 const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputDataModal'));
 
 import styles from './index.module.scss';
+import Script from 'next/script';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -535,6 +536,8 @@ const ChatBox = (
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
+      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
+
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}

@@ -58,7 +58,6 @@ declare global {
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
-    particlesJS: any;
     grecaptcha: any;
     QRCode: any;
     umami?: {
