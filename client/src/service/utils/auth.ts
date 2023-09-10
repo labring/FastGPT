@@ -155,7 +155,7 @@ export const authUser = async ({
   })();
 
   return {
-    userId: uid,
+    userId: String(uid),
     appId,
     authType,
     user

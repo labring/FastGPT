@@ -19,7 +19,7 @@ const QuoteModal = ({
   rawSearch = [],
   onClose
 }: {
-  onUpdateQuote: (quoteId: string, sourceText: string) => Promise<void>;
+  onUpdateQuote: (quoteId: string, sourceText?: string) => Promise<void>;
   rawSearch: SearchType[];
   onClose: () => void;
 }) => {
@@ -129,7 +129,7 @@ const QuoteModal = ({
       {editDataItem && (
         <InputDataModal
           onClose={() => setEditDataItem(undefined)}
-          onSuccess={() => onUpdateQuote(editDataItem.id, '手动修改')}
+          onSuccess={() => onUpdateQuote(editDataItem.id)}
           onDelete={() => onUpdateQuote(editDataItem.id, '已删除')}
           kbId={editDataItem.kb_id}
           defaultValues={{

@@ -28,6 +28,7 @@ export type FeConfigsType = {
   beianText?: string;
   googleClientVerKey?: string;
   gitLoginKey?: string;
+  exportLimitMinutes?: number;
   scripts?: { [key: string]: string }[];
 };
 export type SystemEnvType = {
@@ -58,7 +59,6 @@ declare global {
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
-    particlesJS: any;
     grecaptcha: any;
     QRCode: any;
     umami?: {

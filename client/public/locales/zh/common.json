@@ -2,6 +2,10 @@
   "App": "应用",
   "Cancel": "取消",
   "Confirm": "确认",
+  "Create New": "新建",
+  "Dataset": "知识库",
+  "Folder": "文件夹",
+  "Name": "名称",
   "Running": "运行中",
   "Select value is empty": "选择的内容为空",
   "UnKnow": "未知",
@@ -63,10 +67,8 @@
       "online": "在线使用",
       "share": "外部链接调用",
       "test": "测试"
-    }
-  },
-  "commom": {
-    "Password inconsistency": "两次密码不一致"
+    },
+    "retry": "重新生成"
   },
   "common": {
     "Add": "添加",
@@ -76,14 +78,22 @@
     "Copy Successful": "复制成功",
     "Course": "",
     "Delete": "删除",
+    "Delete Failed": "删除失败",
+    "Delete Success": "删除成功",
+    "Delete Warning": "删除警告",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Input": "输入",
     "Output": "输出",
+    "Password inconsistency": "两次密码不一致",
+    "Rename": "重命名",
+    "Search": "搜索",
+    "Status": "状态",
     "export": ""
   },
   "dataset": {
     "Confirm to delete the data": "确认删除该数据？",
+    "Export": "导出",
     "Queue Desc": "该数据是指整个系统当前待训练的数量。{{title}} 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
     "System Data Queue": "排队长度"
   },
@@ -93,9 +103,11 @@
     "Create File": "创建新文件",
     "Create file": "创建文件",
     "Drag and drop": "拖拽文件至此",
+    "Embedding": "索引中",
     "Fetch Url": "链接读取",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式",
     "Parse": "{{name}} 解析中...",
+    "Ready": "可用",
     "Release the mouse to upload the file": "松开鼠标上传文件",
     "Select a maximum of 10 files": "最多选择10个文件",
     "Uploading": "正在上传 {{name}}，进度: {{percent}}%",
@@ -148,6 +160,24 @@
     "Why FastGPT": "为什么选择 {{title}}",
     "desc": "基于 LLM 大模型的 AI 知识库问答平台",
     "slogan": "让 AI 更懂你的知识"
+  },
+  "kb": {
+    "Chunk Length": "数据总量",
+    "Confirm to delete the file": "确认删除该文件及其所有数据？",
+    "Create Folder": "创建文件夹",
+    "Delete Dataset Error": "删除知识库异常",
+    "Edit Folder": "编辑文件夹",
+    "File Size": "文件大小",
+    "Filename": "文件名",
+    "Files": "文件: {{total}}个",
+    "Folder Name": "输入文件夹名称",
+    "My Dataset": "我的知识库",
+    "Other Data": "其他数据",
+    "Select Dataset": "选择该知识库",
+    "Select Folder": "进入文件夹",
+    "Upload Time": "上传时间",
+    "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
+    "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
   },
   "navbar": {
     "Account": "账号",

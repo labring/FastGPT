@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ModalFooter, ModalBody, Input, useDisclosure, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 

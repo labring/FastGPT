@@ -10,7 +10,8 @@ export const fileImgs = [
   { suffix: 'csv', src: '/imgs/files/csv.svg' },
   { suffix: '(doc|docs)', src: '/imgs/files/doc.svg' },
   { suffix: 'txt', src: '/imgs/files/txt.svg' },
-  { suffix: 'md', src: '/imgs/files/markdown.svg' }
+  { suffix: 'md', src: '/imgs/files/markdown.svg' },
+  { suffix: '.', src: '/imgs/files/file.svg' }
 ];
 
 export enum TrackEventName {

@@ -88,7 +88,7 @@ export async function pushDataToKb({
   ]);
 
   const modeMaxToken = {
-    [TrainingModeEnum.index]: vectorModel.maxToken,
+    [TrainingModeEnum.index]: vectorModel.maxToken * 1.5,
     [TrainingModeEnum.qa]: global.qaModel.maxToken * 0.8
   };
 
@@ -146,7 +146,6 @@ export async function pushDataToKb({
           }
         } catch (error) {
           console.log(error);
-          error;
         }
         return Promise.resolve(data);
       })

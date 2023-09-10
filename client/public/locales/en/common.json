@@ -2,6 +2,10 @@
   "App": "App",
   "Cancel": "No",
   "Confirm": "Yes",
+  "Create New": "Create",
+  "Dataset": "Dataset",
+  "Folder": "Folder",
+  "Name": "Name",
   "Running": "Running",
   "Select value is empty": "Select value is empty",
   "UnKnow": "UnKnow",
@@ -63,10 +67,8 @@
       "online": "Online Chat",
       "share": "Share",
       "test": "Test Chat "
-    }
-  },
-  "commom": {
-    "Password inconsistency": "Password inconsistency"
+    },
+    "retry": "Retry"
   },
   "common": {
     "Add": "Add",
@@ -76,14 +78,22 @@
     "Copy Successful": "Copy Successful",
     "Course": "",
     "Delete": "Delete",
+    "Delete Failed": "Delete Failed",
+    "Delete Success": "Delete Successful",
+    "Delete Warning": "Warning",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
     "Output": "Output",
+    "Password inconsistency": "Password inconsistency",
+    "Rename": "Rename",
+    "Search": "Search",
+    "Status": "Status",
     "export": ""
   },
   "dataset": {
     "Confirm to delete the data": "Confirm to delete the data?",
+    "Export": "Export",
     "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
     "System Data Queue": "Data Queue"
   },
@@ -93,9 +103,11 @@
     "Create File": "Create File",
     "Create file": "Create file",
     "Drag and drop": "Drag and drop files here",
+    "Embedding": "Embedding",
     "Fetch Url": "Fetch Url",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "If the imported file is garbled, please convert CSV to UTF-8 encoding format",
     "Parse": "{{name}} Parsing...",
+    "Ready": "Ready",
     "Release the mouse to upload the file": "Release the mouse to upload the file",
     "Select a maximum of 10 files": "Select a maximum of 10 files",
     "Uploading": "Uploading: {{name}}, Progress: {{percent}}%",
@@ -148,6 +160,24 @@
     "Why FastGPT": "Why {{title}}",
     "desc": "AI knowledge base question and answer platform based on LLM large model",
     "slogan": "Let the AI know more about you"
+  },
+  "kb": {
+    "Chunk Length": "Chunk Length",
+    "Confirm to delete the file": "Are you sure to delete the file and all its data?",
+    "Create Folder": "Create Folder",
+    "Delete Dataset Error": "Delete dataset failed",
+    "Edit Folder": "Edit Folder",
+    "File Size": "File Size",
+    "Filename": "Filename",
+    "Files": "{{total}} Files",
+    "Folder Name": "Input folder name",
+    "My Dataset": "My Dataset",
+    "Other Data": "Other Data",
+    "Select Dataset": "Select Dataset",
+    "Select Folder": "Enter folder",
+    "Upload Time": "Upload Time",
+    "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
+    "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
   },
   "navbar": {
     "Account": "Account",

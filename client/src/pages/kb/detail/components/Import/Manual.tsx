@@ -6,14 +6,14 @@ import { useRequest } from '@/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
 import { postKbDataFromList } from '@/api/plugins/kb';
 import { TrainingModeEnum } from '@/constants/plugin';
-import { useUserStore } from '@/store/user';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { useDatasetStore } from '@/store/dataset';
 
 type ManualFormType = { q: string; a: string };
 
 const ManualImport = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
   const maxToken = kbDetail.vectorModel?.maxToken || 2000;
 
   const { register, handleSubmit, reset } = useForm({

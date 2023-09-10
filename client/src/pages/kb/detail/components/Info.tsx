@@ -12,7 +12,7 @@ import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
 import { delKbById, putKbById } from '@/api/plugins/kb';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 import { useConfirm } from '@/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
 import { compressImg } from '@/utils/file';
@@ -47,7 +47,7 @@ const Info = (
     multiple: false
   });
 
-  const { kbDetail, getKbDetail, loadKbList, myKbList } = useUserStore();
+  const { kbDetail, getKbDetail, loadKbList } = useDatasetStore();
 
   /* 点击删除 */
   const onclickDelKb = useCallback(async () => {

@@ -18,7 +18,7 @@ import MySelect from '@/components/Select';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import Tag from '@/components/Tag';
 
-const CreateModal = ({ onClose }: { onClose: () => void }) => {
+const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -28,7 +28,9 @@ const CreateModal = ({ onClose }: { onClose: () => void }) => {
       avatar: '/icon/logo.svg',
       name: '',
       tags: [],
-      vectorModel: vectorModelList[0].model
+      vectorModel: vectorModelList[0].model,
+      type: 'dataset',
+      parentId
     }
   });
   const InputRef = useRef<HTMLInputElement>(null);

@@ -9,10 +9,10 @@ import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
 import { DatasetItemType } from '@/types/plugin';
 import { useTranslation } from 'react-i18next';
+import { useDatasetStore } from '@/store/dataset';
 
 export type FormData = { dataId?: string } & DatasetItemType;
 
@@ -36,7 +36,7 @@ const InputDataModal = ({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const { kbDetail, getKbDetail } = useUserStore();
+  const { kbDetail, getKbDetail } = useDatasetStore();
 
   const { getValues, register, handleSubmit, reset } = useForm<FormData>({
     defaultValues
@@ -261,13 +261,11 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
       <Box
         color={'myGray.600'}
         display={'inline-block'}
+        whiteSpace={'nowrap'}
         {...(!!fileId
           ? {
               cursor: 'pointer',
-              textDecoration: ['underline', 'none'],
-              _hover: {
-                textDecoration: 'underline'
-              },
+              textDecoration: 'underline',
               onClick: async () => {
                 try {
                   const url = await getFileViewUrl(fileId);

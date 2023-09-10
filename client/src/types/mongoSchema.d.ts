@@ -6,6 +6,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
 import { ChatSourceEnum, OutLinkTypeEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
+import { KbTypeEnum } from '@/constants/kb';
 
 export interface UserModelSchema {
   _id: string;
@@ -166,15 +167,17 @@ export interface OutLinkSchema {
   type: `${OutLinkTypeEnum}`;
 }
 
-export interface kbSchema {
+export type kbSchema = {
   _id: string;
   userId: string;
+  parentId: string;
   updateTime: Date;
   avatar: string;
   name: string;
   vectorModel: string;
   tags: string[];
-}
+  type: `${KbTypeEnum}`;
+};
 
 export interface informSchema {
   _id: string;

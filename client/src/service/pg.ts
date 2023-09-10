@@ -13,6 +13,7 @@ export const connectPg = async (): Promise<Pool> => {
     connectionString: process.env.PG_URL,
     max: Number(process.env.DB_MAX_LINK || 5),
     keepAlive: true,
+    idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000
   });
 
@@ -107,6 +108,7 @@ class Pg {
       }
       LIMIT ${props.limit || 10} OFFSET ${props.offset || 0}
     `;
+
     const pg = await connectPg();
     return pg.query<T>(sql);
   }
