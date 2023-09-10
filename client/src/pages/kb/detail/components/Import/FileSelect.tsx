@@ -129,7 +129,7 @@ const FileSelect = ({
               maxLen: chunkLen
             });
             const fileItem: FileItemType = {
-              id: nanoid(),
+              id: filesId[0],
               filename: file.name,
               icon,
               text,
