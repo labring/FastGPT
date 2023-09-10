@@ -42,7 +42,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
         .flat()
         .filter((item) => item?.q);
 
-      const filterChunks = chunks.filter((item) => item.q.length < maxToken);
+      const filterChunks = chunks.filter((item) => item.q.length < maxToken * 1.5);
 
       if (filterChunks.length !== chunks.length) {
         toast({
