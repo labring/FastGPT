@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return {
           id: file._id,
           chunkLength: await PgClient.count(PgTrainingTableName, {
-            fields: ['kb_id'],
+            fields: ['id'],
             where: [
               ['user_id', userId],
               'AND',

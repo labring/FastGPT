@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         offset: pageSize * (pageNum - 1)
       }),
       PgClient.count(PgTrainingTableName, {
-        fields: ['kb_id'],
+        fields: ['id'],
         where
       })
     ]);

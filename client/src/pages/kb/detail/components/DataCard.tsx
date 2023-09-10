@@ -25,6 +25,7 @@ import MyTooltip from '@/components/MyTooltip';
 import MyInput from '@/components/MyInput';
 import { fileImgs } from '@/constants/common';
 import { useRequest } from '@/hooks/useRequest';
+import { feConfigs } from '@/store/static';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -80,24 +81,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     [getData, pageNum, refetchTrainingData]
   );
 
-  // get al data and export csv
-  const { mutate: onclickExport, isLoading: isLoadingExport = false } = useRequest({
-    mutationFn: () => getExportDataList(kbId),
-    onSuccess(res) {
-      const text = Papa.unparse({
-        fields: ['question', 'answer', 'source'],
-        data: res
-      });
-      fileDownload({
-        text,
-        type: 'text/csv',
-        filename: 'data.csv'
-      });
-    },
-    successToast: '导出成功，下次导出需要半小时后',
-    errorToast: '导出异常'
-  });
-
   // get first page data
   const getFirstData = useCallback(
     debounce(() => {
@@ -121,6 +104,28 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     [fileInfo?.filename]
   );
 
+  // get al data and export csv
+  const { mutate: onclickExport, isLoading: isLoadingExport = false } = useRequest({
+    mutationFn: () => getExportDataList({ kbId, fileId }),
+    onSuccess(res) {
+      const text = Papa.unparse({
+        fields: ['question', 'answer', 'source'],
+        data: res
+      });
+
+      const filenameSplit = fileInfo?.filename?.split('.') || [];
+      const filename = filenameSplit?.length <= 1 ? 'data' : filenameSplit.slice(0, -1).join('.');
+
+      fileDownload({
+        text,
+        type: 'text/csv',
+        filename
+      });
+    },
+    successToast: `导出成功，下次导出需要 ${feConfigs.exportLimitMinutes} 分钟后`,
+    errorToast: '导出异常'
+  });
+
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex alignItems={'center'}>
@@ -141,7 +146,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           borderColor={'myBlue.600'}
           color={'myBlue.600'}
           isLoading={isLoadingExport || isLoading}
-          title={'半小时仅能导出1次'}
+          title={`${feConfigs} 分钟能导出 1 次`}
           onClick={onclickExport}
         >
           {t('dataset.Export')}

@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           ? FileStatusEnum.embedding
           : FileStatusEnum.ready,
         chunkLength: await PgClient.count(PgTrainingTableName, {
-          fields: ['kb_id'],
+          fields: ['id'],
           where: [
             ['user_id', userId],
             'AND',
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             ? FileStatusEnum.embedding
             : FileStatusEnum.ready,
           chunkLength: await PgClient.count(PgTrainingTableName, {
-            fields: ['kb_id'],
+            fields: ['id'],
             where: [
               ['user_id', userId],
               'AND',

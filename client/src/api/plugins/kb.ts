@@ -53,14 +53,10 @@ export const getKbDataList = (data: GetKbDataListProps) =>
 /**
  * 获取导出数据（不分页）
  */
-export const getExportDataList = (kbId: string) =>
-  GET<[string, string, string][]>(
-    `/plugins/kb/data/exportModelData`,
-    { kbId },
-    {
-      timeout: 600000
-    }
-  );
+export const getExportDataList = (data: { kbId: string; fileId: string }) =>
+  GET<[string, string, string][]>(`/plugins/kb/data/exportModelData`, data, {
+    timeout: 600000
+  });
 
 /**
  * 获取模型正在拆分数据的数量

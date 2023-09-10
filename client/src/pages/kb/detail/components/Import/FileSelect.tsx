@@ -25,7 +25,7 @@ const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-const csvTemplate = `question,answer,source\n"什么是 laf","laf 是一个云函数开发平台……","laf git doc"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……","sealos git doc"`;
+const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
 export type FileItemType = {
   id: string;
