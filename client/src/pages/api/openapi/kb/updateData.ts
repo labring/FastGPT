@@ -50,7 +50,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     await PgClient.update(PgTrainingTableName, {
       where: [['id', dataId], 'AND', ['user_id', userId]],
       values: [
-        { key: 'source', value: '手动修改' },
         { key: 'a', value: a.replace(/'/g, '"') },
         ...(q
           ? [

@@ -173,6 +173,8 @@
     "Folder Name": "输入文件夹名称",
     "My Dataset": "我的知识库",
     "Other Data": "其他数据",
+    "Select Dataset": "选择该知识库",
+    "Select Folder": "进入文件夹",
     "Upload Time": "上传时间",
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"

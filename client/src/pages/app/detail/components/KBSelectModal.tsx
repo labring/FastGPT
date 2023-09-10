@@ -173,52 +173,65 @@ export const KBSelectModal = ({
             {filterKbList.unSelected.map((item) =>
               (() => {
                 return (
-                  <Card
+                  <MyTooltip
                     key={item._id}
-                    p={3}
-                    border={theme.borders.base}
-                    boxShadow={'sm'}
-                    h={'80px'}
-                    cursor={'pointer'}
-                    _hover={{
-                      boxShadow: 'md'
-                    }}
-                    onClick={() => {
-                      if (item.type === KbTypeEnum.folder) {
-                        setParentId(item._id);
-                      } else if (item.type === KbTypeEnum.dataset) {
-                        const vectorModel = selectedKbList[0]?.vectorModel?.model;
-
-                        if (vectorModel && vectorModel !== item.vectorModel.model) {
-                          return toast({
-                            status: 'warning',
-                            title: '仅能选择同一个索引模型的知识库'
-                          });
-                        }
-                        setSelectedKbList((state) => [
-                          ...state,
-                          { kbId: item._id, vectorModel: item.vectorModel }
-                        ]);
-                      }
-                    }}
+                    label={
+                      item.type === KbTypeEnum.dataset
+                        ? t('kb.Select Dataset')
+                        : t('kb.Select Folder')
+                    }
                   >
-                    <Flex alignItems={'center'} h={'38px'}>
-                      <Avatar src={item.avatar} w={['24px', '28px', '32px']}></Avatar>
-                      <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg', 'xl']}>
-                        {item.name}
-                      </Box>
-                    </Flex>
-                    <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
-                      {item.type === KbTypeEnum.folder ? (
-                        <Box color={'myGray.500'}>{t('Folder')}</Box>
-                      ) : (
-                        <>
-                          <MyIcon mr={1} name="kbTest" w={'12px'} />
-                          <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
-                        </>
-                      )}
-                    </Flex>
-                  </Card>
+                    <Card
+                      p={3}
+                      border={theme.borders.base}
+                      boxShadow={'sm'}
+                      h={'80px'}
+                      cursor={'pointer'}
+                      _hover={{
+                        boxShadow: 'md'
+                      }}
+                      onClick={() => {
+                        if (item.type === KbTypeEnum.folder) {
+                          setParentId(item._id);
+                        } else if (item.type === KbTypeEnum.dataset) {
+                          const vectorModel = selectedKbList[0]?.vectorModel?.model;
+
+                          if (vectorModel && vectorModel !== item.vectorModel.model) {
+                            return toast({
+                              status: 'warning',
+                              title: '仅能选择同一个索引模型的知识库'
+                            });
+                          }
+                          setSelectedKbList((state) => [
+                            ...state,
+                            { kbId: item._id, vectorModel: item.vectorModel }
+                          ]);
+                        }
+                      }}
+                    >
+                      <Flex alignItems={'center'} h={'38px'}>
+                        <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
+                        <Box
+                          className="textEllipsis"
+                          ml={3}
+                          fontWeight={'bold'}
+                          fontSize={['md', 'lg', 'xl']}
+                        >
+                          {item.name}
+                        </Box>
+                      </Flex>
+                      <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+                        {item.type === KbTypeEnum.folder ? (
+                          <Box color={'myGray.500'}>{t('Folder')}</Box>
+                        ) : (
+                          <>
+                            <MyIcon mr={1} name="kbTest" w={'12px'} />
+                            <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
+                          </>
+                        )}
+                      </Flex>
+                    </Card>
+                  </MyTooltip>
                 );
               })()
             )}

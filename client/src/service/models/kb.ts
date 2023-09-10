@@ -33,7 +33,8 @@ const kbSchema = new Schema({
   type: {
     type: String,
     enum: Object.keys(KbTypeMap),
-    required: true
+    required: true,
+    default: 'dataset'
   },
   tags: {
     type: [String],

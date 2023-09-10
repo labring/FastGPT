@@ -265,10 +265,7 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
         {...(!!fileId
           ? {
               cursor: 'pointer',
-              textDecoration: ['underline', 'none'],
-              _hover: {
-                textDecoration: 'underline'
-              },
+              textDecoration: 'underline',
               onClick: async () => {
                 try {
                   const url = await getFileViewUrl(fileId);
