@@ -43,23 +43,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error(`上次导出未到 ${minutes}，每 ${minutes}仅可导出一次。`);
     }
 
-    const where: any = [
-      ['kb_id', kbId],
-      'AND',
-      ['user_id', userId],
-      ...(fileId
-        ? fileId === OtherFileId
-          ? ["AND (file_id IS NULL OR file_id = '')"]
-          : ['AND', ['file_id', fileId]]
-        : [])
-    ];
+    const where: any = [['kb_id', kbId], 'AND', ['user_id', userId]];
     // 从 pg 中获取所有数据
     const pgData = await PgClient.select<{ q: string; a: string; source: string }>(
       PgTrainingTableName,
       {
         where,
         fields: ['q', 'a', 'source'],
-        order: [{ field: 'id', mode: 'DESC' }]
+        order: [{ field: 'id', mode: 'DESC' }],
+        limit: 1000000
       }
     );
 
@@ -88,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '100mb'
+      sizeLimit: '200mb'
     }
   }
 };
