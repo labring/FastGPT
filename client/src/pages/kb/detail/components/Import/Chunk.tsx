@@ -26,12 +26,12 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const ChunkImport = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
 
   const vectorModel = kbDetail.vectorModel;
   const unitPrice = vectorModel?.price || 0.2;
@@ -86,7 +86,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
       router.replace({
         query: {
           kbId,
-          currentTab: 'data'
+          currentTab: 'dataset'
         }
       });
     },
@@ -106,12 +106,15 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
             text: file.text,
             maxLen: chunkLen
           });
+
           return {
             ...file,
             tokens: splitRes.tokens,
-            chunks: file.chunks.map((chunk, i) => ({
-              ...chunk,
-              q: splitRes.chunks[i]
+            chunks: splitRes.chunks.map((chunk) => ({
+              a: '',
+              source: file.filename,
+              file_id: file.id,
+              q: chunk
             }))
           };
         })

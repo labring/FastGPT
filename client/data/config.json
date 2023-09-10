@@ -9,7 +9,7 @@
     "show_doc": true,
     "systemTitle": "FastGPT",
     "authorText": "Made by FastGPT Team.",
-    "gitLoginKey": "",
+    "exportLimitMinutes": 0,
     "scripts": []
   },
   "SystemParams": {

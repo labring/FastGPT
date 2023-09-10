@@ -44,7 +44,7 @@ export const jsonRes = <T = any>(
     if (typeof error === 'string') {
       msg = error;
     } else if (proxyError[error?.code]) {
-      msg = '接口连接异常';
+      msg = '网络连接异常';
     } else if (error?.response?.data?.error?.message) {
       msg = error?.response?.data?.error?.message;
     } else if (openaiAccountError[error?.response?.data?.error?.code]) {
@@ -85,7 +85,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   if (typeof error === 'string') {
     msg = error;
   } else if (proxyError[error?.code]) {
-    msg = '接口连接异常';
+    msg = '网络连接异常';
   } else if (error?.response?.data?.error?.message) {
     msg = error?.response?.data?.error?.message;
   } else if (openaiAccountError[error?.response?.data?.error?.code]) {

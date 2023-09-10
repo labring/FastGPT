@@ -1,12 +1,13 @@
-import React, { useCallback, useState, useRef } from 'react';
-import { Box, Card, IconButton, Flex, Button, Input, Grid } from '@chakra-ui/react';
+import React, { useCallback, useState, useRef, useMemo } from 'react';
+import { Box, Card, IconButton, Flex, Button, Grid, Image } from '@chakra-ui/react';
 import type { KbDataItemType } from '@/types/plugin';
 import { usePagination } from '@/hooks/usePagination';
 import {
   getKbDataList,
   getExportDataList,
   delOneKbDataByDataId,
-  getTrainingData
+  getTrainingData,
+  getFileInfoById
 } from '@/api/plugins/kb';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { fileDownload } from '@/utils/file';
@@ -18,12 +19,19 @@ import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
+import MyInput from '@/components/MyInput';
+import { fileImgs } from '@/constants/common';
+import { useRequest } from '@/hooks/useRequest';
+import { feConfigs } from '@/store/static';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
+  const router = useRouter();
+  const { fileId = '' } = router.query as { fileId: string };
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
@@ -45,7 +53,8 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     pageSize: 24,
     params: {
       kbId,
-      searchText
+      searchText,
+      fileId
     },
     onChange() {
       if (BoxRef.current) {
@@ -72,33 +81,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     [getData, pageNum, refetchTrainingData]
   );
 
-  // get al data and export csv
-  const { mutate: onclickExport, isLoading: isLoadingExport = false } = useMutation({
-    mutationFn: () => getExportDataList(kbId),
-    onSuccess(res) {
-      const text = Papa.unparse({
-        fields: ['question', 'answer', 'source'],
-        data: res
-      });
-      fileDownload({
-        text,
-        type: 'text/csv',
-        filename: 'data.csv'
-      });
-      toast({
-        title: '导出成功，下次导出需要半小时后',
-        status: 'success'
-      });
-    },
-    onError(err: any) {
-      toast({
-        title: getErrText(err, '导出异常'),
-        status: 'error'
-      });
-      console.log(err);
-    }
-  });
-
+  // get first page data
   const getFirstData = useCallback(
     debounce(() => {
       getData(1);
@@ -113,57 +96,100 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     enabled: qaListLen > 0 || vectorListLen > 0
   });
 
+  // get file info
+  const { data: fileInfo } = useQuery(['getFileInfo', fileId], () => getFileInfoById(fileId));
+  const fileIcon = useMemo(
+    () =>
+      fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(fileInfo?.filename || ''))?.src,
+    [fileInfo?.filename]
+  );
+
+  // get al data and export csv
+  const { mutate: onclickExport, isLoading: isLoadingExport = false } = useRequest({
+    mutationFn: () => getExportDataList({ kbId, fileId }),
+    onSuccess(res) {
+      const text = Papa.unparse({
+        fields: ['question', 'answer', 'source'],
+        data: res
+      });
+
+      const filenameSplit = fileInfo?.filename?.split('.') || [];
+      const filename = filenameSplit?.length <= 1 ? 'data' : filenameSplit.slice(0, -1).join('.');
+
+      fileDownload({
+        text,
+        type: 'text/csv',
+        filename
+      });
+    },
+    successToast: `导出成功，下次导出需要 ${feConfigs.exportLimitMinutes} 分钟后`,
+    errorToast: '导出异常'
+  });
+
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
-      <Flex justifyContent={'space-between'}>
-        <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
-          知识库数据: {total}组
-        </Box>
+      <Flex alignItems={'center'}>
+        <Flex
+          className="textEllipsis"
+          flex={'1 0 0'}
+          mr={[3, 5]}
+          fontSize={['sm', 'md']}
+          alignItems={'center'}
+        >
+          <Image src={fileIcon} w={'16px'} mr={2} alt={''} />
+          {t(fileInfo?.filename || 'Filename')}
+        </Flex>
+        <Button
+          mr={2}
+          size={['sm', 'md']}
+          variant={'base'}
+          borderColor={'myBlue.600'}
+          color={'myBlue.600'}
+          isLoading={isLoadingExport || isLoading}
+          title={`${feConfigs} 分钟能导出 1 次`}
+          onClick={onclickExport}
+        >
+          {t('dataset.Export')}
+        </Button>
         <Box>
           <MyTooltip label={'刷新'}>
             <IconButton
               icon={<RepeatIcon />}
+              size={['sm', 'md']}
               aria-label={'refresh'}
               variant={'base'}
               isLoading={isLoading}
-              mr={[2, 4]}
-              size={'sm'}
               onClick={() => {
                 getData(pageNum);
                 getTrainingData({ kbId, init: true });
               }}
             />
           </MyTooltip>
-          <Button
-            mr={2}
-            size={'sm'}
-            variant={'base'}
-            borderColor={'myBlue.600'}
-            color={'myBlue.600'}
-            isLoading={isLoadingExport || isLoading}
-            title={'半小时仅能导出1次'}
-            onClick={() => onclickExport()}
-          >
-            导出数据
-          </Button>
         </Box>
       </Flex>
-      <Flex my={4}>
-        {qaListLen > 0 || vectorListLen > 0 ? (
-          <Box fontSize={'xs'}>
-            {qaListLen > 0 ? `${qaListLen}条数据正在拆分，` : ''}
-            {vectorListLen > 0 ? `${vectorListLen}条数据正在生成索引，` : ''}
-            请耐心等待...
+      <Flex my={3} alignItems={'center'}>
+        <Box>
+          <Box as={'span'} fontSize={['md', 'lg']}>
+            {total}组
           </Box>
-        ) : (
-          <Box fontSize={'xs'}>所有数据已就绪~</Box>
-        )}
+          <Box as={'span'}>
+            {(qaListLen > 0 || vectorListLen > 0) && (
+              <>
+                ({qaListLen > 0 ? `${qaListLen}条数据正在拆分，` : ''}
+                {vectorListLen > 0 ? `${vectorListLen}条数据正在生成索引，` : ''}
+                请耐心等待... )
+              </>
+            )}
+          </Box>
+        </Box>
         <Box flex={1} mr={1} />
-        <Input
-          maxW={['60%', '300px']}
-          size={'sm'}
-          value={searchText}
+        <MyInput
+          leftIcon={
+            <MyIcon name="searchLight" position={'absolute'} w={'14px'} color={'myGray.500'} />
+          }
+          w={['200px', '300px']}
           placeholder="根据匹配知识，预期答案和来源进行搜索"
+          value={searchText}
           onChange={(e) => {
             setSearchText(e.target.value);
             getFirstData();
@@ -217,7 +243,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
             </Box>
             <Flex py={2} px={4} h={'36px'} alignItems={'flex-end'} fontSize={'sm'}>
               <Box className={'textEllipsis'} flex={1} color={'myGray.500'}>
-                {item.source?.trim()}
+                ID:{item.id}
               </Box>
               <IconButton
                 className="delete"

@@ -19,13 +19,13 @@ import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
 import { FetchResultItem, DatasetItemType } from '@/types/plugin';
 import { getErrText } from '@/utils/tools';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-const csvTemplate = `question,answer,source\n"什么是 laf","laf 是一个云函数开发平台……","laf git doc"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……","sealos git doc"`;
+const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
 export type FileItemType = {
   id: string;
@@ -55,7 +55,7 @@ const FileSelect = ({
   showCreateFile = true,
   ...props
 }: Props) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
   const { Loading: FileSelectLoading } = useLoading();
   const { t } = useTranslation();
 
@@ -129,7 +129,7 @@ const FileSelect = ({
               maxLen: chunkLen
             });
             const fileItem: FileItemType = {
-              id: nanoid(),
+              id: filesId[0],
               filename: file.name,
               icon,
               text,

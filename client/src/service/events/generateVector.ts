@@ -96,9 +96,7 @@ export async function generateVector(): Promise<any> {
         data: err.response?.data
       });
     } else {
-      addLog.info('openai error: 生成向量错误', {
-        err
-      });
+      addLog.error('openai error: 生成向量错误', err);
     }
 
     // message error or openai account error

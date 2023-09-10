@@ -13,6 +13,7 @@ import UserInfo from './components/Info';
 import { serviceSideProps } from '@/utils/i18n';
 import { feConfigs } from '@/store/static';
 import { useTranslation } from 'react-i18next';
+import Script from 'next/script';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const BillTable = dynamic(() => import('./components/BillTable'));
@@ -97,51 +98,54 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   );
 
   return (
-    <PageContainer>
-      <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
-        {isPc ? (
-          <Flex
-            flexDirection={'column'}
-            p={4}
-            h={'100%'}
-            flex={'0 0 200px'}
-            borderRight={theme.borders.base}
-          >
-            <SideTabs
-              flex={1}
-              mx={'auto'}
-              mt={2}
-              w={'100%'}
-              list={tabList.current}
-              activeId={currentTab}
-              onChange={setCurrentTab}
-            />
-          </Flex>
-        ) : (
-          <Box mb={3}>
-            <Tabs
-              m={'auto'}
-              size={isPc ? 'md' : 'sm'}
-              list={tabList.current.map((item) => ({
-                id: item.id,
-                label: item.label
-              }))}
-              activeId={currentTab}
-              onChange={setCurrentTab}
-            />
-          </Box>
-        )}
+    <>
+      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
+      <PageContainer>
+        <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
+          {isPc ? (
+            <Flex
+              flexDirection={'column'}
+              p={4}
+              h={'100%'}
+              flex={'0 0 200px'}
+              borderRight={theme.borders.base}
+            >
+              <SideTabs
+                flex={1}
+                mx={'auto'}
+                mt={2}
+                w={'100%'}
+                list={tabList.current}
+                activeId={currentTab}
+                onChange={setCurrentTab}
+              />
+            </Flex>
+          ) : (
+            <Box mb={3}>
+              <Tabs
+                m={'auto'}
+                size={isPc ? 'md' : 'sm'}
+                list={tabList.current.map((item) => ({
+                  id: item.id,
+                  label: item.label
+                }))}
+                activeId={currentTab}
+                onChange={setCurrentTab}
+              />
+            </Box>
+          )}
 
-        <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
-          {currentTab === TabEnum.info && <UserInfo />}
-          {currentTab === TabEnum.promotion && <Promotion />}
-          {currentTab === TabEnum.bill && <BillTable />}
-          {currentTab === TabEnum.pay && <PayRecordTable />}
-          {currentTab === TabEnum.inform && <InformTable />}
-        </Box>
-      </Flex>
-      <ConfirmModal />
-    </PageContainer>
+          <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
+            {currentTab === TabEnum.info && <UserInfo />}
+            {currentTab === TabEnum.promotion && <Promotion />}
+            {currentTab === TabEnum.bill && <BillTable />}
+            {currentTab === TabEnum.pay && <PayRecordTable />}
+            {currentTab === TabEnum.inform && <InformTable />}
+          </Box>
+        </Flex>
+        <ConfirmModal />
+      </PageContainer>
+    </>
   );
 };
 

@@ -10,6 +10,7 @@ import { ChatCompletionRequestMessage } from 'openai';
 import { modelToolMap } from '@/utils/plugin';
 import { gptMessage2ChatType } from '@/utils/adapt';
 import { addLog } from '../utils/tools';
+import { splitText2Chunks } from '@/utils/file';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -157,7 +158,7 @@ A2:
       console.log('openai error: 生成QA错误');
       console.log(err.response?.status, err.response?.statusText, err.response?.data);
     } else {
-      console.log('生成QA错误:', err);
+      addLog.error('生成 QA 错误', err);
     }
 
     // message error or openai account error
@@ -210,6 +211,17 @@ function formatSplitText(text: string) {
         a: a.trim().replace(/\n\s*/g, '\n')
       });
     }
+  }
+
+  // empty result. direct split chunk
+  if (result.length === 0) {
+    const splitRes = splitText2Chunks({ text: text, maxLen: 500 });
+    splitRes.chunks.forEach((item) => {
+      result.push({
+        q: item,
+        a: ''
+      });
+    });
   }
 
   return result;

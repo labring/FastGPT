@@ -41,16 +41,14 @@ function App({ Component, pageProps }: AppProps) {
   const { setLastRoute } = useGlobalStore();
 
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
-  const [googleClientVerKey, setGoogleVerKey] = useState<string>();
 
   useEffect(() => {
     // get init data
     (async () => {
       const {
-        feConfigs: { scripts, googleClientVerKey }
+        feConfigs: { scripts }
       } = await clientInitData();
       setScripts(scripts || []);
-      setGoogleVerKey(googleClientVerKey);
     })();
     // add window error track
     window.onerror = function (msg, url) {
@@ -94,20 +92,10 @@ function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
-      <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
-      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
       {scripts?.map((item, i) => (
         <Script key={i} strategy="lazyOnload" {...item}></Script>
       ))}
-      {googleClientVerKey && (
-        <>
-          <Script
-            src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleClientVerKey}`}
-            strategy="lazyOnload"
-          ></Script>
-        </>
-      )}
+
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
           <ColorModeScript initialColorMode={theme.config.initialColorMode} />
