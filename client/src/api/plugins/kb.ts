@@ -36,8 +36,8 @@ export const putKbById = (data: KbUpdateParams) => PUT(`/plugins/kb/update`, dat
 export const delKbById = (id: string) => DELETE(`/plugins/kb/delete?id=${id}`);
 
 /* kb file */
-export const getKbFiles = (kbId: string) =>
-  GET<KbFileItemType[]>(`/plugins/kb/file/list`, { kbId });
+export const getKbFiles = (data: { kbId: string; searchText: string }) =>
+  GET<KbFileItemType[]>(`/plugins/kb/file/list`, data);
 export const deleteKbFileById = (params: { fileId: string; kbId: string }) =>
   DELETE(`/plugins/kb/file/delFileByFileId`, params);
 export const getFileInfoById = (fileId: string) =>

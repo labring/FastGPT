@@ -42,10 +42,19 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     data: files = [],
     refetch,
     isInitialLoading
-  } = useQuery(['getFiles', kbId], () => getKbFiles(kbId), {
+  } = useQuery(['getFiles', kbId], () => getKbFiles({ kbId, searchText }), {
     refetchInterval: 6000,
     refetchOnWindowFocus: true
   });
+
+  const debounceRefetch = useCallback(
+    debounce(() => {
+      refetch();
+      lastSearch.current = searchText;
+    }, 300),
+    []
+  );
+
   const formatFiles = useMemo(
     () =>
       files.map((file) => ({
@@ -99,6 +108,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
             value={searchText}
             onChange={(e) => {
               setSearchText(e.target.value);
+              debounceRefetch();
             }}
             onBlur={() => {
               if (searchText === lastSearch.current) return;
@@ -144,11 +154,13 @@ const FileCard = ({ kbId }: { kbId: string }) => {
                   })
                 }
               >
-                <Td display={'flex'} alignItems={'center'}>
-                  <Image src={file.icon} w={'16px'} mr={2} alt={''} />
-                  <Box maxW={['300px', '400px']} className="textEllipsis">
-                    {t(file.filename)}
-                  </Box>
+                <Td>
+                  <Flex alignItems={'center'}>
+                    <Image src={file.icon} w={'16px'} mr={2} alt={''} />
+                    <Box maxW={['300px', '400px']} className="textEllipsis">
+                      {t(file.filename)}
+                    </Box>
+                  </Flex>
                 </Td>
                 <Td fontSize={'md'} fontWeight={'bold'}>
                   {file.chunkLength}

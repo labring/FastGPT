@@ -12,7 +12,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
 
-    const { kbId } = req.query as { kbId: string };
+    let { kbId, searchText } = req.query as { kbId: string; searchText: string };
+    searchText = searchText.replace(/'/g, '');
+
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
@@ -20,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const bucket = gridFs.GridFSBucket();
 
     const files = await bucket
-      .find({ ['metadata.kbId']: kbId })
+      .find({ ['metadata.kbId']: kbId, ...(searchText && { filename: { $regex: searchText } }) })
       .sort({ _id: -1 })
       .toArray();
 
