@@ -26,12 +26,12 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const ChunkImport = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
 
   const vectorModel = kbDetail.vectorModel;
   const unitPrice = vectorModel?.price || 0.2;

@@ -23,6 +23,7 @@ import { QuoteItemType } from '@/types/chat';
 /* knowledge base */
 export const getKbList = (parentId?: string) =>
   GET<KbListItemType[]>(`/plugins/kb/list`, { parentId });
+export const getAllDataset = () => GET<KbListItemType[]>(`/plugins/kb/allDataset`);
 
 export const getKbPaths = (parentId?: string) =>
   GET<KbPathItemType[]>('/plugins/kb/paths', { parentId });

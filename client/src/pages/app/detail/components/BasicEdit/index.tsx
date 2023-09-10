@@ -56,18 +56,21 @@ import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 
 import { addVariable } from '../VariableEditModal';
-import { KBSelectModal, KbParamsModal } from '../KBSelectModal';
+import { KbParamsModal } from '../KBSelectModal';
 import { AppTypeEnum } from '@/constants/app';
+import { useDatasetStore } from '@/store/dataset';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
+const KBSelectModal = dynamic(() => import('../KBSelectModal'));
 
 const Settings = ({ appId }: { appId: string }) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { appDetail, updateAppDetail, loadKbList, myKbList } = useUserStore();
+  const { appDetail, updateAppDetail } = useUserStore();
+  const { loadAllDatasets, datasets } = useDatasetStore();
   const { isPc } = useGlobalStore();
 
   const [editVariable, setEditVariable] = useState<VariableItemType>();
@@ -122,8 +125,8 @@ const Settings = ({ appId }: { appId: string }) => {
     );
   }, [getValues, refresh]);
   const selectedKbList = useMemo(
-    () => myKbList.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
-    [myKbList, kbList]
+    () => datasets.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
+    [datasets, kbList]
   );
 
   /* 点击删除 */
@@ -167,7 +170,7 @@ const Settings = ({ appId }: { appId: string }) => {
     appModule2Form();
   }, [appModule2Form]);
 
-  useQuery(['initkb', appId], () => loadKbList());
+  useQuery(['loadAllDatasets'], loadAllDatasets);
 
   const BoxStyles: BoxProps = {
     bg: 'myWhite.200',
@@ -304,6 +307,23 @@ const Settings = ({ appId }: { appId: string }) => {
         </Button>
       </Flex>
 
+      {/* welcome */}
+      <Box mt={5} {...BoxStyles}>
+        <Flex alignItems={'center'}>
+          <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
+          <Box mx={2}>对话开场白</Box>
+          <MyTooltip label={welcomeTextTip} forceShow>
+            <QuestionOutlineIcon />
+          </MyTooltip>
+        </Flex>
+        <Textarea
+          mt={2}
+          rows={5}
+          placeholder={welcomeTextTip}
+          borderColor={'myGray.100'}
+          {...register('guide.welcome.text')}
+        />
+      </Box>
       {/* variable */}
       <Box mt={2} {...BoxStyles}>
         <Flex alignItems={'center'}>
@@ -498,24 +518,6 @@ const Settings = ({ appId }: { appId: string }) => {
         </Grid>
       </Box>
 
-      {/* welcome */}
-      <Box mt={5} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
-          <Box mx={2}>对话开场白</Box>
-          <MyTooltip label={welcomeTextTip} forceShow>
-            <QuestionOutlineIcon />
-          </MyTooltip>
-        </Flex>
-        <Textarea
-          mt={2}
-          rows={5}
-          placeholder={welcomeTextTip}
-          borderColor={'myGray.100'}
-          {...register('guide.welcome.text')}
-        />
-      </Box>
-
       <ConfirmSaveModal />
       <ConfirmDelModal />
       {settingAppInfo && (
@@ -548,7 +550,6 @@ const Settings = ({ appId }: { appId: string }) => {
       )}
       {isOpenKbSelect && (
         <KBSelectModal
-          kbList={myKbList}
           activeKbs={selectedKbList.map((item) => ({
             kbId: item._id,
             vectorModel: item.vectorModel

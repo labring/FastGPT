@@ -11,7 +11,7 @@ import {
   Image
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
@@ -49,7 +49,7 @@ const Kb = () => {
     title: t('common.Delete Warning'),
     content: ''
   });
-  const { myKbList, loadKbList, setKbList } = useUserStore();
+  const { myKbList, loadKbList, setKbList } = useDatasetStore();
 
   const {
     isOpen: isOpenCreateModal,

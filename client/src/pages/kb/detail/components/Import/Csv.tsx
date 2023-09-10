@@ -10,12 +10,12 @@ import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 
 const fileExtension = '.csv';
 
 const CsvImport = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
   const maxToken = kbDetail.vectorModel?.maxToken || 2000;
 
   const theme = useTheme();

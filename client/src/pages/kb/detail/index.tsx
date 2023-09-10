@@ -4,7 +4,6 @@ import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { useUserStore } from '@/store/user';
 import { KbItemType } from '@/types/plugin';
 import { getErrText } from '@/utils/tools';
 import { useGlobalStore } from '@/store/global';
@@ -24,6 +23,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { feConfigs } from '@/store/static';
 import Script from 'next/script';
 import FileCard from './components/FileCard';
+import { useDatasetStore } from '@/store/dataset';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false
@@ -50,7 +50,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useGlobalStore();
-  const { kbDetail, getKbDetail } = useUserStore();
+  const { kbDetail, getKbDetail } = useDatasetStore();
 
   const tabList = useRef([
     { label: '数据集', id: TabEnum.dataset, icon: 'overviewLight' },

@@ -19,7 +19,7 @@ import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
 import { FetchResultItem, DatasetItemType } from '@/types/plugin';
 import { getErrText } from '@/utils/tools';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -55,7 +55,7 @@ const FileSelect = ({
   showCreateFile = true,
   ...props
 }: Props) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
   const { Loading: FileSelectLoading } = useLoading();
   const { t } = useTranslation();
 
