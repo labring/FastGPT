@@ -74,7 +74,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
       router.replace({
         query: {
           kbId,
-          currentTab: 'data'
+          currentTab: 'dataset'
         }
       });
     },

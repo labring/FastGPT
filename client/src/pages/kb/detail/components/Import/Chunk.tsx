@@ -86,7 +86,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
       router.replace({
         query: {
           kbId,
-          currentTab: 'data'
+          currentTab: 'dataset'
         }
       });
     },

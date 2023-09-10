@@ -261,6 +261,7 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
       <Box
         color={'myGray.600'}
         display={'inline-block'}
+        whiteSpace={'nowrap'}
         {...(!!fileId
           ? {
               cursor: 'pointer',

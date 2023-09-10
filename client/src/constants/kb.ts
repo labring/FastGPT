@@ -19,6 +19,10 @@ export enum KbTypeEnum {
   folder = 'folder',
   dataset = 'dataset'
 }
+export enum FileStatusEnum {
+  embedding = 'embedding',
+  ready = 'ready'
+}
 
 export const KbTypeMap = {
   [KbTypeEnum.folder]: {
@@ -30,3 +34,4 @@ export const KbTypeMap = {
 };
 
 export const FolderAvatarSrc = '/imgs/files/folder.svg';
+export const OtherFileId = 'other';

@@ -1,6 +1,12 @@
 import { GET, POST, PUT, DELETE } from '../request';
-import type { DatasetItemType, KbItemType, KbListItemType, KbPathItemType } from '@/types/plugin';
-import { RequestPaging } from '@/types/index';
+import type {
+  DatasetItemType,
+  FileInfo,
+  KbFileItemType,
+  KbItemType,
+  KbListItemType,
+  KbPathItemType
+} from '@/types/plugin';
 import { TrainingModeEnum } from '@/constants/plugin';
 import {
   Props as PushDataProps,
@@ -11,7 +17,7 @@ import {
   Response as SearchTestResponse
 } from '@/pages/api/openapi/kb/searchTest';
 import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
-import type { KbUpdateParams, CreateKbParams } from '../request/kb';
+import type { KbUpdateParams, CreateKbParams, GetKbDataListProps } from '../request/kb';
 import { QuoteItemType } from '@/types/chat';
 
 /* knowledge base */
@@ -29,11 +35,17 @@ export const putKbById = (data: KbUpdateParams) => PUT(`/plugins/kb/update`, dat
 
 export const delKbById = (id: string) => DELETE(`/plugins/kb/delete?id=${id}`);
 
+/* kb file */
+export const getKbFiles = (kbId: string) =>
+  GET<KbFileItemType[]>(`/plugins/kb/file/list`, { kbId });
+export const deleteKbFileById = (params: { fileId: string; kbId: string }) =>
+  DELETE(`/plugins/kb/file/delFileByFileId`, params);
+export const getFileInfoById = (fileId: string) =>
+  GET<FileInfo>(`/plugins/kb/file/getFileInfo`, { fileId });
+export const delEmptyFiles = (kbId: string) =>
+  DELETE(`/plugins/kb/file/deleteEmptyFiles`, { kbId });
+
 /* kb data */
-type GetKbDataListProps = RequestPaging & {
-  kbId: string;
-  searchText: string;
-};
 export const getKbDataList = (data: GetKbDataListProps) =>
   POST(`/plugins/kb/data/getDataList`, data);
 

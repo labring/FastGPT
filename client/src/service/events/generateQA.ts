@@ -158,7 +158,7 @@ A2:
       console.log('openai error: 生成QA错误');
       console.log(err.response?.status, err.response?.statusText, err.response?.data);
     } else {
-      console.log('生成QA错误:', err);
+      addLog.error('生成 QA 错误', err);
     }
 
     // message error or openai account error

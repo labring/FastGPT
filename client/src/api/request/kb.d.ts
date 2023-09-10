@@ -1,4 +1,6 @@
 import { KbTypeEnum } from '@/constants/kb';
+import type { RequestPaging } from '@/types';
+
 export type KbUpdateParams = {
   id: string;
   tags?: string;
@@ -12,4 +14,10 @@ export type CreateKbParams = {
   avatar: string;
   vectorModel?: string;
   type: `${KbTypeEnum}`;
+};
+
+export type GetKbDataListProps = RequestPaging & {
+  kbId: string;
+  searchText: string;
+  fileId: string;
 };

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
@@ -11,7 +11,6 @@ import { useGlobalStore } from '@/store/global';
 import { type ComponentRef } from './components/Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
-import DataCard from './components/DataCard';
 import MyIcon from '@/components/Icon';
 import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
@@ -19,12 +18,16 @@ import Avatar from '@/components/Avatar';
 import Info from './components/Info';
 import { serviceSideProps } from '@/utils/i18n';
 import { useTranslation } from 'react-i18next';
-import { getTrainingQueueLen } from '@/api/plugins/kb';
+import { delEmptyFiles, getTrainingQueueLen } from '@/api/plugins/kb';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { feConfigs } from '@/store/static';
 import Script from 'next/script';
+import FileCard from './components/FileCard';
 
+const DataCard = dynamic(() => import('./components/DataCard'), {
+  ssr: false
+});
 const ImportData = dynamic(() => import('./components/Import'), {
   ssr: false
 });
@@ -33,7 +36,8 @@ const Test = dynamic(() => import('./components/Test'), {
 });
 
 enum TabEnum {
-  data = 'data',
+  dataCard = 'dataCard',
+  dataset = 'dataset',
   import = 'import',
   test = 'test',
   info = 'info'
@@ -49,7 +53,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
   const { kbDetail, getKbDetail } = useUserStore();
 
   const tabList = useRef([
-    { label: '数据集', id: TabEnum.data, icon: 'overviewLight' },
+    { label: '数据集', id: TabEnum.dataset, icon: 'overviewLight' },
     { label: '导入数据', id: TabEnum.import, icon: 'importLight' },
     { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
     { label: '配置', id: TabEnum.info, icon: 'settingLight' }
@@ -86,8 +90,16 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
   });
 
   const { data: trainingQueueLen = 0 } = useQuery(['getTrainingQueueLen'], getTrainingQueueLen, {
-    refetchInterval: 5000
+    refetchInterval: 10000
   });
+
+  useEffect(() => {
+    return () => {
+      try {
+        delEmptyFiles(kbId);
+      } catch (error) {}
+    };
+  }, [kbId]);
 
   return (
     <>
@@ -141,7 +153,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
                 px={3}
                 borderRadius={'md'}
                 _hover={{ bg: 'myGray.100' }}
-                onClick={() => router.back()}
+                onClick={() => router.replace('/kb/list')}
               >
                 <IconButton
                   mr={3}
@@ -174,7 +186,8 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
 
           {!!kbDetail._id && (
             <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
-              {currentTab === TabEnum.data && <DataCard kbId={kbId} />}
+              {currentTab === TabEnum.dataset && <FileCard kbId={kbId} />}
+              {currentTab === TabEnum.dataCard && <DataCard kbId={kbId} />}
               {currentTab === TabEnum.import && <ImportData kbId={kbId} />}
               {currentTab === TabEnum.test && <Test kbId={kbId} />}
               {currentTab === TabEnum.info && <Info ref={InfoRef} kbId={kbId} form={form} />}
@@ -187,7 +200,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
 };
 
 export async function getServerSideProps(context: any) {
-  const currentTab = context?.query?.currentTab || TabEnum.data;
+  const currentTab = context?.query?.currentTab || TabEnum.dataset;
   const kbId = context?.query?.kbId;
 
   return {

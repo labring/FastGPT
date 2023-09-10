@@ -1,3 +1,4 @@
+import { FileStatusEnum } from '@/constants/kb';
 import { VectorModelItemType } from './model';
 import type { kbSchema } from './mongoSchema';
 
@@ -22,6 +23,15 @@ export interface KbItemType {
   tags: string;
 }
 
+export type KbFileItemType = {
+  id: string;
+  size: number;
+  filename: string;
+  uploadTime: Date;
+  chunkLength: number;
+  status: `${FileStatusEnum}`;
+};
+
 export type DatasetItemType = {
   q: string; // 提问词
   a: string; // 原文
@@ -43,4 +53,13 @@ export type KbTestItemType = {
 export type FetchResultItem = {
   url: string;
   content: string;
+};
+
+export type FileInfo = {
+  id: string;
+  filename: string;
+  size: number;
+  contentType: string;
+  encoding: string;
+  uploadDate: Date;
 };
