@@ -3,7 +3,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, KB } from '@/service/mongo';
-import { KbTypeEnum, KbTypeMap } from '@/constants/kb';
+import { KbTypeEnum } from '@/constants/kb';
+import { PgClient } from '@/service/pg';
+import { PgTrainingTableName } from '@/constants/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -22,7 +24,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    jsonRes(res, {});
+    const response = await PgClient.update(PgTrainingTableName, {
+      where: [['file_id', 'undefined']],
+      values: [{ key: 'file_id', value: '' }]
+    });
+
+    jsonRes(res, {
+      data: response.rowCount
+    });
   } catch (error) {
     jsonRes(res, {
       code: 500,

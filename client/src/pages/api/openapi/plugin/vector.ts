@@ -68,6 +68,7 @@ export async function getVector({
     )
     .then(async (res) => {
       if (!res.data?.data?.[0]?.embedding) {
+        console.log(res.data);
         // @ts-ignore
         return Promise.reject(res.data?.err?.message || 'Embedding API Error');
       }
