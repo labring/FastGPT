@@ -30,3 +30,6 @@
 
 [feedback_submit]
     other = "提交"
+
+[edit_page]
+    other = "编辑此页面"
