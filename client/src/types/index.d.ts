@@ -27,8 +27,11 @@ export type FeConfigsType = {
   authorText?: string;
   beianText?: string;
   googleClientVerKey?: string;
-  gitLoginKey?: string;
   exportLimitMinutes?: number;
+  oauth?: {
+    github?: string;
+    google?: string;
+  };
   scripts?: { [key: string]: string }[];
 };
 export type SystemEnvType = {

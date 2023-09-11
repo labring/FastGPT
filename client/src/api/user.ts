@@ -15,6 +15,8 @@ export const sendAuthCode = (data: {
 export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
 export const gitLogin = (params: { code: string; inviterId?: string }) =>
   GET<ResLogin>('/plusApi/user/account/gitLogin', params);
+export const googleLogin = (params: { code: string; inviterId?: string }) =>
+  GET<ResLogin>('/plusApi/user/account/googleLogin', params);
 
 export const postRegister = ({
   username,
