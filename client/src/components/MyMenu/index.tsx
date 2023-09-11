@@ -8,7 +8,7 @@ interface Props {
   menuList: {
     isActive?: boolean;
     child: React.ReactNode;
-    onClick: () => void;
+    onClick: () => any;
   }[];
 }
 
@@ -37,7 +37,10 @@ const MyMenu = ({ width, offset = [0, 10], Button, menuList }: Props) => {
           <MenuItem
             key={i}
             {...menuItemStyles}
-            onClick={item.onClick}
+            onClick={(e) => {
+              e.stopPropagation();
+              item.onClick && item.onClick();
+            }}
             color={item.isActive ? 'hover.blue' : ''}
           >
             {item.child}

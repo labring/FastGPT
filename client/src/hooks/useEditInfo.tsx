@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { ModalFooter, ModalBody, Input, useDisclosure, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 
@@ -39,6 +39,7 @@ export const useEditInfo = ({
     try {
       const val = inputRef.current.value;
       await onSuccessCb.current?.(val);
+
       onClose();
     } catch (err) {
       onErrorCb.current?.(err);

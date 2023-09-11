@@ -3,6 +3,7 @@ import type { RequestPaging } from '@/types';
 
 export type KbUpdateParams = {
   id: string;
+  parentId?: string;
   tags?: string;
   name?: string;
   avatar?: string;

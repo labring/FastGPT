@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Box,
   Flex,
@@ -6,7 +6,6 @@ import {
   useTheme,
   useDisclosure,
   Card,
-  IconButton,
   MenuButton,
   Image
 } from '@chakra-ui/react';
@@ -16,8 +15,7 @@ import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { useToast } from '@/hooks/useToast';
-import { delKbById, getKbPaths } from '@/api/plugins/kb';
+import { delKbById, getKbPaths, putKbById } from '@/api/plugins/kb';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -28,16 +26,17 @@ import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/hooks/useRequest';
 import { useGlobalStore } from '@/store/global';
+import { useEditInfo } from '@/hooks/useEditInfo';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const EditFolderModal = dynamic(() => import('./component/EditFolderModal'), { ssr: false });
+const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
 
 const Kb = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
-  const { toast } = useToast();
   const { setLoading } = useGlobalStore();
 
   const DeleteTipsMap = useRef({
@@ -49,7 +48,13 @@ const Kb = () => {
     title: t('common.Delete Warning'),
     content: ''
   });
-  const { myKbList, loadKbList, setKbList } = useDatasetStore();
+  const { myKbList, loadKbList, setKbList, updateDataset } = useDatasetStore();
+  const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditInfo({
+    title: t('Rename')
+  });
+  const [moveDataId, setMoveDataId] = useState<string>();
+  const [dragStartId, setDragStartId] = useState<string>();
+  const [dragTargetId, setDragTargetId] = useState<string>();
 
   const {
     isOpen: isOpenCreateModal,
@@ -102,8 +107,8 @@ const Kb = () => {
             {paths.map((item, i) => (
               <Flex key={item.parentId} mr={2} alignItems={'center'}>
                 <Box
-                  fontSize={'lg'}
-                  px={2}
+                  fontSize={['sm', 'lg']}
+                  px={[0, 2]}
                   py={1}
                   borderRadius={'md'}
                   {...(i === paths.length - 1
@@ -126,7 +131,9 @@ const Kb = () => {
                 >
                   {item.parentName}
                 </Box>
-                {i !== paths.length - 1 && <MyIcon name={'rightArrowLight'} color={'myGray.500'} />}
+                {i !== paths.length - 1 && (
+                  <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={['18px', '24px']} />
+                )}
               </Flex>
             ))}
           </Flex>
@@ -184,6 +191,7 @@ const Kb = () => {
         p={5}
         gridTemplateColumns={['1fr', 'repeat(3,1fr)', 'repeat(4,1fr)', 'repeat(5,1fr)']}
         gridGap={5}
+        userSelect={'none'}
       >
         {myKbList.map((kb) => (
           <Card
@@ -196,8 +204,36 @@ const Kb = () => {
             h={'130px'}
             border={theme.borders.md}
             boxShadow={'none'}
-            userSelect={'none'}
             position={'relative'}
+            data-drag-id={kb.type === KbTypeEnum.folder ? kb._id : undefined}
+            borderColor={dragTargetId === kb._id ? 'myBlue.600' : ''}
+            draggable
+            onDragStart={(e) => {
+              setDragStartId(kb._id);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              const targetId = e.currentTarget.getAttribute('data-drag-id');
+              if (!targetId) return;
+              KbTypeEnum.folder && setDragTargetId(targetId);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setDragTargetId(undefined);
+            }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              if (!dragTargetId || !dragStartId || dragTargetId === dragStartId) return;
+              // update parentId
+              try {
+                await putKbById({
+                  id: dragStartId,
+                  parentId: dragTargetId
+                });
+                refetch();
+              } catch (error) {}
+              setDragTargetId(undefined);
+            }}
             _hover={{
               boxShadow: '1px 1px 10px rgba(0,0,0,0.2)',
               borderColor: 'transparent',
@@ -223,33 +259,85 @@ const Kb = () => {
               }
             }}
           >
+            <MyMenu
+              offset={[-30, 10]}
+              width={120}
+              Button={
+                <MenuButton
+                  position={'absolute'}
+                  top={3}
+                  right={3}
+                  w={'22px'}
+                  h={'22px'}
+                  borderRadius={'md'}
+                  _hover={{
+                    color: 'myBlue.600',
+                    '& .icon': {
+                      bg: 'myGray.100'
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <MyIcon
+                    className="icon"
+                    name={'more'}
+                    h={'16px'}
+                    w={'16px'}
+                    px={1}
+                    py={1}
+                    borderRadius={'md'}
+                    cursor={'pointer'}
+                  />
+                </MenuButton>
+              }
+              menuList={[
+                {
+                  child: (
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'edit'} w={'14px'} mr={2} />
+                      {t('Rename')}
+                    </Flex>
+                  ),
+                  onClick: () =>
+                    onOpenTitleModal({
+                      defaultVal: kb.name,
+                      onSuccess: (val) => {
+                        if (val === kb.name || !val) return;
+                        updateDataset({ id: kb._id, name: val });
+                      }
+                    })
+                },
+                {
+                  child: (
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'moveLight'} w={'14px'} mr={2} />
+                      {t('Move')}
+                    </Flex>
+                  ),
+                  onClick: () => setMoveDataId(kb._id)
+                },
+                {
+                  child: (
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'delete'} w={'14px'} mr={2} />
+                      {t('common.Delete')}
+                    </Flex>
+                  ),
+                  onClick: () => {
+                    openConfirm(
+                      () => onclickDelKb(kb._id),
+                      undefined,
+                      DeleteTipsMap.current[kb.type]
+                    )();
+                  }
+                }
+              ]}
+            />
             <Flex alignItems={'center'} h={'38px'}>
               <Avatar src={kb.avatar} borderRadius={'lg'} w={'28px'} />
               <Box ml={3}>{kb.name}</Box>
-
-              <IconButton
-                className="delete"
-                position={'absolute'}
-                top={4}
-                right={4}
-                size={'sm'}
-                icon={<MyIcon name={'delete'} w={'14px'} />}
-                variant={'base'}
-                borderRadius={'md'}
-                aria-label={'delete'}
-                display={['', 'none']}
-                _hover={{
-                  bg: 'red.100'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openConfirm(
-                    () => onclickDelKb(kb._id),
-                    undefined,
-                    DeleteTipsMap.current[kb.type]
-                  )();
-                }}
-              />
             </Flex>
             <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
               <Flex>
@@ -282,6 +370,7 @@ const Kb = () => {
         </Flex>
       )}
       <ConfirmModal />
+      <EditTitleModal />
       {isOpenCreateModal && <CreateModal onClose={onCloseCreateModal} parentId={parentId} />}
       {!!editFolderData && (
         <EditFolderModal
@@ -289,6 +378,16 @@ const Kb = () => {
           onSuccess={refetch}
           parentId={parentId}
           {...editFolderData}
+        />
+      )}
+      {!!moveDataId && (
+        <MoveModal
+          moveDataId={moveDataId}
+          onClose={() => setMoveDataId('')}
+          onSuccess={() => {
+            refetch();
+            setMoveDataId('');
+          }}
         />
       )}
     </PageContainer>

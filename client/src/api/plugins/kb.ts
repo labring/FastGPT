@@ -19,10 +19,11 @@ import {
 import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
 import type { KbUpdateParams, CreateKbParams, GetKbDataListProps } from '../request/kb';
 import { QuoteItemType } from '@/types/chat';
+import { KbTypeEnum } from '@/constants/kb';
 
 /* knowledge base */
-export const getKbList = (parentId?: string) =>
-  GET<KbListItemType[]>(`/plugins/kb/list`, { parentId });
+export const getKbList = (data: { parentId?: string; type?: `${KbTypeEnum}` }) =>
+  GET<KbListItemType[]>(`/plugins/kb/list`, data);
 export const getAllDataset = () => GET<KbListItemType[]>(`/plugins/kb/allDataset`);
 
 export const getKbPaths = (parentId?: string) =>
