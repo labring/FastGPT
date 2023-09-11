@@ -79,7 +79,8 @@ defaultContentLanguage = 'zh-cn'
         prism           = true                                # enable syntax highlighting via Prism
 
         # gitinfo
-        ghrepo          = "https://github.com/labring/FastGPT"  # Git repository URL for your site
+        repoURL         = "https://github.com/labring/FastGPT"  # Git repository URL for your site
+        repoBranch      = "main"                           # Name of your Git repository branch
         editPage        = true                                # enable 'Edit this page' feature - default false
         lastMod         = false                                # enable 'Last modified' date on pages - default false
         lastModRelative = true                                # format 'Last modified' time as relative - default true
