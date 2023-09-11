@@ -17,7 +17,7 @@ weight: 499
 
 # 编排流程解析
 
-编排 Tips: 从左往右编辑流程；尽量不要使线交叉。
+编排 Tips：**从左往右编辑流程；尽量不要使线交叉**。
 
 ## 1. 问题分类
 
@@ -26,7 +26,7 @@ weight: 499
 如上图，用户问题作为对话的起点，流入【问题分类模块】，根据用户问题的内容，判断用户是询问实验室相关问题、预约实验室或其他问题。如果用户询问的是非实验问题，会直接拒绝回复内容。再根据问题是属于询问实验室相关/预约类问题，执行不同的流程。
 
 {{% alert icon="🤗" context="warning" %}}
-**Tips:** 这里需要增加适当的上下文，方便模型更好的判断属于哪个类别。 不过由于是使用了 gpt35 进行判断，有时候会抽风~
+**Tips:** 这里需要增加适当的上下文，方便模型更好的判断属于哪个类别。 不过由于是使用了 GPT-3.5 模型进行判断，有时候会抽风~
 {{% /alert %}}
 
 ## 2. 知识库搜索
@@ -51,7 +51,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
 
 ![](/imgs/demo-appointment7.png)
 
-从日志可以看出，提取的内容中包含了 2 个**字符串数组**，注意是字符串，所以需要进行一次额外的 parse 操作才能拿到里面的对象。具体逻辑可以参考附件里的 Laf 代码。
+从日志可以看出，提取的内容中包含了 2 个**字符串数组**，注意是字符串，所以需要进行一次额外的 parse 操作才能拿到里面的对象。具体逻辑可以参考[附件里的 Laf 代码](/docs/workflow/examples/lab_appointment/#laf-云函数代码)。
 
 响应值也很简单，只需要返回一个 **JSON 对象**即可，注意，是对象，不是字符串。
 
@@ -66,6 +66,8 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
 ## 编排配置
 
 可直接复制，导入到 FastGPT 中。
+
+{{% details title="编排配置" closed="true" %}}
 
 ```json
 [
@@ -1057,11 +1059,15 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
 ]
 ```
 
-## Laf 代码
+{{% /details %}}
 
-可以在 [Laf Cloud](https://laf.dev/) 中快速构建 HTTP 接口。
+## Laf 云函数代码
 
-```ts
+可以在 [Laf](https://laf.dev/) 中快速构建 HTTP 接口。
+
+{{% details title="函数代码" closed="true" %}}
+
+```typescript
 import cloud from '@lafjs/cloud';
 const db = cloud.database();
 
@@ -1236,3 +1242,5 @@ async function createRecord({ name, time, labname }) {
   };
 }
 ```
+
+{{% /details %}}
