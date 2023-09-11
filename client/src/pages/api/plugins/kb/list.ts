@@ -4,10 +4,11 @@ import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { getVectorModel } from '@/service/utils/data';
 import { KbListItemType } from '@/types/plugin';
+import { KbTypeEnum } from '@/constants/kb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { parentId } = req.query as { parentId: string };
+    const { parentId, type } = req.query as { parentId?: string; type?: `${KbTypeEnum}` };
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
@@ -15,7 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const kbList = await KB.find({
       userId,
-      parentId: parentId || null
+      ...(parentId !== undefined && { parentId: parentId || null }),
+      ...(type && { type })
     }).sort({ updateTime: -1 });
 
     const data = await Promise.all(

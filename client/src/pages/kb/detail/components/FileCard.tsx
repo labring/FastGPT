@@ -145,7 +145,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
                 cursor={'pointer'}
                 title={'点击查看数据详情'}
                 onClick={() =>
-                  router.push({
+                  router.replace({
                     query: {
                       kbId,
                       fileId: file.id,
