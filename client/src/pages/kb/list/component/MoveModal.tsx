@@ -64,7 +64,7 @@ const MoveModal = ({
       <Flex flexDirection={'column'} h={['90vh', 'auto']}>
         <ModalHeader>
           {!!parentId ? (
-            <Flex flex={1} fontSize={['sm', 'lg']} fontWeight={'normal'}>
+            <Flex flex={1} userSelect={'none'} fontSize={['sm', 'lg']} fontWeight={'normal'}>
               {paths.map((item, i) => (
                 <Flex key={item.parentId} mr={2} alignItems={'center'}>
                   <Box

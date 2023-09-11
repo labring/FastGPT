@@ -83,7 +83,13 @@ export const KBSelectModal = ({
       <Flex flexDirection={'column'} h={['90vh', 'auto']}>
         <ModalHeader>
           {!!parentId ? (
-            <Flex flex={1}>
+            <Flex
+              flex={1}
+              userSelect={'none'}
+              fontSize={['sm', 'lg']}
+              fontWeight={'normal'}
+              color={'myGray.900'}
+            >
               {paths.map((item, i) => (
                 <Flex key={item.parentId} mr={2} alignItems={'center'}>
                   <Box
@@ -106,7 +112,7 @@ export const KBSelectModal = ({
                     {item.parentName}
                   </Box>
                   {i !== paths.length - 1 && (
-                    <MyIcon name={'rightArrowLight'} color={'myGray.500'} />
+                    <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={['18px', '24px']} />
                   )}
                 </Flex>
               ))}
