@@ -3,8 +3,9 @@ import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { type KbTestItemType } from '@/types/plugin';
 import type { KbItemType, KbListItemType } from '@/types/plugin';
-import { getKbList, getKbById, getAllDataset } from '@/api/plugins/kb';
+import { getKbList, getKbById, getAllDataset, putKbById } from '@/api/plugins/kb';
 import { defaultKbDetail } from '@/constants/kb';
+import { KbUpdateParams } from '@/api/request/kb';
 
 type State = {
   datasets: KbListItemType[];
@@ -14,6 +15,7 @@ type State = {
   setKbList(val: KbListItemType[]): void;
   kbDetail: KbItemType;
   getKbDetail: (id: string, init?: boolean) => Promise<KbItemType>;
+  updateDataset: (data: KbUpdateParams) => Promise<any>;
 
   kbTestList: KbTestItemType[];
   pushKbTestItem: (data: KbTestItemType) => void;
@@ -34,8 +36,8 @@ export const useDatasetStore = create<State>()(
           return res;
         },
         myKbList: [],
-        async loadKbList(parentId) {
-          const res = await getKbList(parentId);
+        async loadKbList(parentId = '') {
+          const res = await getKbList({ parentId });
           set((state) => {
             state.myKbList = res;
           });
@@ -57,6 +59,28 @@ export const useDatasetStore = create<State>()(
           });
 
           return data;
+        },
+        async updateDataset(data) {
+          if (get().kbDetail._id === data.id) {
+            set((state) => {
+              state.kbDetail = {
+                ...state.kbDetail,
+                ...data
+              };
+            });
+          }
+          set((state) => {
+            state.myKbList = state.myKbList = state.myKbList.map((item) =>
+              item._id === data.id
+                ? {
+                    ...item,
+                    ...data,
+                    tags: data.tags?.split(' ') || []
+                  }
+                : item
+            );
+          });
+          await putKbById(data);
         },
         kbTestList: [],
         pushKbTestItem(data) {
