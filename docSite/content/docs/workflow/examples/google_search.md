@@ -64,6 +64,8 @@ export default async function (ctx: FunctionContext) {
 
 复制下面配置，点击「高级编排」右上角的导入按键，导入该配置，导入后将接口地址复制到「HTTP 模块」。
 
+{{% details title="编排配置" closed="true" %}}
+
 ```json
 [
   {
@@ -447,6 +449,8 @@ export default async function (ctx: FunctionContext) {
   }
 ]
 ```
+
+{{% /details %}}
 
 ## 流程说明
 
