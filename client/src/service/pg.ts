@@ -179,7 +179,7 @@ export const insertKbItem = ({
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
       { key: 'source', value: item.source?.slice(0, 30)?.trim() || '' },
-      { key: 'file_id', value: item.file_id },
+      { key: 'file_id', value: item.file_id || '' },
       { key: 'q', value: item.q.replace(/'/g, '"') },
       { key: 'a', value: item.a.replace(/'/g, '"') },
       { key: 'vector', value: `[${item.vector}]` }
