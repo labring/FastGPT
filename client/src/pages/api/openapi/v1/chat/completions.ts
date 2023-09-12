@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authApp, authShareChat, AuthUserTypeEnum } from '@/service/utils/auth';
+import { authUser, authApp } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { addLog, withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -29,6 +29,8 @@ import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { SystemInputEnum } from '@/constants/app';
 import { getSystemTime } from '@/utils/user';
+import { authOutLinkChat } from '@/service/support/outLink/auth';
+import requestIp from 'request-ip';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -88,8 +90,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       appId: authAppid,
       authType
     } = await (shareId
-      ? authShareChat({
-          shareId
+      ? authOutLinkChat({
+          shareId,
+          ip: requestIp.getClientIp(req)
         })
       : authUser({ req, authBalance: true }));
 

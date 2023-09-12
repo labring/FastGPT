@@ -38,10 +38,6 @@ export interface ShareAppItem {
   isCollection: boolean;
 }
 
-export type ShareChatEditType = {
-  name: string;
-};
-
 /* agent */
 /* question classify */
 export type ClassifyQuestionAgentItemType = {

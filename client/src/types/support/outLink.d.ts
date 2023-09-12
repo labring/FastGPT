@@ -10,9 +10,16 @@ export interface OutLinkSchema {
   lastTime: Date;
   type: `${OutLinkTypeEnum}`;
   responseDetail: boolean;
-  limit: {
+  limit?: {
     expiredTime: Date;
     QPM: number;
-    redCredit: number;
+    credit: number;
   };
 }
+
+export type OutLinkEditType = {
+  _id?: string;
+  name: string;
+  responseDetail: OutLinkSchema['responseDetail'];
+  limit: OutLinkSchema['limit'];
+};

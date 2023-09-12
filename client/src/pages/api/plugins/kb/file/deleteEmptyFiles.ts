@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const files = await bucket
       // 1 hours expired
       .find({
-        uploadDate: { $lte: new Date(Date.now() - 60 * 1000) },
+        uploadDate: { $lte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
         ['metadata.kbId']: kbId,
         ['metadata.userId']: userId
       })

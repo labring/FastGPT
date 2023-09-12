@@ -45,8 +45,7 @@ const defaultFeConfigs: FeConfigsType = {
   systemTitle: 'FastGPT',
   authorText: 'Made by FastGPT Team.',
   limit: {
-    exportLimitMinutes: 0,
-    outLinkLimit: false
+    exportLimitMinutes: 0
   },
   scripts: []
 };

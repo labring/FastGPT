@@ -1,5 +1,5 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { OutLinkSchema as SchemaType } from '@/types/support/outLink/index';
+import { OutLinkSchema as SchemaType } from '@/types/support/outLink';
 import { OutLinkTypeEnum } from '@/constants/chat';
 
 const OutLinkSchema = new Schema({
@@ -34,7 +34,7 @@ const OutLinkSchema = new Schema({
     type: Date
   },
   responseDetail: {
-    type: Date,
+    type: Boolean,
     default: false
   },
   limit: {
@@ -46,7 +46,7 @@ const OutLinkSchema = new Schema({
       type: Number,
       default: 1000
     },
-    redCredit: {
+    credit: {
       type: Number,
       default: -1
     }

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { initShareChatInfo } from '@/api/chat';
+import { initShareChatInfo } from '@/api/support/outLink';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';

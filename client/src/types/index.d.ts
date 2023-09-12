@@ -33,7 +33,6 @@ export type FeConfigsType = {
   };
   limit?: {
     exportLimitMinutes?: number;
-    outLinkLimit?: boolean;
   };
   scripts?: { [key: string]: string }[];
 };
