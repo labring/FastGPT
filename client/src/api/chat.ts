@@ -2,10 +2,10 @@ import { GET, POST, DELETE, PUT } from './request';
 import type { ChatHistoryItemType } from '@/types/chat';
 import type { InitChatResponse, InitShareChatResponse } from './response/chat';
 import { RequestPaging } from '../types/index';
-import type { OutLinkSchema } from '@/types/mongoSchema';
 import type { ShareChatEditType } from '@/types/app';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
 import { AdminUpdateFeedbackParams } from './request/chat';
+import type { OutLinkSchema } from '@/types/support/outLink/index';
 
 /**
  * 获取初始化聊天内容

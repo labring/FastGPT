@@ -27,10 +27,13 @@ export type FeConfigsType = {
   authorText?: string;
   beianText?: string;
   googleClientVerKey?: string;
-  exportLimitMinutes?: number;
   oauth?: {
     github?: string;
     google?: string;
+  };
+  limit?: {
+    exportLimitMinutes?: number;
+    outLinkLimit?: boolean;
   };
   scripts?: { [key: string]: string }[];
 };

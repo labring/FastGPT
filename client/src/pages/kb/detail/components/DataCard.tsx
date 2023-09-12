@@ -122,7 +122,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         filename
       });
     },
-    successToast: `导出成功，下次导出需要 ${feConfigs.exportLimitMinutes} 分钟后`,
+    successToast: `导出成功，下次导出需要 ${feConfigs?.limit?.exportLimitMinutes} 分钟后`,
     errorToast: '导出异常'
   });
 

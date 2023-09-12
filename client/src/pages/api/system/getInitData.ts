@@ -44,7 +44,10 @@ const defaultFeConfigs: FeConfigsType = {
   show_doc: true,
   systemTitle: 'FastGPT',
   authorText: 'Made by FastGPT Team.',
-  exportLimitMinutes: 0,
+  limit: {
+    exportLimitMinutes: 0,
+    outLinkLimit: false
+  },
   scripts: []
 };
 const defaultChatModels = [
