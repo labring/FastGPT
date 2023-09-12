@@ -4,7 +4,7 @@ description: "快速了解 FastGPT 高级编排"
 icon: "circle"
 draft: false
 toc: true
-weight: 410
+weight: 110
 ---
 
 FastGPT 从 V4 版本开始采用新的交互方式来构建 AI 应用。使用了 Flow 节点编排的方式来实现复杂工作流，提高可玩性和扩展性。但同时也提高了上手的门槛，有一定开发背景的用户使用起来会比较容易。
