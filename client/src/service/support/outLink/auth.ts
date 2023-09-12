@@ -64,7 +64,7 @@ export async function authOutLinkLimit({
     // over one minute
     const diffTime = Date.now() - ipLimit.lastMinute.getTime();
     if (diffTime >= 60 * 1000) {
-      ipLimit.account = outLink.limit.QPM;
+      ipLimit.account = outLink.limit.QPM - 1;
       ipLimit.lastMinute = new Date();
       return await ipLimit.save();
     }
