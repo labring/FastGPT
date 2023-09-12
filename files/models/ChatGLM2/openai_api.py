@@ -1,5 +1,6 @@
 # coding=utf-8
 import argparse
+import json
 import time
 from contextlib import asynccontextmanager
 from typing import List, Literal, Optional, Union
@@ -10,6 +11,7 @@ import torch
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 from sklearn.preprocessing import PolynomialFeatures
@@ -35,6 +37,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class ModelCard(BaseModel):
+    id: str
+    object: str = "model"
+    created: int = Field(default_factory=lambda: int(time.time()))
+    owned_by: str = "owner"
+    root: Optional[str] = None
+    parent: Optional[str] = None
+    permission: Optional[list] = None
+
+
+class ModelList(BaseModel):
+    object: str = "list"
+    data: List[ModelCard] = []
 
 
 class ChatMessage(BaseModel):
@@ -126,6 +143,13 @@ def expand_features(embedding, target_length):
     return expanded_embedding
 
 
+@app.get("/v1/models", response_model=ModelList)
+async def list_models():
+    global model_args
+    model_card = ModelCard(id="gpt-3.5-turbo")
+    return ModelList(data=[model_card])
+
+
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def create_chat_completion(
     request: ChatCompletionRequest, token: bool = Depends(verify_token)
@@ -174,7 +198,7 @@ async def predict(query: str, history: List[List[str]], model_id: str):
     chunk = ChatCompletionResponse(
         model=model_id, choices=[choice_data], object="chat.completion.chunk"
     )
-    yield "{}".format(chunk.json(exclude_unset=True, ensure_ascii=False))
+    yield json.dumps(chunk.model_dump(exclude_unset=True), ensure_ascii=False)
 
     current_length = 0
 
@@ -191,7 +215,7 @@ async def predict(query: str, history: List[List[str]], model_id: str):
         chunk = ChatCompletionResponse(
             model=model_id, choices=[choice_data], object="chat.completion.chunk"
         )
-        yield "{}".format(chunk.json(exclude_unset=True, ensure_ascii=False))
+        yield json.dumps(chunk.model_dump(exclude_unset=True), ensure_ascii=False)
 
     choice_data = ChatCompletionResponseStreamChoice(
         index=0, delta=DeltaMessage(), finish_reason="stop"
@@ -199,7 +223,7 @@ async def predict(query: str, history: List[List[str]], model_id: str):
     chunk = ChatCompletionResponse(
         model=model_id, choices=[choice_data], object="chat.completion.chunk"
     )
-    yield "{}".format(chunk.json(exclude_unset=True, ensure_ascii=False))
+    yield json.dumps(chunk.model_dump(exclude_unset=True), ensure_ascii=False)
     yield '[DONE]'
 
 
@@ -240,6 +264,16 @@ async def get_embeddings(
     return response
 
 
+@app.get("/models", response_model=ModelList)
+async def list_v1_models():
+    return RedirectResponse("/v1/models", status_code=307)
+
+
+@app.post("/chat/completions", response_model=ChatCompletionResponse)
+async def create_v1_chat_completion(request: ChatCompletionRequest):
+    return RedirectResponse("/v1/chat/completions", status_code=307)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", default="16", type=str, help="Model name")
@@ -256,5 +290,6 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     model = AutoModel.from_pretrained(model_name, trust_remote_code=True).cuda()
     embeddings_model = SentenceTransformer('moka-ai/m3e-large', device='cpu')
+    model.eval()
 
-    uvicorn.run(app, host='0.0.0.0', port=6006, workers=1)
+    uvicorn.run(app, host='0.0.0.0', port=8000, workers=1)
