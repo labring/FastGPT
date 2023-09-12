@@ -4,7 +4,7 @@ description: "FastGPT 对接 OnWeChat"
 icon: "chat"
 draft: false
 toc: true
-weight: 620
+weight: 320
 ---
 
 # 1 分钟对接 OnWeChat

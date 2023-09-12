@@ -4,7 +4,7 @@ description: " 利用 FastGPT 打造高质量 AI 知识库"
 icon: "school"
 draft: false
 toc: true
-weight: 640
+weight: 340
 ---
 
 ## 前言
