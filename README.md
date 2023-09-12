@@ -18,6 +18,8 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
   <a href="https://github.com/labring/FastGPT#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">相关项目</a>
 </p>
 
+https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
+
 ## 🛸 在线体验
 
 [fastgpt.run](https://fastgpt.run/)（服务器在新加坡，部分地区可能无法直连）
