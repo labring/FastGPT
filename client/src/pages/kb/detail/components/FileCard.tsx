@@ -11,7 +11,7 @@ import {
   Tbody,
   Image
 } from '@chakra-ui/react';
-import { getKbFiles, deleteKbFileById } from '@/api/plugins/kb';
+import { getKbFiles, deleteKbFileById, getTrainingData } from '@/api/plugins/kb';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
 import { debounce } from 'lodash';
@@ -92,12 +92,36 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     }
   };
 
+  const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch: refetchTrainingData } =
+    useQuery(['getModelSplitDataList', kbId], () => getTrainingData({ kbId, init: false }), {
+      onError(err) {
+        console.log(err);
+      }
+    });
+
+  useQuery(['refetchTrainingData'], refetchTrainingData, {
+    refetchInterval: 8000,
+    enabled: qaListLen > 0 || vectorListLen > 0
+  });
+
   return (
     <Box ref={BoxRef} position={'relative'} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex justifyContent={'space-between'} px={5}>
-        <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
-          {t('kb.Files', { total: files.length })}
+        <Box>
+          <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
+            {t('kb.Files', { total: files.length })}
+          </Box>
+          <Box as={'span'} fontSize={'sm'}>
+            {(qaListLen > 0 || vectorListLen > 0) && (
+              <>
+                ({qaListLen > 0 ? `${qaListLen}条数据正在拆分，` : ''}
+                {vectorListLen > 0 ? `${vectorListLen}条数据正在生成索引，` : ''}
+                请耐心等待... )
+              </>
+            )}
+          </Box>
         </Box>
+
         <Flex alignItems={'center'}>
           <MyInput
             leftIcon={

@@ -40,7 +40,11 @@ const QAImport = ({ kbId }: { kbId: string }) => {
 
   // price count
   const price = useMemo(() => {
-    return formatPrice(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice * 1.3);
+    const filesToken = files.reduce((sum, file) => sum + file.tokens, 0);
+    const promptTokens = files.reduce((sum, file) => sum + file.chunks.length, 0) * 139;
+    const totalToken = (filesToken + promptTokens) * 1.8;
+
+    return formatPrice(totalToken * unitPrice);
   }, [files, unitPrice]);
 
   const { openConfirm, ConfirmModal } = useConfirm({
