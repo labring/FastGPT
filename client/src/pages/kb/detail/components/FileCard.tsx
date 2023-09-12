@@ -34,6 +34,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
   const lastSearch = useRef('');
   const router = useRouter();
   const { t } = useTranslation();
+  const { Loading } = useLoading();
   const [searchText, setSearchText] = useState('');
   const { setLoading } = useGlobalStore();
   const { openConfirm, ConfirmModal } = useConfirm({
@@ -44,6 +45,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     data: files,
     Pagination,
     total,
+    isLoading,
     getData,
     pageNum,
     pageSize
@@ -249,6 +251,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
       )}
 
       <ConfirmModal />
+      <Loading loading={isLoading} />
     </Box>
   );
 };
