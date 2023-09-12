@@ -11,7 +11,7 @@ export interface OutLinkSchema {
   type: `${OutLinkTypeEnum}`;
   responseDetail: boolean;
   limit?: {
-    expiredTime: Date;
+    expiredTime?: Date;
     QPM: number;
     credit: number;
   };

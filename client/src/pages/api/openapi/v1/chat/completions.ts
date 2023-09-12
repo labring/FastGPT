@@ -84,7 +84,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     let startTime = Date.now();
 
     /* user auth */
-    const {
+    let {
+      // @ts-ignore
+      responseDetail,
       user,
       userId,
       appId: authAppid,
@@ -115,6 +117,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     ]);
 
     const isOwner = !shareId && userId === String(app.userId);
+    responseDetail = isOwner || responseDetail;
 
     const prompts = history.concat(gptMessage2ChatType(messages));
     if (prompts[prompts.length - 1].obj === 'AI') {
@@ -160,7 +163,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId,
         variables,
-        isOwner,
+        isOwner, // owner update use time
         shareId,
         source: (() => {
           if (shareId) {
@@ -200,7 +203,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         data: '[DONE]'
       });
 
-      if (isOwner && detail) {
+      if (responseDetail && detail) {
         sseResponse({
           res,
           event: sseResponseEventEnum.appStreamResponse,

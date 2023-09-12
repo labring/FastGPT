@@ -38,7 +38,6 @@ import { useRequest } from '@/hooks/useRequest';
 import { formatPrice } from '@/utils/user';
 import { OutLinkTypeEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
-import { feConfigs } from '@/store/static';
 import { useToast } from '@/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
@@ -113,7 +112,11 @@ const Share = ({ appId }: { appId: string }) => {
                   </>
                 )}
                 <Td>{item.responseDetail ? '✔' : '✖'}</Td>
-                <Td>{dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')}</Td>
+                <Td>
+                  {item.limit?.expiredTime
+                    ? dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
+                    : '-'}
+                </Td>
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Menu autoSelect={false} isLazy>
@@ -249,7 +252,11 @@ export function EditLinkModal({
       [OutLinkTypeEnum.iframe]: t('outlink.Edit Ifrme Link')
     }
   });
-  const { register, handleSubmit: submitShareChat } = useForm({
+  const {
+    register,
+    setValue,
+    handleSubmit: submitShareChat
+  } = useForm({
     defaultValues: defaultData
   });
 
@@ -326,7 +333,17 @@ export function EditLinkModal({
           <Flex flex={'0 0 90px'} alignItems={'center'}>
             {t('common.Expired Time')}:
           </Flex>
-          <Input type="datetime-local" {...register('limit.expiredTime')} />
+          <Input
+            type="datetime-local"
+            defaultValue={
+              defaultData.limit?.expiredTime
+                ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
+                : ''
+            }
+            onChange={(e) => {
+              setValue('limit.expiredTime', new Date(e.target.value));
+            }}
+          />
         </Flex>
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>

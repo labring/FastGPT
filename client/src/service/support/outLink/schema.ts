@@ -39,8 +39,7 @@ const OutLinkSchema = new Schema({
   },
   limit: {
     expiredTime: {
-      type: Date,
-      default: () => new Date('2099/1/1')
+      type: Date
     },
     QPM: {
       type: Number,

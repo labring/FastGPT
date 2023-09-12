@@ -11,7 +11,7 @@ export async function authOutLinkChat({ shareId, ip }: { shareId: string; ip?: s
   });
 
   if (!outLink) {
-    return Promise.reject('分享链接已失效');
+    return Promise.reject('分享链接无效');
   }
 
   const uid = String(outLink.userId);
@@ -26,7 +26,8 @@ export async function authOutLinkChat({ shareId, ip }: { shareId: string; ip?: s
     user,
     userId: String(outLink.userId),
     appId: String(outLink.appId),
-    authType: AuthUserTypeEnum.token
+    authType: AuthUserTypeEnum.token,
+    responseDetail: outLink.responseDetail
   };
 }
 
@@ -41,8 +42,8 @@ export async function authOutLinkLimit({
     return;
   }
 
-  if (outLink.limit.expiredTime.getTime() < Date.now()) {
-    return Promise.reject('分享链接已失效');
+  if (outLink.limit.expiredTime && outLink.limit.expiredTime.getTime() < Date.now()) {
+    return Promise.reject('分享链接已过期');
   }
 
   if (outLink.limit.credit > -1 && outLink.total > outLink.limit.credit * PRICE_SCALE) {
