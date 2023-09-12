@@ -4,7 +4,7 @@ description: "FastGPT 提示词 & 限定词说明"
 icon: "sign_language"
 draft: false
 toc: true
-weight: 10
+weight: 310
 ---
 
 # AI 对话消息组成
