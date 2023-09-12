@@ -109,7 +109,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         <Avatar
           w={'36px'}
           h={'36px'}
-          borderRadius={'none'}
+          borderRadius={'50%'}
           src={userInfo?.avatar}
           fallbackSrc={HUMAN_ICON}
         />
@@ -157,7 +157,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           <Link
             as={NextLink}
             {...itemStyles}
-            href={`/account?type=inform`}
+            href={`/account?currentTab=inform`}
             mb={0}
             color={'#9096a5'}
           >
