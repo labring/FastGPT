@@ -62,6 +62,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
 
   const redirectUri = `${location.origin}/login/provider`;
   const state = useRef(nanoid());
+
   const oAuthList = [
     ...(feConfigs?.oauth?.github
       ? [
@@ -77,7 +78,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {
             provider: OAuthEnum.google,
             icon: 'googleFill',
-            redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20openid&include_granted_scopes=true`
+            redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
           }
         ]
       : [])

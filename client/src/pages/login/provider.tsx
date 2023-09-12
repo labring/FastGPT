@@ -5,13 +5,12 @@ import { ResLogin } from '@/api/response/user';
 import { useChatStore } from '@/store/chat';
 import { useUserStore } from '@/store/user';
 import { setToken } from '@/utils/user';
-import { gitLogin, googleLogin } from '@/api/user';
+import { oauthLogin } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@/utils/tools';
-import { OAuthEnum } from '@/constants/user';
 
 const provider = ({ code, state }: { code: string; state: string }) => {
   const { loginStore } = useGlobalStore();
@@ -44,19 +43,12 @@ const provider = ({ code, state }: { code: string; state: string }) => {
         return;
       }
       try {
-        const res = await (async () => {
-          const params = {
-            code,
-            inviterId: localStorage.getItem('inviterId') || undefined
-          };
-          switch (loginStore.provider) {
-            case OAuthEnum.github:
-              return gitLogin(params);
-            case OAuthEnum.google:
-              return googleLogin(params);
-          }
-          return null;
-        })();
+        const res = await oauthLogin({
+          type: loginStore?.provider,
+          code,
+          callbackUrl: `${location.origin}/login/provider`,
+          inviterId: localStorage.getItem('inviterId') || undefined
+        });
         if (!res) {
           toast({
             status: 'warning',
