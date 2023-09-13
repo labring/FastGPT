@@ -135,10 +135,12 @@ export function getSystemVersion() {
       global.systemVersion = process.env.npm_package_version || '0.0.0';
       return;
     }
-    const packageJson = JSON.parse(readFileSync('/package.json', 'utf-8'));
+    const packageJson = JSON.parse(readFileSync('/app/package.json', 'utf-8'));
 
     global.systemVersion = packageJson?.version;
   } catch (error) {
+    console.log(error);
+
     global.systemVersion = '0.0.0';
   }
 }
