@@ -5,14 +5,19 @@ import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
 import { PgTrainingTableName } from '@/constants/plugin';
-import { KbFileItemType } from '@/types/plugin';
 import { FileStatusEnum, OtherFileId } from '@/constants/kb';
+import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
 
-    let { kbId, searchText } = req.query as { kbId: string; searchText: string };
+    let {
+      pageNum = 1,
+      pageSize = 10,
+      kbId,
+      searchText
+    } = req.body as { pageNum: number; pageSize: number; kbId: string; searchText: string };
     searchText = searchText.replace(/'/g, '');
 
     // 凭证校验
@@ -21,10 +26,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const gridFs = new GridFSStorage('dataset', userId);
     const bucket = gridFs.GridFSBucket();
 
-    const files = await bucket
-      .find({ ['metadata.kbId']: kbId, ...(searchText && { filename: { $regex: searchText } }) })
-      .sort({ _id: -1 })
-      .toArray();
+    const mongoWhere = {
+      ['metadata.kbId']: kbId,
+      ...(searchText && { filename: { $regex: searchText } })
+    };
+    const [files, total] = await Promise.all([
+      bucket
+        .find(mongoWhere)
+        .sort({ _id: -1 })
+        .skip((pageNum - 1) * pageSize)
+        .limit(pageSize)
+        .toArray(),
+      mongoose.connection.db.collection('dataset.files').countDocuments(mongoWhere)
+    ]);
 
     async function GetOtherData() {
       return {
@@ -72,8 +86,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       })
     ]);
 
-    jsonRes<KbFileItemType[]>(res, {
-      data: data.flat().filter((item) => item.chunkLength > 0)
+    jsonRes(res, {
+      data: {
+        pageNum,
+        pageSize,
+        data: data.flat().filter((item) => item.chunkLength > 0),
+        total
+      }
     });
   } catch (err) {
     jsonRes(res, {

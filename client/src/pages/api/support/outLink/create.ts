@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, OutLink } from '@/service/mongo';
 import { authApp, authUser } from '@/service/utils/auth';
-import type { ShareChatEditType } from '@/types/app';
+import type { OutLinkEditType } from '@/types/support/outLink';
 import { customAlphabet } from 'nanoid';
 import { OutLinkTypeEnum } from '@/constants/chat';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
@@ -10,8 +10,9 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 /* create a shareChat */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { appId, name } = req.body as ShareChatEditType & {
+    const { appId, ...props } = req.body as OutLinkEditType & {
       appId: string;
+      type: `${OutLinkTypeEnum}`;
     };
 
     await connectToDatabase();
@@ -28,8 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       shareId,
       userId,
       appId,
-      name,
-      type: OutLinkTypeEnum.share
+      ...props
     });
 
     jsonRes(res, {

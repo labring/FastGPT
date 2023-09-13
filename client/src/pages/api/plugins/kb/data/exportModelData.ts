@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     const thirtyMinutesAgo = new Date(
-      Date.now() - (global.feConfigs?.exportLimitMinutes || 0) * 60 * 1000
+      Date.now() - (global.feConfigs?.limit?.exportLimitMinutes || 0) * 60 * 1000
     );
 
     // auth export times
@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
 
     if (!authTimes) {
-      const minutes = `${global.feConfigs?.exportLimitMinutes || 0} 分钟`;
+      const minutes = `${global.feConfigs?.limit?.exportLimitMinutes || 0} 分钟`;
       throw new Error(`上次导出未到 ${minutes}，每 ${minutes}仅可导出一次。`);
     }
 

@@ -4,7 +4,7 @@ import type { DataType } from './data';
 import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
-import { ChatSourceEnum, OutLinkTypeEnum } from '@/constants/chat';
+import { ChatSourceEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
 import { KbTypeEnum } from '@/constants/kb';
 
@@ -154,17 +154,6 @@ export interface PromotionRecordSchema {
   type: 'register' | 'pay';
   createTime: Date; // 记录时间
   amount: number;
-}
-
-export interface OutLinkSchema {
-  _id: string;
-  shareId: string;
-  userId: string;
-  appId: string;
-  name: string;
-  total: number;
-  lastTime: Date;
-  type: `${OutLinkTypeEnum}`;
 }
 
 export type kbSchema = {

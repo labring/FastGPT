@@ -7,11 +7,11 @@ import { hashPassword } from '@/service/utils/tools';
 /* get shareChat list by appId */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
+
     const { appId } = req.query as {
       appId: string;
     };
-
-    await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
 
@@ -22,15 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       _id: -1
     });
 
-    jsonRes(res, {
-      data: data.map((item) => ({
-        _id: item._id,
-        shareId: item.shareId,
-        name: item.name,
-        total: item.total,
-        lastTime: item.lastTime
-      }))
-    });
+    jsonRes(res, { data });
   } catch (err) {
     jsonRes(res, {
       code: 500,

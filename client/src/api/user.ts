@@ -5,16 +5,21 @@ import { UserAuthTypeEnum } from '@/constants/common';
 import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
 import { informSchema, PaySchema } from '@/types/mongoSchema';
+import { OAuthEnum } from '@/constants/user';
 
 export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
   googleToken: string;
-}) => POST(`/plusApi/user/account/sendCode`, data);
+}) => POST(`/plusApi/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
-export const gitLogin = (params: { code: string; inviterId?: string }) =>
-  GET<ResLogin>('/plusApi/user/account/gitLogin', params);
+export const oauthLogin = (params: {
+  type: `${OAuthEnum}`;
+  code: string;
+  callbackUrl: string;
+  inviterId?: string;
+}) => POST<ResLogin>('/plusApi/user/account/login/oauth', params);
 
 export const postRegister = ({
   username,
@@ -27,7 +32,7 @@ export const postRegister = ({
   password: string;
   inviterId?: string;
 }) =>
-  POST<ResLogin>(`/plusApi/user/account/register`, {
+  POST<ResLogin>(`/plusApi/user/account/register/emailAndPhone`, {
     username,
     code,
     inviterId,
@@ -43,7 +48,7 @@ export const postFindPassword = ({
   code: string;
   password: string;
 }) =>
-  POST<ResLogin>(`/plusApi/user/account/updatePasswordByCode`, {
+  POST<ResLogin>(`/plusApi/user/account/password/updateByCode`, {
     username,
     code,
     password: createHashPassword(password)

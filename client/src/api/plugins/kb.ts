@@ -17,7 +17,12 @@ import {
   Response as SearchTestResponse
 } from '@/pages/api/openapi/kb/searchTest';
 import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
-import type { KbUpdateParams, CreateKbParams, GetKbDataListProps } from '../request/kb';
+import type {
+  KbUpdateParams,
+  CreateKbParams,
+  GetKbDataListProps,
+  GetFileListProps
+} from '../request/kb';
 import { QuoteItemType } from '@/types/chat';
 import { KbTypeEnum } from '@/constants/kb';
 
@@ -38,8 +43,8 @@ export const putKbById = (data: KbUpdateParams) => PUT(`/plugins/kb/update`, dat
 export const delKbById = (id: string) => DELETE(`/plugins/kb/delete?id=${id}`);
 
 /* kb file */
-export const getKbFiles = (data: { kbId: string; searchText: string }) =>
-  GET<KbFileItemType[]>(`/plugins/kb/file/list`, data);
+export const getKbFiles = (data: GetFileListProps) =>
+  POST<KbFileItemType[]>(`/plugins/kb/file/list`, data);
 export const deleteKbFileById = (params: { fileId: string; kbId: string }) =>
   DELETE(`/plugins/kb/file/delFileByFileId`, params);
 export const getFileInfoById = (fileId: string) =>

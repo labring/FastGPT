@@ -5,14 +5,14 @@ import { ResLogin } from '@/api/response/user';
 import { useChatStore } from '@/store/chat';
 import { useUserStore } from '@/store/user';
 import { setToken } from '@/utils/user';
-import { gitLogin } from '@/api/user';
+import { oauthLogin } from '@/api/user';
 import { useToast } from '@/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@/utils/tools';
 
-const provider = ({ code }: { code: string }) => {
+const provider = ({ code, state }: { code: string; state: string }) => {
   const { loginStore } = useGlobalStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
@@ -36,45 +36,55 @@ const provider = ({ code }: { code: string }) => {
     [setLastChatId, setLastChatAppId, setUserInfo, router, loginStore?.lastRoute]
   );
 
-  const authCode = useCallback(async () => {
-    if (!code) return;
-    if (!loginStore) {
-      router.replace('/login');
-      return;
-    }
-    try {
-      const res = await (async () => {
-        if (loginStore.provider === 'git') {
-          return gitLogin({
-            code,
-            inviterId: localStorage.getItem('inviterId') || undefined
+  const authCode = useCallback(
+    async (code: string) => {
+      if (!loginStore) {
+        router.replace('/login');
+        return;
+      }
+      try {
+        const res = await oauthLogin({
+          type: loginStore?.provider,
+          code,
+          callbackUrl: `${location.origin}/login/provider`,
+          inviterId: localStorage.getItem('inviterId') || undefined
+        });
+        if (!res) {
+          toast({
+            status: 'warning',
+            title: '登录异常'
           });
+          return setTimeout(() => {
+            router.replace('/login');
+          }, 1000);
         }
-        return null;
-      })();
-      if (!res) {
+        loginSuccess(res);
+      } catch (error) {
         toast({
           status: 'warning',
-          title: '登录异常'
+          title: getErrText(error, '登录异常')
         });
-        return setTimeout(() => {
+        setTimeout(() => {
           router.replace('/login');
         }, 1000);
       }
-      loginSuccess(res);
-    } catch (error) {
+    },
+    [loginStore, loginSuccess, router, toast]
+  );
+
+  useQuery(['init', code], () => {
+    if (!code) return;
+    if (state !== loginStore?.state) {
       toast({
         status: 'warning',
-        title: getErrText(error, '登录异常')
+        title: '安全校验失败'
       });
       setTimeout(() => {
         router.replace('/login');
       }, 1000);
+      return;
     }
-  }, [code, loginStore, loginSuccess]);
-
-  useQuery(['init', code], () => {
-    authCode();
+    authCode(code);
     return null;
   });
 
@@ -85,6 +95,7 @@ export async function getServerSideProps(content: any) {
   return {
     props: {
       code: content?.query?.code,
+      state: content?.query?.state,
       ...(await serviceSideProps(content))
     }
   };

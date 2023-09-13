@@ -1,5 +1,4 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { baseUrl } from '../../service/lib/openai';
 
 interface ConfigType {
   headers?: { [key: string]: string };

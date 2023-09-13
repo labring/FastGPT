@@ -24,6 +24,7 @@ const map = {
   out: require('./icons/out.svg').default,
   git: require('./icons/git.svg').default,
   gitFill: require('./icons/fill/git.svg').default,
+  googleFill: require('./icons/fill/google.svg').default,
   menu: require('./icons/menu.svg').default,
   edit: require('./icons/edit.svg').default,
   inform: require('./icons/inform.svg').default,
