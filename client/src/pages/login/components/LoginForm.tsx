@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback, useRef } from 'react';
-import { FormControl, Flex, Input, Button, FormErrorMessage, Box } from '@chakra-ui/react';
+import { FormControl, Flex, Input, Button, FormErrorMessage, Box, Link } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { OAuthEnum, PageTypeEnum } from '@/constants/user';
@@ -120,28 +120,43 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           </FormErrorMessage>
         </FormControl>
         {feConfigs?.show_register && (
-          <Flex align={'center'} justifyContent={'space-between'} mt={3} color={'myBlue.600'}>
-            <Box
-              cursor={'pointer'}
-              _hover={{ textDecoration: 'underline' }}
-              onClick={() => setPageType('forgetPassword')}
-              fontSize="sm"
-            >
-              忘记密码?
-            </Box>
-            <Box
-              cursor={'pointer'}
-              _hover={{ textDecoration: 'underline' }}
-              onClick={() => setPageType('register')}
-              fontSize="sm"
-            >
-              注册账号
-            </Box>
-          </Flex>
+          <>
+            <Flex align={'center'} justifyContent={'space-between'} mt={3} color={'myBlue.600'}>
+              <Box
+                cursor={'pointer'}
+                _hover={{ textDecoration: 'underline' }}
+                onClick={() => setPageType('forgetPassword')}
+                fontSize="sm"
+              >
+                忘记密码?
+              </Box>
+              <Box
+                cursor={'pointer'}
+                _hover={{ textDecoration: 'underline' }}
+                onClick={() => setPageType('register')}
+                fontSize="sm"
+              >
+                注册账号
+              </Box>
+            </Flex>
+            {feConfigs?.show_doc && (
+              <Box textAlign={'center'} mt={2} fontSize={'sm'}>
+                使用即代表你同意我们的{' '}
+                <Link
+                  href="https://doc.fastgpt.run/docs/intro/#%e5%85%8d%e8%b4%a3%e5%a3%b0%e6%98%8e"
+                  target={'_blank'}
+                  color={'myBlue.600'}
+                >
+                  免责声明
+                </Link>
+              </Box>
+            )}
+          </>
         )}
+
         <Button
           type="submit"
-          mt={6}
+          mt={5}
           w={'100%'}
           size={['md', 'lg']}
           colorScheme="blue"

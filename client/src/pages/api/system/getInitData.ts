@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatModels: global.chatModels,
       qaModel: global.qaModel,
       vectorModels: global.vectorModels,
-      systemVersion: process.env.npm_package_version || '0.0.0'
+      systemVersion: global.systemVersion || '0.0.0'
     }
   });
 }
@@ -98,11 +98,13 @@ export async function getInitConfig() {
   try {
     if (global.feConfigs) return;
 
+    getSystemVersion();
+
     const filename =
       process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
     const res = JSON.parse(readFileSync(filename, 'utf-8'));
 
-    console.log(`System Version: ${process.env.npm_package_version}`);
+    console.log(`System Version: ${global.systemVersion}`);
 
     console.log(res);
 
@@ -125,4 +127,18 @@ export function setDefaultData() {
   global.chatModels = defaultChatModels;
   global.qaModel = defaultQAModel;
   global.vectorModels = defaultVectorModels;
+}
+
+export function getSystemVersion() {
+  try {
+    if (process.env.NODE_ENV) {
+      global.systemVersion = process.env.npm_package_version || '0.0.0';
+      return;
+    }
+    const packageJson = JSON.parse(readFileSync('/package.json', 'utf-8'));
+
+    global.systemVersion = packageJson?.version;
+  } catch (error) {
+    global.systemVersion = '0.0.0';
+  }
 }
