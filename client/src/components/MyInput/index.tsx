@@ -8,7 +8,7 @@ interface Props extends InputProps {
 const MyInput = ({ leftIcon, ...props }: Props) => {
   return (
     <Flex position={'relative'} alignItems={'center'}>
-      <Input w={'100%'} pl={leftIcon ? '30px' : 3} {...props} />
+      <Input w={'100%'} pl={leftIcon ? '30px !important' : 3} {...props} />
       {leftIcon && (
         <Flex
           alignItems={'center'}

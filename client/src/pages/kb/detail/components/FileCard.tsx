@@ -11,7 +11,8 @@ import {
   Tbody,
   Image
 } from '@chakra-ui/react';
-import { getKbFiles, deleteKbFileById, getTrainingData } from '@/api/plugins/kb';
+import { getTrainingData } from '@/api/plugins/kb';
+import { getDatasetFiles, delDatasetFileById } from '@/api/core/dataset/file';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { formatFileSize } from '@/utils/tools';
@@ -50,7 +51,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     pageNum,
     pageSize
   } = usePagination<KbFileItemType>({
-    api: getKbFiles,
+    api: getDatasetFiles,
     pageSize: 40,
     params: {
       kbId,
@@ -79,15 +80,11 @@ const FileCard = ({ kbId }: { kbId: string }) => {
       })),
     [files]
   );
-  const totalDataLength = useMemo(
-    () => files.reduce((sum, item) => sum + item.chunkLength, 0),
-    [files]
-  );
 
   const { mutate: onDeleteFile } = useRequest({
     mutationFn: (fileId: string) => {
       setLoading(true);
-      return deleteKbFileById({
+      return delDatasetFileById({
         fileId,
         kbId
       });
@@ -121,16 +118,16 @@ const FileCard = ({ kbId }: { kbId: string }) => {
       }
     });
 
-  useQuery(['refetchTrainingData'], refetchTrainingData, {
+  useQuery(['refetchTrainingData'], () => Promise.all([refetchTrainingData(), getData(pageNum)]), {
     refetchInterval: 8000,
     enabled: qaListLen > 0 || vectorListLen > 0
   });
 
   return (
     <Box ref={BoxRef} position={'relative'} py={[1, 5]} h={'100%'} overflow={'overlay'}>
-      <Flex justifyContent={'space-between'} px={5}>
+      <Flex justifyContent={'space-between'} px={[2, 5]}>
         <Box>
-          <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
+          <Box fontWeight={'bold'} fontSize={['md', 'lg']} mr={2}>
             {t('kb.Files', { total: files.length })}
           </Box>
           <Box as={'span'} fontSize={'sm'}>
@@ -149,7 +146,8 @@ const FileCard = ({ kbId }: { kbId: string }) => {
             leftIcon={
               <MyIcon name="searchLight" position={'absolute'} w={'14px'} color={'myGray.500'} />
             }
-            w={['100%', '200px']}
+            w={['100%', '250px']}
+            size={['sm', 'md']}
             placeholder={t('common.Search') || ''}
             value={searchText}
             onChange={(e) => {
@@ -174,9 +172,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
           <Thead>
             <Tr>
               <Th>{t('kb.Filename')}</Th>
-              <Th>
-                {t('kb.Chunk Length')}({totalDataLength})
-              </Th>
+              <Th>{t('kb.Chunk Length')}</Th>
               <Th>{t('kb.Upload Time')}</Th>
               <Th>{t('kb.File Size')}</Th>
               <Th>{t('common.Status')}</Th>

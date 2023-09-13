@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -18,7 +18,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // 凭证校验
     const { userId } = await authUser({ req });
 
-    await PgClient.delete(PgTrainingTableName, {
+    await PgClient.delete(PgDatasetTableName, {
       where: [['user_id', userId], 'AND', ['id', dataId]]
     });
 

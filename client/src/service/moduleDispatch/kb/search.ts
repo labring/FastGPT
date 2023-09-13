@@ -5,7 +5,7 @@ import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice } from '@/service/events/pushBill';
 import type { SelectedKbType } from '@/types/plugin';
 import type { QuoteItemType } from '@/types/chat';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 
 type KBSearchProps = {
   kbList: SelectedKbType;
@@ -42,7 +42,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   const res: any = await PgClient.query(
     `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
-    select kb_id,id,q,a,source,file_id from ${PgTrainingTableName} where kb_id IN (${kbList
+    select kb_id,id,q,a,source,file_id from ${PgDatasetTableName} where kb_id IN (${kbList
       .map((item) => `'${item.kbId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]

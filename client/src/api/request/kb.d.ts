@@ -17,11 +17,6 @@ export type CreateKbParams = {
   type: `${KbTypeEnum}`;
 };
 
-export type GetFileListProps = RequestPaging & {
-  kbId: string;
-  searchText: string;
-};
-
 export type GetKbDataListProps = RequestPaging & {
   kbId: string;
   searchText: string;
