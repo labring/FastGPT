@@ -76,6 +76,24 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex alignItems={'center'}>
+        <IconButton
+          mr={3}
+          icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+          bg={'white'}
+          boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+          h={'28px'}
+          size={'sm'}
+          borderRadius={'50%'}
+          aria-label={''}
+          onClick={() =>
+            router.replace({
+              query: {
+                kbId,
+                currentTab: 'dataset'
+              }
+            })
+          }
+        />
         <Flex
           className="textEllipsis"
           flex={'1 0 0'}
