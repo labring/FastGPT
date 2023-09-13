@@ -1,14 +1,16 @@
-import React, { useState, Dispatch, useCallback } from 'react';
+import React, { useState, Dispatch, useCallback, useRef } from 'react';
 import { FormControl, Flex, Input, Button, FormErrorMessage, Box } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
-import { PageTypeEnum } from '@/constants/user';
+import { OAuthEnum, PageTypeEnum } from '@/constants/user';
 import { postLogin } from '@/api/user';
 import type { ResLogin } from '@/api/response/user';
 import { useToast } from '@/hooks/useToast';
 import { feConfigs } from '@/store/static';
 import { useGlobalStore } from '@/store/global';
 import MyIcon from '@/components/Icon';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
   setPageType: Dispatch<`${PageTypeEnum}`>;
@@ -58,18 +60,29 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     [loginSuccess, toast]
   );
 
-  const onclickGit = useCallback(() => {
-    setLoginStore({
-      provider: 'git',
-      lastRoute
-    });
-    router.replace(
-      `https://github.com/login/oauth/authorize?client_id=${
-        feConfigs?.gitLoginKey
-      }&redirect_uri=${`${location.origin}/login/provider`}&scope=user:email%20read:user`,
-      '_self'
-    );
-  }, [lastRoute, setLoginStore]);
+  const redirectUri = `${location.origin}/login/provider`;
+  const state = useRef(nanoid());
+
+  const oAuthList = [
+    ...(feConfigs?.oauth?.github
+      ? [
+          {
+            provider: OAuthEnum.github,
+            icon: 'gitFill',
+            redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state.current}&scope=user:email%20read:user`
+          }
+        ]
+      : []),
+    ...(feConfigs?.oauth?.google
+      ? [
+          {
+            provider: OAuthEnum.google,
+            icon: 'googleFill',
+            redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
+          }
+        ]
+      : [])
+  ];
 
   return (
     <>
@@ -138,14 +151,24 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         </Button>
         {feConfigs?.show_register && (
           <>
-            <Flex mt={10} justifyContent={'center'} alignItems={'center'}>
-              <MyIcon
-                name="gitFill"
-                w={'34px'}
-                cursor={'pointer'}
-                color={'myGray.800'}
-                onClick={onclickGit}
-              />
+            <Flex mt={10} justifyContent={'space-around'} alignItems={'center'}>
+              {oAuthList.map((item) => (
+                <MyIcon
+                  key={item.provider}
+                  name={item.icon as any}
+                  w={'34px'}
+                  cursor={'pointer'}
+                  color={'myGray.800'}
+                  onClick={() => {
+                    setLoginStore({
+                      provider: item.provider,
+                      lastRoute,
+                      state: state.current
+                    });
+                    router.replace(item.redirectUrl, '_self');
+                  }}
+                />
+              ))}
             </Flex>
           </>
         )}

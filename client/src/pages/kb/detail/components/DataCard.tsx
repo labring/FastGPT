@@ -65,22 +65,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
 
   const [editInputData, setEditInputData] = useState<InputDataType>();
 
-  const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch: refetchTrainingData } =
-    useQuery(['getModelSplitDataList', kbId], () => getTrainingData({ kbId, init: false }), {
-      onError(err) {
-        console.log(err);
-      }
-    });
-
-  const refetchData = useCallback(
-    (num = pageNum) => {
-      getData(num);
-      refetchTrainingData();
-      return null;
-    },
-    [getData, pageNum, refetchTrainingData]
-  );
-
   // get first page data
   const getFirstData = useCallback(
     debounce(() => {
@@ -89,12 +73,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     }, 300),
     []
   );
-
-  // interval get data
-  useQuery(['refetchData'], () => refetchData(1), {
-    refetchInterval: 5000,
-    enabled: qaListLen > 0 || vectorListLen > 0
-  });
 
   // get file info
   const { data: fileInfo } = useQuery(['getFileInfo', fileId], () => getFileInfoById(fileId));
@@ -122,7 +100,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         filename
       });
     },
-    successToast: `导出成功，下次导出需要 ${feConfigs.exportLimitMinutes} 分钟后`,
+    successToast: `导出成功，下次导出需要 ${feConfigs?.limit?.exportLimitMinutes} 分钟后`,
     errorToast: '导出异常'
   });
 
@@ -136,7 +114,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           fontSize={['sm', 'md']}
           alignItems={'center'}
         >
-          <Image src={fileIcon} w={'16px'} mr={2} alt={''} />
+          <Image src={fileIcon || '/imgs/files/file.svg'} w={'16px'} mr={2} alt={''} />
           {t(fileInfo?.filename || 'Filename')}
         </Flex>
         <Button
@@ -171,15 +149,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         <Box>
           <Box as={'span'} fontSize={['md', 'lg']}>
             {total}组
-          </Box>
-          <Box as={'span'}>
-            {(qaListLen > 0 || vectorListLen > 0) && (
-              <>
-                ({qaListLen > 0 ? `${qaListLen}条数据正在拆分，` : ''}
-                {vectorListLen > 0 ? `${vectorListLen}条数据正在生成索引，` : ''}
-                请耐心等待... )
-              </>
-            )}
           </Box>
         </Box>
         <Box flex={1} mr={1} />
@@ -262,7 +231,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                     try {
                       setIsDeleting(true);
                       await delOneKbDataByDataId(item.id);
-                      refetchData(pageNum);
+                      getData(pageNum);
                     } catch (error) {
                       toast({
                         title: getErrText(error),
@@ -297,7 +266,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           kbId={kbId}
           defaultValues={editInputData}
           onClose={() => setEditInputData(undefined)}
-          onSuccess={() => refetchData()}
+          onSuccess={() => getData(pageNum)}
         />
       )}
       <ConfirmModal />

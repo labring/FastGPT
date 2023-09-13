@@ -11,9 +11,8 @@ import {
   Tbody,
   Image
 } from '@chakra-ui/react';
-import { getKbFiles, deleteKbFileById } from '@/api/plugins/kb';
+import { getKbFiles, deleteKbFileById, getTrainingData } from '@/api/plugins/kb';
 import { useQuery } from '@tanstack/react-query';
-import { useToast } from '@/hooks/useToast';
 import { debounce } from 'lodash';
 import { formatFileSize } from '@/utils/tools';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -26,30 +25,47 @@ import { useRequest } from '@/hooks/useRequest';
 import { useLoading } from '@/hooks/useLoading';
 import { FileStatusEnum } from '@/constants/kb';
 import { useRouter } from 'next/router';
+import { usePagination } from '@/hooks/usePagination';
+import { KbFileItemType } from '@/types/plugin';
+import { useGlobalStore } from '@/store/global';
 
 const FileCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
   const router = useRouter();
   const { t } = useTranslation();
-  const [searchText, setSearchText] = useState('');
   const { Loading } = useLoading();
+  const [searchText, setSearchText] = useState('');
+  const { setLoading } = useGlobalStore();
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('kb.Confirm to delete the file')
   });
 
   const {
-    data: files = [],
-    refetch,
-    isInitialLoading
-  } = useQuery(['getFiles', kbId], () => getKbFiles({ kbId, searchText }), {
-    refetchInterval: 6000,
-    refetchOnWindowFocus: true
+    data: files,
+    Pagination,
+    total,
+    isLoading,
+    getData,
+    pageNum,
+    pageSize
+  } = usePagination<KbFileItemType>({
+    api: getKbFiles,
+    pageSize: 40,
+    params: {
+      kbId,
+      searchText
+    },
+    onChange() {
+      if (BoxRef.current) {
+        BoxRef.current.scrollTop = 0;
+      }
+    }
   });
 
   const debounceRefetch = useCallback(
     debounce(() => {
-      refetch();
+      getData(1);
       lastSearch.current = searchText;
     }, 300),
     []
@@ -68,14 +84,19 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     [files]
   );
 
-  const { mutate: onDeleteFile, isLoading } = useRequest({
-    mutationFn: (fileId: string) =>
-      deleteKbFileById({
+  const { mutate: onDeleteFile } = useRequest({
+    mutationFn: (fileId: string) => {
+      setLoading(true);
+      return deleteKbFileById({
         fileId,
         kbId
-      }),
+      });
+    },
     onSuccess() {
-      refetch();
+      getData(pageNum);
+    },
+    onSettled() {
+      setLoading(false);
     },
     successToast: t('common.Delete Success'),
     errorToast: t('common.Delete Failed')
@@ -92,12 +113,37 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     }
   };
 
+  // training data
+  const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch: refetchTrainingData } =
+    useQuery(['getModelSplitDataList', kbId], () => getTrainingData({ kbId, init: false }), {
+      onError(err) {
+        console.log(err);
+      }
+    });
+
+  useQuery(['refetchTrainingData'], refetchTrainingData, {
+    refetchInterval: 8000,
+    enabled: qaListLen > 0 || vectorListLen > 0
+  });
+
   return (
     <Box ref={BoxRef} position={'relative'} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex justifyContent={'space-between'} px={5}>
-        <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
-          {t('kb.Files', { total: files.length })}
+        <Box>
+          <Box fontWeight={'bold'} fontSize={'lg'} mr={2}>
+            {t('kb.Files', { total: files.length })}
+          </Box>
+          <Box as={'span'} fontSize={'sm'}>
+            {(qaListLen > 0 || vectorListLen > 0) && (
+              <>
+                ({qaListLen > 0 ? `${qaListLen}条数据正在拆分，` : ''}
+                {vectorListLen > 0 ? `${vectorListLen}条数据正在生成索引，` : ''}
+                请耐心等待... )
+              </>
+            )}
+          </Box>
         </Box>
+
         <Flex alignItems={'center'}>
           <MyInput
             leftIcon={
@@ -112,12 +158,12 @@ const FileCard = ({ kbId }: { kbId: string }) => {
             }}
             onBlur={() => {
               if (searchText === lastSearch.current) return;
-              refetch();
+              getData(1);
             }}
             onKeyDown={(e) => {
               if (searchText === lastSearch.current) return;
               if (e.key === 'Enter') {
-                refetch();
+                getData(1);
               }
             }}
           />
@@ -198,9 +244,14 @@ const FileCard = ({ kbId }: { kbId: string }) => {
           </Tbody>
         </Table>
       </TableContainer>
+      {total > pageSize && (
+        <Flex mt={2} justifyContent={'center'}>
+          <Pagination />
+        </Flex>
+      )}
 
       <ConfirmModal />
-      <Loading loading={isInitialLoading || isLoading} />
+      <Loading loading={isLoading} />
     </Box>
   );
 };

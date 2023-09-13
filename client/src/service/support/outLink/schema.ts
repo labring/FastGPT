@@ -1,5 +1,5 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { OutLinkSchema as SchmaType } from '@/types/mongoSchema';
+import { OutLinkSchema as SchemaType } from '@/types/support/outLink';
 import { OutLinkTypeEnum } from '@/constants/chat';
 
 const OutLinkSchema = new Schema({
@@ -26,12 +26,30 @@ const OutLinkSchema = new Schema({
     required: true
   },
   total: {
+    // total amount
     type: Number,
     default: 0
   },
   lastTime: {
     type: Date
+  },
+  responseDetail: {
+    type: Boolean,
+    default: false
+  },
+  limit: {
+    expiredTime: {
+      type: Date
+    },
+    QPM: {
+      type: Number,
+      default: 1000
+    },
+    credit: {
+      type: Number,
+      default: -1
+    }
   }
 });
 
-export const OutLink: Model<SchmaType> = models['outlinks'] || model('outlinks', OutLinkSchema);
+export const OutLink: Model<SchemaType> = models['outlinks'] || model('outlinks', OutLinkSchema);

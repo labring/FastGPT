@@ -1,5 +1,5 @@
-import type { ShareChatEditType } from '@/types/app';
 import type { AppSchema } from '@/types/mongoSchema';
+import type { OutLinkEditType } from '@/types/support/outLink';
 
 export const defaultApp: AppSchema = {
   _id: '',
@@ -17,6 +17,11 @@ export const defaultApp: AppSchema = {
   modules: []
 };
 
-export const defaultShareChat: ShareChatEditType = {
-  name: ''
+export const defaultOutLinkForm: OutLinkEditType = {
+  name: '',
+  responseDetail: false,
+  limit: {
+    QPM: 100,
+    credit: -1
+  }
 };

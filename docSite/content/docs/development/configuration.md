@@ -31,7 +31,6 @@ weight: 520
     "show_git": true, // 是否展示 Git
     "systemTitle": "FastGPT", // 系统的 title
     "authorText": "Made by FastGPT Team.", // 签名
-    "gitLoginKey": "" // Git 登录凭证
 },
 ...
 ...
@@ -56,7 +55,6 @@ weight: 520
     "show_git": true,
     "systemTitle": "FastGPT",
     "authorText": "Made by FastGPT Team.",
-    "gitLoginKey": "",
     "scripts": []
   },
   "SystemParams": {

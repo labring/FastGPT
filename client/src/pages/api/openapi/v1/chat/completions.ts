@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authApp, authShareChat, AuthUserTypeEnum } from '@/service/utils/auth';
+import { authUser, authApp } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { addLog, withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -29,6 +29,8 @@ import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { SystemInputEnum } from '@/constants/app';
 import { getSystemTime } from '@/utils/user';
+import { authOutLinkChat } from '@/service/support/outLink/auth';
+import requestIp from 'request-ip';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -82,14 +84,17 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     let startTime = Date.now();
 
     /* user auth */
-    const {
+    let {
+      // @ts-ignore
+      responseDetail,
       user,
       userId,
       appId: authAppid,
       authType
     } = await (shareId
-      ? authShareChat({
-          shareId
+      ? authOutLinkChat({
+          shareId,
+          ip: requestIp.getClientIp(req)
         })
       : authUser({ req, authBalance: true }));
 
@@ -112,6 +117,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     ]);
 
     const isOwner = !shareId && userId === String(app.userId);
+    responseDetail = isOwner || responseDetail;
 
     const prompts = history.concat(gptMessage2ChatType(messages));
     if (prompts[prompts.length - 1].obj === 'AI') {
@@ -157,7 +163,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId,
         variables,
-        isOwner,
+        isOwner, // owner update use time
         shareId,
         source: (() => {
           if (shareId) {
@@ -197,7 +203,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         data: '[DONE]'
       });
 
-      if (isOwner && detail) {
+      if (responseDetail && detail) {
         sseResponse({
           res,
           event: sseResponseEventEnum.appStreamResponse,

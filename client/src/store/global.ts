@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import axios from 'axios';
+import { OAuthEnum } from '@/constants/user';
 
-type LoginStoreType = { provider: 'git'; lastRoute: string };
+type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
 type State = {
   lastRoute: string;

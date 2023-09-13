@@ -124,10 +124,12 @@ const UserInfo = () => {
             h={['44px', '54px']}
             borderRadius={'50%'}
             border={theme.borders.base}
+            overflow={'hidden'}
+            p={'2px'}
             boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
             mb={2}
           >
-            <Avatar src={userInfo?.avatar} w={'100%'} h={'100%'} />
+            <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
           </Box>
         </MyTooltip>
 
