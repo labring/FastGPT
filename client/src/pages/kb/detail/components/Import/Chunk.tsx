@@ -27,6 +27,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useDatasetStore } from '@/store/dataset';
+import { updateDatasetFile } from '@/api/core/dataset/file';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
@@ -63,6 +64,16 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
       const chunks = files.map((file) => file.chunks).flat();
+
+      // mark the file is used
+      await Promise.all(
+        files.map((file) =>
+          updateDatasetFile({
+            id: file.id,
+            datasetUsed: true
+          })
+        )
+      );
 
       // subsection import
       let success = 0;

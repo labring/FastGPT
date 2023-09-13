@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB, App, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 import { GridFSStorage } from '@/service/lib/gridfs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // delete all pg data
-    await PgClient.delete(PgTrainingTableName, {
+    await PgClient.delete(PgDatasetTableName, {
       where: [
         ['user_id', userId],
         'AND',
@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 }
 
-async function findAllChildrenIds(id: string) {
+export async function findAllChildrenIds(id: string) {
   // find children
   const children = await KB.find({ parentId: id });
 

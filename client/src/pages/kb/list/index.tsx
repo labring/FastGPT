@@ -15,7 +15,7 @@ import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { delKbById, getKbPaths, putKbById } from '@/api/plugins/kb';
+import { delKbById, getExportDataList, getKbPaths, putKbById } from '@/api/plugins/kb';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -26,7 +26,10 @@ import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/hooks/useRequest';
 import { useGlobalStore } from '@/store/global';
-import { useEditInfo } from '@/hooks/useEditInfo';
+import { useEditTitle } from '@/hooks/useEditTitle';
+import Papa from 'papaparse';
+import { fileDownload } from '@/utils/file';
+import { feConfigs } from '@/store/static';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const EditFolderModal = dynamic(() => import('./component/EditFolderModal'), { ssr: false });
@@ -49,7 +52,7 @@ const Kb = () => {
     content: ''
   });
   const { myKbList, loadKbList, setKbList, updateDataset } = useDatasetStore();
-  const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditInfo({
+  const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('Rename')
   });
   const [moveDataId, setMoveDataId] = useState<string>();
@@ -83,7 +86,32 @@ const Kb = () => {
     errorToast: t('kb.Delete Dataset Error')
   });
 
-  const { data, refetch } = useQuery(['loadKbList', parentId], () => {
+  // export dataset to csv
+  const { mutate: onclickExport } = useRequest({
+    mutationFn: (kbId: string) => {
+      setLoading(true);
+      return getExportDataList({ kbId });
+    },
+    onSuccess(res) {
+      const text = Papa.unparse({
+        fields: ['question', 'answer', 'source'],
+        data: res
+      });
+
+      fileDownload({
+        text,
+        type: 'text/csv',
+        filename: 'dataset.csv'
+      });
+    },
+    onSettled() {
+      setLoading(false);
+    },
+    successToast: `导出成功，下次导出需要 ${feConfigs?.limit?.exportLimitMinutes} 分钟后`,
+    errorToast: '导出异常'
+  });
+
+  const { data, refetch } = useQuery(['loadDataset', parentId], () => {
     return Promise.all([loadKbList(parentId), getKbPaths(parentId)]);
   });
 
@@ -317,6 +345,15 @@ const Kb = () => {
                     </Flex>
                   ),
                   onClick: () => setMoveDataId(kb._id)
+                },
+                {
+                  child: (
+                    <Flex alignItems={'center'}>
+                      <MyIcon name={'export'} w={'14px'} mr={2} />
+                      {t('Export')}
+                    </Flex>
+                  ),
+                  onClick: () => onclickExport(kb._id)
                 },
                 {
                   child: (

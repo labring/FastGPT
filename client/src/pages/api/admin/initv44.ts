@@ -5,7 +5,7 @@ import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { KbTypeEnum } from '@/constants/kb';
 import { PgClient } from '@/service/pg';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    const response = await PgClient.update(PgTrainingTableName, {
+    const response = await PgClient.update(PgDatasetTableName, {
       where: [['file_id', 'undefined']],
       values: [{ key: 'file_id', value: '' }]
     });

@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 import { Types } from 'mongoose';
 import { OtherFileId } from '@/constants/kb';
 
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     if (fileId === OtherFileId) {
-      await PgClient.delete(PgTrainingTableName, {
+      await PgClient.delete(PgDatasetTableName, {
         where: [
           ['user_id', userId],
           'AND',
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       await gridFs.findAndAuthFile(fileId);
 
       // delete all pg data
-      await PgClient.delete(PgTrainingTableName, {
+      await PgClient.delete(PgDatasetTableName, {
         where: [['user_id', userId], 'AND', ['kb_id', kbId], 'AND', ['file_id', fileId]]
       });
 

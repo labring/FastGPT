@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 import { addLog } from './utils/tools';
 import { DatasetItemType } from '@/types/plugin';
 
@@ -174,7 +174,7 @@ export const insertKbItem = ({
     vector: number[];
   })[];
 }) => {
-  return PgClient.insert(PgTrainingTableName, {
+  return PgClient.insert(PgDatasetTableName, {
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
@@ -192,7 +192,7 @@ export async function initPg() {
     await connectPg();
     await PgClient.query(`
       CREATE EXTENSION IF NOT EXISTS vector;
-      CREATE TABLE IF NOT EXISTS ${PgTrainingTableName} (
+      CREATE TABLE IF NOT EXISTS ${PgDatasetTableName} (
           id BIGSERIAL PRIMARY KEY,
           vector VECTOR(1536) NOT NULL,
           user_id VARCHAR(50) NOT NULL,
@@ -202,9 +202,9 @@ export async function initPg() {
           q TEXT NOT NULL,
           a TEXT
       );
-      CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgTrainingTableName} USING HASH (user_id);
-      CREATE INDEX IF NOT EXISTS modelData_kbId_index ON ${PgTrainingTableName} USING HASH (kb_id);
-      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON ${PgTrainingTableName} (md5(q), md5(a), user_id, kb_id);
+      CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgDatasetTableName} USING HASH (user_id);
+      CREATE INDEX IF NOT EXISTS modelData_kbId_index ON ${PgDatasetTableName} USING HASH (kb_id);
+      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON ${PgDatasetTableName} (md5(q), md5(a), user_id, kb_id);
     `);
     console.log('init pg successful');
   } catch (error) {

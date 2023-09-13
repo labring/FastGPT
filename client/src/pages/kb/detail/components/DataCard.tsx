@@ -1,19 +1,12 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Button, Grid, Image } from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Grid, Image } from '@chakra-ui/react';
 import type { KbDataItemType } from '@/types/plugin';
 import { usePagination } from '@/hooks/usePagination';
-import {
-  getKbDataList,
-  getExportDataList,
-  delOneKbDataByDataId,
-  getTrainingData,
-  getFileInfoById
-} from '@/api/plugins/kb';
+import { getKbDataList, delOneKbDataByDataId, getTrainingData } from '@/api/plugins/kb';
+import { getFileInfoById } from '@/api/core/dataset/file';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
-import { fileDownload } from '@/utils/file';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
-import Papa from 'papaparse';
 import InputModal, { FormData as InputDataType } from './InputDataModal';
 import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
@@ -24,8 +17,6 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import MyInput from '@/components/MyInput';
 import { fileImgs } from '@/constants/common';
-import { useRequest } from '@/hooks/useRequest';
-import { feConfigs } from '@/store/static';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -82,31 +73,27 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     [fileInfo?.filename]
   );
 
-  // get al data and export csv
-  const { mutate: onclickExport, isLoading: isLoadingExport = false } = useRequest({
-    mutationFn: () => getExportDataList({ kbId, fileId }),
-    onSuccess(res) {
-      const text = Papa.unparse({
-        fields: ['question', 'answer', 'source'],
-        data: res
-      });
-
-      const filenameSplit = fileInfo?.filename?.split('.') || [];
-      const filename = filenameSplit?.length <= 1 ? 'data' : filenameSplit.slice(0, -1).join('.');
-
-      fileDownload({
-        text,
-        type: 'text/csv',
-        filename
-      });
-    },
-    successToast: `导出成功，下次导出需要 ${feConfigs?.limit?.exportLimitMinutes} 分钟后`,
-    errorToast: '导出异常'
-  });
-
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex alignItems={'center'}>
+        <IconButton
+          mr={3}
+          icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+          bg={'white'}
+          boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+          h={'28px'}
+          size={'sm'}
+          borderRadius={'50%'}
+          aria-label={''}
+          onClick={() =>
+            router.replace({
+              query: {
+                kbId,
+                currentTab: 'dataset'
+              }
+            })
+          }
+        />
         <Flex
           className="textEllipsis"
           flex={'1 0 0'}
@@ -117,18 +104,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           <Image src={fileIcon || '/imgs/files/file.svg'} w={'16px'} mr={2} alt={''} />
           {t(fileInfo?.filename || 'Filename')}
         </Flex>
-        <Button
-          mr={2}
-          size={['sm', 'md']}
-          variant={'base'}
-          borderColor={'myBlue.600'}
-          color={'myBlue.600'}
-          isLoading={isLoadingExport || isLoading}
-          title={`${feConfigs} 分钟能导出 1 次`}
-          onClick={onclickExport}
-        >
-          {t('dataset.Export')}
-        </Button>
         <Box>
           <MyTooltip label={'刷新'}>
             <IconButton

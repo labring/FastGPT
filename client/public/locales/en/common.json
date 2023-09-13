@@ -4,6 +4,7 @@
   "Confirm": "Yes",
   "Create New": "Create",
   "Dataset": "Dataset",
+  "Export": "Export",
   "Folder": "Folder",
   "Move": "Move",
   "Name": "Name",
@@ -214,6 +215,9 @@
     "QPM is empty": "QPM is empty",
     "Response Detail": "Detail",
     "Response Detail tips": "Whether detailed data such as references and full context need to be returned"
+  },
+  "system": {
+    "Help Document": "Document"
   },
   "user": {
     "Account": "Account",
