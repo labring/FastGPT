@@ -316,9 +316,10 @@ const FileCard = ({ kbId }: { kbId: string }) => {
                             <Box>{t('common.Delete')}</Box>
                           </Flex>
                         ),
-                        onClick: openConfirm(() => {
-                          onDeleteFile(file.id);
-                        })
+                        onClick: () =>
+                          openConfirm(() => {
+                            onDeleteFile(file.id);
+                          })()
                       }
                     ]}
                   />
