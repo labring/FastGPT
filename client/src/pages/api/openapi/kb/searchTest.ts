@@ -5,7 +5,7 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { getVector } from '../plugin/vector';
 import type { KbTestItemType } from '@/types/plugin';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 import { KB } from '@/service/mongo';
 
 export type Props = {
@@ -43,7 +43,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
         select id, q, a, source, file_id, (vector <#> '[${
           vectors[0]
-        }]') * -1 AS score from ${PgTrainingTableName} where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
+        }]') * -1 AS score from ${PgDatasetTableName} where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
         vectors[0]
       }]' limit 12;
         COMMIT;`

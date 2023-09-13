@@ -4,9 +4,8 @@ import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 import { FileStatusEnum, OtherFileId } from '@/constants/kb';
-import mongoose from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -16,28 +15,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       pageNum = 1,
       pageSize = 10,
       kbId,
-      searchText
+      searchText = ''
     } = req.body as { pageNum: number; pageSize: number; kbId: string; searchText: string };
-    searchText = searchText.replace(/'/g, '');
+    searchText = searchText?.replace(/'/g, '');
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
+    // find files
     const gridFs = new GridFSStorage('dataset', userId);
-    const bucket = gridFs.GridFSBucket();
+    const collection = gridFs.Collection();
 
     const mongoWhere = {
       ['metadata.kbId']: kbId,
+      ['metadata.userId']: userId,
+      ['metadata.datasetUsed']: true,
       ...(searchText && { filename: { $regex: searchText } })
     };
     const [files, total] = await Promise.all([
-      bucket
-        .find(mongoWhere)
-        .sort({ _id: -1 })
+      collection
+        .find(mongoWhere, {
+          projection: {
+            _id: 1,
+            filename: 1,
+            uploadDate: 1,
+            length: 1
+          }
+        })
         .skip((pageNum - 1) * pageSize)
         .limit(pageSize)
         .toArray(),
-      mongoose.connection.db.collection('dataset.files').countDocuments(mongoWhere)
+      collection.countDocuments(mongoWhere)
     ]);
 
     async function GetOtherData() {
@@ -49,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         status: (await TrainingData.findOne({ userId, kbId, file_id: '' }))
           ? FileStatusEnum.embedding
           : FileStatusEnum.ready,
-        chunkLength: await PgClient.count(PgTrainingTableName, {
+        chunkLength: await PgClient.count(PgDatasetTableName, {
           fields: ['id'],
           where: [
             ['user_id', userId],
@@ -72,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           status: (await TrainingData.findOne({ userId, kbId, file_id: file._id }))
             ? FileStatusEnum.embedding
             : FileStatusEnum.ready,
-          chunkLength: await PgClient.count(PgTrainingTableName, {
+          chunkLength: await PgClient.count(PgDatasetTableName, {
             fields: ['id'],
             where: [
               ['user_id', userId],
@@ -90,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       data: {
         pageNum,
         pageSize,
-        data: data.flat().filter((item) => item.chunkLength > 0),
+        data: data.flat(),
         total
       }
     });

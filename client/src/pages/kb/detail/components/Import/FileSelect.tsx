@@ -152,7 +152,7 @@ const FileSelect = ({
               throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
             }
             const fileItem: FileItemType = {
-              id: nanoid(),
+              id: filesId[0],
               filename: file.name,
               icon,
               tokens: 0,

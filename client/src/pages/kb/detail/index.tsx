@@ -17,7 +17,8 @@ import Avatar from '@/components/Avatar';
 import Info from './components/Info';
 import { serviceSideProps } from '@/utils/i18n';
 import { useTranslation } from 'react-i18next';
-import { delEmptyFiles, getTrainingQueueLen } from '@/api/plugins/kb';
+import { getTrainingQueueLen } from '@/api/plugins/kb';
+import { delDatasetEmptyFiles } from '@/api/core/dataset/file';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { feConfigs } from '@/store/static';
@@ -96,7 +97,7 @@ const Detail = ({ kbId, currentTab }: { kbId: string; currentTab: `${TabEnum}` }
   useEffect(() => {
     return () => {
       try {
-        delEmptyFiles(kbId);
+        delDatasetEmptyFiles(kbId);
       } catch (error) {}
     };
   }, [kbId]);

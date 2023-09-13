@@ -17,6 +17,9 @@ export class GridFSStorage {
     this.bucket = bucket;
     this.uid = String(uid);
   }
+  Collection() {
+    return mongoose.connection.db.collection(`${this.bucket}.files`);
+  }
   GridFSBucket() {
     return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
       bucketName: this.bucket

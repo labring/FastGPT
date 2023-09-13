@@ -3,14 +3,13 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, User } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
-import { PgTrainingTableName } from '@/constants/plugin';
-import { OtherFileId } from '@/constants/kb';
+import { PgDatasetTableName } from '@/constants/plugin';
+import { findAllChildrenIds } from '../delete';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    let { kbId, fileId } = req.query as {
+    let { kbId } = req.query as {
       kbId: string;
-      fileId: string;
     };
 
     if (!kbId) {
@@ -21,6 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
+
+    const exportIds = [kbId, ...(await findAllChildrenIds(kbId))];
+    console.log(exportIds);
 
     const thirtyMinutesAgo = new Date(
       Date.now() - (global.feConfigs?.limit?.exportLimitMinutes || 0) * 60 * 1000
@@ -43,10 +45,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error(`上次导出未到 ${minutes}，每 ${minutes}仅可导出一次。`);
     }
 
-    const where: any = [['kb_id', kbId], 'AND', ['user_id', userId]];
+    const where: any = [
+      ['user_id', userId],
+      'AND',
+      `kb_id IN (${exportIds.map((id) => `'${id}'`).join(',')})`
+    ];
     // 从 pg 中获取所有数据
     const pgData = await PgClient.select<{ q: string; a: string; source: string }>(
-      PgTrainingTableName,
+      PgDatasetTableName,
       {
         where,
         fields: ['q', 'a', 'source'],
