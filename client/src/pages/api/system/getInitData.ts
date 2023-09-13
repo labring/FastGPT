@@ -101,6 +101,9 @@ export async function getInitConfig() {
     const filename =
       process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
     const res = JSON.parse(readFileSync(filename, 'utf-8'));
+
+    console.log(`System Version: ${process.env.npm_package_version}`);
+
     console.log(res);
 
     global.systemEnv = res.SystemParams

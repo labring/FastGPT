@@ -64,6 +64,7 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
         status: 'finish'
       }));
       result[1].value = responseText;
+      result[1].responseData = responseData;
 
       /* save chat */
       saveChatResponse({

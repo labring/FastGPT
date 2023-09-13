@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
 import { getKbDataItemById } from '@/api/plugins/kb';
 import { useLoading } from '@/hooks/useLoading';
@@ -9,6 +9,7 @@ import MyIcon from '@/components/Icon';
 import InputDataModal, { RawFileText } from '@/pages/kb/detail/components/InputDataModal';
 import MyModal from '../MyModal';
 import { KbDataItemType } from '@/types/plugin';
+import { useRouter } from 'next/router';
 
 type SearchType = KbDataItemType & {
   kb_id?: string;
@@ -24,9 +25,12 @@ const QuoteModal = ({
   onClose: () => void;
 }) => {
   const theme = useTheme();
+  const router = useRouter();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
   const [editDataItem, setEditDataItem] = useState<QuoteItemType>();
+
+  const isShare = useMemo(() => router.pathname === '/chat/share', [router.pathname]);
 
   /**
    * click edit, get new kbDataItem
@@ -91,10 +95,12 @@ const QuoteModal = ({
               _hover={{ '& .edit': { display: 'flex' } }}
               overflow={'hidden'}
             >
-              {item.source && <RawFileText filename={item.source} fileId={item.file_id} />}
+              {item.source && !isShare && (
+                <RawFileText filename={item.source} fileId={item.file_id} />
+              )}
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
-              {item.id && (
+              {item.id && !isShare && (
                 <Box
                   className="edit"
                   display={'none'}
