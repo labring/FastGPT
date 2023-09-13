@@ -2,7 +2,7 @@ import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { getOpenAiEncMap } from './plugin/openai';
 import { getErrText } from './tools';
-import { uploadImg, postUploadFiles } from '@/api/system';
+import { uploadImg, postUploadFiles } from '@/api/support/file';
 
 /**
  * upload file to mongo gridfs

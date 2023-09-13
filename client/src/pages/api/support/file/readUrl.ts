@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     jsonRes(res, {
-      data: `/api/plugins/file/read?token=${token}`
+      data: `/api/support/file/read?token=${token}`
     });
   } catch (error) {
     jsonRes(res, {
