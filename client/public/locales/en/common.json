@@ -216,6 +216,9 @@
     "Response Detail": "Detail",
     "Response Detail tips": "Whether detailed data such as references and full context need to be returned"
   },
+  "system": {
+    "Help Document": "Document"
+  },
   "user": {
     "Account": "Account",
     "Amount of earnings": "Earnings",

@@ -216,6 +216,9 @@
     "Response Detail": "返回详情",
     "Response Detail tips": "是否需要返回引用、完整上下文等详细数据"
   },
+  "system": {
+    "Help Document": "帮助文档"
+  },
   "user": {
     "Account": "账号",
     "Amount of earnings": "收益（￥）",

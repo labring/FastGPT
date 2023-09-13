@@ -13,6 +13,7 @@ export type InitDateResponse = {
   qaModel: QAModelItemType;
   vectorModels: VectorModelItemType[];
   feConfigs: FeConfigsType;
+  systemVersion: string;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,7 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       feConfigs: global.feConfigs,
       chatModels: global.chatModels,
       qaModel: global.qaModel,
-      vectorModels: global.vectorModels
+      vectorModels: global.vectorModels,
+      systemVersion: process.env.npm_package_version || '0.0.0'
     }
   });
 }

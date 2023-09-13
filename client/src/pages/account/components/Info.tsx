@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/file';
-import { feConfigs } from '@/store/static';
+import { feConfigs, systemVersion } from '@/store/static';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@/utils/user';
 import Loading from '@/components/Loading';
@@ -173,19 +173,48 @@ const UserInfo = () => {
           </Button>
         </Flex>
         {feConfigs?.show_userDetail && (
+          <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
+            <Flex alignItems={'center'}>
+              <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
+              <Box flex={1}>
+                <strong>{userInfo?.balance.toFixed(3)}</strong> 元
+              </Box>
+              <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
+                {t('user.Pay')}
+              </Button>
+            </Flex>
+          </Box>
+        )}
+        {feConfigs?.show_doc && (
           <>
-            <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
-              <Flex alignItems={'center'}>
-                <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
-                <Box flex={1}>
-                  <strong>{userInfo?.balance.toFixed(3)}</strong> 元
-                </Box>
-                <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
-                  {t('user.Pay')}
-                </Button>
-              </Flex>
-            </Box>
-
+            <Flex
+              mt={4}
+              w={['85%', '300px']}
+              py={3}
+              px={6}
+              border={theme.borders.sm}
+              borderWidth={'1.5px'}
+              borderRadius={'md'}
+              alignItems={'center'}
+              cursor={'pointer'}
+              userSelect={'none'}
+              onClick={() => {
+                window.open(`https://doc.fastgpt.run/docs/intro`);
+              }}
+            >
+              <MyIcon name={'courseLight'} w={'18px'} />
+              <Box ml={2} flex={1}>
+                {t('system.Help Document')}
+              </Box>
+              <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
+              <Box fontSize={'md'} ml={2}>
+                V{systemVersion}
+              </Box>
+            </Flex>
+          </>
+        )}
+        {feConfigs?.show_userDetail && (
+          <>
             <Divider my={3} />
 
             <MyTooltip label={'点击配置账号'}>
