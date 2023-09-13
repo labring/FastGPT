@@ -26,7 +26,7 @@ import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/hooks/useRequest';
 import { useGlobalStore } from '@/store/global';
-import { useEditInfo } from '@/hooks/useEditInfo';
+import { useEditTitle } from '@/hooks/useEditTitle';
 import Papa from 'papaparse';
 import { fileDownload } from '@/utils/file';
 import { feConfigs } from '@/store/static';
@@ -52,7 +52,7 @@ const Kb = () => {
     content: ''
   });
   const { myKbList, loadKbList, setKbList, updateDataset } = useDatasetStore();
-  const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditInfo({
+  const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('Rename')
   });
   const [moveDataId, setMoveDataId] = useState<string>();

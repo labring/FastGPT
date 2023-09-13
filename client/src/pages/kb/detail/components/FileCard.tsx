@@ -9,10 +9,14 @@ import {
   Th,
   Td,
   Tbody,
-  Image
+  Image,
+  MenuButton,
+  Menu,
+  MenuList,
+  MenuItem
 } from '@chakra-ui/react';
 import { getTrainingData } from '@/api/plugins/kb';
-import { getDatasetFiles, delDatasetFileById } from '@/api/core/dataset/file';
+import { getDatasetFiles, delDatasetFileById, updateDatasetFile } from '@/api/core/dataset/file';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { formatFileSize } from '@/utils/tools';
@@ -24,11 +28,13 @@ import dayjs from 'dayjs';
 import { fileImgs } from '@/constants/common';
 import { useRequest } from '@/hooks/useRequest';
 import { useLoading } from '@/hooks/useLoading';
-import { FileStatusEnum } from '@/constants/kb';
+import { FileStatusEnum, OtherFileId } from '@/constants/kb';
 import { useRouter } from 'next/router';
 import { usePagination } from '@/hooks/usePagination';
 import { KbFileItemType } from '@/types/plugin';
 import { useGlobalStore } from '@/store/global';
+import MyMenu from '@/components/MyMenu';
+import { useEditTitle } from '@/hooks/useEditTitle';
 
 const FileCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -46,13 +52,13 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     data: files,
     Pagination,
     total,
-    isLoading,
     getData,
+    isLoading,
     pageNum,
     pageSize
   } = usePagination<KbFileItemType>({
     api: getDatasetFiles,
-    pageSize: 40,
+    pageSize: 20,
     params: {
       kbId,
       searchText
@@ -64,6 +70,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     }
   });
 
+  // change search
   const debounceRefetch = useCallback(
     debounce(() => {
       getData(1);
@@ -72,6 +79,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     []
   );
 
+  // add file icon
   const formatFiles = useMemo(
     () =>
       files.map((file) => ({
@@ -98,6 +106,24 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     successToast: t('common.Delete Success'),
     errorToast: t('common.Delete Failed')
   });
+  const { mutate: onUpdateFilename } = useRequest({
+    mutationFn: (data: { id: string; name: string }) => {
+      setLoading(true);
+      return updateDatasetFile(data);
+    },
+    onSuccess() {
+      getData(pageNum);
+    },
+    onSettled() {
+      setLoading(false);
+    },
+    successToast: t('common.Delete Success'),
+    errorToast: t('common.Delete Failed')
+  });
+
+  const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
+    title: t('Rename')
+  });
 
   const statusMap = {
     [FileStatusEnum.embedding]: {
@@ -118,17 +144,21 @@ const FileCard = ({ kbId }: { kbId: string }) => {
       }
     });
 
-  useQuery(['refetchTrainingData'], () => Promise.all([refetchTrainingData(), getData(pageNum)]), {
-    refetchInterval: 8000,
-    enabled: qaListLen > 0 || vectorListLen > 0
-  });
+  useQuery(
+    ['refetchTrainingData', kbId],
+    () => Promise.all([refetchTrainingData(), getData(pageNum)]),
+    {
+      refetchInterval: 8000,
+      enabled: qaListLen > 0 || vectorListLen > 0
+    }
+  );
 
   return (
-    <Box ref={BoxRef} position={'relative'} py={[1, 5]} h={'100%'} overflow={'overlay'}>
+    <Box ref={BoxRef} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex justifyContent={'space-between'} px={[2, 5]}>
         <Box>
           <Box fontWeight={'bold'} fontSize={['md', 'lg']} mr={2}>
-            {t('kb.Files', { total: files.length })}
+            {t('kb.Files', { total })}
           </Box>
           <Box as={'span'} fontSize={'sm'}>
             {(qaListLen > 0 || vectorListLen > 0) && (
@@ -167,7 +197,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
           />
         </Flex>
       </Flex>
-      <TableContainer mt={[0, 3]}>
+      <TableContainer mt={[0, 3]} position={'relative'} minH={'70vh'}>
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -209,45 +239,103 @@ const FileCard = ({ kbId }: { kbId: string }) => {
                 </Td>
                 <Td>{dayjs(file.uploadTime).format('YYYY/MM/DD HH:mm')}</Td>
                 <Td>{formatFileSize(file.size)}</Td>
-                <Td
-                  display={'flex'}
-                  alignItems={'center'}
-                  _before={{
-                    content: '""',
-                    w: '10px',
-                    h: '10px',
-                    mr: 2,
-                    borderRadius: 'lg',
-                    bg: statusMap[file.status].color
-                  }}
-                >
-                  {statusMap[file.status].text}
+                <Td>
+                  <Flex
+                    alignItems={'center'}
+                    _before={{
+                      content: '""',
+                      w: '10px',
+                      h: '10px',
+                      mr: 2,
+                      borderRadius: 'lg',
+                      bg: statusMap[file.status].color
+                    }}
+                  >
+                    {statusMap[file.status].text}
+                  </Flex>
                 </Td>
                 <Td onClick={(e) => e.stopPropagation()}>
-                  <MyIcon
-                    name={'delete'}
-                    w={'14px'}
-                    _hover={{ color: 'red.600' }}
-                    onClick={() =>
-                      openConfirm(() => {
-                        onDeleteFile(file.id);
-                      })()
+                  <MyMenu
+                    width={100}
+                    Button={
+                      <MenuButton
+                        w={'22px'}
+                        h={'22px'}
+                        borderRadius={'md'}
+                        _hover={{
+                          color: 'myBlue.600',
+                          '& .icon': {
+                            bg: 'myGray.100'
+                          }
+                        }}
+                      >
+                        <MyIcon
+                          className="icon"
+                          name={'more'}
+                          h={'16px'}
+                          w={'16px'}
+                          px={1}
+                          py={1}
+                          borderRadius={'md'}
+                          cursor={'pointer'}
+                        />
+                      </MenuButton>
                     }
+                    menuList={[
+                      ...(file.id !== OtherFileId
+                        ? [
+                            {
+                              child: (
+                                <Flex alignItems={'center'}>
+                                  <MyIcon name={'edit'} w={'14px'} mr={2} />
+                                  {t('Rename')}
+                                </Flex>
+                              ),
+                              onClick: () =>
+                                onOpenModal({
+                                  defaultVal: file.filename,
+                                  onSuccess: (newName) => {
+                                    onUpdateFilename({
+                                      id: file.id,
+                                      name: newName
+                                    });
+                                  }
+                                })
+                            }
+                          ]
+                        : []),
+                      {
+                        child: (
+                          <Flex alignItems={'center'}>
+                            <MyIcon
+                              mr={1}
+                              name={'delete'}
+                              w={'14px'}
+                              _hover={{ color: 'red.600' }}
+                            />
+                            <Box>{t('common.Delete')}</Box>
+                          </Flex>
+                        ),
+                        onClick: openConfirm(() => {
+                          onDeleteFile(file.id);
+                        })
+                      }
+                    ]}
                   />
                 </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
+        <Loading loading={isLoading && files.length === 0} fixed={false} />
+        {total > pageSize && (
+          <Flex mt={2} justifyContent={'center'}>
+            <Pagination />
+          </Flex>
+        )}
       </TableContainer>
-      {total > pageSize && (
-        <Flex mt={2} justifyContent={'center'}>
-          <Pagination />
-        </Flex>
-      )}
-
       <ConfirmModal />
-      <Loading loading={isLoading} />
+      <EditTitleModal />
     </Box>
   );
 };

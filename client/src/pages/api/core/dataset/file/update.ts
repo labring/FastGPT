@@ -5,6 +5,8 @@ import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { UpdateFileProps } from '@/api/core/dataset/file.d';
 import { Types } from 'mongoose';
+import { PgClient } from '@/service/pg';
+import { PgDatasetTableName } from '@/constants/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -28,11 +30,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     );
 
+    // data source
+    updateDatasetSource({
+      fileId: id,
+      userId,
+      name
+    });
+
     jsonRes(res, {});
   } catch (err) {
     jsonRes(res, {
       code: 500,
       error: err
     });
+  }
+}
+async function updateDatasetSource(data: { fileId: string; userId: string; name?: string }) {
+  const { fileId, userId, name } = data;
+  if (!fileId || !name || !userId) return;
+  try {
+    await PgClient.update(PgDatasetTableName, {
+      where: [['user_id', userId], 'AND', ['file_id', fileId]],
+      values: [
+        {
+          key: 'source',
+          value: name
+        }
+      ]
+    });
+  } catch (error) {
+    setTimeout(() => {
+      updateDatasetSource(data);
+    }, 2000);
   }
 }
