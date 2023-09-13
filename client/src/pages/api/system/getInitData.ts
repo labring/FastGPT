@@ -131,7 +131,7 @@ export function setDefaultData() {
 
 export function getSystemVersion() {
   try {
-    if (process.env.NODE_ENV) {
+    if (process.env.NODE_ENV === 'development') {
       global.systemVersion = process.env.npm_package_version || '0.0.0';
       return;
     }
