@@ -1,5 +1,17 @@
-import React, { useCallback, useRef } from 'react';
-import { Box, Flex, Button, useDisclosure, useTheme, Divider, Select } from '@chakra-ui/react';
+import React, { useCallback, useRef, useState } from 'react';
+import {
+  Box,
+  Flex,
+  Button,
+  useDisclosure,
+  useTheme,
+  Divider,
+  Select,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem
+} from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@/hooks/useToast';
@@ -16,6 +28,10 @@ import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
+import { getLangStore, LangEnum, langMap, setLangStore } from '@/utils/i18n';
+import { useRouter } from 'next/router';
+import MyMenu from '@/components/MyMenu';
+import MySelect from '@/components/Select';
 
 const PayModal = dynamic(() => import('./PayModal'), {
   loading: () => <Loading fixed={false} />,
@@ -32,7 +48,8 @@ const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'), {
 
 const UserInfo = () => {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
   const timezones = useRef(timezoneList());
   const { reset } = useForm<UserUpdateParams>({
@@ -56,6 +73,8 @@ const UserInfo = () => {
     fileType: '.jpg,.png',
     multiple: false
   });
+
+  const [language, setLanguage] = useState<`${LangEnum}`>(getLangStore());
 
   const onclickSave = useCallback(
     async (data: UserType) => {
@@ -148,6 +167,25 @@ const UserInfo = () => {
         <Flex alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
+        </Flex>
+        <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
+          <Box flex={'0 0 80px'}>{t('user.Language')}:&nbsp;</Box>
+          <Box flex={'1 0 0'}>
+            <MySelect
+              value={language}
+              list={Object.entries(langMap).map(([key, lang]) => ({
+                label: lang.label,
+                value: key
+              }))}
+              onchange={(val: any) => {
+                const lang = val;
+                setLangStore(lang);
+                setLanguage(lang);
+                i18n?.changeLanguage?.(lang);
+                router.reload();
+              }}
+            />
+          </Box>
         </Flex>
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Timezone')}:&nbsp;</Box>
