@@ -61,6 +61,7 @@ declare global {
   var chatModels: ChatModelItemType[];
   var qaModel: QAModelItemType;
   var vectorModels: VectorModelItemType[];
+  var systemVersion: string;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
