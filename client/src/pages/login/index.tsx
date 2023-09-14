@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import styles from './index.module.scss';
 import { Box, Flex, Image, useDisclosure } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
@@ -52,6 +52,10 @@ const Login = () => {
 
     return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
   }
+
+  useEffect(() => {
+    router.prefetch('/app/list');
+  }, []);
 
   return (
     <>

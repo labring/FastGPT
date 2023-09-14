@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 import { ResLogin } from '@/api/response/user';
@@ -87,6 +87,10 @@ const provider = ({ code, state }: { code: string; state: string }) => {
     authCode(code);
     return null;
   });
+
+  useEffect(() => {
+    router.prefetch('/app/list');
+  }, []);
 
   return <Loading />;
 };
