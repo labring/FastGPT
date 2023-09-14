@@ -1,102 +1,109 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { IconProps } from '@chakra-ui/react';
 import { Icon } from '@chakra-ui/react';
 
-const map = {
-  appFill: require('./icons/fill/app.svg').default,
-  appLight: require('./icons/light/app.svg').default,
-  copy: require('./icons/copy.svg').default,
-  chatSend: require('./icons/chatSend.svg').default,
-  delete: require('./icons/delete.svg').default,
-  stop: require('./icons/stop.svg').default,
-  collectionLight: require('./icons/collectionLight.svg').default,
-  collectionSolid: require('./icons/collectionSolid.svg').default,
-  empty: require('./icons/empty.svg').default,
-  back: require('./icons/back.svg').default,
-  backFill: require('./icons/fill/back.svg').default,
-  more: require('./icons/more.svg').default,
-  tabbarChat: require('./icons/phoneTabbar/chat.svg').default,
-  tabbarModel: require('./icons/phoneTabbar/app.svg').default,
-  tabbarMore: require('./icons/phoneTabbar/more.svg').default,
-  tabbarMe: require('./icons/phoneTabbar/me.svg').default,
-  closeSolid: require('./icons/closeSolid.svg').default,
-  wx: require('./icons/wx.svg').default,
-  out: require('./icons/out.svg').default,
-  git: require('./icons/git.svg').default,
-  gitFill: require('./icons/fill/git.svg').default,
-  googleFill: require('./icons/fill/google.svg').default,
-  menu: require('./icons/menu.svg').default,
-  edit: require('./icons/edit.svg').default,
-  inform: require('./icons/inform.svg').default,
-  export: require('./icons/export.svg').default,
-  text: require('./icons/text.svg').default,
-  history: require('./icons/history.svg').default,
-  kbTest: require('./icons/kbTest.svg').default,
-  date: require('./icons/date.svg').default,
-  apikey: require('./icons/apikey.svg').default,
-  save: require('./icons/save.svg').default,
-  minus: require('./icons/minus.svg').default,
-  chat: require('./icons/light/chat.svg').default,
-  chatFill: require('./icons/fill/chat.svg').default,
-  clear: require('./icons/light/clear.svg').default,
-  apiLight: require('./icons/light/appApi.svg').default,
-  overviewLight: require('./icons/light/overview.svg').default,
-  settingLight: require('./icons/light/setting.svg').default,
-  shareLight: require('./icons/light/share.svg').default,
-  dbLight: require('./icons/light/db.svg').default,
-  dbFill: require('./icons/fill/db.svg').default,
-  appStoreLight: require('./icons/light/appStore.svg').default,
-  appStoreFill: require('./icons/fill/appStore.svg').default,
-  meLight: require('./icons/light/me.svg').default,
-  meFill: require('./icons/fill/me.svg').default,
-  welcomeText: require('./icons/modules/welcomeText.svg').default,
-  variable: require('./icons/modules/variable.svg').default,
-  setTop: require('./icons/light/setTop.svg').default,
-  fullScreenLight: require('./icons/light/fullScreen.svg').default,
-  voice: require('./icons/voice.svg').default,
-  html: require('./icons/file/html.svg').default,
-  pdf: require('./icons/file/pdf.svg').default,
-  markdown: require('./icons/file/markdown.svg').default,
-  importLight: require('./icons/light/import.svg').default,
-  manualImport: require('./icons/file/manualImport.svg').default,
-  indexImport: require('./icons/file/indexImport.svg').default,
-  csvImport: require('./icons/file/csv.svg').default,
-  qaImport: require('./icons/file/qaImport.svg').default,
-  uploadFile: require('./icons/file/uploadFile.svg').default,
-  closeLight: require('./icons/light/close.svg').default,
-  customTitle: require('./icons/light/customTitle.svg').default,
-  billRecordLight: require('./icons/light/billRecord.svg').default,
-  informLight: require('./icons/light/inform.svg').default,
-  payRecordLight: require('./icons/light/payRecord.svg').default,
-  loginoutLight: require('./icons/light/loginout.svg').default,
-  chatModelTag: require('./icons/light/chatModelTag.svg').default,
-  language_en: require('./icons/language/en.svg').default,
-  language_zh: require('./icons/language/zh.svg').default,
-  outlink_share: require('./icons/outlink/share.svg').default,
-  outlink_iframe: require('./icons/outlink/iframe.svg').default,
-  addCircle: require('./icons/circle/add.svg').default,
-  playFill: require('./icons/fill/play.svg').default,
-  courseLight: require('./icons/light/course.svg').default,
-  promotionLight: require('./icons/light/promotion.svg').default,
-  logsLight: require('./icons/light/logs.svg').default,
-  badLight: require('./icons/light/bad.svg').default,
-  markLight: require('./icons/light/mark.svg').default,
-  retryLight: require('./icons/light/retry.svg').default,
-  rightArrowLight: require('./icons/light/rightArrow.svg').default,
-  searchLight: require('./icons/light/search.svg').default,
-  plusFill: require('./icons/fill/plus.svg').default,
-  moveLight: require('./icons/light/move.svg').default
+const iconPaths = {
+  appFill: () => import('./icons/fill/app.svg'),
+  appLight: () => import('./icons/light/app.svg'),
+  copy: () => import('./icons/copy.svg'),
+  chatSend: () => import('./icons/chatSend.svg'),
+  delete: () => import('./icons/delete.svg'),
+  stop: () => import('./icons/stop.svg'),
+  collectionLight: () => import('./icons/collectionLight.svg'),
+  collectionSolid: () => import('./icons/collectionSolid.svg'),
+  empty: () => import('./icons/empty.svg'),
+  back: () => import('./icons/back.svg'),
+  backFill: () => import('./icons/fill/back.svg'),
+  more: () => import('./icons/more.svg'),
+  tabbarChat: () => import('./icons/phoneTabbar/chat.svg'),
+  tabbarModel: () => import('./icons/phoneTabbar/app.svg'),
+  tabbarMore: () => import('./icons/phoneTabbar/more.svg'),
+  tabbarMe: () => import('./icons/phoneTabbar/me.svg'),
+  closeSolid: () => import('./icons/closeSolid.svg'),
+  wx: () => import('./icons/wx.svg'),
+  out: () => import('./icons/out.svg'),
+  git: () => import('./icons/git.svg'),
+  gitFill: () => import('./icons/fill/git.svg'),
+  googleFill: () => import('./icons/fill/google.svg'),
+  menu: () => import('./icons/menu.svg'),
+  edit: () => import('./icons/edit.svg'),
+  inform: () => import('./icons/inform.svg'),
+  export: () => import('./icons/export.svg'),
+  text: () => import('./icons/text.svg'),
+  history: () => import('./icons/history.svg'),
+  kbTest: () => import('./icons/kbTest.svg'),
+  date: () => import('./icons/date.svg'),
+  apikey: () => import('./icons/apikey.svg'),
+  save: () => import('./icons/save.svg'),
+  minus: () => import('./icons/minus.svg'),
+  chat: () => import('./icons/light/chat.svg'),
+  chatFill: () => import('./icons/fill/chat.svg'),
+  clear: () => import('./icons/light/clear.svg'),
+  apiLight: () => import('./icons/light/appApi.svg'),
+  overviewLight: () => import('./icons/light/overview.svg'),
+  settingLight: () => import('./icons/light/setting.svg'),
+  shareLight: () => import('./icons/light/share.svg'),
+  dbLight: () => import('./icons/light/db.svg'),
+  dbFill: () => import('./icons/fill/db.svg'),
+  appStoreLight: () => import('./icons/light/appStore.svg'),
+  appStoreFill: () => import('./icons/fill/appStore.svg'),
+  meLight: () => import('./icons/light/me.svg'),
+  meFill: () => import('./icons/fill/me.svg'),
+  welcomeText: () => import('./icons/modules/welcomeText.svg'),
+  variable: () => import('./icons/modules/variable.svg'),
+  setTop: () => import('./icons/light/setTop.svg'),
+  fullScreenLight: () => import('./icons/light/fullScreen.svg'),
+  voice: () => import('./icons/voice.svg'),
+  html: () => import('./icons/file/html.svg'),
+  pdf: () => import('./icons/file/pdf.svg'),
+  markdown: () => import('./icons/file/markdown.svg'),
+  importLight: () => import('./icons/light/import.svg'),
+  manualImport: () => import('./icons/file/manualImport.svg'),
+  indexImport: () => import('./icons/file/indexImport.svg'),
+  csvImport: () => import('./icons/file/csv.svg'),
+  qaImport: () => import('./icons/file/qaImport.svg'),
+  uploadFile: () => import('./icons/file/uploadFile.svg'),
+  closeLight: () => import('./icons/light/close.svg'),
+  customTitle: () => import('./icons/light/customTitle.svg'),
+  billRecordLight: () => import('./icons/light/billRecord.svg'),
+  informLight: () => import('./icons/light/inform.svg'),
+  payRecordLight: () => import('./icons/light/payRecord.svg'),
+  loginoutLight: () => import('./icons/light/loginout.svg'),
+  chatModelTag: () => import('./icons/light/chatModelTag.svg'),
+  language_en: () => import('./icons/language/en.svg'),
+  language_zh: () => import('./icons/language/zh.svg'),
+  outlink_share: () => import('./icons/outlink/share.svg'),
+  outlink_iframe: () => import('./icons/outlink/iframe.svg'),
+  addCircle: () => import('./icons/circle/add.svg'),
+  playFill: () => import('./icons/fill/play.svg'),
+  courseLight: () => import('./icons/light/course.svg'),
+  promotionLight: () => import('./icons/light/promotion.svg'),
+  logsLight: () => import('./icons/light/logs.svg'),
+  badLight: () => import('./icons/light/bad.svg'),
+  markLight: () => import('./icons/light/mark.svg'),
+  retryLight: () => import('./icons/light/retry.svg'),
+  rightArrowLight: () => import('./icons/light/rightArrow.svg'),
+  searchLight: () => import('./icons/light/search.svg'),
+  plusFill: () => import('./icons/fill/plus.svg'),
+  moveLight: () => import('./icons/light/move.svg')
 };
 
-export type IconName = keyof typeof map;
+export type IconName = keyof typeof iconPaths;
 
-const MyIcon = (
-  { name, w = 'auto', h = 'auto', ...props }: { name: IconName } & IconProps,
-  ref: any
-) => {
-  return map[name] ? (
+const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconName } & IconProps) => {
+  const [IconComponent, setIconComponent] = useState<any>(null);
+
+  useEffect(() => {
+    iconPaths[name]()
+      .then((icon) => {
+        setIconComponent({ as: icon.default });
+      })
+      .catch((error) => console.log(error));
+  }, [name]);
+
+  return name ? (
     <Icon
-      as={map[name]}
+      {...IconComponent}
       w={w}
       h={h}
       boxSizing={'content-box'}
@@ -107,4 +114,4 @@ const MyIcon = (
   ) : null;
 };
 
-export default React.forwardRef(MyIcon);
+export default MyIcon;

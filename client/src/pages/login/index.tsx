@@ -90,6 +90,7 @@ const Login = () => {
               height={'100%'}
               maxH={'450px'}
               alt=""
+              loading={'lazy'}
             />
           )}
 
