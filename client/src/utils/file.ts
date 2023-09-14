@@ -1,8 +1,8 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { getOpenAiEncMap } from './plugin/openai';
 import { getErrText } from './tools';
 import { uploadImg, postUploadFiles } from '@/api/support/file';
+import { countPromptTokens } from './common/tiktoken';
 
 /**
  * upload file to mongo gridfs
@@ -206,16 +206,7 @@ export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: numbe
       chunks.push(chunk);
     }
 
-    const tokens = (() => {
-      try {
-        const enc = getOpenAiEncMap();
-        const encodeText = enc.encode(chunks.join(''));
-        const tokens = encodeText.length;
-        return tokens;
-      } catch (error) {
-        return chunks.join('').length;
-      }
-    })();
+    const tokens = chunks.reduce((sum, chunk) => sum + countPromptTokens(chunk, 'system'), 0);
 
     return {
       chunks,

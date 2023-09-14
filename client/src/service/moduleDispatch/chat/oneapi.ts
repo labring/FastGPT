@@ -1,8 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { sseResponse } from '@/service/utils/tools';
-import { adaptChatItem_openAI, countOpenAIToken } from '@/utils/plugin/openai';
-import { modelToolMap } from '@/utils/plugin';
-import { ChatContextFilter } from '@/service/utils/chat/index';
+import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -17,6 +15,8 @@ import { UserModelSchema } from '@/types/mongoSchema';
 import { textCensor } from '@/api/service/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { AppModuleItemType } from '@/types/app';
+import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 
 export type ChatProps = {
   res: NextApiResponse;
@@ -142,7 +142,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
         value: answer
       });
 
-      const totalTokens = countOpenAIToken({
+      const totalTokens = countMessagesTokens({
         messages: completeMessages
       });
 
@@ -154,8 +154,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
         completeMessages
       };
     } else {
-      const answer = stream ? '' : response.data.choices?.[0].message?.content || '';
-      const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
+      const answer = response.data.choices?.[0].message?.content || '';
+      const totalTokens = response.data.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({
         obj: ChatRoleEnum.AI,
@@ -194,8 +194,8 @@ function filterQuote({
   quoteQA: ChatProps['quoteQA'];
   model: ChatModelItemType;
 }) {
-  const sliceResult = modelToolMap.tokenSlice({
-    maxToken: model.quoteMaxToken,
+  const sliceResult = sliceMessagesTB({
+    maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item) => ({
       obj: ChatRoleEnum.System,
       value: item.a ? `${item.q}\n${item.a}` : item.q
@@ -274,12 +274,11 @@ function getChatMessages({
   ];
 
   const filterMessages = ChatContextFilter({
-    model: model.model,
-    prompts: messages,
+    messages,
     maxTokens: Math.ceil(model.contextMaxToken - 300) // filter token. not response maxToken
   });
 
-  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
+  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   return {
     messages: adaptMessages,
@@ -298,7 +297,7 @@ function getMaxTokens({
   const tokensLimit = model.contextMaxToken;
   /* count response max token */
 
-  const promptsToken = modelToolMap.countTokens({
+  const promptsToken = countMessagesTokens({
     messages: filterMessages
   });
   maxToken = maxToken + promptsToken > tokensLimit ? tokensLimit - promptsToken : maxToken;

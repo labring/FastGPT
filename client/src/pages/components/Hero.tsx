@@ -62,6 +62,7 @@ const Hero = () => {
           maxW={['120%', '1000px']}
           alt=""
           draggable={false}
+          loading={'lazy'}
         />
         <MyIcon
           name={'playFill'}

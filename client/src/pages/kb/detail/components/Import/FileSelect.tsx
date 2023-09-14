@@ -128,6 +128,7 @@ const FileSelect = ({
               text,
               maxLen: chunkLen
             });
+
             const fileItem: FileItemType = {
               id: filesId[0],
               filename: file.name,
