@@ -156,6 +156,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           <Link
             as={NextLink}
             {...itemStyles}
+            prefetch
             href={`/account?currentTab=inform`}
             mb={0}
             color={'#9096a5'}

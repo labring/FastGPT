@@ -8,6 +8,7 @@ import { initPg } from './pg';
 import { createHashPassword } from '@/utils/tools';
 import { createLogger, format, transports } from 'winston';
 import 'winston-mongodb';
+import { getTikTokenEnc } from '@/utils/common/tiktoken';
 
 /**
  * connect MongoDB and init data
@@ -38,6 +39,8 @@ export async function connectToDatabase(): Promise<void> {
 
   // init function
   getInitConfig();
+  // init tikToken
+  getTikTokenEnc();
 
   try {
     mongoose.set('strictQuery', true);

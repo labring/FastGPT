@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
 import { serviceSideProps } from '@/utils/i18n';
@@ -17,6 +17,11 @@ const Home = ({ homeUrl = '/' }: { homeUrl: string }) => {
   if (homeUrl !== '/') {
     router.replace(homeUrl);
   }
+
+  useEffect(() => {
+    router.prefetch('/app/list');
+    router.prefetch('/login');
+  }, []);
 
   return homeUrl === '/' ? (
     <Box id="home" bg={'myWhite.600'} h={'100vh'} overflowY={'auto'} overflowX={'hidden'}>

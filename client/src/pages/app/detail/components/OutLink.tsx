@@ -282,6 +282,7 @@ export function EditLinkModal({
   return (
     <MyModal
       isOpen={true}
+      showCloseBtn={false}
       onClose={() => {}}
       title={isEdit ? titleMap.current.edit[type] : titleMap.current.create[type]}
     >

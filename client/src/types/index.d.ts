@@ -1,7 +1,7 @@
 import type { Mongoose } from 'mongoose';
 import type { Agent } from 'http';
 import type { Pool } from 'pg';
-import type { Tiktoken } from '@dqbd/tiktoken';
+import type { Tiktoken } from 'js-tiktoken';
 import type { Logger } from 'winston';
 import { ChatModelItemType, QAModelItemType, VectorModelItemType } from './model';
 import { TrackEventName } from '@/constants/common';
@@ -49,7 +49,7 @@ declare global {
   var httpsAgent: Agent;
   var qaQueueLen: number;
   var vectorQueueLen: number;
-  var OpenAiEncMap: Tiktoken;
+  var TikToken: Tiktoken;
 
   var logger: Logger;
 

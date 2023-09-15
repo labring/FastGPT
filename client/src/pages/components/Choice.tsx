@@ -87,7 +87,7 @@ const Choice = () => {
                 boxShadow={theme.shadows.base}
                 borderRadius={'14px'}
               >
-                <Image src={item.icon} w={'28px'} alt={''} />
+                <Image src={item.icon} w={'28px'} alt={''} loading={'lazy'} />
               </Flex>
               <Box ml={5}>
                 <Box fontSize={['lg', '2xl']} fontWeight={'bold'} color={'myGray.900'}>

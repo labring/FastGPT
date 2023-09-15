@@ -10,9 +10,6 @@ dependencies:
   '@chakra-ui/system':
     specifier: ^2.5.8
     version: registry.npmmirror.com/@chakra-ui/system@2.5.8(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(react@18.2.0)
-  '@dqbd/tiktoken':
-    specifier: ^1.0.7
-    version: registry.npmmirror.com/@dqbd/tiktoken@1.0.7
   '@emotion/react':
     specifier: ^11.10.6
     version: registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0)
@@ -70,6 +67,9 @@ dependencies:
   js-cookie:
     specifier: ^3.0.5
     version: registry.npmmirror.com/js-cookie@3.0.5
+  js-tiktoken:
+    specifier: ^1.0.7
+    version: registry.npmmirror.com/js-tiktoken@1.0.7
   jschardet:
     specifier: ^3.0.0
     version: registry.npmmirror.com/jschardet@3.0.0
@@ -4212,12 +4212,6 @@ packages:
       colorspace: registry.npmmirror.com/colorspace@1.1.4
       enabled: registry.npmmirror.com/enabled@2.0.0
       kuler: registry.npmmirror.com/kuler@2.0.0
-    dev: false
-
-  registry.npmmirror.com/@dqbd/tiktoken@1.0.7:
-    resolution: {integrity: sha512-bhR5k5W+8GLzysjk8zTMVygQZsgvf7W1F0IlL4ZQ5ugjo5rCyiwGM5d8DYriXspytfu98tv59niang3/T+FoDw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@dqbd/tiktoken/-/tiktoken-1.0.7.tgz}
-    name: '@dqbd/tiktoken'
-    version: 1.0.7
     dev: false
 
   registry.npmmirror.com/@emotion/babel-plugin@11.11.0:
@@ -8954,6 +8948,14 @@ packages:
     name: js-sdsl
     version: 4.4.1
     dev: true
+
+  registry.npmmirror.com/js-tiktoken@1.0.7:
+    resolution: {integrity: sha512-biba8u/clw7iesNEWLOLwrNGoBP2lA+hTaBLs/D45pJdUPFXyxD6nhcDVtADChghv4GgyAiMKYMiRx7x6h7Biw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-tiktoken/-/js-tiktoken-1.0.7.tgz}
+    name: js-tiktoken
+    version: 1.0.7
+    dependencies:
+      base64-js: registry.npmmirror.com/base64-js@1.5.1
+    dev: false
 
   registry.npmmirror.com/js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-tokens/-/js-tokens-4.0.0.tgz}
