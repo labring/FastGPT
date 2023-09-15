@@ -7,10 +7,10 @@ import { sendInform } from '@/pages/api/user/inform/send';
 import { authBalanceByUid } from '../utils/auth';
 import { axiosConfig, getAIChatApi } from '../lib/openai';
 import { ChatCompletionRequestMessage } from 'openai';
-import { modelToolMap } from '@/utils/plugin';
 import { gptMessage2ChatType } from '@/utils/adapt';
 import { addLog } from '../utils/tools';
 import { splitText2Chunks } from '@/utils/file';
+import { countMessagesTokens } from '@/utils/common/tiktoken';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -81,7 +81,7 @@ A2:
           }
         ];
 
-        const promptsToken = modelToolMap.countTokens({
+        const promptsToken = countMessagesTokens({
           messages: gptMessage2ChatType(messages)
         });
         const maxToken = modelTokenLimit - promptsToken;

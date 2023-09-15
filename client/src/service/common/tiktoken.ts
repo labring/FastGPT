@@ -1,7 +1,8 @@
 import { ChatItemType } from '@/types/chat';
-import { modelToolMap } from '@/utils/plugin';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { NextApiResponse } from 'next';
+import { countMessagesTokens, countPromptTokens } from '@/utils/common/tiktoken';
+import { adaptRole_Chat2Message } from '@/utils/common/adapt/message';
 
 export type ChatCompletionResponseType = {
   streamResponse: any;
@@ -11,39 +12,37 @@ export type ChatCompletionResponseType = {
 };
 export type StreamResponseType = {
   chatResponse: any;
-  prompts: ChatItemType[];
+  messages: ChatItemType[];
   res: NextApiResponse;
   model: string;
   [key: string]: any;
 };
 
 /* slice chat context by tokens */
-export const ChatContextFilter = ({
-  model,
-  prompts = [],
+export function ChatContextFilter({
+  messages = [],
   maxTokens
 }: {
-  model: string;
-  prompts: ChatItemType[];
+  messages: ChatItemType[];
   maxTokens: number;
-}) => {
-  if (!Array.isArray(prompts)) {
+}) {
+  if (!Array.isArray(messages)) {
     return [];
   }
-  const rawTextLen = prompts.reduce((sum, item) => sum + item.value.length, 0);
+  const rawTextLen = messages.reduce((sum, item) => sum + item.value.length, 0);
 
   // If the text length is less than half of the maximum token, no calculation is required
   if (rawTextLen < maxTokens * 0.5) {
-    return prompts;
+    return messages;
   }
 
   // filter startWith system prompt
-  const chatStartIndex = prompts.findIndex((item) => item.obj !== ChatRoleEnum.System);
-  const systemPrompts: ChatItemType[] = prompts.slice(0, chatStartIndex);
-  const chatPrompts: ChatItemType[] = prompts.slice(chatStartIndex);
+  const chatStartIndex = messages.findIndex((item) => item.obj !== ChatRoleEnum.System);
+  const systemPrompts: ChatItemType[] = messages.slice(0, chatStartIndex);
+  const chatPrompts: ChatItemType[] = messages.slice(chatStartIndex);
 
-  // reduce  token of systemPrompt
-  maxTokens -= modelToolMap.countTokens({
+  // reduce token of systemPrompt
+  maxTokens -= countMessagesTokens({
     messages: systemPrompts
   });
 
@@ -52,18 +51,18 @@ export const ChatContextFilter = ({
 
   // 从后往前截取对话内容
   for (let i = chatPrompts.length - 1; i >= 0; i--) {
-    chats.unshift(chatPrompts[i]);
+    const item = chatPrompts[i];
+    chats.unshift(item);
 
-    const tokens = modelToolMap.countTokens({
-      messages: chats
-    });
+    const tokens = countPromptTokens(item.value, adaptRole_Chat2Message(item.obj));
+    maxTokens -= tokens;
 
     /* 整体 tokens 超出范围, system必须保留 */
-    if (tokens >= maxTokens) {
+    if (maxTokens <= 0) {
       chats.shift();
       break;
     }
   }
 
   return [...systemPrompts, ...chats];
-};
+}

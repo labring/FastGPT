@@ -44,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         })
         .skip((pageNum - 1) * pageSize)
         .limit(pageSize)
+        .sort({ uploadDate: -1 })
         .toArray(),
       collection.countDocuments(mongoWhere)
     ]);

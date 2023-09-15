@@ -26,8 +26,7 @@ import {
 import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
 import { event } from '@/utils/plugin/eventbus';
-
-import { adaptChatItem_openAI } from '@/utils/plugin/openai';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { VariableItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
@@ -344,7 +343,7 @@ const ChatBox = (
         const abortSignal = new AbortController();
         controller.current = abortSignal;
 
-        const messages = adaptChatItem_openAI({ messages: newChatList, reserveId: true });
+        const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
 
         const { responseData } = await onStartChat({
           chatList: newChatList,

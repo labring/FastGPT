@@ -43,7 +43,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
   const price = useMemo(() => {
     const filesToken = files.reduce((sum, file) => sum + file.tokens, 0);
     const promptTokens = files.reduce((sum, file) => sum + file.chunks.length, 0) * 139;
-    const totalToken = (filesToken + promptTokens) * 1.8;
+    const totalToken = (filesToken + promptTokens) * 2;
 
     return formatPrice(totalToken * unitPrice);
   }, [files, unitPrice]);

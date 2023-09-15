@@ -17,10 +17,6 @@ const nextConfig = {
         }
       };
     }
-    config.experiments = {
-      asyncWebAssembly: true,
-      layers: true
-    };
     config.module = {
       ...config.module,
       rules: config.module.rules.concat([

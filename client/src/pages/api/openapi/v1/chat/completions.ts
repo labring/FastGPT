@@ -79,6 +79,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!Array.isArray(messages)) {
       throw new Error('messages is not array');
     }
+    if (messages.length === 0) {
+      throw new Error('messages is empty');
+    }
 
     await connectToDatabase();
     let startTime = Date.now();
@@ -120,7 +123,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     responseDetail = isOwner || responseDetail;
 
     const prompts = history.concat(gptMessage2ChatType(messages));
-    if (prompts[prompts.length - 1].obj === 'AI') {
+    if (prompts[prompts.length - 1]?.obj === 'AI') {
       prompts.pop();
     }
     // user question

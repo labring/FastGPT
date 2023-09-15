@@ -7,9 +7,9 @@ import { withNextCors } from '@/service/utils/tools';
 import { PgDatasetTableName, TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
-import { modelToolMap } from '@/utils/plugin';
 import { getVectorModel } from '@/service/utils/data';
 import { DatasetItemType } from '@/types/plugin';
+import { countPromptTokens } from '@/utils/common/tiktoken';
 
 export type Props = {
   kbId: string;
@@ -102,9 +102,7 @@ export async function pushDataToKb({
     const text = item.q + item.a;
 
     // count q token
-    const token = modelToolMap.countTokens({
-      messages: [{ obj: 'System', value: item.q }]
-    });
+    const token = countPromptTokens(item.q, 'system');
 
     if (token > modeMaxToken[mode]) {
       return;
