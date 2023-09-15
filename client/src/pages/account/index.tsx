@@ -31,7 +31,7 @@ enum TabEnum {
 
 const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
-  const tabList = useRef([
+  const tabList = [
     {
       icon: 'meLight',
       label: t('user.Personal Information'),
@@ -67,7 +67,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       label: t('user.Sign Out'),
       id: TabEnum.loginout
     }
-  ]);
+  ];
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认退出登录？'
@@ -115,7 +115,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
                 mx={'auto'}
                 mt={2}
                 w={'100%'}
-                list={tabList.current}
+                list={tabList}
                 activeId={currentTab}
                 onChange={setCurrentTab}
               />
@@ -125,7 +125,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
               <Tabs
                 m={'auto'}
                 size={isPc ? 'md' : 'sm'}
-                list={tabList.current.map((item) => ({
+                list={tabList.map((item) => ({
                   id: item.id,
                   label: item.label
                 }))}
