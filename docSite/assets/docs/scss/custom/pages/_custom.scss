@@ -1,4 +1,4 @@
-.docs-content .main-content img, .docs-content .main-content  svg:not(.gitinfo svg) {
+.docs-content .main-content img, .docs-content .main-content  svg:not(.gitinfo svg):not(a svg) {
     max-width: 80% !important;
     height: auto;
     display: block !important;
