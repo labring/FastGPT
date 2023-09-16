@@ -126,6 +126,24 @@ def expand_features(embedding, target_length):
     return expanded_embedding
 
 
+def merge_content(messages):
+    merged_messages = []
+    system_content = ""
+    for message in messages:
+        if message.role == "system":
+            system_content += message.content
+        else:
+            if system_content:
+                merged_messages.append(ChatMessage(
+                    role="system", content=system_content))
+                system_content = ""
+            merged_messages.append(message)
+    if system_content:
+        merged_messages.append(ChatMessage(
+            role="system", content=system_content))
+    return merged_messages
+
+
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def create_chat_completion(
     request: ChatCompletionRequest, token: bool = Depends(verify_token)
@@ -137,6 +155,7 @@ async def create_chat_completion(
     query = request.messages[-1].content
 
     prev_messages = request.messages[:-1]
+    prev_messages = merge_content(prev_messages)
     if len(prev_messages) > 0 and prev_messages[0].role == "system":
         query = prev_messages.pop(0).content + query
 
@@ -147,7 +166,8 @@ async def create_chat_completion(
                 prev_messages[i].role == "user"
                 and prev_messages[i + 1].role == "assistant"
             ):
-                history.append([prev_messages[i].content, prev_messages[i + 1].content])
+                history.append([prev_messages[i].content,
+                               prev_messages[i + 1].content])
 
     if request.stream:
         generate = predict(query, history, request.model)
@@ -189,7 +209,8 @@ async def predict(query: str, history: List[List[str]], model_id: str):
             index=0, delta=DeltaMessage(content=new_text), finish_reason=None
         )
         chunk = ChatCompletionResponse(
-            model=model_id, choices=[choice_data], object="chat.completion.chunk"
+            model=model_id, choices=[
+                choice_data], object="chat.completion.chunk"
         )
         yield "{}".format(chunk.json(exclude_unset=True, ensure_ascii=False))
 
@@ -212,12 +233,14 @@ async def get_embeddings(
 
     # 如果嵌入向量的维度不为1536，则使用插值法扩展至1536维度
     embeddings = [
-        expand_features(embedding, 1536) if len(embedding) < 1536 else embedding
+        expand_features(embedding, 1536) if len(
+            embedding) < 1536 else embedding
         for embedding in embeddings
     ]
 
     # Min-Max normalization 归一化
-    embeddings = [embedding / np.linalg.norm(embedding) for embedding in embeddings]
+    embeddings = [embedding /
+                  np.linalg.norm(embedding) for embedding in embeddings]
 
     # 将numpy数组转换为列表
     embeddings = [embedding.tolist() for embedding in embeddings]
@@ -242,7 +265,8 @@ async def get_embeddings(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", default="16", type=str, help="Model name")
+    parser.add_argument("--model_name", default="16",
+                        type=str, help="Model name")
     args = parser.parse_args()
 
     model_dict = {
@@ -253,8 +277,10 @@ if __name__ == "__main__":
 
     model_name = model_dict.get(args.model_name, "THUDM/chatglm2-6b")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModel.from_pretrained(model_name, trust_remote_code=True).cuda()
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name, trust_remote_code=True)
+    model = AutoModel.from_pretrained(
+        model_name, trust_remote_code=True).cuda()
     embeddings_model = SentenceTransformer('moka-ai/m3e-large', device='cpu')
 
     uvicorn.run(app, host='0.0.0.0', port=6006, workers=1)
