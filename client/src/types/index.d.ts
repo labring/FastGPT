@@ -39,6 +39,7 @@ export type FeConfigsType = {
 };
 export type SystemEnvType = {
   pluginBaseUrl?: string;
+  openapiPrefix?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgIvfflatProbe: number;
