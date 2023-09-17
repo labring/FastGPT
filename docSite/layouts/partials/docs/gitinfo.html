@@ -14,10 +14,12 @@
     {{ $iconPath = "images/social/bitbucket_icon.svg" }}
 {{ end }}
 
+<!-- change -->
 {{ $repoURL = $repoURL | append "docSite/content" .Site.LanguagePrefix $filePath }}
 {{ $repoURL = delimit $repoURL "/" }}
 {{ $editPageURL := replaceRE "(https?://)|(/)+" "$1$2" $repoURL }}
 
+<!-- change -->
 <div class="gitinfo d-flex flex-wrap justify-content-between align-items-center opacity-85 {{ if .Site.Params.docs.editPage -}}pt-3{{ else }}visually-hidden{{ end }}">
     {{ if .Site.Params.docs.editPage | default false -}}
     <div id="edit-this-page" class="mt-1">
@@ -28,7 +30,7 @@
                     {{ .Content | safeHTML }}
                 {{ end }}
             </span>
-            {{ i18n "edit_page" }}
+            {{ i18n "edit_page" }} <!-- change -->
             <!-- <span class="material-icons size-20 align-text-bottom text-primary">open_in_new</span> -->
         </a>
     </div>
