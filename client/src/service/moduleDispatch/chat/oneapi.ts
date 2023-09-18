@@ -91,6 +91,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     quotePrompt,
     userChatInput,
     systemPrompt,
+    limitPrompt,
     hasQuoteOutput
   });
   const { max_tokens } = getMaxTokens({
