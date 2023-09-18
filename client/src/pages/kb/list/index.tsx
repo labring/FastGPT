@@ -15,7 +15,7 @@ import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { delKbById, getExportDataList, getKbPaths, putKbById } from '@/api/plugins/kb';
+import { delKbById, exportDataset, getKbPaths, putKbById } from '@/api/plugins/kb';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -27,8 +27,6 @@ import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/hooks/useRequest';
 import { useGlobalStore } from '@/store/global';
 import { useEditTitle } from '@/hooks/useEditTitle';
-import Papa from 'papaparse';
-import { fileDownload } from '@/utils/file';
 import { feConfigs } from '@/store/static';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
@@ -90,19 +88,7 @@ const Kb = () => {
   const { mutate: onclickExport } = useRequest({
     mutationFn: (kbId: string) => {
       setLoading(true);
-      return getExportDataList({ kbId });
-    },
-    onSuccess(res) {
-      const text = Papa.unparse({
-        fields: ['question', 'answer', 'source'],
-        data: res
-      });
-
-      fileDownload({
-        text,
-        type: 'text/csv',
-        filename: 'dataset.csv'
-      });
+      return exportDataset({ kbId });
     },
     onSettled() {
       setLoading(false);

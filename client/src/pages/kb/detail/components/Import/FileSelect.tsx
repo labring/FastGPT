@@ -25,7 +25,7 @@ const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-const csvTemplate = `question,answer\n"什么是 laf","laf 是一个云函数开发平台……"\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
+const csvTemplate = `index,content,source\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号","来源，可选。"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……",""`;
 
 export type FileItemType = {
   id: string;
@@ -149,8 +149,8 @@ const FileSelect = ({
           /* csv file */
           if (extension === 'csv') {
             const { header, data } = await readCsvContent(file);
-            if (header[0] !== 'question' || header[1] !== 'answer') {
-              throw new Error('csv 文件格式有误,请确保 question 和 answer 两列');
+            if (header[0] !== 'index' || header[1] !== 'content') {
+              throw new Error('csv 文件格式有误,请确保 index 和 content 两列');
             }
             const fileItem: FileItemType = {
               id: filesId[0],
@@ -158,12 +158,14 @@ const FileSelect = ({
               icon,
               tokens: 0,
               text: '',
-              chunks: data.map((item) => ({
-                q: item[0],
-                a: item[1],
-                source: item[2] || file.name,
-                file_id: filesId[0]
-              }))
+              chunks: data
+                .filter((item) => item[0])
+                .map((item) => ({
+                  q: item[0] || '',
+                  a: item[1] || '',
+                  source: item[2] || file.name || '',
+                  file_id: filesId[0]
+                }))
             };
 
             chunkFiles.unshift(fileItem);
