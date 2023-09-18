@@ -64,16 +64,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   return (
-    <MyModal
-      isOpen={true}
-      onClose={() => {
-        if (payId) return;
-        onClose();
-      }}
-      title={t('user.Pay')}
-      isCentered
-      showCloseBtn={!payId}
-    >
+    <MyModal isOpen={true} onClose={payId ? onClose : undefined} title={t('user.Pay')} isCentered>
       <ModalBody py={0}>
         {!payId && (
           <>

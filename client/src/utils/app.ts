@@ -1,5 +1,5 @@
 import type { AppModuleItemType, VariableItemType } from '@/types/app';
-import { chatModelList, vectorModelList } from '@/store/static';
+import { chatModelList } from '@/store/static';
 import {
   FlowInputItemTypeEnum,
   FlowModuleTypeEnum,
@@ -7,20 +7,12 @@ import {
   SpecialInputKeyEnum
 } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
-import { TaskResponseKeyEnum } from '@/constants/chat';
 import type { SelectedKbType } from '@/types/plugin';
 import { FlowInputItemType } from '@/types/flow';
+import type { AIChatProps } from '@/types/core/aiChat';
 
 export type EditFormType = {
-  chatModel: {
-    model: string;
-    systemPrompt: string;
-    limitPrompt: string;
-    temperature: number;
-    maxToken: number;
-    frequency: number;
-    presence: number;
-  };
+  chatModel: AIChatProps;
   kb: {
     list: SelectedKbType;
     searchSimilarity: number;
@@ -41,8 +33,9 @@ export const getDefaultAppForm = (): EditFormType => {
     chatModel: {
       model: defaultChatModel.model,
       systemPrompt: '',
-      limitPrompt: '',
       temperature: 0,
+      quotePrompt: '',
+      quoteTemplate: '',
       maxToken: defaultChatModel.contextMaxToken / 2,
       frequency: 0.5,
       presence: -0.5
@@ -109,9 +102,14 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
         key: 'systemPrompt'
       });
       updateVal({
-        formKey: 'chatModel.limitPrompt',
+        formKey: 'chatModel.quoteTemplate',
         inputs: module.inputs,
-        key: 'limitPrompt'
+        key: 'quoteTemplate'
+      });
+      updateVal({
+        formKey: 'chatModel.quotePrompt',
+        inputs: module.inputs,
+        key: 'quotePrompt'
       });
     } else if (module.flowType === FlowModuleTypeEnum.kbSearchNode) {
       updateVal({
@@ -178,16 +176,23 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
   },
   {
     key: 'systemPrompt',
-    value: formData.chatModel.systemPrompt,
+    value: formData.chatModel.systemPrompt || '',
     type: 'textarea',
     label: '系统提示词',
     connected: true
   },
   {
-    key: 'limitPrompt',
-    type: 'textarea',
-    value: formData.chatModel.limitPrompt,
-    label: '限定词',
+    key: 'quoteTemplate',
+    value: formData.chatModel.quoteTemplate || '',
+    type: 'hidden',
+    label: '引用内容模板',
+    connected: true
+  },
+  {
+    key: 'quotePrompt',
+    value: formData.chatModel.quotePrompt || '',
+    type: 'hidden',
+    label: '引用内容提示词',
     connected: true
   },
   {

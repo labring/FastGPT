@@ -613,11 +613,6 @@ const ChatBox = (
                 flexDirection={'column'}
                 alignItems={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
                 py={5}
-                _hover={{
-                  '& .control': {
-                    display: item.status === 'finish' ? 'flex' : 'none'
-                  }
-                }}
               >
                 {item.obj === 'Human' && (
                   <>

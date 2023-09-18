@@ -10,11 +10,10 @@ import {
 } from '@chakra-ui/react';
 
 interface Props extends ModalContentProps {
-  showCloseBtn?: boolean;
   title?: any;
   isCentered?: boolean;
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const MyModal = ({
@@ -22,14 +21,18 @@ const MyModal = ({
   onClose,
   title,
   children,
-  showCloseBtn = true,
   isCentered,
   w = 'auto',
   maxW = ['90vw', '600px'],
   ...props
 }: Props) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} autoFocus={false} isCentered={isCentered}>
+    <Modal
+      isOpen={isOpen}
+      onClose={() => onClose && onClose()}
+      autoFocus={false}
+      isCentered={isCentered}
+    >
       <ModalOverlay />
       <ModalContent
         display={'flex'}
@@ -43,7 +46,7 @@ const MyModal = ({
       >
         {!!title && <ModalHeader>{title}</ModalHeader>}
         <Box overflow={'overlay'} h={'100%'}>
-          {showCloseBtn && <ModalCloseButton />}
+          {onClose && <ModalCloseButton />}
           {children}
         </Box>
       </ModalContent>

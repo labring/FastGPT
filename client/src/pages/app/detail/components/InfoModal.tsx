@@ -55,7 +55,6 @@ const InfoModal = ({
         name: data.name,
         avatar: data.avatar,
         intro: data.intro,
-        chat: data.chat,
         share: data.share
       });
     },
