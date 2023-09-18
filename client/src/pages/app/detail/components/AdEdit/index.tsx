@@ -238,7 +238,7 @@ const AppEdit = ({ app, onCloseSettings }: Props) => {
       position: item.position,
       inputs: item.data.inputs.map((item) => ({
         ...item,
-        connected: item.type !== FlowInputItemTypeEnum.target
+        connected: item.connected ?? item.type !== FlowInputItemTypeEnum.target
       })),
       outputs: item.data.outputs.map((item) => ({
         ...item,
