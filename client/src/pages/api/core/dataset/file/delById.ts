@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase } from '@/service/mongo';
+import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
+    // other data. Delete only vector data
     if (fileId === OtherFileId) {
       await PgClient.delete(PgDatasetTableName, {
         where: [
@@ -31,6 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ]
       });
     } else {
+      // auth file
       const gridFs = new GridFSStorage('dataset', userId);
       const bucket = gridFs.GridFSBucket();
 
@@ -39,6 +41,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // delete all pg data
       await PgClient.delete(PgDatasetTableName, {
         where: [['user_id', userId], 'AND', ['kb_id', kbId], 'AND', ['file_id', fileId]]
+      });
+      // delete all training data
+      await TrainingData.deleteMany({
+        userId,
+        file_id: fileId
       });
 
       //   delete file
