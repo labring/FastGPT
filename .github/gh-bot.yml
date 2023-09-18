@@ -1,0 +1,30 @@
+version: v1
+debug: true
+action:
+  printConfig: false
+  release:
+    retry: 15s
+    actionName: Release
+    allowOps:
+      - cuisongliu
+bot:
+  prefix: /
+  spe: _
+  allowOps:
+    - sealos-ci-robot
+    - sealos-release-robot
+  email: sealos-ci-robot@sealos.io
+  username: sealos-ci-robot
+repo:
+  org: false
+
+message:
+  success: |
+    🤖 says: Hooray! The action {{.Body}} has been completed successfully. 🎉
+  format_error: |
+    🤖 says: ‼️ There is a formatting issue with the action, kindly verify the action's format.
+  permission_error: |
+    🤖 says: ‼️ The action doesn't have permission to trigger.
+  release_error: |
+    🤖 says: ‼️ Release action failed.
+    Error details: {{.Error}}

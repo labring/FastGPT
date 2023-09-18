@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
 import { App, OpenApi, User, OutLink, KB } from '../mongo';
-import type { AppSchema } from '@/types/mongoSchema';
+import type { AppSchema, UserModelSchema } from '@/types/mongoSchema';
 import { ERROR_ENUM } from '../errorCode';
 import { authJWT } from './tools';
 
@@ -25,7 +25,10 @@ export const authCookieToken = async (cookie?: string, token?: string): Promise<
 
 /* auth balance */
 export const authBalanceByUid = async (uid: string) => {
-  const user = await User.findById(uid);
+  const user = await User.findById<UserModelSchema>(
+    uid,
+    '_id username balance openaiAccount timezone'
+  );
   if (!user) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
@@ -152,7 +155,7 @@ export const authUser = async ({
   })();
 
   return {
-    userId: uid,
+    userId: String(uid),
     appId,
     authType,
     user
@@ -204,25 +207,4 @@ export const authKb = async ({ kbId, userId }: { kbId: string; userId: string })
     return kb;
   }
   return Promise.reject(ERROR_ENUM.unAuthKb);
-};
-
-export const authShareChat = async ({ shareId }: { shareId: string }) => {
-  // get shareChat
-  const shareChat = await OutLink.findOne({ shareId });
-
-  if (!shareChat) {
-    return Promise.reject('分享链接已失效');
-  }
-
-  const uid = String(shareChat.userId);
-
-  // authBalance
-  const user = await authBalanceByUid(uid);
-
-  return {
-    user,
-    userId: String(shareChat.userId),
-    appId: String(shareChat.appId),
-    authType: AuthUserTypeEnum.token
-  };
 };

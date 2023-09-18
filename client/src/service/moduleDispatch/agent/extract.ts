@@ -1,8 +1,8 @@
-import { adaptChatItem_openAI } from '@/utils/plugin/openai';
-import { ChatContextFilter } from '@/service/utils/chat/index';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { countModelPrice } from '@/service/events/pushBill';
@@ -45,12 +45,10 @@ export async function dispatchContentExtract({
     }
   ];
   const filterMessages = ChatContextFilter({
-    // @ts-ignore
-    model: agentModel,
-    prompts: messages,
+    messages,
     maxTokens
   });
-  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
+  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   const properties: Record<
     string,

@@ -4,7 +4,7 @@ description: "FastGPT HTTP 模块介绍"
 icon: "http"
 draft: false
 toc: true
-weight: 428
+weight: 129
 ---
 
 ## 特点

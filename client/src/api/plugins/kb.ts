@@ -1,6 +1,5 @@
 import { GET, POST, PUT, DELETE } from '../request';
-import type { KbItemType, KbListItemType } from '@/types/plugin';
-import { RequestPaging } from '@/types/index';
+import type { DatasetItemType, KbItemType, KbListItemType, KbPathItemType } from '@/types/plugin';
 import { TrainingModeEnum } from '@/constants/plugin';
 import {
   Props as PushDataProps,
@@ -10,12 +9,20 @@ import {
   Props as SearchTestProps,
   Response as SearchTestResponse
 } from '@/pages/api/openapi/kb/searchTest';
-import { Response as KbDataItemType } from '@/pages/api/plugins/kb/data/getDataById';
 import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
-import type { KbUpdateParams, CreateKbParams } from '../request/kb';
+import type { KbUpdateParams, CreateKbParams, GetKbDataListProps } from '../request/kb';
+import { QuoteItemType } from '@/types/chat';
+import { KbTypeEnum } from '@/constants/kb';
+import { getToken } from '@/utils/user';
+import download from 'downloadjs';
 
 /* knowledge base */
-export const getKbList = () => GET<KbListItemType[]>(`/plugins/kb/list`);
+export const getKbList = (data: { parentId?: string; type?: `${KbTypeEnum}` }) =>
+  GET<KbListItemType[]>(`/plugins/kb/list`, data);
+export const getAllDataset = () => GET<KbListItemType[]>(`/plugins/kb/allDataset`);
+
+export const getKbPaths = (parentId?: string) =>
+  GET<KbPathItemType[]>('/plugins/kb/paths', { parentId });
 
 export const getKbById = (id: string) => GET<KbItemType>(`/plugins/kb/detail?id=${id}`);
 
@@ -26,24 +33,27 @@ export const putKbById = (data: KbUpdateParams) => PUT(`/plugins/kb/update`, dat
 export const delKbById = (id: string) => DELETE(`/plugins/kb/delete?id=${id}`);
 
 /* kb data */
-type GetKbDataListProps = RequestPaging & {
-  kbId: string;
-  searchText: string;
-};
 export const getKbDataList = (data: GetKbDataListProps) =>
   POST(`/plugins/kb/data/getDataList`, data);
 
 /**
- * 获取导出数据（不分页）
+ * export and download data
  */
-export const getExportDataList = (kbId: string) =>
-  GET<[string, string, string][]>(
-    `/plugins/kb/data/exportModelData`,
-    { kbId },
-    {
-      timeout: 600000
+export const exportDataset = (data: { kbId: string }) =>
+  fetch(`/api/plugins/kb/data/exportAll?kbId=${data.kbId}`, {
+    method: 'GET',
+    headers: {
+      token: getToken()
     }
-  );
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data?.message || 'Export failed');
+      }
+      return res.blob();
+    })
+    .then((blob) => download(blob, 'dataset.csv', 'text/csv'));
 
 /**
  * 获取模型正在拆分数据的数量
@@ -58,7 +68,7 @@ export const getTrainingData = (data: { kbId: string; init: boolean }) =>
 export const getTrainingQueueLen = () => GET<number>(`/plugins/kb/data/getQueueLen`);
 
 export const getKbDataItemById = (dataId: string) =>
-  GET<KbDataItemType>(`/plugins/kb/data/getDataById`, { dataId });
+  GET<QuoteItemType>(`/plugins/kb/data/getDataById`, { dataId });
 
 /**
  * 直接push数据
@@ -69,10 +79,8 @@ export const postKbDataFromList = (data: PushDataProps) =>
 /**
  * insert one data to dataset
  */
-export const insertData2Kb = (data: {
-  kbId: string;
-  data: { a: string; q: string; source?: string };
-}) => POST<string>(`/plugins/kb/data/insertData`, data);
+export const insertData2Kb = (data: { kbId: string; data: DatasetItemType }) =>
+  POST<string>(`/plugins/kb/data/insertData`, data);
 
 /**
  * 更新一条数据

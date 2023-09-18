@@ -1,9 +1,10 @@
 import type { Mongoose } from 'mongoose';
 import type { Agent } from 'http';
 import type { Pool } from 'pg';
-import type { Tiktoken } from '@dqbd/tiktoken';
+import type { Tiktoken } from 'js-tiktoken';
 import type { Logger } from 'winston';
 import { ChatModelItemType, QAModelItemType, VectorModelItemType } from './model';
+import { TrackEventName } from '@/constants/common';
 
 export type PagingData<T> = {
   pageNum: number;
@@ -19,17 +20,26 @@ export type FeConfigsType = {
   show_register?: boolean;
   show_appStore?: boolean;
   show_userDetail?: boolean;
-  show_loginTip?: boolean;
+  show_contact?: boolean;
   show_git?: boolean;
+  show_doc?: boolean;
+  show_openai_account?: boolean;
+  openAPIUrl?: string;
   systemTitle?: string;
   authorText?: string;
-  beianText?: string;
   googleClientVerKey?: string;
-  gitLoginKey?: string;
+  oauth?: {
+    github?: string;
+    google?: string;
+  };
+  limit?: {
+    exportLimitMinutes?: number;
+  };
   scripts?: { [key: string]: string }[];
 };
 export type SystemEnvType = {
   pluginBaseUrl?: string;
+  openapiPrefix?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgIvfflatProbe: number;
@@ -41,7 +51,7 @@ declare global {
   var httpsAgent: Agent;
   var qaQueueLen: number;
   var vectorQueueLen: number;
-  var OpenAiEncMap: Tiktoken;
+  var TikToken: Tiktoken;
 
   var logger: Logger;
 
@@ -53,11 +63,14 @@ declare global {
   var chatModels: ChatModelItemType[];
   var qaModel: QAModelItemType;
   var vectorModels: VectorModelItemType[];
+  var systemVersion: string;
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;
-    particlesJS: any;
     grecaptcha: any;
     QRCode: any;
+    umami?: {
+      track: (event: `${TrackEventName}`, data: any) => void;
+    };
   }
 }

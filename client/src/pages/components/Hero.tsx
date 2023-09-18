@@ -1,17 +1,16 @@
 import { Box, Flex, Button, Image } from '@chakra-ui/react';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { feConfigs } from '@/store/static';
 import { useGlobalStore } from '@/store/global';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
-import { useToast } from '@/hooks/useToast';
 
 const Hero = () => {
   const router = useRouter();
-  const { toast } = useToast();
   const { t } = useTranslation();
   const { isPc, gitStar } = useGlobalStore();
+  const [showVideo, setShowVide] = useState(false);
 
   return (
     <Flex flexDirection={'column'} pt={['24px', '50px']} alignItems={'center'} userSelect={'none'}>
@@ -62,6 +61,8 @@ const Hero = () => {
           mx={['-10%', 'auto']}
           maxW={['120%', '1000px']}
           alt=""
+          draggable={false}
+          loading={'lazy'}
         />
         <MyIcon
           name={'playFill'}
@@ -72,13 +73,42 @@ const Hero = () => {
           top={'50%'}
           color={'#363c42b8'}
           transform={['translate(-50%,5px)', 'translate(-50%,40px)']}
-          onClick={() => {
-            toast({
-              title: '录制中~'
-            });
-          }}
+          onClick={() => setShowVide(true)}
         />
       </Box>
+      {showVideo && (
+        <Flex
+          position={'fixed'}
+          zIndex={99}
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          alignItems={'center'}
+          justifyContent={'center'}
+          bg={'rgba(255,255,255,0.4)'}
+          onClick={() => setShowVide(false)}
+        >
+          <Box
+            w={['100vw', '50%']}
+            borderRadius={'lg'}
+            overflow={'hidden'}
+            onClick={(e) => e.preventDefault()}
+          >
+            <video
+              style={{
+                margin: 'auto'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              src={'https://otnvvf-imgs.oss.laf.run/fastgpt.mp4'}
+              controls
+              autoPlay
+            />
+          </Box>
+        </Flex>
+      )}
     </Flex>
   );
 };

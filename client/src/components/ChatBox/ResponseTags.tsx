@@ -44,7 +44,7 @@ const ResponseTags = ({
     };
   }, [responseData]);
 
-  const updateQuote = useCallback(async (quoteId: string, sourceText: string) => {}, []);
+  const updateQuote = useCallback(async (quoteId: string, sourceText?: string) => {}, []);
 
   const TagStyles: BoxProps = {
     mr: 2,

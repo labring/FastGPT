@@ -9,7 +9,6 @@ import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '../Avatar';
 import MyIcon from '../Icon';
-import Language from '../Language';
 import { useTranslation } from 'next-i18next';
 import { useGlobalStore } from '@/store/global';
 import MyTooltip from '../MyTooltip';
@@ -109,7 +108,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         <Avatar
           w={'36px'}
           h={'36px'}
-          borderRadius={'none'}
+          borderRadius={'50%'}
           src={userInfo?.avatar}
           fallbackSrc={HUMAN_ICON}
         />
@@ -157,7 +156,8 @@ const Navbar = ({ unread }: { unread: number }) => {
           <Link
             as={NextLink}
             {...itemStyles}
-            href={`/account?type=inform`}
+            prefetch
+            href={`/account?currentTab=inform`}
             mb={0}
             color={'#9096a5'}
           >
@@ -167,21 +167,20 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </Box>
       )}
-      <MyTooltip label={t('home.Docs')} placement={'right-end'}>
-        <Box
-          {...itemStyles}
-          mb={0}
-          color={'#9096a5'}
-          onClick={() => {
-            window.open(`https://doc.fastgpt.run/docs/intro`);
-          }}
-        >
-          <Badge count={unread}>
+      {feConfigs?.show_doc && (
+        <MyTooltip label={t('home.Docs')} placement={'right-end'}>
+          <Box
+            {...itemStyles}
+            mb={0}
+            color={'#9096a5'}
+            onClick={() => {
+              window.open(`https://doc.fastgpt.run/docs/intro`);
+            }}
+          >
             <MyIcon name={'courseLight'} width={'26px'} height={'26px'} />
-          </Badge>
-        </Box>
-      </MyTooltip>
-      <Language {...itemStyles} />
+          </Box>
+        </MyTooltip>
+      )}
       {feConfigs?.show_git && (
         <MyTooltip label={`Git Star: ${gitStar}`} placement={'right-end'}>
           <Link

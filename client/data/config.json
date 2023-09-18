@@ -4,11 +4,14 @@
     "show_register": false,
     "show_appStore": false,
     "show_userDetail": false,
-    "show_loginTip": false,
+    "show_contact": true,
     "show_git": true,
+    "show_doc": true,
     "systemTitle": "FastGPT",
     "authorText": "Made by FastGPT Team.",
-    "gitLoginKey": "",
+    "limit": {
+      "exportLimitMinutes": 0
+    },
     "scripts": []
   },
   "SystemParams": {

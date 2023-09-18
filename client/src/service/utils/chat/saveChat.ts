@@ -44,7 +44,7 @@ export async function saveChat({
     ];
 
     if (chatHistory) {
-      promise.push([
+      promise.push(
         Chat.updateOne(
           { chatId, userId },
           {
@@ -52,20 +52,18 @@ export async function saveChat({
             updateTime: new Date()
           }
         )
-      ]);
+      );
     } else {
       promise.push(
-        ...[
-          Chat.create({
-            chatId,
-            userId,
-            appId,
-            variables,
-            title: content[0].value.slice(0, 20),
-            source,
-            shareId
-          })
-        ]
+        Chat.create({
+          chatId,
+          userId,
+          appId,
+          variables,
+          title: content[0].value.slice(0, 20),
+          source,
+          shareId
+        })
       );
     }
 

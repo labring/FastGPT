@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import { FlowModuleItemType } from '@/types/flow';
 import { Flex, Box, Button, useTheme, useDisclosure, Grid } from '@chakra-ui/react';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 import { useQuery } from '@tanstack/react-query';
 import NodeCard from '../modules/NodeCard';
 import Divider from '../modules/Divider';
@@ -21,7 +21,7 @@ const KBSelect = ({
   onChange: (e: SelectedKbType) => void;
 }) => {
   const theme = useTheme();
-  const { myKbList, loadKbList } = useUserStore();
+  const { datasets, loadAllDatasets } = useDatasetStore();
   const {
     isOpen: isOpenKbSelect,
     onOpen: onOpenKbSelect,
@@ -29,11 +29,11 @@ const KBSelect = ({
   } = useDisclosure();
 
   const showKbList = useMemo(
-    () => myKbList.filter((item) => activeKbs.find((kb) => kb.kbId === item._id)),
-    [myKbList, activeKbs]
+    () => datasets.filter((item) => activeKbs.find((kb) => kb.kbId === item._id)),
+    [datasets, activeKbs]
   );
 
-  useQuery(['initkb'], loadKbList);
+  useQuery(['loadAllDatasets'], loadAllDatasets);
 
   return (
     <>
@@ -58,12 +58,7 @@ const KBSelect = ({
         ))}
       </Grid>
       {isOpenKbSelect && (
-        <KBSelectModal
-          kbList={myKbList}
-          activeKbs={activeKbs}
-          onChange={onChange}
-          onClose={onCloseKbSelect}
-        />
+        <KBSelectModal activeKbs={activeKbs} onChange={onChange} onClose={onCloseKbSelect} />
       )}
     </>
   );

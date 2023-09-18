@@ -25,7 +25,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   const { mutate: onSubmit, isLoading } = useRequest({
     mutationFn: (data: FormType) => {
       if (data.newPsw !== data.confirmPsw) {
-        return Promise.reject(t('commom.Password inconsistency'));
+        return Promise.reject(t('common.Password inconsistency'));
       }
       return updatePasswordByOld(data);
     },

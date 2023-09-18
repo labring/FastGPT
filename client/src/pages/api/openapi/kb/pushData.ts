@@ -4,17 +4,16 @@ import { connectToDatabase, TrainingData, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { authKb } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { PgTrainingTableName, TrainingModeEnum } from '@/constants/plugin';
+import { PgDatasetTableName, TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
-import { modelToolMap } from '@/utils/plugin';
 import { getVectorModel } from '@/service/utils/data';
-
-export type DateItemType = { a: string; q: string; source?: string };
+import { DatasetItemType } from '@/types/plugin';
+import { countPromptTokens } from '@/utils/common/tiktoken';
 
 export type Props = {
   kbId: string;
-  data: DateItemType[];
+  data: DatasetItemType[];
   mode: `${TrainingModeEnum}`;
   prompt?: string;
 };
@@ -89,13 +88,13 @@ export async function pushDataToKb({
   ]);
 
   const modeMaxToken = {
-    [TrainingModeEnum.index]: vectorModel.maxToken,
+    [TrainingModeEnum.index]: vectorModel.maxToken * 1.5,
     [TrainingModeEnum.qa]: global.qaModel.maxToken * 0.8
   };
 
   // 过滤重复的 qa 内容
   const set = new Set();
-  const filterData: DateItemType[] = [];
+  const filterData: DatasetItemType[] = [];
 
   data.forEach((item) => {
     if (!item.q) return;
@@ -103,10 +102,7 @@ export async function pushDataToKb({
     const text = item.q + item.a;
 
     // count q token
-    const token = modelToolMap.countTokens({
-      model: 'gpt-3.5-turbo',
-      messages: [{ obj: 'System', value: item.q }]
-    });
+    const token = countPromptTokens(item.q, 'system');
 
     if (token > modeMaxToken[mode]) {
       return;
@@ -121,13 +117,10 @@ export async function pushDataToKb({
   // 数据库去重
   const insertData = (
     await Promise.allSettled(
-      filterData.map(async ({ q, a = '', source }) => {
+      filterData.map(async (data) => {
+        let { q, a } = data;
         if (mode !== TrainingModeEnum.index) {
-          return Promise.resolve({
-            q,
-            a,
-            source
-          });
+          return Promise.resolve(data);
         }
 
         if (!q) {
@@ -141,7 +134,7 @@ export async function pushDataToKb({
         try {
           const { rows } = await PgClient.query(`
             SELECT COUNT(*) > 0 AS exists
-            FROM  ${PgTrainingTableName} 
+            FROM  ${PgDatasetTableName} 
             WHERE md5(q)=md5('${q}') AND md5(a)=md5('${a}') AND user_id='${userId}' AND kb_id='${kbId}'
           `);
           const exists = rows[0]?.exists || false;
@@ -151,25 +144,18 @@ export async function pushDataToKb({
           }
         } catch (error) {
           console.log(error);
-          error;
         }
-        return Promise.resolve({
-          q,
-          a,
-          source
-        });
+        return Promise.resolve(data);
       })
     )
   )
     .filter((item) => item.status === 'fulfilled')
-    .map<DateItemType>((item: any) => item.value);
+    .map<DatasetItemType>((item: any) => item.value);
 
   // 插入记录
   const insertRes = await TrainingData.insertMany(
     insertData.map((item) => ({
-      q: item.q,
-      a: item.a,
-      source: item.source,
+      ...item,
       userId,
       kbId,
       mode,

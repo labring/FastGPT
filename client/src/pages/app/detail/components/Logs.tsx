@@ -287,13 +287,14 @@ function DetailLogsModal({
         <Box pt={2} flex={'1 0 0'}>
           <ChatBox
             ref={ChatBoxRef}
-            isLogs
             chatId={chatId}
             appAvatar={chat?.app.avatar}
             userAvatar={HUMAN_ICON}
+            feedbackType={'admin'}
+            showMarkIcon
+            showVoiceIcon={false}
             variableModules={chat?.app.variableModules}
             welcomeText={chat?.app.welcomeText}
-            onUpdateVariable={(e) => {}}
           />
         </Box>
       </Flex>

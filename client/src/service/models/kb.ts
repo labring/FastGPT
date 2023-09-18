@@ -1,7 +1,13 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { kbSchema as SchemaType } from '@/types/mongoSchema';
+import { KbTypeMap } from '@/constants/kb';
 
 const kbSchema = new Schema({
+  parentId: {
+    type: Schema.Types.ObjectId,
+    ref: 'kb',
+    default: null
+  },
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user',
@@ -23,6 +29,12 @@ const kbSchema = new Schema({
     type: String,
     required: true,
     default: 'text-embedding-ada-002'
+  },
+  type: {
+    type: String,
+    enum: Object.keys(KbTypeMap),
+    required: true,
+    default: 'dataset'
   },
   tags: {
     type: [String],

@@ -3,15 +3,16 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { authKb, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
 import { insertKbItem, PgClient } from '@/service/pg';
-import { modelToolMap } from '@/utils/plugin';
 import { getVectorModel } from '@/service/utils/data';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
+import { DatasetItemType } from '@/types/plugin';
+import { countPromptTokens } from '@/utils/common/tiktoken';
 
 export type Props = {
   kbId: string;
-  data: { a: string; q: string; source?: string };
+  data: DatasetItemType;
 };
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -34,10 +35,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const a = data?.a?.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
 
     // token check
-    const token = modelToolMap.countTokens({
-      model: 'gpt-3.5-turbo',
-      messages: [{ obj: 'System', value: q }]
-    });
+    const token = countPromptTokens(q, 'system');
 
     if (token > getVectorModel(kb.vectorModel).maxToken) {
       throw new Error('Over Tokens');
@@ -45,7 +43,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const { rows: existsRows } = await PgClient.query(`
     SELECT COUNT(*) > 0 AS exists
-    FROM  ${PgTrainingTableName} 
+    FROM  ${PgDatasetTableName} 
     WHERE md5(q)=md5('${q}') AND md5(a)=md5('${a}') AND user_id='${userId}' AND kb_id='${kbId}'
   `);
     const exists = existsRows[0]?.exists || false;

@@ -4,7 +4,7 @@ description: "FastGPT 用户引导模块介绍"
 icon: "psychology"
 draft: false
 toc: true
-weight: 426
+weight: 127
 ---
 
 ## 特点

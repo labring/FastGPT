@@ -84,7 +84,7 @@ Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 - [V3 Upgrade V4 Initialization](https://doc.fastgpt.run/docs/installation/upgrading)
 
 <!-- ## :point_right: RoadMap
-- [FastGpt RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
+- [FastGPT RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
 
 <!-- ## 🏘️ Community
 
@@ -94,10 +94,10 @@ Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 
 ## 👀 Others
 
-- [FastGpt FAQ](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
+- [FastGPT FAQ](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
 - [Docker Deployment Tutorial Video](https://www.bilibili.com/video/BV1jo4y147fT/)
 - [Official Account Integration Video Tutorial](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGpt Knowledge Base Demo](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
+- [FastGPT Knowledge Base Demo](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
 
 ## 💪 Related Projects
 

@@ -53,6 +53,7 @@ services:
       - DB_MAX_LINK=5 # database max link
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
+      - FILE_TOKEN_KEY=filetoken
       # mongo 配置，不需要改. 如果连不上，可能需要去掉 ?authSource=admin
       - MONGODB_URI=mongodb://username:password@mongo:27017/fastgpt?authSource=admin
       # pg配置. 不需要改

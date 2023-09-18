@@ -35,7 +35,8 @@ enum TabEnum {
   'adEdit' = 'adEdit',
   'outLink' = 'outLink',
   'logs' = 'logs',
-  'API' = 'API'
+  'API' = 'API',
+  'startChat' = 'startChat'
 }
 
 const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
@@ -64,7 +65,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       { label: '外部使用', id: TabEnum.outLink, icon: 'shareLight' },
       { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
       { label: '对话日志', id: TabEnum.logs, icon: 'logsLight' },
-      { label: '立即对话', id: 'startChat', icon: 'chat' }
+      { label: '立即对话', id: TabEnum.startChat, icon: 'chat' }
     ],
     []
   );

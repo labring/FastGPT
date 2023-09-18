@@ -26,12 +26,13 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
+import { updateDatasetFile } from '@/api/core/dataset/file';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const ChunkImport = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
 
   const vectorModel = kbDetail.vectorModel;
   const unitPrice = vectorModel?.price || 0.2;
@@ -64,6 +65,16 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
     mutationFn: async () => {
       const chunks = files.map((file) => file.chunks).flat();
 
+      // mark the file is used
+      await Promise.all(
+        files.map((file) =>
+          updateDatasetFile({
+            id: file.id,
+            datasetUsed: true
+          })
+        )
+      );
+
       // subsection import
       let success = 0;
       const step = 300;
@@ -86,7 +97,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
       router.replace({
         query: {
           kbId,
-          currentTab: 'data'
+          currentTab: 'dataset'
         }
       });
     },
@@ -106,13 +117,15 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
             text: file.text,
             maxLen: chunkLen
           });
+
           return {
             ...file,
             tokens: splitRes.tokens,
             chunks: splitRes.chunks.map((chunk) => ({
-              q: chunk,
               a: '',
-              source: file.filename
+              source: file.filename,
+              file_id: file.id,
+              q: chunk
             }))
           };
         })

@@ -42,22 +42,20 @@
                                     {{ end -}}
                                     <!-- change -->
                                     <div class="docs-content col-12 {{ if .IsNode }}{{ else }}{{ if site.Params.docs.toc | default true }}{{ if and (ne .Params.toc false) }}col-xl-9{{else}}{{end}}{{ else }}{{ end }}{{ end }} mt-0">
-                                        <div class="mb-3">
+                                        <div class="mb-0 d-flex">
+                                            {{ if site.Params.docs.titleIcon | default false }}
+                                            <i class="material-icons title-icon me-2">{{- .Params.icon | default "article" }}</i>
+                                            {{ end }}
                                             <h1 class="content-title mb-0">
-                                                {{ if site.Params.docs.titleIcon | default false }}
-                                                    <i class="material-icons me-0">{{- .Params.icon | default "article" }}</i>
-                                                {{ end }}
-                                                <span class="title-text">
-                                                    {{ $currentPage.Title }}
-                                                </span>
+                                                {{ $currentPage.Title }}
                                                 {{ if .Draft }}
                                                     <span class="badge bg-default fs-6 mb-1 align-middle">DRAFT</span>
                                                 {{ end }}
                                             </h1>
-                                            {{ if site.Params.docs.descriptions | default false }}
-                                            <p class="lead mb-0">{{ $currentPage.Description | markdownify }}</p>
-                                            {{ end }}
                                         </div>
+                                        {{ if site.Params.docs.descriptions | default false }}
+                                            <p class="lead mb-3">{{ $currentPage.Description | markdownify }}</p>
+                                        {{ end }}
                                         <div id="content" class="main-content" {{ if eq .Site.Params.docs.toc true -}}data-bs-spy="scroll" data-bs-root-margin="0px 0px -65%" data-bs-target="#toc-mobile"{{ end }}>
                                             {{ block "main" . }}{{ end }}
                                         </div>

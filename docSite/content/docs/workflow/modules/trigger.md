@@ -4,7 +4,7 @@ description: "FastGPT 触发器模块介绍"
 icon: "work_history"
 draft: false
 toc: true
-weight: 421
+weight: 121
 ---
 
 细心的同学可以发现，在每个功能模块里都会有一个叫【触发器】的外部输入，并且是 any 类型。

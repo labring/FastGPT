@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authBalanceByUid, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import { pushGenerateVectorBill } from '@/service/events/pushBill';
 
 type Props = {
@@ -68,8 +68,9 @@ export async function getVector({
     )
     .then(async (res) => {
       if (!res.data?.data?.[0]?.embedding) {
+        console.log(res.data);
         // @ts-ignore
-        return Promise.reject(res.data?.error?.message || 'Embedding Error');
+        return Promise.reject(res.data?.err?.message || 'Embedding API Error');
       }
       return {
         tokenLen: res.data.usage.total_tokens || 0,

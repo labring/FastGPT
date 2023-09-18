@@ -2,10 +2,13 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import axios from 'axios';
+import { OAuthEnum } from '@/constants/user';
 
-type LoginStoreType = { provider: 'git'; lastRoute: string };
+type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
 type State = {
+  lastRoute: string;
+  setLastRoute: (e: string) => void;
   loginStore?: LoginStoreType;
   setLoginStore: (e: LoginStoreType) => void;
   loading: boolean;
@@ -22,6 +25,12 @@ export const useGlobalStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
+        lastRoute: '/app/list',
+        setLastRoute(e) {
+          set((state) => {
+            state.lastRoute = e;
+          });
+        },
         loginStore: undefined,
         setLoginStore(e) {
           set((state) => {

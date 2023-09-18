@@ -12,6 +12,7 @@ import { clientInitData, feConfigs } from '@/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
 import { getLangStore, setLangStore } from '@/utils/i18n';
 import { useRouter } from 'next/router';
+import { useGlobalStore } from '@/store/global';
 
 import 'nprogress/nprogress.css';
 import '@/styles/reset.scss';
@@ -37,18 +38,33 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
+  const { setLastRoute } = useGlobalStore();
 
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
-  const [googleClientVerKey, setGoogleVerKey] = useState<string>();
 
   useEffect(() => {
+    // get init data
     (async () => {
       const {
-        feConfigs: { scripts, googleClientVerKey }
+        feConfigs: { scripts }
       } = await clientInitData();
       setScripts(scripts || []);
-      setGoogleVerKey(googleClientVerKey);
     })();
+    // add window error track
+    window.onerror = function (msg, url) {
+      window.umami?.track('windowError', {
+        device: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          appName: navigator.appName
+        },
+        msg,
+        url
+      });
+    };
+    return () => {
+      window.onerror = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -59,6 +75,10 @@ function App({ Component, pageProps }: AppProps) {
     const lang = getLangStore() || 'zh';
     i18n?.changeLanguage?.(lang);
     setLangStore(lang);
+
+    return () => {
+      setLastRoute(router.asPath);
+    };
   }, [router.asPath]);
 
   return (
@@ -72,20 +92,10 @@ function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
-      <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
-      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
       {scripts?.map((item, i) => (
         <Script key={i} strategy="lazyOnload" {...item}></Script>
       ))}
-      {googleClientVerKey && (
-        <>
-          <Script
-            src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleClientVerKey}`}
-            strategy="lazyOnload"
-          ></Script>
-        </>
-      )}
+
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
           <ColorModeScript initialColorMode={theme.config.initialColorMode} />

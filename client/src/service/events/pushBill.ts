@@ -72,7 +72,7 @@ export const updateShareChatBill = async ({
       }
     );
   } catch (err) {
-    addLog.error('update shareChat error', { err });
+    addLog.error('update shareChat error', err);
   }
 };
 
@@ -111,7 +111,7 @@ export const pushQABill = async ({
       $inc: { balance: -total }
     });
   } catch (err) {
-    addLog.error('Create completions bill error', { err });
+    addLog.error('Create completions bill error', err);
     billId && Bill.findByIdAndDelete(billId);
   }
 };
@@ -160,7 +160,7 @@ export const pushGenerateVectorBill = async ({
         $inc: { balance: -total }
       });
     } catch (err) {
-      addLog.error('Create generateVector bill error', { err });
+      addLog.error('Create generateVector bill error', err);
       billId && Bill.findByIdAndDelete(billId);
     }
   } catch (error) {

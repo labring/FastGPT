@@ -59,6 +59,9 @@ export const Obj2Query = (obj: Record<string, string | number>) => {
   return queryParams.toString();
 };
 
+/**
+ * parse string to query object
+ */
 export const parseQueryString = (str: string) => {
   const queryObject: Record<string, any> = {};
 
@@ -123,6 +126,16 @@ export const formatTimeToChatTime = (time: Date) => {
 
   // 如果是更久之前，展示某年某月某日
   return target.format('YYYY/M/D');
+};
+
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 export const hasVoiceApi = typeof window !== 'undefined' && 'speechSynthesis' in window;

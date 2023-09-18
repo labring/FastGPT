@@ -252,7 +252,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       </Head>
       {/* pc show myself apps */}
       {isPc && (
-        <Box p={5} borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
+        <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
           <SliderApps appId={appId} />
         </Box>
       )}
@@ -362,6 +362,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
                 variableModules={chatData.app.variableModules}
+                feedbackType={'user'}
                 welcomeText={chatData.app.welcomeText}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}

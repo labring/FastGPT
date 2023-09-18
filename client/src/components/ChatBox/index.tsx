@@ -26,8 +26,7 @@ import {
 import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
 import { event } from '@/utils/plugin/eventbus';
-
-import { adaptChatItem_openAI } from '@/utils/plugin/openai';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { VariableItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
@@ -37,7 +36,7 @@ import { fileDownload } from '@/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { TaskResponseKeyEnum, getDefaultChatVariables } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
 import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/api/chat';
@@ -55,6 +54,7 @@ const SelectDataset = dynamic(() => import('./SelectDataset'));
 const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputDataModal'));
 
 import styles from './index.module.scss';
+import Script from 'next/script';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -74,6 +74,12 @@ export type ComponentRef = {
   resetHistory: (chatId: ChatSiteItemType[]) => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };
+
+enum FeedbackTypeEnum {
+  user = 'user',
+  admin = 'admin',
+  hidden = 'hidden'
+}
 
 const VariableLabel = ({
   required = false,
@@ -128,7 +134,9 @@ const ChatAvatar = ({ src, type }: { src?: string; type: 'Human' | 'AI' }) => {
 
 const ChatBox = (
   {
-    isLogs = false,
+    feedbackType = FeedbackTypeEnum.hidden,
+    showMarkIcon = false,
+    showVoiceIcon = true,
     showEmptyIntro = false,
     chatId,
     appAvatar,
@@ -139,7 +147,9 @@ const ChatBox = (
     onStartChat,
     onDelMessage
   }: {
-    isLogs?: boolean;
+    feedbackType?: `${FeedbackTypeEnum}`;
+    showMarkIcon?: boolean;
+    showVoiceIcon?: boolean;
     showEmptyIntro?: boolean;
     chatId?: string;
     appAvatar?: string;
@@ -188,8 +198,10 @@ const ChatBox = (
       chatHistory[chatHistory.length - 1]?.status !== 'finish',
     [chatHistory]
   );
+  // compute variable input is finish.
+  const [variableInputFinish, setVariableInputFinish] = useState(false);
   const variableIsFinish = useMemo(() => {
-    if (!variableModules || chatHistory.length > 0) return true;
+    if (!variableModules || variableModules.length === 0 || chatHistory.length > 0) return true;
 
     for (let i = 0; i < variableModules.length; i++) {
       const item = variableModules[i];
@@ -198,8 +210,8 @@ const ChatBox = (
       }
     }
 
-    return true;
-  }, [chatHistory.length, variableModules, variables]);
+    return variableInputFinish;
+  }, [chatHistory.length, variableInputFinish, variableModules, variables]);
 
   const { register, reset, getValues, setValue, handleSubmit } = useForm<Record<string, any>>({
     defaultValues: variables
@@ -281,7 +293,7 @@ const ChatBox = (
    * user confirm send prompt
    */
   const sendPrompt = useCallback(
-    async (variables: Record<string, any> = {}, inputVal = '') => {
+    async (variables: Record<string, any> = {}, inputVal = '', history = chatHistory) => {
       if (!onStartChat) return;
       if (isChatting) {
         toast({
@@ -302,7 +314,7 @@ const ChatBox = (
       }
 
       const newChatList: ChatSiteItemType[] = [
-        ...chatHistory,
+        ...history,
         {
           dataId: nanoid(),
           obj: 'Human',
@@ -331,17 +343,14 @@ const ChatBox = (
         const abortSignal = new AbortController();
         controller.current = abortSignal;
 
-        const messages = adaptChatItem_openAI({ messages: newChatList, reserveId: true });
+        const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
 
         const { responseData } = await onStartChat({
           chatList: newChatList,
           messages,
           controller: abortSignal,
           generatingMessage,
-          variables: {
-            ...getDefaultChatVariables(),
-            ...variables
-          }
+          variables
         });
 
         // set finish status
@@ -398,6 +407,23 @@ const ChatBox = (
     ]
   );
 
+  // retry input
+  const retryInput = useCallback(
+    async (index: number) => {
+      if (!onDelMessage) return;
+      const delHistory = chatHistory.slice(index);
+      setChatHistory((state) => (index === 0 ? [] : state.slice(0, index)));
+
+      await Promise.all(
+        delHistory.map((item, i) => onDelMessage({ contentId: item.dataId, index: index + i }))
+      );
+
+      sendPrompt(variables, delHistory[0].value, chatHistory.slice(0, index));
+    },
+    [chatHistory, onDelMessage, sendPrompt, variables]
+  );
+
+  // output data
   useImperativeHandle(ref, () => ({
     getChatHistory: () => chatHistory,
     resetVariables(e) {
@@ -410,6 +436,7 @@ const ChatBox = (
       setVariables(e || defaultVal);
     },
     resetHistory(e) {
+      setVariableInputFinish(!!e.length);
       setChatHistory(e);
     },
     scrollToBottom
@@ -428,7 +455,7 @@ const ChatBox = (
   const controlContainerStyle = {
     className: 'control',
     color: 'myGray.400',
-    display: isLogs ? 'flex' : ['flex', 'none'],
+    display: 'flex',
     pl: 1,
     mt: 2
   };
@@ -436,10 +463,10 @@ const ChatBox = (
     px: 4,
     py: 3,
     borderRadius: '0 8px 8px 8px',
-    boxShadow: '0 0 8px rgba(0,0,0,0.15)'
+    boxShadow: '0 0 8px rgba(0,0,0,0.15)',
+    display: 'inline-block',
+    maxW: ['calc(100% - 25px)', 'calc(100% - 40px)']
   };
-
-  const messageCardMaxW = ['calc(100% - 25px)', 'calc(100% - 40px)'];
 
   const showEmpty = useMemo(
     () =>
@@ -452,7 +479,7 @@ const ChatBox = (
   );
   const statusBoxData = useMemo(() => {
     const colorMap = {
-      loading: '#67c13b',
+      loading: 'myGray.700',
       running: '#67c13b',
       finish: 'myBlue.600'
     };
@@ -466,6 +493,7 @@ const ChatBox = (
     };
   }, [chatHistory, isChatting, t]);
 
+  // page change and abort request
   useEffect(() => {
     return () => {
       controller.current?.abort('leave');
@@ -474,16 +502,7 @@ const ChatBox = (
     };
   }, [router.query]);
 
-  useEffect(() => {
-    event.on('guideClick', ({ text }: { text: string }) => {
-      if (!text) return;
-      handleSubmit((data) => sendPrompt(data, text))();
-    });
-
-    return () => {
-      event.off('guideClick');
-    };
-  }, [handleSubmit, sendPrompt]);
+  // page destroy and abort request
   useEffect(() => {
     const listen = () => {
       cancelBroadcast();
@@ -495,87 +514,101 @@ const ChatBox = (
     };
   }, []);
 
+  // add guide text listener
+  useEffect(() => {
+    event.on('guideClick', ({ text }: { text: string }) => {
+      if (!text) return;
+      handleSubmit((data) => sendPrompt(data, text))();
+    });
+
+    return () => {
+      event.off('guideClick');
+    };
+  }, [handleSubmit, sendPrompt]);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
+      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
+
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
-        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+        <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
 
           {!!welcomeText && (
-            <Flex flexDirection={'column'} alignItems={'flex-start'} py={2}>
+            <Box py={3}>
               {/* avatar */}
               <ChatAvatar src={appAvatar} type={'AI'} />
               {/* message */}
-              <Card order={2} mt={2} {...MessageCardStyle} bg={'white'} maxW={messageCardMaxW}>
-                <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
-              </Card>
-            </Flex>
+              <Box textAlign={'left'}>
+                <Card order={2} mt={2} {...MessageCardStyle} bg={'white'}>
+                  <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
+                </Card>
+              </Box>
+            </Box>
           )}
           {/* variable input */}
           {!!variableModules?.length && (
-            <Flex flexDirection={'column'} alignItems={'flex-start'} py={2}>
+            <Box py={3}>
               {/* avatar */}
               <ChatAvatar src={appAvatar} type={'AI'} />
               {/* message */}
-              <Card
-                order={2}
-                mt={2}
-                bg={'white'}
-                w={'400px'}
-                maxW={messageCardMaxW}
-                {...MessageCardStyle}
-              >
-                {variableModules.map((item) => (
-                  <Box key={item.id} mb={4}>
-                    <VariableLabel required={item.required}>{item.label}</VariableLabel>
-                    {item.type === VariableInputEnum.input && (
-                      <Input
-                        isDisabled={variableIsFinish}
-                        {...register(item.key, {
-                          required: item.required
-                        })}
-                      />
-                    )}
-                    {item.type === VariableInputEnum.select && (
-                      <MySelect
-                        width={'100%'}
-                        isDisabled={variableIsFinish}
-                        list={(item.enums || []).map((item) => ({
-                          label: item.value,
-                          value: item.value
-                        }))}
-                        value={getValues(item.key)}
-                        onchange={(e) => {
-                          setValue(item.key, e);
-                          setRefresh(!refresh);
-                        }}
-                      />
-                    )}
-                  </Box>
-                ))}
-                {!variableIsFinish && (
-                  <Button
-                    leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
-                    size={'sm'}
-                    maxW={'100px'}
-                    borderRadius={'lg'}
-                    onClick={handleSubmit((data) => {
-                      onUpdateVariable?.(data);
-                      setVariables(data);
-                    })}
-                  >
-                    {'开始对话'}
-                  </Button>
-                )}
-              </Card>
-            </Flex>
+              <Box textAlign={'left'}>
+                <Card order={2} mt={2} bg={'white'} w={'400px'} {...MessageCardStyle}>
+                  {variableModules.map((item) => (
+                    <Box key={item.id} mb={4}>
+                      <VariableLabel required={item.required}>{item.label}</VariableLabel>
+                      {item.type === VariableInputEnum.input && (
+                        <Input
+                          isDisabled={variableIsFinish}
+                          {...register(item.key, {
+                            required: item.required
+                          })}
+                        />
+                      )}
+                      {item.type === VariableInputEnum.select && (
+                        <MySelect
+                          width={'100%'}
+                          isDisabled={variableIsFinish}
+                          list={(item.enums || []).map((item) => ({
+                            label: item.value,
+                            value: item.value
+                          }))}
+                          {...register(item.key, {
+                            required: item.required
+                          })}
+                          value={getValues(item.key)}
+                          onchange={(e) => {
+                            setValue(item.key, e);
+                            setRefresh(!refresh);
+                          }}
+                        />
+                      )}
+                    </Box>
+                  ))}
+                  {!variableIsFinish && (
+                    <Button
+                      leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                      size={'sm'}
+                      maxW={'100px'}
+                      borderRadius={'lg'}
+                      onClick={handleSubmit((data) => {
+                        onUpdateVariable?.(data);
+                        setVariables(data);
+                        setVariableInputFinish(true);
+                      })}
+                    >
+                      {'开始对话'}
+                    </Button>
+                  )}
+                </Card>
+              </Box>
+            </Box>
           )}
 
           {/* chat history */}
           <Box id={'history'}>
             {chatHistory.map((item, index) => (
-              <Flex
-                position={'relative'}
+              <Box
                 key={item.dataId}
                 flexDirection={'column'}
                 alignItems={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
@@ -590,7 +623,7 @@ const ChatBox = (
                   <>
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
                       <Flex {...controlContainerStyle} justifyContent={'flex-end'} mr={3}>
-                        <MyTooltip label={'复制'}>
+                        <MyTooltip label={t('common.Copy')}>
                           <MyIcon
                             {...controlIconStyle}
                             name={'copy'}
@@ -598,8 +631,18 @@ const ChatBox = (
                             onClick={() => onclickCopy(item.value)}
                           />
                         </MyTooltip>
+                        {!!onDelMessage && (
+                          <MyTooltip label={t('chat.retry')}>
+                            <MyIcon
+                              {...controlIconStyle}
+                              name={'retryLight'}
+                              _hover={{ color: 'green.500' }}
+                              onClick={() => retryInput(index)}
+                            />
+                          </MyTooltip>
+                        )}
                         {onDelMessage && (
-                          <MyTooltip label={'删除'}>
+                          <MyTooltip label={t('common.Delete')}>
                             <MyIcon
                               {...controlIconStyle}
                               mr={0}
@@ -620,7 +663,7 @@ const ChatBox = (
                       </Flex>
                       <ChatAvatar src={userAvatar} type={'Human'} />
                     </Flex>
-                    <Box position={'relative'} maxW={messageCardMaxW} mt={['6px', 2]}>
+                    <Box mt={['6px', 2]} textAlign={'right'}>
                       <Card
                         className="markdown"
                         whiteSpace={'pre-wrap'}
@@ -664,7 +707,7 @@ const ChatBox = (
                             />
                           </MyTooltip>
                         )}
-                        {!isLogs && hasVoiceApi && (
+                        {showVoiceIcon && hasVoiceApi && (
                           <MyTooltip label={'语音播报'}>
                             <MyIcon
                               {...controlIconStyle}
@@ -675,7 +718,7 @@ const ChatBox = (
                           </MyTooltip>
                         )}
                         {/* admin mark icon */}
-                        {isLogs && (
+                        {showMarkIcon && (
                           <MyTooltip label={t('chat.Mark')}>
                             <MyIcon
                               {...controlIconStyle}
@@ -702,63 +745,62 @@ const ChatBox = (
                             />
                           </MyTooltip>
                         )}
-                        {/* user feed back icon */}
-                        {item.dataId &&
-                          (isLogs ? (
-                            <MyTooltip label={t('chat.Read User Feedback')}>
-                              <MyIcon
-                                display={item.userFeedback ? 'block' : 'none'}
-                                {...controlIconStyle}
-                                color={'white'}
-                                bg={'#FC9663'}
-                                fontWeight={'bold'}
-                                name={'badLight'}
-                                onClick={() =>
-                                  setReadFeedbackData({
-                                    chatItemId: item.dataId || '',
-                                    content: item.userFeedback || '',
-                                    isMarked: !!item.adminFeedback
-                                  })
-                                }
-                              />
-                            </MyTooltip>
-                          ) : (
-                            <MyTooltip
-                              label={
-                                item.userFeedback
-                                  ? `取消反馈。\n您当前反馈内容为:\n${item.userFeedback}`
-                                  : '反馈'
+                        {feedbackType === FeedbackTypeEnum.admin && (
+                          <MyTooltip label={t('chat.Read User Feedback')}>
+                            <MyIcon
+                              display={item.userFeedback ? 'block' : 'none'}
+                              {...controlIconStyle}
+                              color={'white'}
+                              bg={'#FC9663'}
+                              fontWeight={'bold'}
+                              name={'badLight'}
+                              onClick={() =>
+                                setReadFeedbackData({
+                                  chatItemId: item.dataId || '',
+                                  content: item.userFeedback || '',
+                                  isMarked: !!item.adminFeedback
+                                })
                               }
-                            >
-                              <MyIcon
-                                {...controlIconStyle}
-                                {...(!!item.userFeedback
-                                  ? {
-                                      color: 'white',
-                                      bg: '#FC9663',
-                                      fontWeight: 'bold',
-                                      onClick: () => {
-                                        if (!item.dataId) return;
-                                        setChatHistory((state) =>
-                                          state.map((chatItem) =>
-                                            chatItem.dataId === item.dataId
-                                              ? { ...chatItem, userFeedback: undefined }
-                                              : chatItem
-                                          )
-                                        );
-                                        try {
-                                          userUpdateChatFeedback({ chatItemId: item.dataId });
-                                        } catch (error) {}
-                                      }
+                            />
+                          </MyTooltip>
+                        )}
+                        {feedbackType === FeedbackTypeEnum.user && (
+                          <MyTooltip
+                            label={
+                              item.userFeedback
+                                ? `取消反馈。\n您当前反馈内容为:\n${item.userFeedback}`
+                                : '反馈'
+                            }
+                          >
+                            <MyIcon
+                              {...controlIconStyle}
+                              {...(!!item.userFeedback
+                                ? {
+                                    color: 'white',
+                                    bg: '#FC9663',
+                                    fontWeight: 'bold',
+                                    onClick: () => {
+                                      if (!item.dataId) return;
+                                      setChatHistory((state) =>
+                                        state.map((chatItem) =>
+                                          chatItem.dataId === item.dataId
+                                            ? { ...chatItem, userFeedback: undefined }
+                                            : chatItem
+                                        )
+                                      );
+                                      try {
+                                        userUpdateChatFeedback({ chatItemId: item.dataId });
+                                      } catch (error) {}
                                     }
-                                  : {
-                                      _hover: { color: '#FB7C3C' },
-                                      onClick: () => setFeedbackId(item.dataId)
-                                    })}
-                                name={'badLight'}
-                              />
-                            </MyTooltip>
-                          ))}
+                                  }
+                                : {
+                                    _hover: { color: '#FB7C3C' },
+                                    onClick: () => setFeedbackId(item.dataId)
+                                  })}
+                              name={'badLight'}
+                            />
+                          </MyTooltip>
+                        )}
                       </Flex>
                       {/* chatting status */}
                       {statusBoxData && index === chatHistory.length - 1 && (
@@ -784,7 +826,7 @@ const ChatBox = (
                         </Flex>
                       )}
                     </Flex>
-                    <Box position={'relative'} maxW={messageCardMaxW} mt={['6px', 2]}>
+                    <Box textAlign={'left'} mt={['6px', 2]}>
                       <Card bg={'white'} {...MessageCardStyle}>
                         <Markdown
                           source={item.value}
@@ -796,7 +838,7 @@ const ChatBox = (
                           responseData={item.responseData}
                         />
                         {/* admin mark content */}
-                        {isLogs && item.adminFeedback && (
+                        {showMarkIcon && item.adminFeedback && (
                           <Box>
                             <Flex alignItems={'center'} py={2}>
                               <MyIcon name={'markLight'} w={'14px'} color={'myGray.900'} />
@@ -812,7 +854,7 @@ const ChatBox = (
                     </Box>
                   </>
                 )}
-              </Flex>
+              </Box>
             ))}
           </Box>
         </Box>

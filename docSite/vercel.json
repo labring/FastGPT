@@ -6,7 +6,7 @@
     },
     {
       "source": "/imgs/:path*",
-      "destination": "https://cdn.jsdelivr.us/gh/labring/FastGPT@main/docSite/assets/imgs/:path*"
+      "destination": "https://jsdelivr.icloudnative.io/gh/labring/FastGPT@main/docSite/assets/imgs/:path*"
     }
   ],
   "headers": [

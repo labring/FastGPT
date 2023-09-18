@@ -4,7 +4,7 @@ description: 'FastGPT AI 知识库搜索模块介绍'
 icon: 'chat'
 draft: false
 toc: true
-weight: 423
+weight: 124
 ---
 
 ## 特点

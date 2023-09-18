@@ -4,7 +4,7 @@ description: "FastGPT 内容提取模块介绍"
 icon: "content_paste_go"
 draft: false
 toc: true
-weight: 424
+weight: 125
 ---
 
 ## 特点

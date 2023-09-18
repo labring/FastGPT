@@ -1,25 +1,25 @@
 # coding=utf-8
+import argparse
 import time
-import torch
-import uvicorn
-from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import List, Literal, Optional, Union
-from transformers import AutoTokenizer, AutoModel
-from sse_starlette.sse import EventSourceResponse
-from fastapi import Depends, HTTPException, Request
-from starlette.status import HTTP_401_UNAUTHORIZED
-import argparse
-import tiktoken
+
 import numpy as np
+import tiktoken
+import torch
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 from sklearn.preprocessing import PolynomialFeatures
+from sse_starlette.sse import EventSourceResponse
+from starlette.status import HTTP_401_UNAUTHORIZED
+from transformers import AutoModel, AutoTokenizer
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI): # collects GPU memory
+async def lifespan(app: FastAPI):  # collects GPU memory
     yield
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -71,23 +71,31 @@ class ChatCompletionResponseStreamChoice(BaseModel):
 class ChatCompletionResponse(BaseModel):
     model: str
     object: Literal["chat.completion", "chat.completion.chunk"]
-    choices: List[Union[ChatCompletionResponseChoice, ChatCompletionResponseStreamChoice]]
+    choices: List[
+        Union[ChatCompletionResponseChoice, ChatCompletionResponseStreamChoice]
+    ]
     created: Optional[int] = Field(default_factory=lambda: int(time.time()))
+
 
 async def verify_token(request: Request):
     auth_header = request.headers.get('Authorization')
     if auth_header:
         token_type, _, token = auth_header.partition(' ')
-        if token_type.lower() == "bearer" and token == "sk-aaabbbcccdddeeefffggghhhiiijjjkkk": # 这里配置你的token
+        if (
+            token_type.lower() == "bearer"
+            and token == "sk-aaabbbcccdddeeefffggghhhiiijjjkkk"
+        ):  # 这里配置你的token
             return True
     raise HTTPException(
         status_code=HTTP_401_UNAUTHORIZED,
         detail="Invalid authorization credentials",
     )
 
+
 class EmbeddingRequest(BaseModel):
     input: List[str]
     model: str
+
 
 class EmbeddingResponse(BaseModel):
     data: list
@@ -95,11 +103,13 @@ class EmbeddingResponse(BaseModel):
     object: str
     usage: dict
 
+
 def num_tokens_from_string(string: str) -> int:
     """Returns the number of tokens in a text string."""
     encoding = tiktoken.get_encoding('cl100k_base')
     num_tokens = len(encoding.encode(string))
     return num_tokens
+
 
 def expand_features(embedding, target_length):
     poly = PolynomialFeatures(degree=2)
@@ -110,12 +120,16 @@ def expand_features(embedding, target_length):
         expanded_embedding = expanded_embedding[:target_length]
     elif len(expanded_embedding) < target_length:
         # 如果扩展后的特征少于目标长度，可以通过填充或其他方法来增加维度
-        expanded_embedding = np.pad(expanded_embedding, (0, target_length - len(expanded_embedding)))
+        expanded_embedding = np.pad(
+            expanded_embedding, (0, target_length - len(expanded_embedding))
+        )
     return expanded_embedding
 
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
-async def create_chat_completion(request: ChatCompletionRequest, token: bool = Depends(verify_token)):
+async def create_chat_completion(
+    request: ChatCompletionRequest, token: bool = Depends(verify_token)
+):
     global model, tokenizer
 
     if request.messages[-1].role != "user":
@@ -129,8 +143,11 @@ async def create_chat_completion(request: ChatCompletionRequest, token: bool = D
     history = []
     if len(prev_messages) % 2 == 0:
         for i in range(0, len(prev_messages), 2):
-            if prev_messages[i].role == "user" and prev_messages[i+1].role == "assistant":
-                history.append([prev_messages[i].content, prev_messages[i+1].content])
+            if (
+                prev_messages[i].role == "user"
+                and prev_messages[i + 1].role == "assistant"
+            ):
+                history.append([prev_messages[i].content, prev_messages[i + 1].content])
 
     if request.stream:
         generate = predict(query, history, request.model)
@@ -140,21 +157,23 @@ async def create_chat_completion(request: ChatCompletionRequest, token: bool = D
     choice_data = ChatCompletionResponseChoice(
         index=0,
         message=ChatMessage(role="assistant", content=response),
-        finish_reason="stop"
+        finish_reason="stop",
     )
 
-    return ChatCompletionResponse(model=request.model, choices=[choice_data], object="chat.completion")
+    return ChatCompletionResponse(
+        model=request.model, choices=[choice_data], object="chat.completion"
+    )
 
 
 async def predict(query: str, history: List[List[str]], model_id: str):
     global model, tokenizer
 
     choice_data = ChatCompletionResponseStreamChoice(
-        index=0,
-        delta=DeltaMessage(role="assistant"),
-        finish_reason=None
+        index=0, delta=DeltaMessage(role="assistant"), finish_reason=None
     )
-    chunk = ChatCompletionResponse(model=model_id, choices=[choice_data], object="chat.completion.chunk")
+    chunk = ChatCompletionResponse(
+        model=model_id, choices=[choice_data], object="chat.completion.chunk"
+    )
     yield "{}".format(chunk.json(exclude_unset=True, ensure_ascii=False))
 
     current_length = 0
@@ -167,60 +186,58 @@ async def predict(query: str, history: List[List[str]], model_id: str):
         current_length = len(new_response)
 
         choice_data = ChatCompletionResponseStreamChoice(
-            index=0,
-            delta=DeltaMessage(content=new_text),
-            finish_reason=None
+            index=0, delta=DeltaMessage(content=new_text), finish_reason=None
         )
-        chunk = ChatCompletionResponse(model=model_id, choices=[choice_data], object="chat.completion.chunk")
+        chunk = ChatCompletionResponse(
+            model=model_id, choices=[choice_data], object="chat.completion.chunk"
+        )
         yield "{}".format(chunk.json(exclude_unset=True, ensure_ascii=False))
 
-
     choice_data = ChatCompletionResponseStreamChoice(
-        index=0,
-        delta=DeltaMessage(),
-        finish_reason="stop"
+        index=0, delta=DeltaMessage(), finish_reason="stop"
     )
-    chunk = ChatCompletionResponse(model=model_id, choices=[choice_data], object="chat.completion.chunk")
+    chunk = ChatCompletionResponse(
+        model=model_id, choices=[choice_data], object="chat.completion.chunk"
+    )
     yield "{}".format(chunk.json(exclude_unset=True, ensure_ascii=False))
     yield '[DONE]'
 
+
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
-async def get_embeddings(request: EmbeddingRequest, token: bool = Depends(verify_token)):
-    
-    
-    # 计算嵌入向量和tokens数量 
+async def get_embeddings(
+    request: EmbeddingRequest, token: bool = Depends(verify_token)
+):
+    # 计算嵌入向量和tokens数量
     embeddings = [embeddings_model.encode(text) for text in request.input]
 
-    # 如果嵌入向量的维度不为1536，则使用插值法扩展至1536维度 
-    embeddings = [expand_features(embedding, 1536) if len(embedding) < 1536 else embedding for embedding in embeddings]
+    # 如果嵌入向量的维度不为1536，则使用插值法扩展至1536维度
+    embeddings = [
+        expand_features(embedding, 1536) if len(embedding) < 1536 else embedding
+        for embedding in embeddings
+    ]
 
-    # Min-Max normalization
-    embeddings = [(embedding - np.min(embedding)) / (np.max(embedding) - np.min(embedding)) if np.max(embedding) != np.min(embedding) else embedding for embedding in embeddings]
+    # Min-Max normalization 归一化
+    embeddings = [embedding / np.linalg.norm(embedding) for embedding in embeddings]
 
     # 将numpy数组转换为列表
     embeddings = [embedding.tolist() for embedding in embeddings]
     prompt_tokens = sum(len(text.split()) for text in request.input)
     total_tokens = sum(num_tokens_from_string(text) for text in request.input)
 
-    
     response = {
         "data": [
-            {
-                "embedding": embedding,
-                "index": index,
-                "object": "embedding"
-            } for index, embedding in enumerate(embeddings)
+            {"embedding": embedding, "index": index, "object": "embedding"}
+            for index, embedding in enumerate(embeddings)
         ],
         "model": request.model,
         "object": "list",
         "usage": {
             "prompt_tokens": prompt_tokens,
             "total_tokens": total_tokens,
-        }
+        },
     }
-    
-    return response
 
+    return response
 
 
 if __name__ == "__main__":
@@ -231,13 +248,13 @@ if __name__ == "__main__":
     model_dict = {
         "4": "THUDM/chatglm2-6b-int4",
         "8": "THUDM/chatglm2-6b-int8",
-        "16": "THUDM/chatglm2-6b"
+        "16": "THUDM/chatglm2-6b",
     }
 
     model_name = model_dict.get(args.model_name, "THUDM/chatglm2-6b")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     model = AutoModel.from_pretrained(model_name, trust_remote_code=True).cuda()
-    embeddings_model = SentenceTransformer('moka-ai/m3e-large',device='cpu')
+    embeddings_model = SentenceTransformer('moka-ai/m3e-large', device='cpu')
 
     uvicorn.run(app, host='0.0.0.0', port=6006, workers=1)

@@ -18,6 +18,8 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
   <a href="https://github.com/labring/FastGPT#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">相关项目</a>
 </p>
 
+https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
+
 ## 🛸 在线体验
 
 [fastgpt.run](https://fastgpt.run/)（服务器在新加坡，部分地区可能无法直连）
@@ -31,26 +33,24 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 1. 强大的可视化编排，轻松构建 AI 应用
    - [x] 提供简易模式，无需操作编排
-   - [x] 用户对话前引导
-   - [x] 全局变量
+   - [x] 用户对话前引导, 全局字符串变量
    - [x] 知识库搜索
    - [x] 多 LLM 模型对话
    - [x] 文本内容提取成结构化数据
    - [x] HTTP 扩展
-   - [ ] 沙盒 JS 运行模块
+   - [ ] 嵌入 Laf，实现在线编写 HTTP 模块
    - [ ] 连续对话引导
    - [ ] 对话多路线选择
-   - [ ] 源文件引用追踪
+   - [x] 源文件引用追踪
+   - [ ] 自定义文件阅读器
 2. 丰富的知识库预处理
    - [x] 多库复用，混用
    - [x] chunk 记录修改和删除
-   - [x] 支持直接分段导入
-   - [x] 支持 QA 拆分导入
-   - [x] 支持手动输入内容
-   - [x] 支持 url 读取导入
-   - [x] 支持 CSV 批量导入问答对
+   - [x] 支持 手动输入, 直接分段, QA 拆分导入
+   - [x] 支持 url 读取、 CSV 批量导入
    - [x] 支持知识库单独设置向量模型
-   - [ ] 源文件存储
+   - [x] 源文件存储
+   - [ ] 文件学习 Agent
 3. 多种效果测试渠道
    - [x] 知识库单点搜索测试
    - [x] 对话时反馈引用并可修改与删除
@@ -76,10 +76,10 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
   由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
 
-* [快开始本地开发](https://doc.fastgpt.run/docs/development)
+* [快开始本地开发](https://doc.fastgpt.run/docs/development/intro/)
 * [部署 FastGPT](https://doc.fastgpt.run/docs/installation)
-* [系统配置文件说明](https://doc.fastgpt.run/docs/installation/reference)
-* [多模型配置](https://doc.fastgpt.run/docs/installation/reference/models)
+* [系统配置文件说明](https://doc.fastgpt.run/docs/development/configuration/)
+* [多模型配置](https://doc.fastgpt.run/docs/installation/one-api/)
 * [版本升级](https://doc.fastgpt.run/docs/installation/upgrading)
 * [API 文档](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh?pre_pathname=%2Fdrive%2Fhome%2F)
 
@@ -91,10 +91,9 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## 👀 其他
 
-- [FastGpt 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
+- [FastGPT 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
 - [docker 部署教程视频](https://www.bilibili.com/video/BV1jo4y147fT/)
-- [公众号接入视频教程](https://www.bilibili.com/video/BV1xh4y1t7fy/)
-- [FastGpt 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
+- [FastGPT 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
 
 ## 💪 相关项目
 
@@ -105,6 +104,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 
 ## 🤝 第三方生态
 
+- [OnWeChat 个人微信/企微机器人](https://doc.fastgpt.run/docs/use-cases/onwechat/)
 - [luolinAI: 企微机器人，开箱即用](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
 
 ## 🌟 Star History

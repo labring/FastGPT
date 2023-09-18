@@ -6,9 +6,9 @@ import type { KbUpdateParams } from '@/api/request/kb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { id, name, tags, avatar } = req.body as KbUpdateParams;
+    const { id, parentId, name, avatar, tags } = req.body as KbUpdateParams;
 
-    if (!id || !name) {
+    if (!id) {
       throw new Error('缺少参数');
     }
 
@@ -23,9 +23,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         userId
       },
       {
-        avatar,
-        name,
-        tags: tags.split(' ').filter((item) => item)
+        ...(parentId !== undefined && { parentId: parentId || null }),
+        ...(name && { name }),
+        ...(avatar && { avatar }),
+        ...(typeof tags === 'string' && {
+          tags: tags.split(' ').filter((item) => item)
+        })
       }
     );
 

@@ -4,7 +4,8 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import type { KbDataItemType } from '@/types/plugin';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
+import { OtherFileId } from '@/constants/kb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -12,12 +13,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       kbId,
       pageNum = 1,
       pageSize = 10,
-      searchText = ''
+      searchText = '',
+      fileId = ''
     } = req.body as {
       kbId: string;
       pageNum: number;
       pageSize: number;
       searchText: string;
+      fileId: string;
     };
     if (!kbId) {
       throw new Error('缺少参数');
@@ -33,6 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ['user_id', userId],
       'AND',
       ['kb_id', kbId],
+      ...(fileId
+        ? fileId === OtherFileId
+          ? ["AND (file_id IS NULL OR file_id = '')"]
+          : ['AND', ['file_id', fileId]]
+        : []),
       ...(searchText
         ? [
             'AND',
@@ -42,14 +50,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     ];
 
     const [searchRes, total] = await Promise.all([
-      PgClient.select<KbDataItemType>(PgTrainingTableName, {
-        fields: ['id', 'q', 'a', 'source'],
+      PgClient.select<KbDataItemType>(PgDatasetTableName, {
+        fields: ['id', 'q', 'a', 'source', 'file_id'],
         where,
         order: [{ field: 'id', mode: 'DESC' }],
         limit: pageSize,
         offset: pageSize * (pageNum - 1)
       }),
-      PgClient.count(PgTrainingTableName, {
+      PgClient.count(PgDatasetTableName, {
         fields: ['id'],
         where
       })

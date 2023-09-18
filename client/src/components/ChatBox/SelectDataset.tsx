@@ -12,7 +12,7 @@ import {
 import MyModal from '../MyModal';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 import { useToast } from '@/hooks/useToast';
 import Avatar from '../Avatar';
 import MyIcon from '@/components/Icon';
@@ -29,10 +29,10 @@ const SelectDataset = ({
   const theme = useTheme();
   const { isPc } = useGlobalStore();
   const { toast } = useToast();
-  const { myKbList, loadKbList } = useUserStore();
+  const { myKbList, loadKbList } = useDatasetStore();
   const [selectedId, setSelectedId] = useState<string>();
 
-  useQuery(['loadKbList'], loadKbList);
+  useQuery(['loadKbList'], () => loadKbList());
 
   return (
     <MyModal isOpen={true} onClose={onClose} w={'100%'} maxW={['90vw', '900px']} isCentered={!isPc}>

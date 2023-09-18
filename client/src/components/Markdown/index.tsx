@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
@@ -14,6 +14,7 @@ import CodeLight from './CodeLight';
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
 const MdImage = dynamic(() => import('./img/Image'));
 const ChatGuide = dynamic(() => import('./chat/Guide'));
+const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'));
 
 function Code({ inline, className, children }: any) {
   const match = /language-(\w+)/.exec(className || '');
@@ -26,7 +27,9 @@ function Code({ inline, className, children }: any) {
   if (codeType === 'guide') {
     return <ChatGuide text={String(children)} />;
   }
-
+  if (codeType === 'echarts') {
+    return <EChartsCodeBlock code={String(children)} />;
+  }
   return (
     <CodeLight className={className} inline={inline} match={match}>
       {children}

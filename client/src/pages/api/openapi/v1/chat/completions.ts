@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authApp, authShareChat, AuthUserTypeEnum } from '@/service/utils/auth';
+import { authUser, authApp } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { addLog, withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -28,6 +28,9 @@ import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { SystemInputEnum } from '@/constants/app';
+import { getSystemTime } from '@/utils/user';
+import { authOutLinkChat } from '@/service/support/outLink/auth';
+import requestIp from 'request-ip';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -76,28 +79,31 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!Array.isArray(messages)) {
       throw new Error('messages is not array');
     }
+    if (messages.length === 0) {
+      throw new Error('messages is empty');
+    }
 
     await connectToDatabase();
     let startTime = Date.now();
 
     /* user auth */
-    const {
+    let {
+      // @ts-ignore
+      responseDetail,
       user,
       userId,
       appId: authAppid,
       authType
     } = await (shareId
-      ? authShareChat({
-          shareId
+      ? authOutLinkChat({
+          shareId,
+          ip: requestIp.getClientIp(req)
         })
       : authUser({ req, authBalance: true }));
 
     if (!user) {
       throw new Error('Account is error');
     }
-    // if (authType === AuthUserTypeEnum.apikey || shareId) {
-    //   user.openaiAccount = undefined;
-    // }
 
     appId = appId ? appId : authAppid;
     if (!appId) {
@@ -110,13 +116,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId
       }),
-      getChatHistory({ chatId, userId })
+      getChatHistory({ chatId, appId, userId })
     ]);
 
     const isOwner = !shareId && userId === String(app.userId);
+    responseDetail = isOwner || responseDetail;
 
     const prompts = history.concat(gptMessage2ChatType(messages));
-    if (prompts[prompts.length - 1].obj === 'AI') {
+    if (prompts[prompts.length - 1]?.obj === 'AI') {
       prompts.pop();
     }
     // user question
@@ -159,7 +166,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId,
         variables,
-        isOwner,
+        isOwner, // owner update use time
         shareId,
         source: (() => {
           if (shareId) {
@@ -199,7 +206,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         data: '[DONE]'
       });
 
-      if (isOwner && detail) {
+      if (responseDetail && detail) {
         sseResponse({
           res,
           event: sseResponseEventEnum.appStreamResponse,
@@ -249,6 +256,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 });
 
+/* running */
 export async function dispatchModules({
   res,
   modules,
@@ -260,12 +268,16 @@ export async function dispatchModules({
 }: {
   res: NextApiResponse;
   modules: AppModuleItemType[];
-  user?: UserModelSchema;
+  user: UserModelSchema;
   params?: Record<string, any>;
   variables?: Record<string, any>;
   stream?: boolean;
   detail?: boolean;
 }) {
+  variables = {
+    ...getSystemVariable({ timezone: user.timezone }),
+    ...variables
+  };
   const runningModules = loadModules(modules, variables);
 
   // let storeData: Record<string, any> = {}; // after module used
@@ -390,6 +402,7 @@ export async function dispatchModules({
   };
 }
 
+/* init store modules to running modules */
 function loadModules(
   modules: AppModuleItemType[],
   variables: Record<string, any>
@@ -431,6 +444,7 @@ function loadModules(
   });
 }
 
+/* sse response modules staus */
 export function responseStatus({
   res,
   status,
@@ -449,6 +463,13 @@ export function responseStatus({
       name
     })
   });
+}
+
+/* get system variable */
+export function getSystemVariable({ timezone }: { timezone: string }) {
+  return {
+    cTime: getSystemTime(timezone)
+  };
 }
 
 export const config = {

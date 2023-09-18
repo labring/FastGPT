@@ -1,21 +1,12 @@
 import React, { useState } from 'react';
 import { Menu, MenuButton, MenuItem, MenuList, MenuButtonProps } from '@chakra-ui/react';
-import { getLangStore, LangEnum, setLangStore } from '@/utils/i18n';
+import { getLangStore, LangEnum, setLangStore, langMap } from '@/utils/i18n';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
-
-const langMap = {
-  [LangEnum.en]: {
-    label: 'English',
-    icon: 'language_en'
-  },
-  [LangEnum.zh]: {
-    label: '简体中文',
-    icon: 'language_zh'
-  }
-};
+import { useRouter } from 'next/router';
 
 const Language = (props: MenuButtonProps) => {
+  const router = useRouter();
   const { i18n } = useTranslation();
 
   const [language, setLanguage] = useState<`${LangEnum}`>(getLangStore());
@@ -43,6 +34,7 @@ const Language = (props: MenuButtonProps) => {
               setLangStore(lang);
               setLanguage(lang);
               i18n?.changeLanguage?.(lang);
+              router.reload();
             }}
           >
             {lang.label}

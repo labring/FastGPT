@@ -1,15 +1,12 @@
 import type { NextApiResponse } from 'next';
 import { sseResponse } from '@/service/utils/tools';
-import { OpenAiChatEnum } from '@/constants/model';
-import { adaptChatItem_openAI, countOpenAIToken } from '@/utils/plugin/openai';
-import { modelToolMap } from '@/utils/plugin';
-import { ChatContextFilter } from '@/service/utils/chat/index';
+import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { SSEParseData, parseStreamChunk } from '@/utils/sse';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/events/pushBill';
@@ -18,6 +15,8 @@ import { UserModelSchema } from '@/types/mongoSchema';
 import { textCensor } from '@/api/service/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { AppModuleItemType } from '@/types/app';
+import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 
 export type ChatProps = {
   res: NextApiResponse;
@@ -99,7 +98,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   });
   // console.log(messages);
 
-  // FastGpt temperature range: 1~10
+  // FastGPT temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
   const chatAPI = getAIChatApi(userOpenaiAccount);
@@ -120,12 +119,10 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
           : []),
         ...messages
       ],
-      // frequency_penalty: 0.5, // 越大，重复内容越少
-      // presence_penalty: -0.5, // 越大，越容易出现新内容
       stream
     },
     {
-      timeout: stream ? 60000 : 480000,
+      timeout: 480000,
       responseType: stream ? 'stream' : 'json',
       ...axiosConfig(userOpenaiAccount)
     }
@@ -145,7 +142,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
         value: answer
       });
 
-      const totalTokens = countOpenAIToken({
+      const totalTokens = countMessagesTokens({
         messages: completeMessages
       });
 
@@ -157,8 +154,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
         completeMessages
       };
     } else {
-      const answer = stream ? '' : response.data.choices?.[0].message?.content || '';
-      const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
+      const answer = response.data.choices?.[0].message?.content || '';
+      const totalTokens = response.data.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({
         obj: ChatRoleEnum.AI,
@@ -197,9 +194,8 @@ function filterQuote({
   quoteQA: ChatProps['quoteQA'];
   model: ChatModelItemType;
 }) {
-  const sliceResult = modelToolMap.tokenSlice({
-    model: model.model,
-    maxToken: model.quoteMaxToken,
+  const sliceResult = sliceMessagesTB({
+    maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item) => ({
       obj: ChatRoleEnum.System,
       value: item.a ? `${item.q}\n${item.a}` : item.q
@@ -241,25 +237,16 @@ function getChatMessages({
   model: ChatModelItemType;
   hasQuoteOutput: boolean;
 }) {
-  const limitText = (() => {
-    if (!quotePrompt) {
-      return limitPrompt;
-    }
-    const defaultPrompt = `三引号引用的内容是我提供给你的知识，它们拥有最高优先级。instruction 是相关介绍${
-      hasQuoteOutput ? '，output 是预期回答或补充' : ''
-    }，使用引用内容来回答我下面的问题。`;
-    if (limitPrompt) {
-      return `${defaultPrompt}${limitPrompt}`;
-    }
-    return `${defaultPrompt}\n回答内容限制：你仅回答三引号中提及的内容，下面我提出的问题与引用内容无关时，你可以直接回复: "你的问题没有在知识库中体现"`;
-  })();
+  const { quoteGuidePrompt } = getDefaultPrompt({ hasQuoteOutput });
+
+  const systemText = `${quotePrompt ? `${quoteGuidePrompt}\n\n` : ''}${systemPrompt}`;
 
   const messages: ChatItemType[] = [
-    ...(systemPrompt
+    ...(systemText
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: systemPrompt
+            value: systemText
           }
         ]
       : []),
@@ -272,11 +259,11 @@ function getChatMessages({
         ]
       : []),
     ...history,
-    ...(limitText
+    ...(limitPrompt
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: limitText
+            value: limitPrompt
           }
         ]
       : []),
@@ -287,12 +274,11 @@ function getChatMessages({
   ];
 
   const filterMessages = ChatContextFilter({
-    model: model.model,
-    prompts: messages,
+    messages,
     maxTokens: Math.ceil(model.contextMaxToken - 300) // filter token. not response maxToken
   });
 
-  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
+  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   return {
     messages: adaptMessages,
@@ -311,8 +297,7 @@ function getMaxTokens({
   const tokensLimit = model.contextMaxToken;
   /* count response max token */
 
-  const promptsToken = modelToolMap.countTokens({
-    model: model.model,
+  const promptsToken = countMessagesTokens({
     messages: filterMessages
   });
   maxToken = maxToken + promptsToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
@@ -383,11 +368,18 @@ async function streamResponse({
   }
 
   if (error) {
-    console.log(error);
     return Promise.reject(error);
   }
 
   return {
     answer
+  };
+}
+
+function getDefaultPrompt({ hasQuoteOutput }: { hasQuoteOutput?: boolean }) {
+  return {
+    quoteGuidePrompt: `三引号引用的内容是我提供给你的知识库，它们拥有最高优先级。instruction 是相关介绍${
+      hasQuoteOutput ? '，output 是预期回答或补充。' : '。'
+    }`
   };
 }

@@ -65,13 +65,15 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           status: 'success'
         });
         // auto register template app
-        appTemplates.forEach((template) => {
-          postCreateApp({
-            avatar: template.avatar,
-            name: template.name,
-            modules: template.modules
+        setTimeout(() => {
+          appTemplates.forEach((template) => {
+            postCreateApp({
+              avatar: template.avatar,
+              name: template.name,
+              modules: template.modules
+            });
           });
-        });
+        }, 100);
       } catch (error: any) {
         toast({
           title: error.message || '注册异常',

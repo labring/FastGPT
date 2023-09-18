@@ -44,7 +44,7 @@ export const jsonRes = <T = any>(
     if (typeof error === 'string') {
       msg = error;
     } else if (proxyError[error?.code]) {
-      msg = '接口连接异常';
+      msg = '网络连接异常';
     } else if (error?.response?.data?.error?.message) {
       msg = error?.response?.data?.error?.message;
     } else if (openaiAccountError[error?.response?.data?.error?.code]) {
@@ -53,23 +53,7 @@ export const jsonRes = <T = any>(
       msg = openaiError[error.response.statusText];
     }
 
-    addLog.error(msg, {
-      message: msg,
-      stack: error?.stack,
-      ...(error?.config && {
-        config: {
-          headers: error.config.headers,
-          url: error.config.url,
-          data: error.config.data
-        }
-      }),
-      ...(error?.response && {
-        response: {
-          status: error.response.status,
-          statusText: error.response.statusText
-        }
-      })
-    });
+    addLog.error(`response error: ${msg}`, error);
   }
 
   res.status(code).json({
@@ -101,7 +85,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   if (typeof error === 'string') {
     msg = error;
   } else if (proxyError[error?.code]) {
-    msg = '接口连接异常';
+    msg = '网络连接异常';
   } else if (error?.response?.data?.error?.message) {
     msg = error?.response?.data?.error?.message;
   } else if (openaiAccountError[error?.response?.data?.error?.code]) {
@@ -110,23 +94,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     msg = openaiError[error.response.statusText];
   }
 
-  addLog.error(`sse error: ${msg}`, {
-    message: msg,
-    stack: error?.stack,
-    ...(error?.config && {
-      config: {
-        headers: error.config.headers,
-        url: error.config.url,
-        data: error.config.data
-      }
-    }),
-    ...(error?.response && {
-      response: {
-        status: error.response.status,
-        statusText: error.response.statusText
-      }
-    })
-  });
+  addLog.error(`sse error: ${msg}`, error);
 
   sseResponse({
     res,

@@ -7,4 +7,4 @@ export const TrainingTypeMap = {
   [TrainingModeEnum.index]: 'index'
 };
 
-export const PgTrainingTableName = 'modeldata';
+export const PgDatasetTableName = 'modeldata';

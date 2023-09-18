@@ -42,6 +42,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     /* user auth */
     const { userId, user } = await authUser({ req, authBalance: true });
 
+    if (!user) {
+      throw new Error('user not found');
+    }
+
     /* start process */
     const { responseData } = await dispatchModules({
       res,

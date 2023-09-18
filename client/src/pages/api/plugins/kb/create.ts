@@ -6,11 +6,7 @@ import type { CreateKbParams } from '@/api/request/kb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { name, tags, avatar, vectorModel } = req.body as CreateKbParams;
-
-    if (!name || !vectorModel) {
-      throw new Error('缺少参数');
-    }
+    const { name, tags, avatar, vectorModel, parentId, type } = req.body as CreateKbParams;
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
@@ -22,7 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userId,
       tags,
       vectorModel,
-      avatar
+      avatar,
+      parentId: parentId || null,
+      type
     });
 
     jsonRes(res, { data: _id });

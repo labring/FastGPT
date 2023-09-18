@@ -11,7 +11,7 @@
                 {{- if eq .Title .Site.Title }}
                     {{- .Title }}
                 {{- else }}
-                    {{ .Site.Params.docs.Title | default (.Site.Title) }} | {{ .Title }}
+                    {{- .Title }} | {{ .Site.Params.docs.Title | default (.Site.Title) }}
                 {{- end }}
             {{- end }}
         {{- end -}}
@@ -20,7 +20,9 @@
     <meta name="robots" content="noindex">
     {{- end }}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A Modern Documentation Theme for Hugo" />
+    {{- with .Description | default ($.Param "description") }}
+    <meta name="description" content="{{ . }}">
+    {{- end }}
     <meta name="keywords" content="Documentation, Hugo, Hugo Theme, Bootstrap" />
     <meta name="author" content="Colin Wilson - Lotus Labs" />
     <meta name="email" content="support@aigis.uk" />
@@ -59,6 +61,35 @@
         {{- $style = $style | minify | fingerprint "sha384" }}
     {{- end -}}
     <link rel="stylesheet" href="{{ $style.RelPermalink }}" {{ if hugo.IsProduction }}integrity="{{ $style.Data.Integrity }}"{{ end -}} crossorigin="anonymous">
+    <!-- Katex CSS -->
+    {{- if .Params.katex -}}
+    {{- $options := dict "enableSourceMap" true }}
+    {{- if hugo.IsProduction}}
+        {{- $options := dict "enableSourceMap" false "outputStyle" "compressed" }}
+    {{- end -}}
+    {{- $katexCSS := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/katex.scss") }}
+    {{- $katexCSS = $katexCSS | resources.ExecuteAsTemplate (printf "/%s/%s" ($.Scratch.Get "pathName") "scss/katex.scss") . | resources.ToCSS $options }}
+    {{- if hugo.IsProduction }}
+        {{- $katexCSS = $katexCSS | minify | fingerprint "sha384" }}
+    {{- end -}}
+    <link rel="stylesheet" href="{{ $katexCSS.RelPermalink }}" {{ if hugo.IsProduction }}integrity="{{ $katexCSS.Data.Integrity }}"{{ end -}} crossorigin="anonymous">
+    {{- end -}}
+    <!-- Katex JS -->
+    {{- if .Params.katex -}}
+    {{ $katex := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/katex.js") }}
+    {{ $katexAutoRender := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/auto-render.js") }}
+    {{ if hugo.IsProduction }}
+        {{ $katex = $katex | minify | fingerprint "sha384" }}
+        {{ $katexAutoRender = $katexAutoRender | minify | fingerprint "sha384" }}
+    {{- end -}}
+    <script src="{{ $katex.RelPermalink }}" {{ if hugo.IsProduction }}integrity="{{ $katex.Data.Integrity }}"{{ end -}} defer></script>
+    <script src="{{ $katexAutoRender.RelPermalink }}" {{ if hugo.IsProduction }}integrity="{{ $katexAutoRender.Data.Integrity }}"{{ end -}} defer></script>
+    {{ end -}}
+
+    <!-- Katex Config -->
+    {{ if .Params.katex }}
+        {{- partialCached (printf "%s/%s" ($.Scratch.Get "pathName") "footer/katex.html") . -}}
+    {{ end }}
     <!-- Plausible Analytics Config -->
     {{- if not .Site.IsServer }}
     {{ if and (.Site.Params.plausible.scriptURL | default "https://plausible.io") (.Site.Params.plausible.dataDomain) -}}

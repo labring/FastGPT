@@ -2,6 +2,7 @@ import { Box, Image, BoxProps, Grid, useTheme } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { feConfigs } from '@/store/static';
+import { MyImage } from '@/components/MyImage';
 
 const Ability = () => {
   const theme = useTheme();
@@ -48,13 +49,7 @@ const Ability = () => {
           <Box {...DescStyles} color={'rgba(255,255,255,0.9)'}>
             {t('home.AI Assistant Desc')}
           </Box>
-          <Image
-            src="/imgs/home/ai_assiatant.png"
-            alt={''}
-            w={'100%'}
-            borderRadius={'lg'}
-            transform={'translateX(20px)'}
-          />
+          <MyImage src="/imgs/home/ai_assiatant.png" alt={''} transform={'translateX(20px)'} />
         </Box>
         <Box
           {...CardStyles}
@@ -67,13 +62,7 @@ const Ability = () => {
           <Box {...DescStyles} color={'rgba(255,255,255,0.9)'}>
             {t('home.Dateset Desc')}
           </Box>
-          <Image
-            src="/imgs/home/dataset_import.png"
-            alt={''}
-            w={'90%'}
-            mx={'auto'}
-            borderRadius={'lg'}
-          />
+          <MyImage src="/imgs/home/dataset_import.png" w={'90%'} mx={'auto'} borderRadius={'lg'} />
         </Box>
       </Grid>
       <Grid
@@ -88,7 +77,7 @@ const Ability = () => {
           <Box {...DescStyles} fontSize={['sm', 'md']}>
             {t('home.Advanced Settings Desc')}
           </Box>
-          <Image src="/imgs/home/advanced_settings.png" alt={''} w={'100%'} />
+          <MyImage src="/imgs/home/advanced_settings.png" alt={''} w={'100%'} />
         </Box>
         <Box
           {...CardStyles}
@@ -97,7 +86,13 @@ const Ability = () => {
         >
           <Box {...TitleStyles}>{t('home.OpenAPI')}</Box>
           <Box {...DescStyles}>{t('home.OpenAPI Desc')}</Box>
-          <Image src="/imgs/home/openapi.png" alt={''} w={'90%'} mx={'auto'} borderRadius={'lg'} />
+          <MyImage
+            src="/imgs/home/openapi.png"
+            alt={''}
+            w={'90%'}
+            mx={'auto'}
+            borderRadius={'lg'}
+          />
         </Box>
       </Grid>
     </Box>

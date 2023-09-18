@@ -19,26 +19,30 @@ const Navbar = () => {
   } = useDisclosure();
   const { isOpen: isOpenMenu, onOpen: onOpenMenu, onClose: onCloseMenu } = useDisclosure();
   const { isPc } = useGlobalStore();
-  const menuList = useMemo(
-    () => [
-      // { label: t('home.Features'), key: 'features', onClick: () => {} },
-      {
-        label: t('home.Community'),
-        key: 'community',
-        onClick: () => {
-          onOpenCommunity();
-        }
-      },
-      {
-        label: t('home.Docs'),
-        key: 'docs',
-        onClick: () => {
-          window.open('https://doc.fastgpt.run/docs/intro');
-        }
-      }
-    ],
-    [onOpenCommunity, t]
-  );
+  const menuList = [
+    ...(feConfigs?.show_contact
+      ? [
+          {
+            label: t('home.Community'),
+            key: 'community',
+            onClick: () => {
+              onOpenCommunity();
+            }
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_doc
+      ? [
+          {
+            label: t('home.Docs'),
+            key: 'docs',
+            onClick: () => {
+              window.open('https://doc.fastgpt.run/docs/intro');
+            }
+          }
+        ]
+      : [])
+  ];
   const bgOpacity = useMemo(() => {
     const rate = scrollTop / 120;
     if (rate > 0.7) {

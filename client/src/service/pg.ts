@@ -1,6 +1,8 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
+import { addLog } from './utils/tools';
+import { DatasetItemType } from '@/types/plugin';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -11,6 +13,7 @@ export const connectPg = async (): Promise<Pool> => {
     connectionString: process.env.PG_URL,
     max: Number(process.env.DB_MAX_LINK || 5),
     keepAlive: true,
+    idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000
   });
 
@@ -43,7 +46,7 @@ type DeleteProps = {
   where: WhereProps;
 };
 
-type ValuesProps = { key: string; value: string | number }[];
+type ValuesProps = { key: string; value?: string | number }[];
 type UpdateProps = {
   values: ValuesProps;
   where: WhereProps;
@@ -105,6 +108,7 @@ class Pg {
       }
       LIMIT ${props.limit || 10} OFFSET ${props.offset || 0}
     `;
+
     const pg = await connectPg();
     return pg.query<T>(sql);
   }
@@ -166,21 +170,44 @@ export const insertKbItem = ({
 }: {
   userId: string;
   kbId: string;
-  data: {
+  data: (DatasetItemType & {
     vector: number[];
-    q: string;
-    a: string;
-    source?: string;
-  }[];
+  })[];
 }) => {
-  return PgClient.insert(PgTrainingTableName, {
+  return PgClient.insert(PgDatasetTableName, {
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
       { key: 'source', value: item.source?.slice(0, 30)?.trim() || '' },
+      { key: 'file_id', value: item.file_id || '' },
       { key: 'q', value: item.q.replace(/'/g, '"') },
       { key: 'a', value: item.a.replace(/'/g, '"') },
       { key: 'vector', value: `[${item.vector}]` }
     ])
   });
 };
+
+export async function initPg() {
+  try {
+    await connectPg();
+    await PgClient.query(`
+      CREATE EXTENSION IF NOT EXISTS vector;
+      CREATE TABLE IF NOT EXISTS ${PgDatasetTableName} (
+          id BIGSERIAL PRIMARY KEY,
+          vector VECTOR(1536) NOT NULL,
+          user_id VARCHAR(50) NOT NULL,
+          kb_id VARCHAR(50),
+          source VARCHAR(100),
+          file_id VARCHAR(100),
+          q TEXT NOT NULL,
+          a TEXT
+      );
+      CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgDatasetTableName} USING HASH (user_id);
+      CREATE INDEX IF NOT EXISTS modelData_kbId_index ON ${PgDatasetTableName} USING HASH (kb_id);
+      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON ${PgDatasetTableName} (md5(q), md5(a), user_id, kb_id);
+    `);
+    console.log('init pg successful');
+  } catch (error) {
+    addLog.error('init pg error', error);
+  }
+}

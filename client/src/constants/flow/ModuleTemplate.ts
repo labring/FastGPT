@@ -20,7 +20,7 @@ import { ContextExtractEnum, HttpPropsEnum } from './flowField';
 export const ChatModelSystemTip =
   '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}';
 export const ChatModelLimitTip =
-  '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"';
+  '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。不建议内容太长，会影响上下文，可使用变量，例如 {{language}}。可在文档中找到对应的限定例子';
 export const userGuideTip = '可以添加特殊的对话前后引导模块，更好的让用户进行对话';
 export const welcomeTextTip =
   '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
@@ -156,6 +156,7 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
       label: '系统提示词',
+      max: 300,
       valueType: FlowValueTypeEnum.string,
       description: ChatModelSystemTip,
       placeholder: ChatModelSystemTip,
@@ -166,6 +167,7 @@ export const ChatModule: FlowModuleTemplateType = {
       type: FlowInputItemTypeEnum.textarea,
       valueType: FlowValueTypeEnum.string,
       label: '限定词',
+      max: 500,
       description: ChatModelLimitTip,
       placeholder: ChatModelLimitTip,
       value: ''
@@ -175,6 +177,7 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'quoteQA',
       type: FlowInputItemTypeEnum.target,
       label: '引用内容',
+      description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
       valueType: FlowValueTypeEnum.kbQuote
     },
     Input_Template_History,
@@ -666,6 +669,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'textarea',
             valueType: 'string',
             label: '限定词',
+            max: 500,
             description:
               '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
             placeholder:

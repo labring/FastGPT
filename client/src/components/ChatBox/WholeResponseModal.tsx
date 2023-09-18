@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, ModalBody, useTheme, ModalHeader, Flex } from '@chakra-ui/react';
+import { Box, ModalBody, useTheme, Flex } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { useTranslation } from 'react-i18next';
 

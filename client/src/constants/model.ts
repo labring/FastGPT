@@ -1,12 +1,5 @@
-import type { ShareChatEditType } from '@/types/app';
 import type { AppSchema } from '@/types/mongoSchema';
-
-export enum OpenAiChatEnum {
-  'GPT35' = 'gpt-3.5-turbo',
-  'GPT3516k' = 'gpt-3.5-turbo-16k',
-  'FastAI-Plus' = 'gpt-4',
-  'FastAI-Plus32k' = 'gpt-4-32k'
-}
+import type { OutLinkEditType } from '@/types/support/outLink';
 
 export const defaultApp: AppSchema = {
   _id: '',
@@ -24,6 +17,11 @@ export const defaultApp: AppSchema = {
   modules: []
 };
 
-export const defaultShareChat: ShareChatEditType = {
-  name: ''
+export const defaultOutLinkForm: OutLinkEditType = {
+  name: '',
+  responseDetail: false,
+  limit: {
+    QPM: 100,
+    credit: -1
+  }
 };

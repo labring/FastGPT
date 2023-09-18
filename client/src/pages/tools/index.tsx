@@ -34,11 +34,15 @@ const Tools = () => {
           }
         ]
       : []),
-    {
-      icon: 'courseLight',
-      label: '使用文档',
-      link: 'https://doc.fastgpt.run/docs/intro'
-    }
+    ...(feConfigs?.show_doc
+      ? [
+          {
+            icon: 'courseLight',
+            label: '使用文档',
+            link: 'https://doc.fastgpt.run/docs/intro'
+          }
+        ]
+      : [])
   ];
 
   return (

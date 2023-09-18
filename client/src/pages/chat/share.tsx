@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { initShareChatInfo } from '@/api/chat';
+import { initShareChatInfo } from '@/api/support/outLink';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
@@ -64,6 +64,7 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
         status: 'finish'
       }));
       result[1].value = responseText;
+      result[1].responseData = responseData;
 
       /* save chat */
       saveChatResponse({
@@ -226,6 +227,7 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
               userAvatar={shareChatData.userAvatar}
               variableModules={shareChatData.app.variableModules}
               welcomeText={shareChatData.app.welcomeText}
+              feedbackType={'user'}
               onUpdateVariable={(e) => {
                 setShareChatData((state) => ({
                   ...state,

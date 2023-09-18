@@ -1,8 +1,8 @@
-import { adaptChatItem_openAI } from '@/utils/plugin/openai';
-import { ChatContextFilter } from '@/service/utils/chat/index';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
 import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getAIChatApi, axiosConfig } from '@/service/ai/openai';
+import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { countModelPrice } from '@/service/events/pushBill';
 import { UserModelSchema } from '@/types/mongoSchema';
@@ -50,11 +50,10 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
     }
   ];
   const filterMessages = ChatContextFilter({
-    model: agentModel,
-    prompts: messages,
+    messages,
     maxTokens
   });
-  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
+  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   //   function body
   const agentFunction = {
