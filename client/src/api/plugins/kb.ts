@@ -13,6 +13,8 @@ import { Props as UpdateDataProps } from '@/pages/api/openapi/kb/updateData';
 import type { KbUpdateParams, CreateKbParams, GetKbDataListProps } from '../request/kb';
 import { QuoteItemType } from '@/types/chat';
 import { KbTypeEnum } from '@/constants/kb';
+import { getToken } from '@/utils/user';
+import download from 'downloadjs';
 
 /* knowledge base */
 export const getKbList = (data: { parentId?: string; type?: `${KbTypeEnum}` }) =>
@@ -35,12 +37,23 @@ export const getKbDataList = (data: GetKbDataListProps) =>
   POST(`/plugins/kb/data/getDataList`, data);
 
 /**
- * 获取导出数据（不分页）
+ * export and download data
  */
-export const getExportDataList = (data: { kbId: string }) =>
-  GET<[string, string, string][]>(`/plugins/kb/data/exportModelData`, data, {
-    timeout: 600000
-  });
+export const exportDataset = (data: { kbId: string }) =>
+  fetch(`/api/plugins/kb/data/exportAll?kbId=${data.kbId}`, {
+    method: 'GET',
+    headers: {
+      token: getToken()
+    }
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data?.message || 'Export failed');
+      }
+      return res.blob();
+    })
+    .then((blob) => download(blob, 'dataset.csv', 'text/csv'));
 
 /**
  * 获取模型正在拆分数据的数量

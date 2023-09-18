@@ -217,7 +217,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
                     />
                   </Flex>
                   <Box px={4} fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
-                    {`q: ${item.q}\na: ${item.a}`}
+                    {`${item.q}\n${item.a}`}
                   </Box>
                 </Box>
               ))

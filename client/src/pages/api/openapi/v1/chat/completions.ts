@@ -116,7 +116,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId
       }),
-      getChatHistory({ chatId, userId })
+      getChatHistory({ chatId, appId, userId })
     ]);
 
     const isOwner = !shareId && userId === String(app.userId);

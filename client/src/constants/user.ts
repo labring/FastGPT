@@ -14,7 +14,7 @@ export enum PageTypeEnum {
 }
 
 export const BillSourceMap: Record<`${BillSourceEnum}`, string> = {
-  [BillSourceEnum.fastgpt]: 'FastGPT 平台',
+  [BillSourceEnum.fastgpt]: '在线使用',
   [BillSourceEnum.api]: 'Api',
   [BillSourceEnum.shareLink]: '免登录链接'
 };

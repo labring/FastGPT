@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 import type { ChatItemType } from '@/types/chat';
 
 export type Props = {
+  appId?: string;
   chatId?: string;
   limit?: number;
 };
@@ -36,9 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 export async function getChatHistory({
   chatId,
   userId,
+  appId,
   limit = 30
 }: Props & { userId: string }): Promise<Response> {
-  if (!chatId) {
+  if (!chatId || !appId) {
     return { history: [] };
   }
 
@@ -46,6 +48,7 @@ export async function getChatHistory({
     {
       $match: {
         chatId,
+        appId: new Types.ObjectId(appId),
         userId: new Types.ObjectId(userId)
       }
     },

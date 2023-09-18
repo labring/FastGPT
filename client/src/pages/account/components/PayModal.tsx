@@ -6,8 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { getErrText } from '@/utils/tools';
 import { useTranslation } from 'react-i18next';
+import { formatPrice } from '@/utils/user';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
+import { vectorModelList, chatModelList, qaModel } from '@/store/static';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
@@ -69,6 +71,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
         onClose();
       }}
       title={t('user.Pay')}
+      isCentered
       showCloseBtn={!payId}
     >
       <ModalBody py={0}>
@@ -100,11 +103,13 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
               source={`
 | 计费项 | 价格: 元/ 1K tokens(包含上下文)|
 | --- | --- |
-| 知识库 - 索引 | 0.002 |
-| FastAI4k - 对话 | 0.015 |
-| FastAI16k - 对话 | 0.03 |
-| FastAI-Plus - 对话 | 0.45 |
-| 文件QA拆分 | 0.03 |`}
+${vectorModelList
+  .map((item) => `| 索引-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+${chatModelList
+  .map((item) => `| 对话-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+| 文件QA拆分 | ${formatPrice(qaModel.price, 1000)} |`}
             />
           </>
         )}
