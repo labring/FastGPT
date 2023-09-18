@@ -633,7 +633,6 @@ const AppEdit = ({ app, onCloseSettings }: Props) => {
                 });
               }}
             >
-              {' '}
               <Icon as={RepeatIcon} />
             </button>
           </Controls>

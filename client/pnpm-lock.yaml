@@ -4375,15 +4375,6 @@ packages:
       kuler: registry.npmmirror.com/kuler@2.0.0
     dev: false
 
-<<<<<<< HEAD
-  registry.npmmirror.com/@dqbd/tiktoken@1.0.7:
-    resolution: {integrity: sha512-bhR5k5W+8GLzysjk8zTMVygQZsgvf7W1F0IlL4ZQ5ugjo5rCyiwGM5d8DYriXspytfu98tv59niang3/T+FoDw==, registry: https://registry.npmjs.org/, tarball: https://registry.npmmirror.com/@dqbd/tiktoken/-/tiktoken-1.0.7.tgz}
-    name: '@dqbd/tiktoken'
-    version: 1.0.7
-    dev: false
-
-=======
->>>>>>> b8ea546b3fd27ac104b04ba96c05198f254ff3ad
   registry.npmmirror.com/@emotion/babel-plugin@11.11.0:
     resolution: {integrity: sha512-m4HEDZleaaCH+XgDDsPF15Ht6wTLsgDTeR3WYj9Q/k76JtWhrJjcP4+/XlG8LGT/Rol9qUfOIztXeA84ATpqPQ==, registry: https://registry.npmjs.org/, tarball: https://registry.npmmirror.com/@emotion/babel-plugin/-/babel-plugin-11.11.0.tgz}
     name: '@emotion/babel-plugin'
