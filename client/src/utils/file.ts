@@ -135,13 +135,13 @@ export const readDocContent = (file: File) =>
 export const readCsvContent = async (file: File) => {
   try {
     const textArr = await readTxtContent(file);
-    const json = Papa.parse(textArr).data as string[][];
-    if (json.length === 0) {
+    const csvArr = Papa.parse(textArr).data as string[][];
+    if (csvArr.length === 0) {
       throw new Error('csv 解析失败');
     }
     return {
-      header: json.shift()?.filter((item) => item) as string[],
-      data: json.map((item) => item?.filter((item) => item))
+      header: csvArr.shift() as string[],
+      data: csvArr.map((item) => item)
     };
   } catch (error) {
     return Promise.reject('解析 csv 文件失败');

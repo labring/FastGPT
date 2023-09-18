@@ -182,7 +182,8 @@ export const ChatModule: FlowModuleTemplateType = {
       type: FlowInputItemTypeEnum.custom,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-      valueType: FlowValueTypeEnum.kbQuote
+      valueType: FlowValueTypeEnum.kbQuote,
+      connected: false
     },
     Input_Template_History,
     Input_Template_UserChatInput
