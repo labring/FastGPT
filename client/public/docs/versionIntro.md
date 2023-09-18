@@ -6,4 +6,4 @@
 4. 优化 - icon 和 JS 加载逻辑。
 5. [使用文档](https://doc.fastgpt.run/docs/intro/)
 6. [点击查看高级编排介绍文档](https://doc.fastgpt.run/docs/workflow)
-7. [点击查看商业版](https://fael3z0zfze.feishu.cn/docx/F155dbirfo8vDDx2WgWc6extnwf)
+7. [点击查看商业版](https://doc.fastgpt.run/docs/commercial/)
