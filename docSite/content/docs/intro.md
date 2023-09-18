@@ -78,7 +78,7 @@ FastGPT 对外的 API 接口对齐了 OpenAI 官方接口，可以直接接入�
 
 ## 知识库核心流程图
 
-![](/imgs/KBProcess.jpg)
+![](/imgs/functional-arch.webp)
 
 ## 免责声明
 
