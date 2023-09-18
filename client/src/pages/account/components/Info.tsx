@@ -251,7 +251,7 @@ const UserInfo = () => {
             </Flex>
           </>
         )}
-        {feConfigs?.show_userDetail && (
+        {feConfigs?.show_openai_account && (
           <>
             <Divider my={3} />
 

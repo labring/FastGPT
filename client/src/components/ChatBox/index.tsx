@@ -452,28 +452,21 @@ const ChatBox = (
     border: theme.borders.base,
     mr: 3
   };
-  const controlContainerStyle = useCallback((status: ChatSiteItemType['status']) => {
-    return {
-      className: 'control',
-      color: 'myGray.400',
-      display:
-        status === 'finish'
-          ? feedbackType === FeedbackTypeEnum.admin
-            ? 'flex'
-            : ['flex', 'none']
-          : 'none',
-      pl: 1,
-      mt: 2
-    };
-  }, []);
+  const controlContainerStyle = {
+    className: 'control',
+    color: 'myGray.400',
+    display: 'flex',
+    pl: 1,
+    mt: 2
+  };
   const MessageCardStyle: BoxProps = {
     px: 4,
     py: 3,
     borderRadius: '0 8px 8px 8px',
-    boxShadow: '0 0 8px rgba(0,0,0,0.15)'
+    boxShadow: '0 0 8px rgba(0,0,0,0.15)',
+    display: 'inline-block',
+    maxW: ['calc(100% - 25px)', 'calc(100% - 40px)']
   };
-
-  const messageCardMaxW = ['calc(100% - 25px)', 'calc(100% - 40px)'];
 
   const showEmpty = useMemo(
     () =>
@@ -542,84 +535,80 @@ const ChatBox = (
           {showEmpty && <Empty />}
 
           {!!welcomeText && (
-            <Flex flexDirection={'column'} alignItems={'flex-start'} py={2}>
+            <Box py={3}>
               {/* avatar */}
               <ChatAvatar src={appAvatar} type={'AI'} />
               {/* message */}
-              <Card order={2} mt={2} {...MessageCardStyle} bg={'white'} maxW={messageCardMaxW}>
-                <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
-              </Card>
-            </Flex>
+              <Box textAlign={'left'}>
+                <Card order={2} mt={2} {...MessageCardStyle} bg={'white'}>
+                  <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
+                </Card>
+              </Box>
+            </Box>
           )}
           {/* variable input */}
           {!!variableModules?.length && (
-            <Flex flexDirection={'column'} alignItems={'flex-start'} py={2}>
+            <Box py={3}>
               {/* avatar */}
               <ChatAvatar src={appAvatar} type={'AI'} />
               {/* message */}
-              <Card
-                order={2}
-                mt={2}
-                bg={'white'}
-                w={'400px'}
-                maxW={messageCardMaxW}
-                {...MessageCardStyle}
-              >
-                {variableModules.map((item) => (
-                  <Box key={item.id} mb={4}>
-                    <VariableLabel required={item.required}>{item.label}</VariableLabel>
-                    {item.type === VariableInputEnum.input && (
-                      <Input
-                        isDisabled={variableIsFinish}
-                        {...register(item.key, {
-                          required: item.required
-                        })}
-                      />
-                    )}
-                    {item.type === VariableInputEnum.select && (
-                      <MySelect
-                        width={'100%'}
-                        isDisabled={variableIsFinish}
-                        list={(item.enums || []).map((item) => ({
-                          label: item.value,
-                          value: item.value
-                        }))}
-                        {...register(item.key, {
-                          required: item.required
-                        })}
-                        value={getValues(item.key)}
-                        onchange={(e) => {
-                          setValue(item.key, e);
-                          setRefresh(!refresh);
-                        }}
-                      />
-                    )}
-                  </Box>
-                ))}
-                {!variableIsFinish && (
-                  <Button
-                    leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
-                    size={'sm'}
-                    maxW={'100px'}
-                    borderRadius={'lg'}
-                    onClick={handleSubmit((data) => {
-                      onUpdateVariable?.(data);
-                      setVariables(data);
-                      setVariableInputFinish(true);
-                    })}
-                  >
-                    {'开始对话'}
-                  </Button>
-                )}
-              </Card>
-            </Flex>
+              <Box textAlign={'left'}>
+                <Card order={2} mt={2} bg={'white'} w={'400px'} {...MessageCardStyle}>
+                  {variableModules.map((item) => (
+                    <Box key={item.id} mb={4}>
+                      <VariableLabel required={item.required}>{item.label}</VariableLabel>
+                      {item.type === VariableInputEnum.input && (
+                        <Input
+                          isDisabled={variableIsFinish}
+                          {...register(item.key, {
+                            required: item.required
+                          })}
+                        />
+                      )}
+                      {item.type === VariableInputEnum.select && (
+                        <MySelect
+                          width={'100%'}
+                          isDisabled={variableIsFinish}
+                          list={(item.enums || []).map((item) => ({
+                            label: item.value,
+                            value: item.value
+                          }))}
+                          {...register(item.key, {
+                            required: item.required
+                          })}
+                          value={getValues(item.key)}
+                          onchange={(e) => {
+                            setValue(item.key, e);
+                            setRefresh(!refresh);
+                          }}
+                        />
+                      )}
+                    </Box>
+                  ))}
+                  {!variableIsFinish && (
+                    <Button
+                      leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                      size={'sm'}
+                      maxW={'100px'}
+                      borderRadius={'lg'}
+                      onClick={handleSubmit((data) => {
+                        onUpdateVariable?.(data);
+                        setVariables(data);
+                        setVariableInputFinish(true);
+                      })}
+                    >
+                      {'开始对话'}
+                    </Button>
+                  )}
+                </Card>
+              </Box>
+            </Box>
           )}
 
           {/* chat history */}
           <Box id={'history'}>
             {chatHistory.map((item, index) => (
-              <Flex
-                position={'relative'}
+              <Box
                 key={item.dataId}
                 flexDirection={'column'}
                 alignItems={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
@@ -633,11 +622,7 @@ const ChatBox = (
                 {item.obj === 'Human' && (
                   <>
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
-                      <Flex
-                        {...controlContainerStyle(item.status)}
-                        justifyContent={'flex-end'}
-                        mr={3}
-                      >
+                      <Flex {...controlContainerStyle} justifyContent={'flex-end'} mr={3}>
                         <MyTooltip label={t('common.Copy')}>
                           <MyIcon
                             {...controlIconStyle}
@@ -678,7 +663,7 @@ const ChatBox = (
                       </Flex>
                       <ChatAvatar src={userAvatar} type={'Human'} />
                     </Flex>
-                    <Box position={'relative'} maxW={messageCardMaxW} mt={['6px', 2]}>
+                    <Box mt={['6px', 2]} textAlign={'right'}>
                       <Card
                         className="markdown"
                         whiteSpace={'pre-wrap'}
@@ -695,7 +680,7 @@ const ChatBox = (
                   <>
                     <Flex w={'100%'} alignItems={'flex-end'}>
                       <ChatAvatar src={appAvatar} type={'AI'} />
-                      <Flex {...controlContainerStyle(item.status)} ml={3}>
+                      <Flex {...controlContainerStyle} ml={3}>
                         <MyTooltip label={'复制'}>
                           <MyIcon
                             {...controlIconStyle}
@@ -841,7 +826,7 @@ const ChatBox = (
                         </Flex>
                       )}
                     </Flex>
-                    <Box position={'relative'} maxW={messageCardMaxW} mt={['6px', 2]}>
+                    <Box textAlign={'left'} mt={['6px', 2]}>
                       <Card bg={'white'} {...MessageCardStyle}>
                         <Markdown
                           source={item.value}
@@ -869,7 +854,7 @@ const ChatBox = (
                     </Box>
                   </>
                 )}
-              </Flex>
+              </Box>
             ))}
           </Box>
         </Box>

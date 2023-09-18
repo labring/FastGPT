@@ -23,9 +23,10 @@ export type FeConfigsType = {
   show_contact?: boolean;
   show_git?: boolean;
   show_doc?: boolean;
+  show_openai_account?: boolean;
+  openAPIUrl?: string;
   systemTitle?: string;
   authorText?: string;
-  beianText?: string;
   googleClientVerKey?: string;
   oauth?: {
     github?: string;
@@ -38,6 +39,7 @@ export type FeConfigsType = {
 };
 export type SystemEnvType = {
   pluginBaseUrl?: string;
+  openapiPrefix?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgIvfflatProbe: number;

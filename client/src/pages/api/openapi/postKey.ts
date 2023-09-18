@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('最多 10 组 API 秘钥');
     }
 
-    const apiKey = `fastgpt-${nanoid()}`;
+    const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid()}`;
 
     await OpenApi.create({
       userId,

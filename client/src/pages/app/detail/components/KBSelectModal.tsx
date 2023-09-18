@@ -27,6 +27,7 @@ import { KbTypeEnum } from '@/constants/kb';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useDatasetStore } from '@/store/dataset';
+import { feConfigs } from '@/store/static';
 
 export type KbParamsType = {
   searchSimilarity: number;
@@ -345,9 +346,7 @@ export const KbParamsModal = ({
               <Textarea
                 rows={5}
                 maxLength={500}
-                placeholder={
-                  '若填写该内容，没有搜索到对应内容时，将直接回复填写的内容。\n为了连贯上下文，FastGPT 会取部分上一个聊天的搜索记录作为补充，因此在连续对话时，该功能可能会失效。'
-                }
+                placeholder={`若填写该内容，没有搜索到对应内容时，将直接回复填写的内容。\n为了连贯上下文，${feConfigs?.systemTitle} 会取部分上一个聊天的搜索记录作为补充，因此在连续对话时，该功能可能会失效。`}
                 {...register('searchEmptyText')}
               ></Textarea>
             </Box>
