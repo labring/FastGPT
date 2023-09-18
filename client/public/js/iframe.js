@@ -4,7 +4,8 @@ async function embedChatbot() {
   const script = document.getElementById('fastgpt-iframe');
   const botSrc = script?.getAttribute('data-src');
   const primaryColor = script?.getAttribute('data-color') || '#4e83fd';
-
+  const defaultOpen = script?.getAttribute('data-default-open') === 'true';
+  
   if (!botSrc) {
     console.error(`Can't find appid`);
     return;
@@ -30,10 +31,10 @@ async function embedChatbot() {
   iframe.title = 'FastGPT Chat Window';
   iframe.id = chatWindowId;
   iframe.src = botSrc;
-
   iframe.style.cssText =
-    'visibility: hidden; border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 4rem; right: 1rem; width: 24rem; height: 40rem; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
-
+    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 4rem; right: 1rem; width: 24rem; height: 40rem; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
+  iframe.style.visibility = defaultOpen ? 'unset' : 'hidden'; 
+ 
   document.body.appendChild(iframe);
 
   let chatBtnDragged = false;
