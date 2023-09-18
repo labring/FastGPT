@@ -8,11 +8,10 @@ import ReactFlow, {
   useEdgesState,
   XYPosition,
   Connection,
-  useViewport,
-  useReactFlow
+  useViewport
 } from 'reactflow';
-import { Box, Flex, IconButton, useTheme, useDisclosure, Icon } from '@chakra-ui/react';
-import { RepeatIcon, SmallCloseIcon } from '@chakra-ui/icons';
+import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
+import { SmallCloseIcon } from '@chakra-ui/icons';
 import {
   edgeOptions,
   connectionLineStyle,
@@ -36,7 +35,6 @@ import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/utils/tools';
 import dynamic from 'next/dynamic';
-import dagre from 'dagre';
 
 import MyIcon from '@/components/Icon';
 import ButtonEdge from './components/modules/ButtonEdge';
@@ -447,8 +445,6 @@ const AppEdit = ({ app, onCloseSettings }: Props) => {
     initData(JSON.parse(JSON.stringify(app.modules)));
   }, [app.modules]);
 
-  const reactFlowInstance = useReactFlow();
-
   return (
     <>
       {/* header */}
@@ -591,51 +587,7 @@ const AppEdit = ({ app, onCloseSettings }: Props) => {
           }}
         >
           <Background />
-          <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false}>
-            <button
-              className="react-flow__controls-button react-flow__controls-fitview"
-              onClick={() => {
-                var g = new dagre.graphlib.Graph();
-                g.setGraph({
-                  rankdir: 'LR',
-                  align: 'DL',
-                  graph: 'greedy',
-                  ranksep: 200,
-                  ranker: 'longest-path',
-                  nodesep: 300,
-                  edgesep: 100
-                });
-                g.setDefaultEdgeLabel(function () {
-                  return {};
-                });
-                reactFlowInstance.getNodes().forEach((node) => {
-                  g.setNode(node.id, node);
-                });
-                reactFlowInstance.getEdges().forEach((edge) => {
-                  g.setEdge(edge.source, edge.target);
-                });
-                const p = dagre.layout(g);
-                const newNodes = g.nodes().map(function (v) {
-                  const node = g.node(v);
-                  return {
-                    ...node,
-                    position: {
-                      x: node.x,
-                      y: node.y
-                    },
-                    x: undefined,
-                    y: undefined
-                  };
-                });
-                reactFlowInstance.setNodes(newNodes);
-                requestAnimationFrame(() => {
-                  reactFlowInstance.fitView();
-                });
-              }}
-            >
-              <Icon as={RepeatIcon} />
-            </button>
-          </Controls>
+          <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
         </ReactFlow>
 
         <TemplateList
