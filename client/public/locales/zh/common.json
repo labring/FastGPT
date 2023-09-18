@@ -14,6 +14,7 @@
   "UnKnow": "未知",
   "Warning": "提示",
   "app": {
+    "Quote Prompt Settings": "引用提示词配置",
     "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
     "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
@@ -218,6 +219,10 @@
   },
   "system": {
     "Help Document": "帮助文档"
+  },
+  "template": {
+    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用 {{q}}, {{a}}, {{source}} 来作为 “检索内容”、“预期内容”和“来源”，他们都是可选的，下面是默认值：\n{{default}}",
+    "Quote Prompt Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以用 {{quote}} 来插入引用内容，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
   "user": {
     "Account": "账号",

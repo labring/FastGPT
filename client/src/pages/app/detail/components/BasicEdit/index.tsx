@@ -63,6 +63,7 @@ import { useDatasetStore } from '@/store/dataset';
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
 const KBSelectModal = dynamic(() => import('../KBSelectModal'));
+const AIChatSettingsModal = dynamic(() => import('../AIChatSettingsModal'));
 
 const Settings = ({ appId }: { appId: string }) => {
   const theme = useTheme();
@@ -101,6 +102,11 @@ const Settings = ({ appId }: { appId: string }) => {
     name: 'kb.list'
   });
 
+  const {
+    isOpen: isOpenAIChatSetting,
+    onOpen: onOpenAIChatSetting,
+    onClose: onCloseAIChatSetting
+  } = useDisclosure();
   const {
     isOpen: isOpenKbSelect,
     onOpen: onOpenKbSelect,
@@ -335,51 +341,61 @@ const Settings = ({ appId }: { appId: string }) => {
             +&ensp;新增
           </Flex>
         </Flex>
-        <Box mt={2} borderRadius={'lg'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
-          <TableContainer>
-            <Table bg={'white'}>
-              <Thead>
-                <Tr>
-                  <Th>变量名</Th>
-                  <Th>变量 key</Th>
-                  <Th>必填</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {variables.map((item, index) => (
-                  <Tr key={item.id}>
-                    <Td>{item.label} </Td>
-                    <Td>{item.key}</Td>
-                    <Td>{item.required ? '✔' : ''}</Td>
-                    <Td>
-                      <MyIcon
-                        mr={3}
-                        name={'settingLight'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => setEditVariable(item)}
-                      />
-                      <MyIcon
-                        name={'delete'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => removeVariable(index)}
-                      />
-                    </Td>
+        {variables.length > 0 && (
+          <Box
+            mt={2}
+            borderRadius={'lg'}
+            overflow={'hidden'}
+            borderWidth={'1px'}
+            borderBottom="none"
+          >
+            <TableContainer>
+              <Table bg={'white'}>
+                <Thead>
+                  <Tr>
+                    <Th>变量名</Th>
+                    <Th>变量 key</Th>
+                    <Th>必填</Th>
+                    <Th></Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        </Box>
+                </Thead>
+                <Tbody>
+                  {variables.map((item, index) => (
+                    <Tr key={item.id}>
+                      <Td>{item.label} </Td>
+                      <Td>{item.key}</Td>
+                      <Td>{item.required ? '✔' : ''}</Td>
+                      <Td>
+                        <MyIcon
+                          mr={3}
+                          name={'settingLight'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() => setEditVariable(item)}
+                        />
+                        <MyIcon
+                          name={'delete'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() => removeVariable(index)}
+                        />
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </Box>
+        )}
       </Box>
 
       {/* model */}
       <Box mt={5} {...BoxStyles}>
         <Flex alignItems={'center'}>
           <Avatar src={'/imgs/module/AI.png'} w={'18px'} />
-          <Box ml={2}>AI 配置</Box>
+          <Box ml={2} flex={1}>
+            AI 配置
+          </Box>
         </Flex>
 
         <Flex alignItems={'center'} mt={5}>
@@ -452,20 +468,6 @@ const Settings = ({ appId }: { appId: string }) => {
             {...register('chatModel.systemPrompt')}
           ></Textarea>
         </Flex>
-        <Flex mt={5} alignItems={'flex-start'}>
-          <Box {...LabelStyles}>
-            限定词
-            <MyTooltip label={ChatModelLimitTip} forceShow>
-              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-            </MyTooltip>
-          </Box>
-          <Textarea
-            rows={5}
-            placeholder={ChatModelLimitTip}
-            borderColor={'myGray.100'}
-            {...register('chatModel.limitPrompt')}
-          ></Textarea>
-        </Flex>
       </Box>
 
       {/* kb */}
@@ -482,6 +484,10 @@ const Settings = ({ appId }: { appId: string }) => {
           <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbParams}>
             <MyIcon name={'edit'} w={'14px'} mr={1} />
             参数
+          </Flex>
+          <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
+            <MyIcon mr={1} name={'settingLight'} w={'14px'} />
+            提示词
           </Flex>
         </Flex>
         <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
@@ -546,6 +552,16 @@ const Settings = ({ appId }: { appId: string }) => {
 
             setEditVariable(undefined);
           }}
+        />
+      )}
+      {isOpenAIChatSetting && (
+        <AIChatSettingsModal
+          onClose={onCloseAIChatSetting}
+          onSuccess={(e) => {
+            setValue('chatModel', e);
+            onCloseAIChatSetting();
+          }}
+          defaultData={getValues('chatModel')}
         />
       )}
       {isOpenKbSelect && (

@@ -31,6 +31,7 @@ import { SystemInputEnum } from '@/constants/app';
 import { getSystemTime } from '@/utils/user';
 import { authOutLinkChat } from '@/service/support/outLink/auth';
 import requestIp from 'request-ip';
+import { replaceVariable } from '@/utils/common/tools/text';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -424,10 +425,7 @@ function loadModules(
           }
 
           // variables replace
-          const replacedVal = item.value.replace(
-            /{{(.*?)}}/g,
-            (match, key) => variables[key.trim()] || match
-          );
+          const replacedVal = replaceVariable(item.value, variables);
 
           return {
             key: item.key,

@@ -81,7 +81,7 @@ export function sliceMessagesTB({
     const tokens = countPromptTokens(item.content, item.role);
     reduceTokens -= tokens;
 
-    if (tokens > 0) {
+    if (reduceTokens > 0) {
       result.push(messages[i]);
     } else {
       break;

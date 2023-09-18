@@ -17,12 +17,12 @@ import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { AppModuleItemType } from '@/types/app';
 import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { defaultQuotePrompt, defaultQuoteTemplate } from '@/prompts/core/AIChat';
+import type { AIChatProps } from '@/types/core/aiChat';
+import { replaceVariable } from '@/utils/common/tools/text';
 
-export type ChatProps = {
+export type ChatProps = AIChatProps & {
   res: NextApiResponse;
-  model: string;
-  temperature?: number;
-  maxToken?: number;
   history?: ChatItemType[];
   userChatInput: string;
   stream?: boolean;
@@ -52,7 +52,9 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     quoteQA = [],
     userChatInput,
     systemPrompt = '',
-    limitPrompt = '',
+    limitPrompt,
+    quoteTemplate,
+    quotePrompt,
     userOpenaiAccount,
     outputs
   } = props as ChatProps;
@@ -67,16 +69,16 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { filterQuoteQA, quotePrompt, hasQuoteOutput } = filterQuote({
+  const { filterQuoteQA, quoteText, hasQuoteOutput } = filterQuote({
     quoteQA,
-    model: modelConstantsData
+    model: modelConstantsData,
+    quoteTemplate
   });
 
   if (modelConstantsData.censor) {
     await textCensor({
       text: `${systemPrompt}
-      ${quotePrompt}
-      ${limitPrompt}
+      ${quoteText}
       ${userChatInput}
       `
     });
@@ -85,6 +87,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   const { messages, filterMessages } = getChatMessages({
     model: modelConstantsData,
     history,
+    quoteText,
     quotePrompt,
     userChatInput,
     systemPrompt,
@@ -189,39 +192,40 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
 
 function filterQuote({
   quoteQA = [],
-  model
+  model,
+  quoteTemplate
 }: {
   quoteQA: ChatProps['quoteQA'];
   model: ChatModelItemType;
+  quoteTemplate?: string;
 }) {
   const sliceResult = sliceMessagesTB({
     maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item) => ({
       obj: ChatRoleEnum.System,
-      value: item.a ? `${item.q}\n${item.a}` : item.q
+      value: replaceVariable(quoteTemplate || defaultQuoteTemplate, item)
     }))
   });
 
   // slice filterSearch
   const filterQuoteQA = quoteQA.slice(0, sliceResult.length);
 
-  const quotePrompt =
+  const quoteText =
     filterQuoteQA.length > 0
-      ? `"""${filterQuoteQA
-          .map((item) =>
-            item.a ? `{instruction:"${item.q}",output:"${item.a}"}` : `{instruction:"${item.q}"}`
-          )
-          .join('\n')}"""`
+      ? `${filterQuoteQA
+          .map((item) => replaceVariable(quoteTemplate || defaultQuoteTemplate, item))
+          .join('\n')}`
       : '';
 
   return {
     filterQuoteQA,
-    quotePrompt,
+    quoteText,
     hasQuoteOutput: !!filterQuoteQA.find((item) => item.a)
   };
 }
 function getChatMessages({
   quotePrompt,
+  quoteText,
   history = [],
   systemPrompt,
   limitPrompt,
@@ -229,32 +233,28 @@ function getChatMessages({
   model,
   hasQuoteOutput
 }: {
-  quotePrompt: string;
+  quotePrompt?: string;
+  quoteText: string;
   history: ChatProps['history'];
   systemPrompt: string;
-  limitPrompt: string;
+  limitPrompt?: string;
   userChatInput: string;
   model: ChatModelItemType;
   hasQuoteOutput: boolean;
 }) {
-  const { quoteGuidePrompt } = getDefaultPrompt({ hasQuoteOutput });
-
-  const systemText = `${quotePrompt ? `${quoteGuidePrompt}\n\n` : ''}${systemPrompt}`;
+  const question = hasQuoteOutput
+    ? replaceVariable(quotePrompt || defaultQuotePrompt, {
+        quote: quoteText,
+        question: userChatInput
+      })
+    : userChatInput;
 
   const messages: ChatItemType[] = [
-    ...(systemText
+    ...(systemPrompt
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: systemText
-          }
-        ]
-      : []),
-    ...(quotePrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: quotePrompt
+            value: systemPrompt
           }
         ]
       : []),
@@ -269,7 +269,7 @@ function getChatMessages({
       : []),
     {
       obj: ChatRoleEnum.Human,
-      value: userChatInput
+      value: question
     }
   ];
 
@@ -373,13 +373,5 @@ async function streamResponse({
 
   return {
     answer
-  };
-}
-
-function getDefaultPrompt({ hasQuoteOutput }: { hasQuoteOutput?: boolean }) {
-  return {
-    quoteGuidePrompt: `三引号引用的内容是我提供给你的知识库，它们拥有最高优先级。instruction 是相关介绍${
-      hasQuoteOutput ? '，output 是预期回答或补充。' : '。'
-    }`
   };
 }

@@ -14,6 +14,7 @@
   "UnKnow": "UnKnow",
   "Warning": "Warning",
   "app": {
+    "Quote Prompt Settings": "Quote Prompt Settings",
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
@@ -218,6 +219,10 @@
   },
   "system": {
     "Help Document": "Document"
+  },
+  "template": {
+    "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search). You can customize the structure of the reference content to better fit different scenarios. You can use {{q}}, {{a}}, {{source}} as \"search content\", \"expected content\", and \"source\", they are all optional, and here are the default values: \n{instruction:\"{{q}}\",output:\"{{a}}\"}",
+    "Quote Prompt Tip": "This configuration takes effect only when reference content is passed in (knowledge base search). \n You can insert references with {{quote}}, here are the default values: \n\"\"\"{{quote}}\"\"\" The three quotes are the knowledge base I gave you, they have the highest priority. instruction is a relevant introduction and output is an expected answer or supplement."
   },
   "user": {
     "Account": "Account",
