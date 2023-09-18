@@ -29,6 +29,7 @@ export type ChatProps = AIChatProps & {
   detail?: boolean;
   quoteQA?: QuoteItemType[];
   systemPrompt?: string;
+  limitPrompt?: string;
   userOpenaiAccount: UserModelSchema['openaiAccount'];
   outputs: AppModuleItemType['outputs'];
 };
@@ -51,6 +52,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     quoteQA = [],
     userChatInput,
     systemPrompt = '',
+    limitPrompt,
     quoteTemplate,
     quotePrompt,
     userOpenaiAccount,
@@ -225,6 +227,7 @@ function getChatMessages({
   quoteText,
   history = [],
   systemPrompt,
+  limitPrompt,
   userChatInput,
   model,
   hasQuoteOutput
@@ -233,6 +236,7 @@ function getChatMessages({
   quoteText: string;
   history: ChatProps['history'];
   systemPrompt: string;
+  limitPrompt?: string;
   userChatInput: string;
   model: ChatModelItemType;
   hasQuoteOutput: boolean;
@@ -254,6 +258,14 @@ function getChatMessages({
         ]
       : []),
     ...history,
+    ...(limitPrompt
+      ? [
+          {
+            obj: ChatRoleEnum.System,
+            value: limitPrompt
+          }
+        ]
+      : []),
     {
       obj: ChatRoleEnum.Human,
       value: question

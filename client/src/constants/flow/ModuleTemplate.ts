@@ -162,6 +162,20 @@ export const ChatModule: FlowModuleTemplateType = {
       placeholder: ChatModelSystemTip,
       value: ''
     },
+    {
+      key: 'quoteTemplate',
+      type: FlowInputItemTypeEnum.hidden,
+      label: '引用内容模板',
+      valueType: FlowValueTypeEnum.string,
+      value: ''
+    },
+    {
+      key: 'quotePrompt',
+      type: FlowInputItemTypeEnum.hidden,
+      label: '引用内容提示词',
+      valueType: FlowValueTypeEnum.string,
+      value: ''
+    },
     Input_Template_TFSwitch,
     {
       key: 'quoteQA',
