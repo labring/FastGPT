@@ -14,7 +14,7 @@
   "UnKnow": "UnKnow",
   "Warning": "Warning",
   "app": {
-    "AI Chat Module Settings": "AI dialog advanced configuration",
+    "Quote Prompt Settings": "Quote Prompt Settings",
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",

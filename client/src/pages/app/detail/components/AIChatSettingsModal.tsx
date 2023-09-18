@@ -3,10 +3,20 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { EditFormType } from '@/utils/app';
 import { useForm } from 'react-hook-form';
-import { Box, BoxProps, Button, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
+import {
+  Box,
+  BoxProps,
+  Button,
+  Flex,
+  Link,
+  ModalBody,
+  ModalFooter,
+  Textarea
+} from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { defaultQuotePrompt, defaultQuoteTemplate } from '@/prompts/core/AIChat';
+import { feConfigs } from '@/store/static';
 
 const AIChatSettingsModal = ({
   onClose,
@@ -30,7 +40,27 @@ const AIChatSettingsModal = ({
   };
 
   return (
-    <MyModal isOpen title={t('app.AI Chat Module Settings')} w={'700px'}>
+    <MyModal
+      isOpen
+      title={
+        <Flex alignItems={'flex-end'}>
+          {t('app.Quote Prompt Settings')}
+          {feConfigs?.show_doc && (
+            <Link
+              href={'https://doc.fastgpt.run/docs/use-cases/prompt/'}
+              target={'_blank'}
+              ml={1}
+              textDecoration={'underline'}
+              fontWeight={'normal'}
+              fontSize={'md'}
+            >
+              查看说明
+            </Link>
+          )}
+        </Flex>
+      }
+      w={'700px'}
+    >
       <ModalBody>
         <Box>
           <Box {...LabelStyles}>

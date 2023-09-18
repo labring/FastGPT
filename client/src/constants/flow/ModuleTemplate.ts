@@ -179,7 +179,7 @@ export const ChatModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: 'quoteQA',
-      type: FlowInputItemTypeEnum.target,
+      type: FlowInputItemTypeEnum.custom,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
       valueType: FlowValueTypeEnum.kbQuote

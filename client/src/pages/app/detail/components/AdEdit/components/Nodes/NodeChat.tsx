@@ -4,13 +4,13 @@ import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@/types/flow';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
-import RenderInput from '../render/RenderInput';
+import RenderInput, { Label } from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 import MySelect from '@/components/Select';
 import { chatModelList } from '@/store/static';
 import MySlider from '@/components/Slider';
-import { Box, Button, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { formatPrice } from '@/utils/user';
 import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
@@ -124,16 +124,20 @@ const NodeChat = ({ data }: NodeProps<FlowModuleItemType>) => {
                   />
                 </Box>
               );
+            },
+            quoteQA: (inputItem) => {
+              return (
+                <Button
+                  variant={'base'}
+                  leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+                  onClick={onOpenAIChatSetting}
+                >
+                  引用提示词设置
+                </Button>
+              );
             }
           }}
         />
-        <Button
-          variant={'base'}
-          leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
-          onClick={onOpenAIChatSetting}
-        >
-          更多配置
-        </Button>
       </Container>
       <Divider text="Output" />
       <Container>
