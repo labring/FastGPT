@@ -162,16 +162,6 @@ export const ChatModule: FlowModuleTemplateType = {
       placeholder: ChatModelSystemTip,
       value: ''
     },
-    {
-      key: 'limitPrompt',
-      type: FlowInputItemTypeEnum.textarea,
-      valueType: FlowValueTypeEnum.string,
-      label: '限定词',
-      max: 500,
-      description: ChatModelLimitTip,
-      placeholder: ChatModelLimitTip,
-      value: ''
-    },
     Input_Template_TFSwitch,
     {
       key: 'quoteQA',
@@ -665,19 +655,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             connected: true
           },
           {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            max: 500,
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value: '',
-            connected: true
-          },
-          {
             key: 'switch',
             type: 'target',
             label: '触发器',
@@ -1014,18 +991,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             connected: true
           },
           {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value: '',
-            connected: true
-          },
-          {
             key: 'switch',
             type: 'target',
             label: '触发器',
@@ -1317,18 +1282,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             value: '',
-            connected: true
-          },
-          {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value: '将我的问题直接翻译成英语{{language}}',
             connected: true
           },
           {
@@ -1701,19 +1654,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             value: '知识库是关于 laf 的内容。',
-            connected: true
-          },
-          {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value:
-              '我的问题都是关于 laf 的。根据知识库回答我的问题，与 laf 无关问题，直接回复：“我不清楚，我仅能回答 laf 相关的问题。”。',
             connected: true
           },
           {
