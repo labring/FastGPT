@@ -140,8 +140,8 @@ export const readCsvContent = async (file: File) => {
       throw new Error('csv 解析失败');
     }
     return {
-      header: json.shift()?.filter((item) => item) as string[],
-      data: json.map((item) => item?.filter((item) => item))
+      header: json.shift() as string[],
+      data: json.map((item) => item)
     };
   } catch (error) {
     return Promise.reject('解析 csv 文件失败');

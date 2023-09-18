@@ -69,7 +69,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { filterQuoteQA, quoteText, hasQuoteOutput } = filterQuote({
+  const { filterQuoteQA, quoteText } = filterQuote({
     quoteQA,
     model: modelConstantsData,
     quoteTemplate
@@ -91,8 +91,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     quotePrompt,
     userChatInput,
     systemPrompt,
-    limitPrompt,
-    hasQuoteOutput
+    limitPrompt
   });
   const { max_tokens } = getMaxTokens({
     model: modelConstantsData,
@@ -219,8 +218,7 @@ function filterQuote({
 
   return {
     filterQuoteQA,
-    quoteText,
-    hasQuoteOutput: !!filterQuoteQA.find((item) => item.a)
+    quoteText
   };
 }
 function getChatMessages({
@@ -230,8 +228,7 @@ function getChatMessages({
   systemPrompt,
   limitPrompt,
   userChatInput,
-  model,
-  hasQuoteOutput
+  model
 }: {
   quotePrompt?: string;
   quoteText: string;
@@ -240,9 +237,8 @@ function getChatMessages({
   limitPrompt?: string;
   userChatInput: string;
   model: ChatModelItemType;
-  hasQuoteOutput: boolean;
 }) {
-  const question = hasQuoteOutput
+  const question = quoteText
     ? replaceVariable(quotePrompt || defaultQuotePrompt, {
         quote: quoteText,
         question: userChatInput
