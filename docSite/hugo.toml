@@ -72,11 +72,13 @@ defaultContentLanguage = 'zh-cn'
 
         # pathName        = "docs"                            # path name for documentation site | default "docs"
 
-        # themeColor      = "cyan"                            # (optional) - Set theme accent colour. Options include: blue (default), green, red, yellow, emerald, cardinal, magenta, cyan
+        # themeColor      = "blue"                            # (optional) - Set theme accent colour. Options include: blue (default), green, red, yellow, emerald, cardinal, magenta, cyan
 
         darkMode        = true                                # enable dark mode option? default false
 
         prism           = true                                # enable syntax highlighting via Prism
+
+        prismTheme      = "lotusdocs"                           # (optional) - Set theme for PrismJS. Options include: lotusdocs (default), solarized-light, twilight, lucario
 
         # gitinfo
         repoURL         = "https://github.com/labring/FastGPT"  # Git repository URL for your site
