@@ -38,7 +38,7 @@ export const jsonRes = <T = any>(
   }
 
   // another error
-  let msg = message || error?.message;
+  let msg = error?.response?.statusText || error?.message || '请求错误';
   if ((code < 200 || code >= 400) && !message) {
     msg = error?.message || '请求错误';
     if (typeof error === 'string') {
@@ -81,7 +81,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     });
   }
 
-  let msg = error?.message || '请求错误';
+  let msg = error?.response?.statusText || error?.message || '请求错误';
   if (typeof error === 'string') {
     msg = error;
   } else if (proxyError[error?.code]) {
