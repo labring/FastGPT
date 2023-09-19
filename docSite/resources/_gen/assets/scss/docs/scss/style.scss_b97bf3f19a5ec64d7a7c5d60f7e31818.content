@@ -100,7 +100,7 @@
   --bs-dark-border-subtle: #adb5bd;
   --bs-white-rgb: 255, 255, 255;
   --bs-black-rgb: 0, 0, 0;
-  --bs-font-sans-serif: Inter;
+  --bs-font-sans-serif: LXGW WenKai Screen;
   --bs-font-monospace: JetBrains Mono;
   --bs-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
   --bs-body-font-family: var(--bs-font-sans-serif);
@@ -9576,7 +9576,7 @@ html {
   background-color: var(--body-bg); }
 
 body {
-  font-family: Inter;
+  font-family: LXGW WenKai Screen;
   overflow-x: hidden !important;
   font-size: 1rem;
   color: var(--body-color);
@@ -10120,12 +10120,14 @@ i.title-icon {
 :root {
   --toc-link-hover-bg-color: var(--gray-300);
   --toc-mobile-btn-bg-color: var(--gray-100);
-  --toc-mobile-menu-bg-color: var(--white); }
+  --toc-mobile-menu-bg-color: var(--white);
+  --toc-mobile-link-hover-color: var(--primary); }
 
 [data-dark-mode] {
   --toc-link-hover-bg-color: var(--gray-700);
   --toc-mobile-btn-bg-color: var(--gray-900);
-  --toc-mobile-menu-bg-color: var(--body-bg); }
+  --toc-mobile-menu-bg-color: var(--body-bg);
+  --toc-mobile-link-hover-color: var(--primary-300); }
 
 .docs-toc-mobile {
   position: sticky;
@@ -10133,6 +10135,10 @@ i.title-icon {
   padding-left: calc(var(--bs-gutter-x) * 1.05);
   padding-right: calc(var(--bs-gutter-x) * 1.05);
   z-index: 20; }
+  .docs-toc-mobile a {
+    color: var(--text-default); }
+  .docs-toc-mobile a:hover {
+    color: var(--toc-mobile-link-hover-color); }
   .docs-toc-mobile .dropdown-toggle {
     margin-bottom: 16px;
     background: var(--toc-mobile-btn-bg-color);
@@ -12033,6 +12039,10 @@ footer a:hover {
     text-decoration: none !important;
 }
 */
+.medium-zoom-overlay,
+.medium-zoom-image--opened {
+  z-index: 1999; }
+
 /* 徽章样式 */
 .github-badge {
   display: inline-block;

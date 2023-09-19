@@ -81,7 +81,7 @@
   --bs-dark-border-subtle: #adb5bd;
   --bs-white-rgb: 255, 255, 255;
   --bs-black-rgb: 0, 0, 0;
-  --bs-font-sans-serif: Inter;
+  --bs-font-sans-serif: LXGW WenKai Screen;
   --bs-font-monospace: JetBrains Mono;
   --bs-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
   --bs-body-font-family: var(--bs-font-sans-serif);
@@ -9438,7 +9438,7 @@ textarea.form-control-lg {
   src: local("Material Icons"), local("MaterialIcons-Outlined"), url("../docs/fonts/material-symbols-outlined.woff2") format("woff2"); }
 
 body {
-  font-family: Inter;
+  font-family: LXGW WenKai Screen;
   overflow-x: hidden !important;
   font-size: 1rem;
   color: #3C4257;
