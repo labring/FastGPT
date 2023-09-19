@@ -6,17 +6,16 @@ import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { countModelPrice } from '@/service/events/pushBill';
-import { UserModelSchema } from '@/types/mongoSchema';
 import { getModel } from '@/service/utils/data';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
-export type Props = {
-  userOpenaiAccount: UserModelSchema['openaiAccount'];
+export type Props = ModuleDispatchProps<{
   history?: ChatItemType[];
   [ContextExtractEnum.content]: string;
   [ContextExtractEnum.extractKeys]: ContextExtractAgentItemType[];
   [ContextExtractEnum.description]: string;
-};
+}>;
 export type Response = {
   [ContextExtractEnum.success]?: boolean;
   [ContextExtractEnum.failed]?: boolean;
@@ -29,11 +28,9 @@ const agentFunName = 'agent_extract_data';
 const maxTokens = 4000;
 
 export async function dispatchContentExtract({
+  moduleName,
   userOpenaiAccount,
-  content,
-  extractKeys,
-  history = [],
-  description
+  inputs: { content, extractKeys, history = [], description }
 }: Props): Promise<Response> {
   if (!content) {
     return Promise.reject('Input is empty');
@@ -120,6 +117,7 @@ export async function dispatchContentExtract({
     ...arg,
     [TaskResponseKeyEnum.responseData]: {
       moduleType: FlowModuleTypeEnum.contentExtract,
+      moduleName,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),
       model: getModel(agentModel)?.name || agentModel,
       tokens,

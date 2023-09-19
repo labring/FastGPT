@@ -50,6 +50,7 @@ export type QuoteItemType = KbDataItemType & {
 // response data
 export type ChatHistoryItemResType = {
   moduleType: `${FlowModuleTypeEnum}`;
+  moduleName: string;
   price: number;
   runningTime?: number;
   model?: string;

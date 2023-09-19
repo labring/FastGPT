@@ -37,11 +37,10 @@ const ResponseTags = ({
     runningTime = 0
   } = useMemo(() => {
     const chatData = responseData.find((item) => item.moduleType === FlowModuleTypeEnum.chatNode);
-    if (!chatData) return {};
     return {
-      quoteList: chatData.quoteList,
-      historyPreview: chatData.historyPreview,
-      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0)
+      quoteList: chatData?.quoteList,
+      historyPreview: chatData?.historyPreview,
+      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
   }, [responseData]);
 
