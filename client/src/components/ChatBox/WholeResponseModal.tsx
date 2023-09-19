@@ -21,7 +21,8 @@ const ResponseModal = ({
     () =>
       response.map((item) => {
         const copy = { ...item };
-        delete copy.completeMessages;
+        delete copy.historyPreview;
+        delete copy.answer;
         delete copy.quoteList;
         return copy;
       }),

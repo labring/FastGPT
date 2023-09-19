@@ -184,7 +184,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
       answer: answerText,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
-      completeMessages
+      historyPreview: getHistoryPreview(completeMessages)
     },
     finish: true
   };
@@ -371,4 +371,15 @@ async function streamResponse({
   return {
     answer
   };
+}
+
+function getHistoryPreview(completeMessages: ChatItemType[]) {
+  return completeMessages.map((item, i) => {
+    if (item.obj === ChatRoleEnum.System) return item;
+    if (i >= completeMessages.length - 2) return item;
+    return {
+      ...item,
+      value: item.value.length > 15 ? `${item.value.slice(0, 15)}...` : item.value
+    };
+  });
 }
