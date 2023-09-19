@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ChatModuleEnum } from '@/constants/chat';
 import { ChatHistoryItemResType, ChatItemType, QuoteItemType } from '@/types/chat';
 import { Flex, BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +6,8 @@ import { useGlobalStore } from '@/store/global';
 import dynamic from 'next/dynamic';
 import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
+import { FlowModuleTypeEnum } from '@/constants/flow';
+
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
@@ -32,15 +33,15 @@ const ResponseTags = ({
 
   const {
     quoteList = [],
-    completeMessages = [],
-    tokens = 0
+    historyPreview = [],
+    runningTime = 0
   } = useMemo(() => {
-    const chatData = responseData.find((item) => item.moduleName === ChatModuleEnum.AIChat);
+    const chatData = responseData.find((item) => item.moduleType === FlowModuleTypeEnum.chatNode);
     if (!chatData) return {};
     return {
       quoteList: chatData.quoteList,
-      completeMessages: chatData.completeMessages,
-      tokens: responseData.reduce((sum, item) => sum + (item.tokens || 0), 0)
+      historyPreview: chatData.historyPreview,
+      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0)
     };
   }, [responseData]);
 
@@ -65,21 +66,21 @@ const ResponseTags = ({
           </Tag>
         </MyTooltip>
       )}
-      {completeMessages.length > 0 && (
+      {historyPreview.length > 0 && (
         <MyTooltip label={'点击查看完整对话记录'}>
           <Tag
             colorSchema="green"
             cursor={'pointer'}
             {...TagStyles}
-            onClick={() => setContextModalData(completeMessages)}
+            onClick={() => setContextModalData(historyPreview)}
           >
-            {completeMessages.length}条上下文
+            {historyPreview.length}条上下文
           </Tag>
         </MyTooltip>
       )}
-      {isPc && tokens > 0 && (
+      {isPc && runningTime > 0 && (
         <Tag colorSchema="purple" cursor={'default'} {...TagStyles}>
-          {tokens}Tokens
+          {runningTime}s
         </Tag>
       )}
       <MyTooltip label={'点击查看完整响应值'}>

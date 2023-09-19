@@ -1,7 +1,8 @@
-import { ChatModuleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 import { HttpPropsEnum } from '@/constants/flow/flowField';
 import { ChatHistoryItemResType } from '@/types/chat';
 import type { NextApiResponse } from 'next';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type HttpRequestProps = {
   res: NextApiResponse;
@@ -26,7 +27,7 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
     return {
       [HttpPropsEnum.finish]: true,
       [TaskResponseKeyEnum.responseData]: {
-        moduleName: ChatModuleEnum.Http,
+        moduleType: FlowModuleTypeEnum.httpRequest,
         price: 0,
         httpResult: response
       },
@@ -37,7 +38,7 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
       [HttpPropsEnum.finish]: true,
       [HttpPropsEnum.failed]: true,
       [TaskResponseKeyEnum.responseData]: {
-        moduleName: ChatModuleEnum.Http,
+        moduleType: FlowModuleTypeEnum.httpRequest,
         price: 0,
         httpResult: {}
       }

@@ -154,11 +154,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       stream,
       detail
     });
-    // console.log(responseData, '===', answerText);
-
-    // if (!answerText) {
-    //   throw new Error('回复内容为空，可能模块编排出现问题');
-    // }
 
     // save chat
     if (chatId) {
@@ -284,6 +279,7 @@ export async function dispatchModules({
   // let storeData: Record<string, any> = {}; // after module used
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAnswerText = ''; // AI answer
+  let runningTime = Date.now();
 
   function pushStore({
     answerText = '',
@@ -292,7 +288,13 @@ export async function dispatchModules({
     answerText?: string;
     responseData?: ChatHistoryItemResType;
   }) {
-    responseData && chatResponse.push(responseData);
+    const time = Date.now();
+    responseData &&
+      chatResponse.push({
+        ...responseData,
+        runningTime: +((time - runningTime) / 1000).toFixed(2)
+      });
+    runningTime = time;
     chatAnswerText += answerText;
   }
   function moduleInput(

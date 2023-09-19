@@ -62,24 +62,7 @@ const ChatSchema = new Schema({
           default: ''
         },
         [TaskResponseKeyEnum.responseData]: {
-          type: [
-            {
-              moduleName: String,
-              price: String,
-              model: String,
-              tokens: Number,
-              question: String,
-              answer: String,
-              temperature: Number,
-              maxToken: Number,
-              quoteList: Array,
-              completeMessages: Array,
-              similarity: Number,
-              limit: Number,
-              cqList: Array,
-              cqResult: String
-            }
-          ],
+          type: Array,
           default: []
         }
       }

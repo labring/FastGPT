@@ -3,7 +3,7 @@ import { sseResponse } from '@/service/utils/tools';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
-import { ChatModuleEnum, ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
+import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { SSEParseData, parseStreamChunk } from '@/utils/sse';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
@@ -20,6 +20,7 @@ import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { defaultQuotePrompt, defaultQuoteTemplate } from '@/prompts/core/AIChat';
 import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type ChatProps = AIChatProps & {
   res: NextApiResponse;
@@ -175,15 +176,14 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   return {
     [TaskResponseKeyEnum.answerText]: answerText,
     [TaskResponseKeyEnum.responseData]: {
-      moduleName: ChatModuleEnum.AIChat,
+      moduleType: FlowModuleTypeEnum.chatNode,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model, tokens: totalTokens }),
       model: modelConstantsData.name,
       tokens: totalTokens,
       question: userChatInput,
-      answer: answerText,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
-      completeMessages
+      historyPreview: getHistoryPreview(completeMessages)
     },
     finish: true
   };
@@ -370,4 +370,15 @@ async function streamResponse({
   return {
     answer
   };
+}
+
+function getHistoryPreview(completeMessages: ChatItemType[]) {
+  return completeMessages.map((item, i) => {
+    if (item.obj === ChatRoleEnum.System) return item;
+    if (i >= completeMessages.length - 2) return item;
+    return {
+      ...item,
+      value: item.value.length > 15 ? `${item.value.slice(0, 15)}...` : item.value
+    };
+  });
 }
