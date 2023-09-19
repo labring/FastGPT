@@ -15,20 +15,31 @@ const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
 const MdImage = dynamic(() => import('./img/Image'));
 const ChatGuide = dynamic(() => import('./chat/Guide'));
 const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'));
+const QuoteBlock = dynamic(() => import('./chat/Quote'));
+
+export enum CodeClassName {
+  guide = 'guide',
+  mermaid = 'mermaid',
+  echarts = 'echarts',
+  quote = 'quote'
+}
 
 function Code({ inline, className, children }: any) {
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1];
 
-  if (codeType === 'mermaid') {
+  if (codeType === CodeClassName.mermaid) {
     return <MermaidCodeBlock code={String(children)} />;
   }
 
-  if (codeType === 'guide') {
+  if (codeType === CodeClassName.guide) {
     return <ChatGuide text={String(children)} />;
   }
-  if (codeType === 'echarts') {
+  if (codeType === CodeClassName.echarts) {
     return <EChartsCodeBlock code={String(children)} />;
+  }
+  if (codeType === CodeClassName.quote) {
+    return <QuoteBlock code={String(children)} />;
   }
   return (
     <CodeLight className={className} inline={inline} match={match}>
