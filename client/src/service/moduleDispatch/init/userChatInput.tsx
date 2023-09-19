@@ -1,11 +1,14 @@
 import { SystemInputEnum } from '@/constants/app';
+import type { ModuleDispatchProps } from '@/types/core/modules';
 
-export type UserChatInputProps = {
+export type UserChatInputProps = ModuleDispatchProps<{
   [SystemInputEnum.userChatInput]: string;
-};
+}>;
 
 export const dispatchChatInput = (props: Record<string, any>) => {
-  const { userChatInput } = props as UserChatInputProps;
+  const {
+    inputs: { userChatInput }
+  } = props as UserChatInputProps;
   return {
     userChatInput
   };

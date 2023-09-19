@@ -78,6 +78,28 @@
       "share": "Share",
       "test": "Test Chat "
     },
+    "response": {
+      "module cq": "Question classification list",
+      "module cq result": "Classification Result",
+      "module extract description": "Extract Description",
+      "module extract result": "Extract Result",
+      "module historyPreview": "Messages",
+      "module http body": "Body",
+      "module http result": "Response",
+      "module http url": "Request Url",
+      "module limit": "Count Limit",
+      "module maxToken": "MaxTokens",
+      "module model": "Model",
+      "module name": "Name",
+      "module price": "Price",
+      "module question": "Question",
+      "module quoteList": "Quotes",
+      "module runningTime": "Time",
+      "module similarity": "Similarity",
+      "module temperature": "Temperature",
+      "module time": "Running Time",
+      "module tokens": "Tokens"
+    },
     "retry": "Retry"
   },
   "common": {

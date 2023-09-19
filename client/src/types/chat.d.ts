@@ -50,10 +50,11 @@ export type QuoteItemType = KbDataItemType & {
 // response data
 export type ChatHistoryItemResType = {
   moduleType: `${FlowModuleTypeEnum}`;
+  moduleName: string;
   price: number;
   runningTime?: number;
-  model?: string;
   tokens?: number;
+  model?: string;
 
   // chat
   question?: string;
@@ -62,7 +63,7 @@ export type ChatHistoryItemResType = {
   quoteList?: QuoteItemType[];
   historyPreview?: ChatItemType[]; // completion context array. history will slice
 
-  // kb search
+  // dataset search
   similarity?: number;
   limit?: number;
 
@@ -75,5 +76,6 @@ export type ChatHistoryItemResType = {
   extractResult?: Record<string, any>;
 
   // http
+  body?: Record<string, any>;
   httpResult?: Record<string, any>;
 };

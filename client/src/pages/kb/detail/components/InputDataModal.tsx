@@ -2,7 +2,6 @@ import React, { useState, useCallback } from 'react';
 import { Box, Flex, Button, Textarea, IconButton, BoxProps } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { insertData2Kb, putKbDataById, delOneKbDataByDataId } from '@/api/plugins/kb';
-import { getFileViewUrl } from '@/api/support/file';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
@@ -13,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DatasetItemType } from '@/types/plugin';
 import { useTranslation } from 'react-i18next';
 import { useDatasetStore } from '@/store/dataset';
+import { getFileAndOpen } from '@/utils/common/file';
 
 export type FormData = { dataId?: string } & DatasetItemType;
 
@@ -267,9 +267,7 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
               textDecoration: 'underline',
               onClick: async () => {
                 try {
-                  const url = await getFileViewUrl(fileId);
-                  const asPath = `${location.origin}${url}`;
-                  window.open(asPath, '_blank');
+                  await getFileAndOpen(fileId);
                 } catch (error) {
                   toast({
                     title: getErrText(error, '获取文件地址失败'),

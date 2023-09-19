@@ -7,13 +7,14 @@ import type { SelectedKbType } from '@/types/plugin';
 import type { QuoteItemType } from '@/types/chat';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
-type KBSearchProps = {
+type KBSearchProps = ModuleDispatchProps<{
   kbList: SelectedKbType;
   similarity: number;
   limit: number;
   userChatInput: string;
-};
+}>;
 export type KBSearchResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   isEmpty?: boolean;
@@ -22,7 +23,10 @@ export type KBSearchResponse = {
 };
 
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
-  const { kbList = [], similarity = 0.4, limit = 5, userChatInput } = props as KBSearchProps;
+  const {
+    moduleName,
+    inputs: { kbList = [], similarity = 0.4, limit = 5, userChatInput }
+  } = props as KBSearchProps;
 
   if (kbList.length === 0) {
     return Promise.reject("You didn't choose the knowledge base");
@@ -59,6 +63,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
     quoteQA: searchRes,
     responseData: {
       moduleType: FlowModuleTypeEnum.kbSearchNode,
+      moduleName,
       price: countModelPrice({ model: vectorModel.model, tokens: tokenLen }),
       model: vectorModel.name,
       tokens: tokenLen,
