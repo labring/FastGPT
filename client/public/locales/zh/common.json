@@ -78,6 +78,28 @@
       "share": "外部链接调用",
       "test": "测试"
     },
+    "response": {
+      "module cq": "问题分类列表",
+      "module cq result": "分类结果",
+      "module extract description": "提取要求描述",
+      "module extract result": "提取结果",
+      "module historyPreview": "完整记录",
+      "module http body": "请求体",
+      "module http result": "响应体",
+      "module http url": "请求地址",
+      "module limit": "单次搜索上限",
+      "module maxToken": "最大 Tokens",
+      "module model": "模型",
+      "module name": "模型名",
+      "module price": "计费",
+      "module question": "问题",
+      "module quoteList": "引用内容",
+      "module runningTime": "运行时长",
+      "module similarity": "相似度",
+      "module temperature": "温度",
+      "module time": "运行时长",
+      "module tokens": "Tokens"
+    },
     "retry": "重新生成"
   },
   "common": {

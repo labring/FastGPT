@@ -22,13 +22,15 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
     inputs: { url, ...body }
   } = props as HttpRequestProps;
 
+  const requestBody = {
+    variables,
+    ...body
+  };
+
   try {
     const response = await fetchData({
       url,
-      body: {
-        variables,
-        ...body
-      }
+      body: requestBody
     });
 
     return {
@@ -37,6 +39,7 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
         moduleType: FlowModuleTypeEnum.httpRequest,
         moduleName,
         price: 0,
+        body: requestBody,
         httpResult: response
       },
       ...response
@@ -49,7 +52,8 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
         moduleType: FlowModuleTypeEnum.httpRequest,
         moduleName,
         price: 0,
-        httpResult: {}
+        body: requestBody,
+        httpResult: { error }
       }
     };
   }

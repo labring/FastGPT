@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 // @ts-ignore
 interface Props extends GridProps {
-  list: { id: string; label: string }[];
+  list: { id: string; label: string | React.ReactNode }[];
   activeId: string;
   size?: 'sm' | 'md' | 'lg';
   onChange: (id: string) => void;
@@ -23,13 +23,13 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
         };
       case 'md':
         return {
-          fontSize: 'md',
+          fontSize: ['sm', 'md'],
           outP: '4px',
           inlineP: 1
         };
       case 'lg':
         return {
-          fontSize: 'lg',
+          fontSize: ['md', 'lg'],
           outP: '5px',
           inlineP: 2
         };
@@ -68,7 +68,7 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
             onChange(item.id);
           }}
         >
-          {t(item.label) || item.label}
+          {typeof item.label === 'string' ? t(item.label) : item.label}
         </Box>
       ))}
     </Grid>
