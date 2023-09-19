@@ -19,14 +19,13 @@ const QuoteBlock = ({ code }: { code: string }) => {
       return [];
     }
   }, [code]);
-  console.log(code, quoteList, '===');
 
   return (
     <Box mt={3} pt={2} borderTop={theme.borders.base}>
       {quoteList.length > 0 ? (
         <>
           <Box>本次回答的引用:</Box>
-          <Box as={'ul'}>
+          <Box as={'ol'}>
             {quoteList.map((item, i) => (
               <Box
                 key={i}

@@ -200,9 +200,12 @@ function filterQuote({
 }) {
   const sliceResult = sliceMessagesTB({
     maxTokens: model.quoteMaxToken,
-    messages: quoteQA.map((item) => ({
+    messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
-      value: replaceVariable(quoteTemplate || defaultQuoteTemplate, item)
+      value: replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+        ...item,
+        index: `${index + 1}`
+      })
     }))
   });
 
@@ -212,7 +215,12 @@ function filterQuote({
   const quoteText =
     filterQuoteQA.length > 0
       ? `${filterQuoteQA
-          .map((item) => replaceVariable(quoteTemplate || defaultQuoteTemplate, item))
+          .map((item, index) =>
+            replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+              ...item,
+              index: `${index + 1}`
+            })
+          )
           .join('\n')}`
       : '';
 
