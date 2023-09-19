@@ -78,6 +78,28 @@
       "share": "外部链接调用",
       "test": "测试"
     },
+    "response": {
+      "module cq": "问题分类列表",
+      "module cq result": "分类结果",
+      "module extract description": "提取要求描述",
+      "module extract result": "提取结果",
+      "module historyPreview": "完整记录",
+      "module http body": "请求体",
+      "module http result": "响应体",
+      "module http url": "请求地址",
+      "module limit": "单次搜索上限",
+      "module maxToken": "最大 Tokens",
+      "module model": "模型",
+      "module name": "模型名",
+      "module price": "计费",
+      "module question": "问题",
+      "module quoteList": "引用内容",
+      "module runningTime": "运行时长",
+      "module similarity": "相似度",
+      "module temperature": "温度",
+      "module time": "运行时长",
+      "module tokens": "Tokens"
+    },
     "retry": "重新生成"
   },
   "common": {
@@ -228,7 +250,7 @@
     "Help Document": "帮助文档"
   },
   "template": {
-    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用 {{q}}, {{a}}, {{source}} 来作为 “检索内容”、“预期内容”和“来源”，他们都是可选的，下面是默认值：\n{{default}}",
+    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{file_id}} - 来源文件名，{{index}} - 第n个引用，他们都是可选的，下面是默认值：\n{{default}}",
     "Quote Prompt Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以用 {{quote}} 来插入引用内容，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
   "user": {

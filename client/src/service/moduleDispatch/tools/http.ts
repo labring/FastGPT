@@ -1,16 +1,13 @@
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { HttpPropsEnum } from '@/constants/flow/flowField';
 import { ChatHistoryItemResType } from '@/types/chat';
-import type { NextApiResponse } from 'next';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
-export type HttpRequestProps = {
-  res: NextApiResponse;
-  stream: boolean;
-  userOpenaiAccount: any;
+export type HttpRequestProps = ModuleDispatchProps<{
   [HttpPropsEnum.url]: string;
   [key: string]: any;
-};
+}>;
 export type HttpResponse = {
   [HttpPropsEnum.finish]: boolean;
   [HttpPropsEnum.failed]?: boolean;
@@ -19,16 +16,30 @@ export type HttpResponse = {
 };
 
 export const dispatchHttpRequest = async (props: Record<string, any>): Promise<HttpResponse> => {
-  const { res, stream, userOpenaiAccount, url, ...body } = props as HttpRequestProps;
+  const {
+    moduleName,
+    variables,
+    inputs: { url, ...body }
+  } = props as HttpRequestProps;
+
+  const requestBody = {
+    variables,
+    ...body
+  };
 
   try {
-    const response = await fetchData({ url, body });
+    const response = await fetchData({
+      url,
+      body: requestBody
+    });
 
     return {
       [HttpPropsEnum.finish]: true,
       [TaskResponseKeyEnum.responseData]: {
         moduleType: FlowModuleTypeEnum.httpRequest,
+        moduleName,
         price: 0,
+        body: requestBody,
         httpResult: response
       },
       ...response
@@ -39,8 +50,10 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
       [HttpPropsEnum.failed]: true,
       [TaskResponseKeyEnum.responseData]: {
         moduleType: FlowModuleTypeEnum.httpRequest,
+        moduleName,
         price: 0,
-        httpResult: {}
+        body: requestBody,
+        httpResult: { error }
       }
     };
   }

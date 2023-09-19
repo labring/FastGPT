@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@/service/errorCode';
+import { GridFSStorage } from '@/service/lib/gridfs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -16,6 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const { userId } = await authUser({ req });
+
+    // auth file
+    const gridFs = new GridFSStorage('dataset', userId);
+    await gridFs.findAndAuthFile(fileId);
 
     const token = await createFileToken({
       userId,

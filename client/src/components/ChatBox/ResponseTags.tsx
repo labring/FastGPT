@@ -32,16 +32,18 @@ const ResponseTags = ({
   } = useDisclosure();
 
   const {
+    chatAccount,
     quoteList = [],
     historyPreview = [],
     runningTime = 0
   } = useMemo(() => {
     const chatData = responseData.find((item) => item.moduleType === FlowModuleTypeEnum.chatNode);
-    if (!chatData) return {};
     return {
-      quoteList: chatData.quoteList,
-      historyPreview: chatData.historyPreview,
-      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0)
+      chatAccount: responseData.filter((item) => item.moduleType === FlowModuleTypeEnum.chatNode)
+        .length,
+      quoteList: chatData?.quoteList,
+      historyPreview: chatData?.historyPreview,
+      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
   }, [responseData]);
 
@@ -54,36 +56,47 @@ const ResponseTags = ({
 
   return responseData.length === 0 ? null : (
     <Flex alignItems={'center'} mt={2} flexWrap={'wrap'}>
-      {quoteList.length > 0 && (
-        <MyTooltip label="查看引用">
-          <Tag
-            colorSchema="blue"
-            cursor={'pointer'}
-            {...TagStyles}
-            onClick={() => setQuoteModalData(quoteList)}
-          >
-            {quoteList.length}条引用
-          </Tag>
-        </MyTooltip>
-      )}
-      {historyPreview.length > 0 && (
-        <MyTooltip label={'点击查看完整对话记录'}>
-          <Tag
-            colorSchema="green"
-            cursor={'pointer'}
-            {...TagStyles}
-            onClick={() => setContextModalData(historyPreview)}
-          >
-            {historyPreview.length}条上下文
-          </Tag>
-        </MyTooltip>
-      )}
-      {isPc && runningTime > 0 && (
-        <Tag colorSchema="purple" cursor={'default'} {...TagStyles}>
-          {runningTime}s
+      {chatAccount === 1 ? (
+        <>
+          {quoteList.length > 0 && (
+            <MyTooltip label="查看引用">
+              <Tag
+                colorSchema="blue"
+                cursor={'pointer'}
+                {...TagStyles}
+                onClick={() => setQuoteModalData(quoteList)}
+              >
+                {quoteList.length}条引用
+              </Tag>
+            </MyTooltip>
+          )}
+          {historyPreview.length > 0 && (
+            <MyTooltip label={'点击查看完整对话记录'}>
+              <Tag
+                colorSchema="green"
+                cursor={'pointer'}
+                {...TagStyles}
+                onClick={() => setContextModalData(historyPreview)}
+              >
+                {historyPreview.length}条上下文
+              </Tag>
+            </MyTooltip>
+          )}
+        </>
+      ) : (
+        <Tag colorSchema="blue" {...TagStyles}>
+          多组 AI 对话
         </Tag>
       )}
-      <MyTooltip label={'点击查看完整响应值'}>
+
+      {isPc && runningTime > 0 && (
+        <MyTooltip label={'模块运行时间和'}>
+          <Tag colorSchema="purple" cursor={'default'} {...TagStyles}>
+            {runningTime}s
+          </Tag>
+        </MyTooltip>
+      )}
+      <MyTooltip label={'点击查看完整响应'}>
         <Tag colorSchema="gray" cursor={'pointer'} {...TagStyles} onClick={onOpenWholeModal}>
           {t('chat.Complete Response')}
         </Tag>

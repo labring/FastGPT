@@ -5,19 +5,18 @@ import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { countModelPrice } from '@/service/events/pushBill';
-import { UserModelSchema } from '@/types/mongoSchema';
 import { getModel } from '@/service/utils/data';
 import { SystemInputEnum } from '@/constants/app';
 import { SpecialInputKeyEnum } from '@/constants/flow';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
-export type CQProps = {
+export type CQProps = ModuleDispatchProps<{
   systemPrompt?: string;
   history?: ChatItemType[];
   [SystemInputEnum.userChatInput]: string;
-  userOpenaiAccount: UserModelSchema['openaiAccount'];
   [SpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
-};
+}>;
 export type CQResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   [key: string]: any;
@@ -29,7 +28,11 @@ const maxTokens = 3000;
 
 /* request openai chat */
 export const dispatchClassifyQuestion = async (props: Record<string, any>): Promise<CQResponse> => {
-  const { agents, systemPrompt, history = [], userChatInput, userOpenaiAccount } = props as CQProps;
+  const {
+    moduleName,
+    userOpenaiAccount,
+    inputs: { agents, systemPrompt, history = [], userChatInput }
+  } = props as CQProps;
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
@@ -97,6 +100,7 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
     [result.key]: 1,
     [TaskResponseKeyEnum.responseData]: {
       moduleType: FlowModuleTypeEnum.classifyQuestion,
+      moduleName,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),
       model: getModel(agentModel)?.name || agentModel,
       tokens,

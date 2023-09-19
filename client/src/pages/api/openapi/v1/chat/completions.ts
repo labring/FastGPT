@@ -32,6 +32,7 @@ import { getSystemTime } from '@/utils/user';
 import { authOutLinkChat } from '@/service/support/outLink/auth';
 import requestIp from 'request-ip';
 import { replaceVariable } from '@/utils/common/tools/text';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -365,13 +366,15 @@ export async function dispatchModules({
     module.inputs.forEach((item: any) => {
       params[item.key] = item.value;
     });
-    const props: Record<string, any> = {
+    const props: ModuleDispatchProps<Record<string, any>> = {
       res,
       stream,
       detail,
+      variables,
+      moduleName: module.name,
       outputs: module.outputs,
       userOpenaiAccount: user?.openaiAccount,
-      ...params
+      inputs: params
     };
 
     const dispatchRes = await (async () => {

@@ -31,12 +31,12 @@ export const getDefaultAppForm = (): EditFormType => {
 
   return {
     chatModel: {
-      model: defaultChatModel.model,
+      model: defaultChatModel?.model,
       systemPrompt: '',
       temperature: 0,
       quotePrompt: '',
       quoteTemplate: '',
-      maxToken: defaultChatModel.contextMaxToken / 2,
+      maxToken: defaultChatModel ? defaultChatModel.contextMaxToken / 2 : 4000,
       frequency: 0.5,
       presence: -0.5
     },

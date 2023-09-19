@@ -11,7 +11,6 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/events/pushBill';
 import { ChatModelItemType } from '@/types/model';
-import { UserModelSchema } from '@/types/mongoSchema';
 import { textCensor } from '@/api/service/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { AppModuleItemType } from '@/types/app';
@@ -21,19 +20,16 @@ import { defaultQuotePrompt, defaultQuoteTemplate } from '@/prompts/core/AIChat'
 import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
-export type ChatProps = AIChatProps & {
-  res: NextApiResponse;
-  history?: ChatItemType[];
-  userChatInput: string;
-  stream?: boolean;
-  detail?: boolean;
-  quoteQA?: QuoteItemType[];
-  systemPrompt?: string;
-  limitPrompt?: string;
-  userOpenaiAccount: UserModelSchema['openaiAccount'];
-  outputs: AppModuleItemType['outputs'];
-};
+export type ChatProps = ModuleDispatchProps<
+  AIChatProps & {
+    userChatInput: string;
+    history?: ChatItemType[];
+    quoteQA?: QuoteItemType[];
+    limitPrompt?: string;
+  }
+>;
 export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
@@ -41,24 +37,27 @@ export type ChatResponse = {
 };
 
 /* request openai chat */
-export const dispatchChatCompletion = async (props: Record<string, any>): Promise<ChatResponse> => {
+export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
   let {
     res,
-    model = global.chatModels[0]?.model,
-    temperature = 0,
-    maxToken = 4000,
+    moduleName,
     stream = false,
     detail = false,
-    history = [],
-    quoteQA = [],
-    userChatInput,
-    systemPrompt = '',
-    limitPrompt,
-    quoteTemplate,
-    quotePrompt,
     userOpenaiAccount,
-    outputs
-  } = props as ChatProps;
+    outputs,
+    inputs: {
+      model = global.chatModels[0]?.model,
+      temperature = 0,
+      maxToken = 4000,
+      history = [],
+      quoteQA = [],
+      userChatInput,
+      systemPrompt = '',
+      limitPrompt,
+      quoteTemplate,
+      quotePrompt
+    }
+  } = props;
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
@@ -177,6 +176,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     [TaskResponseKeyEnum.answerText]: answerText,
     [TaskResponseKeyEnum.responseData]: {
       moduleType: FlowModuleTypeEnum.chatNode,
+      moduleName,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model, tokens: totalTokens }),
       model: modelConstantsData.name,
       tokens: totalTokens,
@@ -194,15 +194,18 @@ function filterQuote({
   model,
   quoteTemplate
 }: {
-  quoteQA: ChatProps['quoteQA'];
+  quoteQA: ChatProps['inputs']['quoteQA'];
   model: ChatModelItemType;
   quoteTemplate?: string;
 }) {
   const sliceResult = sliceMessagesTB({
     maxTokens: model.quoteMaxToken,
-    messages: quoteQA.map((item) => ({
+    messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
-      value: replaceVariable(quoteTemplate || defaultQuoteTemplate, item)
+      value: replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+        ...item,
+        index: `${index + 1}`
+      })
     }))
   });
 
@@ -212,7 +215,12 @@ function filterQuote({
   const quoteText =
     filterQuoteQA.length > 0
       ? `${filterQuoteQA
-          .map((item) => replaceVariable(quoteTemplate || defaultQuoteTemplate, item))
+          .map((item, index) =>
+            replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+              ...item,
+              index: `${index + 1}`
+            })
+          )
           .join('\n')}`
       : '';
 
@@ -232,7 +240,7 @@ function getChatMessages({
 }: {
   quotePrompt?: string;
   quoteText: string;
-  history: ChatProps['history'];
+  history: ChatProps['inputs']['history'];
   systemPrompt: string;
   limitPrompt?: string;
   userChatInput: string;
@@ -288,7 +296,7 @@ function getMaxTokens({
 }: {
   maxToken: number;
   model: ChatModelItemType;
-  filterMessages: ChatProps['history'];
+  filterMessages: ChatProps['inputs']['history'];
 }) {
   const tokensLimit = model.contextMaxToken;
   /* count response max token */
