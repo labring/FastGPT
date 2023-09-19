@@ -181,7 +181,6 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
       model: modelConstantsData.name,
       tokens: totalTokens,
       question: userChatInput,
-      answer: answerText,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(completeMessages)

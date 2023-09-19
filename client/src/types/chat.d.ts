@@ -57,7 +57,6 @@ export type ChatHistoryItemResType = {
 
   // chat
   question?: string;
-  answer?: string;
   temperature?: number;
   maxToken?: number;
   quoteList?: QuoteItemType[];
