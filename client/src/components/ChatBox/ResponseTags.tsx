@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ChatModuleEnum } from '@/constants/chat';
 import { ChatHistoryItemResType, ChatItemType, QuoteItemType } from '@/types/chat';
 import { Flex, BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +6,8 @@ import { useGlobalStore } from '@/store/global';
 import dynamic from 'next/dynamic';
 import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
+import { FlowModuleTypeEnum } from '@/constants/flow';
+
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
@@ -35,7 +36,7 @@ const ResponseTags = ({
     completeMessages = [],
     tokens = 0
   } = useMemo(() => {
-    const chatData = responseData.find((item) => item.moduleName === ChatModuleEnum.AIChat);
+    const chatData = responseData.find((item) => item.moduleType === FlowModuleTypeEnum.chatNode);
     if (!chatData) return {};
     return {
       quoteList: chatData.quoteList,

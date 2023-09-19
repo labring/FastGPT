@@ -10,7 +10,7 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type FlowModuleItemChangeProps = {
   moduleId: string;
-  type: 'inputs' | 'outputs' | 'addInput' | 'delInput';
+  type: 'attr' | 'inputs' | 'outputs' | 'addInput' | 'delInput';
   key: string;
   value: any;
 };
@@ -48,12 +48,12 @@ export type FlowOutputItemType = {
 };
 
 export type FlowModuleTemplateType = {
+  flowType: `${FlowModuleTypeEnum}`; // unique
   logo: string;
   name: string;
   description?: string;
   intro: string;
-  flowType: `${FlowModuleTypeEnum}`;
-  showStatus?: boolean;
+  showStatus?: boolean; // chatting response step status
   inputs: FlowInputItemType[];
   outputs: FlowOutputItemType[];
 };

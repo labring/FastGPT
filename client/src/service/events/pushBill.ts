@@ -30,7 +30,7 @@ export const pushTaskBill = async ({
       total,
       source,
       list: response.map((item) => ({
-        moduleName: item.moduleName,
+        moduleType: item.moduleType,
         amount: item.price || 0,
         model: item.model,
         tokenLen: item.tokens

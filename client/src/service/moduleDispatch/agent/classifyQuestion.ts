@@ -1,7 +1,7 @@
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
-import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { countModelPrice } from '@/service/events/pushBill';
@@ -9,6 +9,7 @@ import { UserModelSchema } from '@/types/mongoSchema';
 import { getModel } from '@/service/utils/data';
 import { SystemInputEnum } from '@/constants/app';
 import { SpecialInputKeyEnum } from '@/constants/flow';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type CQProps = {
   systemPrompt?: string;
@@ -95,7 +96,7 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
   return {
     [result.key]: 1,
     [TaskResponseKeyEnum.responseData]: {
-      moduleName: ChatModuleEnum.CQ,
+      moduleType: FlowModuleTypeEnum.classifyQuestion,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),
       model: getModel(agentModel)?.name || agentModel,
       tokens,

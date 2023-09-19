@@ -276,62 +276,43 @@ const AppEdit = ({ app, onCloseSettings }: Props) => {
       setNodes((nodes) =>
         nodes.map((node) => {
           if (node.id !== moduleId) return node;
+
+          const updateObj: Record<string, any> = {};
+
           if (type === 'inputs') {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                inputs: node.data.inputs.map((item) => (item.key === key ? value : item))
-              }
-            };
-          }
-          if (type === 'addInput') {
+            updateObj.inputs = node.data.inputs.map((item) => (item.key === key ? value : item));
+          } else if (type === 'addInput') {
             const input = node.data.inputs.find((input) => input.key === value.key);
             if (input) {
               toast({
                 status: 'warning',
                 title: 'key 重复'
               });
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  inputs: node.data.inputs
-                }
-              };
+              updateObj.inputs = node.data.inputs;
+            } else {
+              updateObj.inputs = node.data.inputs.concat(value);
             }
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                inputs: node.data.inputs.concat(value)
-              }
-            };
-          }
-          if (type === 'delInput') {
+          } else if (type === 'delInput') {
             onDelEdge({ moduleId, targetHandle: key });
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                inputs: node.data.inputs.filter((item) => item.key !== key)
-              }
-            };
+            updateObj.inputs = node.data.inputs.filter((item) => item.key !== key);
+          } else if (type === 'attr') {
+            updateObj[key] = value;
+          } else if (type === 'outputs') {
+            // del output connect
+            const delOutputs = node.data.outputs.filter(
+              (item) => !value.find((output: FlowOutputTargetItemType) => output.key === item.key)
+            );
+            delOutputs.forEach((output) => {
+              onDelEdge({ moduleId, sourceHandle: output.key });
+            });
+            updateObj.outputs = value;
           }
-
-          // del output connect
-          const delOutputs = node.data.outputs.filter(
-            (item) => !value.find((output: FlowOutputTargetItemType) => output.key === item.key)
-          );
-          delOutputs.forEach((output) => {
-            onDelEdge({ moduleId, sourceHandle: output.key });
-          });
 
           return {
             ...node,
             data: {
               ...node.data,
-              outputs: value
+              ...updateObj
             }
           };
         })

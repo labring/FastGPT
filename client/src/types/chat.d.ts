@@ -4,6 +4,7 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
 import { ChatItemSchema } from './mongoSchema';
 import { KbDataItemType } from './plugin';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
@@ -46,8 +47,9 @@ export type QuoteItemType = KbDataItemType & {
   kb_id: string;
 };
 
+// response data
 export type ChatHistoryItemResType = {
-  moduleName: string;
+  moduleType: `${FlowModuleTypeEnum}`;
   price: number;
   model?: string;
   tokens?: number;

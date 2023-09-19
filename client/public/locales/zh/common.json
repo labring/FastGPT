@@ -14,7 +14,6 @@
   "UnKnow": "未知",
   "Warning": "提示",
   "app": {
-    "Quote Prompt Settings": "引用提示词配置",
     "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
     "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
@@ -40,7 +39,14 @@
     "My Apps": "我的应用",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置",
-    "Variable Key Repeat Tip": "变量 key 重复"
+    "Quote Prompt Settings": "引用提示词配置",
+    "Variable Key Repeat Tip": "变量 key 重复",
+    "module": {
+      "Custom Title Tip": "该标题名字会展示在对话过程中"
+    },
+    "modules": {
+      "Title is required": "模块名不能为空"
+    }
   },
   "chat": {
     "Admin Mark Content": "纠正后的回复",
@@ -81,6 +87,7 @@
     "Copy": "复制",
     "Copy Successful": "复制成功",
     "Course": "",
+    "Custom Title": "自定义标题",
     "Delete": "删除",
     "Delete Failed": "删除失败",
     "Delete Success": "删除成功",
