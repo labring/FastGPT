@@ -38,6 +38,11 @@ footer a:hover {
 }
 */
 
+.medium-zoom-overlay,
+.medium-zoom-image--opened {
+  z-index: 1999;
+}
+
 /* 徽章样式 */
 .github-badge {
 	display: inline-block;
