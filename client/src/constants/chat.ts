@@ -52,14 +52,6 @@ export const ChatSourceMap = {
   }
 };
 
-export enum ChatModuleEnum {
-  'AIChat' = 'AI Chat',
-  'KBSearch' = 'KB Search',
-  'CQ' = 'Classify Question',
-  'Extract' = 'Content Extract',
-  'Http' = 'Http'
-}
-
 export enum OutLinkTypeEnum {
   'share' = 'share',
   'iframe' = 'iframe'

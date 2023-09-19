@@ -14,7 +14,6 @@
   "UnKnow": "UnKnow",
   "Warning": "Warning",
   "app": {
-    "Quote Prompt Settings": "Quote Prompt Settings",
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
@@ -40,7 +39,14 @@
     "My Apps": "My Apps",
     "Output Field Settings": "Output Field Settings",
     "Paste Config": "Paste Config",
-    "Variable Key Repeat Tip": "Variable Key Repeat"
+    "Quote Prompt Settings": "Quote Prompt Settings",
+    "Variable Key Repeat Tip": "Variable Key Repeat",
+    "module": {
+      "Custom Title Tip": "The title name is displayed during the conversation"
+    },
+    "modules": {
+      "Title is required": "Title is required"
+    }
   },
   "chat": {
     "Admin Mark Content": "Corrected response",
@@ -81,6 +87,7 @@
     "Copy": "Copy",
     "Copy Successful": "Copy Successful",
     "Course": "",
+    "Custom Title": "Custom Title",
     "Delete": "Delete",
     "Delete Failed": "Delete Failed",
     "Delete Success": "Delete Successful",

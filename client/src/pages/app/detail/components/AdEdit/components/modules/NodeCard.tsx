@@ -6,7 +6,8 @@ import type { FlowModuleItemType } from '@/types/flow';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'react-i18next';
-import { useCopyData } from '@/utils/tools';
+import { useEditTitle } from '@/hooks/useEditTitle';
+import { useToast } from '@/hooks/useToast';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -22,29 +23,48 @@ const NodeCard = (props: Props) => {
     minW = '300px',
     onCopyNode,
     onDelNode,
+    onChangeNode,
     moduleId
   } = props;
-  const { copyData } = useCopyData();
   const { t } = useTranslation();
   const theme = useTheme();
+  const { toast } = useToast();
+
+  // custom title edit
+  const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
+    title: t('common.Custom Title'),
+    placeholder: t('app.module.Custom Title Tip') || ''
+  });
 
   const menuList = useMemo(
     () => [
+      {
+        icon: 'edit',
+        label: t('common.Rename'),
+        onClick: () =>
+          onOpenModal({
+            defaultVal: name,
+            onSuccess: (e) => {
+              if (!e) {
+                return toast({
+                  title: t('app.modules.Title is required'),
+                  status: 'warning'
+                });
+              }
+              onChangeNode({
+                moduleId,
+                type: 'attr',
+                key: 'name',
+                value: e
+              });
+            }
+          })
+      },
       {
         icon: 'copy',
         label: t('common.Copy'),
         onClick: () => onCopyNode(moduleId)
       },
-      // {
-      //   icon: 'settingLight',
-      //   label: t('app.Copy Module Config'),
-      //   onClick: () => {
-      //     const copyProps = { ...props };
-      //     delete copyProps.children;
-      //     delete copyProps.children;
-      //     console.log(copyProps);
-      //   }
-      // },
       {
         icon: 'delete',
         label: t('common.Delete'),
@@ -100,6 +120,7 @@ const NodeCard = (props: Props) => {
         </Menu>
       </Flex>
       {children}
+      <EditTitleModal />
     </Box>
   );
 };

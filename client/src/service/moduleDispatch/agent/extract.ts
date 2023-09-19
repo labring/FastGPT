@@ -1,13 +1,14 @@
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
-import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { countModelPrice } from '@/service/events/pushBill';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { getModel } from '@/service/utils/data';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type Props = {
   userOpenaiAccount: UserModelSchema['openaiAccount'];
@@ -118,7 +119,7 @@ export async function dispatchContentExtract({
     [ContextExtractEnum.fields]: JSON.stringify(arg),
     ...arg,
     [TaskResponseKeyEnum.responseData]: {
-      moduleName: ChatModuleEnum.Extract,
+      moduleType: FlowModuleTypeEnum.contentExtract,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),
       model: getModel(agentModel)?.name || agentModel,
       tokens,

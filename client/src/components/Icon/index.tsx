@@ -94,7 +94,7 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconName } &
   const [IconComponent, setIconComponent] = useState<any>(null);
 
   useEffect(() => {
-    iconPaths[name]()
+    iconPaths[name]?.()
       .then((icon) => {
         setIconComponent({ as: icon.default });
       })
