@@ -564,15 +564,18 @@ const Settings = ({ appId }: { appId: string }) => {
           defaultData={getValues('chatModel')}
         />
       )}
-      <KBSelectModal
-        isOpen={isOpenKbSelect}
-        activeKbs={selectedKbList.map((item) => ({
-          kbId: item._id,
-          vectorModel: item.vectorModel
-        }))}
-        onClose={onCloseKbSelect}
-        onChange={replaceKbList}
-      />
+      {isOpenKbSelect && (
+        <KBSelectModal
+          isOpen={isOpenKbSelect}
+          activeKbs={selectedKbList.map((item) => ({
+            kbId: item._id,
+            vectorModel: item.vectorModel
+          }))}
+          onClose={onCloseKbSelect}
+          onChange={replaceKbList}
+        />
+      )}
+
       {isOpenKbParams && (
         <KbParamsModal
           searchEmptyText={getValues('kb.searchEmptyText')}
