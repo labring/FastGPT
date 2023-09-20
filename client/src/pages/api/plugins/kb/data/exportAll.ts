@@ -7,6 +7,7 @@ import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
 import { PgClient } from '@/service/pg';
 import { addLog } from '@/service/utils/tools';
+import { responseWriteController } from '@/service/common/stream';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const exportIds = [kbId, ...(await findAllChildrenIds(kbId))];
 
-    const thirtyMinutesAgo = new Date(
+    const limitMinutesAgo = new Date(
       Date.now() - (global.feConfigs?.limit?.exportLimitMinutes || 0) * 60 * 1000
     );
 
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         _id: userId,
         $or: [
           { 'limit.exportKbTime': { $exists: false } },
-          { 'limit.exportKbTime': { $lte: thirtyMinutesAgo } }
+          { 'limit.exportKbTime': { $lte: limitMinutesAgo } }
         ]
       },
       '_id limit'
@@ -79,10 +80,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       res.write('index,content,source');
 
+      const write = responseWriteController({
+        res,
+        readStream: stream
+      });
+
       // parse data every row
       stream.on('data', ({ q, a, source }: { q: string; a: string; source?: string }) => {
-        res.write(`\n"${q}","${a || ''}","${source || ''}"`);
+        if (res.closed) {
+          return stream.destroy();
+        }
+        write(`\n"${q}","${a || ''}","${source || ''}"`);
       });
+      // finish
       stream.on('end', async () => {
         try {
           // update export time
