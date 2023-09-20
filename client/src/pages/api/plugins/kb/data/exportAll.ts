@@ -67,6 +67,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         res.end('Error connecting to database');
         return;
       }
+      console.log('export data');
+
       // create pg select stream
       const query = new QueryStream(
         `SELECT q, a, source FROM ${PgDatasetTableName} where user_id='${userId}' AND kb_id IN (${exportIds

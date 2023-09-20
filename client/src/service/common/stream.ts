@@ -14,7 +14,6 @@ export function responseWriteController({
   return (text: string) => {
     const writeResult = res.write(text);
     if (!writeResult) {
-      console.log('Pause read stream');
       readStream.pause();
     }
   };
