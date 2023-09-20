@@ -5,7 +5,8 @@ import { authUser } from '@/service/utils/auth';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
-import Papa from 'papaparse';
+import { PgClient } from '@/service/pg';
+import { addLog } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -45,6 +46,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error(`上次导出未到 ${minutes}，每 ${minutes}仅可导出一次。`);
     }
 
+    const { rows } = await PgClient.query(
+      `SELECT count(id) FROM ${PgDatasetTableName} where user_id='${userId}' AND kb_id IN (${exportIds
+        .map((id) => `'${id}'`)
+        .join(',')})`
+    );
+    const total = rows?.[0]?.count || 0;
+
+    addLog.info(`export datasets: ${userId}`, { total });
+
+    if (total > 100000) {
+      throw new Error('数据量超出 10 万，无法导出');
+    }
+
     // connect pg
     global.pgClient.connect((err, client, done) => {
       if (err) {
@@ -66,9 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       res.write('index,content,source');
 
       // parse data every row
-      stream.on('data', (row: { q: string; a: string; source?: string }) => {
-        const csv = Papa.unparse([row], { header: false });
-        res.write(`\n${csv}`);
+      stream.on('data', ({ q, a, source }: { q: string; a: string; source?: string }) => {
+        res.write(`\n"${q}","${a || ''}","${source || ''}"`);
       });
       stream.on('end', async () => {
         try {
@@ -98,8 +111,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '200mb'
-    }
+    responseLimit: '100mb'
   }
 };
