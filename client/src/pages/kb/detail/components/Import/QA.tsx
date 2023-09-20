@@ -12,11 +12,13 @@ import MyIcon from '@/components/Icon';
 import CloseIcon from '@/components/Icon/close';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
 import { updateDatasetFile } from '@/api/core/dataset/file';
+import { Prompt_AgentQA } from '@/prompts/core/agent';
+import { replaceVariable } from '@/utils/common/tools/text';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
@@ -52,6 +54,12 @@ const QAImport = ({ kbId }: { kbId: string }) => {
     content: `该任务无法终止！导入后会自动调用大模型生成问答对，会有一些细节丢失，请确认！如果余额不足，未完成的任务会被暂停。`
   });
 
+  const previewQAPrompt = useMemo(() => {
+    return replaceVariable(Prompt_AgentQA.prompt, {
+      theme: prompt || Prompt_AgentQA.defaultTheme
+    });
+  }, [prompt]);
+
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
       const chunks = files.map((file) => file.chunks).flat();
@@ -74,7 +82,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
           kbId,
           data: chunks.slice(i, i + step),
           mode: TrainingModeEnum.qa,
-          prompt: prompt || '下面是一段长文本'
+          prompt: previewQAPrompt
         });
 
         success += insertLen;
@@ -202,21 +210,19 @@ const QAImport = ({ kbId }: { kbId: string }) => {
             <Box py={5}>
               <Box mb={2}>
                 QA 拆分引导词{' '}
-                <MyTooltip
-                  label={`可输入关于文件内容的范围介绍，例如:\n1. Laf 的介绍\n2. xxx的简历\n最终会补全为: 关于{输入的内容}`}
-                  forceShow
-                >
-                  <QuestionOutlineIcon ml={1} />
+                <MyTooltip label={previewQAPrompt} forceShow>
+                  <InfoOutlineIcon ml={1} />
                 </MyTooltip>
               </Box>
               <Flex alignItems={'center'} fontSize={'sm'}>
-                <Box mr={2}>关于</Box>
+                <Box mr={2}>文件主题</Box>
                 <Input
+                  fontSize={'sm'}
                   flex={1}
-                  placeholder={'Laf 云函数的介绍'}
+                  placeholder={Prompt_AgentQA.defaultTheme}
                   bg={'myWhite.500'}
                   defaultValue={prompt}
-                  onBlur={(e) => (e.target.value ? setPrompt(`关于"${e.target.value}"`) : '')}
+                  onChange={(e) => setPrompt(e.target.value || '')}
                 />
               </Flex>
             </Box>

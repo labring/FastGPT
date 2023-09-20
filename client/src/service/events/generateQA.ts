@@ -11,6 +11,8 @@ import { gptMessage2ChatType } from '@/utils/adapt';
 import { addLog } from '../utils/tools';
 import { splitText2Chunks } from '@/utils/file';
 import { countMessagesTokens } from '@/utils/common/tiktoken';
+import { replaceVariable } from '@/utils/common/tools/text';
+import { Prompt_AgentQA } from '@/prompts/core/agent';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -62,25 +64,18 @@ export async function generateQA(): Promise<any> {
     // 请求 chatgpt 获取回答
     const response = await Promise.all(
       [data.q].map((text) => {
-        const modelTokenLimit = global.qaModel.maxToken || 16000;
         const messages: ChatCompletionRequestMessage[] = [
           {
-            role: 'system',
-            content: `我会给你发送一段长文本，${
-              data.prompt ? `是${data.prompt}，` : ''
-            }请学习它，并用 markdown 格式给出 25 个问题和答案，问题可以多样化、自由扩展；答案要详细、解读到位，答案包含普通文本、链接、代码、表格、公示、媒体链接等。按下面 QA 问答格式返回: 
-Q1:
-A1:
-Q2:
-A2:
-……`
-          },
-          {
             role: 'user',
-            content: text
+            content: data.prompt
+              ? replaceVariable(data.prompt, { text })
+              : replaceVariable(Prompt_AgentQA.prompt, {
+                  theme: Prompt_AgentQA.defaultTheme,
+                  text
+                })
           }
         ];
-
+        const modelTokenLimit = global.qaModel.maxToken || 16000;
         const promptsToken = countMessagesTokens({
           messages: gptMessage2ChatType(messages)
         });
@@ -90,7 +85,7 @@ A2:
           .createChatCompletion(
             {
               model: global.qaModel.model,
-              temperature: 0.8,
+              temperature: 0.01,
               messages,
               stream: false,
               max_tokens: maxToken
@@ -197,6 +192,7 @@ A2:
  * 检查文本是否按格式返回
  */
 function formatSplitText(text: string) {
+  text = text.replace(/\\n/g, '\n'); // 将换行符替换为空格
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q|$)/g; // 匹配Q和A的正则表达式
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
@@ -207,8 +203,8 @@ function formatSplitText(text: string) {
     if (q && a) {
       // 如果Q和A都存在，就将其添加到结果中
       result.push({
-        q,
-        a: a.trim().replace(/\n\s*/g, '\n')
+        q: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`,
+        a: ''
       });
     }
   }

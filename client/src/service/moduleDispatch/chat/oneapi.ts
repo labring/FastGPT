@@ -1,5 +1,4 @@
 import type { NextApiResponse } from 'next';
-import { sseResponse } from '@/service/utils/tools';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
@@ -21,6 +20,9 @@ import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { ModuleDispatchProps } from '@/types/core/modules';
+import { Readable } from 'stream';
+import { responseWrite, responseWriteController } from '@/service/common/stream';
+import { addLog } from '@/service/utils/tools';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
@@ -324,7 +326,7 @@ function targetResponse({
     outputs.find((output) => output.key === TaskResponseKeyEnum.answerText)?.targets || [];
 
   if (targets.length === 0) return;
-  sseResponse({
+  responseWrite({
     res,
     event: detail ? sseResponseEventEnum.answer : undefined,
     data: textAdaptGptResponse({
@@ -342,42 +344,53 @@ async function streamResponse({
   detail: boolean;
   response: any;
 }) {
-  let answer = '';
-  let error: any = null;
-  const parseData = new SSEParseData();
+  return new Promise<{ answer: string }>((resolve, reject) => {
+    const stream = response.data as Readable;
+    let answer = '';
+    const parseData = new SSEParseData();
 
-  try {
-    for await (const chunk of response.data as any) {
-      if (res.closed) break;
-      const parse = parseStreamChunk(chunk);
+    const write = responseWriteController({
+      res,
+      readStream: stream
+    });
+
+    stream.on('data', (data) => {
+      if (res.closed) {
+        stream.destroy();
+        return resolve({ answer });
+      }
+
+      const parse = parseStreamChunk(data);
       parse.forEach((item) => {
         const { data } = parseData.parse(item);
         if (!data || data === '[DONE]') return;
 
         const content: string = data?.choices?.[0]?.delta?.content || '';
-        error = data.error;
-        answer += content;
+        if (data.error) {
+          addLog.error(`SSE response`, data.error);
+        } else {
+          answer += content;
 
-        sseResponse({
-          res,
-          event: detail ? sseResponseEventEnum.answer : undefined,
-          data: textAdaptGptResponse({
-            text: content
-          })
-        });
+          responseWrite({
+            write,
+            event: detail ? sseResponseEventEnum.answer : undefined,
+            data: textAdaptGptResponse({
+              text: content
+            })
+          });
+        }
       });
-    }
-  } catch (error) {
-    console.log('pipe error', error);
-  }
-
-  if (error) {
-    return Promise.reject(error);
-  }
-
-  return {
-    answer
-  };
+    });
+    stream.on('end', () => {
+      resolve({ answer });
+    });
+    stream.on('close', () => {
+      resolve({ answer });
+    });
+    stream.on('error', (err) => {
+      reject(err);
+    });
+  });
 }
 
 function getHistoryPreview(completeMessages: ChatItemType[]) {

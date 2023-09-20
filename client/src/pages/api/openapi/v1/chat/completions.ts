@@ -477,8 +477,6 @@ export function getSystemVariable({ timezone }: { timezone: string }) {
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '20mb'
-    }
+    responseLimit: '20mb'
   }
 };
