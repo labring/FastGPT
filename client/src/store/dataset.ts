@@ -8,7 +8,7 @@ import { defaultKbDetail } from '@/constants/kb';
 import { KbUpdateParams } from '@/api/request/kb';
 
 type State = {
-  datasets: KbListItemType[];
+  allDatasets: KbListItemType[];
   loadAllDatasets: () => Promise<KbListItemType[]>;
   myKbList: KbListItemType[];
   loadKbList: (parentId?: string) => Promise<any>;
@@ -27,11 +27,11 @@ export const useDatasetStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
-        datasets: [],
+        allDatasets: [],
         async loadAllDatasets() {
           const res = await getAllDataset();
           set((state) => {
-            state.datasets = res;
+            state.allDatasets = res;
           });
           return res;
         },

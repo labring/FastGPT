@@ -5,19 +5,16 @@ import {
   Box,
   Button,
   ModalBody,
-  ModalHeader,
   ModalFooter,
   useTheme,
   Textarea,
   Grid,
   Divider
 } from '@chakra-ui/react';
-import { getKbPaths } from '@/api/plugins/kb';
 import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { SelectedKbType } from '@/types/plugin';
-import { useGlobalStore } from '@/store/global';
 import { useToast } from '@/hooks/useToast';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
@@ -28,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useDatasetStore } from '@/store/dataset';
 import { feConfigs } from '@/store/static';
+import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 export type KbParamsType = {
   searchSimilarity: number;
@@ -36,10 +34,12 @@ export type KbParamsType = {
 };
 
 export const KBSelectModal = ({
+  isOpen,
   activeKbs = [],
   onChange,
   onClose
 }: {
+  isOpen: boolean;
   activeKbs: SelectedKbType;
   onChange: (e: SelectedKbType) => void;
   onClose: () => void;
@@ -47,229 +47,156 @@ export const KBSelectModal = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const [selectedKbList, setSelectedKbList] = useState<SelectedKbType>(activeKbs);
-  const { isPc } = useGlobalStore();
   const { toast } = useToast();
-  const [parentId, setParentId] = useState<string>();
-  const { myKbList, loadKbList, datasets, loadAllDatasets } = useDatasetStore();
+  const { paths, parentId, setParentId, datasets } = useDatasetSelect();
+  const { allDatasets, loadAllDatasets } = useDatasetStore();
 
-  const { data } = useQuery(['loadKbList', parentId], () => {
-    return Promise.all([loadKbList(parentId), getKbPaths(parentId)]);
-  });
   useQuery(['loadAllDatasets'], loadAllDatasets);
-  const paths = useMemo(
-    () => [
-      {
-        parentId: '',
-        parentName: t('kb.My Dataset')
-      },
-      ...(data?.[1] || [])
-    ],
-    [data, t]
-  );
+
   const filterKbList = useMemo(() => {
     return {
-      selected: datasets.filter((item) => selectedKbList.find((kb) => kb.kbId === item._id)),
-      unSelected: myKbList.filter((item) => !selectedKbList.find((kb) => kb.kbId === item._id))
+      selected: allDatasets.filter((item) => selectedKbList.find((kb) => kb.kbId === item._id)),
+      unSelected: datasets.filter((item) => !selectedKbList.find((kb) => kb.kbId === item._id))
     };
-  }, [myKbList, datasets, selectedKbList]);
+  }, [datasets, allDatasets, selectedKbList]);
 
   return (
-    <MyModal
-      isOpen={true}
-      isCentered={!isPc}
-      maxW={['90vw', '800px']}
-      w={'800px'}
+    <DatasetSelectModal
+      isOpen={isOpen}
+      paths={paths}
+      parentId={parentId}
+      setParentId={setParentId}
+      tips={'仅能选择同一个索引模型的知识库'}
       onClose={onClose}
     >
-      <Flex flexDirection={'column'} h={['90vh', 'auto']}>
-        <ModalHeader>
-          {!!parentId ? (
-            <Flex
-              flex={1}
-              userSelect={'none'}
-              fontSize={['sm', 'lg']}
-              fontWeight={'normal'}
-              color={'myGray.900'}
-            >
-              {paths.map((item, i) => (
-                <Flex key={item.parentId} mr={2} alignItems={'center'}>
-                  <Box
-                    fontSize={'lg'}
-                    borderRadius={'md'}
-                    {...(i === paths.length - 1
-                      ? {
-                          cursor: 'default'
-                        }
-                      : {
-                          cursor: 'pointer',
-                          _hover: {
-                            color: 'myBlue.600'
-                          },
-                          onClick: () => {
-                            setParentId(item.parentId);
-                          }
-                        })}
-                  >
-                    {item.parentName}
-                  </Box>
-                  {i !== paths.length - 1 && (
-                    <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={['18px', '24px']} />
-                  )}
-                </Flex>
-              ))}
-            </Flex>
-          ) : (
-            <Box>关联的知识库({selectedKbList.length})</Box>
+      <ModalBody flex={['1 0 0', '0 0 auto']} maxH={'80vh'} overflowY={'auto'} userSelect={'none'}>
+        <Grid gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={3}>
+          {filterKbList.selected.map((item) =>
+            (() => {
+              return (
+                <Card
+                  key={item._id}
+                  p={3}
+                  border={theme.borders.base}
+                  boxShadow={'sm'}
+                  bg={'myBlue.300'}
+                >
+                  <Flex alignItems={'center'} h={'38px'}>
+                    <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
+                    <Box flex={'1 0 0'} mx={3}>
+                      {item.name}
+                    </Box>
+                    <MyIcon
+                      name={'delete'}
+                      w={'14px'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'red.500' }}
+                      onClick={() => {
+                        setSelectedKbList((state) => state.filter((kb) => kb.kbId !== item._id));
+                      }}
+                    />
+                  </Flex>
+                </Card>
+              );
+            })()
           )}
-          {isPc && (
-            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'normal'}>
-              仅能选择同一个索引模型的知识库
-            </Box>
-          )}
-        </ModalHeader>
+        </Grid>
 
-        <ModalBody
-          flex={['1 0 0', '0 0 auto']}
-          maxH={'80vh'}
-          overflowY={'auto'}
-          display={'grid'}
-          userSelect={'none'}
-        >
-          <Grid
-            h={'auto'}
-            gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
-            gridGap={3}
-          >
-            {filterKbList.selected.map((item) =>
-              (() => {
-                return (
+        {filterKbList.selected.length > 0 && <Divider my={3} />}
+
+        <Grid gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={3}>
+          {filterKbList.unSelected.map((item) =>
+            (() => {
+              return (
+                <MyTooltip
+                  key={item._id}
+                  label={
+                    item.type === KbTypeEnum.dataset
+                      ? t('kb.Select Dataset')
+                      : t('kb.Select Folder')
+                  }
+                >
                   <Card
-                    key={item._id}
                     p={3}
                     border={theme.borders.base}
                     boxShadow={'sm'}
-                    bg={'myBlue.300'}
+                    h={'80px'}
+                    cursor={'pointer'}
+                    _hover={{
+                      boxShadow: 'md'
+                    }}
+                    onClick={() => {
+                      if (item.type === KbTypeEnum.folder) {
+                        setParentId(item._id);
+                      } else if (item.type === KbTypeEnum.dataset) {
+                        const vectorModel = selectedKbList[0]?.vectorModel?.model;
+
+                        if (vectorModel && vectorModel !== item.vectorModel.model) {
+                          return toast({
+                            status: 'warning',
+                            title: '仅能选择同一个索引模型的知识库'
+                          });
+                        }
+                        setSelectedKbList((state) => [
+                          ...state,
+                          { kbId: item._id, vectorModel: item.vectorModel }
+                        ]);
+                      }
+                    }}
                   >
                     <Flex alignItems={'center'} h={'38px'}>
                       <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
-                      <Box flex={'1 0 0'} mx={3}>
+                      <Box
+                        className="textEllipsis"
+                        ml={3}
+                        fontWeight={'bold'}
+                        fontSize={['md', 'lg', 'xl']}
+                      >
                         {item.name}
                       </Box>
-                      <MyIcon
-                        name={'delete'}
-                        w={'14px'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'red.500' }}
-                        onClick={() => {
-                          setSelectedKbList((state) => state.filter((kb) => kb.kbId !== item._id));
-                        }}
-                      />
+                    </Flex>
+                    <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+                      {item.type === KbTypeEnum.folder ? (
+                        <Box color={'myGray.500'}>{t('Folder')}</Box>
+                      ) : (
+                        <>
+                          <MyIcon mr={1} name="kbTest" w={'12px'} />
+                          <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
+                        </>
+                      )}
                     </Flex>
                   </Card>
-                );
-              })()
-            )}
-          </Grid>
-
-          {filterKbList.selected.length > 0 && <Divider my={3} />}
-
-          <Grid
-            gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
-            gridGap={3}
-          >
-            {filterKbList.unSelected.map((item) =>
-              (() => {
-                return (
-                  <MyTooltip
-                    key={item._id}
-                    label={
-                      item.type === KbTypeEnum.dataset
-                        ? t('kb.Select Dataset')
-                        : t('kb.Select Folder')
-                    }
-                  >
-                    <Card
-                      p={3}
-                      border={theme.borders.base}
-                      boxShadow={'sm'}
-                      h={'80px'}
-                      cursor={'pointer'}
-                      _hover={{
-                        boxShadow: 'md'
-                      }}
-                      onClick={() => {
-                        if (item.type === KbTypeEnum.folder) {
-                          setParentId(item._id);
-                        } else if (item.type === KbTypeEnum.dataset) {
-                          const vectorModel = selectedKbList[0]?.vectorModel?.model;
-
-                          if (vectorModel && vectorModel !== item.vectorModel.model) {
-                            return toast({
-                              status: 'warning',
-                              title: '仅能选择同一个索引模型的知识库'
-                            });
-                          }
-                          setSelectedKbList((state) => [
-                            ...state,
-                            { kbId: item._id, vectorModel: item.vectorModel }
-                          ]);
-                        }
-                      }}
-                    >
-                      <Flex alignItems={'center'} h={'38px'}>
-                        <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
-                        <Box
-                          className="textEllipsis"
-                          ml={3}
-                          fontWeight={'bold'}
-                          fontSize={['md', 'lg', 'xl']}
-                        >
-                          {item.name}
-                        </Box>
-                      </Flex>
-                      <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
-                        {item.type === KbTypeEnum.folder ? (
-                          <Box color={'myGray.500'}>{t('Folder')}</Box>
-                        ) : (
-                          <>
-                            <MyIcon mr={1} name="kbTest" w={'12px'} />
-                            <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
-                          </>
-                        )}
-                      </Flex>
-                    </Card>
-                  </MyTooltip>
-                );
-              })()
-            )}
-          </Grid>
-          {filterKbList.unSelected.length === 0 && (
-            <Flex mt={5} flexDirection={'column'} alignItems={'center'}>
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                这个目录已经没东西可选了~
-              </Box>
-            </Flex>
+                </MyTooltip>
+              );
+            })()
           )}
-        </ModalBody>
+        </Grid>
+        {filterKbList.unSelected.length === 0 && (
+          <Flex mt={5} flexDirection={'column'} alignItems={'center'}>
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              这个目录已经没东西可选了~
+            </Box>
+          </Flex>
+        )}
+      </ModalBody>
 
-        <ModalFooter>
-          <Button
-            onClick={() => {
-              // filter out the kb that is not in the kList
-              const filterKbList = selectedKbList.filter((kb) => {
-                return datasets.find((item) => item._id === kb.kbId);
-              });
+      <ModalFooter>
+        <Button
+          onClick={() => {
+            // filter out the kb that is not in the kList
+            const filterKbList = selectedKbList.filter((kb) => {
+              return datasets.find((item) => item._id === kb.kbId);
+            });
 
-              onClose();
-              onChange(filterKbList);
-            }}
-          >
-            完成
-          </Button>
-        </ModalFooter>
-      </Flex>
-    </MyModal>
+            onClose();
+            onChange(filterKbList);
+          }}
+        >
+          完成
+        </Button>
+      </ModalFooter>
+    </DatasetSelectModal>
   );
 };
 
