@@ -71,7 +71,7 @@ const Settings = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { appDetail, updateAppDetail } = useUserStore();
-  const { loadAllDatasets, datasets } = useDatasetStore();
+  const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useGlobalStore();
 
   const [editVariable, setEditVariable] = useState<VariableItemType>();
@@ -131,8 +131,8 @@ const Settings = ({ appId }: { appId: string }) => {
     );
   }, [getValues, refresh]);
   const selectedKbList = useMemo(
-    () => datasets.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
-    [datasets, kbList]
+    () => allDatasets.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
+    [allDatasets, kbList]
   );
 
   /* 点击删除 */
@@ -564,16 +564,15 @@ const Settings = ({ appId }: { appId: string }) => {
           defaultData={getValues('chatModel')}
         />
       )}
-      {isOpenKbSelect && (
-        <KBSelectModal
-          activeKbs={selectedKbList.map((item) => ({
-            kbId: item._id,
-            vectorModel: item.vectorModel
-          }))}
-          onClose={onCloseKbSelect}
-          onChange={replaceKbList}
-        />
-      )}
+      <KBSelectModal
+        isOpen={isOpenKbSelect}
+        activeKbs={selectedKbList.map((item) => ({
+          kbId: item._id,
+          vectorModel: item.vectorModel
+        }))}
+        onClose={onCloseKbSelect}
+        onChange={replaceKbList}
+      />
       {isOpenKbParams && (
         <KbParamsModal
           searchEmptyText={getValues('kb.searchEmptyText')}

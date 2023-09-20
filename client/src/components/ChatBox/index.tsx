@@ -985,13 +985,12 @@ const ChatBox = (
         />
       )}
       {/* select one dataset to insert markData */}
-      {adminMarkData && !adminMarkData.kbId && (
-        <SelectDataset
-          onClose={() => setAdminMarkData(undefined)}
-          // @ts-ignore
-          onSuccess={(kbId) => setAdminMarkData((state) => ({ ...state, kbId }))}
-        />
-      )}
+      <SelectDataset
+        isOpen={!!adminMarkData && !adminMarkData.kbId}
+        onClose={() => setAdminMarkData(undefined)}
+        // @ts-ignore
+        onSuccess={(kbId) => setAdminMarkData((state) => ({ ...state, kbId }))}
+      />
       {/* edit markData modal */}
       {adminMarkData && adminMarkData.kbId && (
         <InputDataModal

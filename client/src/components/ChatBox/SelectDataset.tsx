@@ -1,58 +1,43 @@
-import React, { useRef, useState } from 'react';
-import {
-  ModalBody,
-  useTheme,
-  ModalFooter,
-  Button,
-  ModalHeader,
-  Box,
-  Card,
-  Flex
-} from '@chakra-ui/react';
-import MyModal from '../MyModal';
+import React, { useState } from 'react';
+import { ModalBody, useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { useDatasetStore } from '@/store/dataset';
 import { useToast } from '@/hooks/useToast';
 import Avatar from '../Avatar';
 import MyIcon from '@/components/Icon';
-import { useGlobalStore } from '@/store/global';
+import { KbTypeEnum } from '@/constants/kb';
+import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 const SelectDataset = ({
+  isOpen,
   onSuccess,
   onClose
 }: {
+  isOpen: boolean;
   onSuccess: (kbId: string) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { isPc } = useGlobalStore();
   const { toast } = useToast();
-  const { myKbList, loadKbList } = useDatasetStore();
   const [selectedId, setSelectedId] = useState<string>();
-
-  useQuery(['loadKbList'], () => loadKbList());
+  const { paths, parentId, setParentId, datasets } = useDatasetSelect();
 
   return (
-    <MyModal isOpen={true} onClose={onClose} w={'100%'} maxW={['90vw', '900px']} isCentered={!isPc}>
-      <Flex flexDirection={'column'} h={['90vh', 'auto']}>
-        <ModalHeader>
-          <Box>{t('chat.Select Mark Kb')}</Box>
-          <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'normal'}>
-            {t('chat.Select Mark Kb Desc')}
-          </Box>
-        </ModalHeader>
-        <ModalBody
-          flex={['1 0 0', '0 0 auto']}
-          maxH={'80vh'}
-          overflowY={'auto'}
-          display={'grid'}
+    <DatasetSelectModal
+      isOpen={isOpen}
+      paths={paths}
+      onClose={onClose}
+      parentId={parentId}
+      setParentId={setParentId}
+      tips={t('chat.Select Mark Kb Desc')}
+    >
+      <ModalBody flex={['1 0 0', '0 0 auto']} maxH={'80vh'} overflowY={'auto'}>
+        <Grid
           gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
           gridGap={3}
           userSelect={'none'}
         >
-          {myKbList.map((item) =>
+          {datasets.map((item) =>
             (() => {
               const selected = selectedId === item._id;
               return (
@@ -72,7 +57,11 @@ const SelectDataset = ({
                       }
                     : {})}
                   onClick={() => {
-                    setSelectedId(item._id);
+                    if (item.type === KbTypeEnum.folder) {
+                      setParentId(item._id);
+                    } else {
+                      setSelectedId(item._id);
+                    }
                   }}
                 >
                   <Flex alignItems={'center'} h={'38px'}>
@@ -89,28 +78,36 @@ const SelectDataset = ({
               );
             })()
           )}
-        </ModalBody>
-        <ModalFooter>
-          <Button variant={'base'} mr={2} onClick={onClose}>
-            {t('Cancel')}
-          </Button>
-          <Button
-            onClick={() => {
-              if (!selectedId) {
-                return toast({
-                  status: 'warning',
-                  title: t('Select value is empty')
-                });
-              }
+        </Grid>
+        {datasets.length === 0 && (
+          <Flex mt={5} flexDirection={'column'} alignItems={'center'}>
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              这个目录已经没东西可选了~
+            </Box>
+          </Flex>
+        )}
+      </ModalBody>
+      <ModalFooter>
+        <Button variant={'base'} mr={2} onClick={onClose}>
+          {t('Cancel')}
+        </Button>
+        <Button
+          onClick={() => {
+            if (!selectedId) {
+              return toast({
+                status: 'warning',
+                title: t('Select value is empty')
+              });
+            }
 
-              onSuccess(selectedId);
-            }}
-          >
-            {t('Confirm')}
-          </Button>
-        </ModalFooter>
-      </Flex>
-    </MyModal>
+            onSuccess(selectedId);
+          }}
+        >
+          {t('Confirm')}
+        </Button>
+      </ModalFooter>
+    </DatasetSelectModal>
   );
 };
 
