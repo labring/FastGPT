@@ -21,7 +21,7 @@ const KBSelect = ({
   onChange: (e: SelectedKbType) => void;
 }) => {
   const theme = useTheme();
-  const { datasets, loadAllDatasets } = useDatasetStore();
+  const { allDatasets, loadAllDatasets } = useDatasetStore();
   const {
     isOpen: isOpenKbSelect,
     onOpen: onOpenKbSelect,
@@ -29,8 +29,8 @@ const KBSelect = ({
   } = useDisclosure();
 
   const showKbList = useMemo(
-    () => datasets.filter((item) => activeKbs.find((kb) => kb.kbId === item._id)),
-    [datasets, activeKbs]
+    () => allDatasets.filter((item) => activeKbs.find((kb) => kb.kbId === item._id)),
+    [allDatasets, activeKbs]
   );
 
   useQuery(['loadAllDatasets'], loadAllDatasets);
@@ -57,9 +57,12 @@ const KBSelect = ({
           </Flex>
         ))}
       </Grid>
-      {isOpenKbSelect && (
-        <KBSelectModal activeKbs={activeKbs} onChange={onChange} onClose={onCloseKbSelect} />
-      )}
+      <KBSelectModal
+        isOpen={isOpenKbSelect}
+        activeKbs={activeKbs}
+        onChange={onChange}
+        onClose={onCloseKbSelect}
+      />
     </>
   );
 };
