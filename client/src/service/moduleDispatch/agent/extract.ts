@@ -10,13 +10,13 @@ import { ModuleDispatchProps } from '@/types/core/modules';
 import { Prompt_ExtractJson } from '@/prompts/core/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
 
-export type Props = ModuleDispatchProps<{
+type Props = ModuleDispatchProps<{
   history?: ChatItemType[];
   [ContextExtractEnum.content]: string;
   [ContextExtractEnum.extractKeys]: ContextExtractAgentItemType[];
   [ContextExtractEnum.description]: string;
 }>;
-export type Response = {
+type Response = {
   [ContextExtractEnum.success]?: boolean;
   [ContextExtractEnum.failed]?: boolean;
   [ContextExtractEnum.fields]: string;

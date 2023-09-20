@@ -11,13 +11,13 @@ import { ModuleDispatchProps } from '@/types/core/modules';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { Prompt_CQJson } from '@/prompts/core/agent';
 
-export type Props = ModuleDispatchProps<{
+type Props = ModuleDispatchProps<{
   systemPrompt?: string;
   history?: ChatItemType[];
   [SystemInputEnum.userChatInput]: string;
   [SpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
-export type CQResponse = {
+type CQResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   [key: string]: any;
 };
