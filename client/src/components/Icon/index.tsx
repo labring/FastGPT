@@ -101,7 +101,7 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconName } &
       .catch((error) => console.log(error));
   }, [name]);
 
-  return name ? (
+  return !!name && !!iconPaths[name] ? (
     <Icon
       {...IconComponent}
       w={w}
