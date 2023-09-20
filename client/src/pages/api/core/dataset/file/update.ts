@@ -7,6 +7,7 @@ import { UpdateFileProps } from '@/api/core/dataset/file.d';
 import { Types } from 'mongoose';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
+import { addLog } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -59,6 +60,7 @@ async function updateDatasetSource(data: { fileId: string; userId: string; name?
       ]
     });
   } catch (error) {
+    addLog.error(`Update dataset source error`, error);
     setTimeout(() => {
       updateDatasetSource(data);
     }, 2000);

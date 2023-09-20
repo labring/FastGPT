@@ -173,8 +173,6 @@ export async function pushDataToKb({
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '12mb'
-    }
+    responseLimit: '12mb'
   }
 };

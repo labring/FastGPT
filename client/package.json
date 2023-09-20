@@ -1,6 +1,6 @@
 {
   "name": "fastgpt",
-  "version": "4.4.3",
+  "version": "4.4.4",
   "private": false,
   "scripts": {
     "dev": "next dev",
