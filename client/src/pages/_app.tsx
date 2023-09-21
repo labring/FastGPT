@@ -85,7 +85,10 @@ function App({ Component, pageProps }: AppProps) {
     <>
       <Head>
         <title>{feConfigs?.systemTitle || 'AI'}</title>
-        <meta name="description" content="Embedding + LLM, Build AI knowledge base" />
+        <meta
+          name="description"
+          content="FastGPT is a knowledge-based question answering system built on the LLM. It offers out-of-the-box data processing and model invocation capabilities. Moreover, it allows for workflow orchestration through Flow visualization, thereby enabling complex question and answer scenarios!"
+        />
         <meta
           name="viewport"
           content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no, viewport-fit=cover"
