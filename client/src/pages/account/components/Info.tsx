@@ -28,7 +28,7 @@ import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { getLangStore, LangEnum, langMap, setLangStore } from '@/utils/i18n';
+import { getLangStore, LangEnum, langMap, setLangStore } from '@/utils/web/i18n';
 import { useRouter } from 'next/router';
 import MyMenu from '@/components/MyMenu';
 import MySelect from '@/components/Select';

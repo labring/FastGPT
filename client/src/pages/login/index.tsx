@@ -9,7 +9,7 @@ import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
-import { serviceSideProps } from '@/utils/i18n';
+import { serviceSideProps } from '@/utils/web/i18n';
 import { setToken } from '@/utils/user';
 import { feConfigs } from '@/store/static';
 import CommunityModal from '@/components/CommunityModal';

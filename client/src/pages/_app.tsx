@@ -10,7 +10,7 @@ import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import { clientInitData, feConfigs } from '@/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
-import { getLangStore, setLangStore } from '@/utils/i18n';
+import { getLangStore, setLangStore } from '@/utils/web/i18n';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 

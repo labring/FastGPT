@@ -19,7 +19,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
-import { serviceSideProps } from '@/utils/i18n';
+import { serviceSideProps } from '@/utils/web/i18n';
 
 const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
   const router = useRouter();

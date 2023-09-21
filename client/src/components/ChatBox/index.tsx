@@ -16,7 +16,8 @@ import {
   ExportChatType
 } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
-import { voiceBroadcast, cancelBroadcast, hasVoiceApi, getErrText } from '@/utils/tools';
+import { voiceBroadcast, cancelBroadcast, hasVoiceApi } from '@/utils/web/voice';
+import { getErrText } from '@/utils/tools';
 import { useCopyData } from '@/hooks/useCopyData';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
