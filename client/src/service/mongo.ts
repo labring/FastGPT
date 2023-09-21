@@ -130,7 +130,7 @@ export * from './models/chat';
 export * from './models/chatItem';
 export * from './models/app';
 export * from './models/user';
-export * from './models/bill';
+export * from './common/bill/schema';
 export * from './models/pay';
 export * from './models/trainingData';
 export * from './models/openapi';

@@ -1,18 +1,16 @@
 import { TrainingData } from '@/service/mongo';
-import { pushQABill } from '@/service/events/pushBill';
-import { pushDataToKb } from '@/pages/api/core/dataset/data/pushData';
+import { pushQABill } from '@/service/common/bill/push';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
 import { authBalanceByUid } from '../utils/auth';
 import { axiosConfig, getAIChatApi } from '../lib/openai';
 import { ChatCompletionRequestMessage } from 'openai';
-import { gptMessage2ChatType } from '@/utils/adapt';
 import { addLog } from '../utils/tools';
 import { splitText2Chunks } from '@/utils/file';
-import { countMessagesTokens } from '@/utils/common/tiktoken';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { Prompt_AgentQA } from '@/prompts/core/agent';
+import { pushDataToKb } from '@/pages/api/core/dataset/data/pushData';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -41,7 +39,8 @@ export async function generateQA(): Promise<any> {
       prompt: 1,
       q: 1,
       source: 1,
-      file_id: 1
+      file_id: 1,
+      billId: 1
     });
 
     // task preemption
@@ -61,88 +60,66 @@ export async function generateQA(): Promise<any> {
 
     const chatAPI = getAIChatApi();
 
-    // 请求 chatgpt 获取回答
-    const response = await Promise.all(
-      [data.q].map((text) => {
-        const messages: ChatCompletionRequestMessage[] = [
-          {
-            role: 'user',
-            content: data.prompt
-              ? replaceVariable(data.prompt, { text })
-              : replaceVariable(Prompt_AgentQA.prompt, {
-                  theme: Prompt_AgentQA.defaultTheme,
-                  text
-                })
-          }
-        ];
-        const modelTokenLimit = global.qaModel.maxToken || 16000;
-        const promptsToken = countMessagesTokens({
-          messages: gptMessage2ChatType(messages)
-        });
-        const maxToken = modelTokenLimit - promptsToken;
+    // request LLM to get QA
+    const text = data.q;
+    const messages: ChatCompletionRequestMessage[] = [
+      {
+        role: 'user',
+        content: data.prompt
+          ? replaceVariable(data.prompt, { text })
+          : replaceVariable(Prompt_AgentQA.prompt, {
+              theme: Prompt_AgentQA.defaultTheme,
+              text
+            })
+      }
+    ];
 
-        return chatAPI
-          .createChatCompletion(
-            {
-              model: global.qaModel.model,
-              temperature: 0.01,
-              messages,
-              stream: false,
-              max_tokens: maxToken
-            },
-            {
-              timeout: 480000,
-              ...axiosConfig()
-            }
-          )
-          .then((res) => {
-            const answer = res.data.choices?.[0].message?.content;
-            const totalTokens = res.data.usage?.total_tokens || 0;
-
-            const result = formatSplitText(answer || ''); // 格式化后的QA对
-            console.log(`split result length: `, result.length);
-            // 计费
-            if (result.length > 0) {
-              pushQABill({
-                userId: data.userId,
-                totalTokens,
-                appName: 'QA 拆分'
-              });
-            } else {
-              addLog.info(`QA result 0:`, { answer });
-            }
-
-            return {
-              rawContent: answer,
-              result
-            };
-          })
-          .catch((err) => {
-            console.log('QA拆分错误');
-            console.log(err.response?.status, err.response?.statusText, err.response?.data);
-            return Promise.reject(err);
-          });
-      })
+    const { data: chatResponse } = await chatAPI.createChatCompletion(
+      {
+        model: global.qaModel.model,
+        temperature: 0.01,
+        messages,
+        stream: false
+      },
+      {
+        timeout: 480000,
+        ...axiosConfig()
+      }
     );
+    const answer = chatResponse.choices?.[0].message?.content;
+    const totalTokens = chatResponse.usage?.total_tokens || 0;
 
-    const responseList = response.map((item) => item.result).flat();
+    const qaArr = formatSplitText(answer || ''); // 格式化后的QA对
 
-    // 创建 向量生成 队列
+    // get vector and insert
     await pushDataToKb({
       kbId,
-      data: responseList.map((item) => ({
+      data: qaArr.map((item) => ({
         ...item,
         source: data.source,
         file_id: data.file_id
       })),
       userId,
-      mode: TrainingModeEnum.index
+      mode: TrainingModeEnum.index,
+      billId: data.billId
     });
 
     // delete data from training
     await TrainingData.findByIdAndDelete(data._id);
 
+    console.log(`split result length: `, qaArr.length);
     console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
+
+    // 计费
+    if (qaArr.length > 0) {
+      pushQABill({
+        userId: data.userId,
+        totalTokens,
+        billId: data.billId
+      });
+    } else {
+      addLog.info(`QA result 0:`, { answer });
+    }
 
     reduceQueue();
     generateQA();

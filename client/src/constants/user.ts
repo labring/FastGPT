@@ -5,7 +5,8 @@ export enum OAuthEnum {
 export enum BillSourceEnum {
   fastgpt = 'fastgpt',
   api = 'api',
-  shareLink = 'shareLink'
+  shareLink = 'shareLink',
+  training = 'training'
 }
 export enum PageTypeEnum {
   login = 'login',
@@ -16,7 +17,8 @@ export enum PageTypeEnum {
 export const BillSourceMap: Record<`${BillSourceEnum}`, string> = {
   [BillSourceEnum.fastgpt]: '在线使用',
   [BillSourceEnum.api]: 'Api',
-  [BillSourceEnum.shareLink]: '免登录链接'
+  [BillSourceEnum.shareLink]: '免登录链接',
+  [BillSourceEnum.training]: '数据训练'
 };
 
 export enum PromotionEnum {

@@ -84,7 +84,7 @@ const defaultQAModel = {
   maxToken: 16000,
   price: 0
 };
-const defaultExtractModel: FunctionModelItemType = {
+export const defaultExtractModel: FunctionModelItemType = {
   model: 'gpt-3.5-turbo-16k',
   name: 'GPT35-16k',
   maxToken: 16000,
@@ -92,7 +92,7 @@ const defaultExtractModel: FunctionModelItemType = {
   prompt: '',
   functionCall: true
 };
-const defaultCQModel: FunctionModelItemType = {
+export const defaultCQModel: FunctionModelItemType = {
   model: 'gpt-3.5-turbo-16k',
   name: 'GPT35-16k',
   maxToken: 16000,

@@ -53,6 +53,10 @@ const TrainingDataSchema = new Schema({
   file_id: {
     type: String,
     default: ''
+  },
+  billId: {
+    type: String,
+    default: ''
   }
 });
 

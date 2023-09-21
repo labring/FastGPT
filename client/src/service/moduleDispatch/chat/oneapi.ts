@@ -8,7 +8,7 @@ import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
-import { countModelPrice } from '@/service/events/pushBill';
+import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
 import { textCensor } from '@/api/service/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';

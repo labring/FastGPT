@@ -10,7 +10,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/store/dataset';
-import { updateDatasetFile } from '@/api/core/dataset/file';
+import { putMarkFilesUsed } from '@/api/core/dataset/file';
 import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.csv';
@@ -39,14 +39,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
       // mark the file is used
-      await Promise.all(
-        files.map((file) =>
-          updateDatasetFile({
-            id: file.id,
-            datasetUsed: true
-          })
-        )
-      );
+      await putMarkFilesUsed({ fileIds: files.map((file) => file.id) });
 
       const chunks = files
         .map((file) => file.chunks)

@@ -19,7 +19,7 @@ const modeMap = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { kbId, data, mode = TrainingModeEnum.index, prompt } = req.body as PushDataProps;
+    const { kbId, data, mode = TrainingModeEnum.index } = req.body as PushDataProps;
 
     if (!kbId || !Array.isArray(data)) {
       throw new Error('KbId or data is empty');
@@ -40,11 +40,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     jsonRes<PushDataResponse>(res, {
       data: await pushDataToKb({
-        kbId,
-        data,
-        userId,
-        mode,
-        prompt
+        ...req.body,
+        userId
       })
     });
   } catch (err) {
@@ -60,7 +57,8 @@ export async function pushDataToKb({
   kbId,
   data,
   mode,
-  prompt
+  prompt,
+  billId
 }: { userId: string } & PushDataProps): Promise<PushDataResponse> {
   const [kb, vectorModel] = await Promise.all([
     authKb({
@@ -150,6 +148,7 @@ export async function pushDataToKb({
       kbId,
       mode,
       prompt,
+      billId,
       vectorModel: vectorModel.model
     }))
   );
@@ -163,6 +162,9 @@ export async function pushDataToKb({
 
 export const config = {
   api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    },
     responseLimit: '12mb'
   }
 };

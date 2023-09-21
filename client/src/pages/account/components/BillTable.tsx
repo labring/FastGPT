@@ -68,7 +68,7 @@ const BillTable = () => {
               <Tr key={item.id}>
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
                 <Td>{BillSourceMap[item.source]}</Td>
-                <Td>{item.appName || '-'}</Td>
+                <Td>{t(item.appName) || '-'}</Td>
                 <Td>{item.total}元</Td>
                 <Td>
                   <Button size={'sm'} variant={'base'} onClick={() => setBillDetail(item)}>

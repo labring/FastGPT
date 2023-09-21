@@ -15,7 +15,7 @@ import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-import { updateDatasetFile } from '@/api/core/dataset/file';
+import { putMarkFilesUsed } from '@/api/core/dataset/file';
 import { Prompt_AgentQA } from '@/prompts/core/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { chunksUpload } from '@/utils/web/core/dataset';
@@ -65,14 +65,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
       const chunks = files.map((file) => file.chunks).flat();
 
       // mark the file is used
-      await Promise.all(
-        files.map((file) =>
-          updateDatasetFile({
-            id: file.id,
-            datasetUsed: true
-          })
-        )
-      );
+      await putMarkFilesUsed({ fileIds: files.map((file) => file.id) });
 
       // upload data
       const { insertLen } = await chunksUpload({
@@ -80,6 +73,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
         chunks,
         mode: TrainingModeEnum.qa,
         prompt: previewQAPrompt,
+        rate: 10,
         onUploading: (insertLen) => {
           setSuccessChunks(insertLen);
         }
