@@ -39,7 +39,8 @@ export async function generateQA(): Promise<any> {
       prompt: 1,
       q: 1,
       source: 1,
-      file_id: 1
+      file_id: 1,
+      billId: 1
     });
 
     // task preemption
@@ -100,7 +101,8 @@ export async function generateQA(): Promise<any> {
             ...item,
             source: data.source,
             file_id: data.file_id
-          }
+          },
+          billId: data.billId
         });
       } catch (error) {}
     });
@@ -116,7 +118,7 @@ export async function generateQA(): Promise<any> {
       pushQABill({
         userId: data.userId,
         totalTokens,
-        appName: 'QA 拆分'
+        billId: data.billId
       });
     } else {
       addLog.info(`QA result 0:`, { answer });

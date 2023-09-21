@@ -1,3 +1,4 @@
+import { postCreateTrainingBill } from '@/api/common/bill';
 import { postChunks2Dataset } from '@/api/core/dataset/data';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
@@ -18,12 +19,16 @@ export async function chunksUpload({
   rate?: number;
   onUploading?: (insertLen: number, total: number) => void;
 }) {
+  // create training bill
+  const billId = await postCreateTrainingBill({ name: 'dataset.Training Name' });
+
   async function upload(data: DatasetDataItemType[]) {
     return postChunks2Dataset({
       kbId,
       data,
       mode,
-      prompt
+      prompt,
+      billId
     });
   }
 

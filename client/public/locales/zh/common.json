@@ -132,7 +132,8 @@
     "Confirm to delete the data": "确认删除该数据？",
     "Export": "导出",
     "Queue Desc": "该数据是指整个系统当前待训练的数量。{{title}} 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
-    "System Data Queue": "排队长度"
+    "System Data Queue": "排队长度",
+    "Training Name": "数据训练"
   },
   "file": {
     "Click to download CSV template": "点击下载 CSV 模板",

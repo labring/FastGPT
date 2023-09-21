@@ -9,7 +9,6 @@ export type BillListItemType = {
 };
 
 export type CreateBillType = {
-  billId?: string;
   userId: string;
   appName: string;
   appId?: string;

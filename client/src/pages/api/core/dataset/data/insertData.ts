@@ -11,6 +11,7 @@ import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
 
 export type Props = {
+  billId?: string;
   kbId: string;
   data: DatasetDataItemType;
 };
@@ -37,7 +38,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 });
 
 export async function getVectorAndInsertDataset(props: Props & { userId: string }) {
-  const { kbId, data, userId } = props;
+  const { kbId, data, userId, billId } = props;
   if (!kbId || !data?.q) {
     return Promise.reject('缺少参数');
   }
@@ -70,7 +71,8 @@ export async function getVectorAndInsertDataset(props: Props & { userId: string 
     const { vectors } = await getVector({
       model: kb.vectorModel,
       input: [q],
-      userId
+      userId,
+      billId
     });
 
     const response = await insertData2Dataset({

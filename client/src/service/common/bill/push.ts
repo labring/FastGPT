@@ -4,7 +4,7 @@ import { getModel } from '@/service/utils/data';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@/utils/user';
 import { addLog } from '@/service/utils/tools';
-import type { CreateBillType } from '@/types/common/bill';
+import type { BillListItemType, CreateBillType } from '@/types/common/bill';
 
 async function createBill(data: CreateBillType) {
   try {
@@ -17,6 +17,43 @@ async function createBill(data: CreateBillType) {
   } catch (error) {
     addLog.error(`createBill error`, error);
   }
+}
+async function concatBill({
+  billId,
+  total,
+  listIndex,
+  tokens = 0,
+  userId
+}: {
+  billId?: string;
+  total: number;
+  listIndex?: number;
+  tokens?: number;
+  userId: string;
+}) {
+  if (!billId) return;
+  try {
+    await Promise.all([
+      Bill.findOneAndUpdate(
+        {
+          _id: billId,
+          userId
+        },
+        {
+          $inc: {
+            total,
+            ...(listIndex !== undefined && {
+              [`list.${listIndex}.amount`]: total,
+              [`list.${listIndex}.tokenLen`]: tokens
+            })
+          }
+        }
+      ),
+      User.findByIdAndUpdate(userId, {
+        $inc: { balance: -total }
+      })
+    ]);
+  } catch (error) {}
 }
 
 export const pushTaskBill = async ({
@@ -94,11 +131,11 @@ export const updateShareChatBill = async ({
 export const pushQABill = async ({
   userId,
   totalTokens,
-  appName
+  billId
 }: {
   userId: string;
   totalTokens: number;
-  appName: string;
+  billId: string;
 }) => {
   addLog.info('splitData generate success', { totalTokens });
 
@@ -108,19 +145,12 @@ export const pushQABill = async ({
     // 计算价格
     const total = unitPrice * totalTokens;
 
-    createBill({
+    concatBill({
+      billId,
       userId,
-      appName,
       total,
-      source: BillSourceEnum.qa,
-      list: [
-        {
-          moduleName: 'QA 拆分',
-          amount: total,
-          model: global.qaModel.model,
-          tokenLen: totalTokens
-        }
-      ]
+      tokens: totalTokens,
+      listIndex: 1
     });
   } catch (err) {
     addLog.error('Create completions bill error', err);
@@ -128,10 +158,12 @@ export const pushQABill = async ({
 };
 
 export const pushGenerateVectorBill = async ({
+  billId,
   userId,
   tokenLen,
   model
 }: {
+  billId?: string;
   userId: string;
   tokenLen: number;
   model: string;
@@ -145,20 +177,30 @@ export const pushGenerateVectorBill = async ({
     total = total > 1 ? total : 1;
 
     // 插入 Bill 记录
-    createBill({
-      userId,
-      appName: '索引生成',
-      total,
-      source: BillSourceEnum.vector,
-      list: [
-        {
-          moduleName: '索引生成',
-          amount: total,
-          model: vectorModel.model,
-          tokenLen
-        }
-      ]
-    });
+    if (billId) {
+      concatBill({
+        userId,
+        total,
+        billId,
+        tokens: tokenLen,
+        listIndex: 0
+      });
+    } else {
+      createBill({
+        userId,
+        appName: '索引生成',
+        total,
+        source: BillSourceEnum.fastgpt,
+        list: [
+          {
+            moduleName: '索引生成',
+            amount: total,
+            model: vectorModel.model,
+            tokenLen
+          }
+        ]
+      });
+    }
   } catch (err) {
     addLog.error('Create generateVector bill error', err);
   }

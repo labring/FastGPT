@@ -132,7 +132,8 @@
     "Confirm to delete the data": "Confirm to delete the data?",
     "Export": "Export",
     "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
-    "System Data Queue": "Data Queue"
+    "System Data Queue": "Data Queue",
+    "Training Name": "Dataset Training"
   },
   "file": {
     "Click to download CSV template": "Click to download CSV template",

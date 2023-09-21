@@ -8,6 +8,7 @@ import { pushGenerateVectorBill } from '@/service/common/bill/push';
 type Props = {
   model: string;
   input: string[];
+  billId?: string;
 };
 type Response = {
   tokenLen: number;
@@ -38,7 +39,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 export async function getVector({
   model = 'text-embedding-ada-002',
   userId,
-  input
+  input,
+  billId
 }: { userId?: string } & Props) {
   userId && (await authBalanceByUid(userId));
 
@@ -82,7 +84,8 @@ export async function getVector({
     pushGenerateVectorBill({
       userId,
       tokenLen: result.tokenLen,
-      model
+      model,
+      billId
     });
 
   return result;

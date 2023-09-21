@@ -70,6 +70,7 @@ export interface TrainingDataSchema {
   a: string;
   source: string;
   file_id: string;
+  billId: string;
 }
 
 export interface ChatSchema {
