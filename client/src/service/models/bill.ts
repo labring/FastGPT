@@ -31,24 +31,7 @@ const BillSchema = new Schema({
     default: BillSourceEnum.fastgpt
   },
   list: {
-    type: [
-      {
-        moduleName: {
-          type: String,
-          required: true
-        },
-        amount: {
-          type: Number,
-          required: true
-        },
-        model: {
-          type: String
-        },
-        tokenLen: {
-          type: Number
-        }
-      }
-    ],
+    type: Array,
     default: []
   }
 });

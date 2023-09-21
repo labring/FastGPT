@@ -21,3 +21,11 @@ export type VectorModelItemType = {
   price: number;
   maxToken: number;
 };
+export type FunctionModelItemType = {
+  model: string;
+  name: string;
+  maxToken: number;
+  price: number;
+  prompt: string;
+  functionCall: boolean;
+};

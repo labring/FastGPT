@@ -3,7 +3,12 @@ import type { Agent } from 'http';
 import type { Pool } from 'pg';
 import type { Tiktoken } from 'js-tiktoken';
 import type { Logger } from 'winston';
-import { ChatModelItemType, QAModelItemType, VectorModelItemType } from './model';
+import {
+  ChatModelItemType,
+  FunctionModelItemType,
+  QAModelItemType,
+  VectorModelItemType
+} from './model';
 import { TrackEventName } from '@/constants/common';
 
 export type PagingData<T> = {
@@ -62,6 +67,8 @@ declare global {
   var systemEnv: SystemEnvType;
   var chatModels: ChatModelItemType[];
   var qaModel: QAModelItemType;
+  var extractModel: FunctionModelItemType;
+  var cqModel: FunctionModelItemType;
   var vectorModels: VectorModelItemType[];
   var systemVersion: string;
 

@@ -14,5 +14,11 @@ export const getVectorModel = (model?: string) => {
 };
 
 export const getModel = (model?: string) => {
-  return [...global.chatModels, ...global.vectorModels].find((item) => item.model === model);
+  return [
+    ...global.chatModels,
+    ...global.vectorModels,
+    global.qaModel,
+    global.extractModel,
+    global.cqModel
+  ].find((item) => item.model === model);
 };
