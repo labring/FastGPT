@@ -2,7 +2,7 @@ import { PgClient } from '@/service/pg';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { countModelPrice } from '@/service/events/pushBill';
+import { countModelPrice } from '@/service/common/bill/push';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import type { QuoteItemType } from '@/types/chat';
 import { PgDatasetTableName } from '@/constants/plugin';

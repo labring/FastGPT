@@ -1,7 +1,7 @@
 import type { ChatItemType } from './chat';
 import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/model';
 import type { DataType } from './data';
-import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
+import { InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
 import { ChatSourceEnum } from '@/constants/chat';
@@ -70,6 +70,7 @@ export interface TrainingDataSchema {
   a: string;
   source: string;
   file_id: string;
+  billId: string;
 }
 
 export interface ChatSchema {
@@ -100,23 +101,6 @@ export interface ChatItemSchema extends ChatItemType {
     dataId: string;
     content: string;
   };
-}
-
-export type BillListItemType = {
-  moduleName: string;
-  amount: number;
-  model?: string;
-  tokenLen?: number;
-};
-export interface BillSchema {
-  _id: string;
-  userId: string;
-  appName: string;
-  appId?: string;
-  source: `${BillSourceEnum}`;
-  time: Date;
-  total: number;
-  list: BillListItemType[];
 }
 
 export interface PaySchema {

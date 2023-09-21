@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ModalBody,
   Flex,
@@ -20,6 +20,10 @@ import { useTranslation } from 'react-i18next';
 
 const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void }) => {
   const { t } = useTranslation();
+  const filterBillList = useMemo(
+    () => bill.list.filter((item) => item && item.moduleName),
+    [bill.list]
+  );
 
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('user.Bill Detail')}>
@@ -34,7 +38,7 @@ const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>应用名:</Box>
-          <Box>{bill.appName}</Box>
+          <Box>{t(bill.appName) || '-'}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>来源:</Box>
@@ -59,7 +63,7 @@ const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void
                 </Tr>
               </Thead>
               <Tbody>
-                {bill.list.map((item, i) => (
+                {filterBillList.map((item, i) => (
                   <Tr key={i}>
                     <Td>{item.moduleName}</Td>
                     <Td>{item.model}</Td>

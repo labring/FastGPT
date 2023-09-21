@@ -1,6 +1,6 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { BillSchema as BillType } from '@/types/mongoSchema';
-import { BillSourceEnum, BillSourceMap } from '@/constants/user';
+import { BillSchema as BillType } from '@/types/common/bill';
+import { BillSourceMap } from '@/constants/user';
 
 const BillSchema = new Schema({
   userId: {
@@ -28,7 +28,7 @@ const BillSchema = new Schema({
   source: {
     type: String,
     enum: Object.keys(BillSourceMap),
-    default: BillSourceEnum.fastgpt
+    required: true
   },
   list: {
     type: Array,

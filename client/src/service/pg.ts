@@ -178,7 +178,7 @@ export const insertData2Dataset = ({
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
-      { key: 'source', value: item.source?.slice(0, 30)?.trim() || '' },
+      { key: 'source', value: item.source?.slice(0, 60)?.trim() || '' },
       { key: 'file_id', value: item.file_id || '' },
       { key: 'q', value: item.q.replace(/'/g, '"') },
       { key: 'a', value: item.a.replace(/'/g, '"') },

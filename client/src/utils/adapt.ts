@@ -1,5 +1,5 @@
 import { formatPrice } from './user';
-import type { BillSchema } from '../types/mongoSchema';
+import type { BillSchema } from '@/types/common/bill';
 import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';

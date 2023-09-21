@@ -38,3 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
   }
 }
+export const config = {
+  api: {
+    responseLimit: '32mb'
+  }
+};

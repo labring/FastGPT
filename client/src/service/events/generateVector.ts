@@ -39,7 +39,8 @@ export async function generateVector(): Promise<any> {
       a: 1,
       source: 1,
       file_id: 1,
-      vectorModel: 1
+      vectorModel: 1,
+      billId: 1
     });
 
     // task preemption
@@ -64,7 +65,8 @@ export async function generateVector(): Promise<any> {
     const { vectors } = await getVector({
       model: data.vectorModel,
       input: dataItems.map((item) => item.q),
-      userId
+      userId,
+      billId: data.billId
     });
 
     // 生成结果插入到 pg

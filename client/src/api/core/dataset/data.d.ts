@@ -7,6 +7,7 @@ export type PushDataProps = {
   data: DatasetItemType[];
   mode: `${TrainingModeEnum}`;
   prompt?: string;
+  billId?: string;
 };
 export type PushDataResponse = {
   insertLen: number;

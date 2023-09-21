@@ -183,7 +183,7 @@ const FileSelect = ({
       }
       setSelectingText(undefined);
     },
-    [chunkLen, onPushFiles, t, toast]
+    [chunkLen, kbDetail._id, onPushFiles, t, toast]
   );
   const onUrlFetch = useCallback(
     (e: FetchResultItem[]) => {
