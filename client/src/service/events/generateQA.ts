@@ -10,7 +10,7 @@ import { addLog } from '../utils/tools';
 import { splitText2Chunks } from '@/utils/file';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { Prompt_AgentQA } from '@/prompts/core/agent';
-import { getVectorAndInsertDataset } from '@/pages/api/core/dataset/data/insertData';
+import { pushDataToKb } from '@/pages/api/core/dataset/data/pushData';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -92,19 +92,16 @@ export async function generateQA(): Promise<any> {
     const qaArr = formatSplitText(answer || ''); // 格式化后的QA对
 
     // get vector and insert
-    qaArr.forEach(async (item) => {
-      try {
-        await getVectorAndInsertDataset({
-          userId,
-          kbId,
-          data: {
-            ...item,
-            source: data.source,
-            file_id: data.file_id
-          },
-          billId: data.billId
-        });
-      } catch (error) {}
+    await pushDataToKb({
+      kbId,
+      data: qaArr.map((item) => ({
+        ...item,
+        source: data.source,
+        file_id: data.file_id
+      })),
+      userId,
+      mode: TrainingModeEnum.index,
+      billId: data.billId
     });
 
     // delete data from training
