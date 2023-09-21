@@ -14,18 +14,18 @@ import {
 import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import type { SelectedKbType } from '@/types/plugin';
+import type { SelectedDatasetType } from '@/types/core/dataset';
 import { useToast } from '@/hooks/useToast';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
-import { KbTypeEnum } from '@/constants/kb';
+import { KbTypeEnum } from '@/constants/dataset';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useDatasetStore } from '@/store/dataset';
 import { feConfigs } from '@/store/static';
-import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
+import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 export type KbParamsType = {
   searchSimilarity: number;
@@ -33,20 +33,20 @@ export type KbParamsType = {
   searchEmptyText: string;
 };
 
-export const KBSelectModal = ({
+export const DatasetSelectModal = ({
   isOpen,
   activeKbs = [],
   onChange,
   onClose
 }: {
   isOpen: boolean;
-  activeKbs: SelectedKbType;
-  onChange: (e: SelectedKbType) => void;
+  activeKbs: SelectedDatasetType;
+  onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const [selectedKbList, setSelectedKbList] = useState<SelectedKbType>(activeKbs);
+  const [selectedKbList, setSelectedKbList] = useState<SelectedDatasetType>(activeKbs);
   const { toast } = useToast();
   const { paths, parentId, setParentId, datasets } = useDatasetSelect();
   const { allDatasets, loadAllDatasets } = useDatasetStore();
@@ -61,7 +61,7 @@ export const KBSelectModal = ({
   }, [datasets, allDatasets, selectedKbList]);
 
   return (
-    <DatasetSelectModal
+    <DatasetSelectContainer
       isOpen={isOpen}
       paths={paths}
       parentId={parentId}
@@ -186,7 +186,7 @@ export const KBSelectModal = ({
           onClick={() => {
             // filter out the kb that is not in the kList
             const filterKbList = selectedKbList.filter((kb) => {
-              return datasets.find((item) => item._id === kb.kbId);
+              return allDatasets.find((item) => item._id === kb.kbId);
             });
 
             onClose();
@@ -196,7 +196,7 @@ export const KBSelectModal = ({
           完成
         </Button>
       </ModalFooter>
-    </DatasetSelectModal>
+    </DatasetSelectContainer>
   );
 };
 
@@ -297,4 +297,4 @@ export const KbParamsModal = ({
   );
 };
 
-export default KBSelectModal;
+export default DatasetSelectModal;

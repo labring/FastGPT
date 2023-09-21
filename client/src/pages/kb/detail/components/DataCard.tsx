@@ -1,8 +1,12 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
 import { Box, Card, IconButton, Flex, Grid, Image } from '@chakra-ui/react';
-import type { KbDataItemType } from '@/types/plugin';
+import type { PgDataItemType } from '@/types/core/dataset/data';
 import { usePagination } from '@/hooks/usePagination';
-import { getKbDataList, delOneKbDataByDataId, getTrainingData } from '@/api/plugins/kb';
+import {
+  getDatasetDataList,
+  delOneDatasetDataById,
+  getTrainingData
+} from '@/api/core/dataset/data';
 import { getFileInfoById } from '@/api/core/dataset/file';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -39,8 +43,8 @@ const DataCard = ({ kbId }: { kbId: string }) => {
     getData,
     pageNum,
     pageSize
-  } = usePagination<KbDataItemType>({
-    api: getKbDataList,
+  } = usePagination<PgDataItemType>({
+    api: getDatasetDataList,
     pageSize: 24,
     params: {
       kbId,
@@ -205,7 +209,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
                   openConfirm(async () => {
                     try {
                       setIsDeleting(true);
-                      await delOneKbDataByDataId(item.id);
+                      await delOneDatasetDataById(item.id);
                       getData(pageNum);
                     } catch (error) {
                       toast({

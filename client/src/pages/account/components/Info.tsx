@@ -20,7 +20,7 @@ import { UserType } from '@/types/user';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
-import { compressImg } from '@/utils/file';
+import { compressImg } from '@/utils/web/file';
 import { feConfigs, systemVersion } from '@/store/static';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@/utils/user';

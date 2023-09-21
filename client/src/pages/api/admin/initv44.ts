@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { connectToDatabase, KB } from '@/service/mongo';
-import { KbTypeEnum } from '@/constants/kb';
+import { KbTypeEnum } from '@/constants/dataset';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 

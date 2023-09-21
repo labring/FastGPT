@@ -6,7 +6,7 @@ import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { Types } from 'mongoose';
-import { OtherFileId } from '@/constants/kb';
+import { OtherFileId } from '@/constants/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

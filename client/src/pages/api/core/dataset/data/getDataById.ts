@@ -3,8 +3,8 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
-import type { KbDataItemType } from '@/types/plugin';
 import { PgDatasetTableName } from '@/constants/plugin';
+import type { PgDataItemType } from '@/types/core/dataset/data';
 
 export type Response = {
   id: string;
@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const where: any = [['user_id', userId], 'AND', ['id', dataId]];
 
-    const searchRes = await PgClient.select<KbDataItemType>(PgDatasetTableName, {
+    const searchRes = await PgClient.select<PgDataItemType>(PgDatasetTableName, {
       fields: ['kb_id', 'id', 'q', 'a', 'source', 'file_id'],
       where,
       limit: 1

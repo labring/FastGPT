@@ -1,7 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Flex, Button, Textarea, IconButton, BoxProps } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { insertData2Kb, putKbDataById, delOneKbDataByDataId } from '@/api/plugins/kb';
+import {
+  postData2Dataset,
+  putDatasetDataById,
+  delOneDatasetDataById
+} from '@/api/core/dataset/data';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
@@ -9,12 +13,12 @@ import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { DatasetItemType } from '@/types/plugin';
+import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { useTranslation } from 'react-i18next';
 import { useDatasetStore } from '@/store/dataset';
-import { getFileAndOpen } from '@/utils/common/file';
+import { getFileAndOpen } from '@/utils/web/file';
 
-export type FormData = { dataId?: string } & DatasetItemType;
+export type FormData = { dataId?: string } & DatasetDataItemType;
 
 const InputDataModal = ({
   onClose,
@@ -65,7 +69,7 @@ const InputDataModal = ({
           q: e.q,
           source: '手动录入'
         };
-        data.dataId = await insertData2Kb({
+        data.dataId = await postData2Dataset({
           kbId,
           data
         });
@@ -104,7 +108,7 @@ const InputDataModal = ({
             a: e.a,
             q: e.q === defaultValues.q ? '' : e.q
           };
-          await putKbDataById(data);
+          await putDatasetDataById(data);
           onSuccess(data);
         } catch (err) {
           toast({
@@ -211,7 +215,7 @@ const InputDataModal = ({
                 onClick={async () => {
                   if (!onDelete || !defaultValues.dataId) return;
                   try {
-                    await delOneKbDataByDataId(defaultValues.dataId);
+                    await delOneDatasetDataById(defaultValues.dataId);
                     onDelete();
                     onClose();
                     toast({

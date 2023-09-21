@@ -2,7 +2,7 @@ import mongoose, { Types } from 'mongoose';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import { ERROR_ENUM } from '../errorCode';
-import type { FileInfo } from '@/types/plugin';
+import type { GSFileInfoType } from '@/types/common/file';
 
 enum BucketNameEnum {
   dataset = 'dataset'
@@ -60,7 +60,7 @@ export class GridFSStorage {
 
     return String(stream.id);
   }
-  async findAndAuthFile(id: string): Promise<FileInfo> {
+  async findAndAuthFile(id: string): Promise<GSFileInfoType> {
     if (!id) {
       return Promise.reject(`id is empty`);
     }

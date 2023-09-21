@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@/hooks/useToast';
 import Avatar from '../Avatar';
 import MyIcon from '@/components/Icon';
-import { KbTypeEnum } from '@/constants/kb';
+import { KbTypeEnum } from '@/constants/dataset';
 import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 const SelectDataset = ({

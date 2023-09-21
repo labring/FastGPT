@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/useToast';
 import { useRequest } from '@/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
-import { postKbDataFromList } from '@/api/plugins/kb';
+import { postChunks2Dataset } from '@/api/core/dataset/data';
 import { TrainingModeEnum } from '@/constants/plugin';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -38,7 +38,7 @@ const ManualImport = ({ kbId }: { kbId: string }) => {
           q: e.q,
           source: '手动录入'
         };
-        const { insertLen } = await postKbDataFromList({
+        const { insertLen } = await postChunks2Dataset({
           kbId,
           mode: TrainingModeEnum.index,
           data: [data]

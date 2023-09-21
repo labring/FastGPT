@@ -3,8 +3,8 @@ import { ModalFooter, ModalBody, Input, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useRequest } from '@/hooks/useRequest';
-import { postCreateKb, putKbById } from '@/api/plugins/kb';
-import { FolderAvatarSrc, KbTypeEnum } from '@/constants/kb';
+import { postCreateDataset, putDatasetById } from '@/api/core/dataset';
+import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
 
 const EditFolderModal = ({
   onClose,
@@ -39,12 +39,12 @@ const EditFolderModal = ({
       const val = inputRef.current?.value;
       if (!val) return Promise.resolve('');
       if (id) {
-        return putKbById({
+        return putDatasetById({
           id,
           name: val
         });
       }
-      return postCreateKb({
+      return postCreateDataset({
         parentId,
         name: val,
         type: KbTypeEnum.folder,

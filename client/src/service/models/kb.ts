@@ -1,6 +1,6 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { kbSchema as SchemaType } from '@/types/mongoSchema';
-import { KbTypeMap } from '@/constants/kb';
+import { KbTypeMap } from '@/constants/dataset';
 
 const kbSchema = new Schema({
   parentId: {

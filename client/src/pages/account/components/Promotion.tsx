@@ -22,7 +22,7 @@ import { useLoading } from '@/hooks/useLoading';
 
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useCopyData } from '@/utils/tools';
+import { useCopyData } from '@/hooks/useCopyData';
 import { usePagination } from '@/hooks/usePagination';
 import { PromotionRecordType } from '@/api/response/user';
 import MyIcon from '@/components/Icon';

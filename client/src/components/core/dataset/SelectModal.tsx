@@ -1,4 +1,4 @@
-import { getKbList, getKbPaths } from '@/api/plugins/kb';
+import { getDatasets, getDatasetPaths } from '@/api/core/dataset';
 import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
@@ -12,7 +12,7 @@ type PathItemType = {
   parentName: string;
 };
 
-const DatasetSelectModal = ({
+const DatasetSelectContainer = ({
   isOpen,
   parentId,
   setParentId,
@@ -97,7 +97,7 @@ export const useDatasetSelect = () => {
   const [parentId, setParentId] = useState<string>();
 
   const { data } = useQuery(['loadDatasetData', parentId], () =>
-    Promise.all([getKbList({ parentId }), getKbPaths(parentId)])
+    Promise.all([getDatasets({ parentId }), getDatasetPaths(parentId)])
   );
 
   const paths = useMemo(
@@ -119,4 +119,4 @@ export const useDatasetSelect = () => {
   };
 };
 
-export default DatasetSelectModal;
+export default DatasetSelectContainer;

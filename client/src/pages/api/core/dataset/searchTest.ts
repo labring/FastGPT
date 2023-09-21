@@ -3,20 +3,14 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
-import { getVector } from '../plugin/vector';
-import type { KbTestItemType } from '@/types/plugin';
+import { getVector } from '../../openapi/plugin/vector';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { KB } from '@/service/mongo';
-
-export type Props = {
-  kbId: string;
-  text: string;
-};
-export type Response = KbTestItemType['results'];
+import type { SearchTestProps, SearchTestResponseType } from '@/api/core/dataset/index.d';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { kbId, text } = req.body as Props;
+    const { kbId, text } = req.body as SearchTestProps;
 
     if (!kbId || !text) {
       throw new Error('缺少参数');
@@ -49,7 +43,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         COMMIT;`
     );
 
-    jsonRes<Response>(res, {
+    jsonRes<SearchTestResponseType>(res, {
       data: response?.[2]?.rows || []
     });
   } catch (err) {
