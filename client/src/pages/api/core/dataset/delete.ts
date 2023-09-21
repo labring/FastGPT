@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB, App, TrainingData } from '@/service/mongo';
+import { connectToDatabase, KB, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { GridFSStorage } from '@/service/lib/gridfs';
+import { Types } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // delete training data
     await TrainingData.deleteMany({
       userId,
-      kbId: { $in: deletedIds }
+      kbId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
     });
 
     // delete all pg data

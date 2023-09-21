@@ -73,6 +73,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
         chunks,
         mode: TrainingModeEnum.qa,
         prompt: previewQAPrompt,
+        rate: 10,
         onUploading: (insertLen) => {
           setSuccessChunks(insertLen);
         }

@@ -9,7 +9,7 @@ export async function chunksUpload({
   mode,
   chunks,
   prompt,
-  rate = 200,
+  rate = 50,
   onUploading
 }: {
   kbId: string;
