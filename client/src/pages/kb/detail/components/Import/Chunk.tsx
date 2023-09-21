@@ -27,7 +27,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useDatasetStore } from '@/store/dataset';
 import { updateDatasetFile } from '@/api/core/dataset/file';
-import { chunksUpload } from '@/utils/core/dataset/import';
+import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 

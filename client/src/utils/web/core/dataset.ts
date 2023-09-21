@@ -1,6 +1,7 @@
 import { postChunks2Dataset } from '@/api/core/dataset/data';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
+import { delay } from '@/utils/tools';
 
 export async function chunksUpload({
   kbId,
@@ -37,6 +38,7 @@ export async function chunksUpload({
       if (retryTimes === 0) {
         return Promise.reject(error);
       }
+      await delay(1000);
       retryTimes--;
       i -= rate;
     }

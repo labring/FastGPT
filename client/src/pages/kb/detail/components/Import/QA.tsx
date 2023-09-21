@@ -18,7 +18,7 @@ import { useRouter } from 'next/router';
 import { updateDatasetFile } from '@/api/core/dataset/file';
 import { Prompt_AgentQA } from '@/prompts/core/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
-import { chunksUpload } from '@/utils/core/dataset/import';
+import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
