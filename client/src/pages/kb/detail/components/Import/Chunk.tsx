@@ -26,7 +26,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useDatasetStore } from '@/store/dataset';
-import { updateDatasetFile } from '@/api/core/dataset/file';
+import { putMarkFilesUsed } from '@/api/core/dataset/file';
 import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
@@ -66,14 +66,7 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
       const chunks = files.map((file) => file.chunks).flat();
 
       // mark the file is used
-      await Promise.all(
-        files.map((file) =>
-          updateDatasetFile({
-            id: file.id,
-            datasetUsed: true
-          })
-        )
-      );
+      await putMarkFilesUsed({ fileIds: files.map((file) => file.id) });
 
       // upload data
       const { insertLen } = await chunksUpload({
