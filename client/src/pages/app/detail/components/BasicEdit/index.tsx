@@ -56,13 +56,13 @@ import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 
 import { addVariable } from '../VariableEditModal';
-import { KbParamsModal } from '../KBSelectModal';
+import { KbParamsModal } from '../DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
 import { useDatasetStore } from '@/store/dataset';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
-const KBSelectModal = dynamic(() => import('../KBSelectModal'));
+const DatasetSelectModal = dynamic(() => import('../DatasetSelectModal'));
 const AIChatSettingsModal = dynamic(() => import('../AIChatSettingsModal'));
 
 const Settings = ({ appId }: { appId: string }) => {
@@ -565,7 +565,7 @@ const Settings = ({ appId }: { appId: string }) => {
         />
       )}
       {isOpenKbSelect && (
-        <KBSelectModal
+        <DatasetSelectModal
           isOpen={isOpenKbSelect}
           activeKbs={selectedKbList.map((item) => ({
             kbId: item._id,

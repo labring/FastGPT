@@ -9,14 +9,14 @@ import React, {
 import { useRouter } from 'next/router';
 import { Box, Flex, Button, FormControl, IconButton, Input } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
-import { delKbById, putKbById } from '@/api/plugins/kb';
+import { delDatasetById, putDatasetById } from '@/api/core/dataset';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
 import { useDatasetStore } from '@/store/dataset';
 import { useConfirm } from '@/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
-import { compressImg } from '@/utils/file';
-import type { KbItemType } from '@/types/plugin';
+import { compressImg } from '@/utils/web/file';
+import type { DatasetItemType } from '@/types/core/dataset';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
@@ -26,7 +26,7 @@ export interface ComponentRef {
 }
 
 const Info = (
-  { kbId, form }: { kbId: string; form: UseFormReturn<KbItemType, any> },
+  { kbId, form }: { kbId: string; form: UseFormReturn<DatasetItemType, any> },
   ref: ForwardedRef<ComponentRef>
 ) => {
   const { getValues, formState, setValue, register, handleSubmit } = form;
@@ -53,7 +53,7 @@ const Info = (
   const onclickDelKb = useCallback(async () => {
     setBtnLoading(true);
     try {
-      await delKbById(kbId);
+      await delDatasetById(kbId);
       toast({
         title: '删除成功',
         status: 'success'
@@ -70,10 +70,10 @@ const Info = (
   }, [setBtnLoading, kbId, toast, router, loadKbList]);
 
   const saveSubmitSuccess = useCallback(
-    async (data: KbItemType) => {
+    async (data: DatasetItemType) => {
       setBtnLoading(true);
       try {
-        await putKbById({
+        await putDatasetById({
           id: kbId,
           ...data
         });

@@ -1,26 +1,26 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { type KbTestItemType } from '@/types/plugin';
-import type { KbItemType, KbListItemType } from '@/types/plugin';
-import { getKbList, getKbById, getAllDataset, putKbById } from '@/api/plugins/kb';
-import { defaultKbDetail } from '@/constants/kb';
-import { KbUpdateParams } from '@/api/request/kb';
+import type { SearchTestItemType } from '@/types/core/dataset';
+import type { DatasetItemType, DatasetsItemType } from '@/types/core/dataset';
+import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/api/core/dataset';
+import { defaultKbDetail } from '@/constants/dataset';
+import type { DatasetUpdateParams } from '@/api/core/dataset/index.d';
 
 type State = {
-  allDatasets: KbListItemType[];
-  loadAllDatasets: () => Promise<KbListItemType[]>;
-  myKbList: KbListItemType[];
+  allDatasets: DatasetsItemType[];
+  loadAllDatasets: () => Promise<DatasetsItemType[]>;
+  myKbList: DatasetsItemType[];
   loadKbList: (parentId?: string) => Promise<any>;
-  setKbList(val: KbListItemType[]): void;
-  kbDetail: KbItemType;
-  getKbDetail: (id: string, init?: boolean) => Promise<KbItemType>;
-  updateDataset: (data: KbUpdateParams) => Promise<any>;
+  setKbList(val: DatasetsItemType[]): void;
+  kbDetail: DatasetItemType;
+  getKbDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
+  updateDataset: (data: DatasetUpdateParams) => Promise<any>;
 
-  kbTestList: KbTestItemType[];
-  pushKbTestItem: (data: KbTestItemType) => void;
+  kbTestList: SearchTestItemType[];
+  pushKbTestItem: (data: SearchTestItemType) => void;
   delKbTestItemById: (id: string) => void;
-  updateKbItemById: (data: KbTestItemType) => void;
+  updateKbItemById: (data: SearchTestItemType) => void;
 };
 
 export const useDatasetStore = create<State>()(
@@ -37,7 +37,7 @@ export const useDatasetStore = create<State>()(
         },
         myKbList: [],
         async loadKbList(parentId = '') {
-          const res = await getKbList({ parentId });
+          const res = await getDatasets({ parentId });
           set((state) => {
             state.myKbList = res;
           });
@@ -52,7 +52,7 @@ export const useDatasetStore = create<State>()(
         async getKbDetail(id: string, init = false) {
           if (id === get().kbDetail._id && !init) return get().kbDetail;
 
-          const data = await getKbById(id);
+          const data = await getDatasetById(id);
 
           set((state) => {
             state.kbDetail = data;
@@ -80,7 +80,7 @@ export const useDatasetStore = create<State>()(
                 : item
             );
           });
-          await putKbById(data);
+          await putDatasetById(data);
         },
         kbTestList: [],
         pushKbTestItem(data) {
@@ -93,7 +93,7 @@ export const useDatasetStore = create<State>()(
             state.kbTestList = state.kbTestList.filter((item) => item.id !== id);
           });
         },
-        updateKbItemById(data: KbTestItemType) {
+        updateKbItemById(data: SearchTestItemType) {
           set((state) => {
             state.kbTestList = state.kbTestList.map((item) => (item.id === data.id ? data : item));
           });

@@ -15,13 +15,14 @@ import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { delKbById, exportDataset, getKbPaths, putKbById } from '@/api/plugins/kb';
+import { delDatasetById, getDatasetPaths, putDatasetById } from '@/api/core/dataset';
+import { exportDatasetData } from '@/api/core/dataset/data';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
-import { serviceSideProps } from '@/utils/i18n';
+import { serviceSideProps } from '@/utils/web/i18n';
 import dynamic from 'next/dynamic';
-import { FolderAvatarSrc, KbTypeEnum } from '@/constants/kb';
+import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
 import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/hooks/useRequest';
@@ -71,7 +72,7 @@ const Kb = () => {
   const { mutate: onclickDelKb } = useRequest({
     mutationFn: async (id: string) => {
       setLoading(true);
-      await delKbById(id);
+      await delDatasetById(id);
       return id;
     },
     onSuccess(id: string) {
@@ -88,7 +89,7 @@ const Kb = () => {
   const { mutate: onclickExport } = useRequest({
     mutationFn: (kbId: string) => {
       setLoading(true);
-      return exportDataset({ kbId });
+      return exportDatasetData({ kbId });
     },
     onSettled() {
       setLoading(false);
@@ -98,7 +99,7 @@ const Kb = () => {
   });
 
   const { data, refetch } = useQuery(['loadDataset', parentId], () => {
-    return Promise.all([loadKbList(parentId), getKbPaths(parentId)]);
+    return Promise.all([loadKbList(parentId), getDatasetPaths(parentId)]);
   });
 
   const paths = useMemo(
@@ -240,7 +241,7 @@ const Kb = () => {
               if (!dragTargetId || !dragStartId || dragTargetId === dragStartId) return;
               // update parentId
               try {
-                await putKbById({
+                await putDatasetById({
                   id: dragStartId,
                   parentId: dragTargetId
                 });

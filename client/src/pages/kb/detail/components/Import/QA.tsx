@@ -3,7 +3,6 @@ import { Box, Flex, Button, useTheme, Image, Input } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
-import { postKbDataFromList } from '@/api/plugins/kb';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@/utils/user';
@@ -19,6 +18,7 @@ import { useRouter } from 'next/router';
 import { updateDatasetFile } from '@/api/core/dataset/file';
 import { Prompt_AgentQA } from '@/prompts/core/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
+import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
@@ -74,23 +74,19 @@ const QAImport = ({ kbId }: { kbId: string }) => {
         )
       );
 
-      // subsection import
-      let success = 0;
-      const step = 200;
-      for (let i = 0; i < chunks.length; i += step) {
-        const { insertLen } = await postKbDataFromList({
-          kbId,
-          data: chunks.slice(i, i + step),
-          mode: TrainingModeEnum.qa,
-          prompt: previewQAPrompt
-        });
-
-        success += insertLen;
-        setSuccessChunks(success);
-      }
+      // upload data
+      const { insertLen } = await chunksUpload({
+        kbId,
+        chunks,
+        mode: TrainingModeEnum.qa,
+        prompt: previewQAPrompt,
+        onUploading: (insertLen) => {
+          setSuccessChunks(insertLen);
+        }
+      });
 
       toast({
-        title: `共导入 ${success} 条数据，请耐心等待训练.`,
+        title: `共导入 ${insertLen} 条数据，请耐心等待训练.`,
         status: 'success'
       });
 

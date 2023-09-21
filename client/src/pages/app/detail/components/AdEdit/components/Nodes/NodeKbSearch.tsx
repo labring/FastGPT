@@ -9,16 +9,16 @@ import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
-import { KBSelectModal } from '../../../KBSelectModal';
-import type { SelectedKbType } from '@/types/plugin';
+import { DatasetSelectModal } from '../../../DatasetSelectModal';
+import type { SelectedDatasetType } from '@/types/core/dataset';
 import Avatar from '@/components/Avatar';
 
 const KBSelect = ({
   activeKbs = [],
   onChange
 }: {
-  activeKbs: SelectedKbType;
-  onChange: (e: SelectedKbType) => void;
+  activeKbs: SelectedDatasetType;
+  onChange: (e: SelectedDatasetType) => void;
 }) => {
   const theme = useTheme();
   const { allDatasets, loadAllDatasets } = useDatasetStore();
@@ -57,7 +57,7 @@ const KBSelect = ({
           </Flex>
         ))}
       </Grid>
-      <KBSelectModal
+      <DatasetSelectModal
         isOpen={isOpenKbSelect}
         activeKbs={activeKbs}
         onChange={onChange}

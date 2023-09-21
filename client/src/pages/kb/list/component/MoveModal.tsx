@@ -10,15 +10,14 @@ import {
   useTheme,
   Grid
 } from '@chakra-ui/react';
-import { getKbPaths } from '@/api/plugins/kb';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
-import { KbTypeEnum } from '@/constants/kb';
+import { KbTypeEnum } from '@/constants/dataset';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getKbList, putKbById } from '@/api/plugins/kb';
+import { getDatasets, putDatasetById, getDatasetPaths } from '@/api/core/dataset';
 import { useRequest } from '@/hooks/useRequest';
 
 const MoveModal = ({
@@ -35,8 +34,8 @@ const MoveModal = ({
 
   const [parentId, setParentId] = useState<string>('');
 
-  const { data } = useQuery(['getKbList', parentId], () => {
-    return Promise.all([getKbList({ parentId, type: 'folder' }), getKbPaths(parentId)]);
+  const { data } = useQuery(['getDatasets', parentId], () => {
+    return Promise.all([getDatasets({ parentId, type: 'folder' }), getDatasetPaths(parentId)]);
   });
   const paths = useMemo(
     () => [
@@ -54,7 +53,7 @@ const MoveModal = ({
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => putKbById({ id: moveDataId, parentId }),
+    mutationFn: () => putDatasetById({ id: moveDataId, parentId }),
     onSuccess,
     errorToast: t('kb.Move Failed')
   });

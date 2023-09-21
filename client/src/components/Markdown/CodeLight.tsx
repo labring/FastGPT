@@ -2,7 +2,7 @@ import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
 import Icon from '@/components/Icon';
-import { useCopyData } from '@/utils/tools';
+import { useCopyData } from '@/hooks/useCopyData';
 
 const codeLight: { [key: string]: React.CSSProperties } = {
   'code[class*=language-]': {

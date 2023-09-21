@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/utils/file';
+import { compressImg } from '@/utils/web/file';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
 import { postCreateApp } from '@/api/app';

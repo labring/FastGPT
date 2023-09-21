@@ -16,13 +16,9 @@ import {
   ExportChatType
 } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
-import {
-  useCopyData,
-  voiceBroadcast,
-  cancelBroadcast,
-  hasVoiceApi,
-  getErrText
-} from '@/utils/tools';
+import { voiceBroadcast, cancelBroadcast, hasVoiceApi } from '@/utils/web/voice';
+import { getErrText } from '@/utils/tools';
+import { useCopyData } from '@/hooks/useCopyData';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
 import { event } from '@/utils/plugin/eventbus';
@@ -32,7 +28,7 @@ import { VariableItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
-import { fileDownload } from '@/utils/file';
+import { fileDownload } from '@/utils/web/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';

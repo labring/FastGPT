@@ -1,6 +1,6 @@
-import type { KbItemType } from '@/types/plugin';
+import type { DatasetItemType } from '@/types/core/dataset';
 
-export const defaultKbDetail: KbItemType = {
+export const defaultKbDetail: DatasetItemType = {
   _id: '',
   userId: '',
   avatar: '/icon/logo.svg',

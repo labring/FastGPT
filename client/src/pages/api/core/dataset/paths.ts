@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
-import { KbPathItemType } from '@/types/plugin';
+import type { DatasetPathItemType } from '@/types/core/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { parentId } = req.query as { parentId: string };
 
-    jsonRes<KbPathItemType[]>(res, {
+    jsonRes<DatasetPathItemType[]>(res, {
       data: await getParents(parentId)
     });
   } catch (err) {
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 }
 
-async function getParents(parentId?: string): Promise<KbPathItemType[]> {
+async function getParents(parentId?: string): Promise<DatasetPathItemType[]> {
   if (!parentId) {
     return [];
   }

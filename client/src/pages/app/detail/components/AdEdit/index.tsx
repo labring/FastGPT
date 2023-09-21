@@ -33,7 +33,7 @@ import type { AppSchema } from '@/types/mongoSchema';
 import { useUserStore } from '@/store/user';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-import { useCopyData } from '@/utils/tools';
+import { useCopyData } from '@/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';

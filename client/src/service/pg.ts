@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { addLog } from './utils/tools';
-import { DatasetItemType } from '@/types/plugin';
+import type { DatasetDataItemType } from '@/types/core/dataset/data';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -161,16 +161,16 @@ class Pg {
 export const PgClient = new Pg();
 
 /**
- * data insert kb
+ * data insert dataset
  */
-export const insertKbItem = ({
+export const insertData2Dataset = ({
   userId,
   kbId,
   data
 }: {
   userId: string;
   kbId: string;
-  data: (DatasetItemType & {
+  data: (DatasetDataItemType & {
     vector: number[];
   })[];
 }) => {

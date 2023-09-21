@@ -1,4 +1,4 @@
-import { insertKbItem } from '@/service/pg';
+import { insertData2Dataset } from '@/service/pg';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { TrainingData } from '../models/trainingData';
 import { ERROR_ENUM } from '../errorCode';
@@ -68,7 +68,7 @@ export async function generateVector(): Promise<any> {
     });
 
     // 生成结果插入到 pg
-    await insertKbItem({
+    await insertData2Dataset({
       userId,
       kbId,
       data: vectors.map((vector, i) => ({
