@@ -62,5 +62,21 @@
     "name": "GPT35-16k",
     "maxToken": 16000,
     "price": 0
+  },
+  "ExtractModel": {
+    "model": "gpt-3.5-turbo-16k",
+    "functionCall": false,
+    "name": "GPT35-16k",
+    "maxToken": 16000,
+    "price": 0,
+    "prompt": ""
+  },
+  "CQModel": {
+    "model": "gpt-3.5-turbo-16k",
+    "functionCall": false,
+    "name": "GPT35-16k",
+    "maxToken": 16000,
+    "price": 0,
+    "prompt": ""
   }
 }

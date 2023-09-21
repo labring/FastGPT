@@ -56,7 +56,7 @@ const ResponseTags = ({
 
   return responseData.length === 0 ? null : (
     <Flex alignItems={'center'} mt={2} flexWrap={'wrap'}>
-      {chatAccount === 1 ? (
+      {chatAccount === 1 && (
         <>
           {quoteList.length > 0 && (
             <MyTooltip label="查看引用">
@@ -83,7 +83,8 @@ const ResponseTags = ({
             </MyTooltip>
           )}
         </>
-      ) : (
+      )}
+      {chatAccount > 1 && (
         <Tag colorSchema="blue" {...TagStyles}>
           多组 AI 对话
         </Tag>

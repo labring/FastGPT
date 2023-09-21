@@ -20,40 +20,44 @@ export const pushTaskBill = async ({
   shareId?: string;
   response: ChatHistoryItemResType[];
 }) => {
-  const total = response.reduce((sum, item) => sum + item.price, 0);
+  try {
+    const total = response.reduce((sum, item) => sum + item.price, 0);
 
-  await Promise.allSettled([
-    Bill.create({
-      userId,
-      appName,
-      appId,
-      total,
+    await Promise.allSettled([
+      Bill.create({
+        userId,
+        appName,
+        appId,
+        total,
+        source,
+        list: response.map((item) => ({
+          moduleName: item.moduleName,
+          amount: item.price || 0,
+          model: item.model,
+          tokenLen: item.tokens
+        }))
+      }),
+      User.findByIdAndUpdate(userId, {
+        $inc: { balance: -total }
+      }),
+      ...(shareId
+        ? [
+            updateShareChatBill({
+              shareId,
+              total
+            })
+          ]
+        : [])
+    ]);
+
+    addLog.info(`finish completions`, {
       source,
-      list: response.map((item) => ({
-        moduleType: item.moduleType,
-        amount: item.price || 0,
-        model: item.model,
-        tokenLen: item.tokens
-      }))
-    }),
-    User.findByIdAndUpdate(userId, {
-      $inc: { balance: -total }
-    }),
-    ...(shareId
-      ? [
-          updateShareChatBill({
-            shareId,
-            total
-          })
-        ]
-      : [])
-  ]);
-
-  addLog.info(`finish completions`, {
-    source,
-    userId,
-    price: formatPrice(total)
-  });
+      userId,
+      price: formatPrice(total)
+    });
+  } catch (error) {
+    addLog.error(`pushTaskBill error`, error);
+  }
 };
 
 export const updateShareChatBill = async ({

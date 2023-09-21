@@ -5,7 +5,8 @@ import { readFileSync } from 'fs';
 import {
   type QAModelItemType,
   type ChatModelItemType,
-  type VectorModelItemType
+  type VectorModelItemType,
+  FunctionModelItemType
 } from '@/types/model';
 
 export type InitDateResponse = {
@@ -83,6 +84,22 @@ const defaultQAModel = {
   maxToken: 16000,
   price: 0
 };
+const defaultExtractModel: FunctionModelItemType = {
+  model: 'gpt-3.5-turbo-16k',
+  name: 'GPT35-16k',
+  maxToken: 16000,
+  price: 0,
+  prompt: '',
+  functionCall: true
+};
+const defaultCQModel: FunctionModelItemType = {
+  model: 'gpt-3.5-turbo-16k',
+  name: 'GPT35-16k',
+  maxToken: 16000,
+  price: 0,
+  prompt: '',
+  functionCall: true
+};
 
 const defaultVectorModels: VectorModelItemType[] = [
   {
@@ -114,6 +131,8 @@ export async function getInitConfig() {
     global.feConfigs = res.FeConfig ? { ...defaultFeConfigs, ...res.FeConfig } : defaultFeConfigs;
     global.chatModels = res.ChatModels || defaultChatModels;
     global.qaModel = res.QAModel || defaultQAModel;
+    global.extractModel = res.ExtractModel || defaultExtractModel;
+    global.cqModel = res.CQModel || defaultCQModel;
     global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
