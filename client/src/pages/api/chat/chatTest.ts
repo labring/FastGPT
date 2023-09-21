@@ -6,7 +6,7 @@ import { sseResponseEventEnum } from '@/constants/chat';
 import { sseResponse } from '@/service/utils/tools';
 import { AppModuleItemType } from '@/types/app';
 import { dispatchModules } from '../openapi/v1/chat/completions';
-import { pushTaskBill } from '@/service/events/pushBill';
+import { pushTaskBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatItemType } from '@/types/chat';
 

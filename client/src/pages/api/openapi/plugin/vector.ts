@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { authBalanceByUid, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
-import { pushGenerateVectorBill } from '@/service/events/pushBill';
+import { pushGenerateVectorBill } from '@/service/common/bill/push';
 
 type Props = {
   model: string;

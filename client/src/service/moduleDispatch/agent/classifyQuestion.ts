@@ -10,6 +10,7 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import { ModuleDispatchProps } from '@/types/core/modules';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { Prompt_CQJson } from '@/prompts/core/agent';
+import { defaultCQModel } from '@/pages/api/system/getInitData';
 
 type Props = ModuleDispatchProps<{
   systemPrompt?: string;
@@ -36,7 +37,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     return Promise.reject('Input is empty');
   }
 
-  const cqModel = global.cqModel;
+  const cqModel = global.cqModel || defaultCQModel;
 
   const { arg, tokens } = await (async () => {
     if (cqModel.functionCall) {
@@ -156,7 +157,7 @@ Human:${userChatInput}`
     },
     {
       timeout: 480000,
-      ...axiosConfig()
+      ...axiosConfig(userOpenaiAccount)
     }
   );
   const answer = data.choices?.[0].message?.content || '';

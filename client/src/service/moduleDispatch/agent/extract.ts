@@ -9,6 +9,7 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import { ModuleDispatchProps } from '@/types/core/modules';
 import { Prompt_ExtractJson } from '@/prompts/core/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
+import { defaultExtractModel } from '@/pages/api/system/getInitData';
 
 type Props = ModuleDispatchProps<{
   history?: ChatItemType[];
@@ -36,7 +37,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     return Promise.reject('Input is empty');
   }
 
-  const extractModel = global.extractModel;
+  const extractModel = global.extractModel || defaultExtractModel;
 
   const { arg, tokens } = await (async () => {
     if (extractModel.functionCall) {
@@ -191,7 +192,7 @@ Human: ${content}`
     },
     {
       timeout: 480000,
-      ...axiosConfig()
+      ...axiosConfig(userOpenaiAccount)
     }
   );
   const answer = data.choices?.[0].message?.content || '';

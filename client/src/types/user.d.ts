@@ -1,5 +1,7 @@
 import { BillSourceEnum } from '@/constants/user';
-import type { BillSchema, UserModelSchema } from './mongoSchema';
+import type { UserModelSchema } from './mongoSchema';
+import type { BillSchema } from '@/types/common/bill';
+
 export interface UserType {
   _id: string;
   username: string;

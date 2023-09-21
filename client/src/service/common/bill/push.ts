@@ -1,9 +1,23 @@
-import { connectToDatabase, Bill, User, OutLink } from '../mongo';
+import { Bill, User, OutLink } from '@/service/mongo';
 import { BillSourceEnum } from '@/constants/user';
-import { getModel } from '../utils/data';
+import { getModel } from '@/service/utils/data';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@/utils/user';
-import { addLog } from '../utils/tools';
+import { addLog } from '@/service/utils/tools';
+import type { CreateBillType } from '@/types/common/bill';
+
+async function createBill(data: CreateBillType) {
+  try {
+    await Promise.all([
+      User.findByIdAndUpdate(data.userId, {
+        $inc: { balance: -data.total }
+      }),
+      Bill.create(data)
+    ]);
+  } catch (error) {
+    addLog.error(`createBill error`, error);
+  }
+}
 
 export const pushTaskBill = async ({
   appName,
@@ -24,7 +38,7 @@ export const pushTaskBill = async ({
     const total = response.reduce((sum, item) => sum + item.price, 0);
 
     await Promise.allSettled([
-      Bill.create({
+      createBill({
         userId,
         appName,
         appId,
@@ -36,9 +50,6 @@ export const pushTaskBill = async ({
           model: item.model,
           tokenLen: item.tokens
         }))
-      }),
-      User.findByIdAndUpdate(userId, {
-        $inc: { balance: -total }
       }),
       ...(shareId
         ? [
@@ -91,32 +102,28 @@ export const pushQABill = async ({
 }) => {
   addLog.info('splitData generate success', { totalTokens });
 
-  let billId;
-
   try {
-    await connectToDatabase();
-
     // 获取模型单价格, 都是用 gpt35 拆分
     const unitPrice = global.qaModel.price || 3;
     // 计算价格
     const total = unitPrice * totalTokens;
 
-    // 插入 Bill 记录
-    const res = await Bill.create({
+    createBill({
       userId,
       appName,
-      tokenLen: totalTokens,
-      total
-    });
-    billId = res._id;
-
-    // 账号扣费
-    await User.findByIdAndUpdate(userId, {
-      $inc: { balance: -total }
+      total,
+      source: BillSourceEnum.qa,
+      list: [
+        {
+          moduleName: 'QA 拆分',
+          amount: total,
+          model: global.qaModel.model,
+          tokenLen: totalTokens
+        }
+      ]
     });
   } catch (err) {
     addLog.error('Create completions bill error', err);
-    billId && Bill.findByIdAndDelete(billId);
   }
 };
 
@@ -129,46 +136,31 @@ export const pushGenerateVectorBill = async ({
   tokenLen: number;
   model: string;
 }) => {
-  let billId;
-
   try {
-    await connectToDatabase();
+    // 计算价格. 至少为1
+    const vectorModel =
+      global.vectorModels.find((item) => item.model === model) || global.vectorModels[0];
+    const unitPrice = vectorModel.price || 0.2;
+    let total = unitPrice * tokenLen;
+    total = total > 1 ? total : 1;
 
-    try {
-      // 计算价格. 至少为1
-      const vectorModel =
-        global.vectorModels.find((item) => item.model === model) || global.vectorModels[0];
-      const unitPrice = vectorModel.price || 0.2;
-      let total = unitPrice * tokenLen;
-      total = total > 1 ? total : 1;
-
-      // 插入 Bill 记录
-      const res = await Bill.create({
-        userId,
-        model: vectorModel.model,
-        appName: '索引生成',
-        total,
-        list: [
-          {
-            moduleName: '索引生成',
-            amount: total,
-            model: vectorModel.model,
-            tokenLen
-          }
-        ]
-      });
-      billId = res._id;
-
-      // 账号扣费
-      await User.findByIdAndUpdate(userId, {
-        $inc: { balance: -total }
-      });
-    } catch (err) {
-      addLog.error('Create generateVector bill error', err);
-      billId && Bill.findByIdAndDelete(billId);
-    }
-  } catch (error) {
-    console.log(error);
+    // 插入 Bill 记录
+    createBill({
+      userId,
+      appName: '索引生成',
+      total,
+      source: BillSourceEnum.vector,
+      list: [
+        {
+          moduleName: '索引生成',
+          amount: total,
+          model: vectorModel.model,
+          tokenLen
+        }
+      ]
+    });
+  } catch (err) {
+    addLog.error('Create generateVector bill error', err);
   }
 };
 

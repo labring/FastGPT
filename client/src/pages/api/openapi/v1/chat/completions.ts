@@ -23,7 +23,7 @@ import { type ChatCompletionRequestMessage } from 'openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
-import { pushTaskBill } from '@/service/events/pushBill';
+import { pushTaskBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';

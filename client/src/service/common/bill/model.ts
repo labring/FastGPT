@@ -1,8 +1,11 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { BillSchema as BillType } from '@/types/mongoSchema';
+import { BillSchema as BillType } from '@/types/common/bill';
 import { BillSourceEnum, BillSourceMap } from '@/constants/user';
 
 const BillSchema = new Schema({
+  billId: {
+    type: String
+  },
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user',
