@@ -67,7 +67,6 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
         kbId,
         chunks,
         mode: TrainingModeEnum.index,
-        rate: 300,
         onUploading: (insertLen) => {
           setSuccessChunks(insertLen);
         }
