@@ -1,6 +1,6 @@
 import { TrainingData } from '@/service/mongo';
 import { pushQABill } from '@/service/events/pushBill';
-import { pushDataToKb } from '@/pages/api/openapi/kb/pushData';
+import { pushDataToKb } from '@/pages/api/core/dataset/data/pushData';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { ERROR_ENUM } from '../errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';

@@ -1,14 +1,15 @@
 import { GET, POST, PUT, DELETE } from '@/api/request';
-import type { FileInfo, KbFileItemType } from '@/types/plugin';
+import type { DatasetFileItemType } from '@/types/core/dataset/file';
+import type { GSFileInfoType } from '@/types/common/file';
 
 import type { GetFileListProps, UpdateFileProps } from './file.d';
 
 export const getDatasetFiles = (data: GetFileListProps) =>
-  POST<KbFileItemType[]>(`/core/dataset/file/list`, data);
+  POST<DatasetFileItemType[]>(`/core/dataset/file/list`, data);
 export const delDatasetFileById = (params: { fileId: string; kbId: string }) =>
   DELETE(`/core/dataset/file/delById`, params);
 export const getFileInfoById = (fileId: string) =>
-  GET<FileInfo>(`/core/dataset/file/detail`, { fileId });
+  GET<GSFileInfoType>(`/core/dataset/file/detail`, { fileId });
 export const delDatasetEmptyFiles = (kbId: string) =>
   DELETE(`/core/dataset/file/delEmptyFiles`, { kbId });
 

@@ -3,14 +3,14 @@ import type { ChatHistoryItemResType } from '@/types/chat';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice } from '@/service/events/pushBill';
-import type { SelectedKbType } from '@/types/plugin';
+import type { SelectedDatasetType } from '@/types/core/dataset';
 import type { QuoteItemType } from '@/types/chat';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { ModuleDispatchProps } from '@/types/core/modules';
 
 type KBSearchProps = ModuleDispatchProps<{
-  kbList: SelectedKbType;
+  kbList: SelectedDatasetType;
   similarity: number;
   limit: number;
   userChatInput: string;

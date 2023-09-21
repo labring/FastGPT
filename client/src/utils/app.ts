@@ -7,14 +7,14 @@ import {
   SpecialInputKeyEnum
 } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
-import type { SelectedKbType } from '@/types/plugin';
+import type { SelectedDatasetType } from '@/types/core/dataset';
 import { FlowInputItemType } from '@/types/flow';
 import type { AIChatProps } from '@/types/core/aiChat';
 
 export type EditFormType = {
   chatModel: AIChatProps;
   kb: {
-    list: SelectedKbType;
+    list: SelectedDatasetType;
     searchSimilarity: number;
     searchLimit: number;
     searchEmptyText: string;

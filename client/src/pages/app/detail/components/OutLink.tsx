@@ -30,7 +30,8 @@ import {
   createShareChat,
   putShareChat
 } from '@/api/support/outLink';
-import { formatTimeToChatTime, useCopyData } from '@/utils/tools';
+import { formatTimeToChatTime } from '@/utils/tools';
+import { useCopyData } from '@/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/model';
 import type { OutLinkEditType } from '@/types/support/outLink';

@@ -3,7 +3,7 @@ import type { InitChatResponse, InitShareChatResponse } from '@/api/response/cha
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
 import { ChatItemSchema } from './mongoSchema';
-import { KbDataItemType } from './plugin';
+import type { PgDataItemType } from '@/types/core/dataset/data';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
@@ -43,7 +43,7 @@ export type ShareChatType = InitShareChatResponse & {
   history: ShareChatHistoryItemType;
 };
 
-export type QuoteItemType = KbDataItemType & {
+export type QuoteItemType = PgDataItemType & {
   kb_id: string;
 };
 

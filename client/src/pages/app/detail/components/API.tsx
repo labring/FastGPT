@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Divider, Flex, useTheme, Button, Skeleton, useDisclosure } from '@chakra-ui/react';
-import { useCopyData } from '@/utils/tools';
+import { useCopyData } from '@/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import { useGlobalStore } from '@/store/global';

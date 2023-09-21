@@ -5,7 +5,7 @@ import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { FileStatusEnum, OtherFileId } from '@/constants/kb';
+import { FileStatusEnum, OtherFileId } from '@/constants/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

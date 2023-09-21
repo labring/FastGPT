@@ -1,18 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authKb, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { insertKbItem, PgClient } from '@/service/pg';
+import { insertData2Dataset, PgClient } from '@/service/pg';
 import { getVectorModel } from '@/service/utils/data';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { DatasetItemType } from '@/types/plugin';
+import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
 
 export type Props = {
   kbId: string;
-  data: DatasetItemType;
+  data: DatasetDataItemType;
 };
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -58,7 +58,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       userId
     });
 
-    const response = await insertKbItem({
+    const response = await insertData2Dataset({
       userId,
       kbId,
       data: [

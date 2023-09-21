@@ -16,7 +16,7 @@ import { AddIcon } from '@chakra-ui/icons';
 import { delModelById } from '@/api/app';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
-import { serviceSideProps } from '@/utils/i18n';
+import { serviceSideProps } from '@/utils/web/i18n';
 import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@/components/Icon';

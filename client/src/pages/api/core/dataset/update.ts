@@ -2,11 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import type { KbUpdateParams } from '@/api/request/kb';
+import type { DatasetUpdateParams } from '@/api/core/dataset/index.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { id, parentId, name, avatar, tags } = req.body as KbUpdateParams;
+    const { id, parentId, name, avatar, tags } = req.body as DatasetUpdateParams;
 
     if (!id) {
       throw new Error('缺少参数');

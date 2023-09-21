@@ -2,22 +2,24 @@ import MyIcon from '@/components/Icon';
 import { useLoading } from '@/hooks/useLoading';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
+import { simpleText, splitText2Chunks } from '@/utils/file';
 import {
+  uploadFiles,
   fileDownload,
   readCsvContent,
-  simpleText,
-  splitText2Chunks,
-  uploadFiles
-} from '@/utils/file';
+  readTxtContent,
+  readPdfContent,
+  readDocContent
+} from '@/utils/web/file';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import { fileImgs } from '@/constants/common';
 import { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { readTxtContent, readPdfContent, readDocContent } from '@/utils/file';
 import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
-import { FetchResultItem, DatasetItemType } from '@/types/plugin';
+import { FetchResultItem } from '@/types/plugin';
+import type { DatasetDataItemType } from '@/types/core/dataset/data';
 import { getErrText } from '@/utils/tools';
 import { useDatasetStore } from '@/store/dataset';
 
@@ -30,7 +32,7 @@ const csvTemplate = `index,content,source\n"被索引的内容","对应的答案
 export type FileItemType = {
   id: string;
   filename: string;
-  chunks: DatasetItemType[];
+  chunks: DatasetDataItemType[];
   text: string;
   icon: string;
   tokens: number;

@@ -8,19 +8,9 @@ import { PgDatasetTableName, TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { PgClient } from '@/service/pg';
 import { getVectorModel } from '@/service/utils/data';
-import { DatasetItemType } from '@/types/plugin';
+import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
-
-export type Props = {
-  kbId: string;
-  data: DatasetItemType[];
-  mode: `${TrainingModeEnum}`;
-  prompt?: string;
-};
-
-export type Response = {
-  insertLen: number;
-};
+import type { PushDataProps, PushDataResponse } from '@/api/core/dataset/data.d';
 
 const modeMap = {
   [TrainingModeEnum.index]: true,
@@ -29,7 +19,7 @@ const modeMap = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { kbId, data, mode = TrainingModeEnum.index, prompt } = req.body as Props;
+    const { kbId, data, mode = TrainingModeEnum.index, prompt } = req.body as PushDataProps;
 
     if (!kbId || !Array.isArray(data)) {
       throw new Error('KbId or data is empty');
@@ -48,7 +38,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // 凭证校验
     const { userId } = await authUser({ req });
 
-    jsonRes<Response>(res, {
+    jsonRes<PushDataResponse>(res, {
       data: await pushDataToKb({
         kbId,
         data,
@@ -71,7 +61,7 @@ export async function pushDataToKb({
   data,
   mode,
   prompt
-}: { userId: string } & Props): Promise<Response> {
+}: { userId: string } & PushDataProps): Promise<PushDataResponse> {
   const [kb, vectorModel] = await Promise.all([
     authKb({
       userId,
@@ -94,7 +84,7 @@ export async function pushDataToKb({
 
   // 过滤重复的 qa 内容
   const set = new Set();
-  const filterData: DatasetItemType[] = [];
+  const filterData: DatasetDataItemType[] = [];
 
   data.forEach((item) => {
     if (!item.q) return;
@@ -150,7 +140,7 @@ export async function pushDataToKb({
     )
   )
     .filter((item) => item.status === 'fulfilled')
-    .map<DatasetItemType>((item: any) => item.value);
+    .map<DatasetDataItemType>((item: any) => item.value);
 
   // 插入记录
   const insertRes = await TrainingData.insertMany(

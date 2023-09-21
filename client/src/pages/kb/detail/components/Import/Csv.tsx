@@ -3,7 +3,6 @@ import { Box, Flex, Button, useTheme, Image } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
-import { postKbDataFromList } from '@/api/plugins/kb';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
@@ -12,6 +11,7 @@ import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/store/dataset';
 import { updateDatasetFile } from '@/api/core/dataset/file';
+import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.csv';
 
@@ -62,22 +62,18 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
         });
       }
 
-      // subsection import
-      let success = 0;
-      const step = 300;
-      for (let i = 0; i < filterChunks.length; i += step) {
-        const { insertLen } = await postKbDataFromList({
-          kbId,
-          data: filterChunks.slice(i, i + step),
-          mode: TrainingModeEnum.index
-        });
-
-        success += insertLen;
-        setSuccessChunks(success);
-      }
+      // upload data
+      const { insertLen } = await chunksUpload({
+        kbId,
+        chunks,
+        mode: TrainingModeEnum.index,
+        onUploading: (insertLen) => {
+          setSuccessChunks(insertLen);
+        }
+      });
 
       toast({
-        title: `去重后共导入 ${success} 条数据，请耐心等待训练.`,
+        title: `去重后共导入 ${insertLen} 条数据，请耐心等待训练.`,
         status: 'success'
       });
 

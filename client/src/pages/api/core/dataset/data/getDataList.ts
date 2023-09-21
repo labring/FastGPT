@@ -3,9 +3,9 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
-import type { KbDataItemType } from '@/types/plugin';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { OtherFileId } from '@/constants/kb';
+import { OtherFileId } from '@/constants/dataset';
+import type { PgDataItemType } from '@/types/core/dataset/data';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     ];
 
     const [searchRes, total] = await Promise.all([
-      PgClient.select<KbDataItemType>(PgDatasetTableName, {
+      PgClient.select<PgDataItemType>(PgDatasetTableName, {
         fields: ['id', 'q', 'a', 'source', 'file_id'],
         where,
         order: [{ field: 'id', mode: 'DESC' }],

@@ -6,7 +6,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
 import { ChatSourceEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
-import { KbTypeEnum } from '@/constants/kb';
+import { KbTypeEnum } from '@/constants/dataset';
 
 export interface UserModelSchema {
   _id: string;

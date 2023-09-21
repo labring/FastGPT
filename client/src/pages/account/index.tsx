@@ -10,7 +10,7 @@ import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
-import { serviceSideProps } from '@/utils/i18n';
+import { serviceSideProps } from '@/utils/web/i18n';
 import { feConfigs } from '@/store/static';
 import { useTranslation } from 'react-i18next';
 import Script from 'next/script';

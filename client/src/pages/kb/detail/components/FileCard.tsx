@@ -10,12 +10,9 @@ import {
   Td,
   Tbody,
   Image,
-  MenuButton,
-  Menu,
-  MenuList,
-  MenuItem
+  MenuButton
 } from '@chakra-ui/react';
-import { getTrainingData } from '@/api/plugins/kb';
+import { getTrainingData } from '@/api/core/dataset/data';
 import { getDatasetFiles, delDatasetFileById, updateDatasetFile } from '@/api/core/dataset/file';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
@@ -28,10 +25,10 @@ import dayjs from 'dayjs';
 import { fileImgs } from '@/constants/common';
 import { useRequest } from '@/hooks/useRequest';
 import { useLoading } from '@/hooks/useLoading';
-import { FileStatusEnum, OtherFileId } from '@/constants/kb';
+import { FileStatusEnum, OtherFileId } from '@/constants/dataset';
 import { useRouter } from 'next/router';
 import { usePagination } from '@/hooks/usePagination';
-import { KbFileItemType } from '@/types/plugin';
+import type { DatasetFileItemType } from '@/types/core/dataset/file';
 import { useGlobalStore } from '@/store/global';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/hooks/useEditTitle';
@@ -56,7 +53,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     isLoading,
     pageNum,
     pageSize
-  } = usePagination<KbFileItemType>({
+  } = usePagination<DatasetFileItemType>({
     api: getDatasetFiles,
     pageSize: 20,
     params: {

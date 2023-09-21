@@ -14,7 +14,7 @@ import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
 import BasicEdit from './components/BasicEdit';
-import { serviceSideProps } from '@/utils/i18n';
+import { serviceSideProps } from '@/utils/web/i18n';
 
 const AdEdit = dynamic(() => import('./components/AdEdit'), {
   ssr: false,

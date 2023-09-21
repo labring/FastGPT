@@ -2,7 +2,7 @@ import React, { useCallback, useState, useRef } from 'react';
 import { Box, Flex, Button, ModalHeader, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/utils/file';
+import { compressImg } from '@/utils/web/file';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';
@@ -11,8 +11,8 @@ import { useRequest } from '@/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
-import { postCreateKb } from '@/api/plugins/kb';
-import type { CreateKbParams } from '@/api/request/kb';
+import { postCreateDataset } from '@/api/core/dataset';
+import type { CreateDatasetParams } from '@/api/core/dataset/index.d';
 import { vectorModelList } from '@/store/static';
 import MySelect from '@/components/Select';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -23,7 +23,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useGlobalStore();
-  const { register, setValue, getValues, handleSubmit } = useForm<CreateKbParams>({
+  const { register, setValue, getValues, handleSubmit } = useForm<CreateDatasetParams>({
     defaultValues: {
       avatar: '/icon/logo.svg',
       name: '',
@@ -64,8 +64,8 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
 
   /* create a new kb and router to it */
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
-    mutationFn: async (data: CreateKbParams) => {
-      const id = await postCreateKb(data);
+    mutationFn: async (data: CreateDatasetParams) => {
+      const id = await postCreateDataset(data);
       return id;
     },
     successToast: '创建成功',

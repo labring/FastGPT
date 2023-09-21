@@ -3,8 +3,8 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { OtherFileId } from '@/constants/kb';
-import type { FileInfo } from '@/types/plugin';
+import { OtherFileId } from '@/constants/dataset';
+import type { GSFileInfoType } from '@/types/common/file';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     if (fileId === OtherFileId) {
-      return jsonRes<FileInfo>(res, {
+      return jsonRes<GSFileInfoType>(res, {
         data: {
           id: OtherFileId,
           size: 0,
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const file = await gridFs.findAndAuthFile(fileId);
 
-    jsonRes<FileInfo>(res, {
+    jsonRes<GSFileInfoType>(res, {
       data: file
     });
   } catch (err) {
