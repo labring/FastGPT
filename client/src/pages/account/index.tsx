@@ -43,13 +43,17 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       label: t('user.Usage Record'),
       id: TabEnum.bill
     },
-    ...(feConfigs?.show_userDetail
+    ...(feConfigs?.show_promotion
       ? [
           {
             icon: 'promotionLight',
             label: t('user.Promotion Record'),
             id: TabEnum.promotion
-          },
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_pay
+      ? [
           {
             icon: 'payRecordLight',
             label: t('user.Recharge Record'),
