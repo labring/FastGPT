@@ -244,8 +244,8 @@
     "QPM": "QPM",
     "QPM Tips": "The maximum number of queries per IP address per minute",
     "QPM is empty": "QPM is empty",
-    "Response Detail": "Detail",
-    "Response Detail tips": "Whether detailed data such as references and full context need to be returned"
+    "Response Detail": "Quote",
+    "Response Detail tips": "Whether detailed data such as references to be returned"
   },
   "system": {
     "Help Document": "Document"

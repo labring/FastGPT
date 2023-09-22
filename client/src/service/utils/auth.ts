@@ -187,7 +187,7 @@ export const authApp = async ({
     1. authOwner=true or authUser = true ,  just owner can use
     2. authUser = false and share, anyone can use
   */
-  if (authOwner || (authUser && !app.share.isShare)) {
+  if (authOwner || authUser) {
     if (userId !== String(app.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
   }
 
