@@ -112,14 +112,6 @@ export interface PaySchema {
   status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
 }
 
-export interface OpenApiSchema {
-  _id: string;
-  userId: string;
-  createTime: Date;
-  lastUsedTime?: Date;
-  apiKey: string;
-}
-
 export interface PromotionRecordSchema {
   _id: string;
   userId: string; // 收益人

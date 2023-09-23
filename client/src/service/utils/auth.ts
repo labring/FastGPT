@@ -1,9 +1,10 @@
 import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
-import { App, OpenApi, User, OutLink, KB } from '../mongo';
+import { App, OpenApi, User, KB } from '../mongo';
 import type { AppSchema, UserModelSchema } from '@/types/mongoSchema';
 import { ERROR_ENUM } from '../errorCode';
 import { authJWT } from './tools';
+import { authOpenApiKey } from '../support/openapi/auth';
 
 export enum AuthUserTypeEnum {
   token = 'token',
@@ -51,28 +52,6 @@ export const authUser = async ({
   authRoot?: boolean;
   authBalance?: boolean;
 }) => {
-  const parseOpenApiKey = async (apiKey?: string) => {
-    if (!apiKey) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-
-    try {
-      const openApi = await OpenApi.findOne({ apiKey });
-      if (!openApi) {
-        return Promise.reject(ERROR_ENUM.unAuthorization);
-      }
-      const userId = String(openApi.userId);
-
-      // 更新使用的时间
-      await OpenApi.findByIdAndUpdate(openApi._id, {
-        lastUsedTime: new Date()
-      });
-
-      return userId;
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  };
   const parseAuthorization = async (authorization?: string) => {
     if (!authorization) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -84,23 +63,30 @@ export const authUser = async ({
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
 
-    const { apiKey, appId } = await (async () => {
+    const { apikey, appId: authorizationAppid = '' } = await (async () => {
       const arr = auth.split('-');
-      if (arr.length !== 3) {
-        return Promise.reject(ERROR_ENUM.unAuthorization);
+      // abandon
+      if (arr.length === 3) {
+        return {
+          apikey: `${arr[0]}-${arr[1]}`,
+          appId: arr[2]
+        };
       }
-      return {
-        apiKey: `${arr[0]}-${arr[1]}`,
-        appId: arr[2]
-      };
+      if (arr.length === 2) {
+        return {
+          apikey: auth
+        };
+      }
+      return Promise.reject(ERROR_ENUM.unAuthorization);
     })();
 
-    // auth apiKey
-    const uid = await parseOpenApiKey(apiKey);
+    // auth apikey
+    const { userId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
 
     return {
-      uid,
-      appId
+      uid: userId,
+      apikey,
+      appId: apiKeyAppId || authorizationAppid
     };
   };
   const parseRootKey = async (rootKey?: string, userId = '') => {
@@ -114,13 +100,14 @@ export const authUser = async ({
     cookie?: string;
     token?: string;
     apikey?: string;
-    rootkey?: string;
+    rootkey?: string; // abandon
     userid?: string;
     authorization?: string;
   };
 
   let uid = '';
   let appId = '';
+  let openApiKey = apikey;
   let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
 
   if (authToken) {
@@ -133,12 +120,15 @@ export const authUser = async ({
     uid = await authCookieToken(cookie, token);
     authType = AuthUserTypeEnum.token;
   } else if (apikey) {
-    uid = await parseOpenApiKey(apikey);
+    const parseResult = await authOpenApiKey({ apikey });
+    uid = parseResult.userId;
     authType = AuthUserTypeEnum.apikey;
+    openApiKey = parseResult.apikey;
   } else if (authorization) {
     const authResponse = await parseAuthorization(authorization);
     uid = authResponse.uid;
     appId = authResponse.appId;
+    openApiKey = authResponse.apikey;
     authType = AuthUserTypeEnum.apikey;
   } else if (rootkey) {
     uid = await parseRootKey(rootkey, userid);
@@ -158,7 +148,8 @@ export const authUser = async ({
     userId: String(uid),
     appId,
     authType,
-    user
+    user,
+    apikey: openApiKey
   };
 };
 
@@ -187,7 +178,7 @@ export const authApp = async ({
     1. authOwner=true or authUser = true ,  just owner can use
     2. authUser = false and share, anyone can use
   */
-  if (authOwner || (authUser && !app.share.isShare)) {
+  if (authOwner || authUser) {
     if (userId !== String(app.userId)) return Promise.reject(ERROR_ENUM.unAuthModel);
   }
 

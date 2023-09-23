@@ -73,7 +73,7 @@ const NodeCard = (props: Props) => {
 
       {
         icon: 'back',
-        label: t('common.Cancel'),
+        label: t('Cancel'),
         onClick: () => {}
       }
     ],

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
@@ -13,7 +13,6 @@ import {
   ModalFooter,
   ModalBody,
   Input,
-  useTheme,
   Switch,
   Menu,
   MenuButton,
@@ -42,7 +41,6 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
-import MyRadio from '@/components/Radio';
 import dayjs from 'dayjs';
 
 const Share = ({ appId }: { appId: string }) => {
@@ -90,12 +88,12 @@ const Share = ({ appId }: { appId: string }) => {
           <Thead>
             <Tr>
               <Th>名称</Th>
-              <Th>金额消耗</Th>
+              <Th>金额消耗(￥)</Th>
               <>
-                <Th>金额限制</Th>
+                <Th>金额限制(￥)</Th>
                 <Th>IP限流（人/分钟）</Th>
               </>
-              <Th>返回详情</Th>
+              <Th>返回引用</Th>
               <Th>过期时间</Th>
               <Th>最后使用时间</Th>
               <Th></Th>
@@ -105,7 +103,7 @@ const Share = ({ appId }: { appId: string }) => {
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                <Td>{formatPrice(item.total)}元</Td>
+                <Td>{formatPrice(item.total)}</Td>
                 {item.limit && (
                   <>
                     <Td>{item.limit?.credit > -1 ? `${item.limit?.credit}元` : '无限制'}</Td>
@@ -226,7 +224,7 @@ const Share = ({ appId }: { appId: string }) => {
 };
 
 // edit link modal
-export function EditLinkModal({
+function EditLinkModal({
   appId,
   type,
   defaultData,
@@ -243,16 +241,7 @@ export function EditLinkModal({
 }) {
   const { t } = useTranslation();
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
-  const titleMap = useRef({
-    create: {
-      [OutLinkTypeEnum.share]: t('outlink.Create Share Window'),
-      [OutLinkTypeEnum.iframe]: t('outlink.Create Ifrme Window')
-    },
-    edit: {
-      [OutLinkTypeEnum.share]: t('outlink.Edit Share Window'),
-      [OutLinkTypeEnum.iframe]: t('outlink.Edit Ifrme Link')
-    }
-  });
+
   const {
     register,
     setValue,
@@ -281,10 +270,7 @@ export function EditLinkModal({
   });
 
   return (
-    <MyModal
-      isOpen={true}
-      title={isEdit ? titleMap.current.edit[type] : titleMap.current.create[type]}
-    >
+    <MyModal isOpen={true} title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}>
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('Name')}:</Box>
@@ -315,8 +301,8 @@ export function EditLinkModal({
         </Flex>
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('outlink.Max credit')}:
-            <MyTooltip label={t('outlink.Max credit tips' || '')}>
+            {t('common.Max credit')}:
+            <MyTooltip label={t('common.Max credit tips' || '')}>
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Flex>
@@ -372,42 +358,4 @@ export function EditLinkModal({
   );
 }
 
-const OutLink = ({ appId }: { appId: string }) => {
-  const theme = useTheme();
-
-  const [linkType, setLinkType] = useState<`${OutLinkTypeEnum}`>(OutLinkTypeEnum.share);
-
-  return (
-    <Box pt={[1, 5]}>
-      <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2} px={[4, 8]}>
-        外部使用途径
-      </Box>
-      <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
-        <MyRadio
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 360px))']}
-          iconSize={'20px'}
-          list={[
-            {
-              icon: 'outlink_share',
-              title: '免登录窗口',
-              desc: '分享链接给其他用户，无需登录即可直接进行使用',
-              value: OutLinkTypeEnum.share
-            }
-            // {
-            //   icon: 'outlink_iframe',
-            //   title: '网页嵌入',
-            //   desc: '嵌入到已有网页中，右下角会生成对话按键',
-            //   value: OutLinkTypeEnum.iframe
-            // }
-          ]}
-          value={linkType}
-          onChange={(e) => setLinkType(e as `${OutLinkTypeEnum}`)}
-        />
-      </Box>
-
-      {linkType === OutLinkTypeEnum.share && <Share appId={appId} />}
-    </Box>
-  );
-};
-
-export default OutLink;
+export default React.memo(Share);

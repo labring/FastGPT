@@ -11,15 +11,13 @@ weight: 322
 
 [Feishu OpenAI GitHub 地址](https://github.com/ConnectAI-E/Feishu-OpenAI)
 
-由于 FastGPT 的 API 接口和 OpenAI 的规范一致，可以无需变更第三方应用即可使用 FastGPT 上编排好的应用。API 使用可参考 [这篇文章](/docs/use-cases/openai/)。编排示例，可参考 [高级编排介绍](/docs/workflow/intro)
+由于 FastGPT 的 API 接口和 OpenAI 的规范一致，可以无需变更第三方应用即可使用 FastGPT 上编排好的应用。API 使用可参考 [这篇文章](/docs/use-cases/openapi/)。编排示例，可参考 [高级编排介绍](/docs/workflow/intro)
 
 ## 1. 获取 FastGPT 的 OpenAPI 秘钥
 
-依次选择应用 -> 「API 访问」，然后点击「API 密钥」来创建密钥。 [参考这篇文章](/docs/use-cases/openai/)
+依次选择应用 -> 「API 访问」，然后点击「API 密钥」来创建密钥。 [参考这篇文章](/docs/use-cases/openapi/)
 
 ![](/imgs/fastgpt-api.png)
-
-利用刚复制的 API 秘钥加上 AppId 组合成一个新的秘钥，格式为：`API 秘钥-AppId`，例如：`fastgpt-z51pkjqm9nrk03a1rx2funoy-642adec15f04d67d4613efdb`。
 
 ## 2. 部署飞书服务
 
@@ -35,7 +33,7 @@ FastGPT 集成**重点参数：**
 
 ```bash
 #上一步FastGPT的OpenAPI 秘钥
-OPENAI_KEY=fastgpt-z51pkjqm9nrk03a1rx2funoy-642adec15f04d67d4613efdb
+OPENAI_KEY=fastgpt-z51pkjqm9nrk03a1rx2funoy
 #调用OpenAI的BaseUrl要换成FastGPT的
 API_URL=https://fastgpt.run/api/openapi
 ```

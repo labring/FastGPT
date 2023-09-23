@@ -34,6 +34,7 @@ const iconPaths = {
   kbTest: () => import('./icons/kbTest.svg'),
   date: () => import('./icons/date.svg'),
   apikey: () => import('./icons/apikey.svg'),
+  apikeyFill: () => import('./icons/fill/apikey.svg'),
   save: () => import('./icons/save.svg'),
   minus: () => import('./icons/minus.svg'),
   chat: () => import('./icons/light/chat.svg'),

@@ -89,10 +89,12 @@ const ResponseModal = ({
         </Box>
         <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
           <Row label={t('chat.response.module name')} value={activeModule?.moduleName} />
-          <Row
-            label={t('chat.response.module price')}
-            value={`￥${formatPrice(activeModule?.price)}`}
-          />
+          {activeModule?.price !== undefined && (
+            <Row
+              label={t('chat.response.module price')}
+              value={`￥${formatPrice(activeModule?.price)}`}
+            />
+          )}
           <Row
             label={t('chat.response.module time')}
             value={`${activeModule?.runningTime || 0}s`}
