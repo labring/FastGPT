@@ -222,7 +222,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           }}
         />
       )}
-      <MyModal isOpen={!!apiKey} w={'400px'} onClose={() => setApiKey('')}>
+      <MyModal isOpen={!!apiKey} w={['400px', '600px']} onClose={() => setApiKey('')}>
         <Box py={3} px={5}>
           <Box fontWeight={'bold'} fontSize={'2xl'}>
             新的 API 秘钥
@@ -232,9 +232,17 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           </Box>
         </Box>
         <ModalBody>
-          <Flex bg={'myGray.100'} px={3} py={2} cursor={'pointer'} onClick={() => copyData(apiKey)}>
+          <Flex
+            bg={'myGray.100'}
+            px={3}
+            py={2}
+            whiteSpace={'pre-wrap'}
+            wordBreak={'break-all'}
+            cursor={'pointer'}
+            onClick={() => copyData(apiKey)}
+          >
             <Box flex={1}>{apiKey}</Box>
-            <MyIcon name={'copy'} w={'16px'}></MyIcon>
+            <MyIcon ml={1} name={'copy'} w={'16px'}></MyIcon>
           </Flex>
         </ModalBody>
         <ModalFooter>
