@@ -19,6 +19,7 @@ const Promotion = dynamic(() => import('./components/Promotion'));
 const BillTable = dynamic(() => import('./components/BillTable'));
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
 const InformTable = dynamic(() => import('./components/InformTable'));
+const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 
 enum TabEnum {
   'info' = 'info',
@@ -26,6 +27,7 @@ enum TabEnum {
   'bill' = 'bill',
   'pay' = 'pay',
   'inform' = 'inform',
+  'apikey' = 'apikey',
   'loginout' = 'loginout'
 }
 
@@ -61,6 +63,11 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           }
         ]
       : []),
+    {
+      icon: 'apikey',
+      label: t('user.apikey.key'),
+      id: TabEnum.apikey
+    },
     {
       icon: 'informLight',
       label: t('user.Notice'),
@@ -145,6 +152,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             {currentTab === TabEnum.bill && <BillTable />}
             {currentTab === TabEnum.pay && <PayRecordTable />}
             {currentTab === TabEnum.inform && <InformTable />}
+            {currentTab === TabEnum.apikey && <ApiKeyTable />}
           </Box>
         </Flex>
         <ConfirmModal />

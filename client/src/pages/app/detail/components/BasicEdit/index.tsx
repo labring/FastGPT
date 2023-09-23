@@ -15,7 +15,8 @@ import {
   TableContainer,
   useDisclosure,
   Button,
-  IconButton
+  IconButton,
+  Text
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
@@ -209,9 +210,18 @@ const Settings = ({ appId }: { appId: string }) => {
       pt={[0, 4]}
       overflow={'overlay'}
     >
-      <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-        基础信息
-      </Box>
+      <Flex alignItems={'flex-end'}>
+        <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
+          基础信息
+        </Box>
+        <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
+          (
+          <Box as={'span'} userSelect={'all'}>
+            {appId}
+          </Box>
+          )
+        </Box>
+      </Flex>
       {/* basic info */}
       <Box
         border={theme.borders.base}

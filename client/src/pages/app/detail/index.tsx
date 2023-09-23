@@ -23,9 +23,6 @@ const AdEdit = dynamic(() => import('./components/AdEdit'), {
 const OutLink = dynamic(() => import('./components/OutLink'), {
   ssr: false
 });
-const API = dynamic(() => import('./components/API'), {
-  ssr: false
-});
 const Logs = dynamic(() => import('./components/Logs'), {
   ssr: false
 });
@@ -35,7 +32,6 @@ enum TabEnum {
   'adEdit' = 'adEdit',
   'outLink' = 'outLink',
   'logs' = 'logs',
-  'API' = 'API',
   'startChat' = 'startChat'
 }
 
@@ -63,7 +59,6 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       { label: '简易配置', id: TabEnum.basicEdit, icon: 'overviewLight' },
       { label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' },
       { label: '外部使用', id: TabEnum.outLink, icon: 'shareLight' },
-      { label: 'API访问', id: TabEnum.API, icon: 'apiLight' },
       { label: '对话日志', id: TabEnum.logs, icon: 'logsLight' },
       { label: '立即对话', id: TabEnum.startChat, icon: 'chat' }
     ],
@@ -179,7 +174,6 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           {currentTab === TabEnum.adEdit && appDetail && (
             <AdEdit app={appDetail} onCloseSettings={() => setCurrentTab(TabEnum.basicEdit)} />
           )}
-          {currentTab === TabEnum.API && <API appId={appId} />}
           {currentTab === TabEnum.logs && <Logs appId={appId} />}
           {currentTab === TabEnum.outLink && <OutLink appId={appId} />}
         </Box>

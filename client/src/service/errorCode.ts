@@ -39,6 +39,7 @@ export enum ERROR_ENUM {
   unAuthorization = 'unAuthorization',
   insufficientQuota = 'insufficientQuota',
   unAuthModel = 'unAuthModel',
+  unAuthApiKey = 'unAuthApiKey',
   unAuthKb = 'unAuthKb',
   unAuthFile = 'unAuthFile'
 }
@@ -79,6 +80,12 @@ export const ERROR_RESPONSE: Record<
     code: 513,
     statusText: ERROR_ENUM.unAuthFile,
     message: '无权阅读该文件',
+    data: null
+  },
+  [ERROR_ENUM.unAuthApiKey]: {
+    code: 514,
+    statusText: ERROR_ENUM.unAuthApiKey,
+    message: 'Api Key 不合法',
     data: null
   }
 };

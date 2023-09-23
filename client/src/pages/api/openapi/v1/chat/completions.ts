@@ -23,7 +23,7 @@ import { type ChatCompletionRequestMessage } from 'openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
-import { pushTaskBill } from '@/service/common/bill/push';
+import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
@@ -34,6 +34,8 @@ import requestIp from 'request-ip';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { ModuleDispatchProps } from '@/types/core/modules';
 import { selectShareResponse } from '@/utils/service/core/chat';
+import { updateOutLinkUsage } from '@/service/support/outLink';
+import { updateApiKeyUsage } from '@/service/support/openapi';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -96,13 +98,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       user,
       userId,
       appId: authAppid,
-      authType
+      authType,
+      apikey
     } = await (async (): Promise<{
       user?: UserModelSchema;
       responseDetail?: boolean;
       userId: string;
       appId: string;
       authType: `${AuthUserTypeEnum}`;
+      apikey?: string;
     }> => {
       if (shareId) {
         return authOutLinkChat({
@@ -243,7 +247,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
     }
 
-    pushTaskBill({
+    // add record
+    const { total } = pushChatBill({
       appName: app.name,
       appId,
       userId,
@@ -252,9 +257,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         if (shareId) return BillSourceEnum.shareLink;
         return BillSourceEnum.fastgpt;
       })(),
-      response: responseData,
-      shareId
+      response: responseData
     });
+
+    !!shareId &&
+      updateOutLinkUsage({
+        shareId,
+        total
+      });
+    !!apikey &&
+      updateApiKeyUsage({
+        apikey,
+        usage: total
+      });
   } catch (err: any) {
     if (stream) {
       sseErrRes(res, err);

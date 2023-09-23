@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Link } from '@chakra-ui/react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
@@ -10,24 +10,28 @@ import 'katex/dist/katex.min.css';
 import styles from '../index.module.scss';
 import Image from '../img/Image';
 
-function Link(e: any) {
+function MyLink(e: any) {
   const href = e.href;
   const text = String(e.children);
-  return (
-    <Box as={'li'} py={1} m={0}>
-      <Box
-        as={'span'}
-        color={'blue.600'}
-        textDecoration={'underline'}
-        cursor={'pointer'}
-        onClick={() => {
-          if (href) {
-            return window.open(href, '_blank');
-          }
-          event.emit('guideClick', { text });
-        }}
-      >
-        {text}
+
+  return !!href ? (
+    <Link href={href} target={'_blank'}>
+      {text}
+    </Link>
+  ) : (
+    <Box as={'ul'}>
+      <Box as={'li'}>
+        <Box
+          as={'span'}
+          color={'blue.600'}
+          textDecoration={'underline'}
+          cursor={'pointer'}
+          onClick={() => {
+            event.emit('guideClick', { text });
+          }}
+        >
+          {text}
+        </Box>
       </Box>
     </Box>
   );
@@ -42,7 +46,7 @@ const Guide = ({ text }: { text: string }) => {
       remarkPlugins={[RemarkGfm, RemarkMath]}
       rehypePlugins={[RehypeKatex]}
       components={{
-        a: Link,
+        a: MyLink,
         img: Image
       }}
     >

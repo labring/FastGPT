@@ -41,8 +41,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         {
           $lookup: {
             from: 'chatitems',
-            localField: 'chatId',
-            foreignField: 'chatId',
+            let: { chat_id: '$chatId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$chatId', '$$chat_id'] },
+                      { $eq: ['$appId', new Types.ObjectId(appId)] }
+                    ]
+                  }
+                }
+              }
+            ],
             as: 'chatitems'
           }
         },

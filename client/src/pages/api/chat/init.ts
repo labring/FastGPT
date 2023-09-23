@@ -45,14 +45,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             Chat.findOne(
               {
                 chatId,
-                userId
+                userId,
+                appId
               },
               'title variables'
             ),
             ChatItem.find(
               {
                 chatId,
-                userId
+                userId,
+                appId
               },
               `dataId obj value adminFeedback userFeedback ${TaskResponseKeyEnum.responseData}`
             )
