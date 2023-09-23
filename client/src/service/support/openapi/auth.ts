@@ -15,16 +15,18 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
     const userId = String(openApi.userId);
 
     // auth limit
-    if (openApi?.limit?.expiredTime && openApi.limit.expiredTime.getTime() < Date.now()) {
-      return Promise.reject(`Key ${openApi.apiKey} is expired`);
-    }
+    if (global.feConfigs?.isPlus) {
+      if (openApi?.limit?.expiredTime && openApi.limit.expiredTime.getTime() < Date.now()) {
+        return Promise.reject(`Key ${openApi.apiKey} is expired`);
+      }
 
-    if (
-      openApi?.limit?.credit &&
-      openApi.limit.credit > -1 &&
-      openApi.usage > openApi.limit.credit
-    ) {
-      return Promise.reject(`Key ${openApi.apiKey} is over usage`);
+      if (
+        openApi?.limit?.credit &&
+        openApi.limit.credit > -1 &&
+        openApi.usage > openApi.limit.credit
+      ) {
+        return Promise.reject(`Key ${openApi.apiKey} is over usage`);
+      }
     }
 
     updateApiKeyUsedTime(openApi._id);

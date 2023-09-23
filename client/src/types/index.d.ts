@@ -34,6 +34,7 @@ export type FeConfigsType = {
   systemTitle?: string;
   authorText?: string;
   googleClientVerKey?: string;
+  isPlus?: boolean;
   oauth?: {
     github?: string;
     google?: string;
