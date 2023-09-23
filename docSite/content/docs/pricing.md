@@ -7,11 +7,15 @@ toc: true
 weight: 10
 ---
 
-[OpenAI 的 API 官方计费模式](https://openai.com/pricing#language-models)为：按每次 API 请求内容和返回内容 tokens 长度来定价。每个模型具有不同的计价方式，以每 1,000 个 tokens 消耗为单位定价。其中 1,000 个 tokens 约为 750 个英文单词。平台的 tokens 数量计算算法与 OpenAI 一致，您可以随时通过「使用记录」来查看余额消耗明细的说明，来对比计算是否一致。
+## Tokens 说明
+[OpenAI 的 API 官方计费模式](https://openai.com/pricing#language-models)为：按每次 API 请求内容和返回内容 tokens 长度来定价。每个模型具有不同的计价方式，以每 1,000 个 tokens 消耗为单位定价。其中 1,000 个 tokens 约为 900 个英文，约 600 个中文（不是很准确，与上下长度有关，相同的词出现越多，词:Tokens 的比例越大）。平台的 tokens 数量计算算法与 OpenAI 一致，您可以随时通过「使用记录」来查看余额消耗明细的说明，来对比计算是否一致。
 
 ![](/imgs/fastgpt-price.png)
 
-以下是详细的价格表：
+
+## FastGPT 线上计费
+
+目前，FastGPT 线上计费也仅按 Tokens 使用数量为准。以下是详细的计费表（最新定价以线上表格为准，可在点击充值后实时获取）：
 
 {{< table "table-hover table-striped-columns" >}}
 | 计费项                 | 价格: 元/ 1K tokens（包含上下文） |
