@@ -39,9 +39,6 @@ const defaultSystemEnv: SystemEnvType = {
 };
 const defaultFeConfigs: FeConfigsType = {
   show_emptyChat: true,
-  show_register: false,
-  show_appStore: false,
-  show_userDetail: false,
   show_contact: true,
   show_git: true,
   show_doc: true,

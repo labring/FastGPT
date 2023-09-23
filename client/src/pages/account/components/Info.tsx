@@ -210,19 +210,19 @@ const UserInfo = () => {
             {t('user.Change')}
           </Button>
         </Flex>
-        {feConfigs?.show_userDetail && (
-          <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
-            <Flex alignItems={'center'}>
-              <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
-              <Box flex={1}>
-                <strong>{userInfo?.balance.toFixed(3)}</strong> 元
-              </Box>
+        <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
+          <Flex alignItems={'center'}>
+            <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
+            <Box flex={1}>
+              <strong>{userInfo?.balance.toFixed(3)}</strong> 元
+            </Box>
+            {feConfigs?.show_pay && (
               <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
                 {t('user.Pay')}
               </Button>
-            </Flex>
-          </Box>
-        )}
+            )}
+          </Flex>
+        </Box>
         {feConfigs?.show_doc && (
           <>
             <Flex

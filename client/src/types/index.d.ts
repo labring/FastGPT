@@ -24,15 +24,17 @@ export type FeConfigsType = {
   show_emptyChat?: boolean;
   show_register?: boolean;
   show_appStore?: boolean;
-  show_userDetail?: boolean;
   show_contact?: boolean;
   show_git?: boolean;
   show_doc?: boolean;
+  show_pay?: boolean;
   show_openai_account?: boolean;
+  show_promotion?: boolean;
   openAPIUrl?: string;
   systemTitle?: string;
   authorText?: string;
   googleClientVerKey?: string;
+  isPlus?: boolean;
   oauth?: {
     github?: string;
     google?: string;

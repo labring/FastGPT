@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authApp } from '@/service/utils/auth';
+import { authUser, authApp, AuthUserTypeEnum } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { addLog, withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -23,7 +23,7 @@ import { type ChatCompletionRequestMessage } from 'openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
-import { pushTaskBill } from '@/service/common/bill/push';
+import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
@@ -33,6 +33,9 @@ import { authOutLinkChat } from '@/service/support/outLink/auth';
 import requestIp from 'request-ip';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { ModuleDispatchProps } from '@/types/core/modules';
+import { selectShareResponse } from '@/utils/service/core/chat';
+import { updateOutLinkUsage } from '@/service/support/outLink';
+import { updateApiKeyUsage } from '@/service/support/openapi';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -75,6 +78,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   } = req.body as Props;
 
   try {
+    // body data check
     if (!messages) {
       throw new Error('Prams Error');
     }
@@ -89,24 +93,35 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     let startTime = Date.now();
 
     /* user auth */
-    let {
-      // @ts-ignore
-      responseDetail,
+    const {
+      responseDetail: shareResponseDetail,
       user,
       userId,
       appId: authAppid,
-      authType
-    } = await (shareId
-      ? authOutLinkChat({
+      authType,
+      apikey
+    } = await (async (): Promise<{
+      user?: UserModelSchema;
+      responseDetail?: boolean;
+      userId: string;
+      appId: string;
+      authType: `${AuthUserTypeEnum}`;
+      apikey?: string;
+    }> => {
+      if (shareId) {
+        return authOutLinkChat({
           shareId,
           ip: requestIp.getClientIp(req)
-        })
-      : authUser({ req, authBalance: true }));
+        });
+      }
+      return authUser({ req, authBalance: true });
+    })();
 
     if (!user) {
       throw new Error('Account is error');
     }
 
+    // must have a app
     appId = appId ? appId : authAppid;
     if (!appId) {
       throw new Error('appId is empty');
@@ -122,8 +137,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     ]);
 
     const isOwner = !shareId && userId === String(app.userId);
-    responseDetail = isOwner || responseDetail;
+    const responseDetail = isOwner || shareResponseDetail;
 
+    /* format prompts */
     const prompts = history.concat(gptMessage2ChatType(messages));
     if (prompts[prompts.length - 1]?.obj === 'AI') {
       prompts.pop();
@@ -134,7 +150,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('Question is empty');
     }
 
-    // 创建响应流
+    // set sse response headers
     if (stream) {
       res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -142,7 +158,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res.setHeader('Cache-Control', 'no-cache, no-transform');
     }
 
-    /* start process */
+    /* start flow controller */
     const { responseData, answerText } = await dispatchModules({
       res,
       modules: app.modules,
@@ -188,6 +204,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
+    /* select fe response field */
+    const feResponseData = isOwner ? responseData : selectShareResponse({ responseData });
+
     if (stream) {
       sseResponse({
         res,
@@ -207,14 +226,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         sseResponse({
           res,
           event: sseResponseEventEnum.appStreamResponse,
-          data: JSON.stringify(responseData)
+          data: JSON.stringify(feResponseData)
         });
       }
 
       res.end();
     } else {
       res.json({
-        ...(detail ? { responseData } : {}),
+        ...(detail ? { responseData: feResponseData } : {}),
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -228,7 +247,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
     }
 
-    pushTaskBill({
+    // add record
+    const { total } = pushChatBill({
       appName: app.name,
       appId,
       userId,
@@ -237,9 +257,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         if (shareId) return BillSourceEnum.shareLink;
         return BillSourceEnum.fastgpt;
       })(),
-      response: responseData,
-      shareId
+      response: responseData
     });
+
+    !!shareId &&
+      updateOutLinkUsage({
+        shareId,
+        total
+      });
+    !!apikey &&
+      updateApiKeyUsage({
+        apikey,
+        usage: total
+      });
   } catch (err: any) {
     if (stream) {
       sseErrRes(res, err);

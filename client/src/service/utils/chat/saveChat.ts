@@ -27,7 +27,8 @@ export async function saveChat({
     const chatHistory = await Chat.findOne(
       {
         chatId,
-        userId
+        userId,
+        appId
       },
       '_id'
     );
@@ -46,7 +47,7 @@ export async function saveChat({
     if (chatHistory) {
       promise.push(
         Chat.updateOne(
-          { chatId, userId },
+          { chatId, userId, appId },
           {
             title: content[0].value.slice(0, 20),
             updateTime: new Date()

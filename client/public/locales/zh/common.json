@@ -104,7 +104,6 @@
   },
   "common": {
     "Add": "添加",
-    "Cancel": "取消",
     "Collect": "收藏",
     "Copy": "复制",
     "Copy Successful": "复制成功",
@@ -119,6 +118,8 @@
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Input": "输入",
+    "Max credit": "最大金额",
+    "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
     "Name is empty": "名称不能为空",
     "Output": "输出",
     "Password inconsistency": "两次密码不一致",
@@ -228,24 +229,26 @@
     "Store": "应用市场",
     "Tools": "工具"
   },
+  "openapi": {
+    "app key tips": "这些 Key 已有当前应用标识，可以直接外部接入使用。",
+    "key alias": "key 的别名，仅用于展示",
+    "key tips": "你可以使用 API 秘钥访问一些特定的接口"
+  },
   "outlink": {
     "Copy Iframe": "复制嵌入",
     "Copy Link": "复制",
-    "Create Ifrme Window": "创建嵌入链接",
-    "Create Share Window": "创建免登录窗口",
+    "Create Link": "创建链接",
     "Delete Link": "删除链接",
     "Edit Ifrme Link": "更新嵌入链接",
     "Edit Link": "编辑",
     "Edit Share Window": "更新分享窗口",
     "Link Name": "分享链接的名字",
     "Link is empty": "",
-    "Max credit": "最大金额",
-    "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
     "QPM": "",
     "QPM Tips": "每个 IP 每分钟最多提问多少次",
     "QPM is empty": "QPM 不能为空",
-    "Response Detail": "返回详情",
-    "Response Detail tips": "是否需要返回引用、完整上下文等详细数据"
+    "Response Detail": "返回引用",
+    "Response Detail tips": "是否需要返回引用"
   },
   "system": {
     "Help Document": "帮助文档"
@@ -289,6 +292,9 @@
     "Update password failed": "修改密码异常",
     "Update password succseful": "修改密码成功",
     "Usage Record": "使用记录",
+    "apikey": {
+      "key": "API 秘钥"
+    },
     "promotion": {
       "pay": "好友充值",
       "register": "好友注册"

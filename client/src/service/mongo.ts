@@ -133,10 +133,11 @@ export * from './models/user';
 export * from './common/bill/schema';
 export * from './models/pay';
 export * from './models/trainingData';
-export * from './models/openapi';
 export * from './models/promotionRecord';
 export * from './models/collection';
 export * from './models/kb';
 export * from './models/inform';
 export * from './models/image';
+
 export * from './support/outLink/schema';
+export * from './support/openapi/schema';

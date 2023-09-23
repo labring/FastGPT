@@ -4,7 +4,7 @@ import { getModel } from '@/service/utils/data';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@/utils/user';
 import { addLog } from '@/service/utils/tools';
-import type { BillListItemType, CreateBillType } from '@/types/common/bill';
+import type { CreateBillType } from '@/types/common/bill';
 
 async function createBill(data: CreateBillType) {
   try {
@@ -56,76 +56,40 @@ async function concatBill({
   } catch (error) {}
 }
 
-export const pushTaskBill = async ({
+export const pushChatBill = ({
   appName,
   appId,
   userId,
   source,
-  shareId,
   response
 }: {
   appName: string;
   appId: string;
   userId: string;
   source: `${BillSourceEnum}`;
-  shareId?: string;
   response: ChatHistoryItemResType[];
 }) => {
-  try {
-    const total = response.reduce((sum, item) => sum + item.price, 0);
+  const total = response.reduce((sum, item) => sum + item.price, 0);
 
-    await Promise.allSettled([
-      createBill({
-        userId,
-        appName,
-        appId,
-        total,
-        source,
-        list: response.map((item) => ({
-          moduleName: item.moduleName,
-          amount: item.price || 0,
-          model: item.model,
-          tokenLen: item.tokens
-        }))
-      }),
-      ...(shareId
-        ? [
-            updateShareChatBill({
-              shareId,
-              total
-            })
-          ]
-        : [])
-    ]);
-
-    addLog.info(`finish completions`, {
-      source,
-      userId,
-      price: formatPrice(total)
-    });
-  } catch (error) {
-    addLog.error(`pushTaskBill error`, error);
-  }
-};
-
-export const updateShareChatBill = async ({
-  shareId,
-  total
-}: {
-  shareId: string;
-  total: number;
-}) => {
-  try {
-    await OutLink.findOneAndUpdate(
-      { shareId },
-      {
-        $inc: { total },
-        lastTime: new Date()
-      }
-    );
-  } catch (err) {
-    addLog.error('update shareChat error', err);
-  }
+  createBill({
+    userId,
+    appName,
+    appId,
+    total,
+    source,
+    list: response.map((item) => ({
+      moduleName: item.moduleName,
+      amount: item.price || 0,
+      model: item.model,
+      tokenLen: item.tokens
+    }))
+  });
+  addLog.info(`finish completions`, {
+    source,
+    userId,
+    price: formatPrice(total)
+  });
+  return { total };
 };
 
 export const pushQABill = async ({
@@ -139,22 +103,20 @@ export const pushQABill = async ({
 }) => {
   addLog.info('splitData generate success', { totalTokens });
 
-  try {
-    // 获取模型单价格, 都是用 gpt35 拆分
-    const unitPrice = global.qaModel.price || 3;
-    // 计算价格
-    const total = unitPrice * totalTokens;
+  // 获取模型单价格, 都是用 gpt35 拆分
+  const unitPrice = global.qaModel.price || 3;
+  // 计算价格
+  const total = unitPrice * totalTokens;
 
-    concatBill({
-      billId,
-      userId,
-      total,
-      tokens: totalTokens,
-      listIndex: 1
-    });
-  } catch (err) {
-    addLog.error('Create completions bill error', err);
-  }
+  concatBill({
+    billId,
+    userId,
+    total,
+    tokens: totalTokens,
+    listIndex: 1
+  });
+
+  return { total };
 };
 
 export const pushGenerateVectorBill = async ({
@@ -168,42 +130,39 @@ export const pushGenerateVectorBill = async ({
   tokenLen: number;
   model: string;
 }) => {
-  try {
-    // 计算价格. 至少为1
-    const vectorModel =
-      global.vectorModels.find((item) => item.model === model) || global.vectorModels[0];
-    const unitPrice = vectorModel.price || 0.2;
-    let total = unitPrice * tokenLen;
-    total = total > 1 ? total : 1;
+  // 计算价格. 至少为1
+  const vectorModel =
+    global.vectorModels.find((item) => item.model === model) || global.vectorModels[0];
+  const unitPrice = vectorModel.price || 0.2;
+  let total = unitPrice * tokenLen;
+  total = total > 1 ? total : 1;
 
-    // 插入 Bill 记录
-    if (billId) {
-      concatBill({
-        userId,
-        total,
-        billId,
-        tokens: tokenLen,
-        listIndex: 0
-      });
-    } else {
-      createBill({
-        userId,
-        appName: '索引生成',
-        total,
-        source: BillSourceEnum.fastgpt,
-        list: [
-          {
-            moduleName: '索引生成',
-            amount: total,
-            model: vectorModel.model,
-            tokenLen
-          }
-        ]
-      });
-    }
-  } catch (err) {
-    addLog.error('Create generateVector bill error', err);
+  // 插入 Bill 记录
+  if (billId) {
+    concatBill({
+      userId,
+      total,
+      billId,
+      tokens: tokenLen,
+      listIndex: 0
+    });
+  } else {
+    createBill({
+      userId,
+      appName: '索引生成',
+      total,
+      source: BillSourceEnum.fastgpt,
+      list: [
+        {
+          moduleName: '索引生成',
+          amount: total,
+          model: vectorModel.model,
+          tokenLen
+        }
+      ]
+    });
   }
+  return { total };
 };
 
 export const countModelPrice = ({ model, tokens }: { model: string; tokens: number }) => {
