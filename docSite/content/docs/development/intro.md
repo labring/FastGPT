@@ -41,7 +41,8 @@ weight: 510
 git clone git@github.com:<github_username>/FastGPT.git
 ```
 
-client 目录下为 FastGPT 核心代码。NextJS 框架前后端放在一起，API 服务位于 `src/pages/api` 目录内。
+projects 目录下为 FastGPT 应用代码。NextJS 框架前后端放在一起，API 服务位于 `src/pages/api` 目录内。
+packages 目录为相关的共用包。
 
 ### 安装数据库
 
