@@ -1,4 +1,4 @@
-import { formatPrice } from './user';
+import { formatPrice } from '@fastgpt/common/bill/index';
 import type { BillSchema } from '@/types/common/bill';
 import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';

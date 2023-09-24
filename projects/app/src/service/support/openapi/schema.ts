@@ -1,7 +1,7 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { OpenApiSchema } from '@/types/support/openapi';
-import { PRICE_SCALE } from '@/constants/common';
-import { formatPrice } from '@/utils/user';
+import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
+import { formatPrice } from '@fastgpt/common/bill/index';
 
 const OpenApiSchema = new Schema(
   {

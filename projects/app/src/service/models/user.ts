@@ -1,6 +1,6 @@
 import { Schema, model, models, Model } from 'mongoose';
 import { hashPassword } from '@/service/utils/tools';
-import { PRICE_SCALE } from '@/constants/common';
+import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { UserModelSchema } from '@/types/mongoSchema';
 
 const UserSchema = new Schema({

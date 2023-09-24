@@ -30,7 +30,7 @@ import {
   type EditFormType
 } from '@/utils/app';
 import { chatModelList } from '@/store/static';
-import { formatPrice } from '@/utils/user';
+import { formatPrice } from '@fastgpt/common/bill/index';
 import {
   ChatModelSystemTip,
   ChatModelLimitTip,

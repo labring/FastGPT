@@ -2,7 +2,7 @@ import { Bill, User, OutLink } from '@/service/mongo';
 import { BillSourceEnum } from '@/constants/user';
 import { getModel } from '@/service/utils/data';
 import { ChatHistoryItemResType } from '@/types/chat';
-import { formatPrice } from '@/utils/user';
+import { formatPrice } from '@fastgpt/common/bill/index';
 import { addLog } from '@/service/utils/tools';
 import type { CreateBillType } from '@/types/common/bill';
 

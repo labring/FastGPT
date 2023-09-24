@@ -5,7 +5,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
-import { formatPrice } from '@/utils/user';
+import { formatPrice } from '@fastgpt/common/bill/index';
 import { qaModel } from '@/store/static';
 import MyIcon from '@/components/Icon';
 import CloseIcon from '@/components/Icon/close';

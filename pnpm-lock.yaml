@@ -27,6 +27,10 @@ importers:
         specifier: ^13.0.2
         version: registry.npmmirror.com/react-i18next@13.0.2(i18next@23.2.11)(react-dom@18.2.0)(react@18.2.0)
 
+  packages/common: {}
+
+  packages/core: {}
+
   packages/support: {}
 
   projects/app:
@@ -46,6 +50,12 @@ importers:
       '@emotion/styled':
         specifier: ^11.10.6
         version: registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.0.28)(react@18.2.0)
+      '@fastgpt/common':
+        specifier: workspace:*
+        version: link:../../packages/common
+      '@fastgpt/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@fastgpt/support':
         specifier: workspace:*
         version: link:../../packages/support

@@ -1,4 +1,4 @@
-import { PRICE_SCALE } from '@/constants/common';
+import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { IpLimit } from '@/service/common/ipLimit/schema';
 import { authBalanceByUid, AuthUserTypeEnum } from '@/service/utils/auth';
 import { OutLinkSchema } from '@/types/support/outLink';

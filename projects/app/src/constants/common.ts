@@ -3,8 +3,6 @@ export enum UserAuthTypeEnum {
   findPassword = 'findPassword'
 }
 
-export const PRICE_SCALE = 100000;
-
 export const fileImgs = [
   { suffix: 'pdf', src: '/imgs/files/pdf.svg' },
   { suffix: 'csv', src: '/imgs/files/csv.svg' },

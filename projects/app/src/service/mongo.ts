@@ -3,7 +3,7 @@ import tunnel from 'tunnel';
 import { startQueue } from './utils/tools';
 import { getInitConfig } from '@/pages/api/system/getInitData';
 import { User } from './models/user';
-import { PRICE_SCALE } from '@/constants/common';
+import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { initPg } from './pg';
 import { createHashPassword } from '@/utils/tools';
 import { createLogger, format, transports } from 'winston';

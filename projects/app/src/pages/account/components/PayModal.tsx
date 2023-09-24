@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { getErrText } from '@/utils/tools';
 import { useTranslation } from 'react-i18next';
-import { formatPrice } from '@/utils/user';
+import { formatPrice } from '@fastgpt/common/bill/index';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
 import { vectorModelList, chatModelList, qaModel } from '@/store/static';
@@ -64,7 +64,12 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   return (
-    <MyModal isOpen={true} onClose={payId ? onClose : undefined} title={t('user.Pay')} isCentered>
+    <MyModal
+      isOpen={true}
+      onClose={payId ? undefined : onClose}
+      title={t('user.Pay')}
+      isCentered={!payId}
+    >
       <ModalBody py={0}>
         {!payId && (
           <>
