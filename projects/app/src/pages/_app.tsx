@@ -39,7 +39,6 @@ function App({ Component, pageProps }: AppProps) {
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
   const { setLastRoute } = useGlobalStore();
-
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
 
   useEffect(() => {
@@ -80,7 +79,7 @@ function App({ Component, pageProps }: AppProps) {
       setLastRoute(router.asPath);
     };
   }, [router.asPath]);
-
+  ``;
   return (
     <>
       <Head>
@@ -111,4 +110,5 @@ function App({ Component, pageProps }: AppProps) {
   );
 }
 
+// @ts-ignore
 export default appWithTranslation(App);
