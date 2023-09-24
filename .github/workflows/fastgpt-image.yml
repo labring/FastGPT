@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'client/**'
+      - 'projects/app/**'
     branches:
       - 'main'
     tags:
@@ -49,8 +49,8 @@ jobs:
         env:
           DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
         run: |
-          cd client && \
           docker buildx build \
+          --build-arg name=app \
           --platform linux/amd64,linux/arm64 \
           --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
           --label "org.opencontainers.image.description=fastgpt image" \
@@ -64,6 +64,7 @@ jobs:
   push-to-docker-hub:
     needs: build-fastgpt-images
     runs-on: ubuntu-20.04
+    if: github.repository == 'labring/FastGPT'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -87,6 +88,7 @@ jobs:
         run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
   push-to-ali-hub:
     needs: build-fastgpt-images
+    if: github.repository == 'labring/FastGPT'
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout code

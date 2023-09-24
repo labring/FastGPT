@@ -92,7 +92,7 @@ CHAT_API_KEY=sk-xxxxxx
 
 ### 2. 修改 FastGPT 配置文件
 
-可以在 `/client/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是对话模型配置：
+可以在 `/projects/app/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是对话模型配置：
 
 ```json
 "ChatModels": [
