@@ -1,10 +1,10 @@
 {
     "editor.formatOnSave": true,
     "editor.mouseWheelZoom": true,
-    "typescript.tsdk": "client/node_modules/typescript/lib",
+    "typescript.tsdk": "node_modules/typescript/lib",
     "prettier.prettierPath": "./node_modules/prettier",
     "i18n-ally.localesPaths": [
-        "client/public/locales"
+        "projects/app/public/locales"
     ],
     "i18n-ally.enabledParsers": ["json"],
     "i18n-ally.keystyle": "nested",
