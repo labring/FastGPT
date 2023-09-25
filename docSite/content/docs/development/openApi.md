@@ -453,7 +453,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "token": "sint dolore",
-    "responseData": [ 
+    "responseData": [
         {
             "moduleName": "KB Search",
             "price": 1.2000000000000002,
@@ -515,23 +515,6 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
                     "value": "电影《铃芽之旅》的导演是新海诚。"
                 }
             ]
-        }
-    ],
-    "id": "",
-    "model": "",
-    "usage": {
-        "prompt_tokens": 1,
-        "completion_tokens": 1,
-        "total_tokens": 1
-    },
-    "choices": [
-        {
-            "message": {
-                "role": "assistant",
-                "content": "电影《铃芽之旅》的导演是新海诚。"
-            },
-            "finish_reason": "stop",
-            "index": 0
         }
     ]
 }'

@@ -139,6 +139,7 @@ const ChatBox = (
     userAvatar,
     variableModules,
     welcomeText,
+    active = true,
     onUpdateVariable,
     onStartChat,
     onDelMessage
@@ -152,6 +153,7 @@ const ChatBox = (
     userAvatar?: string;
     variableModules?: VariableItemType[];
     welcomeText?: string;
+    active?: boolean;
     onUpdateVariable?: (e: Record<string, any>) => void;
     onStartChat?: (e: StartChatFnProps) => Promise<{
       responseText: string;
@@ -860,7 +862,7 @@ const ChatBox = (
         </Box>
       </Box>
       {/* input */}
-      {onStartChat && variableIsFinish ? (
+      {onStartChat && variableIsFinish && active ? (
         <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
           <Box
             py={'18px'}

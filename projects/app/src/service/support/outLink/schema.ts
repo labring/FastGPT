@@ -48,6 +48,9 @@ const OutLinkSchema = new Schema({
     credit: {
       type: Number,
       default: -1
+    },
+    hookUrl: {
+      type: String
     }
   }
 });
