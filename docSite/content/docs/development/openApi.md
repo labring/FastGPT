@@ -370,3 +370,9 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
 
 {{< /tabs >}}
 
+
+# 应用
+
+- [接入 NextWeb/ChatGPT web 等应用](/docs/use-cases/openapi)
+- [接入 onwechat](/docs/use-cases/onwechat)
+- [接入 飞书](/docs/use-cases/feishu)
