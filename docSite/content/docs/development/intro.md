@@ -41,8 +41,9 @@ weight: 510
 git clone git@github.com:<github_username>/FastGPT.git
 ```
 
-projects 目录下为 FastGPT 应用代码。NextJS 框架前后端放在一起，API 服务位于 `src/pages/api` 目录内。
-packages 目录为相关的共用包。
+**projects 目录下为 FastGPT 应用代码。NextJS 框架前后端放在一起，API 服务位于 `src/pages/api` 目录内。**
+
+**packages 目录为相关的共用包。**
 
 ### 安装数据库
 
@@ -69,15 +70,15 @@ packages 目录为相关的共用包。
 ### 运行
 
 ```bash
-cd client
 pnpm i
+cd projects/app # FastGPT 主程序
 pnpm dev
 ```
 
 ### 镜像打包
 
 ```bash
-docker build -t dockername/fastgpt .
+docker build -t dockername/fastgpt --build-arg name=app .
 ```
 
 ## 创建拉取请求

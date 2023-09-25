@@ -66,7 +66,7 @@ Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型�
       "defaultToken": 500,
       "maxToken": 1800
     }
-],
+]
 ```
 
 ## 测试使用
