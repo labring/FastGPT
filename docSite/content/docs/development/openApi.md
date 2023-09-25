@@ -227,7 +227,7 @@ data: [{"moduleName":"KB Search","price":1.2000000000000002,"model":"Embedding-2
 
 ![](/imgs/getKbId.png)
 
-### 往知识库添加数据
+### 知识库添加数据
 
 {{< tabs tabTotal="4" >}}
 {{< tab tabName="请求示例" >}}
@@ -241,10 +241,11 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushDa
     "kbId": "64663f451ba1676dbdef0499",
     "mode": "index",
     "prompt": "qa 拆分引导词，index 模式下可以忽略",
+    "billId": "可选。如果有这个值，本次的数据会被聚合到一个订单中，这个值可以重复使用。可以参考 [创建训练订单] 获取该值。",
     "data": [
         {
             "a": "test",
-            "q": "1111"
+            "q": "1111",
         },
         {
             "a": "test2",
@@ -370,6 +371,175 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
 
 {{< /tabs >}}
 
+## 订单
+
+### 创建训练订单
+
+**请求示例**
+
+```bash
+curl --location --request POST 'https://fastgpt.run/api/common/bill/createTrainingBill' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw ''
+```
+
+**响应结果**
+
+data 为 billId，可用于 api 添加数据时进行账单聚合。
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": "65112ab717c32018f4156361"
+}
+```
+
+## 免登录分享链接校验（内测中）
+
+免登录链接配置中，增加了`凭证校验服务器`后，使用分享链接时会向服务器发起请求，校验链接是否可用，并在每次对话结束后，向服务器发送对话结果。下面以`host`来表示`凭证校验服务器`。服务器接口仅需返回是否校验成功即可，不需要返回其他数据，格式如下：
+
+```json
+{
+    "success": true,
+    "message": "错误提示"
+}
+```
+
+![](/imgs/sharelinkProcess.png)
+
+### 分享链接中增加额外 query
+
+增加一个 query: authToken。例如：
+
+原始的链接：https://fastgpt.run/chat/share?shareId=648aaf5ae121349a16d62192  
+完整链接: https://fastgpt.run/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345
+
+发出校验请求时候，会在`body`中携带 token={{authToken}} 的参数。
+
+### 初始化校验
+
+**FastGPT 发出的请求**
+
+```bash
+curl --location --request POST '{{host}}/shareAuth/init' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "token": "sintdolore"
+}'
+```
+
+### 对话前校验
+
+**FastGPT 发出的请求**
+
+```bash
+curl --location --request POST '{{host}}/shareAuth/start' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "token": "sintdolore",
+    "question": "用户问题",
+}'
+```
+
+### 对话结果上报
+
+**FastGPT 发出的请求**
+
+```bash
+curl --location --request POST '{{host}}/shareAuth/finish' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "token": "sint dolore",
+    "responseData": [ 
+        {
+            "moduleName": "KB Search",
+            "price": 1.2000000000000002,
+            "model": "Embedding-2",
+            "tokens": 6,
+            "similarity": 0.61,
+            "limit": 3
+        },
+        {
+            "moduleName": "AI Chat",
+            "price": 454.5,
+            "model": "FastAI-4k",
+            "tokens": 303,
+            "question": "导演是谁",
+            "answer": "电影《铃芽之旅》的导演是新海诚。",
+            "maxToken": 2050,
+            "quoteList": [
+                {
+                    "kb_id": "646627f4f7b896cfd8910e38",
+                    "id": "8099",
+                    "q": "本作的主人公是谁？",
+                    "a": "本作的主人公是名叫铃芽的少女。",
+                    "source": "手动修改"
+                },
+                {
+                    "kb_id": "646627f4f7b896cfd8910e38",
+                    "id": "8686",
+                    "q": "电影《铃芽之旅》男主角是谁？",
+                    "a": "电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。",
+                    "source": ""
+                },
+                {
+                    "kb_id": "646627f4f7b896cfd8910e38",
+                    "id": "19339",
+                    "q": "电影《铃芽之旅》的导演是谁？22",
+                    "a": "电影《铃芽之旅》的导演是新海诚。",
+                    "source": "手动修改"
+                }
+            ],
+            "completeMessages": [
+                {
+                    "obj": "System",
+                    "value": "下面是知识库内容:\n1. [本作的主人公是谁？\n本作的主人公是名叫铃芽的少女。]\n2. [电影《铃芽之旅》男主角是谁？\n电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。]\n3. [电影《铃芽之旅》的导演是谁？22\n电影《铃芽之旅》的导演是新海诚。]\n"
+                },
+                {
+                    "obj": "System",
+                    "value": "1.请记住，你的身份是百度的下一代知识增强语言模型，能够完全根据知识库提供的内容回答问题。\n\n2. 你忘记了关于电影《铃芽之旅》以外的内容。"
+                },
+                {
+                    "obj": "System",
+                    "value": "你仅回答关于电影《玲芽之旅》的问题，其余问题直接回复: 我不清楚。"
+                },
+                {
+                    "obj": "Human",
+                    "value": "导演是谁"
+                },
+                {
+                    "obj": "AI",
+                    "value": "电影《铃芽之旅》的导演是新海诚。"
+                }
+            ]
+        }
+    ],
+    "id": "",
+    "model": "",
+    "usage": {
+        "prompt_tokens": 1,
+        "completion_tokens": 1,
+        "total_tokens": 1
+    },
+    "choices": [
+        {
+            "message": {
+                "role": "assistant",
+                "content": "电影《铃芽之旅》的导演是新海诚。"
+            },
+            "finish_reason": "stop",
+            "index": 0
+        }
+    ]
+}'
+```
+
+响应值与 chat 接口相同，增加了一个 token。可以重点关注`responseData`里的值，price 与实际价格的倍率为`100000`。
+
+**此接口无需响应值**
 
 # 使用案例
 
