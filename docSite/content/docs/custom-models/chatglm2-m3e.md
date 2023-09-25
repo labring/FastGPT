@@ -62,19 +62,18 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
 修改 config.json 配置文件，在 VectorModels 中加入 chatglm2 和 M3E 模型：
 
 ```json
-  "ChatModels": [
-    //已有模型
-    {
-      "model": "chatglm2",
-      "name": "chatglm2",
-      "contextMaxToken": 8000,
-      "quoteMaxToken": 4000,
-      "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
-    }
-  ],
-
+"ChatModels": [
+  //已有模型
+  {
+    "model": "chatglm2",
+    "name": "chatglm2",
+    "contextMaxToken": 8000,
+    "quoteMaxToken": 4000,
+    "maxTemperature": 1.2,
+    "price": 0,
+    "defaultSystem": ""
+  }
+],
 "VectorModels": [
     {
       "model": "text-embedding-ada-002",

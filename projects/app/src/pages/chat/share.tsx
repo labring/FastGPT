@@ -238,7 +238,9 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
                 }));
               }}
               onStartChat={startChat}
-              onDelMessage={({ index }) => delShareChatHistoryItemById({ chatId, index })}
+              onDelMessage={({ contentId, index }) =>
+                delShareChatHistoryItemById({ chatId, contentId, index })
+              }
             />
           </Box>
         </Flex>

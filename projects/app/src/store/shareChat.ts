@@ -16,7 +16,7 @@ type State = {
     shareId: string;
   }) => void;
   delOneShareHistoryByChatId: (chatId: string) => void;
-  delShareChatHistoryItemById: (e: { chatId: string; index: number }) => void;
+  delShareChatHistoryItemById: (e: { chatId: string; contentId?: string; index: number }) => void;
   delManyShareChatHistoryByShareId: (shareId?: string) => void;
 };
 
@@ -100,14 +100,14 @@ export const useShareChatStore = create<State>()(
             );
           });
         },
-        delShareChatHistoryItemById({ chatId, index }) {
+        delShareChatHistoryItemById({ chatId, contentId }) {
           set((state) => {
             // update history store
             const newHistoryList = state.shareChatHistory.map((item) =>
               item.chatId === chatId
                 ? {
                     ...item,
-                    chats: [...item.chats.slice(0, index), ...item.chats.slice(index + 1)]
+                    chats: item.chats.filter((item) => item.dataId !== contentId)
                   }
                 : item
             );

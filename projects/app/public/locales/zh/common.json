@@ -247,8 +247,8 @@
     "QPM": "",
     "QPM Tips": "每个 IP 每分钟最多提问多少次",
     "QPM is empty": "QPM 不能为空",
-    "Response Detail": "返回引用",
-    "Response Detail tips": "是否需要返回引用"
+    "Response Detail": "返回详情",
+    "Response Detail tips": "是否需要返回详情（引用内容，调用时间等，不会返回预设提示词和完整上下文）"
   },
   "system": {
     "Help Document": "帮助文档"
