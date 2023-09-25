@@ -612,6 +612,7 @@ const ChatBox = (
               >
                 {item.obj === 'Human' && (
                   <>
+                    {/* control icon */}
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
                       <Flex {...controlContainerStyle} justifyContent={'flex-end'} mr={3}>
                         <MyTooltip label={t('common.Copy')}>
@@ -654,6 +655,7 @@ const ChatBox = (
                       </Flex>
                       <ChatAvatar src={userAvatar} type={'Human'} />
                     </Flex>
+                    {/* content */}
                     <Box mt={['6px', 2]} textAlign={'right'}>
                       <Card
                         className="markdown"
@@ -670,6 +672,7 @@ const ChatBox = (
                 )}
                 {item.obj === 'AI' && (
                   <>
+                    {/* control icon */}
                     <Flex w={'100%'} alignItems={'flex-end'}>
                       <ChatAvatar src={appAvatar} type={'AI'} />
                       <Flex
@@ -822,6 +825,7 @@ const ChatBox = (
                         </Flex>
                       )}
                     </Flex>
+                    {/* content */}
                     <Box textAlign={'left'} mt={['6px', 2]}>
                       <Card bg={'white'} {...MessageCardStyle}>
                         <Markdown
