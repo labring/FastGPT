@@ -39,6 +39,7 @@ import { formatPrice } from '@fastgpt/common/bill/index';
 import { OutLinkTypeEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
+import { feConfigs } from '@/store/static';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';
@@ -89,12 +90,14 @@ const Share = ({ appId }: { appId: string }) => {
             <Tr>
               <Th>名称</Th>
               <Th>金额消耗(￥)</Th>
-              <>
-                <Th>金额限制(￥)</Th>
-                <Th>IP限流（人/分钟）</Th>
-              </>
-              <Th>返回引用</Th>
-              <Th>过期时间</Th>
+              <Th>返回详情</Th>
+              {feConfigs?.isPlus && (
+                <>
+                  <Th>金额限制(￥)</Th>
+                  <Th>IP限流（人/分钟）</Th>
+                  <Th>过期时间</Th>
+                </>
+              )}
               <Th>最后使用时间</Th>
               <Th></Th>
             </Tr>
@@ -104,18 +107,20 @@ const Share = ({ appId }: { appId: string }) => {
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
                 <Td>{formatPrice(item.total)}</Td>
-                {item.limit && (
+                <Td>{item.responseDetail ? '✔' : '✖'}</Td>
+                {feConfigs?.isPlus && (
                   <>
-                    <Td>{item.limit?.credit > -1 ? `${item.limit?.credit}元` : '无限制'}</Td>
-                    <Td>{item.limit?.QPM}</Td>
+                    <Td>
+                      {item.limit && item.limit.credit > -1 ? `${item.limit.credit}元` : '无限制'}
+                    </Td>
+                    <Td>{item.limit?.QPM || '-'}</Td>
+                    <Td>
+                      {item.limit?.expiredTime
+                        ? dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
+                        : '-'}
+                    </Td>
                   </>
                 )}
-                <Td>{item.responseDetail ? '✔' : '✖'}</Td>
-                <Td>
-                  {item.limit?.expiredTime
-                    ? dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
-                    : '-'}
-                </Td>
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Menu autoSelect={false} isLazy>
@@ -282,55 +287,60 @@ function EditLinkModal({
             })}
           />
         </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            QPM:
-            <MyTooltip label={t('outlink.QPM Tips' || '')}>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
-          </Flex>
-          <Input
-            max={1000}
-            {...register('limit.QPM', {
-              min: 0,
-              max: 1000,
-              valueAsNumber: true,
-              required: t('outlink.QPM is empty') || ''
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common.Max credit')}:
-            <MyTooltip label={t('common.Max credit tips' || '')}>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
-          </Flex>
-          <Input
-            {...register('limit.credit', {
-              min: -1,
-              max: 1000,
-              valueAsNumber: true,
-              required: true
-            })}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={4}>
-          <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('common.Expired Time')}:
-          </Flex>
-          <Input
-            type="datetime-local"
-            defaultValue={
-              defaultData.limit?.expiredTime
-                ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-                : ''
-            }
-            onChange={(e) => {
-              setValue('limit.expiredTime', new Date(e.target.value));
-            }}
-          />
-        </Flex>
+        {feConfigs?.isPlus && (
+          <>
+            <Flex alignItems={'center'} mt={4}>
+              <Flex flex={'0 0 90px'} alignItems={'center'}>
+                QPM:
+                <MyTooltip label={t('outlink.QPM Tips' || '')}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Flex>
+              <Input
+                max={1000}
+                {...register('limit.QPM', {
+                  min: 0,
+                  max: 1000,
+                  valueAsNumber: true,
+                  required: t('outlink.QPM is empty') || ''
+                })}
+              />
+            </Flex>
+            <Flex alignItems={'center'} mt={4}>
+              <Flex flex={'0 0 90px'} alignItems={'center'}>
+                {t('common.Max credit')}:
+                <MyTooltip label={t('common.Max credit tips' || '')}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Flex>
+              <Input
+                {...register('limit.credit', {
+                  min: -1,
+                  max: 1000,
+                  valueAsNumber: true,
+                  required: true
+                })}
+              />
+            </Flex>
+            <Flex alignItems={'center'} mt={4}>
+              <Flex flex={'0 0 90px'} alignItems={'center'}>
+                {t('common.Expired Time')}:
+              </Flex>
+              <Input
+                type="datetime-local"
+                defaultValue={
+                  defaultData.limit?.expiredTime
+                    ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
+                    : ''
+                }
+                onChange={(e) => {
+                  setValue('limit.expiredTime', new Date(e.target.value));
+                }}
+              />
+            </Flex>
+          </>
+        )}
+
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
             {t('outlink.Response Detail')}:
