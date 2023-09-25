@@ -16,11 +16,10 @@ export async function authOutLinkChat({ shareId, ip }: { shareId: string; ip?: s
 
   const uid = String(outLink.userId);
 
-  // authBalance
-  const user = await authBalanceByUid(uid);
-
-  // limit auth
-  await authOutLinkLimit({ outLink, ip });
+  const [user] = await Promise.all([
+    authBalanceByUid(uid), // authBalance
+    ...(global.feConfigs?.isPlus ? [authOutLinkLimit({ outLink, ip })] : []) // limit auth
+  ]);
 
   return {
     user,

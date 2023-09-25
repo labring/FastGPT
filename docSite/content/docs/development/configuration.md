@@ -22,17 +22,6 @@ weight: 520
 这里介绍一些基础的配置字段：
 
 ```json
-// 这个配置会控制前端的一些样式
-"FeConfig": {
-    "show_emptyChat": true, // 对话页面，空内容时，是否展示介绍页
-    "show_register": false, // 是否展示注册按键（包括忘记密码，注册账号和三方登录）
-    "show_appStore": false, // 是否展示应用市场（不过目前权限还没做好，放开也没用）
-    "show_userDetail": false, // 是否展示用户详情（账号余额、OpenAI 绑定）
-    "show_git": true, // 是否展示 Git
-    "systemTitle": "FastGPT", // 系统的 title
-    "authorText": "Made by FastGPT Team.", // 签名
-},
-...
 ...
 // 这个配置文件是系统级参数
 "SystemParams": {
@@ -47,22 +36,11 @@ weight: 520
 
 ```json
 {
-  "FeConfig": {
-    "show_emptyChat": true,
-    "show_register": false,
-    "show_appStore": false,
-    "show_userDetail": false,
-    "show_git": true,
-    "systemTitle": "FastGPT",
-    "authorText": "Made by FastGPT Team.",
-    "scripts": []
-  },
   "SystemParams": {
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgIvfflatProbe": 20
   },
-  "plugins": {},
   "ChatModels": [
     {
       "model": "gpt-3.5-turbo",
@@ -92,12 +70,6 @@ weight: 520
       "defaultSystem": ""
     }
   ],
-  "QAModel": {
-    "model": "gpt-3.5-turbo-16k",
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0
-  },
   "VectorModels": [
     {
       "model": "text-embedding-ada-002",
@@ -106,6 +78,28 @@ weight: 520
       "defaultToken": 500,
       "maxToken": 3000
     }
-  ]
+  ],
+  "QAModel": {
+    "model": "gpt-3.5-turbo-16k",
+    "name": "GPT35-16k",
+    "maxToken": 0,
+    "price": 0
+  },
+  "ExtractModel": {
+    "model": "gpt-3.5-turbo-16k",
+    "functionCall": true,
+    "name": "GPT35-16k",
+    "maxToken": 0,
+    "price": 0,
+    "prompt": ""
+  },
+  "CQModel": {
+    "model": "gpt-3.5-turbo-16k",
+    "functionCall": true,
+    "name": "GPT35-16k",
+    "maxToken": 0,
+    "price": 0,
+    "prompt": ""
+  }
 }
 ```
