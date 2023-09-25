@@ -114,7 +114,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           ip: requestIp.getClientIp(req)
         });
       }
-      return authUser({ req, authBalance: true });
+      return authUser({ req, authToken: true, authApiKey: true, authBalance: true });
     })();
 
     if (!user) {

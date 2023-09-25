@@ -38,7 +38,7 @@ FastGPT 的 API Key 有 2 类，一类是全局通用的 key；一类是携带�
 - headers.Authorization: Bearer apikey
 - chatId: string | undefined 。
   -  为 undefined 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。 不会将你的记录存储到数据库中，你也无法在记录汇总中查阅到。
-  - 为非空字符串时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录。并拼接 messages 数组最后一个内容作为完整请求。(自行确保 chatid 唯一，长度不限)
+  - 为非空字符串时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录。并拼接 messages 数组最后一个内容作为完整请求。(自行确保 chatId 唯一，长度不限)
 - messages: 与 openai gpt 接口完全一致。
 - detail: 是否返回详细值(模块状态，响应的完整结果），会通过event进行区分
 - variables: 变量。一个对象，效果同全局变量。

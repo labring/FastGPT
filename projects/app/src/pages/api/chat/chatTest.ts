@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     /* user auth */
-    const { userId, user } = await authUser({ req, authBalance: true });
+    const { userId, user } = await authUser({ req, authToken: true, authBalance: true });
 
     if (!user) {
       throw new Error('user not found');
