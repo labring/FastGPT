@@ -34,7 +34,7 @@ import requestIp from 'request-ip';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { ModuleDispatchProps } from '@/types/core/modules';
 import { selectShareResponse } from '@/utils/service/core/chat';
-import { updateOutLinkUsage } from '@/service/support/outLink';
+import { pushResult2Remote, updateOutLinkUsage } from '@/service/support/outLink';
 import { updateApiKeyUsage } from '@/service/support/openapi';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
@@ -44,6 +44,7 @@ type FastGptWebChatProps = {
 };
 type FastGptShareChatProps = {
   shareId?: string;
+  authToken?: string;
 };
 export type Props = CreateChatCompletionRequest &
   FastGptWebChatProps &
@@ -71,6 +72,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     chatId,
     appId,
     shareId,
+    authToken,
     stream = false,
     detail = false,
     messages = [],
@@ -111,10 +113,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       if (shareId) {
         return authOutLinkChat({
           shareId,
-          ip: requestIp.getClientIp(req)
+          ip: requestIp.getClientIp(req),
+          authToken,
+          question:
+            (messages[messages.length - 2]?.role === 'user'
+              ? messages[messages.length - 2].content
+              : messages[messages.length - 1]?.content) || ''
         });
       }
-      return authUser({ req, authBalance: true });
+      return authUser({ req, authToken: true, authApiKey: true, authBalance: true });
     })();
 
     if (!user) {
@@ -260,11 +267,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       response: responseData
     });
 
-    !!shareId &&
+    if (shareId) {
+      pushResult2Remote({ authToken, shareId, responseData });
       updateOutLinkUsage({
         shareId,
         total
       });
+    }
     !!apikey &&
       updateApiKeyUsage({
         apikey,

@@ -21,7 +21,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     await connectToDatabase();
 
     // 凭证校验
-    const { userId } = await authUser({ req });
+    const { userId } = await authUser({ req, authToken: true });
 
     jsonRes(res, {
       data: await getVectorAndInsertDataset({

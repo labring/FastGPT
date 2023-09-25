@@ -21,11 +21,20 @@ import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/utils/web/i18n';
 
-const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
+const OutLink = ({
+  shareId,
+  chatId,
+  authToken
+}: {
+  shareId: string;
+  chatId: string;
+  authToken?: string;
+}) => {
   const router = useRouter();
   const { toast } = useToast();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const { isPc } = useGlobalStore();
+  const forbidRefresh = useRef(false);
 
   const ChatBoxRef = useRef<ComponentRef>(null);
 
@@ -53,7 +62,8 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
           messages: prompts,
           variables,
           shareId,
-          chatId: completionChatId
+          chatId: completionChatId,
+          authToken
         },
         onMessage: generatingMessage,
         abortSignal: controller
@@ -75,10 +85,12 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
       });
 
       if (completionChatId !== chatId && controller.signal.reason !== 'leave') {
+        forbidRefresh.current = true;
         router.replace({
           query: {
             shareId,
-            chatId: completionChatId
+            chatId: completionChatId,
+            authToken
           }
         });
       }
@@ -96,11 +108,11 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
 
       return { responseText, responseData };
     },
-    [chatId, router, saveChatResponse, shareId]
+    [authToken, chatId, router, saveChatResponse, shareId]
   );
 
   const loadAppInfo = useCallback(
-    async (shareId: string, chatId: string) => {
+    async (shareId: string, chatId: string, authToken?: string) => {
       if (!shareId) return null;
       const history = shareChatHistory.find((item) => item.chatId === chatId) || defaultHistory;
 
@@ -111,7 +123,8 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
         const chatData = await (async () => {
           if (shareChatData.app.name === '') {
             return initShareChatInfo({
-              shareId
+              shareId,
+              authToken
             });
           }
           return shareChatData;
@@ -142,8 +155,12 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
     [delManyShareChatHistoryByShareId, setShareChatData, shareChatData, shareChatHistory, toast]
   );
 
-  useQuery(['init', shareId, chatId], () => {
-    return loadAppInfo(shareId, chatId);
+  useQuery(['init', shareId, chatId, authToken], () => {
+    if (forbidRefresh.current) {
+      forbidRefresh.current = false;
+      return null;
+    }
+    return loadAppInfo(shareId, chatId, authToken);
   });
 
   return (
@@ -185,7 +202,8 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
               router.replace({
                 query: {
                   chatId: chatId || '',
-                  shareId
+                  shareId,
+                  authToken
                 }
               });
               if (!isPc) {
@@ -197,7 +215,8 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
               delManyShareChatHistoryByShareId(shareId);
               router.replace({
                 query: {
-                  shareId
+                  shareId,
+                  authToken
                 }
               });
             }}
@@ -222,6 +241,7 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
           {/* chat box */}
           <Box flex={1}>
             <ChatBox
+              active={!!shareChatData.app.name}
               ref={ChatBoxRef}
               appAvatar={shareChatData.app.avatar}
               userAvatar={shareChatData.userAvatar}
@@ -252,9 +272,10 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
   const chatId = context?.query?.chatId || '';
+  const authToken = context?.query?.authToken || '';
 
   return {
-    props: { shareId, chatId, ...(await serviceSideProps(context)) }
+    props: { shareId, chatId, authToken, ...(await serviceSideProps(context)) }
   };
 }
 

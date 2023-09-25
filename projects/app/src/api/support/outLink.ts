@@ -6,7 +6,7 @@ import type { OutLinkSchema } from '@/types/support/outLink';
 /**
  * 初始化分享聊天
  */
-export const initShareChatInfo = (data: { shareId: string }) =>
+export const initShareChatInfo = (data: { shareId: string; authToken?: string }) =>
   GET<InitShareChatResponse>(`/support/outLink/init`, data);
 
 /**

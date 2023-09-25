@@ -248,7 +248,10 @@
     "QPM Tips": "每个 IP 每分钟最多提问多少次",
     "QPM is empty": "QPM 不能为空",
     "Response Detail": "返回详情",
-    "Response Detail tips": "是否需要返回详情（引用内容，调用时间等，不会返回预设提示词和完整上下文）"
+    "Response Detail tips": "是否需要返回详情（引用内容，调用时间等，不会返回预设提示词和完整上下文）",
+    "token auth": "身份验证",
+    "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会想指定服务器发送一个请求，进行身份校验",
+    "token auth use cases": "查看身份验证使用说明"
   },
   "system": {
     "Help Document": "帮助文档"

@@ -16,7 +16,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req });
+    const { userId } = await authUser({ req, authToken: true });
 
     await PgClient.delete(PgDatasetTableName, {
       where: [['user_id', userId], 'AND', ['id', dataId]]

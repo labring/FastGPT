@@ -14,6 +14,7 @@ export interface OutLinkSchema {
     expiredTime?: Date;
     QPM: number;
     credit: number;
+    hookUrl?: string;
   };
 }
 

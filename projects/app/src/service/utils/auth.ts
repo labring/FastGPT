@@ -12,18 +12,6 @@ export enum AuthUserTypeEnum {
   apikey = 'apikey'
 }
 
-export const authCookieToken = async (cookie?: string, token?: string): Promise<string> => {
-  // 获取 cookie
-  const cookies = Cookie.parse(cookie || '');
-  const cookieToken = cookies.token || token;
-
-  if (!cookieToken) {
-    return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
-
-  return await authJWT(cookieToken);
-};
-
 /* auth balance */
 export const authBalanceByUid = async (uid: string) => {
   const user = await User.findById<UserModelSchema>(
@@ -45,13 +33,27 @@ export const authUser = async ({
   req,
   authToken = false,
   authRoot = false,
+  authApiKey = false,
   authBalance = false
 }: {
   req: NextApiRequest;
   authToken?: boolean;
   authRoot?: boolean;
+  authApiKey?: boolean;
   authBalance?: boolean;
 }) => {
+  const authCookieToken = async (cookie?: string, token?: string): Promise<string> => {
+    // 获取 cookie
+    const cookies = Cookie.parse(cookie || '');
+    const cookieToken = cookies.token || token;
+
+    if (!cookieToken) {
+      return Promise.reject(ERROR_ENUM.unAuthorization);
+    }
+
+    return await authJWT(cookieToken);
+  };
+  // from authorization get apikey
   const parseAuthorization = async (authorization?: string) => {
     if (!authorization) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -89,6 +91,7 @@ export const authUser = async ({
       appId: apiKeyAppId || authorizationAppid
     };
   };
+  // root user
   const parseRootKey = async (rootKey?: string, userId = '') => {
     if (!rootKey || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -110,30 +113,31 @@ export const authUser = async ({
   let openApiKey = apikey;
   let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
 
-  if (authToken) {
+  if (authToken && (cookie || token)) {
+    // user token(from fastgpt web)
     uid = await authCookieToken(cookie, token);
     authType = AuthUserTypeEnum.token;
-  } else if (authRoot) {
+  } else if (authRoot && rootkey) {
+    // root user
     uid = await parseRootKey(rootkey, userid);
     authType = AuthUserTypeEnum.root;
-  } else if (cookie || token) {
-    uid = await authCookieToken(cookie, token);
-    authType = AuthUserTypeEnum.token;
-  } else if (apikey) {
+  } else if (authApiKey && apikey) {
+    // apikey
     const parseResult = await authOpenApiKey({ apikey });
     uid = parseResult.userId;
     authType = AuthUserTypeEnum.apikey;
     openApiKey = parseResult.apikey;
-  } else if (authorization) {
+  } else if (authApiKey && authorization) {
+    // apikey from authorization
     const authResponse = await parseAuthorization(authorization);
     uid = authResponse.uid;
     appId = authResponse.appId;
     openApiKey = authResponse.apikey;
     authType = AuthUserTypeEnum.apikey;
-  } else if (rootkey) {
-    uid = await parseRootKey(rootkey, userid);
-    authType = AuthUserTypeEnum.root;
-  } else {
+  }
+
+  // not rootUser and no uid, reject request
+  if (!rootkey && !uid) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
@@ -158,14 +162,12 @@ export const authApp = async ({
   appId,
   userId,
   authUser = true,
-  authOwner = true,
-  reserveDetail = false
+  authOwner = true
 }: {
   appId: string;
   userId: string;
   authUser?: boolean;
   authOwner?: boolean;
-  reserveDetail?: boolean; // focus reserve detail
 }) => {
   // 获取 app 数据
   const app = await App.findById<AppSchema>(appId);

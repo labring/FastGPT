@@ -17,7 +17,8 @@ import {
   Menu,
   MenuButton,
   MenuList,
-  MenuItem
+  MenuItem,
+  Link
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
@@ -58,7 +59,7 @@ const Share = ({ appId }: { appId: string }) => {
   } = useQuery(['initShareChatList', appId], () => getShareChatList(appId));
 
   return (
-    <Box position={'relative'} pt={[3, 5, 8]} px={[5, 8]} minH={'50vh'}>
+    <Box position={'relative'} pt={[3, 5, 8]} px={[2, 8]} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'}>
           免登录窗口
@@ -85,7 +86,7 @@ const Share = ({ appId }: { appId: string }) => {
         </Button>
       </Flex>
       <TableContainer mt={3}>
-        <Table variant={'simple'} w={'100%'} overflowX={'auto'}>
+        <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
               <Th>名称</Th>
@@ -96,6 +97,7 @@ const Share = ({ appId }: { appId: string }) => {
                   <Th>金额限制(￥)</Th>
                   <Th>IP限流（人/分钟）</Th>
                   <Th>过期时间</Th>
+                  <Th>token校验</Th>
                 </>
               )}
               <Th>最后使用时间</Th>
@@ -113,12 +115,13 @@ const Share = ({ appId }: { appId: string }) => {
                     <Td>
                       {item.limit && item.limit.credit > -1 ? `${item.limit.credit}元` : '无限制'}
                     </Td>
-                    <Td>{item.limit?.QPM || '-'}</Td>
+                    <Td>{item?.limit?.QPM || '-'}</Td>
                     <Td>
-                      {item.limit?.expiredTime
+                      {item?.limit?.expiredTime
                         ? dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
                         : '-'}
                     </Td>
+                    <Th>{item?.limit?.hookUrl ? '✔' : '✖'}</Th>
                   </>
                 )}
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
@@ -267,7 +270,6 @@ function EditLinkModal({
   });
   const { mutate: onclickUpdate, isLoading: updating } = useRequest({
     mutationFn: (e: OutLinkEditType) => {
-      console.log(e);
       return putShareChat(e);
     },
     errorToast: '更新链接异常',
@@ -338,6 +340,26 @@ function EditLinkModal({
                 }}
               />
             </Flex>
+            <Flex alignItems={'center'} mt={4}>
+              <Flex flex={'0 0 90px'}>
+                {t('outlink.token auth')}
+                <MyTooltip label={t('outlink.token auth Tips') || ''}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Flex>
+              <Input
+                placeholder={t('outlink.token auth Tips') || ''}
+                {...register('limit.hookUrl')}
+              />
+            </Flex>
+            <Link
+              href="https://doc.fastgpt.run/docs/development/openapi/#分享链接中增加额外-query"
+              target={'_blank'}
+              fontSize={'sm'}
+              color={'myGray.500'}
+            >
+              {t('outlink.token auth use cases')}
+            </Link>
           </>
         )}
 
