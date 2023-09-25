@@ -18,7 +18,7 @@ const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
       throw new Error('urlList is empty');
     }
 
-    await authUser({ req });
+    await authUser({ req, authToken: true });
 
     urlList = urlList.filter((url) => /^(http|https):\/\/[^ "]+$/.test(url));
 

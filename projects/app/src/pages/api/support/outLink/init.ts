@@ -5,12 +5,14 @@ import type { InitShareChatResponse } from '@/api/response/chat';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
 import { getChatModelNameList, getSpecialModule } from '@/components/ChatBox/utils';
+import { authShareChatInit } from '@/service/support/outLink/auth';
 
 /* init share chat window */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    let { shareId } = req.query as {
+    let { shareId, authToken } = req.query as {
       shareId: string;
+      authToken?: string;
     };
 
     if (!shareId) {
@@ -36,7 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userId: String(shareChat.userId),
         authOwner: false
       }),
-      User.findById(shareChat.userId, 'avatar')
+      User.findById(shareChat.userId, 'avatar'),
+      authShareChatInit(authToken, shareChat.limit?.hookUrl)
     ]);
 
     jsonRes<InitShareChatResponse>(res, {

@@ -16,7 +16,7 @@ export type Response = { history: ChatItemType[] };
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { userId } = await authUser({ req });
+    const { userId } = await authUser({ req, authToken: true });
     const { chatId, limit } = req.body as Props;
 
     jsonRes<Response>(res, {

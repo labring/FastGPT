@@ -1,10 +1,11 @@
 import { KbTypeEnum } from '@/constants/dataset';
 import type { RequestPaging } from '@/types';
 import { TrainingModeEnum } from '@/constants/plugin';
+import { DatasetDataItemType } from '@/types/core/dataset/data';
 
 export type PushDataProps = {
   kbId: string;
-  data: DatasetItemType[];
+  data: DatasetDataItemType[];
   mode: `${TrainingModeEnum}`;
   prompt?: string;
   billId?: string;

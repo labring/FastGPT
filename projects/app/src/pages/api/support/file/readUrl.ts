@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('fileId is empty');
     }
 
-    const { userId } = await authUser({ req });
+    const { userId } = await authUser({ req, authToken: true });
 
     // auth file
     const gridFs = new GridFSStorage('dataset', userId);

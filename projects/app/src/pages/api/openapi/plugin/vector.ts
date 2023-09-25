@@ -17,7 +17,7 @@ type Response = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { userId } = await authUser({ req });
+    const { userId } = await authUser({ req, authToken: true });
     let { input, model } = req.query as Props;
 
     if (!Array.isArray(input)) {

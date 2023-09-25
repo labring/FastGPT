@@ -20,7 +20,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // auth user and get kb
     const [{ userId }, kb] = await Promise.all([
-      authUser({ req }),
+      authUser({ req, authToken: true }),
       KB.findById(kbId, 'vectorModel')
     ]);
 
