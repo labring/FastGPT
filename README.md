@@ -81,7 +81,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [系统配置文件说明](https://doc.fastgpt.run/docs/development/configuration/)
 * [多模型配置](https://doc.fastgpt.run/docs/installation/one-api/)
 * [版本升级](https://doc.fastgpt.run/docs/installation/upgrading)
-* [API 文档](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh?pre_pathname=%2Fdrive%2Fhome%2F)
+* [API 文档](https://doc.fastgpt.run/docs/development/openapi?pre_pathname=%2Fdrive%2Fhome%2F)
 
 ## 🏘️ 社区交流群
 
@@ -118,4 +118,4 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 1. 允许作为后台服务直接商用，但不允许直接使用 saas 服务商用。
 2. 需保留相关版权信息。
 3. 完整请查看 [FastGPT Open Source License](./LICENSE)
-4. 联系方式：yujinlong@sealos.io, [点击查看定价策略](https://fael3z0zfze.feishu.cn/docx/F155dbirfo8vDDx2WgWc6extnwf)
+4. 联系方式：yujinlong@sealos.io, [点击查看定价策略](https://doc.fastgpt.run/docs/commercial)

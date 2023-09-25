@@ -73,7 +73,7 @@ weight: 340
 ![手动录入知识库结果](/imgs/9.png)
 
 导入结果如上图。可以看到，我们均采用的是问答对的格式，而不是粗略的直接导入。目的就是为了模拟用户问题，进一步的提高向量搜索的匹配效果。可以为同一个问题设置多种问法，效果更佳。
-FastGPT 还提供了 openapi 功能，你可以在本地对特殊格式的文件进行处理后，再上传到 FastGPT，具体可以参考：[FastGPT Api Docs](https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh)
+FastGPT 还提供了 openapi 功能，你可以在本地对特殊格式的文件进行处理后，再上传到 FastGPT，具体可以参考：[FastGPT Api Docs](https://doc.fastgpt.run/docs/development/openapi)
 
 ## 知识库微调和参数调整
 
