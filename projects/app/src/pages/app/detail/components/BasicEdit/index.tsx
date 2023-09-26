@@ -46,7 +46,7 @@ import { useToast } from '@/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
 import { delModelById } from '@/api/app';
 import { useTranslation } from 'react-i18next';
-import { getSpecialModule } from '@/components/ChatBox/utils';
+import { getGuideModules } from '@/components/ChatBox/utils';
 
 import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
@@ -678,7 +678,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon
-          {...getSpecialModule(modules)}
+          {...getGuideModules(modules)}
           onStartChat={startChat}
           onDelMessage={() => {}}
         />
