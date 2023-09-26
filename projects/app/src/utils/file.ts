@@ -11,7 +11,7 @@ export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: numbe
   const overlapLen = Math.floor(maxLen * 0.25); // Overlap length
 
   try {
-    const splitTexts = text.split(/(?<=[。！？；.!?;])/g);
+    const splitTexts = text.split(/(?<=[。！？；.!?;\n])/g);
     const chunks: string[] = [];
 
     let preChunk = '';

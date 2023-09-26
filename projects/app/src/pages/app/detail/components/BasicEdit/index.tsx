@@ -410,20 +410,22 @@ const Settings = ({ appId }: { appId: string }) => {
 
         <Flex alignItems={'center'} mt={5}>
           <Box {...LabelStyles}>对话模型</Box>
-          <MySelect
-            width={['100%', '300px']}
-            value={getValues('chatModel.model')}
-            list={chatModelSelectList}
-            onchange={(val: any) => {
-              setValue('chatModel.model', val);
-              const maxToken =
-                chatModelList.find((item) => item.model === getValues('chatModel.model'))
-                  ?.contextMaxToken || 4000;
-              const token = maxToken / 2;
-              setValue('chatModel.maxToken', token);
-              setRefresh(!refresh);
-            }}
-          />
+          <Box flex={'1 0 0'}>
+            <MySelect
+              width={'100%'}
+              value={getValues('chatModel.model')}
+              list={chatModelSelectList}
+              onchange={(val: any) => {
+                setValue('chatModel.model', val);
+                const maxToken =
+                  chatModelList.find((item) => item.model === getValues('chatModel.model'))
+                    ?.contextMaxToken || 4000;
+                const token = maxToken / 2;
+                setValue('chatModel.maxToken', token);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
         </Flex>
         <Flex alignItems={'center'} my={10}>
           <Box {...LabelStyles}>温度</Box>
