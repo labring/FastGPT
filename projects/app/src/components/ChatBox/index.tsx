@@ -24,7 +24,7 @@ import { feConfigs } from '@/store/static';
 import { event } from '@/utils/plugin/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/hooks/useMarkdown';
-import { VariableItemType } from '@/types/app';
+import { AppModuleItemType, VariableItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
@@ -52,6 +52,7 @@ const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputD
 import styles from './index.module.scss';
 import Script from 'next/script';
 import { postQuestionGuide } from '@/api/core/ai/agent/api';
+import { splitGuideModule } from './utils';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -138,8 +139,7 @@ const ChatBox = (
     chatId,
     appAvatar,
     userAvatar,
-    variableModules,
-    welcomeText,
+    userGuideModule,
     active = true,
     onUpdateVariable,
     onStartChat,
@@ -152,8 +152,7 @@ const ChatBox = (
     chatId?: string;
     appAvatar?: string;
     userAvatar?: string;
-    variableModules?: VariableItemType[];
-    welcomeText?: string;
+    userGuideModule?: AppModuleItemType;
     active?: boolean;
     onUpdateVariable?: (e: Record<string, any>) => void;
     onStartChat?: (e: StartChatFnProps) => Promise<{
@@ -172,18 +171,21 @@ const ChatBox = (
   const { toast } = useToast();
   const { isPc } = useGlobalStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
-  const controller = useRef(new AbortController());
+  const chatController = useRef(new AbortController());
+  const questionGuideController = useRef(new AbortController());
 
   const [refresh, setRefresh] = useState(false);
-  const [variables, setVariables] = useState<Record<string, any>>({});
+  const [variables, setVariables] = useState<Record<string, any>>({}); // settings variable
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
+    // read feedback modal data
     chatItemId: string;
     content: string;
     isMarked: boolean;
   }>();
   const [adminMarkData, setAdminMarkData] = useState<{
+    // mark modal data
     kbId?: string;
     chatItemId: string;
     dataId?: string;
@@ -198,6 +200,12 @@ const ChatBox = (
       chatHistory[chatHistory.length - 1]?.status !== 'finish',
     [chatHistory]
   );
+
+  const { welcomeText, variableModules, questionGuide } = useMemo(
+    () => splitGuideModule(userGuideModule),
+    [userGuideModule]
+  );
+
   // compute variable input is finish.
   const [variableInputFinish, setVariableInputFinish] = useState(false);
   const variableIsFinish = useMemo(() => {
@@ -292,10 +300,18 @@ const ChatBox = (
   // create question guide
   const createQuestionGuide = useCallback(
     async ({ history }: { history: ChatSiteItemType[] }) => {
+      if (!questionGuide || chatController.current?.signal?.aborted) return;
+
       try {
-        const result = await postQuestionGuide({
-          messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6)
-        });
+        const abortSignal = new AbortController();
+        questionGuideController.current = abortSignal;
+
+        const result = await postQuestionGuide(
+          {
+            messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6)
+          },
+          abortSignal
+        );
         if (Array.isArray(result)) {
           setQuestionGuide(result);
           setTimeout(() => {
@@ -304,7 +320,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [scrollToBottom]
+    [questionGuide, scrollToBottom]
   );
 
   /**
@@ -320,6 +336,7 @@ const ChatBox = (
         });
         return;
       }
+      questionGuideController.current?.abort('stop');
       // get input value
       const val = inputVal.trim();
 
@@ -360,7 +377,7 @@ const ChatBox = (
       try {
         // create abort obj
         const abortSignal = new AbortController();
-        controller.current = abortSignal;
+        chatController.current = abortSignal;
 
         const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
 
@@ -526,7 +543,8 @@ const ChatBox = (
   // page change and abort request
   useEffect(() => {
     return () => {
-      controller.current?.abort('leave');
+      chatController.current?.abort('leave');
+      questionGuideController.current?.abort('leave');
       // close voice
       cancelBroadcast();
     };
@@ -998,7 +1016,7 @@ const ChatBox = (
                   cursor={'pointer'}
                   name={'stop'}
                   color={'gray.500'}
-                  onClick={() => controller.current?.abort('stop')}
+                  onClick={() => chatController.current?.abort('stop')}
                 />
               ) : (
                 <MyIcon

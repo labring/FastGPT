@@ -245,8 +245,7 @@ const OutLink = ({
               ref={ChatBoxRef}
               appAvatar={shareChatData.app.avatar}
               userAvatar={shareChatData.userAvatar}
-              variableModules={shareChatData.app.variableModules}
-              welcomeText={shareChatData.app.welcomeText}
+              userGuideModule={shareChatData.app?.userGuideModule}
               feedbackType={'user'}
               onUpdateVariable={(e) => {
                 setShareChatData((state) => ({

@@ -4,19 +4,20 @@ import {
   Box,
   Flex,
   Textarea,
-  Button,
+  useTheme,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  TableContainer
+  TableContainer,
+  Switch
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { FlowModuleItemType } from '@/types/flow';
 import { SystemInputEnum } from '@/constants/app';
-import { welcomeTextTip, variableTip } from '@/constants/flow/ModuleTemplate';
+import { welcomeTextTip, variableTip, questionGuideTip } from '@/constants/flow/ModuleTemplate';
 
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
 import MyIcon from '@/components/Icon';
@@ -26,13 +27,17 @@ import NodeCard from '../modules/NodeCard';
 import { VariableItemType } from '@/types/app';
 
 const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const theme = useTheme();
   return (
     <>
       <NodeCard minW={'300px'} {...data}>
         <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
           <WelcomeText data={data} />
-          <Box mt={3}>
+          <Box pt={4} pb={2}>
             <ChatStartVariable data={data} />
+          </Box>
+          <Box pt={3} borderTop={theme.borders.base}>
+            <QuestionGuide data={data} />
           </Box>
         </Container>
       </NodeCard>
@@ -194,5 +199,42 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
         />
       )}
     </>
+  );
+}
+
+function QuestionGuide({ data }: { data: FlowModuleItemType }) {
+  const { inputs, moduleId, onChangeNode } = data;
+  const questionGuide = useMemo(
+    () =>
+      (inputs.find((item) => item.key === SystemInputEnum.questionGuide)?.value as boolean) ||
+      false,
+    [inputs]
+  );
+
+  return (
+    <Flex alignItems={'center'}>
+      <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
+      <Box>下一步指引</Box>
+      <MyTooltip label={questionGuideTip} forceShow>
+        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+      </MyTooltip>
+      <Box flex={1} />
+      <Switch
+        isChecked={questionGuide}
+        size={'lg'}
+        onChange={(e) => {
+          const value = e.target.checked;
+          onChangeNode({
+            moduleId,
+            key: SystemInputEnum.questionGuide,
+            type: 'inputs',
+            value: {
+              ...inputs.find((item) => item.key === SystemInputEnum.questionGuide),
+              value
+            }
+          });
+        }}
+      />
+    </Flex>
   );
 }

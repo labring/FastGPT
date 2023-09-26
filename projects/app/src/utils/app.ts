@@ -10,7 +10,7 @@ import { SystemInputEnum } from '@/constants/app';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import { FlowInputItemType } from '@/types/flow';
 import type { AIChatProps } from '@/types/core/aiChat';
-import { getGuideModules } from '@/components/ChatBox/utils';
+import { getGuideModule, splitGuideModule } from '@/components/ChatBox/utils';
 
 export type EditFormType = {
   chatModel: AIChatProps;
@@ -26,6 +26,7 @@ export type EditFormType = {
     };
   };
   variables: VariableItemType[];
+  questionGuide: boolean;
 };
 export const getDefaultAppForm = (): EditFormType => {
   const defaultChatModel = chatModelList[0];
@@ -52,7 +53,8 @@ export const getDefaultAppForm = (): EditFormType => {
         text: ''
       }
     },
-    variables: []
+    variables: [],
+    questionGuide: false
   };
 };
 
@@ -137,13 +139,17 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
           target?.inputs?.find((item) => item.key === SpecialInputKeyEnum.answerText)?.value || '';
       }
     } else if (module.flowType === FlowModuleTypeEnum.userGuide) {
-      const { welcomeText, variableModules } = getGuideModules(modules);
+      const { welcomeText, variableModules, questionGuide } = splitGuideModule(
+        getGuideModule(modules)
+      );
       if (welcomeText) {
         defaultAppForm.guide.welcome = {
           text: welcomeText
         };
       }
+
       defaultAppForm.variables = variableModules;
+      defaultAppForm.questionGuide = !!questionGuide;
     }
   });
 
@@ -225,15 +231,21 @@ const userGuideTemplate = (formData: EditFormType): AppModuleItemType[] => [
     inputs: [
       {
         key: SystemInputEnum.welcomeText,
-        type: FlowInputItemTypeEnum.input,
+        type: FlowInputItemTypeEnum.hidden,
         label: '开场白',
         value: formData.guide.welcome.text
       },
       {
         key: SystemInputEnum.variables,
-        type: FlowInputItemTypeEnum.systemInput,
+        type: FlowInputItemTypeEnum.hidden,
         label: '对话框变量',
         value: formData.variables
+      },
+      {
+        key: SystemInputEnum.questionGuide,
+        type: FlowInputItemTypeEnum.hidden,
+        label: '问题引导',
+        value: formData.questionGuide
       }
     ],
     outputs: [],
