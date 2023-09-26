@@ -1,4 +1,11 @@
 {
   "name": "@fastgpt/core",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "dependencies": {
+    "openai": "^3.3.0",
+    "tunnel": "^0.0.6"
+  },
+  "devDependencies": {
+    "@types/tunnel": "^0.0.4"
+  }
 }

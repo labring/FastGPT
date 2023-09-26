@@ -15,7 +15,7 @@ import { streamFetch } from '@/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/store/user';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import { getSpecialModule } from '@/components/ChatBox/utils';
+import { getGuideModules } from '@/components/ChatBox/utils';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -114,7 +114,7 @@ const ChatTest = (
             appAvatar={app.avatar}
             userAvatar={userInfo?.avatar}
             showMarkIcon
-            {...getSpecialModule(modules)}
+            {...getGuideModules(modules)}
             onStartChat={startChat}
             onDelMessage={() => {}}
           />

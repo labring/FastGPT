@@ -56,6 +56,9 @@ const AppSchema = new Schema({
     type: Array,
     default: []
   },
+  inited: {
+    type: Boolean
+  },
   // 弃
   chat: Object
 });

@@ -109,7 +109,7 @@ const ModuleTemplateList = ({
                   <Avatar src={item.logo} w={'34px'} objectFit={'contain'} borderRadius={'0'} />
                   <Box ml={5} flex={'1 0 0'}>
                     <Box color={'black'}>{item.name}</Box>
-                    <Box color={'myGray.500'} fontSize={'sm'}>
+                    <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
                       {item.intro}
                     </Box>
                   </Box>

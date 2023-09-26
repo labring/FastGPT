@@ -106,7 +106,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           onClick={() => copyData(baseUrl, '已复制 API 地址')}
         >
           <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'sm'}>
-            API地址
+            API根地址
           </Box>
           <Box ml={2} color={'myGray.900'} fontSize={['sm', 'md']}>
             {baseUrl}
@@ -292,7 +292,7 @@ function EditKeyModal({
   });
 
   return (
-    <MyModal isOpen={true} title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}>
+    <MyModal isOpen={true} title={isEdit ? t('outlink.Edit API Key') : t('outlink.Create API Key')}>
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('Name')}:</Box>

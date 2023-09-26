@@ -2,7 +2,7 @@ import { formatPrice } from '@fastgpt/common/bill/index';
 import type { BillSchema } from '@/types/common/bill';
 import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';
-import { ChatCompletionRequestMessageRoleEnum } from 'openai';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/aiApi/constant';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
 import type { AppModuleItemType } from '@/types/app';

@@ -29,27 +29,24 @@ const Home = ({ homeUrl = '/' }: { homeUrl: string }) => {
       <Head>
         <title>{feConfigs?.systemTitle || 'FastGPT'}</title>
       </Head>
-      {homeUrl === '/' ? (
-        <Box id="home" bg={'myWhite.600'} h={'100vh'} overflowY={'auto'} overflowX={'hidden'}>
-          <Box position={'fixed'} zIndex={10} top={0} left={0} right={0}>
-            <Navbar />
-          </Box>
-          <Box maxW={'1200px'} pt={'70px'} m={'auto'}>
-            <Hero />
-            <Ability />
-            <Box my={[4, 6]}>
-              <Choice />
-            </Box>
-          </Box>
-          {feConfigs?.show_git && (
-            <Box bg={'white'}>
-              <Footer />
-            </Box>
-          )}
+      <Box id="home" bg={'myWhite.600'} h={'100vh'} overflowY={'auto'} overflowX={'hidden'}>
+        <Box position={'fixed'} zIndex={10} top={0} left={0} right={0}>
+          <Navbar />
         </Box>
-      ) : (
-        <Loading />
-      )}
+        <Box maxW={'1200px'} pt={'70px'} m={'auto'}>
+          <Hero />
+          <Ability />
+          <Box my={[4, 6]}>
+            <Choice />
+          </Box>
+        </Box>
+        {feConfigs?.show_git && (
+          <Box bg={'white'}>
+            <Footer />
+          </Box>
+        )}
+      </Box>
+      {homeUrl !== '/' && <Loading bg={'white'} />}
     </>
   );
 };

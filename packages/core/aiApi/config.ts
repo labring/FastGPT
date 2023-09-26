@@ -1,4 +1,4 @@
-import { UserModelSchema } from '@/types/mongoSchema';
+import { UserModelSchema } from '../user/type';
 import { Configuration, OpenAIApi } from 'openai';
 
 export const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
