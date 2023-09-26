@@ -97,7 +97,7 @@ const Share = ({ appId }: { appId: string }) => {
                   <Th>金额限制(￥)</Th>
                   <Th>IP限流（人/分钟）</Th>
                   <Th>过期时间</Th>
-                  <Th>token校验</Th>
+                  <Th>身份校验</Th>
                 </>
               )}
               <Th>最后使用时间</Th>

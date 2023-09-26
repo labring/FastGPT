@@ -51,6 +51,7 @@ const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputD
 
 import styles from './index.module.scss';
 import Script from 'next/script';
+import { postQuestionGuide } from '@/api/core/ai/agent/api';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -189,6 +190,7 @@ const ChatBox = (
     q: string;
     a: string;
   }>();
+  const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
   const isChatting = useMemo(
     () =>
@@ -287,6 +289,24 @@ const ChatBox = (
     }, 100);
   }, []);
 
+  // create question guide
+  const createQuestionGuide = useCallback(
+    async ({ history }: { history: ChatSiteItemType[] }) => {
+      try {
+        const result = await postQuestionGuide({
+          messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6)
+        });
+        if (Array.isArray(result)) {
+          setQuestionGuide(result);
+          setTimeout(() => {
+            scrollToBottom();
+          }, 100);
+        }
+      } catch (error) {}
+    },
+    [scrollToBottom]
+  );
+
   /**
    * user confirm send prompt
    */
@@ -332,6 +352,7 @@ const ChatBox = (
 
       // 清空输入内容
       resetInputVal('');
+      setQuestionGuide([]);
       setTimeout(() => {
         scrollToBottom();
       }, 100);
@@ -343,7 +364,7 @@ const ChatBox = (
 
         const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
 
-        const { responseData } = await onStartChat({
+        const { responseData, responseText } = await onStartChat({
           chatList: newChatList,
           messages,
           controller: abortSignal,
@@ -364,6 +385,16 @@ const ChatBox = (
         );
 
         setTimeout(() => {
+          createQuestionGuide({
+            history: newChatList.map((item, i) =>
+              i === newChatList.length - 1
+                ? {
+                    ...item,
+                    value: responseText
+                  }
+                : item
+            )
+          });
           generatingScroll();
           isPc && TextareaDom.current?.focus();
         }, 100);
@@ -393,13 +424,14 @@ const ChatBox = (
       }
     },
     [
-      isChatting,
       chatHistory,
+      onStartChat,
+      isChatting,
       resetInputVal,
       toast,
       scrollToBottom,
-      onStartChat,
       generatingMessage,
+      createQuestionGuide,
       generatingScroll,
       isPc
     ]
@@ -528,6 +560,7 @@ const ChatBox = (
     <Flex flexDirection={'column'} h={'100%'}>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
 
+      {/* chat box container */}
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
@@ -839,6 +872,43 @@ const ChatBox = (
                           contentId={item.dataId}
                           responseData={item.responseData}
                         />
+                        {/* question guide */}
+                        {index === chatHistory.length - 1 &&
+                          !isChatting &&
+                          questionGuides.length > 0 && (
+                            <Flex
+                              mt={2}
+                              borderTop={theme.borders.sm}
+                              alignItems={'center'}
+                              flexWrap={'wrap'}
+                            >
+                              <Box
+                                color={'myGray.500'}
+                                mt={2}
+                                mr={2}
+                                fontSize={'sm'}
+                                fontStyle={'italic'}
+                              >
+                                {t('chat.Question Guide Tips')}
+                              </Box>
+                              {questionGuides.map((item) => (
+                                <Button
+                                  mt={2}
+                                  key={item}
+                                  mr="2"
+                                  borderRadius={'md'}
+                                  variant={'outline'}
+                                  colorScheme={'gray'}
+                                  size={'xs'}
+                                  onClick={() => {
+                                    resetInputVal(item);
+                                  }}
+                                >
+                                  {item}
+                                </Button>
+                              ))}
+                            </Flex>
+                          )}
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (
                           <Box>
