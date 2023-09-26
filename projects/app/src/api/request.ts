@@ -12,6 +12,7 @@ interface ConfigType {
   hold?: boolean;
   timeout?: number;
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
+  cancelToken?: AbortController;
 }
 interface ResponseDataType {
   code: number;
@@ -88,7 +89,12 @@ instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
 /* 响应拦截 */
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
-function request(url: string, data: any, config: ConfigType, method: Method): any {
+function request(
+  url: string,
+  data: any,
+  { cancelToken, ...config }: ConfigType,
+  method: Method
+): any {
   /* 去空 */
   for (const key in data) {
     if (data[key] === null || data[key] === undefined) {
@@ -103,6 +109,7 @@ function request(url: string, data: any, config: ConfigType, method: Method): an
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,
       params: !['POST', 'PUT'].includes(method) ? data : null,
+      signal: cancelToken?.signal,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))

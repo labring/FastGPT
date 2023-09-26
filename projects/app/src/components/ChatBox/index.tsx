@@ -24,7 +24,7 @@ import { feConfigs } from '@/store/static';
 import { event } from '@/utils/plugin/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/hooks/useMarkdown';
-import { VariableItemType } from '@/types/app';
+import { AppModuleItemType, VariableItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
@@ -51,6 +51,8 @@ const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputD
 
 import styles from './index.module.scss';
 import Script from 'next/script';
+import { postQuestionGuide } from '@/api/core/ai/agent/api';
+import { splitGuideModule } from './utils';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -137,8 +139,7 @@ const ChatBox = (
     chatId,
     appAvatar,
     userAvatar,
-    variableModules,
-    welcomeText,
+    userGuideModule,
     active = true,
     onUpdateVariable,
     onStartChat,
@@ -151,8 +152,7 @@ const ChatBox = (
     chatId?: string;
     appAvatar?: string;
     userAvatar?: string;
-    variableModules?: VariableItemType[];
-    welcomeText?: string;
+    userGuideModule?: AppModuleItemType;
     active?: boolean;
     onUpdateVariable?: (e: Record<string, any>) => void;
     onStartChat?: (e: StartChatFnProps) => Promise<{
@@ -171,24 +171,28 @@ const ChatBox = (
   const { toast } = useToast();
   const { isPc } = useGlobalStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
-  const controller = useRef(new AbortController());
+  const chatController = useRef(new AbortController());
+  const questionGuideController = useRef(new AbortController());
 
   const [refresh, setRefresh] = useState(false);
-  const [variables, setVariables] = useState<Record<string, any>>({});
+  const [variables, setVariables] = useState<Record<string, any>>({}); // settings variable
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
+    // read feedback modal data
     chatItemId: string;
     content: string;
     isMarked: boolean;
   }>();
   const [adminMarkData, setAdminMarkData] = useState<{
+    // mark modal data
     kbId?: string;
     chatItemId: string;
     dataId?: string;
     q: string;
     a: string;
   }>();
+  const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
   const isChatting = useMemo(
     () =>
@@ -196,6 +200,12 @@ const ChatBox = (
       chatHistory[chatHistory.length - 1]?.status !== 'finish',
     [chatHistory]
   );
+
+  const { welcomeText, variableModules, questionGuide } = useMemo(
+    () => splitGuideModule(userGuideModule),
+    [userGuideModule]
+  );
+
   // compute variable input is finish.
   const [variableInputFinish, setVariableInputFinish] = useState(false);
   const variableIsFinish = useMemo(() => {
@@ -287,6 +297,32 @@ const ChatBox = (
     }, 100);
   }, []);
 
+  // create question guide
+  const createQuestionGuide = useCallback(
+    async ({ history }: { history: ChatSiteItemType[] }) => {
+      if (!questionGuide || chatController.current?.signal?.aborted) return;
+
+      try {
+        const abortSignal = new AbortController();
+        questionGuideController.current = abortSignal;
+
+        const result = await postQuestionGuide(
+          {
+            messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6)
+          },
+          abortSignal
+        );
+        if (Array.isArray(result)) {
+          setQuestionGuide(result);
+          setTimeout(() => {
+            scrollToBottom();
+          }, 100);
+        }
+      } catch (error) {}
+    },
+    [questionGuide, scrollToBottom]
+  );
+
   /**
    * user confirm send prompt
    */
@@ -300,6 +336,7 @@ const ChatBox = (
         });
         return;
       }
+      questionGuideController.current?.abort('stop');
       // get input value
       const val = inputVal.trim();
 
@@ -332,6 +369,7 @@ const ChatBox = (
 
       // 清空输入内容
       resetInputVal('');
+      setQuestionGuide([]);
       setTimeout(() => {
         scrollToBottom();
       }, 100);
@@ -339,11 +377,11 @@ const ChatBox = (
       try {
         // create abort obj
         const abortSignal = new AbortController();
-        controller.current = abortSignal;
+        chatController.current = abortSignal;
 
         const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
 
-        const { responseData } = await onStartChat({
+        const { responseData, responseText } = await onStartChat({
           chatList: newChatList,
           messages,
           controller: abortSignal,
@@ -364,6 +402,16 @@ const ChatBox = (
         );
 
         setTimeout(() => {
+          createQuestionGuide({
+            history: newChatList.map((item, i) =>
+              i === newChatList.length - 1
+                ? {
+                    ...item,
+                    value: responseText
+                  }
+                : item
+            )
+          });
           generatingScroll();
           isPc && TextareaDom.current?.focus();
         }, 100);
@@ -393,13 +441,14 @@ const ChatBox = (
       }
     },
     [
-      isChatting,
       chatHistory,
+      onStartChat,
+      isChatting,
       resetInputVal,
       toast,
       scrollToBottom,
-      onStartChat,
       generatingMessage,
+      createQuestionGuide,
       generatingScroll,
       isPc
     ]
@@ -494,7 +543,8 @@ const ChatBox = (
   // page change and abort request
   useEffect(() => {
     return () => {
-      controller.current?.abort('leave');
+      chatController.current?.abort('leave');
+      questionGuideController.current?.abort('leave');
       // close voice
       cancelBroadcast();
     };
@@ -528,6 +578,7 @@ const ChatBox = (
     <Flex flexDirection={'column'} h={'100%'}>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
 
+      {/* chat box container */}
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
@@ -839,6 +890,43 @@ const ChatBox = (
                           contentId={item.dataId}
                           responseData={item.responseData}
                         />
+                        {/* question guide */}
+                        {index === chatHistory.length - 1 &&
+                          !isChatting &&
+                          questionGuides.length > 0 && (
+                            <Flex
+                              mt={2}
+                              borderTop={theme.borders.sm}
+                              alignItems={'center'}
+                              flexWrap={'wrap'}
+                            >
+                              <Box
+                                color={'myGray.500'}
+                                mt={2}
+                                mr={2}
+                                fontSize={'sm'}
+                                fontStyle={'italic'}
+                              >
+                                {t('chat.Question Guide Tips')}
+                              </Box>
+                              {questionGuides.map((item) => (
+                                <Button
+                                  mt={2}
+                                  key={item}
+                                  mr="2"
+                                  borderRadius={'md'}
+                                  variant={'outline'}
+                                  colorScheme={'gray'}
+                                  size={'xs'}
+                                  onClick={() => {
+                                    resetInputVal(item);
+                                  }}
+                                >
+                                  {item}
+                                </Button>
+                              ))}
+                            </Flex>
+                          )}
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (
                           <Box>
@@ -928,7 +1016,7 @@ const ChatBox = (
                   cursor={'pointer'}
                   name={'stop'}
                   color={'gray.500'}
-                  onClick={() => controller.current?.abort('stop')}
+                  onClick={() => chatController.current?.abort('stop')}
                 />
               ) : (
                 <MyIcon

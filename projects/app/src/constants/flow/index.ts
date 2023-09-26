@@ -10,6 +10,7 @@ export enum FlowInputItemTypeEnum {
   custom = 'custom',
   target = 'target',
   none = 'none',
+  switch = 'switch',
   hidden = 'hidden'
 }
 

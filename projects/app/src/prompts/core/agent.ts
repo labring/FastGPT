@@ -56,3 +56,5 @@ export const Prompt_CQJson = `我会给你几个问题类型，请参考额外�
 {{text}}
 """
 `;
+
+export const Prompt_QuestionGuide = `我不太清楚问你什么问题，请帮我生成 3 个问题，引导我继续提问。问题的长度应小于20个字符，按 JSON 格式返回: ["问题1", "问题2", "问题3"]`;

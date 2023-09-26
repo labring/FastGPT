@@ -4,7 +4,8 @@ export enum SystemInputEnum {
   'variables' = 'variables',
   'switch' = 'switch', // a trigger switch
   'history' = 'history',
-  'userChatInput' = 'userChatInput'
+  'userChatInput' = 'userChatInput',
+  'questionGuide' = 'questionGuide'
 }
 
 export enum VariableInputEnum {

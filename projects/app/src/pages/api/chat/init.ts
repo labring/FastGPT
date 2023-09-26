@@ -6,7 +6,7 @@ import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';
 import type { ChatSchema } from '@/types/mongoSchema';
-import { getGuideModules, getChatModelNameList } from '@/components/ChatBox/utils';
+import { getChatModelNameList, getGuideModule } from '@/components/ChatBox/utils';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 
 /* 初始化我的聊天框，需要身份验证 */
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         chatId,
         appId,
         app: {
-          ...getGuideModules(app.modules),
+          userGuideModule: getGuideModule(app.modules),
           chatModels: getChatModelNameList(app.modules),
           name: app.name,
           avatar: app.avatar,

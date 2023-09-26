@@ -16,7 +16,8 @@ import {
   useDisclosure,
   Button,
   IconButton,
-  Text
+  Text,
+  Switch
 } from '@chakra-ui/react';
 import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
@@ -34,7 +35,8 @@ import { formatPrice } from '@fastgpt/common/bill/index';
 import {
   ChatModelSystemTip,
   ChatModelLimitTip,
-  welcomeTextTip
+  welcomeTextTip,
+  questionGuideTip
 } from '@/constants/flow/ModuleTemplate';
 import { AppModuleItemType, VariableItemType } from '@/types/app';
 import { useRequest } from '@/hooks/useRequest';
@@ -46,7 +48,7 @@ import { useToast } from '@/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
 import { delModelById } from '@/api/app';
 import { useTranslation } from 'react-i18next';
-import { getGuideModules } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/components/ChatBox/utils';
 
 import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
@@ -89,6 +91,7 @@ const Settings = ({ appId }: { appId: string }) => {
   const { register, setValue, getValues, reset, handleSubmit, control } = useForm<EditFormType>({
     defaultValues: getDefaultAppForm()
   });
+
   const {
     fields: variables,
     append: appendVariable,
@@ -157,7 +160,9 @@ const Settings = ({ appId }: { appId: string }) => {
   const appModule2Form = useCallback(() => {
     const formVal = appModules2Form(appDetail.modules);
     reset(formVal);
-    setRefresh((state) => !state);
+    setTimeout(() => {
+      setRefresh((state) => !state);
+    }, 100);
   }, [appDetail.modules, reset]);
 
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
@@ -536,6 +541,26 @@ const Settings = ({ appId }: { appId: string }) => {
         </Grid>
       </Box>
 
+      <Box mt={5} {...BoxStyles}>
+        <Flex alignItems={'center'}>
+          <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
+          <Box>下一步指引</Box>
+          <MyTooltip label={questionGuideTip} forceShow>
+            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+          </MyTooltip>
+          <Box flex={1} />
+          <Switch
+            isChecked={getValues('questionGuide')}
+            size={'lg'}
+            onChange={(e) => {
+              const value = e.target.checked;
+              setValue('questionGuide', value);
+              setRefresh((state) => !state);
+            }}
+          />
+        </Flex>
+      </Box>
+
       <ConfirmSaveModal />
       <ConfirmDelModal />
       {settingAppInfo && (
@@ -678,7 +703,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon
-          {...getGuideModules(modules)}
+          userGuideModule={getGuideModule(modules)}
           onStartChat={startChat}
           onDelMessage={() => {}}
         />

@@ -97,6 +97,14 @@ export const defaultCQModel: FunctionModelItemType = {
   prompt: '',
   functionCall: true
 };
+export const defaultQGModel: FunctionModelItemType = {
+  model: 'gpt-3.5-turbo',
+  name: 'FastAI-4k',
+  maxToken: 4000,
+  price: 1.5,
+  prompt: '',
+  functionCall: false
+};
 
 const defaultVectorModels: VectorModelItemType[] = [
   {
@@ -130,6 +138,7 @@ export async function getInitConfig() {
     global.qaModel = res.QAModel || defaultQAModel;
     global.extractModel = res.ExtractModel || defaultExtractModel;
     global.cqModel = res.CQModel || defaultCQModel;
+    global.qgModel = res.QGModel || defaultQGModel;
     global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
@@ -143,6 +152,9 @@ export function setDefaultData() {
   global.chatModels = defaultChatModels;
   global.qaModel = defaultQAModel;
   global.vectorModels = defaultVectorModels;
+  global.extractModel = defaultExtractModel;
+  global.cqModel = defaultCQModel;
+  global.qgModel = defaultQGModel;
 }
 
 export function getSystemVersion() {

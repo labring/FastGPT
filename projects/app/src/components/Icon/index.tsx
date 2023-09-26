@@ -86,7 +86,8 @@ const iconPaths = {
   rightArrowLight: () => import('./icons/light/rightArrow.svg'),
   searchLight: () => import('./icons/light/search.svg'),
   plusFill: () => import('./icons/fill/plus.svg'),
-  moveLight: () => import('./icons/light/move.svg')
+  moveLight: () => import('./icons/light/move.svg'),
+  questionGuide: () => import('./icons/app/questionGuide.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

@@ -293,8 +293,7 @@ function DetailLogsModal({
             feedbackType={'admin'}
             showMarkIcon
             showVoiceIcon={false}
-            variableModules={chat?.app.variableModules}
-            welcomeText={chat?.app.welcomeText}
+            userGuideModule={chat?.app?.userGuideModule}
           />
         </Box>
       </Flex>

@@ -67,6 +67,7 @@
     "Mark Description": "The annotation feature is currently in beta. \n\n After clicking Add annotation, you need to select a knowledge base in order to store annotation data. You can use this feature to quickly annotate questions and expected answers to guide the model to the next answer. At present, the annotation function, like other data in the knowledge base, is affected by the model, which does not mean that the annotation meets 100% expectations. The \n\n annotation data is only unidirectional synchronization with the knowledge base. If the knowledge base modifies the annotation data, the annotation data displayed in the log cannot be synchronized",
     "Mark Description Title": "Mark Description",
     "New Chat": "New Chat",
+    "Question Guide Tips": "I guess what you're asking is",
     "Read Mark Description": "Read mark description",
     "Read User Feedback": "Read user feedback",
     "Select Mark Kb": "Select Dataset",
