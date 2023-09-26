@@ -484,7 +484,7 @@ export const ModuleTemplates = [
   },
   {
     label: '引导模块',
-    list: [UserGuideModule, VariableModule]
+    list: [UserGuideModule]
   },
   {
     label: '内容生成',

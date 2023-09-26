@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await collection.updateMany(
       {
-        _id: { $in: fileIds.map((id) => new Types.ObjectId(id)) },
+        _id: { $in: fileIds.filter((id) => !!id).map((id) => new Types.ObjectId(id)) },
         ['metadata.userId']: userId
       },
       {

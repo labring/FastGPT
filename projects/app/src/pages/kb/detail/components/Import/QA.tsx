@@ -113,7 +113,7 @@ const QAImport = ({ kbId }: { kbId: string }) => {
             chunks: splitRes.chunks.map((chunk) => ({
               a: '',
               source: file.filename,
-              file_id: file.id,
+              file_id: file.chunks[0]?.file_id,
               q: chunk
             }))
           };
