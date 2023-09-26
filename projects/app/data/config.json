@@ -75,5 +75,13 @@
     "maxToken": 16000,
     "price": 0,
     "prompt": ""
+  },
+  "QGModel": {
+    "model": "gpt-3.5-turbo",
+    "name": "GPT35-4k",
+    "maxToken": 4000,
+    "price": 0,
+    "prompt": "",
+    "functionCall": false
   }
 }

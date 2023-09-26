@@ -361,9 +361,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 chatId={chatId}
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
-                variableModules={chatData.app.variableModules}
+                userGuideModule={chatData.app?.userGuideModule}
                 feedbackType={'user'}
-                welcomeText={chatData.app.welcomeText}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
                 onDelMessage={delOneHistoryItem}

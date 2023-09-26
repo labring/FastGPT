@@ -69,6 +69,7 @@ declare global {
   var qaModel: QAModelItemType;
   var extractModel: FunctionModelItemType;
   var cqModel: FunctionModelItemType;
+  var qgModel: FunctionModelItemType;
   var vectorModels: VectorModelItemType[];
   var systemVersion: string;
 

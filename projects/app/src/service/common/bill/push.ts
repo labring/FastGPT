@@ -5,6 +5,7 @@ import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import { addLog } from '@/service/utils/tools';
 import type { CreateBillType } from '@/types/common/bill';
+import { defaultQGModel } from '@/pages/api/system/getInitData';
 
 async function createBill(data: CreateBillType) {
   try {
@@ -169,4 +170,23 @@ export const countModelPrice = ({ model, tokens }: { model: string; tokens: numb
   const modelData = getModel(model);
   if (!modelData) return 0;
   return modelData.price * tokens;
+};
+
+export const pushQuestionGuideBill = ({ tokens, userId }: { tokens: number; userId: string }) => {
+  const qgModel = global.qgModel || defaultQGModel;
+  const total = qgModel.price * tokens;
+  createBill({
+    userId,
+    appName: '问题指引',
+    total,
+    source: BillSourceEnum.fastgpt,
+    list: [
+      {
+        moduleName: '问题指引',
+        amount: total,
+        model: qgModel.name,
+        tokenLen: tokens
+      }
+    ]
+  });
 };

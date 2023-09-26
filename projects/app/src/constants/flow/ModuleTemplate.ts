@@ -26,6 +26,7 @@ export const welcomeTextTip =
   '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
 export const variableTip =
   '可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等';
+export const questionGuideTip = `对话结束后，会为生成 3 个引导性问题。`;
 
 export const VariableModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.variable,
@@ -52,14 +53,19 @@ export const UserGuideModule: FlowModuleTemplateType = {
   inputs: [
     {
       key: SystemInputEnum.welcomeText,
-      type: FlowInputItemTypeEnum.input,
+      type: FlowInputItemTypeEnum.hidden,
       label: '开场白'
     },
     {
       key: SystemInputEnum.variables,
-      type: FlowInputItemTypeEnum.systemInput,
+      type: FlowInputItemTypeEnum.hidden,
       label: '对话框变量',
       value: []
+    },
+    {
+      key: SystemInputEnum.questionGuide,
+      type: FlowInputItemTypeEnum.switch,
+      label: '问题引导'
     }
   ],
   outputs: []

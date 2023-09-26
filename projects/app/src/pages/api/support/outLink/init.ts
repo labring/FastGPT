@@ -4,7 +4,7 @@ import { connectToDatabase, OutLink, User } from '@/service/mongo';
 import type { InitShareChatResponse } from '@/api/response/chat';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
-import { getChatModelNameList, getGuideModules } from '@/components/ChatBox/utils';
+import { getChatModelNameList, getGuideModule } from '@/components/ChatBox/utils';
 import { authShareChatInit } from '@/service/support/outLink/auth';
 
 /* init share chat window */
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: {
         userAvatar: user?.avatar || HUMAN_ICON,
         app: {
-          ...getGuideModules(app.modules),
+          userGuideModule: getGuideModule(app.modules),
           chatModels: getChatModelNameList(app.modules),
           name: app.name,
           avatar: app.avatar,

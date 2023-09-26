@@ -1,13 +1,12 @@
 import type { AppSchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
-import { VariableItemType } from '@/types/app';
+import { AppModuleItemType, VariableItemType } from '@/types/app';
 
 export interface InitChatResponse {
   chatId: string;
   appId: string;
   app: {
-    variableModules?: VariableItemType[];
-    welcomeText?: string;
+    userGuideModule?: AppModuleItemType;
     chatModels?: string[];
     name: string;
     avatar: string;
