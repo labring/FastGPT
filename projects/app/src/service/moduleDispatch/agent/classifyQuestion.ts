@@ -2,7 +2,7 @@ import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
+import { getAIChatApi, axiosConfig } from '@fastgpt/core/aiApi/config';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { SystemInputEnum } from '@/constants/app';
 import { SpecialInputKeyEnum } from '@/constants/flow';
@@ -46,7 +46,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     return completions(props);
   })();
 
-  const result = agents.find((item) => item.key === arg?.type) || agents[0];
+  const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
   return {
     [result.key]: 1,
@@ -120,12 +120,21 @@ async function functionCall({
     }
   );
 
-  const arg = JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '');
+  try {
+    const arg = JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '');
 
-  return {
-    arg,
-    tokens: response.data.usage?.total_tokens || 0
-  };
+    return {
+      arg,
+      tokens: response.data.usage?.total_tokens || 0
+    };
+  } catch (error) {
+    console.log('Your model may not support function_call');
+
+    return {
+      arg: {},
+      tokens: 0
+    };
+  }
 }
 
 async function completions({

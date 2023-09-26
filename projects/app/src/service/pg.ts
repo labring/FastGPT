@@ -19,6 +19,7 @@ export const connectPg = async (): Promise<Pool> => {
 
   global.pgClient.on('error', (err) => {
     console.log(err);
+    global.pgClient?.end();
     global.pgClient = null;
     connectPg();
   });

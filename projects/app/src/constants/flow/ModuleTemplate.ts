@@ -24,12 +24,14 @@ export const ChatModelLimitTip =
 export const userGuideTip = '可以添加特殊的对话前后引导模块，更好的让用户进行对话';
 export const welcomeTextTip =
   '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
+export const variableTip =
+  '可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等';
 
 export const VariableModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.variable,
   logo: '/imgs/module/variable.png',
   name: '全局变量',
-  intro: '可以在对话开始前，要求用户填写一些内容作为本轮对话的变量。该模块位于开场引导之后。',
+  intro: variableTip,
   description:
     '全局变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等',
   inputs: [
@@ -52,6 +54,12 @@ export const UserGuideModule: FlowModuleTemplateType = {
       key: SystemInputEnum.welcomeText,
       type: FlowInputItemTypeEnum.input,
       label: '开场白'
+    },
+    {
+      key: SystemInputEnum.variables,
+      type: FlowInputItemTypeEnum.systemInput,
+      label: '对话框变量',
+      value: []
     }
   ],
   outputs: []
@@ -476,7 +484,7 @@ export const ModuleTemplates = [
   },
   {
     label: '引导模块',
-    list: [UserGuideModule, VariableModule]
+    list: [UserGuideModule]
   },
   {
     label: '内容生成',
@@ -491,7 +499,19 @@ export const ModuleTemplates = [
     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
   }
 ];
-export const ModuleTemplatesFlat = ModuleTemplates.map((templates) => templates.list)?.flat();
+export const ModuleTemplatesFlat = [
+  VariableModule,
+  UserGuideModule,
+  UserInputModule,
+  HistoryModule,
+  ChatModule,
+  KBSearchModule,
+  AnswerModule,
+  ClassifyQuestionModule,
+  ContextExtractModule,
+  HttpModule,
+  EmptyModule
+];
 
 // template
 export const appTemplates: (AppItemType & { avatar: string; intro: string })[] = [

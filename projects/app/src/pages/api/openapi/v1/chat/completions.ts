@@ -14,12 +14,14 @@ import {
   dispatchContentExtract,
   dispatchHttpRequest
 } from '@/service/moduleDispatch';
-import type { CreateChatCompletionRequest } from 'openai';
+import type {
+  CreateChatCompletionRequest,
+  ChatCompletionRequestMessage
+} from '@fastgpt/core/aiApi/type';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { sseResponse } from '@/service/utils/tools';
-import { type ChatCompletionRequestMessage } from 'openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';

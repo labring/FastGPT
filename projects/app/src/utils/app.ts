@@ -10,6 +10,7 @@ import { SystemInputEnum } from '@/constants/app';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import { FlowInputItemType } from '@/types/flow';
 import type { AIChatProps } from '@/types/core/aiChat';
+import { getGuideModules } from '@/components/ChatBox/utils';
 
 export type EditFormType = {
   chatModel: AIChatProps;
@@ -136,16 +137,13 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
           target?.inputs?.find((item) => item.key === SpecialInputKeyEnum.answerText)?.value || '';
       }
     } else if (module.flowType === FlowModuleTypeEnum.userGuide) {
-      const val =
-        module.inputs.find((item) => item.key === SystemInputEnum.welcomeText)?.value || '';
-      if (val) {
+      const { welcomeText, variableModules } = getGuideModules(modules);
+      if (welcomeText) {
         defaultAppForm.guide.welcome = {
-          text: val
+          text: welcomeText
         };
       }
-    } else if (module.flowType === FlowModuleTypeEnum.variable) {
-      defaultAppForm.variables =
-        module.inputs.find((item) => item.key === SystemInputEnum.variables)?.value || [];
+      defaultAppForm.variables = variableModules;
     }
   });
 
@@ -220,54 +218,32 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
     connected: true
   }
 ];
-const welcomeTemplate = (formData: EditFormType): AppModuleItemType[] =>
-  formData.guide?.welcome?.text
-    ? [
-        {
-          name: '用户引导',
-          flowType: FlowModuleTypeEnum.userGuide,
-          inputs: [
-            {
-              key: 'welcomeText',
-              type: 'input',
-              label: '开场白',
-              value: formData.guide.welcome.text,
-              connected: true
-            }
-          ],
-          outputs: [],
-          position: {
-            x: 447.98520778293346,
-            y: 721.4016845336229
-          },
-          moduleId: 'userGuide'
-        }
-      ]
-    : [];
-const variableTemplate = (formData: EditFormType): AppModuleItemType[] =>
-  formData.variables.length > 0
-    ? [
-        {
-          name: '全局变量',
-          flowType: FlowModuleTypeEnum.variable,
-          inputs: [
-            {
-              key: 'variables',
-              value: formData.variables,
-              type: 'systemInput',
-              label: '变量输入',
-              connected: true
-            }
-          ],
-          outputs: [],
-          position: {
-            x: 444.0369195277651,
-            y: 1008.5185781784537
-          },
-          moduleId: 'variable'
-        }
-      ]
-    : [];
+const userGuideTemplate = (formData: EditFormType): AppModuleItemType[] => [
+  {
+    name: '用户引导',
+    flowType: FlowModuleTypeEnum.userGuide,
+    inputs: [
+      {
+        key: SystemInputEnum.welcomeText,
+        type: FlowInputItemTypeEnum.input,
+        label: '开场白',
+        value: formData.guide.welcome.text
+      },
+      {
+        key: SystemInputEnum.variables,
+        type: FlowInputItemTypeEnum.systemInput,
+        label: '对话框变量',
+        value: formData.variables
+      }
+    ],
+    outputs: [],
+    position: {
+      x: 447.98520778293346,
+      y: 721.4016845336229
+    },
+    moduleId: 'userGuide'
+  }
+];
 const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
   {
     name: '用户问题(对话入口)',
@@ -572,8 +548,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
 
 export const appForm2Modules = (formData: EditFormType) => {
   const modules = [
-    ...welcomeTemplate(formData),
-    ...variableTemplate(formData),
+    ...userGuideTemplate(formData),
     ...(formData.kb.list.length > 0 ? kbTemplate(formData) : simpleChatTemplate(formData))
   ];
 

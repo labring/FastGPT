@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import tunnel from 'tunnel';
 import { startQueue } from './utils/tools';
 import { getInitConfig } from '@/pages/api/system/getInitData';
 import { User } from './models/user';
@@ -9,6 +8,7 @@ import { createHashPassword } from '@/utils/tools';
 import { createLogger, format, transports } from 'winston';
 import 'winston-mongodb';
 import { getTikTokenEnc } from '@/utils/common/tiktoken';
+import { initHttpAgent } from '@fastgpt/core/init';
 
 /**
  * connect MongoDB and init data
@@ -24,15 +24,6 @@ export async function connectToDatabase(): Promise<void> {
   global.vectorQueueLen = 0;
   global.sendInformQueue = [];
   global.sendInformQueueLen = 0;
-  // proxy obj
-  if (process.env.AXIOS_PROXY_HOST && process.env.AXIOS_PROXY_PORT) {
-    global.httpsAgent = tunnel.httpsOverHttp({
-      proxy: {
-        host: process.env.AXIOS_PROXY_HOST,
-        port: +process.env.AXIOS_PROXY_PORT
-      }
-    });
-  }
 
   // logger
   initLogger();
@@ -41,6 +32,7 @@ export async function connectToDatabase(): Promise<void> {
   getInitConfig();
   // init tikToken
   getTikTokenEnc();
+  initHttpAgent();
 
   try {
     mongoose.set('strictQuery', true);

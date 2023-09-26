@@ -14,6 +14,9 @@
     "@chakra-ui/system": "^2.5.8",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
+    "@fastgpt/common": "workspace:*",
+    "@fastgpt/core": "workspace:*",
+    "@fastgpt/support": "workspace:*",
     "@mozilla/readability": "^0.4.4",
     "@tanstack/react-query": "^4.24.10",
     "@types/nprogress": "^0.2.0",
@@ -45,7 +48,6 @@
     "next-i18next": "^14.0.3",
     "nextjs-cors": "^2.1.2",
     "nprogress": "^0.2.0",
-    "openai": "^3.3.0",
     "papaparse": "^5.4.1",
     "pg": "^8.10.0",
     "pg-query-stream": "^4.5.3",
@@ -64,13 +66,9 @@
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
     "timezones-list": "^3.0.2",
-    "tunnel": "^0.0.6",
     "winston": "^3.10.0",
     "winston-mongodb": "^5.1.1",
-    "zustand": "^4.3.5",
-    "@fastgpt/support": "workspace:*",
-    "@fastgpt/common": "workspace:*",
-    "@fastgpt/core": "workspace:*"
+    "zustand": "^4.3.5"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
@@ -89,7 +87,6 @@
     "@types/react-dom": "18.0.11",
     "@types/react-syntax-highlighter": "^15.5.6",
     "@types/request-ip": "^0.0.37",
-    "@types/tunnel": "^0.0.3",
     "eslint": "8.34.0",
     "eslint-config-next": "13.1.6",
     "typescript": "4.9.5"
