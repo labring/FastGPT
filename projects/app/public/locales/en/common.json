@@ -237,8 +237,10 @@
   "outlink": {
     "Copy Iframe": "Copy Iframe",
     "Copy Link": "Copy",
+    "Create API Key": "Create Key",
     "Create Link": "Create Link",
     "Delete Link": "Delete",
+    "Edit API Key": "Edit Key",
     "Edit Ifrme Link": "Edit Iframe Link",
     "Edit Link": "Edit",
     "Edit Share Window": "Edit Share Window",
