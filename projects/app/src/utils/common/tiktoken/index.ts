@@ -2,7 +2,7 @@
 import { ChatItemType } from '@/types/chat';
 import { Tiktoken } from 'js-tiktoken/lite';
 import { adaptChat2GptMessages } from '../adapt/message';
-import { ChatCompletionRequestMessageRoleEnum } from 'openai';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/aiApi/constant';
 import encodingJson from './cl100k_base.json';
 
 /* init tikToken obj */

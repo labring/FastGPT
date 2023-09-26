@@ -5,7 +5,7 @@ import { User } from '@/service/models/user';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { UserUpdateParams } from '@/types/user';
-import { axiosConfig, getAIChatApi, openaiBaseUrl } from '@/service/lib/openai';
+import { axiosConfig, getAIChatApi, openaiBaseUrl } from '@fastgpt/core/aiApi/config';
 
 /* update user info */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           ...axiosConfig(openaiAccount)
         }
       );
-      if (!response?.data?.choices?.[0]?.message?.content) {
+      if (response?.data?.choices?.[0]?.message?.content === undefined) {
         throw new Error(JSON.stringify(response?.data));
       }
     }
