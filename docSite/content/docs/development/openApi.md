@@ -46,7 +46,7 @@ FastGPT 的 API Key 有 2 类，一类是全局通用的 key；一类是携带�
 **请求示例：**
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/openapi/v1/chat/completions' \
+curl --location --request POST 'https://fastgpt.run/api/v1/chat/completions' \
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{

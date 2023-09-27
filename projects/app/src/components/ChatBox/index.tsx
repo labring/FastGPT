@@ -27,7 +27,7 @@ import { useMarkdown } from '@/hooks/useMarkdown';
 import { AppModuleItemType, VariableItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
-import { MessageItemType } from '@/pages/api/openapi/v1/chat/completions';
+import type { MessageItemType } from '@/types/core/chat/type';
 import { fileDownload } from '@/utils/web/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
@@ -158,6 +158,7 @@ const ChatBox = (
     onStartChat?: (e: StartChatFnProps) => Promise<{
       responseText: string;
       [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
+      isNewChat?: boolean;
     }>;
     onDelMessage?: (e: { contentId?: string; index: number }) => void;
   },
@@ -173,6 +174,7 @@ const ChatBox = (
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
+  const isNewChatReplace = useRef(false);
 
   const [refresh, setRefresh] = useState(false);
   const [variables, setVariables] = useState<Record<string, any>>({}); // settings variable
@@ -381,13 +383,19 @@ const ChatBox = (
 
         const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
 
-        const { responseData, responseText } = await onStartChat({
+        const {
+          responseData,
+          responseText,
+          isNewChat = false
+        } = await onStartChat({
           chatList: newChatList,
           messages,
           controller: abortSignal,
           generatingMessage,
           variables
         });
+
+        isNewChatReplace.current = isNewChat;
 
         // set finish status
         setChatHistory((state) =>
@@ -542,9 +550,12 @@ const ChatBox = (
 
   // page change and abort request
   useEffect(() => {
+    isNewChatReplace.current = false;
     return () => {
       chatController.current?.abort('leave');
-      questionGuideController.current?.abort('leave');
+      if (!isNewChatReplace.current) {
+        questionGuideController.current?.abort('leave');
+      }
       // close voice
       cancelBroadcast();
     };

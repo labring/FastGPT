@@ -106,7 +106,7 @@ const OutLink = ({
         '*'
       );
 
-      return { responseText, responseData };
+      return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
     [authToken, chatId, router, saveChatResponse, shareId]
   );

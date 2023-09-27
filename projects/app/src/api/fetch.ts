@@ -12,7 +12,7 @@ interface StreamFetchProps {
   abortSignal: AbortController;
 }
 export const streamFetch = ({
-  url = '/api/openapi/v1/chat/completions',
+  url = '/api/v1/chat/completions',
   data,
   onMessage,
   abortSignal
