@@ -5,7 +5,7 @@ import { sseErrRes } from '@/service/response';
 import { sseResponseEventEnum } from '@/constants/chat';
 import { sseResponse } from '@/service/utils/tools';
 import { AppModuleItemType } from '@/types/app';
-import { dispatchModules } from '../openapi/v1/chat/completions';
+import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatItemType } from '@/types/chat';

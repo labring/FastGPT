@@ -113,7 +113,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         history: ChatBoxRef.current?.getChatHistory() || state.history
       }));
 
-      return { responseText, responseData };
+      return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
     [appId, chatId, history, router, setChatData, updateHistory]
   );

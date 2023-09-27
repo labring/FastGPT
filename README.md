@@ -39,7 +39,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 文本内容提取成结构化数据
    - [x] HTTP 扩展
    - [ ] 嵌入 Laf，实现在线编写 HTTP 模块
-   - [ ] 连续对话引导
+   - [x] 对话下一步指引
    - [ ] 对话多路线选择
    - [x] 源文件引用追踪
    - [ ] 自定义文件阅读器
@@ -55,7 +55,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 知识库单点搜索测试
    - [x] 对话时反馈引用并可修改与删除
    - [x] 完整上下文呈现
-   - [ ] 完整模块中间值呈现
+   - [x] 完整模块中间值呈现
 4. OpenAPI
    - [x] completions 接口（对齐 GPT 接口）
    - [ ] 知识库 CRUD
