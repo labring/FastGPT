@@ -171,11 +171,10 @@
 .markdown ol li > *:first-child {
   margin-top: 0;
 }
-.markdown ul ul,
-.markdown ul ol,
-.markdown ol ol,
-.markdown ol ul {
+.markdown ul,
+.markdown ol {
   margin-bottom: 0;
+  padding-left: 14px;
 }
 .markdown dl {
   padding: 0;
