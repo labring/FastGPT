@@ -41,7 +41,7 @@ jobs:
           docker buildx build \
           --build-arg name=app \
           --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt image" \
+          --label "org.opencontainers.image.description=fastgpt-pr image" \
           --label "org.opencontainers.image.licenses=MIT" \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \
