@@ -1,4 +1,4 @@
-name: Preview fastgpt images
+name: Preview FastGPT images
 on:
   pull_request_target:
     paths:
