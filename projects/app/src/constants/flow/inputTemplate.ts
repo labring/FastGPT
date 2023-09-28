@@ -1,4 +1,4 @@
-import { FlowInputItemType } from '@/types/flow';
+import type { FlowInputItemType } from '@/types/core/app/flow';
 import { SystemInputEnum } from '../app';
 import { FlowInputItemTypeEnum, FlowValueTypeEnum } from './index';
 

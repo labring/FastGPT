@@ -6,7 +6,7 @@ import { getAIChatApi, axiosConfig } from '@fastgpt/core/aiApi/config';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { ModuleDispatchProps } from '@/types/core/modules';
+import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/prompts/core/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { defaultExtractModel } from '@/pages/api/system/getInitData';

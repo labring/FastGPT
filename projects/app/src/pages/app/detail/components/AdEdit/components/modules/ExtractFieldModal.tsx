@@ -7,8 +7,7 @@ import {
   ModalBody,
   Flex,
   Switch,
-  Input,
-  FormControl
+  Input
 } from '@chakra-ui/react';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { useForm } from 'react-hook-form';

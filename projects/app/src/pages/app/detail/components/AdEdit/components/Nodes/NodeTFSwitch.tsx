@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { Flex, Box } from '@chakra-ui/react';
 import NodeCard from '../modules/NodeCard';
 import { SystemInputEnum } from '@/constants/app';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import Label from '../modules/Label';

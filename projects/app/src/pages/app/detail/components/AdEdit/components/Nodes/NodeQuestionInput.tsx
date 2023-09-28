@@ -2,7 +2,7 @@ import React from 'react';
 import { NodeProps } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Container from '../modules/Container';
 import { SystemInputEnum } from '@/constants/app';
 import { FlowValueTypeEnum } from '@/constants/flow';

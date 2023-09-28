@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
@@ -9,16 +9,18 @@ import RenderOutput from '../render/RenderOutput';
 import MySelect from '@/components/Select';
 import { chatModelList } from '@/store/static';
 import MySlider from '@/components/Slider';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, useDisclosure } from '@chakra-ui/react';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
 import { AIChatProps } from '@/types/core/aiChat';
+import { useFlowStore } from '../Provider';
 
 const AIChatSettingsModal = dynamic(() => import('../../../AIChatSettingsModal'));
 
 const NodeChat = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { moduleId, inputs, outputs, onChangeNode } = data;
+  const { moduleId, inputs, outputs } = data;
+  const { onChangeNode } = useFlowStore();
 
   const chatModulesData = useMemo(() => {
     const obj: Record<string, any> = {};
@@ -40,7 +42,6 @@ const NodeChat = ({ data }: NodeProps<FlowModuleItemType>) => {
       <Container>
         <RenderInput
           moduleId={moduleId}
-          onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
             model: (inputItem) => {
@@ -140,7 +141,7 @@ const NodeChat = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
+        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>
 
       {isOpenAIChatSetting && (

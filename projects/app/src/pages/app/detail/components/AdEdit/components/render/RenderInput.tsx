@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { FlowInputItemType, FlowModuleItemType } from '@/types/flow';
+import type { FlowInputItemType } from '@/types/core/app/flow';
 import {
   Box,
   Textarea,
@@ -20,19 +20,19 @@ import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 const SetInputFieldModal = dynamic(() => import('../modules/SetInputFieldModal'));
+import { useFlowStore } from '../Provider';
 
 export const Label = ({
   moduleId,
   inputKey,
-  onChangeNode,
   ...item
 }: FlowInputItemType & {
   moduleId: string;
   inputKey: string;
-  onChangeNode: FlowModuleItemType['onChangeNode'];
 }) => {
   const { required = false, description, edit, label, type, valueType } = item;
   const [editField, setEditField] = useState<FlowInputItemType>();
+  const { onChangeNode } = useFlowStore();
 
   return (
     <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
@@ -134,28 +134,20 @@ export const Label = ({
 const RenderInput = ({
   flowInputList,
   moduleId,
-  CustomComponent = {},
-  onChangeNode
+  CustomComponent = {}
 }: {
   flowInputList: FlowInputItemType[];
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowInputItemType) => React.ReactNode>;
-  onChangeNode: FlowModuleItemType['onChangeNode'];
 }) => {
+  const { onChangeNode } = useFlowStore();
   return (
     <>
       {flowInputList.map(
         (item) =>
           item.type !== FlowInputItemTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
-              {!!item.label && (
-                <Label
-                  moduleId={moduleId}
-                  onChangeNode={onChangeNode}
-                  inputKey={item.key}
-                  {...item}
-                />
-              )}
+              {!!item.label && <Label moduleId={moduleId} inputKey={item.key} {...item} />}
               <Box mt={2} className={'nodrag'}>
                 {item.type === FlowInputItemTypeEnum.numberInput && (
                   <NumberInput

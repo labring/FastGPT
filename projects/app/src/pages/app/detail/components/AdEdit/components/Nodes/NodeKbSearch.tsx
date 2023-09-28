@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import { Flex, Box, Button, useTheme, useDisclosure, Grid } from '@chakra-ui/react';
 import { useDatasetStore } from '@/store/dataset';
 import { useQuery } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import RenderOutput from '../render/RenderOutput';
 import { DatasetSelectModal } from '../../../DatasetSelectModal';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import Avatar from '@/components/Avatar';
+import { useFlowStore } from '../Provider';
 
 const KBSelect = ({
   activeKbs = [],
@@ -68,14 +69,15 @@ const KBSelect = ({
 };
 
 const NodeKbSearch = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { moduleId, inputs, outputs, onChangeNode } = data;
+  const { moduleId, inputs, outputs } = data;
+  const { onChangeNode } = useFlowStore();
+
   return (
     <NodeCard minW={'400px'} {...data}>
       <Divider text="Input" />
       <Container>
         <RenderInput
           moduleId={moduleId}
-          onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
             kbList: ({ key, value, ...props }) => (
@@ -100,7 +102,7 @@ const NodeKbSearch = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
+        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>
     </NodeCard>
   );

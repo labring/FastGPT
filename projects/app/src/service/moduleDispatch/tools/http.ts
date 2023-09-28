@@ -2,8 +2,7 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 import { HttpPropsEnum } from '@/constants/flow/flowField';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { ModuleDispatchProps } from '@/types/core/modules';
-
+import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type HttpRequestProps = ModuleDispatchProps<{
   [HttpPropsEnum.url]: string;
   [key: string]: any;

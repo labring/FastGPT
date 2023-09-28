@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { NodeProps } from 'reactflow';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../modules/NodeCard';
 import Container from '../modules/Container';
@@ -14,11 +14,13 @@ import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import { useFlowStore } from '../Provider';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { inputs, outputs, moduleId, onChangeNode, onDelEdge } = data;
+  const { inputs, outputs, moduleId } = data;
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
+  const { onChangeNode, onDelEdge } = useFlowStore();
 
   return (
     <NodeCard minW={'400px'} {...data}>
@@ -26,7 +28,6 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
       <Container>
         <RenderInput
           moduleId={moduleId}
-          onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
             [ContextExtractEnum.extractKeys]: ({
@@ -125,7 +126,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
+        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>
 
       {!!editExtractFiled && (

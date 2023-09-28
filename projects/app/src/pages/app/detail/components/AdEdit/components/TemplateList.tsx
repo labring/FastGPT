@@ -1,23 +1,23 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import { FlowModuleItemType, FlowModuleTemplateType } from '@/types/flow';
-import type { Node, XYPosition } from 'reactflow';
+import { FlowModuleItemType, FlowModuleTemplateType } from '@/types/core/app/flow';
+import type { Node } from 'reactflow';
 import { useGlobalStore } from '@/store/global';
 import Avatar from '@/components/Avatar';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import { useFlowStore } from './Provider';
 
 const ModuleTemplateList = ({
   nodes,
   isOpen,
-  onAddNode,
   onClose
 }: {
   nodes?: Node<FlowModuleItemType>[];
   isOpen: boolean;
-  onAddNode: (e: { template: FlowModuleTemplateType; position: XYPosition }) => void;
   onClose: () => void;
 }) => {
+  const { onAddNode } = useFlowStore();
   const { isPc } = useGlobalStore();
 
   const filterTemplates = useMemo(() => {
@@ -123,4 +123,4 @@ const ModuleTemplateList = ({
   );
 };
 
-export default ModuleTemplateList;
+export default React.memo(ModuleTemplateList);

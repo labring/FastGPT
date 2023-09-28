@@ -32,7 +32,7 @@ import { getSystemTime } from '@/utils/user';
 import { authOutLinkChat } from '@/service/support/outLink/auth';
 import requestIp from 'request-ip';
 import { replaceVariable } from '@/utils/common/tools/text';
-import { ModuleDispatchProps } from '@/types/core/modules';
+import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { pushResult2Remote, updateOutLinkUsage } from '@/service/support/outLink';
 import { updateApiKeyUsage } from '@/service/support/openapi';

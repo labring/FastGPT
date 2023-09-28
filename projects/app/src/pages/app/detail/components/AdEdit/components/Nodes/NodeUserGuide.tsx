@@ -15,9 +15,10 @@ import {
   Switch
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import { SystemInputEnum } from '@/constants/app';
 import { welcomeTextTip, variableTip, questionGuideTip } from '@/constants/flow/ModuleTemplate';
+import { useFlowStore } from '../Provider';
 
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
 import MyIcon from '@/components/Icon';
@@ -47,7 +48,8 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
 export default React.memo(NodeUserGuide);
 
 export function WelcomeText({ data }: { data: FlowModuleItemType }) {
-  const { inputs, moduleId, onChangeNode } = data;
+  const { inputs, moduleId } = data;
+  const { onChangeNode } = useFlowStore();
 
   const welcomeText = useMemo(
     () => inputs.find((item) => item.key === SystemInputEnum.welcomeText),
@@ -89,7 +91,9 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
 }
 
 function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
-  const { inputs, moduleId, onChangeNode } = data;
+  const { inputs, moduleId } = data;
+  const { onChangeNode } = useFlowStore();
+
   const variables = useMemo(
     () =>
       (inputs.find((item) => item.key === SystemInputEnum.variables)
@@ -203,7 +207,9 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
 }
 
 function QuestionGuide({ data }: { data: FlowModuleItemType }) {
-  const { inputs, moduleId, onChangeNode } = data;
+  const { inputs, moduleId } = data;
+  const { onChangeNode } = useFlowStore();
+
   const questionGuide = useMemo(
     () =>
       (inputs.find((item) => item.key === SystemInputEnum.questionGuide)?.value as boolean) ||
