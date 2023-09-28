@@ -42,7 +42,7 @@ jobs:
           --build-arg name=app \
           --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
           --label "org.opencontainers.image.description=fastgpt-pr image" \
-          --label "org.opencontainers.image.licenses=MIT" \
+          --label "org.opencontainers.image.licenses=Apache" \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \
           -t ${DOCKER_REPO_TAGGED} \
