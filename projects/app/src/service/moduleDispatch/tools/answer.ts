@@ -23,7 +23,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
       res,
       event: detail ? sseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
-        text: text.replace?.(/\\n/g, '\n') || ''
+        text
       })
     });
   }

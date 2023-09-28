@@ -62,6 +62,8 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
     []
   );
 
+  const formatSource = source.replace(/\\n/g, '\n&nbsp;');
+
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}
@@ -73,9 +75,9 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
       components={components}
       linkTarget={'_blank'}
     >
-      {source}
+      {formatSource}
     </ReactMarkdown>
   );
 };
 
-export default Markdown;
+export default React.memo(Markdown);
