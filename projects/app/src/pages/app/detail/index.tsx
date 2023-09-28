@@ -17,15 +17,10 @@ import BasicEdit from './components/BasicEdit';
 import { serviceSideProps } from '@/utils/web/i18n';
 
 const AdEdit = dynamic(() => import('./components/AdEdit'), {
-  ssr: false,
   loading: () => <Loading />
 });
-const OutLink = dynamic(() => import('./components/OutLink'), {
-  ssr: false
-});
-const Logs = dynamic(() => import('./components/Logs'), {
-  ssr: false
-});
+const OutLink = dynamic(() => import('./components/OutLink'), {});
+const Logs = dynamic(() => import('./components/Logs'), {});
 
 enum TabEnum {
   'basicEdit' = 'basicEdit',

@@ -1,8 +1,8 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
-import { Box, Input, Button, Flex } from '@chakra-ui/react';
+import { Box, Input, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
@@ -11,17 +11,22 @@ import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
+import { useTranslation } from 'react-i18next';
 import SourceHandle from '../render/SourceHandle';
+import MyTooltip from '@/components/MyTooltip';
+import { useFlowStore } from '../Provider';
 
 const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { moduleId, inputs, outputs, onChangeNode } = data;
+  const { t } = useTranslation();
+  const { moduleId, inputs, outputs } = data;
+  const { onChangeNode } = useFlowStore();
+
   return (
     <NodeCard minW={'400px'} {...data}>
       <Divider text="Input" />
       <Container>
         <RenderInput
           moduleId={moduleId}
-          onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
             [SpecialInputKeyEnum.agents]: ({
@@ -34,51 +39,23 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
             }) => (
               <Box>
                 {agents.map((item, i) => (
-                  <Flex key={item.key} mb={4} alignItems={'center'}>
-                    <MyIcon
-                      mr={2}
-                      name={'minus'}
-                      w={'14px'}
-                      cursor={'pointer'}
-                      color={'myGray.600'}
-                      _hover={{ color: 'myGray.900' }}
-                      onClick={() => {
-                        const newInputValue = agents.filter((input) => input.key !== item.key);
-                        const newOutputVal = outputs.filter((output) => output.key !== item.key);
-
-                        onChangeNode({
-                          moduleId,
-                          type: 'inputs',
-                          key: agentKey,
-                          value: {
-                            ...props,
-                            key: agentKey,
-                            value: newInputValue
-                          }
-                        });
-                        onChangeNode({
-                          moduleId,
-                          type: 'outputs',
-                          key: '',
-                          value: newOutputVal
-                        });
-                      }}
-                    />
-                    <Box flex={1}>
-                      <Box flex={1}>类型{i + 1}</Box>
-                      <Box position={'relative'}>
-                        <Input
+                  <Box key={item.key} mb={4}>
+                    <Flex alignItems={'center'}>
+                      <MyTooltip label={t('common.Delete')}>
+                        <MyIcon
                           mt={1}
-                          defaultValue={item.value}
-                          onChange={(e) => {
-                            const newVal = agents.map((val) =>
-                              val.key === item.key
-                                ? {
-                                    ...val,
-                                    value: e.target.value
-                                  }
-                                : val
+                          mr={2}
+                          name={'minus'}
+                          w={'14px'}
+                          cursor={'pointer'}
+                          color={'myGray.600'}
+                          _hover={{ color: 'red.600' }}
+                          onClick={() => {
+                            const newInputValue = agents.filter((input) => input.key !== item.key);
+                            const newOutputVal = outputs.filter(
+                              (output) => output.key !== item.key
                             );
+
                             onChangeNode({
                               moduleId,
                               type: 'inputs',
@@ -86,15 +63,49 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                               value: {
                                 ...props,
                                 key: agentKey,
-                                value: newVal
+                                value: newInputValue
                               }
+                            });
+                            onChangeNode({
+                              moduleId,
+                              type: 'outputs',
+                              key: '',
+                              value: newOutputVal
                             });
                           }}
                         />
-                        <SourceHandle handleKey={item.key} valueType={FlowValueTypeEnum.boolean} />
-                      </Box>
+                      </MyTooltip>
+                      <Box flex={1}>分类{i + 1}</Box>
+                    </Flex>
+                    <Box position={'relative'}>
+                      <Textarea
+                        rows={2}
+                        mt={1}
+                        defaultValue={item.value}
+                        onChange={(e) => {
+                          const newVal = agents.map((val) =>
+                            val.key === item.key
+                              ? {
+                                  ...val,
+                                  value: e.target.value
+                                }
+                              : val
+                          );
+                          onChangeNode({
+                            moduleId,
+                            type: 'inputs',
+                            key: agentKey,
+                            value: {
+                              ...props,
+                              key: agentKey,
+                              value: newVal
+                            }
+                          });
+                        }}
+                      />
+                      <SourceHandle handleKey={item.key} valueType={FlowValueTypeEnum.boolean} />
                     </Box>
-                  </Flex>
+                  </Box>
                 ))}
                 <Button
                   onClick={() => {

@@ -6,7 +6,11 @@ import {
   ModulesInputItemTypeEnum,
   VariableInputEnum
 } from '../constants/app';
-import type { FlowInputItemType, FlowOutputItemType, FlowOutputTargetItemType } from './flow';
+import type {
+  FlowInputItemType,
+  FlowOutputItemType,
+  FlowOutputTargetItemType
+} from '@/types/core/app/flow';
 import type { AppSchema, ChatSchema, kbSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
 import { FlowValueTypeEnum } from '@/constants/flow';

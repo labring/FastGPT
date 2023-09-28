@@ -8,7 +8,7 @@ import {
   FlowValueTypeEnum
 } from './index';
 import type { AppItemType } from '@/types/app';
-import type { FlowModuleTemplateType } from '@/types/flow';
+import type { FlowModuleTemplateType } from '@/types/core/app/flow';
 import { chatModelList } from '@/store/static';
 import {
   Input_Template_History,
@@ -331,6 +331,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',
   showStatus: true,
   inputs: [
+    Input_Template_TFSwitch,
     {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,

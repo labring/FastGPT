@@ -6,7 +6,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/aiApi/consta
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/types/core/chat/type';
 import type { AppModuleItemType } from '@/types/app';
-import type { FlowModuleItemType } from '@/types/flow';
+import type { FlowModuleItemType } from '@/types/core/app/flow';
 import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
@@ -61,19 +61,9 @@ export const textAdaptGptResponse = ({
 };
 
 export const appModule2FlowNode = ({
-  item,
-  onChangeNode,
-  onDelNode,
-  onDelEdge,
-  onCopyNode,
-  onCollectionNode
+  item
 }: {
   item: AppModuleItemType;
-  onChangeNode: FlowModuleItemType['onChangeNode'];
-  onDelNode: FlowModuleItemType['onDelNode'];
-  onDelEdge: FlowModuleItemType['onDelEdge'];
-  onCopyNode: FlowModuleItemType['onCopyNode'];
-  onCollectionNode: FlowModuleItemType['onCollectionNode'];
 }): Node<FlowModuleItemType> => {
   // init some static data
   const template =
@@ -110,12 +100,7 @@ export const appModule2FlowNode = ({
         ...(templateOutput ? templateOutput : output),
         targets: output.targets || []
       };
-    }),
-    onChangeNode,
-    onDelNode,
-    onDelEdge,
-    onCopyNode,
-    onCollectionNode
+    })
   };
 
   return {

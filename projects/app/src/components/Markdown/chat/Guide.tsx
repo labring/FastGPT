@@ -19,8 +19,8 @@ function MyLink(e: any) {
       {text}
     </Link>
   ) : (
-    <Box as={'ul'}>
-      <Box as={'li'}>
+    <Box as={'ul'} mt={'0 !important'}>
+      <Box as={'li'} mb={1}>
         <Box
           as={'span'}
           color={'blue.600'}
@@ -47,6 +47,7 @@ const Guide = ({ text }: { text: string }) => {
       rehypePlugins={[RehypeKatex]}
       components={{
         a: MyLink,
+        p: 'div',
         img: Image
       }}
     >

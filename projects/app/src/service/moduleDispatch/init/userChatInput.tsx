@@ -1,6 +1,5 @@
 import { SystemInputEnum } from '@/constants/app';
-import type { ModuleDispatchProps } from '@/types/core/modules';
-
+import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type UserChatInputProps = ModuleDispatchProps<{
   [SystemInputEnum.userChatInput]: string;
 }>;

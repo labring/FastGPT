@@ -8,7 +8,7 @@ import {
 } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';
 import type { SelectedDatasetType } from '@/types/core/dataset';
-import { FlowInputItemType } from '@/types/flow';
+import type { FlowInputItemType } from '@/types/core/app/flow';
 import type { AIChatProps } from '@/types/core/aiChat';
 import { getGuideModule, splitGuideModule } from '@/components/ChatBox/utils';
 

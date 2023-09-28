@@ -59,17 +59,4 @@ export type FlowModuleTemplateType = {
 };
 export type FlowModuleItemType = FlowModuleTemplateType & {
   moduleId: string;
-  onChangeNode: (e: FlowModuleItemChangeProps) => void;
-  onDelNode: (id: string) => void;
-  onCopyNode: (id: string) => void;
-  onCollectionNode: (id: string) => void;
-  onDelEdge: ({
-    moduleId,
-    sourceHandle,
-    targetHandle
-  }: {
-    moduleId: string;
-    sourceHandle?: string | undefined;
-    targetHandle?: string | undefined;
-  }) => void;
 };

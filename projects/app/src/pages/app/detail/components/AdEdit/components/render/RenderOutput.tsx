@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { FlowModuleItemType, FlowOutputItemType } from '@/types/flow';
+import type { FlowOutputItemType } from '@/types/core/app/flow';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -8,21 +8,21 @@ import SourceHandle from './SourceHandle';
 import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
 const SetOutputFieldModal = dynamic(() => import('../modules/SetOutputFieldModal'));
+import { useFlowStore } from '../Provider';
 
 const Label = ({
   moduleId,
   outputKey,
   outputs,
-  onChangeNode,
   ...item
 }: FlowOutputItemType & {
   outputKey: string;
   moduleId: string;
   outputs: FlowOutputItemType[];
-  onChangeNode: FlowModuleItemType['onChangeNode'];
 }) => {
   const { label, description, edit } = item;
   const [editField, setEditField] = useState<FlowOutputItemType>();
+  const { onChangeNode } = useFlowStore();
 
   return (
     <Flex
@@ -122,12 +122,10 @@ const Label = ({
 
 const RenderOutput = ({
   moduleId,
-  flowOutputList,
-  onChangeNode
+  flowOutputList
 }: {
   moduleId: string;
   flowOutputList: FlowOutputItemType[];
-  onChangeNode: FlowModuleItemType['onChangeNode'];
 }) => {
   return (
     <>
@@ -135,13 +133,7 @@ const RenderOutput = ({
         (item) =>
           item.type !== FlowOutputItemTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
-              <Label
-                moduleId={moduleId}
-                onChangeNode={onChangeNode}
-                outputKey={item.key}
-                outputs={flowOutputList}
-                {...item}
-              />
+              <Label moduleId={moduleId} outputKey={item.key} outputs={flowOutputList} {...item} />
               <Box mt={FlowOutputItemTypeEnum.answer ? 0 : 2} className={'nodrag'}>
                 {item.type === FlowOutputItemTypeEnum.source && (
                   <SourceHandle handleKey={item.key} valueType={item.valueType} />

@@ -94,9 +94,7 @@ function App({ Component, pageProps }: AppProps) {
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      {scripts?.map((item, i) => (
-        <Script key={i} strategy="lazyOnload" {...item}></Script>
-      ))}
+      {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
 
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>

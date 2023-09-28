@@ -7,7 +7,7 @@ import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { SystemInputEnum } from '@/constants/app';
 import { SpecialInputKeyEnum } from '@/constants/flow';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { ModuleDispatchProps } from '@/types/core/modules';
+import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { Prompt_CQJson } from '@/prompts/core/agent';
 import { defaultCQModel } from '@/pages/api/system/getInitData';

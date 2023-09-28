@@ -19,7 +19,7 @@ import { defaultQuotePrompt, defaultQuoteTemplate } from '@/prompts/core/AIChat'
 import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { ModuleDispatchProps } from '@/types/core/modules';
+import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Readable } from 'stream';
 import { responseWrite, responseWriteController } from '@/service/common/stream';
 import { addLog } from '@/service/utils/tools';

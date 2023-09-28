@@ -11,7 +11,7 @@
     "i18next": "^23.2.11",
     "lint-staged": "^13.2.1",
     "next-i18next": "^14.0.0",
-    "prettier": "^2.8.7",
+    "prettier": "^3.0.3",
     "react-i18next": "^13.0.2"
   },
   "lint-staged": {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
@@ -12,13 +12,16 @@ import RenderOutput from '../render/RenderOutput';
 import { FlowInputItemTypeEnum, FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
+import { useFlowStore } from '../Provider';
 
 const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { moduleId, inputs, outputs, onChangeNode } = data;
+  const { moduleId, inputs, outputs } = data;
+  const { onChangeNode } = useFlowStore();
+
   return (
     <NodeCard minW={'350px'} {...data}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
-        <RenderInput moduleId={moduleId} onChangeNode={onChangeNode} flowInputList={inputs} />
+        <RenderInput moduleId={moduleId} flowInputList={inputs} />
         <Button
           variant={'base'}
           mt={5}
@@ -44,7 +47,7 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
+        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
         <Box textAlign={'right'} mt={5}>
           <Button
             variant={'base'}

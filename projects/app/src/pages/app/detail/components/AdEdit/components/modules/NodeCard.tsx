@@ -2,12 +2,13 @@ import React, { useMemo } from 'react';
 import { Box, Flex, useTheme, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
-import type { FlowModuleItemType } from '@/types/flow';
+import type { FlowModuleItemType } from '@/types/core/app/flow';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'react-i18next';
 import { useEditTitle } from '@/hooks/useEditTitle';
 import { useToast } from '@/hooks/useToast';
+import { useFlowStore } from '../Provider';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -21,11 +22,10 @@ const NodeCard = (props: Props) => {
     name = '未知模块',
     description,
     minW = '300px',
-    onCopyNode,
-    onDelNode,
-    onChangeNode,
+
     moduleId
   } = props;
+  const { onCopyNode, onDelNode, onChangeNode } = useFlowStore();
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
@@ -73,11 +73,11 @@ const NodeCard = (props: Props) => {
 
       {
         icon: 'back',
-        label: t('Cancel'),
+        label: t('common.Close'),
         onClick: () => {}
       }
     ],
-    [moduleId, onCopyNode, onDelNode, t]
+    [moduleId, name, onChangeNode, onCopyNode, onDelNode, onOpenModal, t, toast]
   );
 
   return (
@@ -92,6 +92,7 @@ const NodeCard = (props: Props) => {
             <QuestionOutlineIcon
               display={['none', 'inline']}
               transform={'translateY(1px)'}
+              mb={'1px'}
               ml={1}
             />
           </MyTooltip>

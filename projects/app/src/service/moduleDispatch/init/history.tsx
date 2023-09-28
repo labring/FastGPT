@@ -1,7 +1,6 @@
 import { SystemInputEnum } from '@/constants/app';
 import { ChatItemType } from '@/types/chat';
-import type { ModuleDispatchProps } from '@/types/core/modules';
-
+import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type HistoryProps = ModuleDispatchProps<{
   maxContext: number;
   [SystemInputEnum.history]: ChatItemType[];

@@ -1,9 +1,10 @@
-name: Build fastgpt images and copy image to docker hub
+name: Build FastGPT images and copy image to docker hub
 on:
   workflow_dispatch:
   push:
     paths:
       - 'projects/app/**'
+      - 'packages/**'
     branches:
       - 'main'
     tags:
@@ -54,7 +55,7 @@ jobs:
           --platform linux/amd64,linux/arm64 \
           --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
           --label "org.opencontainers.image.description=fastgpt image" \
-          --label "org.opencontainers.image.licenses=MIT" \
+          --label "org.opencontainers.image.licenses=Apache" \
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \

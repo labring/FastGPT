@@ -19,7 +19,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { FlowInputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
-import { FlowInputItemType } from '@/types/flow';
+import type { FlowInputItemType } from '@/types/core/app/flow';
 
 const typeSelectList = [
   {
