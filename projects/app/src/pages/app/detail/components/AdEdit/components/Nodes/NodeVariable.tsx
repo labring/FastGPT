@@ -1,3 +1,4 @@
+/* Abandon */
 import React, { useCallback, useMemo, useState } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
@@ -11,6 +12,7 @@ import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
+import { useFlowStore } from '../Provider';
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
@@ -23,7 +25,9 @@ export const defaultVariable: VariableItemType = {
 };
 
 const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { inputs, moduleId, onChangeNode } = data;
+  const { inputs, moduleId } = data;
+  const { onChangeNode } = useFlowStore();
+
   const variables = useMemo(
     () =>
       (inputs.find((item) => item.key === SystemInputEnum.variables)

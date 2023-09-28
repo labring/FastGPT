@@ -1,16 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  Flex,
-  Switch,
-  Input,
-  FormControl
-} from '@chakra-ui/react';
-import type { ContextExtractAgentItemType, HttpFieldItemType } from '@/types/app';
+import { Box, Button, ModalHeader, ModalFooter, ModalBody, Flex, Input } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);

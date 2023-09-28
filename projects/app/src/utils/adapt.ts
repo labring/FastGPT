@@ -61,19 +61,9 @@ export const textAdaptGptResponse = ({
 };
 
 export const appModule2FlowNode = ({
-  item,
-  onChangeNode,
-  onDelNode,
-  onDelEdge,
-  onCopyNode,
-  onCollectionNode
+  item
 }: {
   item: AppModuleItemType;
-  onChangeNode: FlowModuleItemType['onChangeNode'];
-  onDelNode: FlowModuleItemType['onDelNode'];
-  onDelEdge: FlowModuleItemType['onDelEdge'];
-  onCopyNode: FlowModuleItemType['onCopyNode'];
-  onCollectionNode: FlowModuleItemType['onCollectionNode'];
 }): Node<FlowModuleItemType> => {
   // init some static data
   const template =
@@ -110,12 +100,7 @@ export const appModule2FlowNode = ({
         ...(templateOutput ? templateOutput : output),
         targets: output.targets || []
       };
-    }),
-    onChangeNode,
-    onDelNode,
-    onDelEdge,
-    onCopyNode,
-    onCollectionNode
+    })
   };
 
   return {

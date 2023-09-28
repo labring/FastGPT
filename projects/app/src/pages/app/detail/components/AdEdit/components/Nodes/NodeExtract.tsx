@@ -14,11 +14,13 @@ import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import { useFlowStore } from '../Provider';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { inputs, outputs, moduleId, onChangeNode, onDelEdge } = data;
+  const { inputs, outputs, moduleId } = data;
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
+  const { onChangeNode, onDelEdge } = useFlowStore();
 
   return (
     <NodeCard minW={'400px'} {...data}>
@@ -26,7 +28,6 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
       <Container>
         <RenderInput
           moduleId={moduleId}
-          onChangeNode={onChangeNode}
           flowInputList={inputs}
           CustomComponent={{
             [ContextExtractEnum.extractKeys]: ({
@@ -125,7 +126,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
       <Divider text="Output" />
       <Container>
-        <RenderOutput onChangeNode={onChangeNode} moduleId={moduleId} flowOutputList={outputs} />
+        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>
 
       {!!editExtractFiled && (

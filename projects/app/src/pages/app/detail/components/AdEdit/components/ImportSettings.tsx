@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
 import { Textarea, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { AppModuleItemType } from '@/types/app';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
+import { useFlowStore } from './Provider';
 
-const ImportSettings = ({
-  onClose,
-  onSuccess
-}: {
-  onClose: () => void;
-  onSuccess: (modules: AppModuleItemType[]) => void;
-}) => {
+const ImportSettings = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [value, setValue] = useState('');
+  const { setNodes, setEdges, initData } = useFlowStore();
 
   return (
     <MyModal isOpen w={'600px'} onClose={onClose} title={t('app.Import Config')}>
@@ -35,7 +30,11 @@ const ImportSettings = ({
             }
             try {
               const data = JSON.parse(value);
-              onSuccess(data);
+              setEdges([]);
+              setNodes([]);
+              setTimeout(() => {
+                initData(data);
+              }, 10);
               onClose();
             } catch (error) {
               toast({
@@ -51,4 +50,4 @@ const ImportSettings = ({
   );
 };
 
-export default ImportSettings;
+export default React.memo(ImportSettings);
