@@ -8,7 +8,7 @@ import {
   FlowModuleTypeEnum,
   FlowInputItemTypeEnum
 } from '@/constants/flow';
-import { FlowOutputTargetItemType } from '@/types/flow';
+import { FlowOutputTargetItemType } from '@/types/core/app/flow';
 import { AppModuleItemType } from '@/types/app';
 import { useRequest } from '@/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';

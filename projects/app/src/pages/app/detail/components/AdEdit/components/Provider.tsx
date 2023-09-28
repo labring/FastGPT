@@ -13,8 +13,9 @@ import {
 import type {
   FlowModuleItemType,
   FlowModuleTemplateType,
-  FlowOutputTargetItemType
-} from '@/types/flow';
+  FlowOutputTargetItemType,
+  FlowModuleItemChangeProps
+} from '@/types/core/app/flow';
 import React, {
   type SetStateAction,
   type Dispatch,
@@ -25,7 +26,6 @@ import React, {
 } from 'react';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
-import { FlowModuleItemChangeProps } from '@/types/flow';
 import { useToast } from '@/hooks/useToast';
 import { FlowModuleTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { useTranslation } from 'next-i18next';

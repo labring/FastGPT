@@ -15,7 +15,7 @@ import {
   Switch
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import { SystemInputEnum } from '@/constants/app';
 import { welcomeTextTip, variableTip, questionGuideTip } from '@/constants/flow/ModuleTemplate';
 import { useFlowStore } from '../Provider';

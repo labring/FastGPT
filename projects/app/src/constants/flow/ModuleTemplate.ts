@@ -8,7 +8,7 @@ import {
   FlowValueTypeEnum
 } from './index';
 import type { AppItemType } from '@/types/app';
-import type { FlowModuleTemplateType } from '@/types/flow';
+import type { FlowModuleTemplateType } from '@/types/core/app/flow';
 import { chatModelList } from '@/store/static';
 import {
   Input_Template_History,

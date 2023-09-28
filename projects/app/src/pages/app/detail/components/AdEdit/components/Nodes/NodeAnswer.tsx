@@ -1,7 +1,7 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { NodeProps } from 'reactflow';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../modules/NodeCard';
 import Container from '../modules/Container';

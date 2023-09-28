@@ -2,7 +2,7 @@ import React from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Input, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';

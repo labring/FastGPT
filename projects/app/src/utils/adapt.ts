@@ -6,7 +6,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/aiApi/consta
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/types/core/chat/type';
 import type { AppModuleItemType } from '@/types/app';
-import type { FlowModuleItemType } from '@/types/flow';
+import type { FlowModuleItemType } from '@/types/core/app/flow';
 import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';

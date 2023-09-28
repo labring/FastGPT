@@ -4,7 +4,7 @@ import { NodeProps } from 'reactflow';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import Container from '../modules/Container';
 import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
 import type { VariableItemType } from '@/types/app';

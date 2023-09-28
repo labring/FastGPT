@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { FlowOutputItemType } from '@/types/flow';
+import type { FlowOutputItemType } from '@/types/core/app/flow';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';

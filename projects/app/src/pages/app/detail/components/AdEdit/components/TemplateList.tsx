@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import { FlowModuleItemType, FlowModuleTemplateType } from '@/types/flow';
+import { FlowModuleItemType, FlowModuleTemplateType } from '@/types/core/app/flow';
 import type { Node } from 'reactflow';
 import { useGlobalStore } from '@/store/global';
 import Avatar from '@/components/Avatar';

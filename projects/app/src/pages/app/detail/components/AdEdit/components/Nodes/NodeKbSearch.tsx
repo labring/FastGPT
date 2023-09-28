@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
-import { FlowModuleItemType } from '@/types/flow';
+import { FlowModuleItemType } from '@/types/core/app/flow';
 import { Flex, Box, Button, useTheme, useDisclosure, Grid } from '@chakra-ui/react';
 import { useDatasetStore } from '@/store/dataset';
 import { useQuery } from '@tanstack/react-query';

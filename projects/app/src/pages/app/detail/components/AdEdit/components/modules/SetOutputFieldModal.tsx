@@ -9,7 +9,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum, FlowValueTypeStyle } from '@/constants/flow';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
-import { FlowOutputItemType } from '@/types/flow';
+import { FlowOutputItemType } from '@/types/core/app/flow';
 
 const typeSelectList = [
   {

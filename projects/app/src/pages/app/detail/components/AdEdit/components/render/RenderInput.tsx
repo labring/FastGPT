@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { FlowInputItemType } from '@/types/flow';
+import type { FlowInputItemType } from '@/types/core/app/flow';
 import {
   Box,
   Textarea,
