@@ -2,7 +2,6 @@ import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { sseResponse } from '@/service/utils/tools';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-
 export type AnswerProps = ModuleDispatchProps<{
   text: string;
 }>;
