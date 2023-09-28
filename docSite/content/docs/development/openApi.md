@@ -1,5 +1,5 @@
 ---
-title: 'OpenAPI 使用'
+title: 'OpenAPI 使用（API Key 使用）'
 description: 'FastGPT OpenAPI 文档'
 icon: 'api'
 draft: false
@@ -28,7 +28,9 @@ FastGPT 的 API Key 有 2 类，一类是全局通用的 key；一类是携带�
 ## 发起对话
 
 {{% alert icon="🤖 " context="success" %}}
-该接口 API Key 需使用应用特定的 key，否则会报错。
+该接口 API Key 需使用应用特定的 key，否则会报错。  
+
+有些包的 BaseUrl 需要添加 `v1` 路径，有些不需要，建议都试一下。 
 {{% /alert %}}
 
 

@@ -11,17 +11,17 @@ weight: 720
 
 ### 1. 准备好代理环境（国外服务器可忽略）
 
-确保可以访问 OpenAI，具体方案可以参考：[Nginx 中转](/docs/installation/proxy/nginx/)
+确保可以访问 OpenAI，具体方案可以参考：[代理方案](/docs/installation/proxy/)。或直接在 Sealos 上 [部署 OneAPI](/docs/installation/one-api)，既解决代理问题也能实现多 Key 轮询、接入其他大模型。
 
 ### 2. 多模型支持
 
-推荐使用 one-api 项目来管理模型池，兼容 OpenAI 、Azure 和国内主流模型等。
+FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、Azure 、国内主流模型和本地模型等。
 
-具体部署方法可参考该项目的 [README](https://github.com/songquanpeng/one-api)，也可以直接通过以下按钮一键部署：
+可选择 [Sealos 快速部署 OneAPI](/docs/installation/one-api)，更多部署方法可参考该项目的 [README](https://github.com/songquanpeng/one-api)，也可以直接通过以下按钮一键部署：
 
 [![](https://fastly.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Done-api)
 
-## 安装 Docker 和 docker-compose
+## 一、安装 Docker 和 docker-compose
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="Linux" >}}
@@ -29,7 +29,7 @@ weight: 720
 
 ```bash
 # 安装 Docker
-curl -sSL https://get.daocloud.io/docker | sh
+curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
 systemctl enable --now docker
 # 安装 docker-compose
 curl -L https://github.com/docker/compose/releases/download/2.20.3/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
@@ -37,6 +37,7 @@ chmod +x /usr/local/bin/docker-compose
 # 验证安装
 docker -v
 docker-compose -v
+# 如失效，自行百度~
 ```
 
 {{< /markdownify >}}
@@ -65,93 +66,35 @@ brew install orbstack
 {{< /tab >}}
 {{< /tabs >}}
 
-## 创建 docker-compose.yml 文件
+## 二、创建目录并下载 docker-compose.yml
 
-先创建一个目录（例如 fastgpt）并进入该目录，创建一个 docker-compose.yml 文件：
+依次执行下面命令，创建 FastGPT 文件并拉取`docker-compose.yml`和`config.json`，执行完后目录下会有 2 个文件。
+
+非 Linux 环境，可手动创建目录，并下载这2个文件。
+
+**注意: 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**
 
 ```bash
 mkdir fastgpt
 cd fastgpt
-touch docker-compose.yml
+curl -O https://raw.githubusercontent.com/labring/FastGPT/main/files/deploy/fastgpt/docker-compose.yml
+curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 ```
 
-粘贴下面的内容，仅需把 `CHAT_API_KEY` 修改成 openai key 即可。如果需要使用中转或 oneapi 还需要修改 `OPENAI_BASE_URL`:
 
-```yaml
-# 非 host 版本, 不使用本机代理
-version: '3.3'
-services:
-  pg:
-    image: ankane/pgvector:v0.4.2 # docker
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
-    container_name: pg
-    restart: always
-    ports: # 生产环境建议不要暴露
-      - 5432:5432
-    networks:
-      - fastgpt
-    environment:
-      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
-      - POSTGRES_USER=username
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=postgres
-    volumes:
-      - ./pg/data:/var/lib/postgresql/data
-  mongo:
-    image: mongo:5.0.18
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
-    container_name: mongo
-    restart: always
-    ports: # 生产环境建议不要暴露
-      - 27017:27017
-    networks:
-      - fastgpt
-    environment:
-      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
-      - MONGO_INITDB_ROOT_USERNAME=username
-      - MONGO_INITDB_ROOT_PASSWORD=password
-    volumes:
-      - ./mongo/data:/data/db
-  fastgpt:
-    container_name: fastgpt
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:latest # 阿里云
-    image: ghcr.io/labring/fastgpt:latest # github
-    ports:
-      - 3000:3000
-    networks:
-      - fastgpt
-    depends_on:
-      - mongo
-      - pg
-    restart: always
-    environment:
-      # root 密码，用户名为: root
-      - DEFAULT_ROOT_PSW=1234
-      # 中转地址，如果是用官方号，不需要管
-      - OPENAI_BASE_URL=https://api.openai.com/v1
-      - CHAT_API_KEY=sk-xxxx
-      - DB_MAX_LINK=5 # database max link
-      - TOKEN_KEY=any
-      - ROOT_KEY=root_key
-      - FILE_TOKEN_KEY=filetoken
-      # mongo 配置，不需要改. 如果连不上，可能需要去掉 ?authSource=admin
-      - MONGODB_URI=mongodb://username:password@mongo:27017/fastgpt?authSource=admin
-      # pg配置. 不需要改
-      - PG_URL=postgresql://username:password@pg:5432/postgres
-networks:
-  fastgpt:
-```
+## 三、启动容器
 
-## 启动容器
+修改`docker-compose.yml`中的`OPENAI_BASE_URL`和`CHAT_API_KEY`即可，对应为 API 的地址和 key。
 
 ```bash
 # 在 docker-compose.yml 同级目录下执行
+docker-compose pull
 docker-compose up -d
 ```
 
-## 访问 FastGPT
+## 四、访问 FastGPT
 
-目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为刚刚环境变量里设置的 `DEFAULT_ROOT_PSW`。
+目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 
 如果需要域名访问，请自行安装并配置 Nginx。
 
@@ -168,28 +111,30 @@ docker-compose up -d
 
 ### 如何自定义配置文件？
 
-需要在 `docker-compose.yml` 同级目录创建一个 `config.json` 文件，内容参考: [配置详解](/docs/development/configuration)
+修改`config.json`文件，并执行`docker-compose up -d`重起容器。具体配置，参考[配置详解](/docs/development/configuration)。
 
-然后修改 `docker-compose.yml` 中的 `fastgpt` 容器内容，增加挂载选项即可：
+### 如何检查自定义配置文件是否挂载
 
-```yaml
-fastgpt:
-  container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:latest # github
-  ports:
-    - 3000:3000
-  networks:
-    - fastgpt
-  depends_on:
-    - mongo
-    - pg
-  restart: always
-  environment:
-    ...
-    - DEFAULT_ROOT_PSW=1234
-    ...
-  volumes:
-    - ./config.json:/app/data/config.json
-```
+1. `docker logs fastgpt` 可以查看日志，在启动容器后，第一次请求网页，会进行配置文件读取，可以看看有没有读取成功以及有无错误日志。
+2. `docker exec -it fastgpt sh` 进入 FastGPT 容器，可以通过`ls data`查看目录下是否成功挂载`config.json`文件。可通过`cat data/config.json`查看配置文件。
 
-> 参考[配置详解](/docs/development/configuration)
+### 为什么无法连接 oneapi 和 本地模型镜像。
+
+`docker-compose.yml`中使用了桥接的模式建立了`fastgpt`网络，如想通过0.0.0.0或镜像名访问其它镜像，需将其它镜像也加入到网络中。
+
+### 端口冲突怎么解决？
+
+docker-compose 端口定义为：`映射端口:运行端口`。
+
+桥接模式下，容器运行端口不会有冲突，但是会有映射端口冲突，只需将映射端口修改成不同端口即可。
+
+如果`容器1`需要连接`容器2`，使用`容器2:运行端口`来进行连接即可。
+
+（自行补习 docker 基本知识）
+
+### 错误排查方式
+
+遇到问题先按下面方式排查。
+
+1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试`docker logs 容器名`查看对应日志。
+2. 不懂 docker 不要瞎改端口，只需要改`OPENAI_BASE_URL`和`CHAT_API_KEY`即可。

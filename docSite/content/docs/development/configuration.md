@@ -34,6 +34,8 @@ weight: 520
 
 ## 完整配置参数
 
+**使用时，请务必去除注释！**
+
 ```json
 {
   "SystemParams": {
@@ -79,25 +81,25 @@ weight: 520
       "maxToken": 3000
     }
   ],
-  "QAModel": {
+  "QAModel": { // QA 拆分模型
     "model": "gpt-3.5-turbo-16k",
     "name": "GPT35-16k",
-    "maxToken": 0,
+    "maxToken": 16000,
     "price": 0
   },
-  "ExtractModel": {
+  "ExtractModel": { // 内容提取模型
     "model": "gpt-3.5-turbo-16k",
-    "functionCall": true,
+    "functionCall": true, // 是否使用 functionCall
     "name": "GPT35-16k",
-    "maxToken": 0,
+    "maxToken": 16000,
     "price": 0,
     "prompt": ""
   },
-  "CQModel": {
+  "CQModel": { // 问题分类模型
     "model": "gpt-3.5-turbo-16k",
     "functionCall": true,
     "name": "GPT35-16k",
-    "maxToken": 0,
+    "maxToken": 16000,
     "price": 0,
     "prompt": ""
   }
