@@ -67,7 +67,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         res.end('Error connecting to database');
         return;
       }
-      console.log('export data');
 
       // create pg select stream
       const query = new QueryStream(
@@ -77,15 +76,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       );
       const stream = client.query(query);
 
-      res.setHeader('Content-Disposition', 'attachment; filename=dataset.csv');
-      res.setHeader('Content-Type', 'text/csv');
-
-      res.write('index,content,source');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename=dataset.csv; ');
 
       const write = responseWriteController({
         res,
         readStream: stream
       });
+
+      write('index,content,source');
 
       // parse data every row
       stream.on('data', ({ q, a, source }: { q: string; a: string; source?: string }) => {
