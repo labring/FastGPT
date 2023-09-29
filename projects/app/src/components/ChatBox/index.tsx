@@ -999,8 +999,8 @@ const ChatBox = (
                 textarea.style.height = `${textarea.scrollHeight}px`;
               }}
               onKeyDown={(e) => {
-                // 触发快捷发送
-                if (isPc && e.keyCode === 13 && !e.shiftKey) {
+                // enter send.(pc or iframe && enter and unPress shift)
+                if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
                   handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
                   e.preventDefault();
                 }
