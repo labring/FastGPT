@@ -16,7 +16,7 @@ import {
   ExportChatType
 } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
-import { voiceBroadcast, cancelBroadcast, hasVoiceApi } from '@/utils/web/voice';
+import { useAudioPlay } from '@/utils/web/voice';
 import { getErrText } from '@/utils/tools';
 import { useCopyData } from '@/hooks/useCopyData';
 import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
@@ -226,6 +226,9 @@ const ChatBox = (
   const { register, reset, getValues, setValue, handleSubmit } = useForm<Record<string, any>>({
     defaultValues: variables
   });
+
+  // audio speech
+  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({});
 
   // 滚动到底部
   const scrollToBottom = useCallback(
@@ -556,22 +559,8 @@ const ChatBox = (
       if (!isNewChatReplace.current) {
         questionGuideController.current?.abort('leave');
       }
-      // close voice
-      cancelBroadcast();
     };
   }, [router.query]);
-
-  // page destroy and abort request
-  useEffect(() => {
-    const listen = () => {
-      cancelBroadcast();
-    };
-    window.addEventListener('beforeunload', listen);
-
-    return () => {
-      window.removeEventListener('beforeunload', listen);
-    };
-  }, []);
 
   // add guide text listener
   useEffect(() => {
@@ -770,16 +759,31 @@ const ChatBox = (
                             />
                           </MyTooltip>
                         )}
-                        {showVoiceIcon && hasVoiceApi && (
-                          <MyTooltip label={'语音播报'}>
-                            <MyIcon
-                              {...controlIconStyle}
-                              name={'voice'}
-                              _hover={{ color: '#E74694' }}
-                              onClick={() => voiceBroadcast({ text: item.value })}
-                            />
-                          </MyTooltip>
-                        )}
+                        {showVoiceIcon &&
+                          hasAudio &&
+                          (audioLoading ? (
+                            <MyTooltip label={'加载中...'}>
+                              <MyIcon {...controlIconStyle} name={'loading'} />
+                            </MyTooltip>
+                          ) : audioPlaying ? (
+                            <MyTooltip label={'终止播放'}>
+                              <MyIcon
+                                {...controlIconStyle}
+                                name={'pause'}
+                                _hover={{ color: '#E74694' }}
+                                onClick={() => cancelAudio()}
+                              />
+                            </MyTooltip>
+                          ) : (
+                            <MyTooltip label={'语音播报'}>
+                              <MyIcon
+                                {...controlIconStyle}
+                                name={'voice'}
+                                _hover={{ color: '#E74694' }}
+                                onClick={() => playAudio(item.value)}
+                              />
+                            </MyTooltip>
+                          ))}
                         {/* admin mark icon */}
                         {showMarkIcon && (
                           <MyTooltip label={t('chat.Mark')}>

@@ -43,7 +43,6 @@ const Guide = ({ text }: { text: string }) => {
     () => text.replace(/\[(.*?)\]($|\n)/g, '[$1]()\n').replace(/\\n/g, '\n&nbsp;'),
     [text]
   );
-  console.log(formatText);
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}`}
