@@ -90,6 +90,12 @@ export const useAudioPlay = (props?: { ttsUrl?: string }) => {
       audio.onplay = () => {
         setAudioPlaying(true);
       };
+      audio.onended = () => {
+        setAudioPlaying(false);
+      };
+      audio.onerror = () => {
+        setAudioPlaying(false);
+      };
     }
     const listen = () => {
       cancelAudio();
@@ -98,6 +104,8 @@ export const useAudioPlay = (props?: { ttsUrl?: string }) => {
     return () => {
       if (audio) {
         audio.onplay = null;
+        audio.onended = null;
+        audio.onerror = null;
       }
       cancelAudio();
       window.removeEventListener('beforeunload', listen);
