@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
 import RehypeKatex from 'rehype-katex';
+import RemarkBreaks from 'remark-breaks';
 import { event } from '@/utils/plugin/eventbus';
 
 import 'katex/dist/katex.min.css';
@@ -38,12 +39,14 @@ function MyLink(e: any) {
 }
 
 const Guide = ({ text }: { text: string }) => {
-  const formatText = useMemo(() => text.replace(/\[(.*?)\]($|\n)/g, '[$1]()\n'), [text]);
-
+  const formatText = useMemo(
+    () => text.replace(/\[(.*?)\]($|\n)/g, '[$1]()\n').replace(/\\n/g, '\n&nbsp;'),
+    [text]
+  );
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}`}
-      remarkPlugins={[RemarkGfm, RemarkMath]}
+      remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
       components={{
         a: MyLink,

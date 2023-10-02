@@ -11,35 +11,19 @@ weight: 520
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。
 
-这个配置文件中包含了前端页面定制、系统级参数、AI 对话的模型等……
+这个配置文件中包含了系统级参数、AI 对话的模型、function 模型等……
 
-{{% alert context="warning" %}}
-注意：下面的配置介绍仅是局部介绍，你需要完整挂载整个 `config.json`，不能仅挂载一部分。你可以直接在默认的 config.json 基础上根据下面的介绍进行修改。挂载上去的配置文件不能包含注释。
-{{% /alert %}}
-
-## 基础字段粗略说明
-
-这里介绍一些基础的配置字段：
-
-```json
-...
-// 这个配置文件是系统级参数
-"SystemParams": {
-    "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
-    "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
-    "pgIvfflatProbe": 20  // pg vector 搜索探针。没有设置索引前可忽略，通常 50w 组以上才需要设置。
-},
-...
-```
 
 ## 完整配置参数
+
+**使用时，请务必去除注释！**
 
 ```json
 {
   "SystemParams": {
-    "vectorMaxProcess": 15,
-    "qaMaxProcess": 15,
-    "pgIvfflatProbe": 20
+    "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
+    "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
+    "pgIvfflatProbe": 20  // pg vector 搜索探针。没有设置索引前可忽略，通常 50w 组以上才需要设置。
   },
   "ChatModels": [
     {
@@ -79,25 +63,25 @@ weight: 520
       "maxToken": 3000
     }
   ],
-  "QAModel": {
+  "QAModel": { // QA 拆分模型
     "model": "gpt-3.5-turbo-16k",
     "name": "GPT35-16k",
-    "maxToken": 0,
+    "maxToken": 16000,
     "price": 0
   },
-  "ExtractModel": {
+  "ExtractModel": { // 内容提取模型
     "model": "gpt-3.5-turbo-16k",
-    "functionCall": true,
+    "functionCall": true, // 是否使用 functionCall
     "name": "GPT35-16k",
-    "maxToken": 0,
+    "maxToken": 16000,
     "price": 0,
     "prompt": ""
   },
-  "CQModel": {
+  "CQModel": { // 问题分类模型
     "model": "gpt-3.5-turbo-16k",
     "functionCall": true,
     "name": "GPT35-16k",
-    "maxToken": 0,
+    "maxToken": 16000,
     "price": 0,
     "prompt": ""
   }

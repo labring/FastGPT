@@ -16,10 +16,20 @@ import {
   ExportChatType
 } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
-import { voiceBroadcast, cancelBroadcast, hasVoiceApi } from '@/utils/web/voice';
+import { useAudioPlay } from '@/utils/web/voice';
 import { getErrText } from '@/utils/tools';
 import { useCopyData } from '@/hooks/useCopyData';
-import { Box, Card, Flex, Input, Textarea, Button, useTheme, BoxProps } from '@chakra-ui/react';
+import {
+  Box,
+  Card,
+  Flex,
+  Input,
+  Textarea,
+  Button,
+  useTheme,
+  BoxProps,
+  FlexProps
+} from '@chakra-ui/react';
 import { feConfigs } from '@/store/static';
 import { event } from '@/utils/plugin/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
@@ -57,7 +67,9 @@ import { splitGuideModule } from './utils';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 const textareaMinH = '22px';
+
 type generatingMessageProps = { text?: string; name?: string; status?: 'running' | 'finish' };
+
 export type StartChatFnProps = {
   chatList: ChatSiteItemType[];
   messages: MessageItemType[];
@@ -79,55 +91,23 @@ enum FeedbackTypeEnum {
   hidden = 'hidden'
 }
 
-const VariableLabel = ({
-  required = false,
-  children
-}: {
-  required?: boolean;
-  children: React.ReactNode | string;
-}) => (
-  <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>
-    {children}
-    {required && (
-      <Box position={'absolute'} top={'-2px'} right={'-10px'} color={'red.500'} fontWeight={'bold'}>
-        *
-      </Box>
-    )}
-  </Box>
-);
-
-const Empty = () => {
-  const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
-  const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
-
-  return (
-    <Box pt={6} w={'85%'} maxW={'600px'} m={'auto'} alignItems={'center'} justifyContent={'center'}>
-      {/* version intro */}
-      <Card p={4} mb={10} minH={'200px'}>
-        <Markdown source={versionIntro} />
-      </Card>
-      <Card p={4} minH={'600px'}>
-        <Markdown source={chatProblem} />
-      </Card>
-    </Box>
-  );
-};
-
-const ChatAvatar = ({ src, type }: { src?: string; type: 'Human' | 'AI' }) => {
-  const theme = useTheme();
-  return (
-    <Box
-      w={['28px', '34px']}
-      h={['28px', '34px']}
-      p={'2px'}
-      borderRadius={'lg'}
-      border={theme.borders.base}
-      boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-      bg={type === 'Human' ? 'white' : 'myBlue.100'}
-    >
-      <Avatar src={src} w={'100%'} h={'100%'} />
-    </Box>
-  );
+type Props = {
+  feedbackType?: `${FeedbackTypeEnum}`;
+  showMarkIcon?: boolean; // admin mark dataset
+  showVoiceIcon?: boolean;
+  showEmptyIntro?: boolean;
+  chatId?: string;
+  appAvatar?: string;
+  userAvatar?: string;
+  userGuideModule?: AppModuleItemType;
+  active?: boolean;
+  onUpdateVariable?: (e: Record<string, any>) => void;
+  onStartChat?: (e: StartChatFnProps) => Promise<{
+    responseText: string;
+    [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
+    isNewChat?: boolean;
+  }>;
+  onDelMessage?: (e: { contentId?: string; index: number }) => void;
 };
 
 const ChatBox = (
@@ -144,31 +124,13 @@ const ChatBox = (
     onUpdateVariable,
     onStartChat,
     onDelMessage
-  }: {
-    feedbackType?: `${FeedbackTypeEnum}`;
-    showMarkIcon?: boolean; // admin mark dataset
-    showVoiceIcon?: boolean;
-    showEmptyIntro?: boolean;
-    chatId?: string;
-    appAvatar?: string;
-    userAvatar?: string;
-    userGuideModule?: AppModuleItemType;
-    active?: boolean;
-    onUpdateVariable?: (e: Record<string, any>) => void;
-    onStartChat?: (e: StartChatFnProps) => Promise<{
-      responseText: string;
-      [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
-      isNewChat?: boolean;
-    }>;
-    onDelMessage?: (e: { contentId?: string; index: number }) => void;
-  },
+  }: Props,
   ref: ForwardedRef<ComponentRef>
 ) => {
   const ChatBoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { copyData } = useCopyData();
   const { toast } = useToast();
   const { isPc } = useGlobalStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
@@ -252,6 +214,7 @@ const ChatBox = (
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const generatingMessage = useCallback(
+    // concat text to end of message
     ({ text = '', status, name }: generatingMessageProps) => {
       setChatHistory((state) =>
         state.map((item, index) => {
@@ -275,14 +238,6 @@ const ChatBox = (
       generatingScroll();
     },
     [generatingScroll, setChatHistory]
-  );
-
-  // 复制内容
-  const onclickCopy = useCallback(
-    (value: string) => {
-      copyData(value);
-    },
-    [copyData]
   );
 
   // 重置输入内容
@@ -477,6 +432,17 @@ const ChatBox = (
     },
     [chatHistory, onDelMessage, sendPrompt, variables]
   );
+  // delete one message
+  const delOneMessage = useCallback(
+    ({ dataId, index }: { dataId?: string; index: number }) => {
+      setChatHistory((state) => state.filter((chat) => chat.dataId !== dataId));
+      onDelMessage?.({
+        contentId: dataId,
+        index
+      });
+    },
+    [onDelMessage]
+  );
 
   // output data
   useImperativeHandle(ref, () => ({
@@ -497,23 +463,7 @@ const ChatBox = (
     scrollToBottom
   }));
 
-  const controlIconStyle = {
-    w: '14px',
-    cursor: 'pointer',
-    p: 1,
-    bg: 'white',
-    borderRadius: 'lg',
-    boxShadow: '0 0 5px rgba(0,0,0,0.1)',
-    border: theme.borders.base,
-    mr: 3
-  };
-  const controlContainerStyle = {
-    className: 'control',
-    color: 'myGray.400',
-    display: 'flex',
-    pl: 1,
-    mt: 2
-  };
+  /* style start */
   const MessageCardStyle: BoxProps = {
     px: 4,
     py: 3,
@@ -547,6 +497,7 @@ const ChatBox = (
       name: t(chatContent.moduleName || 'Running')
     };
   }, [chatHistory, isChatting, t]);
+  /* style end */
 
   // page change and abort request
   useEffect(() => {
@@ -556,22 +507,8 @@ const ChatBox = (
       if (!isNewChatReplace.current) {
         questionGuideController.current?.abort('leave');
       }
-      // close voice
-      cancelBroadcast();
     };
   }, [router.query]);
-
-  // page destroy and abort request
-  useEffect(() => {
-    const listen = () => {
-      cancelBroadcast();
-    };
-    window.addEventListener('beforeunload', listen);
-
-    return () => {
-      window.removeEventListener('beforeunload', listen);
-    };
-  }, []);
 
   // add guide text listener
   useEffect(() => {
@@ -678,45 +615,17 @@ const ChatBox = (
                   <>
                     {/* control icon */}
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
-                      <Flex {...controlContainerStyle} justifyContent={'flex-end'} mr={3}>
-                        <MyTooltip label={t('common.Copy')}>
-                          <MyIcon
-                            {...controlIconStyle}
-                            name={'copy'}
-                            _hover={{ color: 'myBlue.700' }}
-                            onClick={() => onclickCopy(item.value)}
-                          />
-                        </MyTooltip>
-                        {!!onDelMessage && (
-                          <MyTooltip label={t('chat.retry')}>
-                            <MyIcon
-                              {...controlIconStyle}
-                              name={'retryLight'}
-                              _hover={{ color: 'green.500' }}
-                              onClick={() => retryInput(index)}
-                            />
-                          </MyTooltip>
-                        )}
-                        {onDelMessage && (
-                          <MyTooltip label={t('common.Delete')}>
-                            <MyIcon
-                              {...controlIconStyle}
-                              mr={0}
-                              name={'delete'}
-                              _hover={{ color: 'red.600' }}
-                              onClick={() => {
-                                setChatHistory((state) =>
-                                  state.filter((chat) => chat.dataId !== item.dataId)
-                                );
-                                onDelMessage({
-                                  contentId: item.dataId,
-                                  index
-                                });
-                              }}
-                            />
-                          </MyTooltip>
-                        )}
-                      </Flex>
+                      <ChatController
+                        chat={item}
+                        onDelete={
+                          onDelMessage
+                            ? () => {
+                                delOneMessage({ dataId: item.dataId, index });
+                              }
+                            : undefined
+                        }
+                        onRetry={() => retryInput(index)}
+                      />
                       <ChatAvatar src={userAvatar} type={'Human'} />
                     </Flex>
                     {/* content */}
@@ -737,57 +646,23 @@ const ChatBox = (
                 {item.obj === 'AI' && (
                   <>
                     {/* control icon */}
-                    <Flex w={'100%'} alignItems={'flex-end'}>
+                    <Flex w={'100%'} alignItems={'center'}>
                       <ChatAvatar src={appAvatar} type={'AI'} />
-                      <Flex
-                        {...controlContainerStyle}
-                        ml={3}
+                      <ChatController
+                        ml={2}
+                        chat={item}
                         display={index === chatHistory.length - 1 && isChatting ? 'none' : 'flex'}
-                      >
-                        <MyTooltip label={'复制'}>
-                          <MyIcon
-                            {...controlIconStyle}
-                            name={'copy'}
-                            _hover={{ color: 'myBlue.700' }}
-                            onClick={() => onclickCopy(item.value)}
-                          />
-                        </MyTooltip>
-                        {onDelMessage && (
-                          <MyTooltip label={'删除'}>
-                            <MyIcon
-                              {...controlIconStyle}
-                              name={'delete'}
-                              _hover={{ color: 'red.600' }}
-                              onClick={() => {
-                                setChatHistory((state) =>
-                                  state.filter((chat) => chat.dataId !== item.dataId)
-                                );
-                                onDelMessage({
-                                  contentId: item.dataId,
-                                  index
-                                });
-                              }}
-                            />
-                          </MyTooltip>
-                        )}
-                        {showVoiceIcon && hasVoiceApi && (
-                          <MyTooltip label={'语音播报'}>
-                            <MyIcon
-                              {...controlIconStyle}
-                              name={'voice'}
-                              _hover={{ color: '#E74694' }}
-                              onClick={() => voiceBroadcast({ text: item.value })}
-                            />
-                          </MyTooltip>
-                        )}
-                        {/* admin mark icon */}
-                        {showMarkIcon && (
-                          <MyTooltip label={t('chat.Mark')}>
-                            <MyIcon
-                              {...controlIconStyle}
-                              name={'markLight'}
-                              _hover={{ color: '#67c13b' }}
-                              onClick={() => {
+                        showVoiceIcon={showVoiceIcon}
+                        onDelete={
+                          onDelMessage
+                            ? () => {
+                                delOneMessage({ dataId: item.dataId, index });
+                              }
+                            : undefined
+                        }
+                        onMark={
+                          showMarkIcon
+                            ? () => {
                                 if (!item.dataId) return;
                                 if (item.adminFeedback) {
                                   setAdminMarkData({
@@ -804,67 +679,39 @@ const ChatBox = (
                                     a: item.value
                                   });
                                 }
-                              }}
-                            />
-                          </MyTooltip>
-                        )}
-                        {feedbackType === FeedbackTypeEnum.admin && (
-                          <MyTooltip label={t('chat.Read User Feedback')}>
-                            <MyIcon
-                              display={item.userFeedback ? 'block' : 'none'}
-                              {...controlIconStyle}
-                              color={'white'}
-                              bg={'#FC9663'}
-                              fontWeight={'bold'}
-                              name={'badLight'}
-                              onClick={() =>
+                              }
+                            : undefined
+                        }
+                        onReadFeedback={
+                          feedbackType === FeedbackTypeEnum.admin
+                            ? () =>
                                 setReadFeedbackData({
                                   chatItemId: item.dataId || '',
                                   content: item.userFeedback || '',
                                   isMarked: !!item.adminFeedback
                                 })
-                              }
-                            />
-                          </MyTooltip>
-                        )}
-                        {feedbackType === FeedbackTypeEnum.user && (
-                          <MyTooltip
-                            label={
-                              item.userFeedback
-                                ? `取消反馈。\n您当前反馈内容为:\n${item.userFeedback}`
-                                : '反馈'
-                            }
-                          >
-                            <MyIcon
-                              {...controlIconStyle}
-                              {...(!!item.userFeedback
-                                ? {
-                                    color: 'white',
-                                    bg: '#FC9663',
-                                    fontWeight: 'bold',
-                                    onClick: () => {
-                                      if (!item.dataId) return;
-                                      setChatHistory((state) =>
-                                        state.map((chatItem) =>
-                                          chatItem.dataId === item.dataId
-                                            ? { ...chatItem, userFeedback: undefined }
-                                            : chatItem
-                                        )
-                                      );
-                                      try {
-                                        userUpdateChatFeedback({ chatItemId: item.dataId });
-                                      } catch (error) {}
-                                    }
-                                  }
-                                : {
-                                    _hover: { color: '#FB7C3C' },
-                                    onClick: () => setFeedbackId(item.dataId)
-                                  })}
-                              name={'badLight'}
-                            />
-                          </MyTooltip>
-                        )}
-                      </Flex>
+                            : undefined
+                        }
+                        onFeedback={
+                          feedbackType === FeedbackTypeEnum.user
+                            ? item.userFeedback
+                              ? () => {
+                                  if (!item.dataId) return;
+                                  setChatHistory((state) =>
+                                    state.map((chatItem) =>
+                                      chatItem.dataId === item.dataId
+                                        ? { ...chatItem, userFeedback: undefined }
+                                        : chatItem
+                                    )
+                                  );
+                                  try {
+                                    userUpdateChatFeedback({ chatItemId: item.dataId });
+                                  } catch (error) {}
+                                }
+                              : () => setFeedbackId(item.dataId)
+                            : undefined
+                        }
+                      />
                       {/* chatting status */}
                       {statusBoxData && index === chatHistory.length - 1 && (
                         <Flex
@@ -960,7 +807,7 @@ const ChatBox = (
           </Box>
         </Box>
       </Box>
-      {/* input */}
+      {/* message input */}
       {onStartChat && variableIsFinish && active ? (
         <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
           <Box
@@ -999,8 +846,8 @@ const ChatBox = (
                 textarea.style.height = `${textarea.scrollHeight}px`;
               }}
               onKeyDown={(e) => {
-                // 触发快捷发送
-                if (isPc && e.keyCode === 13 && !e.shiftKey) {
+                // enter send.(pc or iframe && enter and unPress shift)
+                if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
                   handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
                   e.preventDefault();
                 }
@@ -1089,6 +936,7 @@ const ChatBox = (
           }}
         />
       )}
+      {/* admin mark data */}
       {showMarkIcon && (
         <>
           {/* select one dataset to insert markData */}
@@ -1235,3 +1083,207 @@ export const useChatBox = () => {
     onExportChat
   };
 };
+
+function VariableLabel({
+  required = false,
+  children
+}: {
+  required?: boolean;
+  children: React.ReactNode | string;
+}) {
+  return (
+    <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>
+      {children}
+      {required && (
+        <Box
+          position={'absolute'}
+          top={'-2px'}
+          right={'-10px'}
+          color={'red.500'}
+          fontWeight={'bold'}
+        >
+          *
+        </Box>
+      )}
+    </Box>
+  );
+}
+function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
+  const theme = useTheme();
+  return (
+    <Box
+      w={['28px', '34px']}
+      h={['28px', '34px']}
+      p={'2px'}
+      borderRadius={'lg'}
+      border={theme.borders.base}
+      boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
+      bg={type === 'Human' ? 'white' : 'myBlue.100'}
+    >
+      <Avatar src={src} w={'100%'} h={'100%'} />
+    </Box>
+  );
+}
+
+function Empty() {
+  const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
+  const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
+
+  return (
+    <Box pt={6} w={'85%'} maxW={'600px'} m={'auto'} alignItems={'center'} justifyContent={'center'}>
+      {/* version intro */}
+      <Card p={4} mb={10} minH={'200px'}>
+        <Markdown source={versionIntro} />
+      </Card>
+      <Card p={4} minH={'600px'}>
+        <Markdown source={chatProblem} />
+      </Card>
+    </Box>
+  );
+}
+
+function ChatController({
+  chat,
+  display,
+  showVoiceIcon,
+  onReadFeedback,
+  onMark,
+  onRetry,
+  onDelete,
+  onFeedback,
+  ml,
+  mr
+}: {
+  chat: ChatSiteItemType;
+  showVoiceIcon?: boolean;
+  onRetry?: () => void;
+  onDelete?: () => void;
+  onMark?: () => void;
+  onReadFeedback?: () => void;
+  onFeedback?: () => void;
+} & FlexProps) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const { copyData } = useCopyData();
+  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({});
+  const controlIconStyle = {
+    w: '14px',
+    cursor: 'pointer',
+    p: 1,
+    bg: 'white',
+    borderRadius: 'lg',
+    boxShadow: '0 0 5px rgba(0,0,0,0.1)',
+    border: theme.borders.base,
+    mr: 3
+  };
+  const controlContainerStyle = {
+    className: 'control',
+    color: 'myGray.400',
+    display: 'flex',
+    pl: 1
+  };
+
+  return (
+    <Flex {...controlContainerStyle} ml={ml} mr={mr} display={display}>
+      <MyTooltip label={'复制'}>
+        <MyIcon
+          {...controlIconStyle}
+          name={'copy'}
+          _hover={{ color: 'myBlue.700' }}
+          onClick={() => copyData(chat.value)}
+        />
+      </MyTooltip>
+      {!!onDelete && (
+        <>
+          {onRetry && (
+            <MyTooltip label={t('chat.retry')}>
+              <MyIcon
+                {...controlIconStyle}
+                name={'retryLight'}
+                _hover={{ color: 'green.500' }}
+                onClick={onRetry}
+              />
+            </MyTooltip>
+          )}
+          <MyTooltip label={'删除'}>
+            <MyIcon
+              {...controlIconStyle}
+              name={'delete'}
+              _hover={{ color: 'red.600' }}
+              onClick={onDelete}
+            />
+          </MyTooltip>
+        </>
+      )}
+      {showVoiceIcon &&
+        hasAudio &&
+        (audioLoading ? (
+          <MyTooltip label={'加载中...'}>
+            <MyIcon {...controlIconStyle} name={'loading'} />
+          </MyTooltip>
+        ) : audioPlaying ? (
+          <MyTooltip label={'终止播放'}>
+            <MyIcon
+              {...controlIconStyle}
+              name={'pause'}
+              _hover={{ color: '#E74694' }}
+              onClick={() => cancelAudio()}
+            />
+          </MyTooltip>
+        ) : (
+          <MyTooltip label={'语音播报'}>
+            <MyIcon
+              {...controlIconStyle}
+              name={'voice'}
+              _hover={{ color: '#E74694' }}
+              onClick={() => playAudio(chat.value)}
+            />
+          </MyTooltip>
+        ))}
+      {!!onMark && (
+        <MyTooltip label={t('chat.Mark')}>
+          <MyIcon
+            {...controlIconStyle}
+            name={'markLight'}
+            _hover={{ color: '#67c13b' }}
+            onClick={onMark}
+          />
+        </MyTooltip>
+      )}
+      {!!onReadFeedback && (
+        <MyTooltip label={t('chat.Read User Feedback')}>
+          <MyIcon
+            display={chat.userFeedback ? 'block' : 'none'}
+            {...controlIconStyle}
+            color={'white'}
+            bg={'#FC9663'}
+            fontWeight={'bold'}
+            name={'badLight'}
+            onClick={onReadFeedback}
+          />
+        </MyTooltip>
+      )}
+      {!!onFeedback && (
+        <MyTooltip
+          label={chat.userFeedback ? `取消反馈。\n您当前反馈内容为:\n${chat.userFeedback}` : '反馈'}
+        >
+          <MyIcon
+            {...controlIconStyle}
+            {...(!!chat.userFeedback
+              ? {
+                  color: 'white',
+                  bg: '#FC9663',
+                  fontWeight: 'bold',
+                  onClick: onFeedback
+                }
+              : {
+                  _hover: { color: '#FB7C3C' },
+                  onClick: onFeedback
+                })}
+            name={'badLight'}
+          />
+        </MyTooltip>
+      )}
+    </Flex>
+  );
+}
