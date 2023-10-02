@@ -20,6 +20,7 @@ export const useAudioPlay = (props?: { ttsUrl?: string }) => {
 
   const playAudio = useCallback(
     async (text: string) => {
+      text = text.replace(/\\n/g, '\n');
       try {
         if (audio && ttsUrl) {
           setAudioLoading(true);
