@@ -10,30 +10,27 @@ weight: 510
 本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.run)。
 
 
-## Tips
-
-1. 用户默认的时区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
-
-
 ## 前置依赖项
 
 您需要在计算机上安装和配置以下依赖项才能构建 [FastGPT](https://fastgpt.run)：
 
 - [Git](http://git-scm.com/)
-- [Docker](https://www.docker.com/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+- [Docker](https://www.docker.com/)（构建镜像）
 - [Node.js v18.x (LTS)](http://nodejs.org)
-- [npm](https://www.npmjs.com/) 版本 8.x.x 或 [Yarn](https://yarnpkg.com/)
+- [pnpm](https://pnpm.io/) 版本 8.x.x 
 
-## 本地开发
+## 开始本地开发
 
-要设置一个可工作的开发环境，只需 Fork 项目的 Git 存储库，并部署一个数据库，然后开始进行开发测试。
+**Tips**
 
-### Fork 存储库
+1. 用户默认的时区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
+2. 建议先服务器装好数据库在进行本地开发。
+
+### 1. Fork 存储库
 
 您需要 Fork [存储库](https://github.com/labring/FastGPT)。
 
-### 克隆存储库
+### 2. 克隆存储库
 
 克隆您在 GitHub 上 Fork 的存储库：
 
@@ -41,23 +38,27 @@ weight: 510
 git clone git@github.com:<github_username>/FastGPT.git
 ```
 
-**projects 目录下为 FastGPT 应用代码。NextJS 框架前后端放在一起，API 服务位于 `src/pages/api` 目录内。**
+**目录简要说明**
 
-**packages 目录为相关的共用包。**
+1. `projects` 目录下为 FastGPT 应用代码。其中 `app` 为 FastGPT 核心应用。（后续可能会引入其他应用）
+2. NextJS 框架前后端放在一起，API 服务位于 `src/pages/api` 目录内。
+3. `packages` 目录为共用代码，通过 workspace 被注入到 `projects` 中，已配置 monorepo 自动注入，无需额外打包。
 
-### 安装数据库
+### 3. 安装数据库
 
-第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践。数据库部署教程：[Docker 快速部署](/docs/installation/docker/)
+第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践。数据库部署教程：[Docker 快速部署](/docs/installation/docker/)。部署完了，可以本地访问其数据库。
 
-### 初始配置
+### 4. 初始配置
 
-**1. 环境变量**
+以下文件均在 `projects/app` 路径下。
+
+**环境变量**
 
 复制.env.template 文件，生成一个.env.local 环境变量文件夹，修改.env.local 里内容才是有效的变量。变量说明见 .env.template
 
-**2. config 配置文件**
+**config 配置文件**
 
-复制 data/config.json 文件，生成一个 data/config.local.json 配置文件。具体的参数说明，可参考 [config 配置说名](/docs/development/configuration)
+复制 data/config.json 文件，生成一个 data/config.local.json 配置文件，具体配置参数说明，可参考 [config 配置说明](/docs/development/configuration)
 
 **注意：json 配置文件不能包含注释，介绍中为了方便看才加入的注释**
 
@@ -67,23 +68,29 @@ git clone git@github.com:<github_username>/FastGPT.git
 - `qaMaxProcess`: QA 生成最大进程
 - `pgIvfflatProbe`: PostgreSQL vector 搜索探针，没有添加 vector 索引时可忽略。
 
-### 运行
+### 5. 运行
 
 ```bash
+# 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 pnpm i
-cd projects/app # FastGPT 主程序
+# 切换到应用目录
+cd projects/app 
+# 开发模式运行
 pnpm dev
 ```
 
-### 镜像打包
+### 6. 发布 - 镜像打包
 
 ```bash
+# 根目录下执行
 docker build -t dockername/fastgpt --build-arg name=app .
 ```
 
-## 创建拉取请求
+## 提交代码至开源仓库
 
-在进行更改后，打开一个拉取请求（PR）。提交拉取请求后，FastGPT 团队/社区的其他人将与您一起审查它。
+1. 确保你的代码是 Fork [FastGPT](https://github.com/labring/FastGPT) 仓库
+2. 尽可能少量的提交代码，每次提交仅解决一个问题。
+3. 向 FastGPT 的 main 分支提交一个 PR，提交请求后，FastGPT 团队/社区的其他人将与您一起审查它。
 
 如果遇到问题，比如合并冲突或不知道如何打开拉取请求，请查看 GitHub 的[拉取请求教程](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)，了解如何解决合并冲突和其他问题。一旦您的 PR 被合并，您将自豪地被列为[贡献者表](https://github.com/labring/FastGPT/graphs/contributors)中的一员。
 

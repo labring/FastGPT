@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { initShareChatInfo } from '@/api/support/outLink';
@@ -35,6 +35,7 @@ const OutLink = ({
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const { isPc } = useGlobalStore();
   const forbidRefresh = useRef(false);
+  const [isEmbed, setIdEmbed] = useState(true);
 
   const ChatBoxRef = useRef<ComponentRef>(null);
 
@@ -163,8 +164,12 @@ const OutLink = ({
     return loadAppInfo(shareId, chatId, authToken);
   });
 
+  useEffect(() => {
+    setIdEmbed(window !== parent);
+  }, []);
+
   return (
-    <PageContainer>
+    <PageContainer {...(isEmbed ? { p: '0 !important', borderRadius: '0' } : {})}>
       <Head>
         <title>{shareChatData.app.name}</title>
       </Head>

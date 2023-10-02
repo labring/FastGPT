@@ -1,5 +1,5 @@
 ---
-title: 'OpenAPI 使用'
+title: 'OpenAPI 使用（API Key 使用）'
 description: 'FastGPT OpenAPI 文档'
 icon: 'api'
 draft: false
@@ -28,20 +28,22 @@ FastGPT 的 API Key 有 2 类，一类是全局通用的 key；一类是携带�
 ## 发起对话
 
 {{% alert icon="🤖 " context="success" %}}
-该接口 API Key 需使用应用特定的 key，否则会报错。
+该接口 API Key 需使用应用特定的 key，否则会报错。  
+
+有些包的 BaseUrl 需要添加 `v1` 路径，有些不需要，建议都试一下。 
 {{% /alert %}}
 
 
-对话接口兼容 openai 的接口！如果你有第三方项目，可以直接通过修改 BaseUrl 和 Authorization 来访问 FastGpt 应用。缺点是你无法获取到响应的token值。
+对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改 `BaseUrl` 和 `Authorization` 来访问 FastGpt 应用。
 
-请求内容
+请求参数说明
 - headers.Authorization: Bearer apikey
 - chatId: string | undefined 。
   -  为 undefined 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。 不会将你的记录存储到数据库中，你也无法在记录汇总中查阅到。
-  - 为非空字符串时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录。并拼接 messages 数组最后一个内容作为完整请求。(自行确保 chatId 唯一，长度不限)
-- messages: 与 openai gpt 接口完全一致。
-- detail: 是否返回详细值(模块状态，响应的完整结果），会通过event进行区分
-- variables: 变量。一个对象，效果同全局变量。
+  - 为非空字符串时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题。(请自行确保 chatId 唯一，长度不限制)
+- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) 完全一致。
+- detail: 是否返回详细值(模块状态，响应的完整结果），`stream模式`下会通过event进行区分，`非stream模式`结果保存在responseData中。
+- variables: 变量内容，一个对象，会替换`{{key}}`变量。在`HTTP`模块中会发给接口，可作为身份凭证等标识。
 
 **请求示例：**
 

@@ -1,5 +1,5 @@
 ---
-title: '部署 One API，实现多模型支持'
+title: '接入微软、ChatGLM、本地模型等'
 description: '通过接入 One API 来实现对各种大模型的支持'
 icon: 'Api'
 draft: false
@@ -7,9 +7,8 @@ toc: true
 weight: 730
 ---
 
-默认情况下，FastGPT 只配置了 GPT 的 3 个模型，如果你需要接入其他模型，需要进行一些额外配置。
-
-[One API](https://github.com/songquanpeng/one-api) 是一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
+* 默认情况下，FastGPT 只配置了 GPT 的 3 个模型，如果你需要接入其他模型，需要进行一些额外配置。
+* [One API](https://github.com/songquanpeng/one-api) 是一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
 
 FastGPT 可以通过接入 One API 来实现对各种大模型的支持。部署方法也很简单。
 

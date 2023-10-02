@@ -8,7 +8,7 @@ const PageContainer = ({ children, ...props }: BoxProps) => {
       <Box
         h={'100%'}
         bg={'white'}
-        borderRadius={[0, '2xl']}
+        borderRadius={props?.borderRadius || [0, '2xl']}
         border={['none', theme.borders.lg]}
         overflow={'overlay'}
       >

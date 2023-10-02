@@ -1,16 +1,4 @@
 {
-  "FeConfig": {
-    "show_emptyChat": true,
-    "show_contact": true,
-    "show_git": true,
-    "show_doc": true,
-    "systemTitle": "FastGPT",
-    "authorText": "Made by FastGPT Team.",
-    "limit": {
-      "exportLimitMinutes": 0
-    },
-    "scripts": []
-  },
   "SystemParams": {
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,

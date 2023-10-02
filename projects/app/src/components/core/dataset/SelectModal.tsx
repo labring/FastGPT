@@ -33,14 +33,8 @@ const DatasetSelectContainer = ({
   const { isPc } = useGlobalStore();
 
   return (
-    <MyModal
-      isOpen={isOpen}
-      onClose={onClose}
-      w={'100%'}
-      maxW={['90vw', '900px']}
-      isCentered={!isPc}
-    >
-      <Flex flexDirection={'column'} h={['90vh', 'auto']}>
+    <MyModal isOpen={isOpen} onClose={onClose} w={'100%'} maxW={['90vw', '900px']} isCentered>
+      <Flex flexDirection={'column'} h={'90vh'}>
         <ModalHeader>
           {!!parentId ? (
             <Flex

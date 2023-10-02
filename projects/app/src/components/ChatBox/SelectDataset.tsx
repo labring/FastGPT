@@ -31,7 +31,7 @@ const SelectDataset = ({
       setParentId={setParentId}
       tips={t('chat.Select Mark Kb Desc')}
     >
-      <ModalBody flex={['1 0 0', '0 0 auto']} maxH={'80vh'} overflowY={'auto'}>
+      <ModalBody flex={'1 0 0'} overflowY={'auto'}>
         <Grid
           gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
           gridGap={3}

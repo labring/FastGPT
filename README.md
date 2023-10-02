@@ -80,20 +80,14 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [部署 FastGPT](https://doc.fastgpt.run/docs/installation)
 * [系统配置文件说明](https://doc.fastgpt.run/docs/development/configuration/)
 * [多模型配置](https://doc.fastgpt.run/docs/installation/one-api/)
-* [版本升级](https://doc.fastgpt.run/docs/installation/upgrading)
-* [API 文档](https://doc.fastgpt.run/docs/development/openapi?pre_pathname=%2Fdrive%2Fhome%2F)
+* [版本更新/升级介绍](https://doc.fastgpt.run/docs/installation/upgrading)
+* [API 文档](https://doc.fastgpt.run/docs/development/openapi/)
 
 ## 🏘️ 社区交流群
 
 添加 wx 小助手加入：
 
 ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
-
-## 👀 其他
-
-- [FastGPT 常见问题](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
-- [docker 部署教程视频](https://www.bilibili.com/video/BV1jo4y147fT/)
-- [FastGPT 知识库演示](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
 
 ## 💪 相关项目
 
@@ -102,10 +96,15 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 - [One API: 多模型管理，支持 Azure、文心一言等](https://github.com/songquanpeng/one-api)
 - [TuShan: 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
 
+## 👀 其他
+
+- [保姆级 FastGPT 教程](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
+- [接入飞书](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
+- [接入企微](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
+
 ## 🤝 第三方生态
 
 - [OnWeChat 个人微信/企微机器人](https://doc.fastgpt.run/docs/use-cases/onwechat/)
-- [luolinAI: 企微机器人，开箱即用](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
 
 ## 🌟 Star History
 
