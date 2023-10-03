@@ -45,7 +45,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   // search kb
   const res: any = await PgClient.query(
     `BEGIN;
-    SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
+    SET hnsw.ef_search= ${global.systemEnv.pgHNSWEfSearch || 40};
     select id, kb_id, q, a, source, file_id, (vector <#> '[${
       vectors[0]
     }]') * -1 AS score from ${PgDatasetTableName} where kb_id IN (${kbList

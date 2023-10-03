@@ -35,7 +35,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const response: any = await PgClient.query(
       `BEGIN;
-        SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
+        SET hnsw.ef_search= ${global.systemEnv.pgHNSWEfSearch || 40};
         select id, q, a, source, file_id, (vector <#> '[${
           vectors[0]
         }]') * -1 AS score from ${PgDatasetTableName} where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${

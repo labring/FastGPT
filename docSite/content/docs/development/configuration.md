@@ -23,7 +23,7 @@ weight: 520
   "SystemParams": {
     "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
     "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
-    "pgIvfflatProbe": 20  // pg vector 搜索探针。没有设置索引前可忽略，通常 50w 组以上才需要设置。
+    "pgHNSWEfSearch": 40  // pg vector 索引参数，越大精度高但速度慢
   },
   "ChatModels": [
     {
