@@ -18,6 +18,9 @@ defaultContentLanguage = 'zh-cn'
     weight = 10
     disabled = true
 
+[build]
+  noJSConfigInAssets = true
+
 [module]
   [module.hugoVersion]
     extended = true
