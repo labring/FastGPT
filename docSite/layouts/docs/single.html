@@ -11,8 +11,12 @@
     {{ end -}}
 
     {{ if .Page.Store.Get "hasMermaid" }}
-    <script type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
+    {{ $mermaid := resources.Get (printf "%s/%s" ($.Scratch.Get "pathName") "js/mermaid.js") }}
+    {{ if hugo.IsProduction }}
+        {{ $mermaid = $mermaid | minify | fingerprint "sha384" }}
+    {{ end }}
+    <script src="{{ $mermaid.RelPermalink }}" {{ if hugo.IsProduction }}integrity="{{ $mermaid.Data.Integrity }}"{{ end }}></script>
+    <script>
         const config = {
             startOnLoad:true,
             logLevel: "error",
