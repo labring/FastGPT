@@ -30,6 +30,8 @@
     <meta name="Version" content="v0.1.0" />
     <!-- favicon -->
     {{ block "favicon" . }}{{ partialCached (printf "%s/%s" ($.Scratch.Get "pathName") "head/favicon.html") . }}{{ end }}
+    {{- partial (printf "%s/%s" ($.Scratch.Get "pathName") "head/opengraph") . }}
+    {{- partial (printf "%s/%s" ($.Scratch.Get "pathName") "head/twitter_cards") . }}
     <!-- Dark Mode -->
     {{ if eq .Site.Params.docs.darkMode true -}}
         {{ $darkModeInit := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/darkmode-init.js") | js.Build | minify -}}
