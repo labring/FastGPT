@@ -1,26 +1,37 @@
 <div align="center">
 
-<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.run/"><img src=".github/imgs/logo-left.svg" alt="fastgpt logo"></a>
 
-# FastGPT
+<p align="center">
+  <a href="./README_en.md">English</a> |
+  <a href="./README.md">简体中文</a>
+</p>
 
 FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开箱即用的数据处理、模型调用等能力。同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的问答场景！
 
 </div>
 
 <p align="center">
-  <a href="https://fastgpt.run/">线上体验</a>
-  ·
-  <a href="https://doc.fastgpt.run/docs/intro">相关文档</a>
-  ·
-  <a href="https://doc.fastgpt.run/docs/development">本地开发</a>
-  ·
-  <a href="https://github.com/labring/FastGPT#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">相关项目</a>
+  <a href="https://fastgpt.run/">
+    <img height="21" src="https://img.shields.io/badge/在线使用-fff?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+  </a>
+  <a href="https://doc.fastgpt.run/docs/intro">
+    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
+  </a>
+  <a href="https://doc.fastgpt.run/docs/development">
+    <img height="21" src="https://img.shields.io/badge/本地开发-%23fff?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+  </a>
+  <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
+    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
+  </a>
+  <a href="https://github.com/labring/FastGPT/blob/main/LICENSE">
+    <img height="21" src="https://img.shields.io/badge/License-Apache--2.0-ffffff?style=flat-square&labelColor=fff&color=7d09f1" alt="license">
+  </a>
 </p>
 
 https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
 
-## 🛸 在线体验
+## 🛸 在线使用
 
 [fastgpt.run](https://fastgpt.run/)（服务器在新加坡，部分地区可能无法直连）
 
@@ -69,7 +80,6 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）
 
 - **⚡ 快速部署**
-
   > Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
 
   [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
@@ -114,7 +124,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 本仓库遵循 [FastGPT Open Source License](./LICENSE) 开源协议。
 
-1. 允许作为后台服务直接商用，但不允许直接使用 saas 服务商用。
+1. 允许作为后台服务直接商用，但不允许直接使用 SaaS 服务商用。
 2. 需保留相关版权信息。
 3. 完整请查看 [FastGPT Open Source License](./LICENSE)
 4. 联系方式：yujinlong@sealos.io, [点击查看定价策略](https://doc.fastgpt.run/docs/commercial)
