@@ -1,13 +1,15 @@
 <div align="center">
 
-<a href="https://fastgpt.run/"><img src=".github/imgs/logo-left.svg" alt="fastgpt logo"></a>
+<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+
+# FastGPT
 
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a>
 </p>
 
-FastGPT is a knowledge-based Q&A system built on the LLM, offers out-of-the-box data processing and model invocation capabilities, allows for workflow orchestration through Flow visualization! 
+FastGPT is a knowledge-based Q&A system built on the LLM, offers out-of-the-box data processing and model invocation capabilities, allows for workflow orchestration through Flow visualization!
 
 </div>
 

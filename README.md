@@ -1,6 +1,8 @@
 <div align="center">
 
-<a href="https://fastgpt.run/"><img src=".github/imgs/logo-left.svg" alt="fastgpt logo"></a>
+<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+
+# FastGPT
 
 <p align="center">
   <a href="./README_en.md">English</a> |
@@ -80,6 +82,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）
 
 - **⚡ 快速部署**
+
   > Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
 
   [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
