@@ -53,7 +53,7 @@ weight: 20
 
 #### 总费用
 
-总费用 = 商业版功能费用 + 用户数量费用
+总费用 = 商业版交付费用 + 用户数量费用
 
 ## 技术支持
 
@@ -73,8 +73,7 @@ weight: 20
 
 ## 联系方式
 
-微信: allence1004
-邮箱: yujinlong@sealos.io
+请填写[咨询问卷](https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud)，我们会尽快与您联系。
 
 ## QA
 
