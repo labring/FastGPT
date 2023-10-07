@@ -13,6 +13,6 @@ export type ModuleDispatchProps<T> = {
   detail: boolean;
   variables: Record<string, any>;
   outputs: RunningModuleItemType['outputs'];
-  userOpenaiAccount?: UserModelSchema['openaiAccount'];
+  user: UserModelSchema;
   inputs: T;
 };

@@ -96,6 +96,7 @@
       "module question": "Question",
       "module quoteList": "Quotes",
       "module runningTime": "Time",
+      "module search response": "Search Result",
       "module similarity": "Similarity",
       "module temperature": "Temperature",
       "module time": "Running Time",

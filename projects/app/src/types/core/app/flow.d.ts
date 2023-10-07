@@ -60,3 +60,9 @@ export type FlowModuleTemplateType = {
 export type FlowModuleItemType = FlowModuleTemplateType & {
   moduleId: string;
 };
+
+export type SelectAppItemType = {
+  id: string;
+  name: string;
+  logo: string;
+};

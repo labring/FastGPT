@@ -212,6 +212,14 @@ export const ChatModule: FlowModuleTemplateType = {
       targets: []
     },
     {
+      key: TaskResponseKeyEnum.history,
+      label: '新的上下文',
+      description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
+      valueType: FlowValueTypeEnum.chatHistory,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
+    {
       key: 'finish',
       label: '回复结束',
       description: 'AI 回复完成后触发',
@@ -483,6 +491,43 @@ export const EmptyModule: FlowModuleTemplateType = {
   inputs: [],
   outputs: []
 };
+export const AppModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.app,
+  logo: '/imgs/module/app.png',
+  name: '应用调用(测试版)',
+  intro: '可以选择一个其他应用进行调用',
+  description: '可以选择一个其他应用进行调用',
+  showStatus: true,
+  inputs: [
+    Input_Template_TFSwitch,
+    {
+      key: 'app',
+      type: FlowInputItemTypeEnum.selectApp,
+      label: '选择一个应用',
+      description: '选择一个其他应用进行调用',
+      required: true
+    },
+    Input_Template_History,
+    Input_Template_UserChatInput
+  ],
+  outputs: [
+    {
+      key: TaskResponseKeyEnum.history,
+      label: '新的上下文',
+      description: '将该应用回复内容拼接到历史记录中，作为新的上下文返回',
+      valueType: FlowValueTypeEnum.chatHistory,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
+    {
+      key: 'finish',
+      label: '请求结束',
+      valueType: FlowValueTypeEnum.boolean,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    }
+  ]
+};
 
 export const ModuleTemplates = [
   {
@@ -498,11 +543,11 @@ export const ModuleTemplates = [
     list: [ChatModule, AnswerModule]
   },
   {
-    label: '知识库模块',
-    list: [KBSearchModule]
+    label: '核心调用',
+    list: [KBSearchModule, AppModule]
   },
   {
-    label: 'Agent',
+    label: '函数模块',
     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
   }
 ];
@@ -517,7 +562,8 @@ export const ModuleTemplatesFlat = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule,
-  EmptyModule
+  EmptyModule,
+  AppModule
 ];
 
 // template

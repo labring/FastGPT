@@ -35,6 +35,7 @@ export type ChatProps = ModuleDispatchProps<
 export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  [TaskResponseKeyEnum.history]: ChatItemType[];
   finish: boolean;
 };
 
@@ -45,7 +46,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     moduleName,
     stream = false,
     detail = false,
-    userOpenaiAccount,
+    user,
     outputs,
     inputs: {
       model = global.chatModels[0]?.model,
@@ -105,7 +106,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   // FastGPT temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
-  const chatAPI = getAIChatApi(userOpenaiAccount);
+  const chatAPI = getAIChatApi(user.openaiAccount);
 
   const response = await chatAPI.createChatCompletion(
     {
@@ -128,7 +129,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     {
       timeout: 480000,
       responseType: stream ? 'stream' : 'json',
-      ...axiosConfig(userOpenaiAccount)
+      ...axiosConfig(user.openaiAccount)
     }
   );
 
@@ -179,7 +180,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [TaskResponseKeyEnum.responseData]: {
       moduleType: FlowModuleTypeEnum.chatNode,
       moduleName,
-      price: userOpenaiAccount?.key ? 0 : countModelPrice({ model, tokens: totalTokens }),
+      price: user.openaiAccount?.key ? 0 : countModelPrice({ model, tokens: totalTokens }),
       model: modelConstantsData.name,
       tokens: totalTokens,
       question: userChatInput,
@@ -187,6 +188,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(completeMessages)
     },
+    [TaskResponseKeyEnum.history]: completeMessages,
     finish: true
   };
 };

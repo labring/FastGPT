@@ -33,7 +33,10 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
     return {
       chatAccount: responseData.filter((item) => item.moduleType === FlowModuleTypeEnum.chatNode)
         .length,
-      quoteList: chatData?.quoteList,
+      quoteList: responseData
+        .filter((item) => item.moduleType === FlowModuleTypeEnum.chatNode)
+        .map((item) => item.quoteList)
+        .flat(),
       historyPreview: chatData?.historyPreview,
       runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
@@ -48,20 +51,20 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
 
   return responseData.length === 0 ? null : (
     <Flex alignItems={'center'} mt={2} flexWrap={'wrap'}>
+      {quoteList.length > 0 && (
+        <MyTooltip label="查看引用">
+          <Tag
+            colorSchema="blue"
+            cursor={'pointer'}
+            {...TagStyles}
+            onClick={() => setQuoteModalData(quoteList)}
+          >
+            {quoteList.length}条引用
+          </Tag>
+        </MyTooltip>
+      )}
       {chatAccount === 1 && (
         <>
-          {quoteList.length > 0 && (
-            <MyTooltip label="查看引用">
-              <Tag
-                colorSchema="blue"
-                cursor={'pointer'}
-                {...TagStyles}
-                onClick={() => setQuoteModalData(quoteList)}
-              >
-                {quoteList.length}条引用
-              </Tag>
-            </MyTooltip>
-          )}
           {historyPreview.length > 0 && (
             <MyTooltip label={'点击查看完整对话记录'}>
               <Tag
@@ -112,4 +115,4 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
   );
 };
 
-export default ResponseTags;
+export default React.memo(ResponseTags);

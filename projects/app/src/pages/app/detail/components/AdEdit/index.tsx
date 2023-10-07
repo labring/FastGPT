@@ -38,6 +38,7 @@ const NodeVariable = dynamic(() => import('./components/Nodes/NodeVariable'));
 const NodeUserGuide = dynamic(() => import('./components/Nodes/NodeUserGuide'));
 const NodeExtract = dynamic(() => import('./components/Nodes/NodeExtract'));
 const NodeHttp = dynamic(() => import('./components/Nodes/NodeHttp'));
+const NodeAPP = dynamic(() => import('./components/Nodes/NodeAPP'));
 
 import 'reactflow/dist/style.css';
 
@@ -52,7 +53,8 @@ const nodeTypes = {
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
   [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode,
   [FlowModuleTypeEnum.contentExtract]: NodeExtract,
-  [FlowModuleTypeEnum.httpRequest]: NodeHttp
+  [FlowModuleTypeEnum.httpRequest]: NodeHttp,
+  [FlowModuleTypeEnum.app]: NodeAPP
   // [FlowModuleTypeEnum.empty]: EmptyModule
 };
 const edgeTypes = {
@@ -314,7 +316,7 @@ const Flow = (data: Props) => {
   return (
     <Box h={'100%'} position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
       <ReactFlowProvider>
-        <FlowProvider>
+        <FlowProvider appId={data?.app?._id}>
           <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
             {!!data.app._id && <AppEdit {...data} />}
           </Flex>

@@ -11,7 +11,8 @@ export enum FlowInputItemTypeEnum {
   target = 'target',
   none = 'none',
   switch = 'switch',
-  hidden = 'hidden'
+  hidden = 'hidden',
+  selectApp = 'selectApp'
 }
 
 export enum FlowOutputItemTypeEnum {
@@ -33,7 +34,8 @@ export enum FlowModuleTypeEnum {
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion',
   contentExtract = 'contentExtract',
-  httpRequest = 'httpRequest'
+  httpRequest = 'httpRequest',
+  app = 'app'
 }
 
 export enum SpecialInputKeyEnum {
