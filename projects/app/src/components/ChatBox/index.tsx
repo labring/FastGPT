@@ -34,7 +34,7 @@ import { feConfigs } from '@/store/static';
 import { event } from '@/utils/plugin/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/hooks/useMarkdown';
-import { AppModuleItemType, VariableItemType } from '@/types/app';
+import { AppModuleItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import type { MessageItemType } from '@/types/core/chat/type';
@@ -81,7 +81,7 @@ export type StartChatFnProps = {
 export type ComponentRef = {
   getChatHistory: () => ChatSiteItemType[];
   resetVariables: (data?: Record<string, any>) => void;
-  resetHistory: (chatId: ChatSiteItemType[]) => void;
+  resetHistory: (history: ChatSiteItemType[]) => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };
 
@@ -96,7 +96,6 @@ type Props = {
   showMarkIcon?: boolean; // admin mark dataset
   showVoiceIcon?: boolean;
   showEmptyIntro?: boolean;
-  chatId?: string;
   appAvatar?: string;
   userAvatar?: string;
   userGuideModule?: AppModuleItemType;
@@ -116,7 +115,6 @@ const ChatBox = (
     showMarkIcon = false,
     showVoiceIcon = true,
     showEmptyIntro = false,
-    chatId,
     appAvatar,
     userAvatar,
     userGuideModule,
@@ -265,7 +263,8 @@ const ChatBox = (
 
         const result = await postQuestionGuide(
           {
-            messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6)
+            messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6),
+            shareId: router.query.shareId as string
           },
           abortSignal
         );
@@ -277,7 +276,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, scrollToBottom]
+    [questionGuide, scrollToBottom, router.query.shareId]
   );
 
   /**
@@ -743,11 +742,7 @@ const ChatBox = (
                           source={item.value}
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
-                        <ResponseTags
-                          chatId={chatId}
-                          contentId={item.dataId}
-                          responseData={item.responseData}
-                        />
+                        <ResponseTags responseData={item.responseData} />
                         {/* question guide */}
                         {index === chatHistory.length - 1 &&
                           !isChatting &&

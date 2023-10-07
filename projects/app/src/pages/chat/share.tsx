@@ -24,10 +24,12 @@ import { serviceSideProps } from '@/utils/web/i18n';
 const OutLink = ({
   shareId,
   chatId,
+  showHistory,
   authToken
 }: {
   shareId: string;
   chatId: string;
+  showHistory: '0' | '1';
   authToken?: string;
 }) => {
   const router = useRouter();
@@ -89,9 +91,8 @@ const OutLink = ({
         forbidRefresh.current = true;
         router.replace({
           query: {
-            shareId,
-            chatId: completionChatId,
-            authToken
+            ...router.query,
+            chatId: completionChatId
           }
         });
       }
@@ -174,59 +175,58 @@ const OutLink = ({
         <title>{shareChatData.app.name}</title>
       </Head>
       <Flex h={'100%'} flexDirection={['column', 'row']}>
-        {((children: React.ReactNode) => {
-          return isPc ? (
-            <SideBar>{children}</SideBar>
-          ) : (
-            <Drawer
-              isOpen={isOpenSlider}
-              placement="left"
-              autoFocus={false}
-              size={'xs'}
-              onClose={onCloseSlider}
-            >
-              <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-              <DrawerContent maxWidth={'250px'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
-                {children}
-              </DrawerContent>
-            </Drawer>
-          );
-        })(
-          <ChatHistorySlider
-            appName={shareChatData.app.name}
-            appAvatar={shareChatData.app.avatar}
-            activeChatId={chatId}
-            history={history.map((item) => ({
-              id: item.chatId,
-              title: item.title
-            }))}
-            onClose={onCloseSlider}
-            onChangeChat={(chatId) => {
-              console.log(chatId);
-
-              router.replace({
-                query: {
-                  chatId: chatId || '',
-                  shareId,
-                  authToken
-                }
-              });
-              if (!isPc) {
-                onCloseSlider();
-              }
-            }}
-            onDelHistory={delOneShareHistoryByChatId}
-            onClearHistory={() => {
-              delManyShareChatHistoryByShareId(shareId);
-              router.replace({
-                query: {
-                  shareId,
-                  authToken
-                }
-              });
-            }}
-          />
-        )}
+        {showHistory === '1'
+          ? ((children: React.ReactNode) => {
+              return isPc ? (
+                <SideBar>{children}</SideBar>
+              ) : (
+                <Drawer
+                  isOpen={isOpenSlider}
+                  placement="left"
+                  autoFocus={false}
+                  size={'xs'}
+                  onClose={onCloseSlider}
+                >
+                  <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
+                  <DrawerContent maxWidth={'250px'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
+                    {children}
+                  </DrawerContent>
+                </Drawer>
+              );
+            })(
+              <ChatHistorySlider
+                appName={shareChatData.app.name}
+                appAvatar={shareChatData.app.avatar}
+                activeChatId={chatId}
+                history={history.map((item) => ({
+                  id: item.chatId,
+                  title: item.title
+                }))}
+                onClose={onCloseSlider}
+                onChangeChat={(chatId) => {
+                  router.replace({
+                    query: {
+                      ...router.query,
+                      chatId: chatId || ''
+                    }
+                  });
+                  if (!isPc) {
+                    onCloseSlider();
+                  }
+                }}
+                onDelHistory={delOneShareHistoryByChatId}
+                onClearHistory={() => {
+                  delManyShareChatHistoryByShareId(shareId);
+                  router.replace({
+                    query: {
+                      ...router.query,
+                      chatId: ''
+                    }
+                  });
+                }}
+              />
+            )
+          : null}
 
         {/* chat container */}
         <Flex
@@ -276,10 +276,11 @@ const OutLink = ({
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
   const chatId = context?.query?.chatId || '';
+  const showHistory = context?.query?.showHistory || '1';
   const authToken = context?.query?.authToken || '';
 
   return {
-    props: { shareId, chatId, authToken, ...(await serviceSideProps(context)) }
+    props: { shareId, chatId, showHistory, authToken, ...(await serviceSideProps(context)) }
   };
 }
 

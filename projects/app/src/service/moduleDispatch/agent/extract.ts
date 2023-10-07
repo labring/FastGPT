@@ -2,7 +2,7 @@ import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getAIChatApi, axiosConfig } from '@fastgpt/core/aiApi/config';
+import { getAIChatApi, axiosConfig } from '@fastgpt/core/ai/config';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowModuleTypeEnum } from '@/constants/flow';
@@ -29,7 +29,7 @@ const agentFunName = 'agent_extract_data';
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     moduleName,
-    userOpenaiAccount,
+    user,
     inputs: { content, description, extractKeys }
   } = props;
 
@@ -73,7 +73,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [TaskResponseKeyEnum.responseData]: {
       moduleType: FlowModuleTypeEnum.contentExtract,
       moduleName,
-      price: userOpenaiAccount?.key ? 0 : extractModel.price * tokens,
+      price: user.openaiAccount?.key ? 0 : extractModel.price * tokens,
       model: extractModel.name || '',
       tokens,
       extractDescription: description,
@@ -83,7 +83,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 }
 
 async function functionCall({
-  userOpenaiAccount,
+  user,
   inputs: { history = [], content, extractKeys, description }
 }: Props) {
   const extractModel = global.extractModel;
@@ -126,7 +126,7 @@ async function functionCall({
     }
   };
 
-  const chatAPI = getAIChatApi(userOpenaiAccount);
+  const chatAPI = getAIChatApi(user.openaiAccount);
 
   const response = await chatAPI.createChatCompletion(
     {
@@ -137,7 +137,7 @@ async function functionCall({
       functions: [agentFunction]
     },
     {
-      ...axiosConfig(userOpenaiAccount)
+      ...axiosConfig(user.openaiAccount)
     }
   );
 
@@ -157,7 +157,7 @@ async function functionCall({
 }
 
 async function completions({
-  userOpenaiAccount,
+  user,
   inputs: { history = [], content, extractKeys, description }
 }: Props) {
   const extractModel = global.extractModel;
@@ -181,7 +181,7 @@ Human: ${content}`
     }
   ];
 
-  const chatAPI = getAIChatApi(userOpenaiAccount);
+  const chatAPI = getAIChatApi(user.openaiAccount);
 
   const { data } = await chatAPI.createChatCompletion(
     {
@@ -192,7 +192,7 @@ Human: ${content}`
     },
     {
       timeout: 480000,
-      ...axiosConfig(userOpenaiAccount)
+      ...axiosConfig(user.openaiAccount)
     }
   );
   const answer = data.choices?.[0].message?.content || '';

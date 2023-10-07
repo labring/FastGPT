@@ -287,7 +287,6 @@ function DetailLogsModal({
         <Box pt={2} flex={'1 0 0'}>
           <ChatBox
             ref={ChatBoxRef}
-            chatId={chatId}
             appAvatar={chat?.app.avatar}
             userAvatar={HUMAN_ICON}
             feedbackType={'admin'}

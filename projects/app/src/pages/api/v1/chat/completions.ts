@@ -12,9 +12,10 @@ import {
   dispatchAnswer,
   dispatchClassifyQuestion,
   dispatchContentExtract,
-  dispatchHttpRequest
+  dispatchHttpRequest,
+  dispatchAppRequest
 } from '@/service/moduleDispatch';
-import type { CreateChatCompletionRequest } from '@fastgpt/core/aiApi/type';
+import type { CreateChatCompletionRequest } from '@fastgpt/core/ai/type';
 import type { MessageItemType } from '@/types/core/chat/type';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
@@ -325,14 +326,19 @@ export async function dispatchModules({
     responseData
   }: {
     answerText?: string;
-    responseData?: ChatHistoryItemResType;
+    responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
   }) {
     const time = Date.now();
-    responseData &&
-      chatResponse.push({
-        ...responseData,
-        runningTime: +((time - runningTime) / 1000).toFixed(2)
-      });
+    if (responseData) {
+      if (Array.isArray(responseData)) {
+        chatResponse = chatResponse.concat(responseData);
+      } else {
+        chatResponse.push({
+          ...responseData,
+          runningTime: +((time - runningTime) / 1000).toFixed(2)
+        });
+      }
+    }
     runningTime = time;
     chatAnswerText += answerText;
   }
@@ -411,7 +417,7 @@ export async function dispatchModules({
       variables,
       moduleName: module.name,
       outputs: module.outputs,
-      userOpenaiAccount: user?.openaiAccount,
+      user,
       inputs: params
     };
 
@@ -424,7 +430,8 @@ export async function dispatchModules({
         [FlowModuleTypeEnum.kbSearchNode]: dispatchKBSearch,
         [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
         [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract,
-        [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest
+        [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest,
+        [FlowModuleTypeEnum.app]: dispatchAppRequest
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);

@@ -6,7 +6,6 @@ export type AnswerProps = ModuleDispatchProps<{
   text: string;
 }>;
 export type AnswerResponse = {
-  [TaskResponseKeyEnum.answerText]: string;
   finish: boolean;
 };
 
@@ -29,7 +28,6 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   }
 
   return {
-    [TaskResponseKeyEnum.answerText]: text,
     finish: true
   };
 };

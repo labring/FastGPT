@@ -102,8 +102,23 @@ export async function authOutLinkLimit({
   await authShareStart({ authToken, tokenUrl: outLink.limit.hookUrl, question });
 }
 
+export async function authOutLinkId({ id }: { id: string }) {
+  const outLink = await OutLink.findOne({
+    shareId: id
+  });
+
+  if (!outLink) {
+    return Promise.reject('分享链接无效');
+  }
+
+  return {
+    userId: String(outLink.userId)
+  };
+}
+
 type TokenAuthResponseType = {
   success: boolean;
+  msg?: string;
   message?: string;
 };
 
@@ -119,7 +134,7 @@ export const authShareChatInit = async (authToken?: string, tokenUrl?: string) =
       }
     });
     if (data?.success !== true) {
-      return Promise.reject(data?.message || '身份校验失败');
+      return Promise.reject(data?.message || data?.msg || '身份校验失败');
     }
   } catch (error) {
     return Promise.reject('身份校验失败');
@@ -148,7 +163,7 @@ export const authShareStart = async ({
     });
 
     if (data?.success !== true) {
-      return Promise.reject(data?.message || '身份校验失败');
+      return Promise.reject(data?.message || data?.msg || '身份校验失败');
     }
   } catch (error) {
     return Promise.reject('身份校验失败');
