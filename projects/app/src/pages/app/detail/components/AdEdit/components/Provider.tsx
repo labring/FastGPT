@@ -211,7 +211,6 @@ export const FlowProvider = ({ appId, children }: { appId: string; children: Rea
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
       const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
-      console.log(template);
       setNodes((state) =>
         state.concat(
           appModule2FlowNode({
