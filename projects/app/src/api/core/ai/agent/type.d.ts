@@ -1,5 +1,6 @@
-import { ChatCompletionRequestMessage } from '@fastgpt/core/aiApi/type';
+import { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
 
 export type CreateQuestionGuideProps = {
   messages: ChatCompletionRequestMessage[];
+  shareId?: string;
 };

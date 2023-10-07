@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { FlowInputItemType } from '@/types/core/app/flow';
+import type { FlowInputItemType, SelectAppItemType } from '@/types/core/app/flow';
 import {
   Box,
   Textarea,
@@ -9,7 +9,10 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
-  Flex
+  Flex,
+  useDisclosure,
+  Button,
+  useTheme
 } from '@chakra-ui/react';
 import { FlowInputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -20,7 +23,9 @@ import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 const SetInputFieldModal = dynamic(() => import('../modules/SetInputFieldModal'));
+const SelectAppModal = dynamic(() => import('../../../SelectAppModal'));
 import { useFlowStore } from '../Provider';
+import Avatar from '@/components/Avatar';
 
 export const Label = ({
   moduleId,
@@ -141,6 +146,7 @@ const RenderInput = ({
   CustomComponent?: Record<string, (e: FlowInputItemType) => React.ReactNode>;
 }) => {
   const { onChangeNode } = useFlowStore();
+
   return (
     <>
       {flowInputList.map(
@@ -253,6 +259,9 @@ const RenderInput = ({
                 {item.type === FlowInputItemTypeEnum.custom && CustomComponent[item.key] && (
                   <>{CustomComponent[item.key]({ ...item })}</>
                 )}
+                {item.type === FlowInputItemTypeEnum.selectApp && (
+                  <RenderSelectApp app={item} moduleId={moduleId} />
+                )}
               </Box>
             </Box>
           )
@@ -262,3 +271,54 @@ const RenderInput = ({
 };
 
 export default React.memo(RenderInput);
+
+function RenderSelectApp({ app, moduleId }: { app: FlowInputItemType; moduleId: string }) {
+  const { onChangeNode, appId } = useFlowStore();
+  const theme = useTheme();
+
+  const {
+    isOpen: isOpenSelectApp,
+    onOpen: onOpenSelectApp,
+    onClose: onCloseSelectApp
+  } = useDisclosure();
+
+  const value = app.value as SelectAppItemType | undefined;
+
+  return (
+    <>
+      <Box onClick={onOpenSelectApp}>
+        {!value ? (
+          <Button variant={'base'} w={'100%'}>
+            选择应用
+          </Button>
+        ) : (
+          <Flex alignItems={'center'} border={theme.borders.base} borderRadius={'md'} px={3} py={2}>
+            <Avatar src={value?.logo} />
+            <Box fontWeight={'bold'} ml={1}>
+              {value?.name}
+            </Box>
+          </Flex>
+        )}
+      </Box>
+
+      {isOpenSelectApp && (
+        <SelectAppModal
+          defaultApps={app.value?.id ? [app.value.id] : []}
+          filterApps={[appId]}
+          onClose={onCloseSelectApp}
+          onSuccess={(e) => {
+            onChangeNode({
+              moduleId,
+              type: 'inputs',
+              key: 'app',
+              value: {
+                ...app,
+                value: e[0]
+              }
+            });
+          }}
+        />
+      )}
+    </>
+  );
+}

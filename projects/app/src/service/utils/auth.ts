@@ -1,15 +1,17 @@
 import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
-import { App, OpenApi, User, KB } from '../mongo';
+import { App, User, KB } from '../mongo';
 import type { AppSchema, UserModelSchema } from '@/types/mongoSchema';
 import { ERROR_ENUM } from '../errorCode';
 import { authJWT } from './tools';
 import { authOpenApiKey } from '../support/openapi/auth';
+import { authOutLinkId } from '../support/outLink/auth';
 
 export enum AuthUserTypeEnum {
   token = 'token',
   root = 'root',
-  apikey = 'apikey'
+  apikey = 'apikey',
+  outLink = 'outLink'
 }
 
 /* auth balance */
@@ -34,13 +36,15 @@ export const authUser = async ({
   authToken = false,
   authRoot = false,
   authApiKey = false,
-  authBalance = false
+  authBalance = false,
+  authOutLink
 }: {
   req: NextApiRequest;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
   authBalance?: boolean;
+  authOutLink?: boolean;
 }) => {
   const authCookieToken = async (cookie?: string, token?: string): Promise<string> => {
     // 获取 cookie
@@ -107,13 +111,18 @@ export const authUser = async ({
     userid?: string;
     authorization?: string;
   };
+  const { shareId } = (req?.body || {}) as { shareId?: string };
 
   let uid = '';
   let appId = '';
   let openApiKey = apikey;
   let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
 
-  if (authToken && (cookie || token)) {
+  if (authOutLink && shareId) {
+    const res = await authOutLinkId({ id: shareId });
+    uid = res.userId;
+    authType = AuthUserTypeEnum.outLink;
+  } else if (authToken && (cookie || token)) {
     // user token(from fastgpt web)
     uid = await authCookieToken(cookie, token);
     authType = AuthUserTypeEnum.token;

@@ -64,7 +64,7 @@ const MyApps = () => {
   );
 
   /* 加载模型 */
-  useQuery(['loadModels'], () => loadMyApps(true), {
+  useQuery(['loadApps'], () => loadMyApps(true), {
     refetchOnMount: true
   });
 

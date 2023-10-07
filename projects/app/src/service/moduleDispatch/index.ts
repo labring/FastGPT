@@ -4,5 +4,6 @@ export * from './chat/oneapi';
 export * from './kb/search';
 export * from './tools/answer';
 export * from './tools/http';
+export * from './tools/runApp';
 export * from './agent/classifyQuestion';
 export * from './agent/extract';

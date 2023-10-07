@@ -5,7 +5,7 @@ import { User } from '@/service/models/user';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { UserUpdateParams } from '@/types/user';
-import { axiosConfig, getAIChatApi, openaiBaseUrl } from '@fastgpt/core/aiApi/config';
+import { axiosConfig, getAIChatApi, openaiBaseUrl } from '@fastgpt/core/ai/config';
 
 /* update user info */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

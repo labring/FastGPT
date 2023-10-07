@@ -1,6 +1,6 @@
 import type { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/aiApi/constant';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant';
 import type { MessageItemType } from '@/types/core/chat/type';
 
 const chat2Message = {

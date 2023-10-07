@@ -69,7 +69,12 @@ export const DatasetSelectModal = ({
       tips={'仅能选择同一个索引模型的知识库'}
       onClose={onClose}
     >
-      <ModalBody flex={['1 0 0', '0 0 auto']} maxH={'80vh'} overflowY={'auto'} userSelect={'none'}>
+      <ModalBody
+        flex={['1 0 0', '1 0 auto']}
+        maxH={'80vh'}
+        overflowY={['auto', 'unset']}
+        userSelect={'none'}
+      >
         <Grid gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={3}>
           {filterKbList.selected.map((item) =>
             (() => {

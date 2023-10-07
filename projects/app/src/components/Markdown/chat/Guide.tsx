@@ -20,19 +20,17 @@ function MyLink(e: any) {
       {text}
     </Link>
   ) : (
-    <Box as={'ul'} mt={'0 !important'}>
-      <Box as={'li'} mb={1}>
-        <Box
-          as={'span'}
-          color={'blue.600'}
-          textDecoration={'underline'}
-          cursor={'pointer'}
-          onClick={() => {
-            event.emit('guideClick', { text });
-          }}
-        >
-          {text}
-        </Box>
+    <Box as={'li'} mb={1}>
+      <Box
+        as={'span'}
+        color={'blue.600'}
+        textDecoration={'underline'}
+        cursor={'pointer'}
+        onClick={() => {
+          event.emit('guideClick', { text });
+        }}
+      >
+        {text}
       </Box>
     </Box>
   );
@@ -40,9 +38,10 @@ function MyLink(e: any) {
 
 const Guide = ({ text }: { text: string }) => {
   const formatText = useMemo(
-    () => text.replace(/\[(.*?)\]($|\n)/g, '[$1]()\n').replace(/\\n/g, '\n&nbsp;'),
+    () => text.replace(/\[(.*?)\]($|\n)/g, '[$1]()').replace(/\\n/g, '\n&nbsp;'),
     [text]
   );
+
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}`}

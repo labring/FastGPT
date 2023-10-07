@@ -21,7 +21,7 @@ export const ChatModelSystemTip =
   '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}';
 export const ChatModelLimitTip =
   '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。不建议内容太长，会影响上下文，可使用变量，例如 {{language}}。可在文档中找到对应的限定例子';
-export const userGuideTip = '可以添加特殊的对话前后引导模块，更好的让用户进行对话';
+export const userGuideTip = '可以在对话前设置引导语，设置全局变量，设置下一步指引';
 export const welcomeTextTip =
   '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
 export const variableTip =
@@ -203,6 +203,14 @@ export const ChatModule: FlowModuleTemplateType = {
     Input_Template_UserChatInput
   ],
   outputs: [
+    {
+      key: TaskResponseKeyEnum.history,
+      label: '新的上下文',
+      description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
+      valueType: FlowValueTypeEnum.chatHistory,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
     {
       key: TaskResponseKeyEnum.answerText,
       label: '模型回复',
@@ -483,6 +491,51 @@ export const EmptyModule: FlowModuleTemplateType = {
   inputs: [],
   outputs: []
 };
+export const AppModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.app,
+  logo: '/imgs/module/app.png',
+  name: '应用调用(测试版)',
+  intro: '可以选择一个其他应用进行调用',
+  description: '可以选择一个其他应用进行调用',
+  showStatus: true,
+  inputs: [
+    Input_Template_TFSwitch,
+    {
+      key: 'app',
+      type: FlowInputItemTypeEnum.selectApp,
+      label: '选择一个应用',
+      description: '选择一个其他应用进行调用',
+      required: true
+    },
+    Input_Template_History,
+    Input_Template_UserChatInput
+  ],
+  outputs: [
+    {
+      key: TaskResponseKeyEnum.history,
+      label: '新的上下文',
+      description: '将该应用回复内容拼接到历史记录中，作为新的上下文返回',
+      valueType: FlowValueTypeEnum.chatHistory,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
+    {
+      key: TaskResponseKeyEnum.answerText,
+      label: '模型回复',
+      description: '将在应用完全结束后触发',
+      valueType: FlowValueTypeEnum.string,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
+    {
+      key: 'finish',
+      label: '请求结束',
+      valueType: FlowValueTypeEnum.boolean,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    }
+  ]
+};
 
 export const ModuleTemplates = [
   {
@@ -498,11 +551,11 @@ export const ModuleTemplates = [
     list: [ChatModule, AnswerModule]
   },
   {
-    label: '知识库模块',
-    list: [KBSearchModule]
+    label: '核心调用',
+    list: [KBSearchModule, AppModule]
   },
   {
-    label: 'Agent',
+    label: '函数模块',
     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
   }
 ];
@@ -517,7 +570,8 @@ export const ModuleTemplatesFlat = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule,
-  EmptyModule
+  EmptyModule,
+  AppModule
 ];
 
 // template
@@ -528,6 +582,25 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
     name: '简单的对话',
     intro: '一个极其简单的 AI 对话应用',
     modules: [
+      {
+        moduleId: 'userGuide',
+        name: '用户引导',
+        flowType: 'userGuide',
+        position: {
+          x: 454.98510354678695,
+          y: 721.4016845336229
+        },
+        inputs: [
+          {
+            key: 'welcomeText',
+            type: 'input',
+            label: '开场白',
+            value: '',
+            connected: true
+          }
+        ],
+        outputs: []
+      },
       {
         moduleId: 'userChatInput',
         name: '用户问题(对话入口)',
@@ -1383,10 +1456,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
                 key: 'userChatInput'
               },
               {
-                moduleId: 'nlfwkc',
-                key: 'userChatInput'
-              },
-              {
                 moduleId: 'fljhzy',
                 key: 'userChatInput'
               }
@@ -1399,8 +1468,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         name: '聊天记录',
         flowType: 'historyNode',
         position: {
-          x: 194.99102398958047,
-          y: 1801.3545999721096
+          x: 1770.497690708367,
+          y: 1820.2355054321215
         },
         inputs: [
           {
@@ -1445,15 +1514,22 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         },
         inputs: [
           {
+            key: 'switch',
+            type: 'target',
+            label: '触发器',
+            valueType: 'any',
+            connected: false
+          },
+          {
             key: 'systemPrompt',
             type: 'textarea',
             valueType: 'string',
+            value:
+              'laf 是云开发平台，可以快速的开发应用\nlaf 是一个开源的 BaaS 开发平台（Backend as a Service)\nlaf 是一个开箱即用的 serverless 开发平台\nlaf 是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台\nlaf 可以是开源版的腾讯云开发、开源版的 Google Firebase、开源版的 UniCloud',
             label: '系统提示词',
             description:
               '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
             placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统',
-            value:
-              'laf 是云开发平台，可以快速的开发应用\nlaf 是一个开源的 BaaS 开发平台（Backend as a Service)\nlaf 是一个开箱即用的 serverless 开发平台\nlaf 是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台\nlaf 可以是开源版的腾讯云开发、开源版的 Google Firebase、开源版的 UniCloud',
             connected: true
           },
           {
@@ -1561,16 +1637,25 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'text',
-            value: '你好，我是 laf 助手，有什么可以帮助你的？',
             type: 'textarea',
             valueType: 'string',
+            value: '你好，我是 laf 助手，有什么可以帮助你的？',
             label: '回复的内容',
             description:
-              '可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
+              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
             connected: true
           }
         ],
-        outputs: []
+        outputs: [
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: '回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
       },
       {
         moduleId: 'iejcou',
@@ -1590,16 +1675,25 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'text',
-            value: '你好，我仅能回答 laf 相关问题，请问你有什么问题么？',
             type: 'textarea',
             valueType: 'string',
+            value: '你好，我仅能回答 laf 相关问题，请问你有什么问题么？',
             label: '回复的内容',
             description:
-              '可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
+              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
             connected: true
           }
         ],
-        outputs: []
+        outputs: [
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: '回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
       },
       {
         moduleId: 'nlfwkc',
@@ -1607,7 +1701,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         flowType: 'chatNode',
         showStatus: true,
         position: {
-          x: 1821.979893659983,
+          x: 2260.436476009152,
           y: 1104.6583548423682
         },
         inputs: [
@@ -1616,7 +1710,48 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             type: 'custom',
             label: '对话模型',
             value: 'gpt-3.5-turbo-16k',
-            list: [],
+            list: [
+              {
+                label: 'FastAI-4k',
+                value: 'gpt-3.5-turbo'
+              },
+              {
+                label: 'FastAI-instruct',
+                value: 'gpt-3.5-turbo-instruct'
+              },
+              {
+                label: 'FastAI-16k',
+                value: 'gpt-3.5-turbo-16k'
+              },
+              {
+                label: 'FastAI-Plus-8k',
+                value: 'gpt-4'
+              },
+              {
+                label: 'FastAI-Plus-32k',
+                value: 'gpt-4-32k'
+              },
+              {
+                label: '百川2-13B(测试)',
+                value: 'baichuan2-13b'
+              },
+              {
+                label: '文心一言(QPS 5)',
+                value: 'ERNIE-Bot'
+              },
+              {
+                label: '星火2.0(QPS 2)',
+                value: 'SparkDesk'
+              },
+              {
+                label: 'chatglm_pro(QPS 5)',
+                value: 'chatglm_pro'
+              },
+              {
+                label: '通义千问(QPS 5)',
+                value: 'qwen-v1'
+              }
+            ],
             connected: true
           },
           {
@@ -1663,12 +1798,29 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'systemPrompt',
             type: 'textarea',
             label: '系统提示词',
+            max: 300,
             valueType: 'string',
             description:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             value: '知识库是关于 laf 的内容。',
+            connected: true
+          },
+          {
+            key: 'quoteTemplate',
+            type: 'hidden',
+            label: '引用内容模板',
+            valueType: 'string',
+            value: '',
+            connected: true
+          },
+          {
+            key: 'quotePrompt',
+            type: 'hidden',
+            label: '引用内容提示词',
+            valueType: 'string',
+            value: '',
             connected: true
           },
           {
@@ -1680,8 +1832,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'quoteQA',
-            type: 'target',
+            type: 'custom',
             label: '引用内容',
+            description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
             valueType: 'kb_quote',
             connected: true
           },
@@ -1705,8 +1858,9 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           {
             key: 'answerText',
             label: '模型回复',
-            description: '直接响应，无需配置',
-            type: 'hidden',
+            description: '将在 stream 回复完毕后触发',
+            valueType: 'string',
+            type: 'source',
             targets: []
           },
           {
@@ -1714,6 +1868,14 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             label: '回复结束',
             description: 'AI 回复完成后触发',
             valueType: 'boolean',
+            type: 'source',
+            targets: []
+          },
+          {
+            key: 'history',
+            label: '新的上下文',
+            description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
+            valueType: 'chat_history',
             type: 'source',
             targets: []
           }
@@ -1725,7 +1887,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         flowType: 'historyNode',
         position: {
           x: 193.3803955457983,
-          y: 1116.251200765746
+          y: 1316.251200765746
         },
         inputs: [
           {
@@ -1770,11 +1932,11 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         },
         inputs: [
           {
+            key: 'kbList',
             type: 'custom',
             label: '关联的知识库',
-            list: [],
-            key: 'kbList',
             value: [],
+            list: [],
             connected: true
           },
           {
@@ -1886,10 +2048,23 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         inputs: [
           {
             key: 'welcomeText',
-            type: 'input',
+            type: 'hidden',
             label: '开场白',
             value:
               '你好，我是 laf 助手，有什么可以帮助你的？\n[laf 是什么？有什么用？]\n[laf 在线体验地址]\n[官网地址是多少]',
+            connected: true
+          },
+          {
+            key: 'variables',
+            type: 'hidden',
+            label: '对话框变量',
+            value: [],
+            connected: true
+          },
+          {
+            key: 'questionGuide',
+            type: 'switch',
+            label: '问题引导',
             connected: true
           }
         ],
@@ -1900,8 +2075,8 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
         name: '指定回复',
         flowType: 'answerNode',
         position: {
-          x: 1828.4596416688908,
-          y: 765.3628156185887
+          x: 2262.720467249169,
+          y: 750.6776669274682
         },
         inputs: [
           {
@@ -1913,16 +2088,25 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'text',
-            value: '对不起，我找不到你的问题，请更加详细的描述你的问题。',
             type: 'textarea',
             valueType: 'string',
+            value: '对不起，我找不到你的问题，请更加详细的描述你的问题。',
             label: '回复的内容',
             description:
-              '可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
+              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
             connected: true
           }
         ],
-        outputs: []
+        outputs: [
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: '回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
       },
       {
         moduleId: '5v78ap',
@@ -1942,16 +2126,56 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
           },
           {
             key: 'text',
-            value: '这是一个商务问题',
             type: 'textarea',
             valueType: 'string',
+            value: '这是一个商务问题',
             label: '回复的内容',
             description:
-              '可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
+              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
             connected: true
           }
         ],
-        outputs: []
+        outputs: [
+          {
+            key: 'finish',
+            label: '回复结束',
+            description: '回复完成后触发',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
+      },
+      {
+        moduleId: '9act94',
+        name: '用户问题(对话入口)',
+        flowType: 'questionInput',
+        position: {
+          x: 1827.2213090948171,
+          y: 2132.138812501788
+        },
+        inputs: [
+          {
+            key: 'userChatInput',
+            type: 'systemInput',
+            label: '用户问题',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: '用户问题',
+            type: 'source',
+            valueType: 'string',
+            targets: [
+              {
+                moduleId: 'nlfwkc',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
       }
     ]
   }

@@ -35,6 +35,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 export type useFlowStoreType = {
+  appId: string;
   reactFlowWrapper: null | React.RefObject<HTMLDivElement>;
   nodes: Node<FlowModuleItemType, string | undefined>[];
   setNodes: Dispatch<SetStateAction<Node<FlowModuleItemType, string | undefined>[]>>;
@@ -58,6 +59,7 @@ export type useFlowStoreType = {
 };
 
 const StateContext = createContext<useFlowStoreType>({
+  appId: '',
   reactFlowWrapper: null,
   nodes: [],
   setNodes: function (
@@ -109,7 +111,7 @@ const StateContext = createContext<useFlowStoreType>({
 });
 export const useFlowStore = () => useContext(StateContext);
 
-export const FlowProvider = ({ children }: { children: React.ReactNode }) => {
+export const FlowProvider = ({ appId, children }: { appId: string; children: React.ReactNode }) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -209,7 +211,6 @@ export const FlowProvider = ({ children }: { children: React.ReactNode }) => {
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
       const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
-      console.log(template);
       setNodes((state) =>
         state.concat(
           appModule2FlowNode({
@@ -328,6 +329,7 @@ export const FlowProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const value = {
+    appId,
     reactFlowWrapper,
     nodes,
     setNodes,

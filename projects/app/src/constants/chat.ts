@@ -15,7 +15,8 @@ export enum ChatRoleEnum {
 
 export enum TaskResponseKeyEnum {
   'answerText' = 'answerText', //  answer module text key
-  'responseData' = 'responseData'
+  'responseData' = 'responseData',
+  'history' = 'history'
 }
 
 export const ChatRoleMap = {
