@@ -81,7 +81,7 @@ export type StartChatFnProps = {
 export type ComponentRef = {
   getChatHistory: () => ChatSiteItemType[];
   resetVariables: (data?: Record<string, any>) => void;
-  resetHistory: (chatId: ChatSiteItemType[]) => void;
+  resetHistory: (history: ChatSiteItemType[]) => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
 };
 

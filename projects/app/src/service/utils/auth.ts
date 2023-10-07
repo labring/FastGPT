@@ -111,7 +111,7 @@ export const authUser = async ({
     userid?: string;
     authorization?: string;
   };
-  const { shareId } = req.body as { shareId?: string };
+  const { shareId } = (req?.body || {}) as { shareId?: string };
 
   let uid = '';
   let appId = '';
