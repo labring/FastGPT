@@ -3,71 +3,39 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { CreateQuestionGuideProps } from '@/api/core/ai/agent/type';
-import { getAIChatApi } from '@fastgpt/core/aiApi/config';
-import { Prompt_QuestionGuide } from '@/prompts/core/agent';
 import { pushQuestionGuideBill } from '@/service/common/bill/push';
 import { defaultQGModel } from '@/pages/api/system/getInitData';
+import { createQuestionGuide } from '@fastgpt/core/ai/functions/createQuestionGuide';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const { messages } = req.body as CreateQuestionGuideProps;
-    const { user } = await authUser({ req, authToken: true, authApiKey: true, authBalance: true });
+    const { user } = await authUser({
+      req,
+      authOutLink: true,
+      authToken: true,
+      authApiKey: true,
+      authBalance: true
+    });
 
     if (!user) {
       throw new Error('user not found');
     }
-    const qgModel = global.qgModel || defaultQGModel;
 
-    const chatAPI = getAIChatApi(user.openaiAccount);
-
-    const { data } = await chatAPI.createChatCompletion({
-      model: qgModel.model,
-      temperature: 0,
-      max_tokens: 200,
-      messages: [
-        ...messages,
-        {
-          role: 'user',
-          content: Prompt_QuestionGuide
-        }
-      ],
-      stream: false
+    const { result, tokens } = await createQuestionGuide({
+      messages,
+      model: (global.qgModel || defaultQGModel).model
     });
 
-    const answer = data.choices?.[0].message?.content || '';
-    const totalTokens = data.usage?.total_tokens || 0;
+    jsonRes(res, {
+      data: result
+    });
 
-    const start = answer.indexOf('[');
-    const end = answer.lastIndexOf(']');
-
-    if (start === -1 || end === -1) {
-      return jsonRes(res, {
-        data: []
-      });
-    }
-
-    const jsonStr = answer
-      .substring(start, end + 1)
-      .replace(/(\\n|\\)/g, '')
-      .replace(/  /g, '');
-
-    try {
-      jsonRes(res, {
-        data: JSON.parse(jsonStr)
-      });
-
-      pushQuestionGuideBill({
-        tokens: totalTokens,
-        userId: user._id
-      });
-
-      return;
-    } catch (error) {
-      return jsonRes(res, {
-        data: []
-      });
-    }
+    pushQuestionGuideBill({
+      tokens: tokens,
+      userId: user._id
+    });
   } catch (err) {
     jsonRes(res, {
       code: 500,

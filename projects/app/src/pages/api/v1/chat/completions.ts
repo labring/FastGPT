@@ -14,7 +14,7 @@ import {
   dispatchContentExtract,
   dispatchHttpRequest
 } from '@/service/moduleDispatch';
-import type { CreateChatCompletionRequest } from '@fastgpt/core/aiApi/type';
+import type { CreateChatCompletionRequest } from '@fastgpt/core/ai/type';
 import type { MessageItemType } from '@/types/core/chat/type';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';

@@ -12,15 +12,7 @@ const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
 
-const ResponseTags = ({
-  chatId,
-  contentId,
-  responseData = []
-}: {
-  chatId?: string;
-  contentId?: string;
-  responseData?: ChatHistoryItemResType[];
-}) => {
+const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemResType[] }) => {
   const { isPc } = useGlobalStore();
   const { t } = useTranslation();
   const [quoteModalData, setQuoteModalData] = useState<QuoteItemType[]>();
@@ -43,7 +35,7 @@ const ResponseTags = ({
         .length,
       quoteList: chatData?.quoteList,
       historyPreview: chatData?.historyPreview,
-      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
+      runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
   }, [responseData]);
 

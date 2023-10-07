@@ -358,7 +358,6 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               <ChatBox
                 ref={ChatBoxRef}
                 showEmptyIntro
-                chatId={chatId}
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
                 userGuideModule={chatData.app?.userGuideModule}
