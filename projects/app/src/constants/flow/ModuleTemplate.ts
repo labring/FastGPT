@@ -204,18 +204,18 @@ export const ChatModule: FlowModuleTemplateType = {
   ],
   outputs: [
     {
-      key: TaskResponseKeyEnum.answerText,
-      label: '模型回复',
-      description: '将在 stream 回复完毕后触发',
-      valueType: FlowValueTypeEnum.string,
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
-    },
-    {
       key: TaskResponseKeyEnum.history,
       label: '新的上下文',
       description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
       valueType: FlowValueTypeEnum.chatHistory,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
+    {
+      key: TaskResponseKeyEnum.answerText,
+      label: '模型回复',
+      description: '将在 stream 回复完毕后触发',
+      valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
       targets: []
     },
@@ -520,6 +520,14 @@ export const AppModule: FlowModuleTemplateType = {
       targets: []
     },
     {
+      key: TaskResponseKeyEnum.answerText,
+      label: '模型回复',
+      description: '将在应用完全结束后触发',
+      valueType: FlowValueTypeEnum.string,
+      type: FlowOutputItemTypeEnum.source,
+      targets: []
+    },
+    {
       key: 'finish',
       label: '请求结束',
       valueType: FlowValueTypeEnum.boolean,
@@ -587,7 +595,7 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             key: 'welcomeText',
             type: 'input',
             label: '开场白',
-            value: '你好，有什么可以帮助你的么？',
+            value: '',
             connected: true
           }
         ],

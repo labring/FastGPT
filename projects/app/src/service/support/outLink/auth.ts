@@ -118,6 +118,7 @@ export async function authOutLinkId({ id }: { id: string }) {
 
 type TokenAuthResponseType = {
   success: boolean;
+  msg?: string;
   message?: string;
 };
 
@@ -133,7 +134,7 @@ export const authShareChatInit = async (authToken?: string, tokenUrl?: string) =
       }
     });
     if (data?.success !== true) {
-      return Promise.reject(data?.message || '身份校验失败');
+      return Promise.reject(data?.message || data?.msg || '身份校验失败');
     }
   } catch (error) {
     return Promise.reject('身份校验失败');
@@ -162,7 +163,7 @@ export const authShareStart = async ({
     });
 
     if (data?.success !== true) {
-      return Promise.reject(data?.message || '身份校验失败');
+      return Promise.reject(data?.message || data?.msg || '身份校验失败');
     }
   } catch (error) {
     return Promise.reject('身份校验失败');

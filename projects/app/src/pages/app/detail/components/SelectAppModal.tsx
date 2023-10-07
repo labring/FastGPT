@@ -39,10 +39,14 @@ const SelectAppModal = ({
       title={`选择应用${max > 1 ? `(${selectedApps.length}/${max})` : ''}`}
       onClose={onClose}
       w={'700px'}
-      minH={'300px'}
       position={'relative'}
     >
-      <ModalBody display={'grid'} gridTemplateColumns={['1fr', 'repeat(3,1fr)']} gridGap={4}>
+      <ModalBody
+        minH={'300px'}
+        display={'grid'}
+        gridTemplateColumns={['1fr', 'repeat(3,1fr)']}
+        gridGap={4}
+      >
         {apps.map((app) => (
           <Flex
             key={app._id}
