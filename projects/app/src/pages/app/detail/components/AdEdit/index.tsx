@@ -118,8 +118,17 @@ function FlowHeader({ app, onCloseSettings }: Props & {}) {
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
+      const modules = flow2AppModules();
+      // check required connect
+      for (let i = 0; i < modules.length; i++) {
+        const item = modules[i];
+        if (item.inputs.find((input) => input.required && !input.connected)) {
+          return Promise.reject(`【${item.name}】存在未连接的必填输入`);
+        }
+      }
+
       return updateAppDetail(app._id, {
-        modules: flow2AppModules(),
+        modules: modules,
         type: AppTypeEnum.advanced
       });
     },
