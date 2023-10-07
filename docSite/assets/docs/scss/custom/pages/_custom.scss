@@ -103,7 +103,13 @@ footer a:hover {
 	z-index: 9999;
 }
 
-  .feedback-btn-wrapper {
+@media (max-width: 600px) {
+	#fixed-box {
+		display: none
+	}
+}
+
+.feedback-btn-wrapper {
 	position: fixed;
 	z-index: 1000;
 	bottom: 0;
