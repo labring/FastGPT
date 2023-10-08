@@ -1,7 +1,5 @@
 import { extendTheme, defineStyleConfig, ComponentStyleConfig } from '@chakra-ui/react';
-// @ts-ignore
 import { modalAnatomy, switchAnatomy, selectAnatomy, numberInputAnatomy } from '@chakra-ui/anatomy';
-// @ts-ignore
 import { createMultiStyleConfigHelpers } from '@chakra-ui/styled-system';
 
 const { definePartsStyle, defineMultiStyleConfig } = createMultiStyleConfigHelpers(
