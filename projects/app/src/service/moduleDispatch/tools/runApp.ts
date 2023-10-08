@@ -33,7 +33,10 @@ export const dispatchAppRequest = async (props: Record<string, any>): Promise<Re
     return Promise.reject('Input is empty');
   }
 
-  const appData = await App.findById(app.id);
+  const appData = await App.findOne({
+    _id: app.id,
+    userId: user._id
+  });
 
   if (!appData) {
     return Promise.reject('App not found');

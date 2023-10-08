@@ -46,12 +46,18 @@ importers:
 
   projects/app:
     dependencies:
+      '@chakra-ui/anatomy':
+        specifier: ^2.2.1
+        version: registry.npmmirror.com/@chakra-ui/anatomy@2.2.1
       '@chakra-ui/icons':
         specifier: ^2.0.17
         version: registry.npmmirror.com/@chakra-ui/icons@2.0.17(@chakra-ui/system@2.5.8)(react@18.2.0)
       '@chakra-ui/react':
         specifier: ^2.7.0
         version: registry.npmmirror.com/@chakra-ui/react@2.7.0(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(@types/react@18.0.28)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0)
+      '@chakra-ui/styled-system':
+        specifier: ^2.9.1
+        version: registry.npmmirror.com/@chakra-ui/styled-system@2.9.1
       '@chakra-ui/system':
         specifier: ^2.5.8
         version: registry.npmmirror.com/@chakra-ui/system@2.5.8(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(react@18.2.0)
@@ -2515,6 +2521,12 @@ packages:
     resolution: {integrity: sha512-pKfOS/mztc4sUXHNc8ypJ1gPWSolWT770jrgVRfolVbYlki8y5Y+As996zMF6k5lewTu6j9DQequ7Cc9a69IVQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@chakra-ui/anatomy/-/anatomy-2.1.2.tgz}
     name: '@chakra-ui/anatomy'
     version: 2.1.2
+    dev: false
+
+  registry.npmmirror.com/@chakra-ui/anatomy@2.2.1:
+    resolution: {integrity: sha512-bbmyWTGwQo+aHYDMtLIj7k7hcWvwE7GFVDViLFArrrPhfUTDdQTNqhiDp1N7eh2HLyjNhc2MKXV8s2KTQqkmTg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@chakra-ui/anatomy/-/anatomy-2.2.1.tgz}
+    name: '@chakra-ui/anatomy'
+    version: 2.2.1
     dev: false
 
   registry.npmmirror.com/@chakra-ui/avatar@2.2.11(@chakra-ui/system@2.5.8)(react@18.2.0):
