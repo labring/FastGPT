@@ -27,10 +27,23 @@ importers:
         specifier: ^13.0.2
         version: registry.npmmirror.com/react-i18next@13.0.2(i18next@23.2.11)(react-dom@18.2.0)(react@18.2.0)
 
-  packages/common: {}
+  packages/common:
+    dependencies:
+      '@fastgpt/core':
+        specifier: workspace:*
+        version: link:../core
+      '@fastgpt/support':
+        specifier: workspace:*
+        version: link:../support
 
   packages/core:
     dependencies:
+      '@fastgpt/common':
+        specifier: workspace:*
+        version: link:../common
+      '@fastgpt/support':
+        specifier: workspace:*
+        version: link:../support
       openai:
         specifier: ^3.3.0
         version: registry.npmmirror.com/openai@3.3.0

@@ -6,7 +6,7 @@ import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { Types } from 'mongoose';
-import { datasetSpecialIds } from '@fastgpt/core/dataset/constant';
+import { isSpecialFileId } from '@fastgpt/core/dataset/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     // other data. Delete only vector data
-    if (datasetSpecialIds.includes(fileId)) {
+    if (isSpecialFileId(fileId)) {
       await PgClient.delete(PgDatasetTableName, {
         where: [['user_id', userId], 'AND', ['kb_id', kbId], 'AND', ['file_id', fileId]]
       });

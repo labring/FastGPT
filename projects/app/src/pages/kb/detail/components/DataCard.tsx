@@ -20,8 +20,8 @@ import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import MyInput from '@/components/MyInput';
-import { fileImgs } from '@/constants/common';
 import { useLoading } from '@/hooks/useLoading';
+import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -75,9 +75,8 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   // get file info
   const { data: fileInfo } = useQuery(['getFileInfo', fileId], () => getFileInfoById(fileId));
   const fileIcon = useMemo(
-    () =>
-      fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(fileInfo?.filename || ''))?.src,
-    [fileInfo?.filename]
+    () => getSpecialFileIcon(fileInfo?.id) || getFileIcon(fileInfo?.filename),
+    [fileInfo?.filename, fileInfo?.id]
   );
 
   return (

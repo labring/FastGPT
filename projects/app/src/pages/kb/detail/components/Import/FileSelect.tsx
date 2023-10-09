@@ -12,7 +12,6 @@ import {
   readDocContent
 } from '@/utils/web/file';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
-import { fileImgs } from '@/constants/common';
 import { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
@@ -22,7 +21,7 @@ import { FetchResultItem } from '@/types/plugin';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
 import { getErrText } from '@/utils/tools';
 import { useDatasetStore } from '@/store/dataset';
-import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
+import { getFileIcon } from '@fastgpt/common/tools/file';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -93,11 +92,9 @@ const FileSelect = ({
           const extension = file?.name?.split('.')?.pop()?.toLowerCase();
 
           /* text file */
-          const icon = fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(file.name))?.src;
+          const icon = getFileIcon(file?.name);
 
-          if (!icon) {
-            continue;
-          }
+          if (!icon) continue;
 
           // parse and upload files
           let [text, filesId] = await Promise.all([
@@ -203,7 +200,7 @@ const FileSelect = ({
             q: chunk,
             a: '',
             source: url,
-            file_id: DatasetSpecialIdEnum.manual
+            file_id: url
           }))
         };
       });

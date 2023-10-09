@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useDatasetStore } from '@/store/dataset';
 import { getFileAndOpen } from '@/utils/web/file';
 import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/core/dataset/constant';
+import { strIsLink } from '@fastgpt/common/tools/str';
 
 export type FormData = { dataId?: string } & DatasetDataItemType;
 
@@ -271,6 +272,9 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
               cursor: 'pointer',
               textDecoration: 'underline',
               onClick: async () => {
+                if (strIsLink(fileId)) {
+                  return window.open(fileId, '_blank');
+                }
                 try {
                   await getFileAndOpen(fileId as string);
                 } catch (error) {

@@ -9,6 +9,6 @@
 - [计费规则](https://doc.fastgpt.run/docs/pricing/)
 
 **其他问题**
-| 交流群 | 小助手 |
-| ----------------------- | -------------------- |
-| ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |
+| 添加小助手进入交流群 |
+| ----------------------- |
+| ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |

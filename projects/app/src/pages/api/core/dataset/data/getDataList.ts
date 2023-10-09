@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ...(searchText
         ? [
             'AND',
-            `(q LIKE '%${searchText}%' OR a LIKE '%${searchText}%' OR source LIKE '%${searchText}%')`
+            `(q ILIKE '%${searchText}%' OR a ILIKE '%${searchText}%' OR source ILIKE '%${searchText}%')`
           ]
         : [])
     ];
