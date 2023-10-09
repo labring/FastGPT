@@ -11,7 +11,7 @@ import { getFileInfoById } from '@/api/core/dataset/file';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
-import InputModal, { FormData as InputDataType } from './InputDataModal';
+import InputModal, { FormData as InputDataType, RawFileText } from './InputDataModal';
 import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -100,15 +100,15 @@ const DataCard = ({ kbId }: { kbId: string }) => {
             })
           }
         />
-        <Flex
-          className="textEllipsis"
-          flex={'1 0 0'}
-          mr={[3, 5]}
-          fontSize={['sm', 'md']}
-          alignItems={'center'}
-        >
+        <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
           <Image src={fileIcon || '/imgs/files/file.svg'} w={'16px'} mr={2} alt={''} />
-          {t(fileInfo?.filename || 'Filename')}
+          <RawFileText
+            filename={fileInfo?.filename}
+            fileId={fileInfo?.id}
+            fontSize={['md', 'lg']}
+            color={'black'}
+            textDecoration={'none'}
+          />
         </Flex>
         <Box>
           <MyTooltip label={'刷新'}>

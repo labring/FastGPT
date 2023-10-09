@@ -19,6 +19,7 @@ import { useDatasetStore } from '@/store/dataset';
 import { getFileAndOpen } from '@/utils/web/file';
 import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/core/dataset/constant';
 import { strIsLink } from '@fastgpt/common/tools/str';
+import { useGlobalStore } from '@/store/global';
 
 export type FormData = { dataId?: string } & DatasetDataItemType;
 
@@ -258,6 +259,7 @@ interface RawFileTextProps extends BoxProps {
 export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { setLoading } = useGlobalStore();
 
   const hasFile = useMemo(() => fileId && !datasetSpecialIds.includes(fileId), [fileId]);
 
@@ -275,6 +277,7 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
                 if (strIsLink(fileId)) {
                   return window.open(fileId, '_blank');
                 }
+                setLoading(true);
                 try {
                   await getFileAndOpen(fileId as string);
                 } catch (error) {
@@ -283,6 +286,7 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
                     status: 'error'
                   });
                 }
+                setLoading(false);
               }
             }
           : {})}
