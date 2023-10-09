@@ -3,10 +3,6 @@
     {
       "source": "/",
       "destination": "/docs"
-    },
-    {
-      "source": "/imgs/:path*",
-      "destination": "https://jsdelivr.icloudnative.io/gh/labring/FastGPT@main/docSite/assets/imgs/:path*"
     }
   ],
   "headers": [
