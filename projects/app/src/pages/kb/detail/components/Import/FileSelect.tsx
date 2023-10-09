@@ -22,6 +22,7 @@ import { FetchResultItem } from '@/types/plugin';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
 import { getErrText } from '@/utils/tools';
 import { useDatasetStore } from '@/store/dataset';
+import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -63,7 +64,7 @@ const FileSelect = ({
 
   const { toast } = useToast();
 
-  const { File, onOpen } = useSelectFile({
+  const { File: FileSelector, onOpen } = useSelectFile({
     fileType: fileExtension,
     multiple: true
   });
@@ -201,7 +202,8 @@ const FileSelect = ({
           chunks: splitRes.chunks.map((chunk) => ({
             q: chunk,
             a: '',
-            source: url
+            source: url,
+            file_id: DatasetSpecialIdEnum.manual
           }))
         };
       });
@@ -210,15 +212,25 @@ const FileSelect = ({
     [chunkLen, onPushFiles]
   );
   const onCreateFile = useCallback(
-    ({ filename, content }: { filename: string; content: string }) => {
+    async ({ filename, content }: { filename: string; content: string }) => {
       content = simpleText(content);
+
+      // create virtual txt file
+      const txtBlob = new Blob([content], { type: 'text/plain' });
+      const txtFile = new File([txtBlob], `${filename}.txt`, {
+        type: txtBlob.type,
+        lastModified: new Date().getTime()
+      });
+      const fileIds = await uploadFiles([txtFile], { kbId: kbDetail._id });
+
       const splitRes = splitText2Chunks({
         text: content,
         maxLen: chunkLen
       });
+
       onPushFiles([
         {
-          id: nanoid(),
+          id: fileIds[0],
           filename,
           icon: '/imgs/files/txt.svg',
           text: content,
@@ -226,12 +238,13 @@ const FileSelect = ({
           chunks: splitRes.chunks.map((chunk) => ({
             q: chunk,
             a: '',
-            source: filename
+            source: filename,
+            file_id: fileIds[0]
           }))
         }
       ]);
     },
-    [chunkLen, onPushFiles]
+    [chunkLen, kbDetail._id, onPushFiles]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -383,7 +396,7 @@ const FileSelect = ({
       {selectingText !== undefined && (
         <FileSelectLoading loading text={selectingText} fixed={false} />
       )}
-      <File onSelect={onSelectFile} />
+      <FileSelector onSelect={onSelectFile} />
       {isOpenUrlFetch && <UrlFetchModal onClose={onCloseUrlFetch} onSuccess={onUrlFetch} />}
       {isOpenCreateFile && <CreateFileModal onClose={onCloseCreateFile} onSuccess={onCreateFile} />}
     </Box>

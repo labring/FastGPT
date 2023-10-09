@@ -21,11 +21,13 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import MyInput from '@/components/MyInput';
 import { fileImgs } from '@/constants/common';
+import { useLoading } from '@/hooks/useLoading';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
   const router = useRouter();
+  const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
   const { fileId = '' } = router.query as { fileId: string };
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -52,6 +54,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
       fileId
     },
     onChange() {
+      setIsLoading(false);
       if (BoxRef.current) {
         BoxRef.current.scrollTop = 0;
       }
@@ -249,6 +252,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         />
       )}
       <ConfirmModal />
+      <Loading fixed={false} />
     </Box>
   );
 };

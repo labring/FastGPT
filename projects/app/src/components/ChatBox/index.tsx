@@ -63,7 +63,7 @@ import styles from './index.module.scss';
 import Script from 'next/script';
 import { postQuestionGuide } from '@/api/core/ai/agent/api';
 import { splitGuideModule } from './utils';
-import { DatasetFileIdEnum } from '@fastgpt/core/dataset/constant';
+import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -997,7 +997,7 @@ const ChatBox = (
                 dataId: adminMarkData.dataId,
                 q: adminMarkData.q,
                 a: adminMarkData.a,
-                file_id: DatasetFileIdEnum.mark
+                file_id: DatasetSpecialIdEnum.mark
               }}
             />
           )}

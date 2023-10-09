@@ -6,7 +6,7 @@ import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { FileStatusEnum } from '@/constants/dataset';
-import { DatasetFileIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
+import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -54,9 +54,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (pageNum !== 1) return [];
       return [
         {
-          id: DatasetFileIdEnum.manual,
+          id: DatasetSpecialIdEnum.manual,
           size: 0,
-          filename: datasetSpecialIdMap[DatasetFileIdEnum.manual].name,
+          filename: datasetSpecialIdMap[DatasetSpecialIdEnum.manual].name,
           uploadTime: new Date(),
           status: FileStatusEnum.ready,
           chunkLength: await PgClient.count(PgDatasetTableName, {
@@ -64,16 +64,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             where: [
               ['user_id', userId],
               'AND',
-              ['file_id', DatasetFileIdEnum.manual],
+              ['file_id', DatasetSpecialIdEnum.manual],
               'AND',
               ['kb_id', kbId]
             ]
           })
         },
         {
-          id: DatasetFileIdEnum.mark,
+          id: DatasetSpecialIdEnum.mark,
           size: 0,
-          filename: datasetSpecialIdMap[DatasetFileIdEnum.mark].name,
+          filename: datasetSpecialIdMap[DatasetSpecialIdEnum.mark].name,
           uploadTime: new Date(),
           status: FileStatusEnum.ready,
           chunkLength: await PgClient.count(PgDatasetTableName, {
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             where: [
               ['user_id', userId],
               'AND',
-              ['file_id', DatasetFileIdEnum.mark],
+              ['file_id', DatasetSpecialIdEnum.mark],
               'AND',
               ['kb_id', kbId]
             ]

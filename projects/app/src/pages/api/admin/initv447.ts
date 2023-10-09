@@ -4,7 +4,7 @@ import { authUser } from '@/service/utils/auth';
 import { connectToDatabase } from '@/service/mongo';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { DatasetFileIdEnum } from '@fastgpt/core/dataset/constant';
+import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 import mongoose, { Types } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (file) return '';
         // 没有文件的，改成manual
         await PgClient.query(`UPDATE ${PgDatasetTableName}
-    SET file_id = '${DatasetFileIdEnum.manual}'
+    SET file_id = '${DatasetSpecialIdEnum.manual}'
     WHERE file_id = '${item.file_id}';
     `);
         return item.file_id;
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 更新所有 file_id 为空或不存在的 data
     const { rowCount } = await PgClient.query(`UPDATE ${PgDatasetTableName}
-    SET file_id = '${DatasetFileIdEnum.manual}'
+    SET file_id = '${DatasetSpecialIdEnum.manual}'
     WHERE file_id IS NULL OR file_id = '';
     `);
 

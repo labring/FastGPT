@@ -1,15 +1,15 @@
-export enum DatasetFileIdEnum {
+export enum DatasetSpecialIdEnum {
   manual = 'manual',
   mark = 'mark'
 }
 export const datasetSpecialIdMap = {
-  [DatasetFileIdEnum.manual]: {
+  [DatasetSpecialIdEnum.manual]: {
     name: 'kb.Manual Data',
     sourceName: 'kb.Manual Input'
   },
-  [DatasetFileIdEnum.mark]: {
+  [DatasetSpecialIdEnum.mark]: {
     name: 'kb.Mark Data',
     sourceName: 'kb.Manual Mark'
   }
 };
-export const datasetSpecialIds: string[] = [DatasetFileIdEnum.manual, DatasetFileIdEnum.mark];
+export const datasetSpecialIds: string[] = [DatasetSpecialIdEnum.manual, DatasetSpecialIdEnum.mark];

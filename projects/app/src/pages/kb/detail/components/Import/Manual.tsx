@@ -8,7 +8,7 @@ import { postData2Dataset } from '@/api/core/dataset/data';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/store/dataset';
-import { DatasetFileIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
+import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 
 type ManualFormType = { q: string; a: string };
 
@@ -38,8 +38,8 @@ const ManualImport = ({ kbId }: { kbId: string }) => {
           data: {
             a: e.a,
             q: e.q,
-            source: datasetSpecialIdMap[DatasetFileIdEnum.manual]?.sourceName,
-            file_id: DatasetFileIdEnum.manual
+            source: datasetSpecialIdMap[DatasetSpecialIdEnum.manual]?.sourceName,
+            file_id: DatasetSpecialIdEnum.manual
           }
         });
 
