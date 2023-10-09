@@ -5,7 +5,8 @@ import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { FileStatusEnum, OtherFileId } from '@/constants/dataset';
+import { FileStatusEnum } from '@/constants/dataset';
+import { DatasetFileIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -50,24 +51,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     ]);
 
     async function GetOtherData() {
-      return {
-        id: OtherFileId,
-        size: 0,
-        filename: 'kb.Other Data',
-        uploadTime: new Date(),
-        status: (await TrainingData.findOne({ userId, kbId, file_id: '' }))
-          ? FileStatusEnum.embedding
-          : FileStatusEnum.ready,
-        chunkLength: await PgClient.count(PgDatasetTableName, {
-          fields: ['id'],
-          where: [
-            ['user_id', userId],
-            'AND',
-            ['kb_id', kbId],
-            "AND (file_id IS NULL OR file_id = '')"
-          ]
-        })
-      };
+      if (pageNum !== 1) return [];
+      return [
+        {
+          id: DatasetFileIdEnum.manual,
+          size: 0,
+          filename: datasetSpecialIdMap[DatasetFileIdEnum.manual].name,
+          uploadTime: new Date(),
+          status: FileStatusEnum.ready,
+          chunkLength: await PgClient.count(PgDatasetTableName, {
+            fields: ['id'],
+            where: [
+              ['user_id', userId],
+              'AND',
+              ['file_id', DatasetFileIdEnum.manual],
+              'AND',
+              ['kb_id', kbId]
+            ]
+          })
+        },
+        {
+          id: DatasetFileIdEnum.mark,
+          size: 0,
+          filename: datasetSpecialIdMap[DatasetFileIdEnum.mark].name,
+          uploadTime: new Date(),
+          status: FileStatusEnum.ready,
+          chunkLength: await PgClient.count(PgDatasetTableName, {
+            fields: ['id'],
+            where: [
+              ['user_id', userId],
+              'AND',
+              ['file_id', DatasetFileIdEnum.mark],
+              'AND',
+              ['kb_id', kbId]
+            ]
+          })
+        }
+      ];
     }
 
     const data = await Promise.all([

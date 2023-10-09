@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Box, Flex, Button, Textarea, IconButton, BoxProps } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import {
@@ -17,6 +17,7 @@ import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { useTranslation } from 'react-i18next';
 import { useDatasetStore } from '@/store/dataset';
 import { getFileAndOpen } from '@/utils/web/file';
+import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/core/dataset/constant';
 
 export type FormData = { dataId?: string } & DatasetDataItemType;
 
@@ -25,16 +26,13 @@ const InputDataModal = ({
   onSuccess,
   onDelete,
   kbId,
-  defaultValues = {
-    a: '',
-    q: ''
-  }
+  defaultValues
 }: {
   onClose: () => void;
   onSuccess: (data: FormData) => void;
   onDelete?: () => void;
   kbId: string;
-  defaultValues?: FormData;
+  defaultValues: FormData;
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -64,10 +62,10 @@ const InputDataModal = ({
 
       try {
         const data = {
+          ...e,
           dataId: '',
-          a: e.a,
-          q: e.q,
-          source: '手动录入'
+          // @ts-ignore
+          source: datasetSpecialIdMap[e.file_id]?.sourceName
         };
         data.dataId = await postData2Dataset({
           kbId,
@@ -103,9 +101,9 @@ const InputDataModal = ({
         setLoading(true);
         try {
           const data = {
+            ...e,
             dataId: e.dataId,
             kbId,
-            a: e.a,
             q: e.q === defaultValues.q ? '' : e.q
           };
           await putDatasetDataById(data);
@@ -259,19 +257,22 @@ interface RawFileTextProps extends BoxProps {
 export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
+
+  const hasFile = useMemo(() => fileId && !datasetSpecialIds.includes(fileId), [fileId]);
+
   return (
-    <MyTooltip label={fileId ? t('file.Click to view file') || '' : ''} shouldWrapChildren={false}>
+    <MyTooltip label={hasFile ? t('file.Click to view file') || '' : ''} shouldWrapChildren={false}>
       <Box
         color={'myGray.600'}
         display={'inline-block'}
         whiteSpace={'nowrap'}
-        {...(!!fileId
+        {...(hasFile
           ? {
               cursor: 'pointer',
               textDecoration: 'underline',
               onClick: async () => {
                 try {
-                  await getFileAndOpen(fileId);
+                  await getFileAndOpen(fileId as string);
                 } catch (error) {
                   toast({
                     title: getErrText(error, '获取文件地址失败'),
@@ -283,7 +284,7 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
           : {})}
         {...props}
       >
-        {filename}
+        {t(filename)}
       </Box>
     </MyTooltip>
   );

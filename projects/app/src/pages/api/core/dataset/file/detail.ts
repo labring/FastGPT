@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { OtherFileId } from '@/constants/dataset';
+import { datasetSpecialIds, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 import type { GSFileInfoType } from '@/types/common/file';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -14,12 +14,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    if (fileId === OtherFileId) {
+    if (datasetSpecialIds.includes(fileId)) {
       return jsonRes<GSFileInfoType>(res, {
         data: {
-          id: OtherFileId,
+          id: fileId,
           size: 0,
-          filename: 'kb.Other Data',
+          // @ts-ignore
+          filename: datasetSpecialIdMap[fileId]?.name,
           uploadDate: new Date(),
           encoding: '',
           contentType: ''

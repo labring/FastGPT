@@ -25,7 +25,8 @@ import dayjs from 'dayjs';
 import { fileImgs } from '@/constants/common';
 import { useRequest } from '@/hooks/useRequest';
 import { useLoading } from '@/hooks/useLoading';
-import { FileStatusEnum, OtherFileId } from '@/constants/dataset';
+import { FileStatusEnum } from '@/constants/dataset';
+import { datasetSpecialIds } from '@fastgpt/core/dataset/constant';
 import { useRouter } from 'next/router';
 import { usePagination } from '@/hooks/usePagination';
 import type { DatasetFileItemType } from '@/types/core/dataset/file';
@@ -279,7 +280,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
                       </MenuButton>
                     }
                     menuList={[
-                      ...(file.id !== OtherFileId
+                      ...(!datasetSpecialIds.includes(file.id)
                         ? [
                             {
                               child: (
