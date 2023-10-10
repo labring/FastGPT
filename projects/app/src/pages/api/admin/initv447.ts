@@ -8,44 +8,60 @@ import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 import mongoose, { Types } from 'mongoose';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  let initFileIds: string[] = [];
   try {
+    const { limit = 100 } = req.body;
     await connectToDatabase();
     await authUser({ req, authRoot: true });
+
+    console.log('add index');
+    await PgClient.query(
+      `
+      CREATE INDEX IF NOT EXISTS modelData_fileId_index ON modeldata (file_id);
+      `
+    );
+    console.log('index success');
+    console.log('count rows');
     // 去重获取 fileId
     const { rows } = await PgClient.query(`SELECT DISTINCT file_id
-    FROM ${PgDatasetTableName};
+    FROM ${PgDatasetTableName} WHERE file_id IS NOT NULL AND file_id != '';
     `);
+    console.log('count rows success', rows.length);
+    console.log('start filter');
+    for (let i = 0; i < rows.length; i += limit) {
+      await init(rows.slice(i, i + limit), initFileIds);
+      console.log(i);
+    }
+    console.log('filter success');
+    console.log('start update');
 
-    const collection = mongoose.connection.db.collection(`dataset.files`);
+    for (let i = 0; i < initFileIds.length; i++) {
+      await PgClient.query(`UPDATE ${PgDatasetTableName}
+      SET file_id = '${DatasetSpecialIdEnum.manual}'
+      WHERE file_id = '${initFileIds[i]}'`);
+      console.log('update: ', initFileIds[i]);
+    }
 
-    /* 遍历所有的 fileId，去找有没有对应的文件，没有的话则改成manual */
-    const updateResult = await Promise.allSettled(
-      rows.map(async (item) => {
-        // 找下是否有对应的文件
-        const file = await collection.findOne({
-          _id: new Types.ObjectId(item.file_id)
-        });
-        if (file) return '';
-        // 没有文件的，改成manual
-        await PgClient.query(`UPDATE ${PgDatasetTableName}
-    SET file_id = '${DatasetSpecialIdEnum.manual}'
-    WHERE file_id = '${item.file_id}';
-    `);
-        return item.file_id;
-      })
+    const { rows: emptyIds } = await PgClient.query(
+      `SELECT id FROM ${PgDatasetTableName} WHERE file_id IS NULL OR file_id = ''`
     );
+    for (let i = 0; i < emptyIds.length; i += 100) {
+      await PgClient.query(
+        `UPDATE ${PgDatasetTableName}
+        SET file_id = '${DatasetSpecialIdEnum.manual}'
+        WHERE id IN (${emptyIds
+          .slice(i, i + 100)
+          .map((item) => `'${item.id}'`)
+          .join(',')})`
+      );
+      console.log('update:', i);
+    }
 
-    // 更新所有 file_id 为空或不存在的 data
-    const { rowCount } = await PgClient.query(`UPDATE ${PgDatasetTableName}
-    SET file_id = '${DatasetSpecialIdEnum.manual}'
-    WHERE file_id IS NULL OR file_id = '';
-    `);
+    console.log('update success');
 
     jsonRes(res, {
       data: {
-        empty: rowCount,
-        // @ts-ignore
-        fileNoExist: updateResult.filter((item) => item?.value).length
+        empty: emptyIds.length
       }
     });
   } catch (error) {
@@ -54,4 +70,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error
     });
   }
+}
+
+async function init(rows: any[], initFileIds: string[]) {
+  const collection = mongoose.connection.db.collection(`dataset.files`);
+
+  /* 遍历所有的 fileId，去找有没有对应的文件，没有的话则改成manual */
+  const updateResult = await Promise.allSettled(
+    rows.map(async (item) => {
+      // 找下是否有对应的文件
+      const file = await collection.findOne({
+        _id: new Types.ObjectId(item.file_id)
+      });
+
+      if (file) return '';
+      // 没有文件的，改成manual
+      initFileIds.push(item.file_id);
+
+      return item.file_id;
+    })
+  );
+  // @ts-ignore
+  console.log(updateResult.filter((item) => item?.value).length);
 }

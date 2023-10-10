@@ -36,10 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ${searchText ? `AND source ILIKE '%${searchText}%'` : ''}`;
 
     const [{ rows }, { rowCount: total }] = await Promise.all([
-      PgClient.query(`SELECT file_id, source, COUNT(*) AS count
+      PgClient.query(`SELECT file_id, COUNT(*) AS count
     FROM ${PgDatasetTableName}
     where ${pgWhere}
-    GROUP BY file_id, source
+    GROUP BY file_id
     ORDER BY file_id DESC
     LIMIT ${pageSize} OFFSET ${(pageNum - 1) * pageSize};
     `),
@@ -98,10 +98,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ...rows.map(async (row) => {
         // link data
         if (strIsLink(row.file_id)) {
+          const { rows } = await PgClient.select(PgDatasetTableName, {
+            where: [['user_id', userId], 'AND', ['file_id', row.file_id]],
+            limit: 1,
+            fields: ['source']
+          });
           return {
             id: row.file_id,
             size: 0,
-            filename: row.source || row.file_id,
+            filename: rows[0]?.source || row.file_id,
             uploadTime: new Date(),
             status: FileStatusEnum.ready,
             chunkLength: row.count

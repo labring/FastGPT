@@ -1,12 +1,8 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Grid, Image } from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Grid, Image, Button } from '@chakra-ui/react';
 import type { PgDataItemType } from '@/types/core/dataset/data';
 import { usePagination } from '@/hooks/usePagination';
-import {
-  getDatasetDataList,
-  delOneDatasetDataById,
-  getTrainingData
-} from '@/api/core/dataset/data';
+import { getDatasetDataList, delOneDatasetDataById } from '@/api/core/dataset/data';
 import { getFileInfoById } from '@/api/core/dataset/file';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +14,6 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
-import MyTooltip from '@/components/MyTooltip';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/hooks/useLoading';
 import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
@@ -39,7 +34,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
 
   const {
     data: kbDataList,
-    isLoading,
     Pagination,
     total,
     getData,
@@ -84,10 +78,9 @@ const DataCard = ({ kbId }: { kbId: string }) => {
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'myBlue.600'} />}
           bg={'white'}
           boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-          h={'28px'}
           size={'sm'}
           borderRadius={'50%'}
           aria-label={''}
@@ -111,19 +104,9 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           />
         </Flex>
         <Box>
-          <MyTooltip label={'刷新'}>
-            <IconButton
-              icon={<RepeatIcon />}
-              size={['sm', 'md']}
-              aria-label={'refresh'}
-              variant={'base'}
-              isLoading={isLoading}
-              onClick={() => {
-                getData(pageNum);
-                getTrainingData({ kbId, init: true });
-              }}
-            />
-          </MyTooltip>
+          {/* <Button ml={2} variant={'base'} size={['sm', 'md']}>
+            {t('kb.Insert Data')}
+          </Button> */}
         </Box>
       </Flex>
       <Flex my={3} alignItems={'center'}>

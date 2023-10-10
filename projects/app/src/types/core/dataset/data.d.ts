@@ -5,6 +5,6 @@ export type DatasetDataItemType = {
   file_id: string;
 };
 
-export type PgDataItemType = DatasetItemType & {
+export type PgDataItemType = DatasetDataItemType & {
   id: string;
 };

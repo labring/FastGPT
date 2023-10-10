@@ -36,7 +36,8 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
       quoteList: responseData
         .filter((item) => item.moduleType === FlowModuleTypeEnum.chatNode)
         .map((item) => item.quoteList)
-        .flat(),
+        .flat()
+        .filter((item) => item) as QuoteItemType[],
       historyPreview: chatData?.historyPreview,
       runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };

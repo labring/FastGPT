@@ -27,7 +27,7 @@ const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-const csvTemplate = `index,content,source\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号","来源，可选。"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……",""`;
+const csvTemplate = `index,content\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
 export type FileItemType = {
   id: string;
@@ -163,7 +163,7 @@ const FileSelect = ({
                 .map((item) => ({
                   q: item[0] || '',
                   a: item[1] || '',
-                  source: item[2] || file.name || '',
+                  source: file.name || '',
                   file_id: filesId[0]
                 }))
             };

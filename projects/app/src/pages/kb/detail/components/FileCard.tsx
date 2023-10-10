@@ -140,11 +140,15 @@ const FileCard = ({ kbId }: { kbId: string }) => {
 
   // training data
   const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch: refetchTrainingData } =
-    useQuery(['getModelSplitDataList', kbId], () => getTrainingData({ kbId, init: false }), {
-      onError(err) {
-        console.log(err);
+    useQuery(
+      ['getModelSplitDataList', kbId],
+      () => getTrainingData({ kbId, init: Math.random() > 0.7 }),
+      {
+        onError(err) {
+          console.log(err);
+        }
       }
-    });
+    );
 
   useQuery(
     ['refetchTrainingData', kbId],
