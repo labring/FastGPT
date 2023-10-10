@@ -55,7 +55,14 @@ importers:
         specifier: ^0.0.4
         version: registry.npmmirror.com/@types/tunnel@0.0.4
 
-  packages/support: {}
+  packages/support:
+    dependencies:
+      '@fastgpt/common':
+        specifier: workspace:*
+        version: link:../common
+      '@fastgpt/core':
+        specifier: workspace:*
+        version: link:../core
 
   projects/app:
     dependencies:
