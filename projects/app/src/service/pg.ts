@@ -179,8 +179,8 @@ export const insertData2Dataset = ({
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
-      { key: 'source', value: item.source?.slice(0, 60)?.trim() || '' },
-      { key: 'file_id', value: item.file_id || '' },
+      { key: 'source', value: item.source?.slice(0, 200)?.trim() || '' },
+      { key: 'file_id', value: item.file_id?.slice(0, 200)?.trim() || '' },
       { key: 'q', value: item.q.replace(/'/g, '"') },
       { key: 'a', value: item.a.replace(/'/g, '"') },
       { key: 'vector', value: `[${item.vector}]` }
@@ -198,8 +198,8 @@ export async function initPg() {
           vector VECTOR(1536) NOT NULL,
           user_id VARCHAR(50) NOT NULL,
           kb_id VARCHAR(50),
-          source VARCHAR(100),
-          file_id VARCHAR(100),
+          source VARCHAR(256),
+          file_id VARCHAR(256),
           q TEXT NOT NULL,
           a TEXT
       );

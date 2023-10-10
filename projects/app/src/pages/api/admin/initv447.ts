@@ -6,6 +6,7 @@ import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 import mongoose, { Types } from 'mongoose';
+import { delay } from '@/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let initFileIds: string[] = [];
@@ -17,6 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('add index');
     await PgClient.query(
       `
+      ALTER TABLE modeldata
+      ALTER COLUMN source TYPE VARCHAR(256),
+      ALTER COLUMN file_id TYPE VARCHAR(256);
       CREATE INDEX IF NOT EXISTS modelData_fileId_index ON modeldata (file_id);
       `
     );
@@ -42,12 +46,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('update: ', initFileIds[i]);
     }
 
-    const { rows: emptyIds } = await PgClient.query(`SELECT id FROM ${PgDatasetTableName} `);
-    await PgClient.query(
-      `UPDATE ${PgDatasetTableName}
-        SET file_id = '${DatasetSpecialIdEnum.manual}'
-        WHERE file_id IS NULL OR file_id = ''`
+    const { rows: emptyIds } = await PgClient.query(
+      `SELECT id FROM ${PgDatasetTableName} WHERE file_id IS NULL OR file_id=''`
     );
+    console.log(emptyIds.length);
+
+    await delay(5000);
+
+    async function start(start: number) {
+      for (let i = start; i < emptyIds.length; i += limit) {
+        await PgClient.query(`UPDATE ${PgDatasetTableName}
+        SET file_id = '${DatasetSpecialIdEnum.manual}'
+        WHERE id = '${emptyIds[i].id}'`);
+        console.log('update: ', i, emptyIds[i].id);
+      }
+    }
+    for (let i = 0; i < limit; i++) {
+      start(i);
+    }
+
+    // await PgClient.query(
+    //   `UPDATE ${PgDatasetTableName}
+    //     SET file_id = '${DatasetSpecialIdEnum.manual}'
+    //     WHERE file_id IS NULL OR file_id = ''`
+    // );
 
     console.log('update success');
 

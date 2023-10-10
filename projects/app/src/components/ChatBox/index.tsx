@@ -512,6 +512,12 @@ const ChatBox = (
 
   // add guide text listener
   useEffect(() => {
+    const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
+      if (data?.type === 'sendPrompt' && data?.text) {
+        handleSubmit((item) => sendPrompt(item, data.text))();
+      }
+    };
+    window.addEventListener('message', windowMessage);
     event.on('guideClick', ({ text }: { text: string }) => {
       if (!text) return;
       handleSubmit((data) => sendPrompt(data, text))();
@@ -519,6 +525,7 @@ const ChatBox = (
 
     return () => {
       event.off('guideClick');
+      window.removeEventListener('message', windowMessage);
     };
   }, [handleSubmit, sendPrompt]);
 
