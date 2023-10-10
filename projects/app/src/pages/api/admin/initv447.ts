@@ -42,20 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('update: ', initFileIds[i]);
     }
 
-    const { rows: emptyIds } = await PgClient.query(
-      `SELECT id FROM ${PgDatasetTableName} WHERE file_id IS NULL OR file_id = ''`
-    );
-    for (let i = 0; i < emptyIds.length; i += 100) {
-      await PgClient.query(
-        `UPDATE ${PgDatasetTableName}
+    const { rows: emptyIds } = await PgClient.query(`SELECT id FROM ${PgDatasetTableName} `);
+    await PgClient.query(
+      `UPDATE ${PgDatasetTableName}
         SET file_id = '${DatasetSpecialIdEnum.manual}'
-        WHERE id IN (${emptyIds
-          .slice(i, i + 100)
-          .map((item) => `'${item.id}'`)
-          .join(',')})`
-      );
-      console.log('update:', i);
-    }
+        WHERE file_id IS NULL OR file_id = ''`
+    );
 
     console.log('update success');
 
