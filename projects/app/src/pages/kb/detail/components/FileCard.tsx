@@ -22,16 +22,17 @@ import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';
-import { fileImgs } from '@/constants/common';
 import { useRequest } from '@/hooks/useRequest';
 import { useLoading } from '@/hooks/useLoading';
-import { FileStatusEnum, OtherFileId } from '@/constants/dataset';
+import { FileStatusEnum } from '@/constants/dataset';
 import { useRouter } from 'next/router';
 import { usePagination } from '@/hooks/usePagination';
 import type { DatasetFileItemType } from '@/types/core/dataset/file';
 import { useGlobalStore } from '@/store/global';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/hooks/useEditTitle';
+import { datasetSpecialIds } from '@fastgpt/core/dataset/constant';
+import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
 
 const FileCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -79,10 +80,14 @@ const FileCard = ({ kbId }: { kbId: string }) => {
   // add file icon
   const formatFiles = useMemo(
     () =>
-      files.map((file) => ({
-        ...file,
-        icon: fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(file.filename))?.src
-      })),
+      files.map((file) => {
+        const icon = getSpecialFileIcon(file.id) || getFileIcon(file.filename);
+
+        return {
+          ...file,
+          icon
+        };
+      }),
     [files]
   );
 
@@ -114,8 +119,8 @@ const FileCard = ({ kbId }: { kbId: string }) => {
     onSettled() {
       setLoading(false);
     },
-    successToast: t('common.Delete Success'),
-    errorToast: t('common.Delete Failed')
+    successToast: t('common.Rename Success'),
+    errorToast: t('common.Rename Failed')
   });
 
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
@@ -135,11 +140,15 @@ const FileCard = ({ kbId }: { kbId: string }) => {
 
   // training data
   const { data: { qaListLen = 0, vectorListLen = 0 } = {}, refetch: refetchTrainingData } =
-    useQuery(['getModelSplitDataList', kbId], () => getTrainingData({ kbId, init: false }), {
-      onError(err) {
-        console.log(err);
+    useQuery(
+      ['getModelSplitDataList', kbId],
+      () => getTrainingData({ kbId, init: Math.random() > 0.7 }),
+      {
+        onError(err) {
+          console.log(err);
+        }
       }
-    });
+    );
 
   useQuery(
     ['refetchTrainingData', kbId],
@@ -279,7 +288,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
                       </MenuButton>
                     }
                     menuList={[
-                      ...(file.id !== OtherFileId
+                      ...(!datasetSpecialIds.includes(file.id)
                         ? [
                             {
                               child: (

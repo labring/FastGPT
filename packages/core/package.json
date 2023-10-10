@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "dependencies": {
     "openai": "^3.3.0",
-    "tunnel": "^0.0.6"
+    "tunnel": "^0.0.6",
+    "@fastgpt/common": "workspace:*",
+    "@fastgpt/support": "workspace:*"
   },
   "devDependencies": {
     "@types/tunnel": "^0.0.4"

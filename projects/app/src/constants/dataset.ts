@@ -34,4 +34,3 @@ export const KbTypeMap = {
 };
 
 export const FolderAvatarSrc = '/imgs/files/folder.svg';
-export const OtherFileId = 'other';

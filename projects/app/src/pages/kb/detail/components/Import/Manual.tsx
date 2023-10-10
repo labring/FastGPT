@@ -4,11 +4,11 @@ import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/useToast';
 import { useRequest } from '@/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
-import { postChunks2Dataset } from '@/api/core/dataset/data';
-import { TrainingModeEnum } from '@/constants/plugin';
+import { postData2Dataset } from '@/api/core/dataset/data';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/store/dataset';
+import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 
 type ManualFormType = { q: string; a: string };
 
@@ -33,32 +33,24 @@ const ManualImport = ({ kbId }: { kbId: string }) => {
       }
 
       try {
-        const data = {
-          a: e.a,
-          q: e.q,
-          source: '手动录入'
-        };
-        const { insertLen } = await postChunks2Dataset({
+        await postData2Dataset({
           kbId,
-          mode: TrainingModeEnum.index,
-          data: [data]
+          data: {
+            a: e.a,
+            q: e.q,
+            source: datasetSpecialIdMap[DatasetSpecialIdEnum.manual]?.sourceName,
+            file_id: DatasetSpecialIdEnum.manual
+          }
         });
 
-        if (insertLen === 0) {
-          toast({
-            title: '已存在完全一致的数据',
-            status: 'warning'
-          });
-        } else {
-          toast({
-            title: '导入数据成功,需要一段时间训练',
-            status: 'success'
-          });
-          reset({
-            a: '',
-            q: ''
-          });
-        }
+        toast({
+          title: '导入数据成功,需要一段时间训练',
+          status: 'success'
+        });
+        reset({
+          a: '',
+          q: ''
+        });
       } catch (err: any) {
         toast({
           title: getErrText(err, '出现了点意外~'),

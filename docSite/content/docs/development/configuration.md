@@ -84,6 +84,14 @@ weight: 520
     "maxToken": 16000,
     "price": 0,
     "prompt": ""
+  },
+  "QGModel": { // 生成下一步指引模型
+    "model": "gpt-3.5-turbo",
+    "name": "GPT35-4k",
+    "maxToken": 4000,
+    "price": 0,
+    "prompt": "",
+    "functionCall": false
   }
 }
 ```

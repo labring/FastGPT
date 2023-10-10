@@ -8,6 +8,7 @@ import { Types } from 'mongoose';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { addLog } from '@/service/utils/tools';
+import { strIsLink } from '@fastgpt/common/tools/str';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -19,20 +20,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const gridFs = new GridFSStorage('dataset', userId);
     const collection = gridFs.Collection();
 
-    await collection.findOneAndUpdate(
-      {
-        _id: new Types.ObjectId(id)
-      },
-      {
-        $set: {
-          ...(name && { filename: name }),
-          ...(datasetUsed && { ['metadata.datasetUsed']: datasetUsed })
+    if (id.length === 24 && !strIsLink(id)) {
+      await collection.findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(id)
+        },
+        {
+          $set: {
+            ...(name && { filename: name }),
+            ...(datasetUsed && { ['metadata.datasetUsed']: datasetUsed })
+          }
         }
-      }
-    );
+      );
+    }
 
     // data source
-    updateDatasetSource({
+    await updateDatasetSource({
       fileId: id,
       userId,
       name

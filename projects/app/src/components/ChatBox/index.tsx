@@ -63,6 +63,7 @@ import styles from './index.module.scss';
 import Script from 'next/script';
 import { postQuestionGuide } from '@/api/core/ai/agent/api';
 import { splitGuideModule } from './utils';
+import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -511,6 +512,12 @@ const ChatBox = (
 
   // add guide text listener
   useEffect(() => {
+    const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
+      if (data?.type === 'sendPrompt' && data?.text) {
+        handleSubmit((item) => sendPrompt(item, data.text))();
+      }
+    };
+    window.addEventListener('message', windowMessage);
     event.on('guideClick', ({ text }: { text: string }) => {
       if (!text) return;
       handleSubmit((data) => sendPrompt(data, text))();
@@ -518,6 +525,7 @@ const ChatBox = (
 
     return () => {
       event.off('guideClick');
+      window.removeEventListener('message', windowMessage);
     };
   }, [handleSubmit, sendPrompt]);
 
@@ -995,7 +1003,8 @@ const ChatBox = (
               defaultValues={{
                 dataId: adminMarkData.dataId,
                 q: adminMarkData.q,
-                a: adminMarkData.a
+                a: adminMarkData.a,
+                file_id: DatasetSpecialIdEnum.mark
               }}
             />
           )}

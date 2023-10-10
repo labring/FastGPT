@@ -1,31 +1,28 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Grid, Image } from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Grid, Image, Button } from '@chakra-ui/react';
 import type { PgDataItemType } from '@/types/core/dataset/data';
 import { usePagination } from '@/hooks/usePagination';
-import {
-  getDatasetDataList,
-  delOneDatasetDataById,
-  getTrainingData
-} from '@/api/core/dataset/data';
+import { getDatasetDataList, delOneDatasetDataById } from '@/api/core/dataset/data';
 import { getFileInfoById } from '@/api/core/dataset/file';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/useToast';
-import InputModal, { FormData as InputDataType } from './InputDataModal';
+import InputModal, { FormData as InputDataType, RawFileText } from './InputDataModal';
 import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
-import MyTooltip from '@/components/MyTooltip';
 import MyInput from '@/components/MyInput';
-import { fileImgs } from '@/constants/common';
+import { useLoading } from '@/hooks/useLoading';
+import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
   const router = useRouter();
+  const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
   const { fileId = '' } = router.query as { fileId: string };
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -37,7 +34,6 @@ const DataCard = ({ kbId }: { kbId: string }) => {
 
   const {
     data: kbDataList,
-    isLoading,
     Pagination,
     total,
     getData,
@@ -52,6 +48,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
       fileId
     },
     onChange() {
+      setIsLoading(false);
       if (BoxRef.current) {
         BoxRef.current.scrollTop = 0;
       }
@@ -72,9 +69,8 @@ const DataCard = ({ kbId }: { kbId: string }) => {
   // get file info
   const { data: fileInfo } = useQuery(['getFileInfo', fileId], () => getFileInfoById(fileId));
   const fileIcon = useMemo(
-    () =>
-      fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(fileInfo?.filename || ''))?.src,
-    [fileInfo?.filename]
+    () => getSpecialFileIcon(fileInfo?.id) || getFileIcon(fileInfo?.filename),
+    [fileInfo?.filename, fileInfo?.id]
   );
 
   return (
@@ -82,10 +78,9 @@ const DataCard = ({ kbId }: { kbId: string }) => {
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'myBlue.600'} />}
           bg={'white'}
           boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-          h={'28px'}
           size={'sm'}
           borderRadius={'50%'}
           aria-label={''}
@@ -98,30 +93,34 @@ const DataCard = ({ kbId }: { kbId: string }) => {
             })
           }
         />
-        <Flex
-          className="textEllipsis"
-          flex={'1 0 0'}
-          mr={[3, 5]}
-          fontSize={['sm', 'md']}
-          alignItems={'center'}
-        >
+        <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
           <Image src={fileIcon || '/imgs/files/file.svg'} w={'16px'} mr={2} alt={''} />
-          {t(fileInfo?.filename || 'Filename')}
+          <RawFileText
+            filename={fileInfo?.filename}
+            fileId={fileInfo?.id}
+            fontSize={['md', 'lg']}
+            color={'black'}
+            textDecoration={'none'}
+          />
         </Flex>
         <Box>
-          <MyTooltip label={'刷新'}>
-            <IconButton
-              icon={<RepeatIcon />}
-              size={['sm', 'md']}
-              aria-label={'refresh'}
-              variant={'base'}
-              isLoading={isLoading}
-              onClick={() => {
-                getData(pageNum);
-                getTrainingData({ kbId, init: true });
-              }}
-            />
-          </MyTooltip>
+          <Button
+            ml={2}
+            variant={'base'}
+            size={['sm', 'md']}
+            onClick={() => {
+              if (!fileInfo) return;
+              setEditInputData({
+                dataId: '',
+                q: '',
+                a: '',
+                source: fileInfo.filename,
+                file_id: fileInfo.id
+              });
+            }}
+          >
+            {t('kb.Insert Data')}
+          </Button>
         </Box>
       </Flex>
       <Flex my={3} alignItems={'center'}>
@@ -249,6 +248,7 @@ const DataCard = ({ kbId }: { kbId: string }) => {
         />
       )}
       <ConfirmModal />
+      <Loading fixed={false} />
     </Box>
   );
 };

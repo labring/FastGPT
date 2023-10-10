@@ -91,6 +91,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         if (res.closed) {
           return stream.destroy();
         }
+        q = q.replace(/"/g, '""');
+        a = a.replace(/"/g, '""');
+        source = source?.replace(/"/g, '""');
+
         write(`\n"${q}","${a || ''}","${source || ''}"`);
       });
       // finish
