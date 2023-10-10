@@ -2,7 +2,6 @@
   "name": "@fastgpt/support",
   "version": "1.0.0",
   "dependencies": {
-    "@fastgpt/core": "workspace:*",
     "@fastgpt/common": "workspace:*"
   }
 }
