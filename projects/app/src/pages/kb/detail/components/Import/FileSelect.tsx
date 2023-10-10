@@ -12,7 +12,6 @@ import {
   readDocContent
 } from '@/utils/web/file';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
-import { fileImgs } from '@/constants/common';
 import { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
@@ -22,12 +21,13 @@ import { FetchResultItem } from '@/types/plugin';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
 import { getErrText } from '@/utils/tools';
 import { useDatasetStore } from '@/store/dataset';
+import { getFileIcon } from '@fastgpt/common/tools/file';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-const csvTemplate = `index,content,source\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号","来源，可选。"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……",""`;
+const csvTemplate = `index,content\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
 export type FileItemType = {
   id: string;
@@ -63,7 +63,7 @@ const FileSelect = ({
 
   const { toast } = useToast();
 
-  const { File, onOpen } = useSelectFile({
+  const { File: FileSelector, onOpen } = useSelectFile({
     fileType: fileExtension,
     multiple: true
   });
@@ -92,11 +92,9 @@ const FileSelect = ({
           const extension = file?.name?.split('.')?.pop()?.toLowerCase();
 
           /* text file */
-          const icon = fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(file.name))?.src;
+          const icon = getFileIcon(file?.name);
 
-          if (!icon) {
-            continue;
-          }
+          if (!icon) continue;
 
           // parse and upload files
           let [text, filesId] = await Promise.all([
@@ -165,7 +163,7 @@ const FileSelect = ({
                 .map((item) => ({
                   q: item[0] || '',
                   a: item[1] || '',
-                  source: item[2] || file.name || '',
+                  source: file.name || '',
                   file_id: filesId[0]
                 }))
             };
@@ -201,7 +199,8 @@ const FileSelect = ({
           chunks: splitRes.chunks.map((chunk) => ({
             q: chunk,
             a: '',
-            source: url
+            source: url,
+            file_id: url
           }))
         };
       });
@@ -210,15 +209,25 @@ const FileSelect = ({
     [chunkLen, onPushFiles]
   );
   const onCreateFile = useCallback(
-    ({ filename, content }: { filename: string; content: string }) => {
+    async ({ filename, content }: { filename: string; content: string }) => {
       content = simpleText(content);
+
+      // create virtual txt file
+      const txtBlob = new Blob([content], { type: 'text/plain' });
+      const txtFile = new File([txtBlob], `${filename}.txt`, {
+        type: txtBlob.type,
+        lastModified: new Date().getTime()
+      });
+      const fileIds = await uploadFiles([txtFile], { kbId: kbDetail._id });
+
       const splitRes = splitText2Chunks({
         text: content,
         maxLen: chunkLen
       });
+
       onPushFiles([
         {
-          id: nanoid(),
+          id: fileIds[0],
           filename,
           icon: '/imgs/files/txt.svg',
           text: content,
@@ -226,12 +235,13 @@ const FileSelect = ({
           chunks: splitRes.chunks.map((chunk) => ({
             q: chunk,
             a: '',
-            source: filename
+            source: filename,
+            file_id: fileIds[0]
           }))
         }
       ]);
     },
-    [chunkLen, onPushFiles]
+    [chunkLen, kbDetail._id, onPushFiles]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -383,7 +393,7 @@ const FileSelect = ({
       {selectingText !== undefined && (
         <FileSelectLoading loading text={selectingText} fixed={false} />
       )}
-      <File onSelect={onSelectFile} />
+      <FileSelector onSelect={onSelectFile} />
       {isOpenUrlFetch && <UrlFetchModal onClose={onCloseUrlFetch} onSuccess={onUrlFetch} />}
       {isOpenCreateFile && <CreateFileModal onClose={onCloseCreateFile} onSuccess={onCreateFile} />}
     </Box>

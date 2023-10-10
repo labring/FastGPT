@@ -31,6 +31,12 @@ importers:
 
   packages/core:
     dependencies:
+      '@fastgpt/common':
+        specifier: workspace:*
+        version: link:../common
+      '@fastgpt/support':
+        specifier: workspace:*
+        version: link:../support
       openai:
         specifier: ^3.3.0
         version: registry.npmmirror.com/openai@3.3.0
@@ -42,7 +48,11 @@ importers:
         specifier: ^0.0.4
         version: registry.npmmirror.com/@types/tunnel@0.0.4
 
-  packages/support: {}
+  packages/support:
+    dependencies:
+      '@fastgpt/common':
+        specifier: workspace:*
+        version: link:../common
 
   projects/app:
     dependencies:

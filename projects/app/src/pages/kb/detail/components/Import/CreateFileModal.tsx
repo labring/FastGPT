@@ -3,19 +3,27 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@/components/MyModal';
 import { Box, Input, Textarea, ModalBody, ModalFooter, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
+import { useRequest } from '@/hooks/useRequest';
 
 const CreateFileModal = ({
   onClose,
   onSuccess
 }: {
   onClose: () => void;
-  onSuccess: (e: { filename: string; content: string }) => void;
+  onSuccess: (e: { filename: string; content: string }) => Promise<void>;
 }) => {
   const { t } = useTranslation();
   const { register, handleSubmit } = useForm({
     defaultValues: {
       filename: '',
       content: ''
+    }
+  });
+
+  const { mutate, isLoading } = useRequest({
+    mutationFn: () => handleSubmit(onSuccess)(),
+    onSuccess: () => {
+      onClose();
     }
   });
 
@@ -47,12 +55,7 @@ const CreateFileModal = ({
         <Button variant={'base'} mr={4} onClick={onClose}>
           取消
         </Button>
-        <Button
-          onClick={() => {
-            handleSubmit(onSuccess)();
-            onClose();
-          }}
-        >
+        <Button isLoading={isLoading} onClick={mutate}>
           确认
         </Button>
       </ModalFooter>

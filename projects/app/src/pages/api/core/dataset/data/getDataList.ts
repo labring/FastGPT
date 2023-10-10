@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { OtherFileId } from '@/constants/dataset';
 import type { PgDataItemType } from '@/types/core/dataset/data';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -36,15 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ['user_id', userId],
       'AND',
       ['kb_id', kbId],
-      ...(fileId
-        ? fileId === OtherFileId
-          ? ["AND (file_id IS NULL OR file_id = '')"]
-          : ['AND', ['file_id', fileId]]
-        : []),
+      'AND',
+      ['file_id', fileId],
       ...(searchText
         ? [
             'AND',
-            `(q LIKE '%${searchText}%' OR a LIKE '%${searchText}%' OR source LIKE '%${searchText}%')`
+            `(q ILIKE '%${searchText}%' OR a ILIKE '%${searchText}%' OR source ILIKE '%${searchText}%')`
           ]
         : [])
     ];
