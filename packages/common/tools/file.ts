@@ -1,5 +1,4 @@
 import { strIsLink } from './str';
-import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 
 export const fileImgs = [
   { suffix: 'pdf', src: '/imgs/files/pdf.svg' },
@@ -14,9 +13,9 @@ export function getFileIcon(name = '') {
   return fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(name))?.src;
 }
 export function getSpecialFileIcon(name = '') {
-  if (name === DatasetSpecialIdEnum.manual) {
+  if (name === 'manual') {
     return '/imgs/files/manual.svg';
-  } else if (name === DatasetSpecialIdEnum.mark) {
+  } else if (name === 'mark') {
     return '/imgs/files/mark.svg';
   } else if (strIsLink(name)) {
     return '/imgs/files/link.svg';
