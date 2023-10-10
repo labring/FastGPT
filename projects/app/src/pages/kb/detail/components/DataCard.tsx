@@ -104,9 +104,23 @@ const DataCard = ({ kbId }: { kbId: string }) => {
           />
         </Flex>
         <Box>
-          {/* <Button ml={2} variant={'base'} size={['sm', 'md']}>
+          <Button
+            ml={2}
+            variant={'base'}
+            size={['sm', 'md']}
+            onClick={() => {
+              if (!fileInfo) return;
+              setEditInputData({
+                dataId: '',
+                q: '',
+                a: '',
+                source: fileInfo.filename,
+                file_id: fileInfo.id
+              });
+            }}
+          >
             {t('kb.Insert Data')}
-          </Button> */}
+          </Button>
         </Box>
       </Flex>
       <Flex my={3} alignItems={'center'}>

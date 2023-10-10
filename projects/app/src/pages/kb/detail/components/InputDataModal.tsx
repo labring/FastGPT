@@ -67,7 +67,7 @@ const InputDataModal = ({
           ...e,
           dataId: '',
           // @ts-ignore
-          source: datasetSpecialIdMap[e.file_id]?.sourceName
+          source: e.source || datasetSpecialIdMap[e.file_id]?.sourceName
         };
         data.dataId = await postData2Dataset({
           kbId,
@@ -79,6 +79,7 @@ const InputDataModal = ({
           status: 'success'
         });
         reset({
+          ...e,
           a: '',
           q: ''
         });
