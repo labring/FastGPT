@@ -9,6 +9,8 @@ weight: 720
 
 ## 准备条件
 
+服务器要求：2C2G 起
+
 ### 1. 准备好代理环境（国外服务器可忽略）
 
 确保可以访问 OpenAI，具体方案可以参考：[代理方案](/docs/installation/proxy/)。或直接在 Sealos 上 [部署 OneAPI](/docs/installation/one-api)，既解决代理问题也能实现多 Key 轮询、接入其他大模型。
@@ -70,9 +72,9 @@ brew install orbstack
 
 依次执行下面命令，创建 FastGPT 文件并拉取`docker-compose.yml`和`config.json`，执行完后目录下会有 2 个文件。
 
-非 Linux 环境，可手动创建目录，并下载这2个文件。
+非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载下面2个链接的文件。
 
-**注意: 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**
+**注意: `docker-compose.yml` 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**
 
 ```bash
 mkdir fastgpt
@@ -118,7 +120,12 @@ docker-compose up -d
 1. `docker logs fastgpt` 可以查看日志，在启动容器后，第一次请求网页，会进行配置文件读取，可以看看有没有读取成功以及有无错误日志。
 2. `docker exec -it fastgpt sh` 进入 FastGPT 容器，可以通过`ls data`查看目录下是否成功挂载`config.json`文件。可通过`cat data/config.json`查看配置文件。
 
-### 为什么无法连接 oneapi 和 本地模型镜像。
+**可能不生效的原因**
+
+1. 挂载目录不正确
+2. 配置文件不正确，日志中会提示`invalid json`，配置文件需要是标准的 JSON 文件。
+
+### 为什么无法连接`本地模型`镜像。
 
 `docker-compose.yml`中使用了桥接的模式建立了`fastgpt`网络，如想通过0.0.0.0或镜像名访问其它镜像，需将其它镜像也加入到网络中。
 

@@ -94,7 +94,16 @@ docker build -t dockername/fastgpt --build-arg name=app .
 
 如果遇到问题，比如合并冲突或不知道如何打开拉取请求，请查看 GitHub 的[拉取请求教程](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)，了解如何解决合并冲突和其他问题。一旦您的 PR 被合并，您将自豪地被列为[贡献者表](https://github.com/labring/FastGPT/graphs/contributors)中的一员。
 
-## 加入社区
+
+
+## QA
+
+### 本地数据库无法连接
+
+1. 如果你是连接远程的数据库，先检查对应的端口是否开放。
+2. 如果是本地运行的数据库，可尝试`host`改成`localhost`或`127.0.0.1`
+
+### 加入社区
 
 遇到困难了吗？有任何问题吗? 加入微信群与开发者和用户保持沟通。
 
