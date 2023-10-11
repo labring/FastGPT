@@ -8,13 +8,17 @@ export const useLoading = (props?: { defaultLoading: boolean }) => {
     ({
       loading,
       fixed = true,
-      text = ''
+      text = '',
+      zIndex
     }: {
       loading?: boolean;
       fixed?: boolean;
       text?: string;
+      zIndex?: number;
     }): JSX.Element | null => {
-      return isLoading || loading ? <LoadingComponent fixed={fixed} text={text} /> : null;
+      return isLoading || loading ? (
+        <LoadingComponent fixed={fixed} text={text} zIndex={zIndex} />
+      ) : null;
     },
     [isLoading]
   );

@@ -77,7 +77,7 @@ weight: 520
     "price": 0,
     "prompt": ""
   },
-  "CQModel": { // 问题分类模型
+  "CQModel": { // Classify Question: 问题分类模型
     "model": "gpt-3.5-turbo-16k",
     "functionCall": true,
     "name": "GPT35-16k",
@@ -85,7 +85,7 @@ weight: 520
     "price": 0,
     "prompt": ""
   },
-  "QGModel": { // 生成下一步指引模型
+  "QGModel": { // Question Generation: 生成下一步指引模型
     "model": "gpt-3.5-turbo",
     "name": "GPT35-4k",
     "maxToken": 4000,

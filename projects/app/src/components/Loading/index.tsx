@@ -4,16 +4,18 @@ import { Spinner, Flex, Box } from '@chakra-ui/react';
 const Loading = ({
   fixed = true,
   text = '',
-  bg = 'rgba(255,255,255,0.5)'
+  bg = 'rgba(255,255,255,0.5)',
+  zIndex = 1000
 }: {
   fixed?: boolean;
   text?: string;
   bg?: string;
+  zIndex?: number;
 }) => {
   return (
     <Flex
       position={fixed ? 'fixed' : 'absolute'}
-      zIndex={1000}
+      zIndex={zIndex}
       bg={bg}
       top={0}
       left={0}

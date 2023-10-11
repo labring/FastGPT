@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ModalBody, Box, useTheme } from '@chakra-ui/react';
+import { ModalBody, Box, useTheme, Flex, Progress } from '@chakra-ui/react';
 import { getDatasetDataItemById } from '@/api/core/dataset/data';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
@@ -11,17 +11,13 @@ import MyModal from '../MyModal';
 import type { PgDataItemType } from '@/types/core/dataset/data';
 import { useRouter } from 'next/router';
 
-type SearchType = PgDataItemType & {
-  kb_id?: string;
-};
-
 const QuoteModal = ({
   onUpdateQuote,
   rawSearch = [],
   onClose
 }: {
   onUpdateQuote: (quoteId: string, sourceText?: string) => Promise<void>;
-  rawSearch: SearchType[];
+  rawSearch: QuoteItemType[];
   onClose: () => void;
 }) => {
   const theme = useTheme();
@@ -36,7 +32,7 @@ const QuoteModal = ({
    * click edit, get new kbDataItem
    */
   const onclickEdit = useCallback(
-    async (item: SearchType) => {
+    async (item: QuoteItemType) => {
       if (!item.id) return;
       try {
         setIsLoading(true);
@@ -95,9 +91,27 @@ const QuoteModal = ({
               _hover={{ '& .edit': { display: 'flex' } }}
               overflow={'hidden'}
             >
-              {item.source && !isShare && (
-                <RawFileText filename={item.source} fileId={item.file_id} />
-              )}
+              <Flex alignItems={'center'} mb={1}>
+                {item.source && !isShare && (
+                  <RawFileText filename={item.source} fileId={item.file_id} />
+                )}
+                <Box flex={'1'} />
+                {item.score && (
+                  <>
+                    <Progress
+                      mx={2}
+                      w={['60px', '100px']}
+                      value={item.score * 100}
+                      size="sm"
+                      borderRadius={'20px'}
+                      colorScheme="gray"
+                      border={theme.borders.base}
+                    />
+                    <Box>{item.score.toFixed(4)}</Box>
+                  </>
+                )}
+              </Flex>
+
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
               {item.id && !isShare && (

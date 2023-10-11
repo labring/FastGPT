@@ -45,6 +45,7 @@ export type ShareChatType = InitShareChatResponse & {
 
 export type QuoteItemType = PgDataItemType & {
   kb_id: string;
+  score?: number;
 };
 
 // response data

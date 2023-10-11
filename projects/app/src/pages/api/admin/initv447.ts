@@ -15,16 +15,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     await authUser({ req, authRoot: true });
 
-    console.log('add index');
-    await PgClient.query(
-      `
-      ALTER TABLE modeldata
-      ALTER COLUMN source TYPE VARCHAR(256),
-      ALTER COLUMN file_id TYPE VARCHAR(256);
-      CREATE INDEX IF NOT EXISTS modelData_fileId_index ON modeldata (file_id);
-      `
-    );
-    console.log('index success');
     console.log('count rows');
     // 去重获取 fileId
     const { rows } = await PgClient.query(`SELECT DISTINCT file_id
@@ -36,8 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await init(rows.slice(i, i + limit), initFileIds);
       console.log(i);
     }
-    console.log('filter success');
-    console.log('start update');
 
     for (let i = 0; i < initFileIds.length; i++) {
       await PgClient.query(`UPDATE ${PgDatasetTableName}
@@ -49,9 +37,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { rows: emptyIds } = await PgClient.query(
       `SELECT id FROM ${PgDatasetTableName} WHERE file_id IS NULL OR file_id=''`
     );
+    console.log('filter success');
     console.log(emptyIds.length);
 
     await delay(5000);
+    console.log('start update');
 
     async function start(start: number) {
       for (let i = start; i < emptyIds.length; i += limit) {
@@ -64,12 +54,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (let i = 0; i < limit; i++) {
       start(i);
     }
-
-    // await PgClient.query(
-    //   `UPDATE ${PgDatasetTableName}
-    //     SET file_id = '${DatasetSpecialIdEnum.manual}'
-    //     WHERE file_id IS NULL OR file_id = ''`
-    // );
 
     console.log('update success');
 

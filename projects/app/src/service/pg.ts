@@ -203,10 +203,6 @@ export async function initPg() {
           q TEXT NOT NULL,
           a TEXT
       );
-      CREATE INDEX IF NOT EXISTS modelData_userId_index ON ${PgDatasetTableName} USING HASH (user_id);
-      CREATE INDEX IF NOT EXISTS modelData_kb_id_index ON ${PgDatasetTableName} (kb_id);
-      CREATE INDEX IF NOT EXISTS modelData_fileId_index ON ${PgDatasetTableName} (file_id);
-      CREATE INDEX IF NOT EXISTS idx_model_data_md5_q_a_user_id_kb_id ON ${PgDatasetTableName} (md5(q), md5(a), user_id, kb_id);
     `);
     console.log('init pg successful');
   } catch (error) {

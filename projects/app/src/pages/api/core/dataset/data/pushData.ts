@@ -1,12 +1,12 @@
+/* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData, KB } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { authKb } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
-import { PgDatasetTableName, TrainingModeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
-import { PgClient } from '@/service/pg';
 import { getVectorModel } from '@/service/utils/data';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
@@ -80,7 +80,7 @@ export async function pushDataToKb({
     [TrainingModeEnum.qa]: global.qaModel.maxToken * 0.8
   };
 
-  // 过滤重复的 qa 内容
+  // filter repeat or equal content
   const set = new Set();
   const filterData: DatasetDataItemType[] = [];
 
@@ -102,47 +102,9 @@ export async function pushDataToKb({
     }
   });
 
-  // 数据库去重
-  const insertData = (
-    await Promise.allSettled(
-      filterData.map(async (data) => {
-        let { q, a } = data;
-        if (mode !== TrainingModeEnum.index) {
-          return Promise.resolve(data);
-        }
-
-        if (!q) {
-          return Promise.reject('q为空');
-        }
-
-        q = q.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
-        a = a.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
-
-        // Exactly the same data, not push
-        try {
-          const { rows } = await PgClient.query(`
-            SELECT COUNT(*) > 0 AS exists
-            FROM  ${PgDatasetTableName} 
-            WHERE md5(q)=md5('${q}') AND md5(a)=md5('${a}') AND user_id='${userId}' AND kb_id='${kbId}'
-          `);
-          const exists = rows[0]?.exists || false;
-
-          if (exists) {
-            return Promise.reject('已经存在');
-          }
-        } catch (error) {
-          console.log(error);
-        }
-        return Promise.resolve(data);
-      })
-    )
-  )
-    .filter((item) => item.status === 'fulfilled')
-    .map<DatasetDataItemType>((item: any) => item.value);
-
   // 插入记录
   const insertRes = await TrainingData.insertMany(
-    insertData.map((item) => ({
+    filterData.map((item) => ({
       ...item,
       userId,
       kbId,

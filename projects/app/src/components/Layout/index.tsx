@@ -102,7 +102,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           </>
         )}
       </Box>
-      <Loading loading={loading} />
+      <Loading loading={loading} zIndex={9999} />
     </>
   );
 };
