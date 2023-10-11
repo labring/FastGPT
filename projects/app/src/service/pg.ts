@@ -3,6 +3,7 @@ import type { QueryResultRow } from 'pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { addLog } from './utils/tools';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
+import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -179,8 +180,13 @@ export const insertData2Dataset = ({
     values: data.map((item) => [
       { key: 'user_id', value: userId },
       { key: 'kb_id', value: kbId },
-      { key: 'source', value: item.source?.slice(0, 200)?.trim() || '' },
-      { key: 'file_id', value: item.file_id?.slice(0, 200)?.trim() || '' },
+      {
+        key: 'source',
+        value:
+          item.source?.slice(0, 200)?.trim() ||
+          datasetSpecialIdMap[DatasetSpecialIdEnum.manual].sourceName
+      },
+      { key: 'file_id', value: item.file_id?.slice(0, 200)?.trim() || DatasetSpecialIdEnum.manual },
       { key: 'q', value: item.q.replace(/'/g, '"') },
       { key: 'a', value: item.a.replace(/'/g, '"') },
       { key: 'vector', value: `[${item.vector}]` }
