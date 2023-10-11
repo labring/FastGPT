@@ -23,7 +23,7 @@ const UserSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: '/icon/human.png'
+    default: '/icon/human.svg'
   },
   balance: {
     type: Number,

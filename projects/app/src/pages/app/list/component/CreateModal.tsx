@@ -21,6 +21,7 @@ import { useRouter } from 'next/router';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
 import { useGlobalStore } from '@/store/global';
 import { useRequest } from '@/hooks/useRequest';
+import { feConfigs } from '@/store/static';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
@@ -74,10 +75,15 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (data: FormType) => {
+      const template = appTemplates.find((item) => item.id === data.templateId);
+      if (!template) {
+        return Promise.reject('模板不存在');
+      }
       return postCreateApp({
         avatar: data.avatar,
         name: data.name,
-        modules: appTemplates.find((item) => item.id === data.templateId)?.modules || []
+        type: template.type,
+        modules: template.modules || []
       });
     },
     onSuccess(id: string) {
@@ -118,48 +124,52 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             })}
           />
         </Flex>
-        <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
-          从模板中选择
-        </Box>
-        <Grid
-          userSelect={'none'}
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
-          gridGap={[2, 4]}
-        >
-          {appTemplates.map((item) => (
-            <Card
-              key={item.id}
-              border={theme.borders.base}
-              p={3}
-              borderRadius={'md'}
-              cursor={'pointer'}
-              boxShadow={'sm'}
-              {...(getValues('templateId') === item.id
-                ? {
-                    bg: 'myWhite.600'
-                  }
-                : {
-                    _hover: {
-                      boxShadow: 'md'
-                    }
-                  })}
-              onClick={() => {
-                setValue('templateId', item.id);
-                setRefresh((state) => !state);
-              }}
+        {!feConfigs?.hide_app_flow && (
+          <>
+            <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
+              从模板中选择
+            </Box>
+            <Grid
+              userSelect={'none'}
+              gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
+              gridGap={[2, 4]}
             >
-              <Flex alignItems={'center'}>
-                <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
-                <Box ml={3} fontWeight={'bold'}>
-                  {item.name}
-                </Box>
-              </Flex>
-              <Box fontSize={'sm'} mt={4}>
-                {item.intro}
-              </Box>
-            </Card>
-          ))}
-        </Grid>
+              {appTemplates.map((item) => (
+                <Card
+                  key={item.id}
+                  border={theme.borders.base}
+                  p={3}
+                  borderRadius={'md'}
+                  cursor={'pointer'}
+                  boxShadow={'sm'}
+                  {...(getValues('templateId') === item.id
+                    ? {
+                        bg: 'myWhite.600'
+                      }
+                    : {
+                        _hover: {
+                          boxShadow: 'md'
+                        }
+                      })}
+                  onClick={() => {
+                    setValue('templateId', item.id);
+                    setRefresh((state) => !state);
+                  }}
+                >
+                  <Flex alignItems={'center'}>
+                    <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
+                    <Box ml={3} fontWeight={'bold'}>
+                      {item.name}
+                    </Box>
+                  </Flex>
+                  <Box fontSize={'sm'} mt={4}>
+                    {item.intro}
+                  </Box>
+                </Card>
+              ))}
+            </Grid>
+          </>
+        )}
       </ModalBody>
 
       <ModalFooter>

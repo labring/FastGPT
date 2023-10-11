@@ -263,6 +263,10 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
   const { setLoading } = useGlobalStore();
 
   const hasFile = useMemo(() => fileId && !datasetSpecialIds.includes(fileId), [fileId]);
+  const formatName = useMemo(
+    () => (filename.startsWith('kb') ? t(filename) : filename),
+    [filename, t]
+  );
 
   return (
     <MyTooltip label={hasFile ? t('file.Click to view file') || '' : ''} shouldWrapChildren={false}>
@@ -293,7 +297,7 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
           : {})}
         {...props}
       >
-        {t(filename)}
+        {formatName}
       </Box>
     </MyTooltip>
   );

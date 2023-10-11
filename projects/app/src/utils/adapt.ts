@@ -25,7 +25,7 @@ export const adaptBill = (bill: BillSchema): UserBillType => {
 };
 
 export const gptMessage2ChatType = (messages: MessageItemType[]): ChatItemType[] => {
-  const roleMap: Record<`${ChatCompletionRequestMessageRoleEnum}`, `${ChatRoleEnum}`> = {
+  const roleMap = {
     [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
     [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
     [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,

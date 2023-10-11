@@ -5,7 +5,7 @@ import { User } from '@/service/models/user';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { UserUpdateParams } from '@/types/user';
-import { axiosConfig, getAIChatApi, openaiBaseUrl } from '@fastgpt/core/ai/config';
+import { getAIApi, openaiBaseUrl } from '@fastgpt/core/ai/config';
 
 /* update user info */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -22,20 +22,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const baseUrl = openaiAccount?.baseUrl || openaiBaseUrl;
       openaiAccount.baseUrl = baseUrl;
 
-      const chatAPI = getAIChatApi(openaiAccount);
+      const ai = getAIApi(openaiAccount);
 
-      const response = await chatAPI.createChatCompletion(
-        {
-          model: 'gpt-3.5-turbo',
-          max_tokens: 1,
-          messages: [{ role: 'user', content: 'hi' }]
-        },
-        {
-          ...axiosConfig(openaiAccount)
-        }
-      );
-      if (response?.data?.choices?.[0]?.message?.content === undefined) {
-        throw new Error(JSON.stringify(response?.data));
+      const response = await ai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'hi' }]
+      });
+      if (response?.choices?.[0]?.message?.content === undefined) {
+        throw new Error('Key response is empty');
       }
     }
 

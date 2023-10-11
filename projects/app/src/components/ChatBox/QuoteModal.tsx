@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ModalBody, Box, useTheme } from '@chakra-ui/react';
+import { ModalBody, Box, useTheme, Flex, Progress } from '@chakra-ui/react';
 import { getDatasetDataItemById } from '@/api/core/dataset/data';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
@@ -8,12 +8,8 @@ import { QuoteItemType } from '@/types/chat';
 import MyIcon from '@/components/Icon';
 import InputDataModal, { RawFileText } from '@/pages/kb/detail/components/InputDataModal';
 import MyModal from '../MyModal';
-import type { PgDataItemType } from '@/types/core/dataset/data';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
-
-type SearchType = PgDataItemType & {
-  kb_id?: string;
-};
 
 const QuoteModal = ({
   onUpdateQuote,
@@ -21,9 +17,10 @@ const QuoteModal = ({
   onClose
 }: {
   onUpdateQuote: (quoteId: string, sourceText?: string) => Promise<void>;
-  rawSearch: SearchType[];
+  rawSearch: QuoteItemType[];
   onClose: () => void;
 }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
@@ -36,7 +33,7 @@ const QuoteModal = ({
    * click edit, get new kbDataItem
    */
   const onclickEdit = useCallback(
-    async (item: SearchType) => {
+    async (item: QuoteItemType) => {
       if (!item.id) return;
       try {
         setIsLoading(true);
@@ -95,9 +92,30 @@ const QuoteModal = ({
               _hover={{ '& .edit': { display: 'flex' } }}
               overflow={'hidden'}
             >
-              {item.source && !isShare && (
-                <RawFileText filename={item.source} fileId={item.file_id} />
+              {!isShare && (
+                <Flex alignItems={'center'} mb={1}>
+                  <RawFileText
+                    filename={item.source || t('common.Unknow') || 'Unknow'}
+                    fileId={item.file_id}
+                  />
+                  <Box flex={'1'} />
+                  {item.score && (
+                    <>
+                      <Progress
+                        mx={2}
+                        w={['60px', '100px']}
+                        value={item.score * 100}
+                        size="sm"
+                        borderRadius={'20px'}
+                        colorScheme="gray"
+                        border={theme.borders.base}
+                      />
+                      <Box>{item.score.toFixed(4)}</Box>
+                    </>
+                  )}
+                </Flex>
               )}
+
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
               {item.id && !isShare && (

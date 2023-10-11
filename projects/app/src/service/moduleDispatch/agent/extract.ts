@@ -2,7 +2,7 @@ import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getAIChatApi, axiosConfig } from '@fastgpt/core/ai/config';
+import { getAIApi } from '@fastgpt/core/ai/config';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowModuleTypeEnum } from '@/constants/flow';
@@ -126,30 +126,25 @@ async function functionCall({
     }
   };
 
-  const chatAPI = getAIChatApi(user.openaiAccount);
+  const ai = getAIApi(user.openaiAccount);
 
-  const response = await chatAPI.createChatCompletion(
-    {
-      model: extractModel.model,
-      temperature: 0,
-      messages: [...adaptMessages],
-      function_call: { name: agentFunName },
-      functions: [agentFunction]
-    },
-    {
-      ...axiosConfig(user.openaiAccount)
-    }
-  );
+  const response = await ai.chat.completions.create({
+    model: extractModel.model,
+    temperature: 0,
+    messages: [...adaptMessages],
+    function_call: { name: agentFunName },
+    functions: [agentFunction]
+  });
 
   const arg: Record<string, any> = (() => {
     try {
-      return JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '{}');
+      return JSON.parse(response.choices?.[0]?.message?.function_call?.arguments || '{}');
     } catch (error) {
       return {};
     }
   })();
 
-  const tokens = response.data.usage?.total_tokens || 0;
+  const tokens = response.usage?.total_tokens || 0;
   return {
     tokens,
     arg
@@ -181,20 +176,14 @@ Human: ${content}`
     }
   ];
 
-  const chatAPI = getAIChatApi(user.openaiAccount);
+  const ai = getAIApi(user.openaiAccount, 480000);
 
-  const { data } = await chatAPI.createChatCompletion(
-    {
-      model: extractModel.model,
-      temperature: 0.01,
-      messages: adaptChat2GptMessages({ messages, reserveId: false }),
-      stream: false
-    },
-    {
-      timeout: 480000,
-      ...axiosConfig(user.openaiAccount)
-    }
-  );
+  const data = await ai.chat.completions.create({
+    model: extractModel.model,
+    temperature: 0.01,
+    messages: adaptChat2GptMessages({ messages, reserveId: false }),
+    stream: false
+  });
   const answer = data.choices?.[0].message?.content || '';
   const totalTokens = data.usage?.total_tokens || 0;
 

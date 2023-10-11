@@ -47,7 +47,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       data: response?.[2]?.rows || []
     });
   } catch (err) {
-    console.log(err);
     jsonRes(res, {
       code: 500,
       error: err

@@ -1,1 +1,6 @@
-export type { CreateChatCompletionRequest, ChatCompletionRequestMessage } from 'openai';
+import OpenAI from 'openai';
+export type ChatCompletionRequestMessage = OpenAI.Chat.CreateChatCompletionRequestMessage;
+export type ChatCompletion = OpenAI.Chat.ChatCompletion;
+export type CreateChatCompletionRequest = OpenAI.Chat.ChatCompletionCreateParams;
+
+export type StreamChatType = Stream<OpenAI.Chat.ChatCompletionChunk>;

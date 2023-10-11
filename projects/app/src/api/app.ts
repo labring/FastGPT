@@ -2,9 +2,9 @@ import { GET, POST, DELETE, PUT } from './request';
 import type { AppSchema } from '@/types/mongoSchema';
 import type { AppListItemType, AppUpdateParams } from '@/types/app';
 import { RequestPaging } from '../types/index';
-import type { Props as CreateAppProps } from '@/pages/api/app/create';
 import { addDays } from 'date-fns';
 import { GetAppChatLogsParams } from './request/app';
+import type { CreateAppParams } from '@/types/app';
 
 /**
  * 获取模型列表
@@ -14,7 +14,7 @@ export const getMyModels = () => GET<AppListItemType[]>('/app/myApps');
 /**
  * 创建一个模型
  */
-export const postCreateApp = (data: CreateAppProps) => POST<string>('/app/create', data);
+export const postCreateApp = (data: CreateAppParams) => POST<string>('/app/create', data);
 
 /**
  * 根据 ID 删除模型

@@ -11,7 +11,14 @@ export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: numbe
   const overlapLen = Math.floor(maxLen * 0.25); // Overlap length
 
   try {
-    const splitTexts = text.split(/(?<=[。！？；.!?;\n])/g);
+    const tempMarker = 'SPLIT_HERE';
+    text = text.replace(/\n{3,}/g, '\n');
+    text = text.replace(/\s/g, ' ');
+    text = text.replace('\n\n', '');
+    const splitTexts = text
+      .replace(/([。！？；]|\.\s|!\s|\?\s|;\s|\n)/g, `$1${tempMarker}`)
+      .split(tempMarker)
+      .filter((part) => part);
     const chunks: string[] = [];
 
     let preChunk = '';
