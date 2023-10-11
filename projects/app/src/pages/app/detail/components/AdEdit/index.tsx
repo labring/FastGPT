@@ -125,6 +125,9 @@ function FlowHeader({ app, onCloseSettings }: Props & {}) {
         if (item.inputs.find((input) => input.required && !input.connected)) {
           return Promise.reject(`【${item.name}】存在未连接的必填输入`);
         }
+        if (item.inputs.find((input) => input.valueCheck && !input.valueCheck(input.value))) {
+          return Promise.reject(`【${item.name}】存在为填写的必填项`);
+        }
       }
 
       return updateAppDetail(app._id, {

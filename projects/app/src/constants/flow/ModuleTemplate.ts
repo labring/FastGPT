@@ -135,7 +135,8 @@ export const ChatModule: FlowModuleTemplateType = {
       type: FlowInputItemTypeEnum.custom,
       label: '对话模型',
       value: chatModelList[0]?.model,
-      list: chatModelList.map((item) => ({ label: item.name, value: item.model }))
+      list: chatModelList.map((item) => ({ label: item.name, value: item.model })),
+      valueCheck: (val) => !!val
     },
     {
       key: 'temperature',
@@ -242,7 +243,9 @@ export const KBSearchModule: FlowModuleTemplateType = {
       type: FlowInputItemTypeEnum.custom,
       label: '关联的知识库',
       value: [],
-      list: []
+      list: [],
+      required: true,
+      valueCheck: (val) => !!val.length
     },
     {
       key: 'similarity',
