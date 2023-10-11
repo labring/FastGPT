@@ -38,8 +38,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         select id, q, a, source, file_id, (vector <#> '[${
           vectors[0]
         }]') * -1 AS score from ${PgDatasetTableName} where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
-        vectors[0]
-      }]' limit 12;
+          vectors[0]
+        }]' limit 12;
         COMMIT;`
     );
 
@@ -47,7 +47,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       data: response?.[2]?.rows || []
     });
   } catch (err) {
-    console.log(err);
     jsonRes(res, {
       code: 500,
       error: err
