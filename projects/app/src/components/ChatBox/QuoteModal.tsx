@@ -8,7 +8,7 @@ import { QuoteItemType } from '@/types/chat';
 import MyIcon from '@/components/Icon';
 import InputDataModal, { RawFileText } from '@/pages/kb/detail/components/InputDataModal';
 import MyModal from '../MyModal';
-import type { PgDataItemType } from '@/types/core/dataset/data';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 
 const QuoteModal = ({
@@ -20,6 +20,7 @@ const QuoteModal = ({
   rawSearch: QuoteItemType[];
   onClose: () => void;
 }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
@@ -91,26 +92,29 @@ const QuoteModal = ({
               _hover={{ '& .edit': { display: 'flex' } }}
               overflow={'hidden'}
             >
-              <Flex alignItems={'center'} mb={1}>
-                {item.source && !isShare && (
-                  <RawFileText filename={item.source} fileId={item.file_id} />
-                )}
-                <Box flex={'1'} />
-                {item.score && (
-                  <>
-                    <Progress
-                      mx={2}
-                      w={['60px', '100px']}
-                      value={item.score * 100}
-                      size="sm"
-                      borderRadius={'20px'}
-                      colorScheme="gray"
-                      border={theme.borders.base}
-                    />
-                    <Box>{item.score.toFixed(4)}</Box>
-                  </>
-                )}
-              </Flex>
+              {!isShare && (
+                <Flex alignItems={'center'} mb={1}>
+                  <RawFileText
+                    filename={item.source || t('common.Unknow') || 'Unknow'}
+                    fileId={item.file_id}
+                  />
+                  <Box flex={'1'} />
+                  {item.score && (
+                    <>
+                      <Progress
+                        mx={2}
+                        w={['60px', '100px']}
+                        value={item.score * 100}
+                        size="sm"
+                        borderRadius={'20px'}
+                        colorScheme="gray"
+                        border={theme.borders.base}
+                      />
+                      <Box>{item.score.toFixed(4)}</Box>
+                    </>
+                  )}
+                </Flex>
+              )}
 
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>

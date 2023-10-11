@@ -29,6 +29,7 @@ export type FeConfigsType = {
   show_pay?: boolean;
   show_openai_account?: boolean;
   show_promotion?: boolean;
+  hide_app_flow?: boolean;
   openAPIUrl?: string;
   systemTitle?: string;
   authorText?: string;

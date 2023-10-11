@@ -22,12 +22,17 @@ export type AppListItemType = {
   intro: string;
 };
 
+export type CreateAppParams = {
+  name?: string;
+  avatar?: string;
+  type?: `${AppTypeEnum}`;
+  modules: AppSchema['modules'];
+};
 export interface AppUpdateParams {
   name?: string;
   type?: `${AppTypeEnum}`;
   avatar?: string;
   intro?: string;
-  chat?: AppSchema['chat'];
   share?: AppSchema['share'];
   modules?: AppSchema['modules'];
 }
