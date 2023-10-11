@@ -110,8 +110,8 @@ defaultContentLanguage = 'zh-cn'
         listDescTrunc   = 100                                 # Number of characters by which to truncate the list card description
 
     [params.flexsearch] # Parameters for FlexSearch
-        enabled             = true
-        tokenize            = "full"
+        # enabled             = true
+        # tokenize            = "full"
         # optimize            = true
         # cache               = 100
         # minQueryChar        = 3 # default is 0 (disabled)
@@ -119,9 +119,9 @@ defaultContentLanguage = 'zh-cn'
         # searchSectionsIndex = []
 
     [params.docsearch] # Parameters for DocSearch
-        # appID     = "O2QIOCBDAK" # Algolia Application ID
-        # apiKey    = "fdc60eee76a72a35d739b54521498b77" # Algolia Search-Only API (Public) Key
-        # indexName = "prod_lotusdocs.dev" # Index Name to perform search on (or set env variable HUGO_PARAM_DOCSEARCH_indexName)
+        appID     = "5BEWEMH0YA" # Algolia Application ID
+        apiKey    = "14834e919a87217d919d6d881fcacac3" # Algolia Search-Only API (Public) Key
+        indexName = "fastgpt" # Index Name to perform search on (or set env variable HUGO_PARAM_DOCSEARCH_indexName)
 
     [params.analytics] # Parameters for Analytics (Google, Plausible)
         # plausibleURL    = "/docs/s" # (or set via env variable HUGO_PARAM_ANALYTICS_plausibleURL)
