@@ -225,9 +225,10 @@ data: [{"moduleName":"KB Search","price":1.2000000000000002,"model":"Embedding-2
 此部分 API 需使用全局通用的 API Key。
 {{% /alert %}}
 
-### 如何获取知识库ID（kbId）
+| 如何获取知识库ID（kbId） | 如何获取文件ID（file_id） |
+| --------------------- | --------------------- |
+| ![](/imgs/getKbId.png) | ![](/imgs/getfile_id.png) |
 
-![](/imgs/getKbId.png)
 
 ### 知识库添加数据
 
@@ -248,6 +249,8 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushDa
         {
             "a": "test",
             "q": "1111",
+            "file_id": "关联的文件ID/URL/manual/mark",
+            "source": "来源名称"，
         },
         {
             "a": "test2",
@@ -271,7 +274,8 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushDa
     "data": [
         {
             "q": "生成索引的内容，index 模式下最大 tokens 为3000，建议不超过 1000",
-            "a": "预期回答/补充"
+            "a": "预期回答/补充",
+            "file_id": "如果推送数据到手动录入，这里可以留空; 如果希望关联到某个文件中，需要填写对应文件的ID; 如果希望加入到手动标注中，可设置为: mark",
         },
         {
             "q": "生成索引的内容，qa 模式下最大 tokens 为10000，建议 8000 左右",
@@ -292,7 +296,16 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushDa
     "code": 200,
     "statusText": "",
     "data": {
-        "insertLen": 1 // 最终插入成功的数量，可能因为超出 tokens 或者插入异常，index 可以重复插入，会自动去重
+        "insertLen": 1, // 最终插入成功的数量
+        "overToken": [], // 超出 token 的
+        "fileIdInvalid": [  // file_id 无效的
+            {
+                "a": "飞飞dsaf飞",
+                "q": "测试是32否收到",
+                "file_id": "32dwe"
+            }
+        ],
+        "error": [] // 其他错误
     }
 }
 ```

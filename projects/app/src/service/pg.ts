@@ -194,6 +194,25 @@ export const insertData2Dataset = ({
   });
 };
 
+/**
+ * Update data file_id
+ */
+export const updateDataFileId = async ({
+  oldFileId,
+  userId,
+  newFileId = DatasetSpecialIdEnum.manual
+}: {
+  oldFileId: string;
+  userId: string;
+  newFileId?: string;
+}) => {
+  await PgClient.update(PgDatasetTableName, {
+    where: [['file_id', oldFileId], 'AND', ['user_id', userId]],
+    values: [{ key: 'file_id', value: newFileId }]
+  });
+  return newFileId;
+};
+
 export async function initPg() {
   try {
     await connectPg();

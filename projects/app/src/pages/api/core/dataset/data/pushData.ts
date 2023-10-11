@@ -11,6 +11,7 @@ import { getVectorModel } from '@/service/utils/data';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
 import type { PushDataProps, PushDataResponse } from '@/api/core/dataset/data.d';
+import { authFileIdValid } from '@/service/dataset/auth';
 
 const modeMap = {
   [TrainingModeEnum.index]: true,
@@ -82,29 +83,47 @@ export async function pushDataToKb({
 
   // filter repeat or equal content
   const set = new Set();
-  const filterData: DatasetDataItemType[] = [];
+  const filterResult: Record<string, DatasetDataItemType[]> = {
+    success: [],
+    overToken: [],
+    fileIdInvalid: [],
+    error: []
+  };
 
-  data.forEach((item) => {
-    if (!item.q) return;
+  await Promise.all(
+    data.map(async (item) => {
+      if (!item.q) {
+        filterResult.error.push(item);
+        return;
+      }
 
-    const text = item.q + item.a;
+      const text = item.q + item.a;
 
-    // count q token
-    const token = countPromptTokens(item.q, 'system');
+      // count q token
+      const token = countPromptTokens(item.q, 'system');
 
-    if (token > modeMaxToken[mode]) {
-      return;
-    }
+      if (token > modeMaxToken[mode]) {
+        filterResult.overToken.push(item);
+        return;
+      }
 
-    if (!set.has(text)) {
-      filterData.push(item);
-      set.add(text);
-    }
-  });
+      try {
+        await authFileIdValid(item.file_id);
+      } catch (error) {
+        filterResult.fileIdInvalid.push(item);
+        return;
+      }
+
+      if (!set.has(text)) {
+        filterResult.success.push(item);
+        set.add(text);
+      }
+    })
+  );
 
   // 插入记录
   const insertRes = await TrainingData.insertMany(
-    filterData.map((item) => ({
+    filterResult.success.map((item) => ({
       ...item,
       userId,
       kbId,
@@ -116,9 +135,11 @@ export async function pushDataToKb({
   );
 
   insertRes.length > 0 && startQueue();
+  delete filterResult.success;
 
   return {
-    insertLen: insertRes.length
+    insertLen: insertRes.length,
+    ...filterResult
   };
 }
 

@@ -13,6 +13,7 @@ import { getVectorModel } from '@/service/utils/data';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
+import { authFileIdValid } from '@/service/dataset/auth';
 
 export type Props = {
   kbId: string;
@@ -71,6 +72,8 @@ export async function getVectorAndInsertDataset(
   if (exists) {
     return Promise.reject('已经存在完全一致的数据');
   }
+
+  await authFileIdValid(data.file_id);
 
   const { vectors } = await getVector({
     model: kb.vectorModel,
