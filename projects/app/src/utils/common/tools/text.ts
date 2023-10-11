@@ -1,7 +1,7 @@
 /* 
     replace {{variable}} to value
 */
-export function replaceVariable(text: string, obj: Record<string, string>) {
+export function replaceVariable(text: string, obj: Record<string, string | number>) {
   for (const key in obj) {
     const val = obj[key];
     if (typeof val !== 'string') continue;

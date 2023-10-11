@@ -3,9 +3,9 @@ import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
-import { SSEParseData, parseStreamChunk } from '@/utils/sse';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { getAIChatApi, axiosConfig } from '@fastgpt/core/ai/config';
+import { getAIApi } from '@fastgpt/core/ai/config';
+import type { ChatCompletion, StreamChatType } from '@fastgpt/core/ai/type';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/common/bill/push';
@@ -20,9 +20,7 @@ import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { Readable } from 'stream';
 import { responseWrite, responseWriteController } from '@/service/common/stream';
-import { addLog } from '@/service/utils/tools';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
@@ -106,32 +104,25 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   // FastGPT temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
-  const chatAPI = getAIChatApi(user.openaiAccount);
+  const ai = getAIApi(user.openaiAccount, 480000);
 
-  const response = await chatAPI.createChatCompletion(
-    {
-      model,
-      temperature,
-      max_tokens,
-      messages: [
-        ...(modelConstantsData.defaultSystem
-          ? [
-              {
-                role: ChatCompletionRequestMessageRoleEnum.System,
-                content: modelConstantsData.defaultSystem
-              }
-            ]
-          : []),
-        ...messages
-      ],
-      stream
-    },
-    {
-      timeout: 480000,
-      responseType: stream ? 'stream' : 'json',
-      ...axiosConfig(user.openaiAccount)
-    }
-  );
+  const response = await ai.chat.completions.create({
+    model,
+    temperature,
+    max_tokens,
+    messages: [
+      ...(modelConstantsData.defaultSystem
+        ? [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.System,
+              content: modelConstantsData.defaultSystem
+            }
+          ]
+        : []),
+      ...messages
+    ],
+    stream
+  });
 
   const { answerText, totalTokens, completeMessages } = await (async () => {
     if (stream) {
@@ -139,7 +130,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       const { answer } = await streamResponse({
         res,
         detail,
-        response
+        stream: response
       });
       // count tokens
       const completeMessages = filterMessages.concat({
@@ -159,8 +150,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         completeMessages
       };
     } else {
-      const answer = response.data.choices?.[0].message?.content || '';
-      const totalTokens = response.data.usage?.total_tokens || 0;
+      const unStreamResponse = response as ChatCompletion;
+      const answer = unStreamResponse.choices?.[0].message?.content || '';
+      const totalTokens = unStreamResponse.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({
         obj: ChatRoleEnum.AI,
@@ -208,7 +200,7 @@ function filterQuote({
       obj: ChatRoleEnum.System,
       value: replaceVariable(quoteTemplate || defaultQuoteTemplate, {
         ...item,
-        index: `${index + 1}`
+        index: index + 1
       })
     }))
   });
@@ -340,59 +332,40 @@ function targetResponse({
 async function streamResponse({
   res,
   detail,
-  response
+  stream
 }: {
   res: NextApiResponse;
   detail: boolean;
-  response: any;
+  stream: StreamChatType;
 }) {
-  return new Promise<{ answer: string }>((resolve, reject) => {
-    const stream = response.data as Readable;
-    let answer = '';
-    const parseData = new SSEParseData();
-
-    const write = responseWriteController({
-      res,
-      readStream: stream
-    });
-
-    stream.on('data', (data) => {
-      if (res.closed) {
-        stream.destroy();
-        return resolve({ answer });
-      }
-
-      const parse = parseStreamChunk(data);
-      parse.forEach((item) => {
-        const { data } = parseData.parse(item);
-        if (!data || data === '[DONE]') return;
-
-        const content: string = data?.choices?.[0]?.delta?.content || '';
-        if (data.error) {
-          addLog.error(`SSE response`, data.error);
-        } else {
-          answer += content;
-
-          responseWrite({
-            write,
-            event: detail ? sseResponseEventEnum.answer : undefined,
-            data: textAdaptGptResponse({
-              text: content
-            })
-          });
-        }
-      });
-    });
-    stream.on('end', () => {
-      resolve({ answer });
-    });
-    stream.on('close', () => {
-      resolve({ answer });
-    });
-    stream.on('error', (err) => {
-      reject(err);
-    });
+  const write = responseWriteController({
+    res,
+    readStream: stream
   });
+  let answer = '';
+
+  for await (const part of stream) {
+    if (res.closed) {
+      stream.controller?.abort();
+      break;
+    }
+    const content = part.choices[0]?.delta?.content || '';
+    answer += content;
+
+    responseWrite({
+      write,
+      event: detail ? sseResponseEventEnum.answer : undefined,
+      data: textAdaptGptResponse({
+        text: content
+      })
+    });
+  }
+
+  if (!answer) {
+    return Promise.reject('Chat API is error or undefined');
+  }
+
+  return { answer };
 }
 
 function getHistoryPreview(completeMessages: ChatItemType[]) {

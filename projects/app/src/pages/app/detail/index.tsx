@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { defaultApp } from '@/constants/model';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
+import { feConfigs } from '@/store/static';
 
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
@@ -52,7 +53,9 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const tabList = useMemo(
     () => [
       { label: '简易配置', id: TabEnum.basicEdit, icon: 'overviewLight' },
-      { label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' },
+      ...(feConfigs?.hide_app_flow
+        ? []
+        : [{ label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' }]),
       { label: '外部使用', id: TabEnum.outLink, icon: 'shareLight' },
       { label: '对话日志', id: TabEnum.logs, icon: 'logsLight' },
       { label: '立即对话', id: TabEnum.startChat, icon: 'chat' }

@@ -1,12 +1,6 @@
 import { sseResponseEventEnum } from '@/constants/chat';
 import { NextApiResponse } from 'next';
-import {
-  openaiError,
-  openaiAccountError,
-  proxyError,
-  ERROR_RESPONSE,
-  ERROR_ENUM
-} from './errorCode';
+import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from './errorCode';
 import { clearCookie, sseResponse, addLog } from './utils/tools';
 
 export interface ResponseType<T = any> {
@@ -47,10 +41,8 @@ export const jsonRes = <T = any>(
       msg = '网络连接异常';
     } else if (error?.response?.data?.error?.message) {
       msg = error?.response?.data?.error?.message;
-    } else if (openaiAccountError[error?.response?.data?.error?.code]) {
-      msg = openaiAccountError[error?.response?.data?.error?.code];
-    } else if (openaiError[error?.response?.statusText]) {
-      msg = openaiError[error.response.statusText];
+    } else if (error?.error?.message) {
+      msg = error?.error?.message;
     }
 
     addLog.error(`response error: ${msg}`, error);
@@ -88,10 +80,8 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     msg = '网络连接异常';
   } else if (error?.response?.data?.error?.message) {
     msg = error?.response?.data?.error?.message;
-  } else if (openaiAccountError[error?.response?.data?.error?.code]) {
-    msg = openaiAccountError[error?.response?.data?.error?.code];
-  } else if (openaiError[error?.response?.statusText]) {
-    msg = openaiError[error.response.statusText];
+  } else if (error?.error?.message) {
+    msg = error?.error?.message;
   }
 
   addLog.error(`sse error: ${msg}`, error);

@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { PgClient } from '@/service/pg';
+import { PgClient, updateDataFileId } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { FileStatusEnum } from '@/constants/dataset';
 import { strIsLink } from '@fastgpt/common/tools/str';
@@ -35,8 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .join(' ')}
       ${searchText ? `AND source ILIKE '%${searchText}%'` : ''}`;
 
-    const [{ rows }, { rowCount: total }] = await Promise.all([
-      PgClient.query(`SELECT file_id, COUNT(*) AS count
+    let [{ rows }, { rowCount: total }] = await Promise.all([
+      PgClient.query<{ file_id: string; count: number }>(`SELECT file_id, COUNT(*) AS count
     FROM ${PgDatasetTableName}
     where ${pgWhere}
     GROUP BY file_id
@@ -48,6 +48,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     where ${pgWhere}
     `)
     ]);
+
+    // If fileId is invalid, reset it to manual
+    await Promise.all(
+      rows.map((row) => {
+        if (!strIsLink(row.file_id) && row.file_id.length !== 24) {
+          return updateDataFileId({
+            oldFileId: row.file_id,
+            userId,
+            newFileId: DatasetSpecialIdEnum.manual
+          });
+        }
+      })
+    );
+    // just filter link or fileData
+    rows = rows.filter((row) => strIsLink(row.file_id) || row.file_id.length === 24);
 
     // find files
     const gridFs = new GridFSStorage('dataset', userId);
@@ -96,6 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const data = await Promise.all([
       getSpecialData(),
       ...rows.map(async (row) => {
+        if (!row.file_id) return null;
         // link data
         if (strIsLink(row.file_id)) {
           const { rows } = await PgClient.select(PgDatasetTableName, {
