@@ -3,7 +3,7 @@ import styles from './index.module.scss';
 import { Box, Flex, Image, useDisclosure } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
 import { useGlobalStore } from '@/store/global';
-import type { ResLogin } from '@/api/response/user';
+import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
 import { useChatStore } from '@/store/chat';

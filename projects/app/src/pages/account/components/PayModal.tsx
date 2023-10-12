@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { ModalFooter, ModalBody, Button, Input, Box, Grid } from '@chakra-ui/react';
-import { getPayCode, checkPayResult } from '@/api/user';
+import { getPayCode, checkPayResult } from '@/web/common/api/bill';
 import { useToast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';

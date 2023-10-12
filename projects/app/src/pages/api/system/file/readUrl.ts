@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     jsonRes(res, {
-      data: `/api/support/file/read?token=${token}`
+      data: `/api/system/file/read?token=${token}`
     });
   } catch (error) {
     jsonRes(res, {

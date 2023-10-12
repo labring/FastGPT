@@ -16,14 +16,14 @@ import {
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
 import { usePagination } from '@/hooks/usePagination';
-import { getAppChatLogs } from '@/api/app';
+import { getAppChatLogs } from '@/web/core/api/app';
 import dayjs from 'dayjs';
 import { ChatSourceMap, HUMAN_ICON } from '@/constants/chat';
 import { AppLogsListItemType } from '@/types/app';
 import { useGlobalStore } from '@/store/global';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';
 import { useQuery } from '@tanstack/react-query';
-import { getInitChatSiteInfo } from '@/api/chat';
+import { getInitChatSiteInfo } from '@/web/core/api/chat';
 import Tag from '@/components/Tag';
 import MyModal from '@/components/MyModal';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';

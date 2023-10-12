@@ -10,7 +10,7 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
-import { textCensor } from '@/api/service/plugins';
+import { postTextCensor } from '@/service/common/api/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant';
 import { AppModuleItemType } from '@/types/app';
 import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
@@ -77,7 +77,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   });
 
   if (modelConstantsData.censor) {
-    await textCensor({
+    await postTextCensor({
       text: `${systemPrompt}
       ${quoteText}
       ${userChatInput}

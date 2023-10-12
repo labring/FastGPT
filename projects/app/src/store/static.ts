@@ -3,8 +3,8 @@ import {
   type ChatModelItemType,
   type VectorModelItemType
 } from '@/types/model';
-import type { InitDateResponse } from '@/pages/api/system/getInitData';
-import { getInitData } from '@/api/system';
+import type { InitDateResponse } from '@/global/common/api/systemRes';
+import { getSystemInitData } from '@/web/common/api/system';
 import { delay } from '@/utils/tools';
 import { FeConfigsType } from '@/types';
 
@@ -23,7 +23,7 @@ let retryTimes = 3;
 
 export const clientInitData = async (): Promise<InitDateResponse> => {
   try {
-    const res = await getInitData();
+    const res = await getSystemInitData();
 
     chatModelList = res.chatModels;
     qaModel = res.qaModel;

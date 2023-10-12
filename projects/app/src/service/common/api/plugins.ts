@@ -1,6 +1,6 @@
 import { POST } from './request';
 
-export const textCensor = (data: { text: string }) =>
+export const postTextCensor = (data: { text: string }) =>
   POST<{ code?: number; message: string }>('/plugins/censor/text_baidu', data)
     .then((res) => {
       if (res?.code === 5000) {

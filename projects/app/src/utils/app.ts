@@ -203,7 +203,7 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
     key: 'switch',
     type: 'target',
     label: '触发器',
-    connected: formData.kb.list.length > 0
+    connected: formData.kb.list.length > 0 && !!formData.kb.searchEmptyText
   },
   {
     key: 'quoteQA',

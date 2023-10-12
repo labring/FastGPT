@@ -12,7 +12,7 @@ import {
   Button
 } from '@chakra-ui/react';
 import { BillSourceMap } from '@/constants/user';
-import { getUserBills } from '@/api/user';
+import { getUserBills } from '@/web/common/api/bill';
 import type { UserBillType } from '@/types/user';
 import { usePagination } from '@/hooks/usePagination';
 import { useLoading } from '@/hooks/useLoading';

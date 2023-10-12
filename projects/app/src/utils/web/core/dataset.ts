@@ -1,4 +1,4 @@
-import { postCreateTrainingBill } from '@/api/common/bill';
+import { postCreateTrainingBill } from '@/web/common/api/bill';
 import { postChunks2Dataset } from '@/api/core/dataset/data';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';

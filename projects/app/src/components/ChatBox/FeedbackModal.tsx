@@ -3,7 +3,7 @@ import { ModalBody, Textarea, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '../MyModal';
 import { useRequest } from '@/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { userUpdateChatFeedback } from '@/api/chat';
+import { userUpdateChatFeedback } from '@/web/core/api/chat';
 
 const FeedbackModal = ({
   chatItemId,

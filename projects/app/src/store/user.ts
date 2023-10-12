@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import { getMyModels, getModelById, putAppById } from '@/api/app';
+import { getMyModels, getModelById, putAppById } from '@/web/core/api/app';
 import { formatPrice } from '@fastgpt/common/bill/index';
-import { getTokenLogin, putUserInfo } from '@/api/user';
+import { getTokenLogin, putUserInfo } from '@/web/support/api/user';
 import { defaultApp } from '@/constants/model';
 import { AppListItemType, AppUpdateParams } from '@/types/app';
 

@@ -1,4 +1,4 @@
-import { loginOut } from '@/api/user';
+import { loginOut } from '@/web/support/api/user';
 import timezones from 'timezones-list';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';

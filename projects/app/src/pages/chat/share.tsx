@@ -6,7 +6,7 @@ import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
-import { streamFetch } from '@/api/fetch';
+import { streamFetch } from '@/web/common/api/fetch';
 import { useShareChatStore, defaultHistory } from '@/store/shareChat';
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';

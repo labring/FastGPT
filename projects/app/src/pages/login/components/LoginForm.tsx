@@ -3,8 +3,8 @@ import { FormControl, Flex, Input, Button, FormErrorMessage, Box, Link } from '@
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { OAuthEnum, PageTypeEnum } from '@/constants/user';
-import { postLogin } from '@/api/user';
-import type { ResLogin } from '@/api/response/user';
+import { postLogin } from '@/web/support/api/user';
+import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/hooks/useToast';
 import { feConfigs } from '@/store/static';
 import { useGlobalStore } from '@/store/global';

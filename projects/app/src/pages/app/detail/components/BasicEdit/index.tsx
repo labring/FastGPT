@@ -42,11 +42,11 @@ import { AppModuleItemType, VariableItemType } from '@/types/app';
 import { useRequest } from '@/hooks/useRequest';
 import { useConfirm } from '@/hooks/useConfirm';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { streamFetch } from '@/api/fetch';
+import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
 import { useToast } from '@/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
-import { delModelById } from '@/api/app';
+import { delModelById } from '@/web/core/api/app';
 import { useTranslation } from 'react-i18next';
 import { getGuideModule } from '@/components/ChatBox/utils';
 

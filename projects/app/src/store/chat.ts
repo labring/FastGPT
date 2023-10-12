@@ -3,8 +3,8 @@ import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import { ChatHistoryItemType } from '@/types/chat';
-import type { InitChatResponse } from '@/api/response/chat';
-import { delChatHistoryById, getChatHistory, clearChatHistoryByAppId } from '@/api/chat';
+import type { InitChatResponse } from '@/global/core/api/chatRes.d';
+import { delChatHistoryById, getChatHistory, clearChatHistoryByAppId } from '@/web/core/api/chat';
 
 type State = {
   history: ChatHistoryItemType[];

@@ -5,12 +5,12 @@ import type { ChatHistoryItemResType } from '@/types/chat';
 import { StartChatFnProps } from '@/components/ChatBox';
 import { getToken } from '@/utils/user';
 
-interface StreamFetchProps {
+type StreamFetchProps = {
   url?: string;
   data: Record<string, any>;
   onMessage: StartChatFnProps['generatingMessage'];
   abortSignal: AbortController;
-}
+};
 export const streamFetch = ({
   url = '/api/v1/chat/completions',
   data,

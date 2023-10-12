@@ -16,7 +16,7 @@ import { useForm } from 'react-hook-form';
 import { compressImg } from '@/utils/web/file';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
-import { postCreateApp } from '@/api/app';
+import { postCreateApp } from '@/web/core/api/app';
 import { useRouter } from 'next/router';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
 import { useGlobalStore } from '@/store/global';

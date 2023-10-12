@@ -2,9 +2,9 @@ import React, { useState, Dispatch, useCallback } from 'react';
 import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '../../../constants/user';
-import { postFindPassword } from '@/api/user';
+import { postFindPassword } from '@/web/support/api/user';
 import { useSendCode } from '@/hooks/useSendCode';
-import type { ResLogin } from '@/api/response/user';
+import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@/hooks/useToast';
 import { feConfigs } from '@/store/static';
 

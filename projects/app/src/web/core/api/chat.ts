@@ -1,9 +1,9 @@
-import { GET, POST, DELETE, PUT } from './request';
+import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType } from '@/types/chat';
-import type { InitChatResponse } from './response/chat';
-import { RequestPaging } from '../types/index';
+import type { InitChatResponse } from '@/global/core/api/chatRes.d';
+import type { RequestPaging } from '@/types';
 import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
-import { AdminUpdateFeedbackParams } from './request/chat';
+import type { AdminUpdateFeedbackParams } from '@/global/core/api/chatReq.d';
 
 /**
  * 获取初始化聊天内容

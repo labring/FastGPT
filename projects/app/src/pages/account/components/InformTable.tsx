@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
-import { getInforms, readInform } from '@/api/user';
+import { getInforms, readInform } from '@/web/support/api/user';
 import { usePagination } from '@/hooks/usePagination';
 import { useLoading } from '@/hooks/useLoading';
 import type { informSchema } from '@/types/mongoSchema';

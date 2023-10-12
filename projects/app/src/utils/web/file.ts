@@ -1,6 +1,7 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { uploadImg, postUploadFiles, getFileViewUrl } from '@/api/support/file';
+import { postUploadImg, postUploadFiles, getFileViewUrl } from '@/web/common/api/system';
+
 /**
  * upload file to mongo gridfs
  */
@@ -244,7 +245,7 @@ export const compressImg = ({
 
         const src = await (async () => {
           try {
-            const src = await uploadImg(compressedDataUrl);
+            const src = await postUploadImg(compressedDataUrl);
             return src;
           } catch (error) {
             return compressedDataUrl;

@@ -1,6 +1,6 @@
 import { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
 
-export type CreateQuestionGuideProps = {
+export type CreateQuestionGuideParams = {
   messages: ChatCompletionRequestMessage[];
   shareId?: string;
 };

@@ -45,7 +45,7 @@ import { useGlobalStore } from '@/store/global';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
-import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/api/chat';
+import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/web/core/api/chat';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -61,7 +61,7 @@ const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputD
 
 import styles from './index.module.scss';
 import Script from 'next/script';
-import { postQuestionGuide } from '@/api/core/ai/agent/api';
+import { postQuestionGuide } from '@/web/core/api/ai';
 import { splitGuideModule } from './utils';
 import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 

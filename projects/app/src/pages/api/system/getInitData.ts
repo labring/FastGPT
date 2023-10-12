@@ -2,20 +2,8 @@ import type { FeConfigsType, SystemEnvType } from '@/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { readFileSync } from 'fs';
-import {
-  type QAModelItemType,
-  type ChatModelItemType,
-  type VectorModelItemType,
-  FunctionModelItemType
-} from '@/types/model';
-
-export type InitDateResponse = {
-  chatModels: ChatModelItemType[];
-  qaModel: QAModelItemType;
-  vectorModels: VectorModelItemType[];
-  feConfigs: FeConfigsType;
-  systemVersion: string;
-};
+import type { InitDateResponse } from '@/global/common/api/systemRes';
+import { type VectorModelItemType, FunctionModelItemType } from '@/types/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!global.feConfigs) {

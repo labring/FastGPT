@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { getInitChatSiteInfo, delChatRecordById, putChatHistory } from '@/api/chat';
+import { getInitChatSiteInfo, delChatRecordById, putChatHistory } from '@/web/core/api/chat';
 import {
   Box,
   Flex,
@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useGlobalStore } from '@/store/global';
 import { useQuery } from '@tanstack/react-query';
-import { streamFetch } from '@/api/fetch';
+import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/store/chat';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';

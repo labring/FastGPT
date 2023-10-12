@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@/service/utils/auth';
-import type { FetchResultItem } from '@/types/plugin';
+import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
 import { simpleText } from '@/utils/file';
 
 export type UrlFetchResponse = FetchResultItem[];

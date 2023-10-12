@@ -9,7 +9,7 @@ import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/store/user';
-import { getUnreadCount } from '@/api/user';
+import { getUnreadCount } from '@/web/support/api/user';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,

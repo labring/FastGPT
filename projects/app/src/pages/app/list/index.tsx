@@ -13,7 +13,7 @@ import { useRouter } from 'next/router';
 import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
-import { delModelById } from '@/api/app';
+import { delModelById } from '@/web/core/api/app';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { serviceSideProps } from '@/utils/web/i18n';

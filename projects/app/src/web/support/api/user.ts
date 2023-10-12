@@ -1,10 +1,10 @@
-import { GET, POST, PUT } from './request';
+import { GET, POST, PUT } from '@/web/common/api/request';
 import { createHashPassword } from '@/utils/tools';
-import type { ResLogin, PromotionRecordType } from './response/user';
+import type { ResLogin, PromotionRecordType } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@/constants/common';
-import { UserBillType, UserType, UserUpdateParams } from '@/types/user';
+import { UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
-import { informSchema, PaySchema } from '@/types/mongoSchema';
+import { informSchema } from '@/types/mongoSchema';
 import { OAuthEnum } from '@/constants/user';
 
 export const sendAuthCode = (data: {
@@ -69,25 +69,6 @@ export const postLogin = ({ username, password }: { username: string; password: 
 export const loginOut = () => GET('/user/account/loginout');
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/user/account/update', data);
-
-export const getUserBills = (data: RequestPaging) =>
-  POST<PagingData<UserBillType>>(`/user/getBill`, data);
-
-export const getPayOrders = () => GET<PaySchema[]>(`/user/getPayOrders`);
-
-export const getPayCode = (amount: number) =>
-  GET<{
-    codeUrl: string;
-    payId: string;
-  }>(`/plusApi/user/pay/getPayCode`, { amount });
-
-export const checkPayResult = (payId: string) =>
-  GET<number>(`/plusApi/user/pay/checkPayResult`, { payId }).then(() => {
-    try {
-      GET('/user/account/paySuccess');
-    } catch (error) {}
-    return 'success';
-  });
 
 export const getInforms = (data: RequestPaging) =>
   POST<PagingData<informSchema>>(`/user/inform/list`, data);

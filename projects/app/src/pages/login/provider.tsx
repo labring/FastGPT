@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
-import { ResLogin } from '@/api/response/user';
+import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useChatStore } from '@/store/chat';
 import { useUserStore } from '@/store/user';
 import { setToken } from '@/utils/user';
-import { oauthLogin } from '@/api/user';
+import { oauthLogin } from '@/web/support/api/user';
 import { useToast } from '@/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/utils/web/i18n';

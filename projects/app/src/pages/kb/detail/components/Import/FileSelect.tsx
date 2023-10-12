@@ -17,7 +17,7 @@ import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
-import { FetchResultItem } from '@/types/plugin';
+import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
 import { getErrText } from '@/utils/tools';
 import { useDatasetStore } from '@/store/dataset';

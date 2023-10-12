@@ -16,7 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getPromotionInitData, getPromotionRecords } from '@/api/user';
+import { getPromotionInitData, getPromotionRecords } from '@/web/support/api/user';
 import { useUserStore } from '@/store/user';
 import { useLoading } from '@/hooks/useLoading';
 
@@ -24,7 +24,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/hooks/useCopyData';
 import { usePagination } from '@/hooks/usePagination';
-import { PromotionRecordType } from '@/api/response/user';
+import type { PromotionRecordType } from '@/global/support/api/userRes.d';
 import MyIcon from '@/components/Icon';
 import dayjs from 'dayjs';
 

@@ -1,9 +1,9 @@
-import { GET, POST, DELETE, PUT } from './request';
+import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { AppSchema } from '@/types/mongoSchema';
 import type { AppListItemType, AppUpdateParams } from '@/types/app';
-import { RequestPaging } from '../types/index';
+import { RequestPaging } from '@/types/index';
 import { addDays } from 'date-fns';
-import { GetAppChatLogsParams } from './request/app';
+import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import type { CreateAppParams } from '@/types/app';
 
 /**
@@ -53,4 +53,5 @@ export const getAppTotalUsage = (data: { appId: string }) =>
     end: addDays(new Date(), 1)
   }).then((res) => (res.length === 0 ? [{ date: new Date(), total: 0 }] : res));
 
+// =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/app/getChatLogs`, data);
