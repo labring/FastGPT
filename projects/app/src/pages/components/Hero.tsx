@@ -1,8 +1,8 @@
 import { Box, Flex, Button, Image } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { feConfigs } from '@/store/static';
-import { useGlobalStore } from '@/store/global';
+import { feConfigs } from '@/web/common/store/static';
+import { useGlobalStore } from '@/web/common/store/global';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
 

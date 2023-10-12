@@ -12,25 +12,29 @@ import {
   Image,
   MenuButton
 } from '@chakra-ui/react';
-import { getTrainingData } from '@/api/core/dataset/data';
-import { getDatasetFiles, delDatasetFileById, updateDatasetFile } from '@/api/core/dataset/file';
+import {
+  getTrainingData,
+  getDatasetFiles,
+  delDatasetFileById,
+  updateDatasetFile
+} from '@/web/core/api/dataset';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { formatFileSize } from '@/utils/tools';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';
-import { useRequest } from '@/hooks/useRequest';
-import { useLoading } from '@/hooks/useLoading';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import { FileStatusEnum } from '@/constants/dataset';
 import { useRouter } from 'next/router';
-import { usePagination } from '@/hooks/usePagination';
+import { usePagination } from '@/web/common/hooks/usePagination';
 import type { DatasetFileItemType } from '@/types/core/dataset/file';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import MyMenu from '@/components/MyMenu';
-import { useEditTitle } from '@/hooks/useEditTitle';
+import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { datasetSpecialIds } from '@fastgpt/core/dataset/constant';
 import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
 

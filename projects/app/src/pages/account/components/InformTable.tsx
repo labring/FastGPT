@@ -1,11 +1,11 @@
 import React from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
-import { getInforms, readInform } from '@/api/user';
-import { usePagination } from '@/hooks/usePagination';
-import { useLoading } from '@/hooks/useLoading';
+import { getInforms, readInform } from '@/web/support/api/user';
+import { usePagination } from '@/web/common/hooks/usePagination';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import type { informSchema } from '@/types/mongoSchema';
 import { formatTimeToChatTime } from '@/utils/tools';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import MyIcon from '@/components/Icon';
 
 const BillTable = () => {

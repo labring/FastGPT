@@ -22,25 +22,25 @@ import {
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import {
   getShareChatList,
   delShareChatById,
   createShareChat,
   putShareChat
-} from '@/api/support/outLink';
+} from '@/web/support/api/outLink';
 import { formatTimeToChatTime } from '@/utils/tools';
-import { useCopyData } from '@/hooks/useCopyData';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/model';
 import type { OutLinkEditType } from '@/types/support/outLink';
-import { useRequest } from '@/hooks/useRequest';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import { OutLinkTypeEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
-import { useToast } from '@/hooks/useToast';
-import { feConfigs } from '@/store/static';
+import { useToast } from '@/web/common/hooks/useToast';
+import { feConfigs } from '@/web/common/store/static';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';

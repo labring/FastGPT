@@ -11,13 +11,13 @@ import {
   Flex,
   Box
 } from '@chakra-ui/react';
-import { getPayOrders, checkPayResult } from '@/api/user';
+import { getPayOrders, checkPayResult } from '@/web/common/api/bill';
 import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import { formatPrice } from '@fastgpt/common/bill/index';
-import { useToast } from '@/hooks/useToast';
-import { useLoading } from '@/hooks/useLoading';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import MyIcon from '@/components/Icon';
 
 const PayRecordTable = () => {

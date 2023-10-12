@@ -7,6 +7,9 @@ export enum SystemInputEnum {
   'userChatInput' = 'userChatInput',
   'questionGuide' = 'questionGuide'
 }
+export enum SystemOutputEnum {
+  finish = 'finish'
+}
 
 export enum VariableInputEnum {
   input = 'input',

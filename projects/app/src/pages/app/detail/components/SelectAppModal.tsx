@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { ModalBody, Flex, Box, useTheme, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { getMyModels } from '@/api/app';
+import { getMyModels } from '@/web/core/api/app';
 import { useQuery } from '@tanstack/react-query';
 import type { SelectAppItemType } from '@/types/core/app/flow';
 import Avatar from '@/components/Avatar';
 import { useTranslation } from 'react-i18next';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 
 const SelectAppModal = ({
   defaultApps = [],

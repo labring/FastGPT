@@ -10,16 +10,16 @@ import {
   MenuItem,
   IconButton
 } from '@chakra-ui/react';
-import { useGlobalStore } from '@/store/global';
-import { useEditTitle } from '@/hooks/useEditTitle';
+import { useGlobalStore } from '@/web/common/store/global';
+import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { useQuery } from '@tanstack/react-query';
 
 type HistoryItemType = {

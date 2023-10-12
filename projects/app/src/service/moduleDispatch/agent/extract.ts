@@ -7,7 +7,7 @@ import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { Prompt_ExtractJson } from '@/prompts/core/agent';
+import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { defaultExtractModel } from '@/pages/api/system/getInitData';
 

@@ -6,11 +6,11 @@ import { withNextCors } from '@/service/utils/tools';
 import { KB, connectToDatabase } from '@/service/mongo';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { PgDatasetTableName } from '@/constants/plugin';
-import type { UpdateDataPrams } from '@/api/core/dataset/data.d';
+import type { UpdateDatasetDataPrams } from '@/global/core/api/datasetReq.d';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { dataId, a = '', q = '', kbId } = req.body as UpdateDataPrams;
+    const { dataId, a = '', q = '', kbId } = req.body as UpdateDatasetDataPrams;
 
     if (!dataId) {
       throw new Error('缺少参数');

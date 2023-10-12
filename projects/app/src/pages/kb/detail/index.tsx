@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { DatasetItemType } from '@/types/core/dataset';
 import { getErrText } from '@/utils/tools';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { type ComponentRef } from './components/Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
@@ -15,16 +15,15 @@ import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import Info from './components/Info';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'react-i18next';
-import { getTrainingQueueLen } from '@/api/core/dataset/data';
-import { delDatasetEmptyFiles } from '@/api/core/dataset/file';
+import { getTrainingQueueLen, delDatasetEmptyFiles } from '@/web/core/api/dataset';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import Script from 'next/script';
 import FileCard from './components/FileCard';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false

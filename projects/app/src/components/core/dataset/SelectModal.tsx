@@ -1,9 +1,9 @@
-import { getDatasets, getDatasetPaths } from '@/api/core/dataset';
+import { getDatasets, getDatasetPaths } from '@/web/core/api/dataset';
 import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { Box, Flex, ModalHeader } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 

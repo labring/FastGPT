@@ -31,6 +31,7 @@ export type FlowInputItemType = {
   required?: boolean;
   list?: { label: string; value: any }[];
   markList?: { label: string; value: any }[];
+  valueCheck?: (value: any) => boolean;
 };
 
 export type FlowOutputTargetItemType = {

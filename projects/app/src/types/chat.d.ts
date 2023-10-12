@@ -1,5 +1,6 @@
 import { ChatRoleEnum } from '@/constants/chat';
-import type { InitChatResponse, InitShareChatResponse } from '@/api/response/chat';
+import type { InitChatResponse } from '@/global/core/api/chatRes.d';
+import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
 import { ChatItemSchema } from './mongoSchema';

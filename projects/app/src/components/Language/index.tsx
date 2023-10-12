@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, MenuButton, MenuItem, MenuList, MenuButtonProps } from '@chakra-ui/react';
-import { getLangStore, LangEnum, setLangStore, langMap } from '@/utils/web/i18n';
+import { getLangStore, LangEnum, setLangStore, langMap } from '@/web/common/utils/i18n';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';

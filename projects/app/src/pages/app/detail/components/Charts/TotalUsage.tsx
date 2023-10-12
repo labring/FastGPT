@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as echarts from 'echarts';
-import { useGlobalStore } from '@/store/global';
-import { getAppTotalUsage } from '@/api/app';
+import { useGlobalStore } from '@/web/common/store/global';
+import { getAppTotalUsage } from '@/web/core/api/app';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { formatPrice } from '@fastgpt/common/bill/index';

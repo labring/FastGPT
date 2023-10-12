@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Box, Textarea, Button, Flex } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { useToast } from '@/hooks/useToast';
-import { useRequest } from '@/hooks/useRequest';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
-import { postData2Dataset } from '@/api/core/dataset/data';
+import { postData2Dataset } from '@/web/core/api/dataset';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 
 type ManualFormType = { q: string; a: string };

@@ -1,16 +1,16 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Link } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/store/user';
-import { useChatStore } from '@/store/chat';
+import { useUserStore } from '@/web/support/store/user';
+import { useChatStore } from '@/web/core/store/chat';
 import { HUMAN_ICON } from '@/constants/chat';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '../Avatar';
 import MyIcon from '../Icon';
 import { useTranslation } from 'next-i18next';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import MyTooltip from '../MyTooltip';
 
 export enum NavbarTypeEnum {

@@ -15,7 +15,7 @@ import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { SelectedDatasetType } from '@/types/core/dataset';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
@@ -23,8 +23,8 @@ import MyIcon from '@/components/Icon';
 import { KbTypeEnum } from '@/constants/dataset';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useDatasetStore } from '@/store/dataset';
-import { feConfigs } from '@/store/static';
+import { useDatasetStore } from '@/web/core/store/dataset';
+import { feConfigs } from '@/web/common/store/static';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 export type KbParamsType = {
@@ -178,7 +178,7 @@ export const DatasetSelectModal = ({
         </Grid>
         {filterKbList.unSelected.length === 0 && (
           <Flex mt={5} flexDirection={'column'} alignItems={'center'}>
-            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <MyIcon name="empty" w={'48px'} h={'48px'} mt={'20vh'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
               这个目录已经没东西可选了~
             </Box>

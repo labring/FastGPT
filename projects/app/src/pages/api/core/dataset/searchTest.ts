@@ -6,7 +6,8 @@ import { withNextCors } from '@/service/utils/tools';
 import { getVector } from '../../openapi/plugin/vector';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { KB } from '@/service/mongo';
-import type { SearchTestProps, SearchTestResponseType } from '@/api/core/dataset/index.d';
+import type { SearchTestProps } from '@/global/core/api/datasetReq.d';
+import type { SearchTestResponseType } from '@/global/core/api/datasetRes.d';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ModalBody, useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import Avatar from '../Avatar';
 import MyIcon from '@/components/Icon';
 import { KbTypeEnum } from '@/constants/dataset';

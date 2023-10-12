@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import dynamic from 'next/dynamic';
 import { defaultApp } from '@/constants/model';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
@@ -15,7 +15,7 @@ import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
 import BasicEdit from './components/BasicEdit';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 
 const AdEdit = dynamic(() => import('./components/AdEdit'), {
   loading: () => <Loading />

@@ -26,7 +26,7 @@ import React, {
 } from 'react';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { FlowModuleTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { useTranslation } from 'next-i18next';
 import { AppModuleItemType } from '@/types/app';

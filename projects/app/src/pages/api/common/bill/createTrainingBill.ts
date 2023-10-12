@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { BillSourceEnum } from '@/constants/user';
-import { CreateTrainingBillType } from '@/api/common/bill/index.d';
+import { CreateTrainingBillType } from '@/global/common/api/billReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

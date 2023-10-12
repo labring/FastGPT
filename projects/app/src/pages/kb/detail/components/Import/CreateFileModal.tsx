@@ -3,7 +3,7 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@/components/MyModal';
 import { Box, Input, Textarea, ModalBody, ModalFooter, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@/hooks/useRequest';
+import { useRequest } from '@/web/common/hooks/useRequest';
 
 const CreateFileModal = ({
   onClose,

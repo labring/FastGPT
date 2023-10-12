@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, OutLink, User } from '@/service/mongo';
-import type { InitShareChatResponse } from '@/api/response/chat';
+import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
 import { getChatModelNameList, getGuideModule } from '@/components/ChatBox/utils';

@@ -10,11 +10,11 @@ import {
 } from '@/constants/flow';
 import { FlowOutputTargetItemType } from '@/types/core/app/flow';
 import { AppModuleItemType } from '@/types/app';
-import { useRequest } from '@/hooks/useRequest';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { useTranslation } from 'next-i18next';
-import { useCopyData } from '@/hooks/useCopyData';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 import styles from './index.module.scss';
 import { AppTypeEnum } from '@/constants/app';
@@ -124,6 +124,9 @@ function FlowHeader({ app, onCloseSettings }: Props & {}) {
         const item = modules[i];
         if (item.inputs.find((input) => input.required && !input.connected)) {
           return Promise.reject(`【${item.name}】存在未连接的必填输入`);
+        }
+        if (item.inputs.find((input) => input.valueCheck && !input.valueCheck(input.value))) {
+          return Promise.reject(`【${item.name}】存在为填写的必填项`);
         }
       }
 

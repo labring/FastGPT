@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { serviceSideProps } from '@/utils/web/i18n';
-import { useGlobalStore } from '@/store/global';
+import { serviceSideProps } from '@/web/common/utils/i18n';
+import { useGlobalStore } from '@/web/common/store/global';
 import { addLog } from '@/service/utils/tools';
 import { getErrText } from '@/utils/tools';
 

@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo } from 'react';
 import { Box, useColorMode, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useLoading } from '@/hooks/useLoading';
-import { useGlobalStore } from '@/store/global';
+import { useLoading } from '@/web/common/hooks/useLoading';
+import { useGlobalStore } from '@/web/common/store/global';
 import { throttle } from 'lodash';
 import Auth from './auth';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 import { useQuery } from '@tanstack/react-query';
-import { useUserStore } from '@/store/user';
-import { getUnreadCount } from '@/api/user';
+import { useUserStore } from '@/web/support/store/user';
+import { getUnreadCount } from '@/web/support/api/user';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,

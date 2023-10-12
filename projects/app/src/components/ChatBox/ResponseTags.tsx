@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ChatHistoryItemResType, ChatItemType, QuoteItemType } from '@/types/chat';
 import { Flex, BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import dynamic from 'next/dynamic';
 import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';

@@ -9,7 +9,7 @@ import type { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
 import { addLog } from '../utils/tools';
 import { splitText2Chunks } from '@/utils/file';
 import { replaceVariable } from '@/utils/common/tools/text';
-import { Prompt_AgentQA } from '@/prompts/core/agent';
+import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { pushDataToKb } from '@/pages/api/core/dataset/data/pushData';
 
 const reduceQueue = () => {
