@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Flex, useTheme, Box } from '@chakra-ui/react';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import MyIcon from '@/components/Icon';
 import Tag from '@/components/Tag';
 import Avatar from '@/components/Avatar';

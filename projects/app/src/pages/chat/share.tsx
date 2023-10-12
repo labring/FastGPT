@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { initShareChatInfo } from '@/api/support/outLink';
+import { initShareChatInfo } from '@/web/support/api/outLink';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
-import { useGlobalStore } from '@/store/global';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useGlobalStore } from '@/web/common/store/global';
 import { useQuery } from '@tanstack/react-query';
-import { streamFetch } from '@/api/fetch';
-import { useShareChatStore, defaultHistory } from '@/store/shareChat';
+import { streamFetch } from '@/web/common/api/fetch';
+import { useShareChatStore, defaultHistory } from '@/web/core/store/shareChat';
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';
 import { getErrText } from '@/utils/tools';
@@ -19,7 +19,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 
 const OutLink = ({
   shareId,

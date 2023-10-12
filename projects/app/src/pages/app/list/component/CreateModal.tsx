@@ -11,17 +11,17 @@ import {
   useTheme,
   Card
 } from '@chakra-ui/react';
-import { useSelectFile } from '@/hooks/useSelectFile';
+import { useSelectFile } from '@/web/common/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/utils/web/file';
+import { compressImg } from '@/web/common/utils/file';
 import { getErrText } from '@/utils/tools';
-import { useToast } from '@/hooks/useToast';
-import { postCreateApp } from '@/api/app';
+import { useToast } from '@/web/common/hooks/useToast';
+import { postCreateApp } from '@/web/core/api/app';
 import { useRouter } from 'next/router';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
-import { useGlobalStore } from '@/store/global';
-import { useRequest } from '@/hooks/useRequest';
-import { feConfigs } from '@/store/static';
+import { useGlobalStore } from '@/web/common/store/global';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { feConfigs } from '@/web/common/store/static';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';

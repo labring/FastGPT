@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import { useRouter } from 'next/router';

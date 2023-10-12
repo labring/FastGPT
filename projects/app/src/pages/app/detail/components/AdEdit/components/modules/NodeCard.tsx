@@ -6,8 +6,8 @@ import type { FlowModuleItemType } from '@/types/core/app/flow';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'react-i18next';
-import { useEditTitle } from '@/hooks/useEditTitle';
-import { useToast } from '@/hooks/useToast';
+import { useEditTitle } from '@/web/common/hooks/useEditTitle';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useFlowStore } from '../Provider';
 
 type Props = FlowModuleItemType & {

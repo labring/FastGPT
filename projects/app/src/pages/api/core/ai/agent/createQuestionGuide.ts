@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { CreateQuestionGuideProps } from '@/api/core/ai/agent/type';
+import type { CreateQuestionGuideParams } from '@/global/core/api/aiReq.d';
 import { pushQuestionGuideBill } from '@/service/common/bill/push';
 import { defaultQGModel } from '@/pages/api/system/getInitData';
 import { createQuestionGuide } from '@fastgpt/core/ai/functions/createQuestionGuide';
@@ -10,7 +10,7 @@ import { createQuestionGuide } from '@fastgpt/core/ai/functions/createQuestionGu
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { messages } = req.body as CreateQuestionGuideProps;
+    const { messages } = req.body as CreateQuestionGuideParams;
     const { user } = await authUser({
       req,
       authOutLink: true,

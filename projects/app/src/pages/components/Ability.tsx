@@ -1,7 +1,7 @@
 import { Box, Image, BoxProps, Grid, useTheme } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import { MyImage } from '@/components/MyImage';
 
 const Ability = () => {

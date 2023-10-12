@@ -11,8 +11,8 @@ import {
   NumberDecrementStepper,
   Image
 } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRouter } from 'next/router';
 import { useMutation } from '@tanstack/react-query';
 import { splitText2Chunks } from '@/utils/file';
@@ -25,9 +25,9 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
-import { useDatasetStore } from '@/store/dataset';
-import { putMarkFilesUsed } from '@/api/core/dataset/file';
-import { chunksUpload } from '@/utils/web/core/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
+import { putMarkFilesUsed } from '@/web/core/api/dataset';
+import { chunksUpload } from '@/web/core/utils/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 

@@ -3,8 +3,8 @@ import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/rea
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@/hooks/useRequest';
-import { updatePasswordByOld } from '@/api/user';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { updatePasswordByOld } from '@/web/support/api/user';
 
 type FormType = {
   oldPsw: string;

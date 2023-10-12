@@ -17,8 +17,8 @@ import MyIcon from '@/components/Icon';
 import { KbTypeEnum } from '@/constants/dataset';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getDatasets, putDatasetById, getDatasetPaths } from '@/api/core/dataset';
-import { useRequest } from '@/hooks/useRequest';
+import { getDatasets, putDatasetById, getDatasetPaths } from '@/web/core/api/dataset';
+import { useRequest } from '@/web/common/hooks/useRequest';
 
 const MoveModal = ({
   onClose,

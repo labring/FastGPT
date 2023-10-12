@@ -4,18 +4,18 @@ import Script from 'next/script';
 import Head from 'next/head';
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import Layout from '@/components/Layout';
-import { theme } from '@/constants/theme';
+import { theme } from '@/web/styles/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
-import { clientInitData, feConfigs } from '@/store/static';
+import { clientInitData, feConfigs } from '@/web/common/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
-import { getLangStore, setLangStore } from '@/utils/web/i18n';
+import { getLangStore, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 
 import 'nprogress/nprogress.css';
-import '@/styles/reset.scss';
+import '@/web/styles/reset.scss';
 import { FeConfigsType } from '@/types';
 
 //Binding events.

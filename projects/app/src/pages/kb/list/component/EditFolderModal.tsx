@@ -2,8 +2,8 @@ import React, { useMemo, useRef } from 'react';
 import { ModalFooter, ModalBody, Input, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
-import { useRequest } from '@/hooks/useRequest';
-import { postCreateDataset, putDatasetById } from '@/api/core/dataset';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { postCreateDataset, putDatasetById } from '@/web/core/api/dataset';
 import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
 
 const EditFolderModal = ({

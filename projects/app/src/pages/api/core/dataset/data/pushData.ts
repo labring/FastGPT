@@ -10,7 +10,8 @@ import { startQueue } from '@/service/utils/tools';
 import { getVectorModel } from '@/service/utils/data';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
-import type { PushDataProps, PushDataResponse } from '@/api/core/dataset/data.d';
+import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
+import type { PushDataProps } from '@/global/core/api/datasetReq.d';
 import { authFileIdValid } from '@/service/dataset/auth';
 
 const modeMap = {

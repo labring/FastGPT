@@ -5,8 +5,8 @@ import {
   postData2Dataset,
   putDatasetDataById,
   delOneDatasetDataById
-} from '@/api/core/dataset/data';
-import { useToast } from '@/hooks/useToast';
+} from '@/web/core/api/dataset';
+import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';
@@ -15,11 +15,11 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { useTranslation } from 'react-i18next';
-import { useDatasetStore } from '@/store/dataset';
-import { getFileAndOpen } from '@/utils/web/file';
+import { useDatasetStore } from '@/web/core/store/dataset';
+import { getFileAndOpen } from '@/web/common/utils/file';
 import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/core/dataset/constant';
 import { strIsLink } from '@fastgpt/common/tools/str';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 
 export type FormData = { dataId?: string } & DatasetDataItemType;
 

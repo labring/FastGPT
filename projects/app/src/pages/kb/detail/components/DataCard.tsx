@@ -1,21 +1,20 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
 import { Box, Card, IconButton, Flex, Grid, Image, Button } from '@chakra-ui/react';
 import type { PgDataItemType } from '@/types/core/dataset/data';
-import { usePagination } from '@/hooks/usePagination';
-import { getDatasetDataList, delOneDatasetDataById } from '@/api/core/dataset/data';
-import { getFileInfoById } from '@/api/core/dataset/file';
+import { usePagination } from '@/web/common/hooks/usePagination';
+import { getDatasetDataList, delOneDatasetDataById, getFileInfoById } from '@/web/core/api/dataset';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import InputModal, { FormData as InputDataType, RawFileText } from './InputDataModal';
 import { debounce } from 'lodash';
 import { getErrText } from '@/utils/tools';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
 
 const DataCard = ({ kbId }: { kbId: string }) => {

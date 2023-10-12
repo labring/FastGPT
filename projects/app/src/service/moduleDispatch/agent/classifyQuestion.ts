@@ -9,7 +9,7 @@ import { SpecialInputKeyEnum } from '@/constants/flow';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { replaceVariable } from '@/utils/common/tools/text';
-import { Prompt_CQJson } from '@/prompts/core/agent';
+import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { defaultCQModel } from '@/pages/api/system/getInitData';
 
 type Props = ModuleDispatchProps<{

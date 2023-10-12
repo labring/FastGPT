@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Box, Flex, Button, useTheme, Image, Input } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@fastgpt/common/bill/index';
-import { qaModel } from '@/store/static';
+import { qaModel } from '@/web/common/store/static';
 import MyIcon from '@/components/Icon';
 import CloseIcon from '@/components/Icon/close';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
@@ -15,10 +15,10 @@ import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-import { putMarkFilesUsed } from '@/api/core/dataset/file';
-import { Prompt_AgentQA } from '@/prompts/core/agent';
+import { putMarkFilesUsed } from '@/web/core/api/dataset';
+import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
-import { chunksUpload } from '@/utils/web/core/dataset';
+import { chunksUpload } from '@/web/core/utils/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 

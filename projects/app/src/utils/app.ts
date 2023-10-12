@@ -1,5 +1,5 @@
 import type { AppModuleItemType, VariableItemType } from '@/types/app';
-import { chatModelList } from '@/store/static';
+import { chatModelList } from '@/web/common/store/static';
 import {
   FlowInputItemTypeEnum,
   FlowModuleTypeEnum,
@@ -203,7 +203,7 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
     key: 'switch',
     type: 'target',
     label: '触发器',
-    connected: formData.kb.list.length > 0
+    connected: formData.kb.list.length > 0 && !!formData.kb.searchEmptyText
   },
   {
     key: 'quoteQA',
@@ -466,21 +466,18 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
                 key: 'switch'
               }
             ]
-          : [
+          : []
+      },
+      {
+        key: 'unEmpty',
+        targets: formData.kb.searchEmptyText
+          ? [
               {
                 moduleId: 'chatModule',
                 key: 'switch'
               }
             ]
-      },
-      {
-        key: 'unEmpty',
-        targets: [
-          {
-            moduleId: 'chatModule',
-            key: 'switch'
-          }
-        ]
+          : []
       },
       {
         key: 'quoteQA',

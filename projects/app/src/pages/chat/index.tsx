@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { getInitChatSiteInfo, delChatRecordById, putChatHistory } from '@/api/chat';
+import { getInitChatSiteInfo, delChatRecordById, putChatHistory } from '@/web/core/api/chat';
 import {
   Box,
   Flex,
@@ -11,12 +11,12 @@ import {
   DrawerContent,
   useTheme
 } from '@chakra-ui/react';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { useQuery } from '@tanstack/react-query';
-import { streamFetch } from '@/api/fetch';
-import { useChatStore } from '@/store/chat';
-import { useLoading } from '@/hooks/useLoading';
-import { useToast } from '@/hooks/useToast';
+import { streamFetch } from '@/web/common/api/fetch';
+import { useChatStore } from '@/web/core/store/chat';
+import { useLoading } from '@/web/common/hooks/useLoading';
+import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import type { ChatHistoryItemType } from '@/types/chat';
@@ -29,8 +29,8 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import SliderApps from './components/SliderApps';
 import ChatHeader from './components/ChatHeader';
 import { getErrText } from '@/utils/tools';
-import { useUserStore } from '@/store/user';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { useUserStore } from '@/web/support/store/user';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();

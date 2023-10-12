@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { FlowInputItemType, SelectAppItemType } from '@/types/core/app/flow';
 import {
   Box,
@@ -12,20 +12,31 @@ import {
   Flex,
   useDisclosure,
   Button,
-  useTheme
+  useTheme,
+  Grid
 } from '@chakra-ui/react';
 import { FlowInputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
+import { useFlowStore } from '../Provider';
+import Avatar from '@/components/Avatar';
 import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
+import { useTranslation } from 'react-i18next';
+import { AIChatProps } from '@/types/core/aiChat';
+import { chatModelList } from '@/web/common/store/static';
+import { formatPrice } from '@fastgpt/common/bill';
+import { useDatasetStore } from '@/web/core/store/dataset';
+import { SelectedDatasetType } from '@/types/core/dataset';
+import { useQuery } from '@tanstack/react-query';
+
 const SetInputFieldModal = dynamic(() => import('../modules/SetInputFieldModal'));
 const SelectAppModal = dynamic(() => import('../../../SelectAppModal'));
-import { useFlowStore } from '../Provider';
-import Avatar from '@/components/Avatar';
+const AIChatSettingsModal = dynamic(() => import('../../../AIChatSettingsModal'));
+const DatasetSelectModal = dynamic(() => import('../../../DatasetSelectModal'));
 
 export const Label = ({
   moduleId,
@@ -145,122 +156,50 @@ const RenderInput = ({
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowInputItemType) => React.ReactNode>;
 }) => {
-  const { onChangeNode } = useFlowStore();
-
+  const sortInputs = useMemo(
+    () => flowInputList.sort((a, b) => (a.key === FlowInputItemTypeEnum.switch ? -1 : 1)),
+    [flowInputList]
+  );
   return (
     <>
-      {flowInputList.map(
+      {sortInputs.map(
         (item) =>
           item.type !== FlowInputItemTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
               {!!item.label && <Label moduleId={moduleId} inputKey={item.key} {...item} />}
               <Box mt={2} className={'nodrag'}>
                 {item.type === FlowInputItemTypeEnum.numberInput && (
-                  <NumberInput
-                    defaultValue={item.value}
-                    min={item.min}
-                    max={item.max}
-                    onChange={(e) => {
-                      onChangeNode({
-                        moduleId,
-                        type: 'inputs',
-                        key: item.key,
-                        value: {
-                          ...item,
-                          value: Number(e)
-                        }
-                      });
-                    }}
-                  >
-                    <NumberInputField />
-                    <NumberInputStepper>
-                      <NumberIncrementStepper />
-                      <NumberDecrementStepper />
-                    </NumberInputStepper>
-                  </NumberInput>
+                  <NumberInputRender item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowInputItemTypeEnum.input && (
-                  <Input
-                    placeholder={item.placeholder}
-                    defaultValue={item.value}
-                    onChange={(e) => {
-                      onChangeNode({
-                        moduleId,
-                        type: 'inputs',
-                        key: item.key,
-                        value: {
-                          ...item,
-                          value: e.target.value
-                        }
-                      });
-                    }}
-                  />
+                  <TextInputRender item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowInputItemTypeEnum.textarea && (
-                  <Textarea
-                    rows={5}
-                    placeholder={item.placeholder}
-                    resize={'both'}
-                    defaultValue={item.value}
-                    onChange={(e) => {
-                      onChangeNode({
-                        moduleId,
-                        type: 'inputs',
-                        key: item.key,
-                        value: {
-                          ...item,
-                          value: e.target.value
-                        }
-                      });
-                    }}
-                  />
+                  <TextareaRender item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowInputItemTypeEnum.select && (
-                  <MySelect
-                    width={'100%'}
-                    value={item.value}
-                    list={item.list || []}
-                    onchange={(e) => {
-                      onChangeNode({
-                        moduleId,
-                        type: 'inputs',
-                        key: item.key,
-                        value: {
-                          ...item,
-                          value: e
-                        }
-                      });
-                    }}
-                  />
+                  <SelectRender item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowInputItemTypeEnum.slider && (
-                  <Box pt={5} pb={4} px={2}>
-                    <MySlider
-                      markList={item.markList}
-                      width={'100%'}
-                      min={item.min || 0}
-                      max={item.max}
-                      step={item.step || 1}
-                      value={item.value}
-                      onChange={(e) => {
-                        onChangeNode({
-                          moduleId,
-                          type: 'inputs',
-                          key: item.key,
-                          value: {
-                            ...item,
-                            value: e
-                          }
-                        });
-                      }}
-                    />
-                  </Box>
+                  <SliderRender item={item} moduleId={moduleId} />
+                )}
+                {item.type === FlowInputItemTypeEnum.selectApp && (
+                  <SelectAppRender item={item} moduleId={moduleId} />
+                )}
+                {item.type === FlowInputItemTypeEnum.quoteList && (
+                  <QuoteListRender inputs={sortInputs} item={item} moduleId={moduleId} />
+                )}
+                {item.type === FlowInputItemTypeEnum.maxToken && (
+                  <MaxTokenRender inputs={sortInputs} item={item} moduleId={moduleId} />
+                )}
+                {item.type === FlowInputItemTypeEnum.selectChatModel && (
+                  <SelectChatModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
+                )}
+                {item.type === FlowInputItemTypeEnum.selectDataset && (
+                  <SelectDatasetRender item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowInputItemTypeEnum.custom && CustomComponent[item.key] && (
                   <>{CustomComponent[item.key]({ ...item })}</>
-                )}
-                {item.type === FlowInputItemTypeEnum.selectApp && (
-                  <RenderSelectApp app={item} moduleId={moduleId} />
                 )}
               </Box>
             </Box>
@@ -272,7 +211,346 @@ const RenderInput = ({
 
 export default React.memo(RenderInput);
 
-function RenderSelectApp({ app, moduleId }: { app: FlowInputItemType; moduleId: string }) {
+type RenderProps = {
+  inputs?: FlowInputItemType[];
+  item: FlowInputItemType;
+  moduleId: string;
+};
+
+var NumberInputRender = React.memo(function NumberInputRender({ item, moduleId }: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+
+  return (
+    <NumberInput
+      defaultValue={item.value}
+      min={item.min}
+      max={item.max}
+      onChange={(e) => {
+        onChangeNode({
+          moduleId,
+          type: 'inputs',
+          key: item.key,
+          value: {
+            ...item,
+            value: Number(e)
+          }
+        });
+      }}
+    >
+      <NumberInputField />
+      <NumberInputStepper>
+        <NumberIncrementStepper />
+        <NumberDecrementStepper />
+      </NumberInputStepper>
+    </NumberInput>
+  );
+});
+
+var TextInputRender = React.memo(function TextInputRender({ item, moduleId }: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+
+  return (
+    <Input
+      placeholder={item.placeholder}
+      defaultValue={item.value}
+      onChange={(e) => {
+        onChangeNode({
+          moduleId,
+          type: 'inputs',
+          key: item.key,
+          value: {
+            ...item,
+            value: e.target.value
+          }
+        });
+      }}
+    />
+  );
+});
+
+var TextareaRender = React.memo(function TextareaRender({ item, moduleId }: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+
+  return (
+    <Textarea
+      rows={5}
+      placeholder={item.placeholder}
+      resize={'both'}
+      defaultValue={item.value}
+      onChange={(e) => {
+        onChangeNode({
+          moduleId,
+          type: 'inputs',
+          key: item.key,
+          value: {
+            ...item,
+            value: e.target.value
+          }
+        });
+      }}
+    />
+  );
+});
+
+var SelectRender = React.memo(function SelectRender({ item, moduleId }: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+
+  return (
+    <MySelect
+      width={'100%'}
+      value={item.value}
+      list={item.list || []}
+      onchange={(e) => {
+        onChangeNode({
+          moduleId,
+          type: 'inputs',
+          key: item.key,
+          value: {
+            ...item,
+            value: e
+          }
+        });
+      }}
+    />
+  );
+});
+
+var SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+
+  return (
+    <Box pt={5} pb={4} px={2}>
+      <MySlider
+        markList={item.markList}
+        width={'100%'}
+        min={item.min || 0}
+        max={item.max}
+        step={item.step || 1}
+        value={item.value}
+        onChange={(e) => {
+          onChangeNode({
+            moduleId,
+            type: 'inputs',
+            key: item.key,
+            value: {
+              ...item,
+              value: e
+            }
+          });
+        }}
+      />
+    </Box>
+  );
+});
+
+var QuoteListRender = React.memo(function QuoteListRender({ inputs = [], moduleId }: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+  const { t } = useTranslation();
+  const chatModulesData = useMemo(() => {
+    const obj: Record<string, any> = {};
+    inputs.forEach((item) => {
+      obj[item.key] = item.value;
+    });
+    return obj as AIChatProps;
+  }, [inputs]);
+
+  const {
+    isOpen: isOpenAIChatSetting,
+    onOpen: onOpenAIChatSetting,
+    onClose: onCloseAIChatSetting
+  } = useDisclosure();
+
+  return (
+    <>
+      <Button
+        variant={'base'}
+        leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+        onClick={onOpenAIChatSetting}
+      >
+        {t('app.Quote Prompt Settings')}
+      </Button>
+      {isOpenAIChatSetting && (
+        <AIChatSettingsModal
+          onClose={onCloseAIChatSetting}
+          onSuccess={(e) => {
+            for (let key in e) {
+              const item = inputs.find((input) => input.key === key);
+              if (!item) continue;
+              onChangeNode({
+                moduleId,
+                type: 'inputs',
+                key,
+                value: {
+                  ...item,
+                  //@ts-ignore
+                  value: e[key]
+                }
+              });
+            }
+            onCloseAIChatSetting();
+          }}
+          defaultData={chatModulesData}
+        />
+      )}
+    </>
+  );
+});
+
+var MaxTokenRender = React.memo(function MaxTokenRender({
+  inputs = [],
+  item,
+  moduleId
+}: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+  const model = inputs.find((item) => item.key === 'model')?.value;
+  const modelData = chatModelList.find((item) => item.model === model);
+  const maxToken = modelData ? modelData.contextMaxToken : 4000;
+  const markList = [
+    { label: '100', value: 100 },
+    { label: `${maxToken}`, value: maxToken }
+  ];
+
+  return (
+    <Box pt={5} pb={4} px={2}>
+      <MySlider
+        markList={markList}
+        width={'100%'}
+        min={item.min || 100}
+        max={maxToken}
+        step={item.step || 1}
+        value={item.value}
+        onChange={(e) => {
+          onChangeNode({
+            moduleId,
+            type: 'inputs',
+            key: item.key,
+            value: {
+              ...item,
+              value: e
+            }
+          });
+        }}
+      />
+    </Box>
+  );
+});
+
+var SelectChatModelRender = React.memo(function SelectChatModelRender({
+  inputs = [],
+  item,
+  moduleId
+}: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+
+  const list = chatModelList.map((item) => {
+    const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
+
+    return {
+      value: item.model,
+      label: `${item.name}${priceStr}`
+    };
+  });
+
+  return (
+    <MySelect
+      width={'100%'}
+      value={item.value}
+      list={list}
+      onchange={(e) => {
+        onChangeNode({
+          moduleId,
+          type: 'inputs',
+          key: item.key,
+          value: {
+            ...item,
+            value: e
+          }
+        });
+
+        // update max tokens
+        const model = chatModelList.find((item) => item.model === e) || chatModelList[0];
+        if (!model) return;
+
+        onChangeNode({
+          moduleId,
+          type: 'inputs',
+          key: 'maxToken',
+          value: {
+            ...inputs.find((input) => input.key === 'maxToken'),
+            markList: [
+              { label: '100', value: 100 },
+              { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
+            ],
+            max: model.contextMaxToken,
+            value: model.contextMaxToken / 2
+          }
+        });
+      }}
+    />
+  );
+});
+
+var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, moduleId }: RenderProps) {
+  const { onChangeNode } = useFlowStore();
+
+  const theme = useTheme();
+  const { allDatasets, loadAllDatasets } = useDatasetStore();
+  const {
+    isOpen: isOpenKbSelect,
+    onOpen: onOpenKbSelect,
+    onClose: onCloseKbSelect
+  } = useDisclosure();
+
+  const showKbList = useMemo(() => {
+    const value = item.value as SelectedDatasetType;
+    return allDatasets.filter((dataset) => value.find((kb) => kb.kbId === dataset._id));
+  }, [allDatasets, item.value]);
+
+  useQuery(['loadAllDatasets'], loadAllDatasets);
+
+  return (
+    <>
+      <Grid gridTemplateColumns={'1fr 1fr'} gridGap={4}>
+        <Button h={'36px'} onClick={onOpenKbSelect}>
+          选择知识库
+        </Button>
+        {showKbList.map((item) => (
+          <Flex
+            key={item._id}
+            alignItems={'center'}
+            h={'36px'}
+            border={theme.borders.base}
+            px={2}
+            borderRadius={'md'}
+          >
+            <Avatar src={item.avatar} w={'24px'}></Avatar>
+            <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg', 'xl']}>
+              {item.name}
+            </Box>
+          </Flex>
+        ))}
+      </Grid>
+      <DatasetSelectModal
+        isOpen={isOpenKbSelect}
+        activeKbs={item.value}
+        onChange={(e) => {
+          onChangeNode({
+            moduleId,
+            key: item.key,
+            type: 'inputs',
+            value: {
+              ...item,
+              value: e
+            }
+          });
+        }}
+        onClose={onCloseKbSelect}
+      />
+    </>
+  );
+});
+
+var SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: RenderProps) {
   const { onChangeNode, appId } = useFlowStore();
   const theme = useTheme();
 
@@ -282,7 +560,7 @@ function RenderSelectApp({ app, moduleId }: { app: FlowInputItemType; moduleId: 
     onClose: onCloseSelectApp
   } = useDisclosure();
 
-  const value = app.value as SelectAppItemType | undefined;
+  const value = item.value as SelectAppItemType | undefined;
 
   return (
     <>
@@ -303,7 +581,7 @@ function RenderSelectApp({ app, moduleId }: { app: FlowInputItemType; moduleId: 
 
       {isOpenSelectApp && (
         <SelectAppModal
-          defaultApps={app.value?.id ? [app.value.id] : []}
+          defaultApps={item.value?.id ? [item.value.id] : []}
           filterApps={[appId]}
           onClose={onCloseSelectApp}
           onSuccess={(e) => {
@@ -312,7 +590,7 @@ function RenderSelectApp({ app, moduleId }: { app: FlowInputItemType; moduleId: 
               type: 'inputs',
               key: 'app',
               value: {
-                ...app,
+                ...item,
                 value: e[0]
               }
             });
@@ -321,4 +599,4 @@ function RenderSelectApp({ app, moduleId }: { app: FlowInputItemType; moduleId: 
       )}
     </>
   );
-}
+});

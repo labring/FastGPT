@@ -3,8 +3,8 @@ import { Box, Flex } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
-import { feConfigs } from '@/store/static';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { feConfigs } from '@/web/common/store/static';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'react-i18next';
 
 const Tools = () => {

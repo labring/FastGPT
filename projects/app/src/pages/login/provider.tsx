@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/store/global';
-import { ResLogin } from '@/api/response/user';
-import { useChatStore } from '@/store/chat';
-import { useUserStore } from '@/store/user';
+import { useGlobalStore } from '@/web/common/store/global';
+import type { ResLogin } from '@/global/support/api/userRes.d';
+import { useChatStore } from '@/web/core/store/chat';
+import { useUserStore } from '@/web/support/store/user';
 import { setToken } from '@/utils/user';
-import { oauthLogin } from '@/api/user';
-import { useToast } from '@/hooks/useToast';
+import { oauthLogin } from '@/web/support/api/user';
+import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@/utils/tools';
 

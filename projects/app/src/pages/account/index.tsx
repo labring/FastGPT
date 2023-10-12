@@ -1,17 +1,17 @@
 import React, { useCallback, useRef } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { clearToken } from '@/utils/user';
-import { useUserStore } from '@/store/user';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useUserStore } from '@/web/support/store/user';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
-import { serviceSideProps } from '@/utils/web/i18n';
-import { feConfigs } from '@/store/static';
+import { serviceSideProps } from '@/web/common/utils/i18n';
+import { feConfigs } from '@/web/common/store/static';
 import { useTranslation } from 'react-i18next';
 import Script from 'next/script';
 

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
-import { getFileAndOpen } from '@/utils/web/file';
-import { useToast } from '@/hooks/useToast';
+import { getFileAndOpen } from '@/web/common/utils/file';
+import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 
 type QuoteItemType = {

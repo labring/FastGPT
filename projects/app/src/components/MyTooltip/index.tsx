@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tooltip, TooltipProps } from '@chakra-ui/react';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 
 interface Props extends TooltipProps {
   forceShow?: boolean;

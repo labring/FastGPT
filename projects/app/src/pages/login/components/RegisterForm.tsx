@@ -2,14 +2,13 @@ import React, { useState, Dispatch, useCallback } from 'react';
 import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '@/constants/user';
-import { postRegister } from '@/api/user';
-import { useSendCode } from '@/hooks/useSendCode';
-import type { ResLogin } from '@/api/response/user';
-import { useToast } from '@/hooks/useToast';
-import { useRouter } from 'next/router';
-import { postCreateApp } from '@/api/app';
+import { postRegister } from '@/web/support/api/user';
+import { useSendCode } from '@/web/support/hooks/useSendCode';
+import type { ResLogin } from '@/global/support/api/userRes';
+import { useToast } from '@/web/common/hooks/useToast';
+import { postCreateApp } from '@/web/core/api/app';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;

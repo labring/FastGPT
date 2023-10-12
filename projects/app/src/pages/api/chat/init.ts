@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { Chat, ChatItem } from '@/service/mongo';
-import type { InitChatResponse } from '@/api/response/chat';
+import type { InitChatResponse } from '@/global/core/api/chatRes.d';
 import { authUser } from '@/service/utils/auth';
 import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';

@@ -25,19 +25,19 @@ import {
   createAOpenApiKey,
   delOpenApiById,
   putOpenApiKey
-} from '@/api/support/openapi';
-import type { EditApiKeyProps } from '@/api/support/openapi/index.d';
+} from '@/web/support/api/openapi';
+import type { EditApiKeyProps } from '@/global/support/api/openapiReq';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
 import { AddIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useCopyData } from '@/hooks/useCopyData';
-import { feConfigs } from '@/store/static';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { feConfigs } from '@/web/common/store/static';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@/hooks/useRequest';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 
 type EditProps = EditApiKeyProps & { _id?: string };

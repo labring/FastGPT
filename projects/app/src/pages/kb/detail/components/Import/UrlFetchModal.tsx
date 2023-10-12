@@ -2,9 +2,9 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@/components/MyModal';
 import { Box, Button, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
-import type { FetchResultItem } from '@/types/plugin';
-import { useRequest } from '@/hooks/useRequest';
-import { fetchUrls } from '@/api/plugins/common';
+import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { postFetchUrls } from '@/web/common/api/plugin';
 
 const UrlFetchModal = ({
   onClose,
@@ -20,7 +20,7 @@ const UrlFetchModal = ({
     mutationFn: async () => {
       const val = Dom.current?.value || '';
       const urls = val.split('\n').filter((e) => e);
-      const res = await fetchUrls(urls);
+      const res = await postFetchUrls(urls);
 
       onSuccess(res);
       onClose();

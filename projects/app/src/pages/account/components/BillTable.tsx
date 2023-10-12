@@ -12,16 +12,16 @@ import {
   Button
 } from '@chakra-ui/react';
 import { BillSourceMap } from '@/constants/user';
-import { getUserBills } from '@/api/user';
+import { getUserBills } from '@/web/common/api/bill';
 import type { UserBillType } from '@/types/user';
-import { usePagination } from '@/hooks/usePagination';
-import { useLoading } from '@/hooks/useLoading';
+import { usePagination } from '@/web/common/hooks/usePagination';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
 import MyIcon from '@/components/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { useTranslation } from 'next-i18next';
 const BillDetail = dynamic(() => import('./BillDetail'));
 

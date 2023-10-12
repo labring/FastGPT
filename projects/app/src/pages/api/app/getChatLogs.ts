@@ -6,7 +6,7 @@ import type { PagingData } from '@/types';
 import { AppLogsListItemType } from '@/types/app';
 import { Types } from 'mongoose';
 import { addDays } from 'date-fns';
-import { GetAppChatLogsParams } from '@/api/request/app';
+import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

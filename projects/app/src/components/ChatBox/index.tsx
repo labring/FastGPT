@@ -15,10 +15,10 @@ import {
   ChatSiteItemType,
   ExportChatType
 } from '@/types/chat';
-import { useToast } from '@/hooks/useToast';
-import { useAudioPlay } from '@/utils/web/voice';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@/utils/tools';
-import { useCopyData } from '@/hooks/useCopyData';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
 import {
   Box,
   Card,
@@ -30,22 +30,22 @@ import {
   BoxProps,
   FlexProps
 } from '@chakra-ui/react';
-import { feConfigs } from '@/store/static';
-import { event } from '@/utils/plugin/eventbus';
+import { feConfigs } from '@/web/common/store/static';
+import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
-import { useMarkdown } from '@/hooks/useMarkdown';
+import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { AppModuleItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import type { MessageItemType } from '@/types/core/chat/type';
-import { fileDownload } from '@/utils/web/file';
+import { fileDownload } from '@/web/common/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
-import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/api/chat';
+import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/web/core/api/chat';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -61,7 +61,7 @@ const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputD
 
 import styles from './index.module.scss';
 import Script from 'next/script';
-import { postQuestionGuide } from '@/api/core/ai/agent/api';
+import { postQuestionGuide } from '@/web/core/api/ai';
 import { splitGuideModule } from './utils';
 import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 
@@ -518,13 +518,13 @@ const ChatBox = (
       }
     };
     window.addEventListener('message', windowMessage);
-    event.on('guideClick', ({ text }: { text: string }) => {
+    eventBus.on('guideClick', ({ text }: { text: string }) => {
       if (!text) return;
       handleSubmit((data) => sendPrompt(data, text))();
     });
 
     return () => {
-      event.off('guideClick');
+      eventBus.off('guideClick');
       window.removeEventListener('message', windowMessage);
     };
   }, [handleSubmit, sendPrompt]);
