@@ -24,7 +24,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
 import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
 import Tag from '@/components/Tag';

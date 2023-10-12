@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import { AppSchema } from '@/types/mongoSchema';
 import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
-import { compressImg } from '@/utils/web/file';
+import { compressImg } from '@/web/common/utils/file';
 import { getErrText } from '@/utils/tools';
 import { useUserStore } from '@/web/support/store/user';
 import { useRequest } from '@/hooks/useRequest';

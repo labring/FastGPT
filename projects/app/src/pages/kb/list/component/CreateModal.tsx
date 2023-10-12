@@ -2,7 +2,7 @@ import React, { useCallback, useState, useRef } from 'react';
 import { Box, Flex, Button, ModalHeader, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/utils/web/file';
+import { compressImg } from '@/web/common/utils/file';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
 import { useRouter } from 'next/router';

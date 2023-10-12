@@ -8,7 +8,7 @@ import { setToken } from '@/utils/user';
 import { oauthLogin } from '@/web/support/api/user';
 import { useToast } from '@/hooks/useToast';
 import Loading from '@/components/Loading';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@/utils/tools';
 

@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/useToast';
 import { useDatasetStore } from '@/web/core/store/dataset';
 import { useConfirm } from '@/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
-import { compressImg } from '@/utils/web/file';
+import { compressImg } from '@/web/common/utils/file';
 import type { DatasetItemType } from '@/types/core/dataset';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';

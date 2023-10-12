@@ -242,7 +242,7 @@
   "openapi": {
     "app key tips": "These keys have the identification of the current application and can be used by external access.",
     "key alias": "Alias of key, for display only",
-    "key tips": "You can use API keys to access certain interfaces"
+    "key tips": "You can use the API Key to access certain interfaces (you can't access the application, you need to use the API key within the application to access the application)."
   },
   "outlink": {
     "Copy Iframe": "Copy Iframe",

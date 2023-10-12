@@ -16,7 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { useTranslation } from 'react-i18next';
 import { useDatasetStore } from '@/web/core/store/dataset';
-import { getFileAndOpen } from '@/utils/web/file';
+import { getFileAndOpen } from '@/web/common/utils/file';
 import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/core/dataset/constant';
 import { strIsLink } from '@fastgpt/common/tools/str';
 import { useGlobalStore } from '@/web/common/store/global';

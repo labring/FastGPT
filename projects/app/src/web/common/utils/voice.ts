@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/hooks/useToast';
-import { getErrText } from '../tools';
+import { getErrText } from '@/utils/tools';
 
 export const useAudioPlay = (props?: { ttsUrl?: string }) => {
   const { ttsUrl } = props || {};

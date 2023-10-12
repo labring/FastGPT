@@ -11,7 +11,7 @@ import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/store/dataset';
 import { putMarkFilesUsed } from '@/web/core/api/dataset';
-import { chunksUpload } from '@/utils/web/core/dataset';
+import { chunksUpload } from '@/web/core/utils/dataset';
 
 const fileExtension = '.csv';
 

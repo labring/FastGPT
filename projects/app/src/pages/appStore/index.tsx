@@ -7,7 +7,7 @@ import type { ShareAppItem } from '@/types/app';
 import { useUserStore } from '@/web/support/store/user';
 import ShareModelList from './components/list';
 import styles from './index.module.scss';
-import { serviceSideProps } from '@/utils/web/i18n';
+import { serviceSideProps } from '@/web/common/utils/i18n';
 
 const modelList = () => {
   const { Loading } = useLoading();

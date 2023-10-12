@@ -10,7 +10,7 @@ import {
   readTxtContent,
   readPdfContent,
   readDocContent
-} from '@/utils/web/file';
+} from '@/web/common/utils/file';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';

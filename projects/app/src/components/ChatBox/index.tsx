@@ -16,7 +16,7 @@ import {
   ExportChatType
 } from '@/types/chat';
 import { useToast } from '@/hooks/useToast';
-import { useAudioPlay } from '@/utils/web/voice';
+import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@/utils/tools';
 import { useCopyData } from '@/hooks/useCopyData';
 import {
@@ -31,14 +31,14 @@ import {
   FlexProps
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/store/static';
-import { eventBus } from '@/web/common/tools/eventbus';
+import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { AppModuleItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import type { MessageItemType } from '@/types/core/chat/type';
-import { fileDownload } from '@/utils/web/file';
+import { fileDownload } from '@/web/common/utils/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/web/common/store/global';

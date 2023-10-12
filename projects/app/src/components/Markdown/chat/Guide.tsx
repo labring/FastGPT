@@ -5,7 +5,7 @@ import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
 import RehypeKatex from 'rehype-katex';
 import RemarkBreaks from 'remark-breaks';
-import { eventBus } from '@/web/common/tools/eventbus';
+import { eventBus } from '@/web/common/utils/eventbus';
 
 import 'katex/dist/katex.min.css';
 import styles from '../index.module.scss';
