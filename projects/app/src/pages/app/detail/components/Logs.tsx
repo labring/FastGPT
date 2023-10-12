@@ -15,7 +15,7 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
-import { usePagination } from '@/hooks/usePagination';
+import { usePagination } from '@/web/common/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/api/app';
 import dayjs from 'dayjs';
 import { ChatSourceMap, HUMAN_ICON } from '@/constants/chat';

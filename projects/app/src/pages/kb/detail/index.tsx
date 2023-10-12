@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { DatasetItemType } from '@/types/core/dataset';

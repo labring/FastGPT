@@ -39,12 +39,12 @@ import {
   questionGuideTip
 } from '@/constants/flow/ModuleTemplate';
 import { AppModuleItemType, VariableItemType } from '@/types/app';
-import { useRequest } from '@/hooks/useRequest';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
 import { delModelById } from '@/web/core/api/app';
 import { useTranslation } from 'react-i18next';

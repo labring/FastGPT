@@ -1,8 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Box, Flex, Card, Grid, Input } from '@chakra-ui/react';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import { getShareModelList, triggerModelCollection } from '@/web/core/api/app';
-import { usePagination } from '@/hooks/usePagination';
+import { usePagination } from '@/web/common/hooks/usePagination';
 import type { ShareAppItem } from '@/types/app';
 import { useUserStore } from '@/web/support/store/user';
 import ShareModelList from './components/list';

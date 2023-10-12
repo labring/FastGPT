@@ -6,7 +6,7 @@ import { useChatStore } from '@/web/core/store/chat';
 import { useUserStore } from '@/web/support/store/user';
 import { setToken } from '@/utils/user';
 import { oauthLogin } from '@/web/support/api/user';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';

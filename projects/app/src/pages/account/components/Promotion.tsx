@@ -18,12 +18,12 @@ import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { getPromotionInitData, getPromotionRecords } from '@/web/support/api/user';
 import { useUserStore } from '@/web/support/store/user';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useCopyData } from '@/hooks/useCopyData';
-import { usePagination } from '@/hooks/usePagination';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { usePagination } from '@/web/common/hooks/usePagination';
 import type { PromotionRecordType } from '@/global/support/api/userRes.d';
 import MyIcon from '@/components/Icon';
 import dayjs from 'dayjs';

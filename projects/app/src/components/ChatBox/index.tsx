@@ -15,10 +15,10 @@ import {
   ChatSiteItemType,
   ExportChatType
 } from '@/types/chat';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@/utils/tools';
-import { useCopyData } from '@/hooks/useCopyData';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
 import {
   Box,
   Card,
@@ -33,7 +33,7 @@ import {
 import { feConfigs } from '@/web/common/store/static';
 import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
-import { useMarkdown } from '@/hooks/useMarkdown';
+import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { AppModuleItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';

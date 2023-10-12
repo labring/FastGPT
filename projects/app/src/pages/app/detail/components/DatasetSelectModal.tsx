@@ -15,7 +15,7 @@ import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { SelectedDatasetType } from '@/types/core/dataset';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';

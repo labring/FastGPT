@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { SelectAppItemType } from '@/types/core/app/flow';
 import Avatar from '@/components/Avatar';
 import { useTranslation } from 'react-i18next';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 
 const SelectAppModal = ({
   defaultApps = [],

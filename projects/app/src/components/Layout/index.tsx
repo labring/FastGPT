@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { Box, useColorMode, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useLoading } from '@/hooks/useLoading';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import { useGlobalStore } from '@/web/common/store/global';
 import { throttle } from 'lodash';
 import Auth from './auth';

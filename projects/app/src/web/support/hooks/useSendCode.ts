@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { sendAuthCode } from '@/web/support/api/user';
 import { UserAuthTypeEnum } from '@/constants/common';
-import { useToast } from './useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/store/static';
 import { getErrText } from '@/utils/tools';
 

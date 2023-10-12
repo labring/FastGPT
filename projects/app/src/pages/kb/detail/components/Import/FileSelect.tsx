@@ -1,7 +1,7 @@
 import MyIcon from '@/components/Icon';
-import { useLoading } from '@/hooks/useLoading';
-import { useSelectFile } from '@/hooks/useSelectFile';
-import { useToast } from '@/hooks/useToast';
+import { useLoading } from '@/web/common/hooks/useLoading';
+import { useSelectFile } from '@/web/common/hooks/useSelectFile';
+import { useToast } from '@/web/common/hooks/useToast';
 import { simpleText, splitText2Chunks } from '@/utils/file';
 import {
   uploadFiles,

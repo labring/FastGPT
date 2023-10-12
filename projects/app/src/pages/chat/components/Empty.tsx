@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Box, Flex } from '@chakra-ui/react';
-import { useMarkdown } from '@/hooks/useMarkdown';
+import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import Markdown from '@/components/Markdown';
 import Avatar from '@/components/Avatar';
 

@@ -3,9 +3,9 @@ import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '../../../constants/user';
 import { postFindPassword } from '@/web/support/api/user';
-import { useSendCode } from '@/hooks/useSendCode';
+import { useSendCode } from '@/web/support/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/store/static';
 
 interface Props {

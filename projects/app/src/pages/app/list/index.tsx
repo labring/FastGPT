@@ -14,8 +14,8 @@ import { useUserStore } from '@/web/support/store/user';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
 import { delModelById } from '@/web/core/api/app';
-import { useToast } from '@/hooks/useToast';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 

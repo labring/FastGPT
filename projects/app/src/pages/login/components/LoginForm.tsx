@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { OAuthEnum, PageTypeEnum } from '@/constants/user';
 import { postLogin } from '@/web/support/api/user';
 import type { ResLogin } from '@/global/support/api/userRes';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/store/static';
 import { useGlobalStore } from '@/web/common/store/global';
 import MyIcon from '@/components/Icon';

@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import type { PagingData } from '../types/index';
+import type { PagingData } from '@/types/index.d';
 import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
@@ -8,7 +8,7 @@ import { throttle } from 'lodash';
 
 const thresholdVal = 100;
 
-export const usePagination = <T = any,>({
+export function usePagination<T = any>({
   api,
   pageSize = 10,
   params = {},
@@ -22,7 +22,7 @@ export const usePagination = <T = any,>({
   defaultRequest?: boolean;
   type?: 'button' | 'scroll';
   onChange?: (pageNum: number) => void;
-}) => {
+}) {
   const elementRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [pageNum, setPageNum] = useState(1);
@@ -185,4 +185,4 @@ export const usePagination = <T = any,>({
     ScrollData,
     getData: mutate
   };
-};
+}

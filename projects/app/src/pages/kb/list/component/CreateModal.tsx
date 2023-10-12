@@ -1,13 +1,13 @@
 import React, { useCallback, useState, useRef } from 'react';
 import { Box, Flex, Button, ModalHeader, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
-import { useSelectFile } from '@/hooks/useSelectFile';
+import { useSelectFile } from '@/web/common/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImg } from '@/web/common/utils/file';
 import { getErrText } from '@/utils/tools';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/web/common/store/global';
-import { useRequest } from '@/hooks/useRequest';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';

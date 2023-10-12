@@ -10,11 +10,11 @@ import {
 } from '@/constants/flow';
 import { FlowOutputTargetItemType } from '@/types/core/app/flow';
 import { AppModuleItemType } from '@/types/app';
-import { useRequest } from '@/hooks/useRequest';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
 import { useUserStore } from '@/web/support/store/user';
 import { useTranslation } from 'next-i18next';
-import { useCopyData } from '@/hooks/useCopyData';
+import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 import styles from './index.module.scss';
 import { AppTypeEnum } from '@/constants/app';

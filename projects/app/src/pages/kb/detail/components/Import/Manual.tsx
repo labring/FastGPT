@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Box, Textarea, Button, Flex } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { useToast } from '@/hooks/useToast';
-import { useRequest } from '@/hooks/useRequest';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
 import { postData2Dataset } from '@/web/core/api/dataset';
 import MyTooltip from '@/components/MyTooltip';

@@ -4,7 +4,7 @@ import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/store/user';
 import dynamic from 'next/dynamic';
 import { defaultApp } from '@/constants/model';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { feConfigs } from '@/web/common/store/static';
 

@@ -6,7 +6,7 @@ import {
   putDatasetDataById,
   delOneDatasetDataById
 } from '@/web/core/api/dataset';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';

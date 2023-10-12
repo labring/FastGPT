@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { initShareChatInfo } from '@/web/support/api/outLink';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useGlobalStore } from '@/web/common/store/global';
 import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/web/common/api/fetch';

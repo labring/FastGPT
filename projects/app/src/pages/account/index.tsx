@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { clearToken } from '@/utils/user';
 import { useUserStore } from '@/web/support/store/user';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';

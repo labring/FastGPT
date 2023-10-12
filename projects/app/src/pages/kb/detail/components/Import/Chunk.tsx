@@ -11,8 +11,8 @@ import {
   NumberDecrementStepper,
   Image
 } from '@chakra-ui/react';
-import { useToast } from '@/hooks/useToast';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useToast } from '@/web/common/hooks/useToast';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRouter } from 'next/router';
 import { useMutation } from '@tanstack/react-query';
 import { splitText2Chunks } from '@/utils/file';

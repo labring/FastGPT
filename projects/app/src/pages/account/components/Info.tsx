@@ -14,12 +14,12 @@ import {
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/web/common/hooks/useToast';
 import { useUserStore } from '@/web/support/store/user';
 import { UserType } from '@/types/user';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { useSelectFile } from '@/hooks/useSelectFile';
+import { useSelectFile } from '@/web/common/hooks/useSelectFile';
 import { compressImg } from '@/web/common/utils/file';
 import { feConfigs, systemVersion } from '@/web/common/store/static';
 import { useTranslation } from 'next-i18next';

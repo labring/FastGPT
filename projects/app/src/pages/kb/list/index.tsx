@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/store/dataset';
 import PageContainer from '@/components/PageContainer';
-import { useConfirm } from '@/hooks/useConfirm';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -29,9 +29,9 @@ import dynamic from 'next/dynamic';
 import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
 import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
-import { useRequest } from '@/hooks/useRequest';
+import { useRequest } from '@/web/common/hooks/useRequest';
 import { useGlobalStore } from '@/web/common/store/global';
-import { useEditTitle } from '@/hooks/useEditTitle';
+import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { feConfigs } from '@/web/common/store/static';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });

@@ -14,8 +14,8 @@ import {
 import { BillSourceMap } from '@/constants/user';
 import { getUserBills } from '@/web/common/api/bill';
 import type { UserBillType } from '@/types/user';
-import { usePagination } from '@/hooks/usePagination';
-import { useLoading } from '@/hooks/useLoading';
+import { usePagination } from '@/web/common/hooks/usePagination';
+import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
 import MyIcon from '@/components/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
