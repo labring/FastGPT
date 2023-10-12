@@ -3,9 +3,9 @@ import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { SearchTestItemType } from '@/types/core/dataset';
 import type { DatasetItemType, DatasetsItemType } from '@/types/core/dataset';
-import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/api/core/dataset';
+import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/api/dataset';
 import { defaultKbDetail } from '@/constants/dataset';
-import type { DatasetUpdateParams } from '@/api/core/dataset/index.d';
+import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
 
 type State = {
   allDatasets: DatasetsItemType[];

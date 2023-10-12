@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/useToast';
 import { useRequest } from '@/hooks/useRequest';
 import { getErrText } from '@/utils/tools';
-import { postData2Dataset } from '@/api/core/dataset/data';
+import { postData2Dataset } from '@/web/core/api/dataset';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/store/dataset';

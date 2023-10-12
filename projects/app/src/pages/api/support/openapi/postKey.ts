@@ -4,7 +4,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, OpenApi } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { customAlphabet } from 'nanoid';
-import type { EditApiKeyProps } from '@/api/support/openapi/index.d';
+import type { EditApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

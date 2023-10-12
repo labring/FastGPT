@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, OpenApi } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import type { GetApiKeyProps } from '@/api/support/openapi/index.d';
+import type { GetApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

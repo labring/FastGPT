@@ -15,8 +15,8 @@ import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-import { putMarkFilesUsed } from '@/api/core/dataset/file';
-import { Prompt_AgentQA } from '@/prompts/core/agent';
+import { putMarkFilesUsed } from '@/web/core/api/dataset';
+import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { chunksUpload } from '@/utils/web/core/dataset';
 

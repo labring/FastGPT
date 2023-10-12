@@ -9,7 +9,7 @@ import React, {
 import { useRouter } from 'next/router';
 import { Box, Flex, Button, FormControl, IconButton, Input } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
-import { delDatasetById, putDatasetById } from '@/api/core/dataset';
+import { delDatasetById, putDatasetById } from '@/web/core/api/dataset';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
 import { useDatasetStore } from '@/store/dataset';

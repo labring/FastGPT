@@ -17,8 +17,3 @@ export type InitChatResponse = {
   variables: Record<string, any>;
   history: ChatItemType[];
 };
-
-export type InitShareChatResponse = {
-  userAvatar: string;
-  app: InitChatResponse['app'];
-};

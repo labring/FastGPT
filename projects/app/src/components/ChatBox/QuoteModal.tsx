@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ModalBody, Box, useTheme, Flex, Progress } from '@chakra-ui/react';
-import { getDatasetDataItemById } from '@/api/core/dataset/data';
+import { getDatasetDataItemById } from '@/web/core/api/dataset';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';

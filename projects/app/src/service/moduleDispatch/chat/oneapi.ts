@@ -15,7 +15,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant'
 import { AppModuleItemType } from '@/types/app';
 import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
-import { defaultQuotePrompt, defaultQuoteTemplate } from '@/prompts/core/AIChat';
+import { defaultQuotePrompt, defaultQuoteTemplate } from '@/global/core/prompt/AIChat';
 import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';

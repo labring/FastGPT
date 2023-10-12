@@ -1,5 +1,5 @@
-import { GET, POST, DELETE } from '../request';
-import type { InitShareChatResponse } from '@/global/core/api/chatRes';
+import { GET, POST, DELETE } from '@/web/common/api/request';
+import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import type { OutLinkEditType } from '@/types/support/outLink';
 import type { OutLinkSchema } from '@/types/support/outLink';
 

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Textarea, Button, Flex, useTheme, Grid, Progress } from '@chakra-ui/react';
 import { useDatasetStore } from '@/store/dataset';
 import type { SearchTestItemType } from '@/types/core/dataset';
-import { getDatasetDataItemById } from '@/api/core/dataset/data';
+import { getDatasetDataItemById, postSearchText } from '@/web/core/api/dataset';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
@@ -13,7 +13,6 @@ import { useToast } from '@/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { postSearchText } from '@/api/core/dataset';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = ({ kbId }: { kbId: string }) => {

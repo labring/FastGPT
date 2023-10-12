@@ -12,8 +12,12 @@ import {
   Image,
   MenuButton
 } from '@chakra-ui/react';
-import { getTrainingData } from '@/api/core/dataset/data';
-import { getDatasetFiles, delDatasetFileById, updateDatasetFile } from '@/api/core/dataset/file';
+import {
+  getTrainingData,
+  getDatasetFiles,
+  delDatasetFileById,
+  updateDatasetFile
+} from '@/web/core/api/dataset';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { formatFileSize } from '@/utils/tools';

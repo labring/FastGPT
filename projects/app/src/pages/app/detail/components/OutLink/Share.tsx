@@ -29,7 +29,7 @@ import {
   delShareChatById,
   createShareChat,
   putShareChat
-} from '@/api/support/outLink';
+} from '@/web/support/api/outLink';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useCopyData } from '@/hooks/useCopyData';
 import { useForm } from 'react-hook-form';

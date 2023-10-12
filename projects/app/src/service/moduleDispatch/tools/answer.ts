@@ -17,12 +17,14 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
     inputs: { text = '' }
   } = props as AnswerProps;
 
+  const formatText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+
   if (stream) {
     sseResponse({
       res,
       event: detail ? sseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
-        text
+        text: formatText
       })
     });
   }

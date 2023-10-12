@@ -10,7 +10,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/store/dataset';
-import { putMarkFilesUsed } from '@/api/core/dataset/file';
+import { putMarkFilesUsed } from '@/web/core/api/dataset';
 import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.csv';

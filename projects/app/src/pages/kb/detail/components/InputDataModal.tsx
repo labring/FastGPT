@@ -5,7 +5,7 @@ import {
   postData2Dataset,
   putDatasetDataById,
   delOneDatasetDataById
-} from '@/api/core/dataset/data';
+} from '@/web/core/api/dataset';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';

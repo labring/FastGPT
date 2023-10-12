@@ -1,5 +1,5 @@
-import { GET, POST, DELETE } from '@/api/request';
-import { EditApiKeyProps, GetApiKeyProps } from './index.d';
+import { GET, POST, DELETE } from '@/web/common/api/request';
+import type { EditApiKeyProps, GetApiKeyProps } from '@/global/support/api/openapiReq.d';
 import type { OpenApiSchema } from '@/types/support/openapi';
 
 /**

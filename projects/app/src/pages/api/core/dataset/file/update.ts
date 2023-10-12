@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { UpdateFileProps } from '@/api/core/dataset/file.d';
+import { UpdateFileProps } from '@/global/core/api/datasetReq.d';
 import { Types } from 'mongoose';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';

@@ -25,8 +25,8 @@ import {
   createAOpenApiKey,
   delOpenApiById,
   putOpenApiKey
-} from '@/api/support/openapi';
-import type { EditApiKeyProps } from '@/api/support/openapi/index.d';
+} from '@/web/support/api/openapi';
+import type { EditApiKeyProps } from '@/global/support/api/openapiReq';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLoading } from '@/hooks/useLoading';
 import dayjs from 'dayjs';

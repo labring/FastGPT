@@ -15,8 +15,12 @@ import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { delDatasetById, getDatasetPaths, putDatasetById } from '@/api/core/dataset';
-import { exportDatasetData } from '@/api/core/dataset/data';
+import {
+  delDatasetById,
+  getDatasetPaths,
+  putDatasetById,
+  exportDatasetData
+} from '@/web/core/api/dataset';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';

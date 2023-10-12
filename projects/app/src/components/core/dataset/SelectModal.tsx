@@ -1,4 +1,4 @@
-import { getDatasets, getDatasetPaths } from '@/api/core/dataset';
+import { getDatasets, getDatasetPaths } from '@/web/core/api/dataset';
 import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
