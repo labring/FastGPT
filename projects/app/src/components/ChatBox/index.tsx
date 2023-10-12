@@ -30,8 +30,8 @@ import {
   BoxProps,
   FlexProps
 } from '@chakra-ui/react';
-import { feConfigs } from '@/store/static';
-import { event } from '@/utils/plugin/eventbus';
+import { feConfigs } from '@/web/common/store/static';
+import { eventBus } from '@/web/common/tools/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/hooks/useMarkdown';
 import { AppModuleItemType } from '@/types/app';
@@ -41,7 +41,7 @@ import type { MessageItemType } from '@/types/core/chat/type';
 import { fileDownload } from '@/utils/web/file';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
@@ -518,13 +518,13 @@ const ChatBox = (
       }
     };
     window.addEventListener('message', windowMessage);
-    event.on('guideClick', ({ text }: { text: string }) => {
+    eventBus.on('guideClick', ({ text }: { text: string }) => {
       if (!text) return;
       handleSubmit((data) => sendPrompt(data, text))();
     });
 
     return () => {
-      event.off('guideClick');
+      eventBus.off('guideClick');
       window.removeEventListener('message', windowMessage);
     };
   }, [handleSubmit, sendPrompt]);

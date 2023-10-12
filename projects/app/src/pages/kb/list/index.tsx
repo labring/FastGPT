@@ -10,7 +10,7 @@ import {
   Image
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
@@ -30,9 +30,9 @@ import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
 import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/hooks/useRequest';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { useEditTitle } from '@/hooks/useEditTitle';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const EditFolderModal = dynamic(() => import('./component/EditFolderModal'), { ssr: false });

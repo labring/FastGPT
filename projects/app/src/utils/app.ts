@@ -1,5 +1,5 @@
 import type { AppModuleItemType, VariableItemType } from '@/types/app';
-import { chatModelList } from '@/store/static';
+import { chatModelList } from '@/web/common/store/static';
 import {
   FlowInputItemTypeEnum,
   FlowModuleTypeEnum,

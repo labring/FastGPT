@@ -32,7 +32,7 @@ import { FileStatusEnum } from '@/constants/dataset';
 import { useRouter } from 'next/router';
 import { usePagination } from '@/hooks/usePagination';
 import type { DatasetFileItemType } from '@/types/core/dataset/file';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/hooks/useEditTitle';
 import { datasetSpecialIds } from '@fastgpt/core/dataset/constant';

@@ -27,9 +27,9 @@ import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { AIChatProps } from '@/types/core/aiChat';
-import { chatModelList } from '@/store/static';
+import { chatModelList } from '@/web/common/store/static';
 import { formatPrice } from '@fastgpt/common/bill';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';
 

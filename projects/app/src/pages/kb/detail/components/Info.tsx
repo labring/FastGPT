@@ -12,7 +12,7 @@ import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
 import { delDatasetById, putDatasetById } from '@/web/core/api/dataset';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { useToast } from '@/hooks/useToast';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 import { useConfirm } from '@/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
 import { compressImg } from '@/utils/web/file';

@@ -3,7 +3,7 @@ export enum EventNameEnum {
 }
 type EventNameType = `${EventNameEnum}`;
 
-export const event = {
+export const eventBus = {
   list: new Map<EventNameType, Function>(),
   on: function (name: EventNameType, fn: Function) {
     this.list.set(name, fn);

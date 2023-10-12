@@ -12,7 +12,7 @@ import { FlowOutputTargetItemType } from '@/types/core/app/flow';
 import { AppModuleItemType } from '@/types/app';
 import { useRequest } from '@/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/hooks/useCopyData';
 import dynamic from 'next/dynamic';

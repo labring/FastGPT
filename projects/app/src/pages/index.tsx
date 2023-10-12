@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import { serviceSideProps } from '@/utils/web/i18n';
 import { useRouter } from 'next/router';
 

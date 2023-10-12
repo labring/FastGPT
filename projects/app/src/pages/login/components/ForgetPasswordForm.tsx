@@ -6,7 +6,7 @@ import { postFindPassword } from '@/web/support/api/user';
 import { useSendCode } from '@/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@/hooks/useToast';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 
 interface Props {
   setPageType: Dispatch<`${PageTypeEnum}`>;

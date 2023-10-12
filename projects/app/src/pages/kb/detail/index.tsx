@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { DatasetItemType } from '@/types/core/dataset';
 import { getErrText } from '@/utils/tools';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { type ComponentRef } from './components/Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
@@ -20,10 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { getTrainingQueueLen, delDatasetEmptyFiles } from '@/web/core/api/dataset';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import Script from 'next/script';
 import FileCard from './components/FileCard';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false

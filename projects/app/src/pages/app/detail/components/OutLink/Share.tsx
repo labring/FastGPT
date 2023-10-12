@@ -40,7 +40,7 @@ import { formatPrice } from '@fastgpt/common/bill/index';
 import { OutLinkTypeEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';

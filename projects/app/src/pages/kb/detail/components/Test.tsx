@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Textarea, Button, Flex, useTheme, Grid, Progress } from '@chakra-ui/react';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 import type { SearchTestItemType } from '@/types/core/dataset';
 import { getDatasetDataItemById, postSearchText } from '@/web/core/api/dataset';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
 import InputDataModal, { type FormData } from './InputDataModal';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/hooks/useToast';
 import { customAlphabet } from 'nanoid';

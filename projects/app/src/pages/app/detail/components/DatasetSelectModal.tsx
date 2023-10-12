@@ -23,8 +23,8 @@ import MyIcon from '@/components/Icon';
 import { KbTypeEnum } from '@/constants/dataset';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useDatasetStore } from '@/store/dataset';
-import { feConfigs } from '@/store/static';
+import { useDatasetStore } from '@/web/core/store/dataset';
+import { feConfigs } from '@/web/common/store/static';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 export type KbParamsType = {

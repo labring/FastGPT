@@ -10,7 +10,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
 import { delModelById } from '@/web/core/api/app';

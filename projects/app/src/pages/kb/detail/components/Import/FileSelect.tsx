@@ -20,7 +20,7 @@ import MyTooltip from '@/components/MyTooltip';
 import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
 import { getErrText } from '@/utils/tools';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 import { getFileIcon } from '@fastgpt/common/tools/file';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));

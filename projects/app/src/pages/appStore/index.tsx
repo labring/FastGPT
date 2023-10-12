@@ -4,7 +4,7 @@ import { useLoading } from '@/hooks/useLoading';
 import { getShareModelList, triggerModelCollection } from '@/web/core/api/app';
 import { usePagination } from '@/hooks/usePagination';
 import type { ShareAppItem } from '@/types/app';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import ShareModelList from './components/list';
 import styles from './index.module.scss';
 import { serviceSideProps } from '@/utils/web/i18n';

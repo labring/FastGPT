@@ -5,7 +5,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { useLoading } from '@/hooks/useLoading';
 import type { informSchema } from '@/types/mongoSchema';
 import { formatTimeToChatTime } from '@/utils/tools';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import MyIcon from '@/components/Icon';
 
 const BillTable = () => {

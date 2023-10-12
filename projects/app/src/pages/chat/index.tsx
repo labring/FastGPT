@@ -11,10 +11,10 @@ import {
   DrawerContent,
   useTheme
 } from '@chakra-ui/react';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/web/common/api/fetch';
-import { useChatStore } from '@/store/chat';
+import { useChatStore } from '@/web/core/store/chat';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
 import { customAlphabet } from 'nanoid';
@@ -29,7 +29,7 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import SliderApps from './components/SliderApps';
 import ChatHeader from './components/ChatHeader';
 import { getErrText } from '@/utils/tools';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { serviceSideProps } from '@/utils/web/i18n';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {

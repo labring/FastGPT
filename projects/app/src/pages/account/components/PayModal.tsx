@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
-import { vectorModelList, chatModelList, qaModel } from '@/store/static';
+import { vectorModelList, chatModelList, qaModel } from '@/web/common/store/static';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();

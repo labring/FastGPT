@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { useChatStore } from '@/store/chat';
-import { useUserStore } from '@/store/user';
+import { useChatStore } from '@/web/core/store/chat';
+import { useUserStore } from '@/web/support/store/user';
 import { setToken } from '@/utils/user';
 import { oauthLogin } from '@/web/support/api/user';
 import { useToast } from '@/hooks/useToast';

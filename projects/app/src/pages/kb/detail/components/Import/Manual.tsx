@@ -7,7 +7,7 @@ import { getErrText } from '@/utils/tools';
 import { postData2Dataset } from '@/web/core/api/dataset';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
 
 type ManualFormType = { q: string; a: string };

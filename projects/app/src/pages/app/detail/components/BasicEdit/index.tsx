@@ -19,18 +19,18 @@ import {
   Text,
   Switch
 } from '@chakra-ui/react';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import {
   appModules2Form,
   getDefaultAppForm,
   appForm2Modules,
   type EditFormType
 } from '@/utils/app';
-import { chatModelList } from '@/store/static';
+import { chatModelList } from '@/web/common/store/static';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import {
   ChatModelSystemTip,
@@ -61,7 +61,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import { addVariable } from '../VariableEditModal';
 import { KbParamsModal } from '../DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
-import { useDatasetStore } from '@/store/dataset';
+import { useDatasetStore } from '@/web/core/store/dataset';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));

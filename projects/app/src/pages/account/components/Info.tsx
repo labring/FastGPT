@@ -15,13 +15,13 @@ import {
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@/hooks/useToast';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { UserType } from '@/types/user';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/web/file';
-import { feConfigs, systemVersion } from '@/store/static';
+import { feConfigs, systemVersion } from '@/web/common/store/static';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@/utils/user';
 import Loading from '@/components/Loading';

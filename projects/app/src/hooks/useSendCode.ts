@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { sendAuthCode } from '@/web/support/api/user';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { useToast } from './useToast';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import { getErrText } from '@/utils/tools';
 
 let timer: any;

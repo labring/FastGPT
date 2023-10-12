@@ -21,7 +21,7 @@ import MyIcon from '@/components/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import { useTranslation } from 'next-i18next';
 const BillDetail = dynamic(() => import('./BillDetail'));
 

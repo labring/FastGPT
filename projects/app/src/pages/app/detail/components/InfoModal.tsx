@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
 import { compressImg } from '@/utils/web/file';
 import { getErrText } from '@/utils/tools';
-import { useUserStore } from '@/store/user';
+import { useUserStore } from '@/web/support/store/user';
 import { useRequest } from '@/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@/components/MyModal';

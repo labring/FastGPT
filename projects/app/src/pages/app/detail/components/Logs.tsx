@@ -20,7 +20,7 @@ import { getAppChatLogs } from '@/web/core/api/app';
 import dayjs from 'dayjs';
 import { ChatSourceMap, HUMAN_ICON } from '@/constants/chat';
 import { AppLogsListItemType } from '@/types/app';
-import { useGlobalStore } from '@/store/global';
+import { useGlobalStore } from '@/web/common/store/global';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';
 import { useQuery } from '@tanstack/react-query';
 import { getInitChatSiteInfo } from '@/web/core/api/chat';

@@ -32,7 +32,7 @@ import { useLoading } from '@/hooks/useLoading';
 import dayjs from 'dayjs';
 import { AddIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/hooks/useCopyData';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';

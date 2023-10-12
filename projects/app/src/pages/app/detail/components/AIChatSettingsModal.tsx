@@ -16,7 +16,7 @@ import {
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { defaultQuotePrompt, defaultQuoteTemplate } from '@/global/core/prompt/AIChat';
-import { feConfigs } from '@/store/static';
+import { feConfigs } from '@/web/common/store/static';
 
 const AIChatSettingsModal = ({
   onClose,
