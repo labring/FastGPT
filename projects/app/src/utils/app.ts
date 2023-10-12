@@ -466,21 +466,18 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
                 key: 'switch'
               }
             ]
-          : [
+          : []
+      },
+      {
+        key: 'unEmpty',
+        targets: formData.kb.searchEmptyText
+          ? [
               {
                 moduleId: 'chatModule',
                 key: 'switch'
               }
             ]
-      },
-      {
-        key: 'unEmpty',
-        targets: [
-          {
-            moduleId: 'chatModule',
-            key: 'switch'
-          }
-        ]
+          : []
       },
       {
         key: 'quoteQA',

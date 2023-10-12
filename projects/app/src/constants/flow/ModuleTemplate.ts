@@ -16,6 +16,7 @@ import {
   Input_Template_UserChatInput
 } from './inputTemplate';
 import { ContextExtractEnum, HttpPropsEnum } from './flowField';
+import { Output_Template_Finish } from './outputTemplate';
 
 export const ChatModelSystemTip =
   '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}';
@@ -130,12 +131,14 @@ export const ChatModule: FlowModuleTemplateType = {
   intro: 'AI 大模型对话',
   showStatus: true,
   inputs: [
+    Input_Template_TFSwitch,
     {
       key: 'model',
-      type: FlowInputItemTypeEnum.custom,
+      type: FlowInputItemTypeEnum.selectChatModel,
       label: '对话模型',
       value: chatModelList[0]?.model,
       list: chatModelList.map((item) => ({ label: item.name, value: item.model })),
+      required: true,
       valueCheck: (val) => !!val
     },
     {
@@ -153,7 +156,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'maxToken',
-      type: FlowInputItemTypeEnum.custom,
+      type: FlowInputItemTypeEnum.maxToken,
       label: '回复上限',
       value: chatModelList[0] ? chatModelList[0].contextMaxToken / 2 : 2000,
       min: 100,
@@ -191,10 +194,9 @@ export const ChatModule: FlowModuleTemplateType = {
       valueType: FlowValueTypeEnum.string,
       value: ''
     },
-    Input_Template_TFSwitch,
     {
       key: 'quoteQA',
-      type: FlowInputItemTypeEnum.custom,
+      type: FlowInputItemTypeEnum.quoteList,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
       valueType: FlowValueTypeEnum.kbQuote,
@@ -220,14 +222,7 @@ export const ChatModule: FlowModuleTemplateType = {
       type: FlowOutputItemTypeEnum.source,
       targets: []
     },
-    {
-      key: 'finish',
-      label: '回复结束',
-      description: 'AI 回复完成后触发',
-      valueType: FlowValueTypeEnum.boolean,
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
-    }
+    Output_Template_Finish
   ]
 };
 
@@ -238,9 +233,10 @@ export const KBSearchModule: FlowModuleTemplateType = {
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
   showStatus: true,
   inputs: [
+    Input_Template_TFSwitch,
     {
       key: 'kbList',
-      type: FlowInputItemTypeEnum.custom,
+      type: FlowInputItemTypeEnum.selectDataset,
       label: '关联的知识库',
       value: [],
       list: [],
@@ -274,7 +270,6 @@ export const KBSearchModule: FlowModuleTemplateType = {
         { label: '20', value: 20 }
       ]
     },
-    Input_Template_TFSwitch,
     Input_Template_UserChatInput
   ],
   outputs: [
@@ -300,7 +295,8 @@ export const KBSearchModule: FlowModuleTemplateType = {
       type: FlowOutputItemTypeEnum.source,
       valueType: FlowValueTypeEnum.kbQuote,
       targets: []
-    }
+    },
+    Output_Template_Finish
   ]
 };
 
@@ -322,16 +318,7 @@ export const AnswerModule: FlowModuleTemplateType = {
         '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容'
     }
   ],
-  outputs: [
-    {
-      key: 'finish',
-      label: '回复结束',
-      description: '回复完成后触发',
-      valueType: FlowValueTypeEnum.boolean,
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
-    }
-  ]
+  outputs: [Output_Template_Finish]
 };
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.classifyQuestion,
@@ -464,6 +451,7 @@ export const HttpModule: FlowModuleTemplateType = {
   description: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,
   inputs: [
+    Input_Template_TFSwitch,
     {
       key: HttpPropsEnum.url,
       value: '',
@@ -471,19 +459,11 @@ export const HttpModule: FlowModuleTemplateType = {
       label: '请求地址',
       description: '请求目标地址',
       placeholder: 'https://api.fastgpt.run/getInventory',
-      required: true
-    },
-    Input_Template_TFSwitch
-  ],
-  outputs: [
-    {
-      key: HttpPropsEnum.finish,
-      label: '请求结束',
-      valueType: FlowValueTypeEnum.boolean,
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
+      required: true,
+      valueCheck: (val) => !!val
     }
-  ]
+  ],
+  outputs: [Output_Template_Finish]
 };
 export const EmptyModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.empty,
@@ -530,13 +510,7 @@ export const AppModule: FlowModuleTemplateType = {
       type: FlowOutputItemTypeEnum.source,
       targets: []
     },
-    {
-      key: 'finish',
-      label: '请求结束',
-      valueType: FlowValueTypeEnum.boolean,
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
-    }
+    Output_Template_Finish
   ]
 };
 

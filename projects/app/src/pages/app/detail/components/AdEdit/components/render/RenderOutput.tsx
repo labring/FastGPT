@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { FlowOutputItemType } from '@/types/core/app/flow';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowOutputItemTypeEnum } from '@/constants/flow';
@@ -9,6 +9,7 @@ import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
 const SetOutputFieldModal = dynamic(() => import('../modules/SetOutputFieldModal'));
 import { useFlowStore } from '../Provider';
+import { SystemOutputEnum } from '@/constants/app';
 
 const Label = ({
   moduleId,
@@ -127,13 +128,17 @@ const RenderOutput = ({
   moduleId: string;
   flowOutputList: FlowOutputItemType[];
 }) => {
+  const sortOutput = useMemo(
+    () => flowOutputList.sort((a, b) => (a.key === SystemOutputEnum.finish ? -1 : 1)),
+    [flowOutputList]
+  );
   return (
     <>
-      {flowOutputList.map(
+      {sortOutput.map(
         (item) =>
           item.type !== FlowOutputItemTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
-              <Label moduleId={moduleId} outputKey={item.key} outputs={flowOutputList} {...item} />
+              <Label moduleId={moduleId} outputKey={item.key} outputs={sortOutput} {...item} />
               <Box mt={FlowOutputItemTypeEnum.answer ? 0 : 2} className={'nodrag'}>
                 {item.type === FlowOutputItemTypeEnum.source && (
                   <SourceHandle handleKey={item.key} valueType={item.valueType} />
