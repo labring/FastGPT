@@ -11,7 +11,7 @@ export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
   googleToken: string;
-}) => POST(`/plusApi/user/inform/sendAuthCode`, data);
+}) => POST(`/plusApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
 export const oauthLogin = (params: {
@@ -19,7 +19,7 @@ export const oauthLogin = (params: {
   code: string;
   callbackUrl: string;
   inviterId?: string;
-}) => POST<ResLogin>('/plusApi/user/account/login/oauth', params);
+}) => POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
 
 export const postRegister = ({
   username,
@@ -32,7 +32,7 @@ export const postRegister = ({
   password: string;
   inviterId?: string;
 }) =>
-  POST<ResLogin>(`/plusApi/user/account/register/emailAndPhone`, {
+  POST<ResLogin>(`/plusApi/support/user/account/register/emailAndPhone`, {
     username,
     code,
     inviterId,
@@ -48,7 +48,7 @@ export const postFindPassword = ({
   code: string;
   password: string;
 }) =>
-  POST<ResLogin>(`/plusApi/user/account/password/updateByCode`, {
+  POST<ResLogin>(`/plusApi/support/user/account/password/updateByCode`, {
     username,
     code,
     password: createHashPassword(password)
