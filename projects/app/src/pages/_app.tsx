@@ -13,10 +13,10 @@ import { appWithTranslation, useTranslation } from 'next-i18next';
 import { getLangStore, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/web/common/store/global';
+import type { FeConfigsType } from '@fastgpt/common/type/index.d';
 
 import 'nprogress/nprogress.css';
 import '@/web/styles/reset.scss';
-import { FeConfigsType } from '@/types';
 
 //Binding events.
 Router.events.on('routeChangeStart', () => NProgress.start());

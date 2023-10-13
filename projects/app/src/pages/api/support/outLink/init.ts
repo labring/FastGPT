@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, OutLink } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoOutLink } from '@fastgpt/support/outLink/schema';
 import { MongoUser } from '@fastgpt/support/user/schema';
 import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
 import { getChatModelNameList, getGuideModule } from '@/components/ChatBox/utils';
-import { authShareChatInit } from '@/service/support/outLink/auth';
+import { authShareChatInit } from '@fastgpt/support/outLink/auth';
 
 /* init share chat window */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -23,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // get shareChat
-    const shareChat = await OutLink.findOne({ shareId });
+    const shareChat = await MongoOutLink.findOne({ shareId });
 
     if (!shareChat) {
       return jsonRes(res, {

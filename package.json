@@ -7,6 +7,7 @@
     "format": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\""
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.3",
     "@types/node": "^20.8.5",
     "husky": "^8.0.3",
     "i18next": "^23.2.11",
@@ -22,7 +23,10 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "axios": "^1.5.1",
     "crypto": "^1.0.1",
-    "mongoose": "^7.6.1"
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.6.1",
+    "next": "13.5.2"
   }
 }

@@ -1,8 +1,8 @@
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
-import { IpLimit } from '@/service/common/ipLimit/schema';
-import { authBalanceByUid, AuthUserTypeEnum } from '@/service/utils/auth';
-import { OutLinkSchema } from '@/types/support/outLink';
-import { OutLink } from './schema';
+// import { IpLimit } from '@/service/common/ipLimit/schema';
+import { AuthUserTypeEnum, authBalanceByUid } from '../user/auth';
+import type { OutLinkSchema } from './type.d';
+import { MongoOutLink } from './schema';
 import axios from 'axios';
 
 type AuthLinkProps = { ip?: string | null; authToken?: string; question: string };
@@ -16,7 +16,7 @@ export async function authOutLinkChat({
   shareId: string;
 }) {
   // get outLink
-  const outLink = await OutLink.findOne({
+  const outLink = await MongoOutLink.findOne({
     shareId
   });
 
@@ -66,35 +66,31 @@ export async function authOutLinkLimit({
       return;
     }
     try {
-      const ipLimit = await IpLimit.findOne({ ip, eventId: outLink._id });
-
-      // first request
-      if (!ipLimit) {
-        return await IpLimit.create({
-          eventId: outLink._id,
-          ip,
-          account: outLink.limit.QPM - 1
-        });
-      }
-
-      // over one minute
-      const diffTime = Date.now() - ipLimit.lastMinute.getTime();
-      if (diffTime >= 60 * 1000) {
-        ipLimit.account = outLink.limit.QPM - 1;
-        ipLimit.lastMinute = new Date();
-        return await ipLimit.save();
-      }
-
-      // over limit
-      if (ipLimit.account <= 0) {
-        return Promise.reject(
-          `每分钟仅能请求 ${outLink.limit.QPM} 次, ${60 - Math.round(diffTime / 1000)}s 后重试~`
-        );
-      }
-
-      // update limit
-      ipLimit.account = ipLimit.account - 1;
-      await ipLimit.save();
+      // const ipLimit = await IpLimit.findOne({ ip, eventId: outLink._id });
+      // // first request
+      // if (!ipLimit) {
+      //   return await IpLimit.create({
+      //     eventId: outLink._id,
+      //     ip,
+      //     account: outLink.limit.QPM - 1
+      //   });
+      // }
+      // // over one minute
+      // const diffTime = Date.now() - ipLimit.lastMinute.getTime();
+      // if (diffTime >= 60 * 1000) {
+      //   ipLimit.account = outLink.limit.QPM - 1;
+      //   ipLimit.lastMinute = new Date();
+      //   return await ipLimit.save();
+      // }
+      // // over limit
+      // if (ipLimit.account <= 0) {
+      //   return Promise.reject(
+      //     `每分钟仅能请求 ${outLink.limit.QPM} 次, ${60 - Math.round(diffTime / 1000)}s 后重试~`
+      //   );
+      // }
+      // // update limit
+      // ipLimit.account = ipLimit.account - 1;
+      // await ipLimit.save();
     } catch (error) {}
   })();
 
@@ -103,7 +99,7 @@ export async function authOutLinkLimit({
 }
 
 export async function authOutLinkId({ id }: { id: string }) {
-  const outLink = await OutLink.findOne({
+  const outLink = await MongoOutLink.findOne({
     shareId: id
   });
 

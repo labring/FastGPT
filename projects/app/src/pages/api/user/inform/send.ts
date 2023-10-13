@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Inform } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { InformTypeEnum } from '@/constants/user';
 import { startSendInform } from '@/service/events/sendInform';
 import { MongoUser } from '@fastgpt/support/user/schema';

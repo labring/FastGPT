@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoUser } from '@fastgpt/support/user/schema';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';

@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { authDataset } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { TrainingModeEnum } from '@/constants/plugin';

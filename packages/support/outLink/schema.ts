@@ -1,6 +1,6 @@
 import { Schema, model, models, Model } from 'mongoose';
-import { OutLinkSchema as SchemaType } from '@/types/support/outLink';
-import { OutLinkTypeEnum } from '@/constants/chat';
+import { OutLinkSchema as SchemaType } from './type.d';
+import { OutLinkTypeEnum } from './constant';
 
 const OutLinkSchema = new Schema({
   shareId: {
@@ -55,4 +55,5 @@ const OutLinkSchema = new Schema({
   }
 });
 
-export const OutLink: Model<SchemaType> = models['outlinks'] || model('outlinks', OutLinkSchema);
+export const MongoOutLink: Model<SchemaType> =
+  models['outlinks'] || model('outlinks', OutLinkSchema);

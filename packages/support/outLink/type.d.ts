@@ -1,6 +1,6 @@
-import { OutLinkTypeEnum } from '@/constants/chat';
+import { OutLinkTypeEnum } from './constant';
 
-export interface OutLinkSchema {
+export type OutLinkSchema = {
   _id: string;
   shareId: string;
   userId: string;
@@ -16,7 +16,7 @@ export interface OutLinkSchema {
     credit: number;
     hookUrl?: string;
   };
-}
+};
 
 export type OutLinkEditType = {
   _id?: string;

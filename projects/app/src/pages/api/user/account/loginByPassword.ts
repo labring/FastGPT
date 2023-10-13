@@ -3,7 +3,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoUser } from '@fastgpt/support/user/schema';
-import { generateToken, setCookie } from '@/service/utils/tools';
+import { setCookie } from '@/service/utils/tools';
+import { generateToken } from '@fastgpt/support/user/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

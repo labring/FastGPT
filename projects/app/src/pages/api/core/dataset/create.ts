@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

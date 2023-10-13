@@ -128,6 +128,3 @@ export * from './models/promotionRecord';
 export * from './models/collection';
 export * from './models/inform';
 export * from './models/image';
-
-export * from './support/outLink/schema';
-export * from './support/openapi/schema';

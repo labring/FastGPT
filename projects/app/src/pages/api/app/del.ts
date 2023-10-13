@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, App, connectToDatabase, Collection, OutLink } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { Chat, App, connectToDatabase, Collection } from '@/service/mongo';
+import { MongoOutLink } from '@fastgpt/support/outLink/schema';
+import { authUser } from '@fastgpt/support/user/auth';
 import { authApp } from '@/service/utils/auth';
 
 /* 获取我的模型 */
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 删除分享链接
-    await OutLink.deleteMany({
+    await MongoOutLink.deleteMany({
       appId
     });
 

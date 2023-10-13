@@ -1,4 +1,5 @@
-import type { FeConfigsType, SystemEnvType } from '@/types';
+import type { SystemEnvType } from '@/types';
+import type { FeConfigsType } from '@fastgpt/common/type/index.d';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { readFileSync } from 'fs';

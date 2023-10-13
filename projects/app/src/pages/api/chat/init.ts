@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { Chat, ChatItem } from '@/service/mongo';
 import type { InitChatResponse } from '@/global/core/api/chatRes.d';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';
 import type { ChatSchema } from '@/types/mongoSchema';

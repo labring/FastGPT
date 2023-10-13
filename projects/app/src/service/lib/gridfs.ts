@@ -1,7 +1,7 @@
 import mongoose, { Types } from 'mongoose';
 import fs from 'fs';
 import fsp from 'fs/promises';
-import { ERROR_ENUM } from '../errorCode';
+import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
 import type { GSFileInfoType } from '@/types/common/file';
 
 enum BucketNameEnum {

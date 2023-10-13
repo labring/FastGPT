@@ -1,7 +1,5 @@
-import { addLog } from '@/service/utils/tools';
-import { ChatHistoryItemResType } from '@/types/chat';
 import axios from 'axios';
-import { OutLink } from './schema';
+import { MongoOutLink } from './schema';
 
 export const updateOutLinkUsage = async ({
   shareId,
@@ -11,7 +9,7 @@ export const updateOutLinkUsage = async ({
   total: number;
 }) => {
   try {
-    await OutLink.findOneAndUpdate(
+    await MongoOutLink.findOneAndUpdate(
       { shareId },
       {
         $inc: { total },
@@ -19,7 +17,7 @@ export const updateOutLinkUsage = async ({
       }
     );
   } catch (err) {
-    addLog.error('update shareChat error', err);
+    console.log('update shareChat error', err);
   }
 };
 
@@ -30,11 +28,11 @@ export const pushResult2Remote = async ({
 }: {
   authToken?: string;
   shareId?: string;
-  responseData?: ChatHistoryItemResType[];
+  responseData?: any[];
 }) => {
   if (!shareId || !authToken) return;
   try {
-    const outLink = await OutLink.findOne({
+    const outLink = await MongoOutLink.findOne({
       shareId
     });
     if (!outLink?.limit?.hookUrl) return;

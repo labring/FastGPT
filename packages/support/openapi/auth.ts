@@ -1,6 +1,6 @@
-import { ERROR_ENUM } from '@/service/errorCode';
-import { updateApiKeyUsedTime } from './index';
-import { OpenApi } from './schema';
+import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
+import { updateApiKeyUsedTime } from './tools';
+import { MongoOpenApi } from './schema';
 
 export async function authOpenApiKey({ apikey }: { apikey: string }) {
   if (!apikey) {
@@ -8,7 +8,7 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
   }
 
   try {
-    const openApi = await OpenApi.findOne({ apiKey: apikey });
+    const openApi = await MongoOpenApi.findOne({ apiKey: apikey });
     if (!openApi) {
       return Promise.reject(ERROR_ENUM.unAuthApiKey);
     }

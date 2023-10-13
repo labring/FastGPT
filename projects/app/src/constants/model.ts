@@ -1,5 +1,5 @@
 import type { AppSchema } from '@/types/mongoSchema';
-import type { OutLinkEditType } from '@/types/support/outLink';
+import type { OutLinkEditType } from '@fastgpt/support/outLink/type.d';
 
 export const defaultApp: AppSchema = {
   _id: '',

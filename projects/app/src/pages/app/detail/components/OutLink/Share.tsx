@@ -37,7 +37,7 @@ import { defaultOutLinkForm } from '@/constants/model';
 import type { OutLinkEditType } from '@/types/support/outLink';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatPrice } from '@fastgpt/common/bill/index';
-import { OutLinkTypeEnum } from '@/constants/chat';
+import { OutLinkTypeEnum } from '@fastgpt/support/outLink/constant';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/store/static';

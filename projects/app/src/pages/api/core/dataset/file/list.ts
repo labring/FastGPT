@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient, updateDataFileId } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';

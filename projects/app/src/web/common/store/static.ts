@@ -6,7 +6,7 @@ import {
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { getSystemInitData } from '@/web/common/api/system';
 import { delay } from '@/utils/tools';
-import { FeConfigsType } from '@/types';
+import type { FeConfigsType } from '@fastgpt/common/type/index.d';
 
 export let chatModelList: ChatModelItemType[] = [];
 export let qaModel: QAModelItemType = {

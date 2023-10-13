@@ -1,7 +1,7 @@
 import { insertData2Dataset } from '@/service/pg';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { TrainingData } from '../models/trainingData';
-import { ERROR_ENUM } from '../errorCode';
+import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { sendInform } from '@/pages/api/user/inform/send';
 import { addLog } from '../utils/tools';
