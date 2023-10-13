@@ -9,9 +9,7 @@ ARG name
 # copy packages and one project
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY ./packages ./packages
-COPY ./.npmrc ./.npmrc
 COPY ./projects/$name/package.json ./projects/$name/package.json
-COPY ./projects/$name/pnpm-lock.yaml ./projects/$name/pnpm-lock.yaml
 
 RUN \
   [ -f pnpm-lock.yaml ] && pnpm install || \
