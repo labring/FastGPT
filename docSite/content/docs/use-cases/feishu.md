@@ -11,6 +11,8 @@ weight: 322
 
 [Feishu OpenAI GitHub 地址](https://github.com/ConnectAI-E/Feishu-OpenAI)
 
+[查看视频教程](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.list.card_archive.click)
+
 由于 FastGPT 的 API 接口和 OpenAI 的规范一致，可以无需变更第三方应用即可使用 FastGPT 上编排好的应用。API 使用可参考 [这篇文章](/docs/use-cases/openapi/)。编排示例，可参考 [高级编排介绍](/docs/workflow/intro)
 
 ## 1. 获取 FastGPT 的 OpenAPI 秘钥
