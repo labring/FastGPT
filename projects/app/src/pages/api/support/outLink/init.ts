@@ -41,7 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         authOwner: false
       }),
       MongoUser.findById(shareChat.userId, 'avatar'),
-      authShareChatInit(authToken, shareChat.limit?.hookUrl)
+      authShareChatInit({
+        authToken,
+        tokenUrl: shareChat.limit?.hookUrl
+      })
     ]);
 
     jsonRes<InitShareChatResponse>(res, {

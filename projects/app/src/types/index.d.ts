@@ -39,7 +39,6 @@ declare global {
   var sendInformQueue: (() => Promise<void>)[];
   var sendInformQueueLen: number;
 
-  var systemEnv: SystemEnvType;
   var vectorModels: VectorModelItemType[];
   var chatModels: ChatModelItemType[];
   var qaModel: QAModelItemType;

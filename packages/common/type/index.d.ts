@@ -24,6 +24,15 @@ export type FeConfigsType = {
   scripts?: { [key: string]: string }[];
 };
 
+export type SystemEnvType = {
+  pluginBaseUrl?: string;
+  openapiPrefix?: string;
+  vectorMaxProcess: number;
+  qaMaxProcess: number;
+  pgIvfflatProbe: number;
+};
+
 declare global {
   var feConfigs: FeConfigsType;
+  var systemEnv: SystemEnvType;
 }

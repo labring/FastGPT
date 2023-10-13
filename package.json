@@ -26,7 +26,7 @@
     "axios": "^1.5.1",
     "crypto": "^1.0.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.6.1",
+    "mongoose": "^6.10.0",
     "next": "13.5.2"
   }
 }
