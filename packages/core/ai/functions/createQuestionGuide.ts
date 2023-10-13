@@ -10,7 +10,7 @@ export async function createQuestionGuide({
   messages: ChatCompletionRequestMessage[];
   model: string;
 }) {
-  const ai = getAIApi();
+  const ai = getAIApi(undefined, 48000);
   const data = await ai.chat.completions.create({
     model: model,
     temperature: 0,

@@ -1,4 +1,3 @@
-import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
 import { authJWT } from './tools';
 import { authOpenApiKey } from '../openapi/auth';
@@ -40,7 +39,7 @@ export const authUser = async ({
   authBalance = false,
   authOutLink
 }: {
-  req: NextApiRequest;
+  req: any;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;

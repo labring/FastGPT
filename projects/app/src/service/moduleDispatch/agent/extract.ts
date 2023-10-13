@@ -126,7 +126,7 @@ async function functionCall({
     }
   };
 
-  const ai = getAIApi(user.openaiAccount);
+  const ai = getAIApi(user.openaiAccount, 480000);
 
   const response = await ai.chat.completions.create({
     model: extractModel.model,

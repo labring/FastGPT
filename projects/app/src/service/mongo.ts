@@ -1,11 +1,11 @@
 import { startQueue } from './utils/tools';
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { initPg } from './pg';
-import { createHashPassword } from '@/utils/tools';
 import { getTikTokenEnc } from '@/utils/common/tiktoken';
 import { initHttpAgent } from '@fastgpt/core/init';
 import { MongoUser } from '@fastgpt/support/user/schema';
 import { connectMongo } from '@fastgpt/common/mongo/init';
+import { hashStr } from '@fastgpt/common/tools/str';
 
 /**
  * connect MongoDB and init data
@@ -42,14 +42,14 @@ async function initRootUser() {
       await MongoUser.findOneAndUpdate(
         { username: 'root' },
         {
-          password: createHashPassword(psw),
+          password: hashStr(psw),
           balance: 999999 * PRICE_SCALE
         }
       );
     } else {
       await MongoUser.create({
         username: 'root',
-        password: createHashPassword(psw),
+        password: hashStr(psw),
         balance: 999999 * PRICE_SCALE
       });
     }

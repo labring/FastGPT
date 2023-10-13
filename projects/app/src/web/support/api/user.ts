@@ -1,5 +1,5 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
-import { createHashPassword } from '@/utils/tools';
+import { hashStr } from '@fastgpt/common/tools/str';
 import type { ResLogin, PromotionRecordType } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserType, UserUpdateParams } from '@/types/user';
@@ -36,7 +36,7 @@ export const postRegister = ({
     username,
     code,
     inviterId,
-    password: createHashPassword(password)
+    password: hashStr(password)
   });
 
 export const postFindPassword = ({
@@ -51,19 +51,19 @@ export const postFindPassword = ({
   POST<ResLogin>(`/plusApi/support/user/account/password/updateByCode`, {
     username,
     code,
-    password: createHashPassword(password)
+    password: hashStr(password)
   });
 
 export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw: string }) =>
   POST('/user/account/updatePasswordByOld', {
-    oldPsw: createHashPassword(oldPsw),
-    newPsw: createHashPassword(newPsw)
+    oldPsw: hashStr(oldPsw),
+    newPsw: hashStr(newPsw)
   });
 
 export const postLogin = ({ username, password }: { username: string; password: string }) =>
   POST<ResLogin>('/user/account/loginByPassword', {
     username,
-    password: createHashPassword(password)
+    password: hashStr(password)
   });
 
 export const loginOut = () => GET('/user/account/loginout');

@@ -105,7 +105,7 @@ async function functionCall({
       required: ['type']
     }
   };
-  const ai = getAIApi(user.openaiAccount);
+  const ai = getAIApi(user.openaiAccount, 48000);
 
   const response = await ai.chat.completions.create({
     model: cqModel.model,

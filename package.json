@@ -10,11 +10,8 @@
     "@types/jsonwebtoken": "^9.0.3",
     "@types/node": "^20.8.5",
     "husky": "^8.0.3",
-    "i18next": "^23.2.11",
     "lint-staged": "^13.2.1",
-    "next-i18next": "^14.0.0",
-    "prettier": "^3.0.3",
-    "react-i18next": "^13.0.2"
+    "prettier": "^3.0.3"
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format"
@@ -23,9 +20,13 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "i18next": "^23.2.11",
+    "next-i18next": "^14.0.0",
+    "react-i18next": "^13.0.2",
     "axios": "^1.5.1",
-    "crypto": "^1.0.1",
     "jsonwebtoken": "^9.0.2",
-    "next": "13.5.2"
+    "mongoose": "^6.10.0",
+    "winston": "^3.10.0",
+    "winston-mongodb": "^5.1.1"
   }
 }
