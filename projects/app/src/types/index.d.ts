@@ -66,12 +66,14 @@ declare global {
 
   var feConfigs: FeConfigsType;
   var systemEnv: SystemEnvType;
+  var vectorModels: VectorModelItemType[];
   var chatModels: ChatModelItemType[];
   var qaModel: QAModelItemType;
   var extractModel: FunctionModelItemType;
   var cqModel: FunctionModelItemType;
   var qgModel: FunctionModelItemType;
-  var vectorModels: VectorModelItemType[];
+
+  var priceMd: string;
   var systemVersion: string;
 
   interface Window {

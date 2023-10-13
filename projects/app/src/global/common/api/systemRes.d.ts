@@ -10,5 +10,6 @@ export type InitDateResponse = {
   qaModel: QAModelItemType;
   vectorModels: VectorModelItemType[];
   feConfigs: FeConfigsType;
+  priceMd: string;
   systemVersion: string;
 };

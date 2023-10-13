@@ -177,12 +177,12 @@ export const pushQuestionGuideBill = ({ tokens, userId }: { tokens: number; user
   const total = qgModel.price * tokens;
   createBill({
     userId,
-    appName: '问题指引',
+    appName: '下一步指引',
     total,
     source: BillSourceEnum.fastgpt,
     list: [
       {
-        moduleName: '问题指引',
+        moduleName: '下一步指引',
         amount: total,
         model: qgModel.name,
         tokenLen: tokens
