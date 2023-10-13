@@ -126,7 +126,6 @@ export * from './models/pay';
 export * from './models/trainingData';
 export * from './models/promotionRecord';
 export * from './models/collection';
-export * from './models/kb';
 export * from './models/inform';
 export * from './models/image';
 

@@ -1,4 +1,4 @@
-import { KbTypeEnum } from '@/constants/dataset';
+import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import type { RequestPaging } from '@/types';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { SearchTestItemType } from '@/types/core/dataset';
@@ -18,7 +18,7 @@ export type CreateDatasetParams = {
   tags: string[];
   avatar: string;
   vectorModel?: string;
-  type: `${KbTypeEnum}`;
+  type: `${DatasetTypeEnum}`;
 };
 
 export type SearchTestProps = {

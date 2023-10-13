@@ -42,6 +42,9 @@ const UserSchema = new Schema({
     exportKbTime: {
       // Every half hour
       type: Date
+    },
+    datasetMaxCount: {
+      type: Number
     }
   },
   openaiAccount: {

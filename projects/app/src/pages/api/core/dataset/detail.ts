@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { getVectorModel } from '@/service/utils/data';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    const data = await KB.findOne({
+    const data = await MongoDataset.findOne({
       _id: id,
       userId
     });

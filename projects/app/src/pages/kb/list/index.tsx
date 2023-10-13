@@ -26,7 +26,7 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
-import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
+import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -46,8 +46,8 @@ const Kb = () => {
   const { setLoading } = useGlobalStore();
 
   const DeleteTipsMap = useRef({
-    [KbTypeEnum.folder]: t('kb.deleteFolderTips'),
-    [KbTypeEnum.dataset]: t('kb.deleteDatasetTips')
+    [DatasetTypeEnum.folder]: t('kb.deleteFolderTips'),
+    [DatasetTypeEnum.dataset]: t('kb.deleteDatasetTips')
   });
 
   const { openConfirm, ConfirmModal } = useConfirm({
@@ -224,7 +224,7 @@ const Kb = () => {
             border={theme.borders.md}
             boxShadow={'none'}
             position={'relative'}
-            data-drag-id={kb.type === KbTypeEnum.folder ? kb._id : undefined}
+            data-drag-id={kb.type === DatasetTypeEnum.folder ? kb._id : undefined}
             borderColor={dragTargetId === kb._id ? 'myBlue.600' : ''}
             draggable
             onDragStart={(e) => {
@@ -234,7 +234,7 @@ const Kb = () => {
               e.preventDefault();
               const targetId = e.currentTarget.getAttribute('data-drag-id');
               if (!targetId) return;
-              KbTypeEnum.folder && setDragTargetId(targetId);
+              DatasetTypeEnum.folder && setDragTargetId(targetId);
             }}
             onDragLeave={(e) => {
               e.preventDefault();
@@ -261,14 +261,14 @@ const Kb = () => {
               }
             }}
             onClick={() => {
-              if (kb.type === KbTypeEnum.folder) {
+              if (kb.type === DatasetTypeEnum.folder) {
                 router.push({
                   pathname: '/kb/list',
                   query: {
                     parentId: kb._id
                   }
                 });
-              } else if (kb.type === KbTypeEnum.dataset) {
+              } else if (kb.type === DatasetTypeEnum.dataset) {
                 router.push({
                   pathname: '/kb/detail',
                   query: {
@@ -377,7 +377,7 @@ const Kb = () => {
               </Flex>
             </Box>
             <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
-              {kb.type === KbTypeEnum.folder ? (
+              {kb.type === DatasetTypeEnum.folder ? (
                 <Box color={'myGray.500'}>{t('Folder')}</Box>
               ) : (
                 <>

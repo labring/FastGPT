@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { authUser } from '@/service/utils/auth';
 import { getVectorModel } from '@/service/utils/data';
 import type { DatasetsItemType } from '@/types/core/dataset';
@@ -12,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    const kbList = await KB.find({
+    const kbList = await MongoDataset.find({
       userId,
       type: 'dataset'
     });

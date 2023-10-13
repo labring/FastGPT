@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import Avatar from '../Avatar';
 import MyIcon from '@/components/Icon';
-import { KbTypeEnum } from '@/constants/dataset';
+import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 const SelectDataset = ({
@@ -57,7 +57,7 @@ const SelectDataset = ({
                       }
                     : {})}
                   onClick={() => {
-                    if (item.type === KbTypeEnum.folder) {
+                    if (item.type === DatasetTypeEnum.folder) {
                       setParentId(item._id);
                     } else {
                       setSelectedId(item._id);

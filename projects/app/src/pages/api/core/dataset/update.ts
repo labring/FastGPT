@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { authUser } from '@/service/utils/auth';
 import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
 
@@ -17,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await connectToDatabase();
 
-    await KB.findOneAndUpdate(
+    await MongoDataset.findOneAndUpdate(
       {
         _id: id,
         userId

@@ -20,7 +20,7 @@ import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
-import { KbTypeEnum } from '@/constants/dataset';
+import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useDatasetStore } from '@/web/core/store/dataset';
@@ -116,7 +116,7 @@ export const DatasetSelectModal = ({
                 <MyTooltip
                   key={item._id}
                   label={
-                    item.type === KbTypeEnum.dataset
+                    item.type === DatasetTypeEnum.dataset
                       ? t('kb.Select Dataset')
                       : t('kb.Select Folder')
                   }
@@ -131,9 +131,9 @@ export const DatasetSelectModal = ({
                       boxShadow: 'md'
                     }}
                     onClick={() => {
-                      if (item.type === KbTypeEnum.folder) {
+                      if (item.type === DatasetTypeEnum.folder) {
                         setParentId(item._id);
-                      } else if (item.type === KbTypeEnum.dataset) {
+                      } else if (item.type === DatasetTypeEnum.dataset) {
                         const vectorModel = selectedKbList[0]?.vectorModel?.model;
 
                         if (vectorModel && vectorModel !== item.vectorModel.model) {
@@ -161,7 +161,7 @@ export const DatasetSelectModal = ({
                       </Box>
                     </Flex>
                     <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
-                      {item.type === KbTypeEnum.folder ? (
+                      {item.type === DatasetTypeEnum.folder ? (
                         <Box color={'myGray.500'}>{t('Folder')}</Box>
                       ) : (
                         <>

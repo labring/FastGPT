@@ -5,9 +5,9 @@ import { authUser } from '@/service/utils/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient, updateDataFileId } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { FileStatusEnum } from '@/constants/dataset';
 import { strIsLink } from '@fastgpt/common/tools/str';
 import {
+  FileStatusEnum,
   DatasetSpecialIdEnum,
   datasetSpecialIdMap,
   datasetSpecialIds

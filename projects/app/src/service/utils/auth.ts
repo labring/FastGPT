@@ -1,6 +1,7 @@
 import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
-import { App, KB } from '../mongo';
+import { App } from '../mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { MongoUser } from '@fastgpt/support/user/schema';
 import type { AppSchema } from '@/types/mongoSchema';
 import type { UserModelSchema } from '@fastgpt/support/user/type.d';
@@ -202,8 +203,8 @@ export const authApp = async ({
 };
 
 // 知识库操作权限
-export const authKb = async ({ kbId, userId }: { kbId: string; userId: string }) => {
-  const kb = await KB.findOne({
+export const authDataset = async ({ kbId, userId }: { kbId: string; userId: string }) => {
+  const kb = await MongoDataset.findOne({
     _id: kbId,
     userId
   });

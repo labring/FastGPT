@@ -5,7 +5,7 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { getVector } from '../../openapi/plugin/vector';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { KB } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import type { SearchTestProps } from '@/global/core/api/datasetReq.d';
 import type { SearchTestResponseType } from '@/global/core/api/datasetRes.d';
 
@@ -20,7 +20,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // 凭证校验
     const [{ userId }, kb] = await Promise.all([
       authUser({ req, authToken: true, authApiKey: true }),
-      KB.findById(kbId, 'vectorModel')
+      MongoDataset.findById(kbId, 'vectorModel')
     ]);
 
     if (!userId || !kb) {

@@ -1,9 +1,10 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, TrainingData, KB } from '@/service/mongo';
+import { connectToDatabase, TrainingData } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { authUser } from '@/service/utils/auth';
-import { authKb } from '@/service/utils/auth';
+import { authDataset } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
@@ -63,13 +64,13 @@ export async function pushDataToKb({
   billId
 }: { userId: string } & PushDataProps): Promise<PushDataResponse> {
   const [kb, vectorModel] = await Promise.all([
-    authKb({
+    authDataset({
       userId,
       kbId
     }),
     (async () => {
       if (mode === TrainingModeEnum.index) {
-        const vectorModel = (await KB.findById(kbId, 'vectorModel'))?.vectorModel;
+        const vectorModel = (await MongoDataset.findById(kbId, 'vectorModel'))?.vectorModel;
 
         return getVectorModel(vectorModel || global.vectorModels[0].model);
       }

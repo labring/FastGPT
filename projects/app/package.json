@@ -80,7 +80,6 @@
     "@types/jsonwebtoken": "^9.0.1",
     "@types/lodash": "^4.14.191",
     "@types/multer": "^1.4.7",
-    "@types/node": "18.14.0",
     "@types/papaparse": "^5.3.7",
     "@types/pg": "^8.6.6",
     "@types/react": "18.0.28",

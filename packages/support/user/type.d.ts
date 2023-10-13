@@ -15,5 +15,6 @@ export type UserModelSchema = {
   };
   limit: {
     exportKbTime?: Date;
+    datasetMaxCount?: number;
   };
 };
