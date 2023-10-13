@@ -36,7 +36,8 @@ const nextConfig = {
           use: ['@svgr/webpack']
         }
       ]),
-      exprContextCritical: false
+      exprContextCritical: false,
+      unknownContextCritical: false
     };
 
     return config;
