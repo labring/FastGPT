@@ -1,5 +1,10 @@
 {
   "name": "@fastgpt/common",
   "version": "1.0.0",
-  "dependencies": {}
+  "dependencies": {
+    "mongoose": "^6.10.0",
+    "winston": "^3.10.0",
+    "winston-mongodb": "^5.1.1",
+    "axios": "^1.5.1"
+  }
 }

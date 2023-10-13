@@ -7,26 +7,7 @@ settings:
 importers:
 
   .:
-    dependencies:
-      axios:
-        specifier: ^1.5.1
-        version: registry.npmmirror.com/axios@1.5.1
-      jsonwebtoken:
-        specifier: ^9.0.2
-        version: registry.npmmirror.com/jsonwebtoken@9.0.2
-      mongoose:
-        specifier: ^6.10.0
-        version: registry.npmmirror.com/mongoose@6.10.0
-      winston:
-        specifier: ^3.10.0
-        version: registry.npmmirror.com/winston@3.10.0
-      winston-mongodb:
-        specifier: ^5.1.1
-        version: registry.npmmirror.com/winston-mongodb@5.1.1(winston@3.10.0)
     devDependencies:
-      '@types/jsonwebtoken':
-        specifier: ^9.0.3
-        version: registry.npmmirror.com/@types/jsonwebtoken@9.0.3
       '@types/node':
         specifier: ^20.8.5
         version: registry.npmmirror.com/@types/node@20.8.5
@@ -43,7 +24,20 @@ importers:
         specifier: ^3.0.3
         version: registry.npmmirror.com/prettier@3.0.3
 
-  packages/common: {}
+  packages/common:
+    dependencies:
+      axios:
+        specifier: ^1.5.1
+        version: registry.npmmirror.com/axios@1.5.1
+      mongoose:
+        specifier: ^6.10.0
+        version: registry.npmmirror.com/mongoose@6.10.0
+      winston:
+        specifier: ^3.10.0
+        version: registry.npmmirror.com/winston@3.10.0
+      winston-mongodb:
+        specifier: ^5.1.1
+        version: registry.npmmirror.com/winston-mongodb@5.1.1(winston@3.10.0)
 
   packages/core:
     dependencies:
@@ -72,13 +66,22 @@ importers:
       '@fastgpt/common':
         specifier: workspace:*
         version: link:../common
+      axios:
+        specifier: ^1.5.1
+        version: registry.npmmirror.com/axios@1.5.1
       cookie:
         specifier: ^0.5.0
         version: registry.npmmirror.com/cookie@0.5.0
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: registry.npmmirror.com/jsonwebtoken@9.0.2
     devDependencies:
       '@types/cookie':
         specifier: ^0.5.2
         version: registry.npmmirror.com/@types/cookie@0.5.2
+      '@types/jsonwebtoken':
+        specifier: ^9.0.3
+        version: registry.npmmirror.com/@types/jsonwebtoken@9.0.3
 
   projects/app:
     dependencies:
@@ -121,6 +124,9 @@ importers:
       '@types/nprogress':
         specifier: ^0.2.0
         version: registry.npmmirror.com/@types/nprogress@0.2.0
+      axios:
+        specifier: ^1.5.1
+        version: registry.npmmirror.com/axios@1.5.1
       date-fns:
         specifier: ^2.30.0
         version: registry.npmmirror.com/date-fns@2.30.0
@@ -163,6 +169,9 @@ importers:
       jsdom:
         specifier: ^22.1.0
         version: registry.npmmirror.com/jsdom@22.1.0
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: registry.npmmirror.com/jsonwebtoken@9.0.2
       lodash:
         specifier: ^4.17.21
         version: registry.npmmirror.com/lodash@4.17.21
@@ -263,6 +272,9 @@ importers:
       '@types/jsdom':
         specifier: ^21.1.1
         version: registry.npmmirror.com/@types/jsdom@21.1.1
+      '@types/jsonwebtoken':
+        specifier: ^9.0.3
+        version: registry.npmmirror.com/@types/jsonwebtoken@9.0.3
       '@types/lodash':
         specifier: ^4.14.191
         version: registry.npmmirror.com/@types/lodash@4.14.191
