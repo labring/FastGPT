@@ -32,7 +32,7 @@ export type SystemEnvType = {
   openapiPrefix?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
-  pgIvfflatProbe: number;
+  pgHNSWEfSearch: number;
 };
 
 declare global {
