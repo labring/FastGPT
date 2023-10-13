@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { User } from '@/service/models/user';
+import { MongoUser } from '@fastgpt/support/user/schema';
 import { generateToken, setCookie } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -16,14 +16,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // 检测用户是否存在
-    const authUser = await User.findOne({
+    const authUser = await MongoUser.findOne({
       username
     });
     if (!authUser) {
       throw new Error('用户未注册');
     }
 
-    const user = await User.findOne({
+    const user = await MongoUser.findOne({
       username,
       password
     });

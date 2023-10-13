@@ -1,7 +1,9 @@
 import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
-import { App, User, KB } from '../mongo';
-import type { AppSchema, UserModelSchema } from '@/types/mongoSchema';
+import { App, KB } from '../mongo';
+import { MongoUser } from '@fastgpt/support/user/schema';
+import type { AppSchema } from '@/types/mongoSchema';
+import type { UserModelSchema } from '@fastgpt/support/user/type.d';
 import { ERROR_ENUM } from '../errorCode';
 import { authJWT } from './tools';
 import { authOpenApiKey } from '../support/openapi/auth';
@@ -16,7 +18,7 @@ export enum AuthUserTypeEnum {
 
 /* auth balance */
 export const authBalanceByUid = async (uid: string) => {
-  const user = await User.findById<UserModelSchema>(
+  const user = await MongoUser.findById<UserModelSchema>(
     uid,
     '_id username balance openaiAccount timezone'
   );

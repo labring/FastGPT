@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, OutLink } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
-import { hashPassword } from '@/service/utils/tools';
 
 /* get shareChat list by appId */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

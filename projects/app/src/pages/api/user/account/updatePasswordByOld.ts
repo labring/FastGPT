@@ -1,9 +1,9 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { User } from '@/service/models/user';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
+import { MongoUser } from '@fastgpt/support/user/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     // auth old password
-    const user = await User.findOne({
+    const user = await MongoUser.findOne({
       _id: userId,
       password: oldPsw
     });
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 更新对应的记录
-    await User.findByIdAndUpdate(userId, {
+    await MongoUser.findByIdAndUpdate(userId, {
       password: newPsw
     });
 

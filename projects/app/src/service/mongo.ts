@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { startQueue } from './utils/tools';
 import { getInitConfig } from '@/pages/api/system/getInitData';
-import { User } from './models/user';
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { initPg } from './pg';
 import { createHashPassword } from '@/utils/tools';
@@ -9,6 +8,7 @@ import { createLogger, format, transports } from 'winston';
 import 'winston-mongodb';
 import { getTikTokenEnc } from '@/utils/common/tiktoken';
 import { initHttpAgent } from '@fastgpt/core/init';
+import { MongoUser } from '@fastgpt/support/user/schema';
 
 /**
  * connect MongoDB and init data
@@ -88,13 +88,13 @@ function initLogger() {
 }
 async function initRootUser() {
   try {
-    const rootUser = await User.findOne({
+    const rootUser = await MongoUser.findOne({
       username: 'root'
     });
     const psw = process.env.DEFAULT_ROOT_PSW || '123456';
 
     if (rootUser) {
-      await User.findOneAndUpdate(
+      await MongoUser.findOneAndUpdate(
         { username: 'root' },
         {
           password: createHashPassword(psw),
@@ -102,7 +102,7 @@ async function initRootUser() {
         }
       );
     } else {
-      await User.create({
+      await MongoUser.create({
         username: 'root',
         password: createHashPassword(psw),
         balance: 999999 * PRICE_SCALE
@@ -121,7 +121,6 @@ async function initRootUser() {
 export * from './models/chat';
 export * from './models/chatItem';
 export * from './models/app';
-export * from './models/user';
 export * from './common/bill/schema';
 export * from './models/pay';
 export * from './models/trainingData';

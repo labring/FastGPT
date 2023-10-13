@@ -1,16 +1,17 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, User, promotionRecord } from '@/service/mongo';
+import { connectToDatabase, promotionRecord } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import mongoose from 'mongoose';
+import { MongoUser } from '@fastgpt/support/user/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
     const { userId } = await authUser({ req, authToken: true });
 
-    const invitedAmount = await User.countDocuments({
+    const invitedAmount = await MongoUser.countDocuments({
       inviterId: userId
     });
 

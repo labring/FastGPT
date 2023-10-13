@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, OutLink, User } from '@/service/mongo';
+import { connectToDatabase, OutLink } from '@/service/mongo';
+import { MongoUser } from '@fastgpt/support/user/schema';
 import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
@@ -38,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userId: String(shareChat.userId),
         authOwner: false
       }),
-      User.findById(shareChat.userId, 'avatar'),
+      MongoUser.findById(shareChat.userId, 'avatar'),
       authShareChatInit(authToken, shareChat.limit?.hookUrl)
     ]);
 

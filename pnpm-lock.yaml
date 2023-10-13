@@ -7,6 +7,13 @@ settings:
 importers:
 
   .:
+    dependencies:
+      crypto:
+        specifier: ^1.0.1
+        version: registry.npmmirror.com/crypto@1.0.1
+      mongoose:
+        specifier: ^7.6.1
+        version: registry.npmmirror.com/mongoose@7.6.1
     devDependencies:
       husky:
         specifier: ^8.0.3
@@ -104,9 +111,6 @@ importers:
       cookie:
         specifier: ^0.5.0
         version: registry.npmmirror.com/cookie@0.5.0
-      crypto:
-        specifier: ^1.0.1
-        version: registry.npmmirror.com/crypto@1.0.1
       date-fns:
         specifier: ^2.30.0
         version: registry.npmmirror.com/date-fns@2.30.0
@@ -161,9 +165,6 @@ importers:
       mermaid:
         specifier: ^10.2.3
         version: registry.npmmirror.com/mermaid@10.2.3
-      mongoose:
-        specifier: ^6.10.0
-        version: registry.npmmirror.com/mongoose@6.10.0
       multer:
         specifier: 1.4.5-lts.1
         version: registry.npmmirror.com/multer@1.4.5-lts.1
@@ -321,601 +322,6 @@ packages:
     dependencies:
       '@jridgewell/gen-mapping': registry.npmmirror.com/@jridgewell/gen-mapping@0.3.3
       '@jridgewell/trace-mapping': registry.npmmirror.com/@jridgewell/trace-mapping@0.3.19
-
-  registry.npmmirror.com/@aws-crypto/crc32@3.0.0:
-    resolution: {integrity: sha512-IzSgsrxUcsrejQbPVilIKy16kAT52EwB6zSaI+M3xxIhKh5+aldEyvI+z6erM7TCLB2BJsFrtHjp6/4/sr+3dA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-crypto/crc32/-/crc32-3.0.0.tgz}
-    name: '@aws-crypto/crc32'
-    version: 3.0.0
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/util': registry.npmmirror.com/@aws-crypto/util@3.0.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      tslib: registry.npmmirror.com/tslib@1.14.1
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-crypto/ie11-detection@3.0.0:
-    resolution: {integrity: sha512-341lBBkiY1DfDNKai/wXM3aujNBkXR7tq1URPQDL9wi3AUbI80NR74uF1TXHMm7po1AcnFk8iu2S2IeU/+/A+Q==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-crypto/ie11-detection/-/ie11-detection-3.0.0.tgz}
-    name: '@aws-crypto/ie11-detection'
-    version: 3.0.0
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@1.14.1
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-crypto/sha256-browser@3.0.0:
-    resolution: {integrity: sha512-8VLmW2B+gjFbU5uMeqtQM6Nj0/F1bro80xQXCW6CQBWgosFWXTx77aeOF5CAIAmbOK64SdMBJdNr6J41yP5mvQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-crypto/sha256-browser/-/sha256-browser-3.0.0.tgz}
-    name: '@aws-crypto/sha256-browser'
-    version: 3.0.0
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/ie11-detection': registry.npmmirror.com/@aws-crypto/ie11-detection@3.0.0
-      '@aws-crypto/sha256-js': registry.npmmirror.com/@aws-crypto/sha256-js@3.0.0
-      '@aws-crypto/supports-web-crypto': registry.npmmirror.com/@aws-crypto/supports-web-crypto@3.0.0
-      '@aws-crypto/util': registry.npmmirror.com/@aws-crypto/util@3.0.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@aws-sdk/util-locate-window': registry.npmmirror.com/@aws-sdk/util-locate-window@3.310.0
-      '@aws-sdk/util-utf8-browser': registry.npmmirror.com/@aws-sdk/util-utf8-browser@3.259.0
-      tslib: registry.npmmirror.com/tslib@1.14.1
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-crypto/sha256-js@3.0.0:
-    resolution: {integrity: sha512-PnNN7os0+yd1XvXAy23CFOmTbMaDxgxXtTKHybrJ39Y8kGzBATgBFibWJKH6BhytLI/Zyszs87xCOBNyBig6vQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-crypto/sha256-js/-/sha256-js-3.0.0.tgz}
-    name: '@aws-crypto/sha256-js'
-    version: 3.0.0
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/util': registry.npmmirror.com/@aws-crypto/util@3.0.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      tslib: registry.npmmirror.com/tslib@1.14.1
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-crypto/supports-web-crypto@3.0.0:
-    resolution: {integrity: sha512-06hBdMwUAb2WFTuGG73LSC0wfPu93xWwo5vL2et9eymgmu3Id5vFAHBbajVWiGhPO37qcsdCap/FqXvJGJWPIg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-crypto/supports-web-crypto/-/supports-web-crypto-3.0.0.tgz}
-    name: '@aws-crypto/supports-web-crypto'
-    version: 3.0.0
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@1.14.1
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-crypto/util@3.0.0:
-    resolution: {integrity: sha512-2OJlpeJpCR48CC8r+uKVChzs9Iungj9wkZrl8Z041DWEWvyIHILYKCPNzJghKsivj+S3mLo6BVc7mBNzdxA46w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-crypto/util/-/util-3.0.0.tgz}
-    name: '@aws-crypto/util'
-    version: 3.0.0
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@aws-sdk/util-utf8-browser': registry.npmmirror.com/@aws-sdk/util-utf8-browser@3.259.0
-      tslib: registry.npmmirror.com/tslib@1.14.1
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/client-cognito-identity@3.418.0:
-    resolution: {integrity: sha512-8Gib2gMbfCfxNz/FgSRijl47pnmV/rVvyRNoYtk24xndUydhyXKFTB0cqGVDpPv7eRb3wWQ9YZYVuaBDnEdZ1A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/client-cognito-identity/-/client-cognito-identity-3.418.0.tgz}
-    name: '@aws-sdk/client-cognito-identity'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/sha256-browser': registry.npmmirror.com/@aws-crypto/sha256-browser@3.0.0
-      '@aws-crypto/sha256-js': registry.npmmirror.com/@aws-crypto/sha256-js@3.0.0
-      '@aws-sdk/client-sts': registry.npmmirror.com/@aws-sdk/client-sts@3.418.0
-      '@aws-sdk/credential-provider-node': registry.npmmirror.com/@aws-sdk/credential-provider-node@3.418.0
-      '@aws-sdk/middleware-host-header': registry.npmmirror.com/@aws-sdk/middleware-host-header@3.418.0
-      '@aws-sdk/middleware-logger': registry.npmmirror.com/@aws-sdk/middleware-logger@3.418.0
-      '@aws-sdk/middleware-recursion-detection': registry.npmmirror.com/@aws-sdk/middleware-recursion-detection@3.418.0
-      '@aws-sdk/middleware-signing': registry.npmmirror.com/@aws-sdk/middleware-signing@3.418.0
-      '@aws-sdk/middleware-user-agent': registry.npmmirror.com/@aws-sdk/middleware-user-agent@3.418.0
-      '@aws-sdk/region-config-resolver': registry.npmmirror.com/@aws-sdk/region-config-resolver@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@aws-sdk/util-endpoints': registry.npmmirror.com/@aws-sdk/util-endpoints@3.418.0
-      '@aws-sdk/util-user-agent-browser': registry.npmmirror.com/@aws-sdk/util-user-agent-browser@3.418.0
-      '@aws-sdk/util-user-agent-node': registry.npmmirror.com/@aws-sdk/util-user-agent-node@3.418.0
-      '@smithy/config-resolver': registry.npmmirror.com/@smithy/config-resolver@2.0.10
-      '@smithy/fetch-http-handler': registry.npmmirror.com/@smithy/fetch-http-handler@2.1.5
-      '@smithy/hash-node': registry.npmmirror.com/@smithy/hash-node@2.0.9
-      '@smithy/invalid-dependency': registry.npmmirror.com/@smithy/invalid-dependency@2.0.9
-      '@smithy/middleware-content-length': registry.npmmirror.com/@smithy/middleware-content-length@2.0.11
-      '@smithy/middleware-endpoint': registry.npmmirror.com/@smithy/middleware-endpoint@2.0.9
-      '@smithy/middleware-retry': registry.npmmirror.com/@smithy/middleware-retry@2.0.12
-      '@smithy/middleware-serde': registry.npmmirror.com/@smithy/middleware-serde@2.0.9
-      '@smithy/middleware-stack': registry.npmmirror.com/@smithy/middleware-stack@2.0.3
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/node-http-handler': registry.npmmirror.com/@smithy/node-http-handler@2.1.5
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/smithy-client': registry.npmmirror.com/@smithy/smithy-client@2.1.7
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/url-parser': registry.npmmirror.com/@smithy/url-parser@2.0.9
-      '@smithy/util-base64': registry.npmmirror.com/@smithy/util-base64@2.0.0
-      '@smithy/util-body-length-browser': registry.npmmirror.com/@smithy/util-body-length-browser@2.0.0
-      '@smithy/util-body-length-node': registry.npmmirror.com/@smithy/util-body-length-node@2.1.0
-      '@smithy/util-defaults-mode-browser': registry.npmmirror.com/@smithy/util-defaults-mode-browser@2.0.11
-      '@smithy/util-defaults-mode-node': registry.npmmirror.com/@smithy/util-defaults-mode-node@2.0.13
-      '@smithy/util-retry': registry.npmmirror.com/@smithy/util-retry@2.0.2
-      '@smithy/util-utf8': registry.npmmirror.com/@smithy/util-utf8@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/client-sso@3.418.0:
-    resolution: {integrity: sha512-fakz3YeSW/kCAOJ5w4ObrrQBxsYO8sU8i6WHLv6iWAsYZKAws2Mqa8g89P61+GitSH4z9waksdLouS6ep78/5A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/client-sso/-/client-sso-3.418.0.tgz}
-    name: '@aws-sdk/client-sso'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/sha256-browser': registry.npmmirror.com/@aws-crypto/sha256-browser@3.0.0
-      '@aws-crypto/sha256-js': registry.npmmirror.com/@aws-crypto/sha256-js@3.0.0
-      '@aws-sdk/middleware-host-header': registry.npmmirror.com/@aws-sdk/middleware-host-header@3.418.0
-      '@aws-sdk/middleware-logger': registry.npmmirror.com/@aws-sdk/middleware-logger@3.418.0
-      '@aws-sdk/middleware-recursion-detection': registry.npmmirror.com/@aws-sdk/middleware-recursion-detection@3.418.0
-      '@aws-sdk/middleware-user-agent': registry.npmmirror.com/@aws-sdk/middleware-user-agent@3.418.0
-      '@aws-sdk/region-config-resolver': registry.npmmirror.com/@aws-sdk/region-config-resolver@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@aws-sdk/util-endpoints': registry.npmmirror.com/@aws-sdk/util-endpoints@3.418.0
-      '@aws-sdk/util-user-agent-browser': registry.npmmirror.com/@aws-sdk/util-user-agent-browser@3.418.0
-      '@aws-sdk/util-user-agent-node': registry.npmmirror.com/@aws-sdk/util-user-agent-node@3.418.0
-      '@smithy/config-resolver': registry.npmmirror.com/@smithy/config-resolver@2.0.10
-      '@smithy/fetch-http-handler': registry.npmmirror.com/@smithy/fetch-http-handler@2.1.5
-      '@smithy/hash-node': registry.npmmirror.com/@smithy/hash-node@2.0.9
-      '@smithy/invalid-dependency': registry.npmmirror.com/@smithy/invalid-dependency@2.0.9
-      '@smithy/middleware-content-length': registry.npmmirror.com/@smithy/middleware-content-length@2.0.11
-      '@smithy/middleware-endpoint': registry.npmmirror.com/@smithy/middleware-endpoint@2.0.9
-      '@smithy/middleware-retry': registry.npmmirror.com/@smithy/middleware-retry@2.0.12
-      '@smithy/middleware-serde': registry.npmmirror.com/@smithy/middleware-serde@2.0.9
-      '@smithy/middleware-stack': registry.npmmirror.com/@smithy/middleware-stack@2.0.3
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/node-http-handler': registry.npmmirror.com/@smithy/node-http-handler@2.1.5
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/smithy-client': registry.npmmirror.com/@smithy/smithy-client@2.1.7
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/url-parser': registry.npmmirror.com/@smithy/url-parser@2.0.9
-      '@smithy/util-base64': registry.npmmirror.com/@smithy/util-base64@2.0.0
-      '@smithy/util-body-length-browser': registry.npmmirror.com/@smithy/util-body-length-browser@2.0.0
-      '@smithy/util-body-length-node': registry.npmmirror.com/@smithy/util-body-length-node@2.1.0
-      '@smithy/util-defaults-mode-browser': registry.npmmirror.com/@smithy/util-defaults-mode-browser@2.0.11
-      '@smithy/util-defaults-mode-node': registry.npmmirror.com/@smithy/util-defaults-mode-node@2.0.13
-      '@smithy/util-retry': registry.npmmirror.com/@smithy/util-retry@2.0.2
-      '@smithy/util-utf8': registry.npmmirror.com/@smithy/util-utf8@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/client-sts@3.418.0:
-    resolution: {integrity: sha512-L0n0Hw+Pm+BhXTN1bYZ0y4JAMArYgazdHf1nUSlEHndgZicCCuQtlMLxfo3i/IbtWi0dzfZcZ9d/MdAM8p4Jyw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/client-sts/-/client-sts-3.418.0.tgz}
-    name: '@aws-sdk/client-sts'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/sha256-browser': registry.npmmirror.com/@aws-crypto/sha256-browser@3.0.0
-      '@aws-crypto/sha256-js': registry.npmmirror.com/@aws-crypto/sha256-js@3.0.0
-      '@aws-sdk/credential-provider-node': registry.npmmirror.com/@aws-sdk/credential-provider-node@3.418.0
-      '@aws-sdk/middleware-host-header': registry.npmmirror.com/@aws-sdk/middleware-host-header@3.418.0
-      '@aws-sdk/middleware-logger': registry.npmmirror.com/@aws-sdk/middleware-logger@3.418.0
-      '@aws-sdk/middleware-recursion-detection': registry.npmmirror.com/@aws-sdk/middleware-recursion-detection@3.418.0
-      '@aws-sdk/middleware-sdk-sts': registry.npmmirror.com/@aws-sdk/middleware-sdk-sts@3.418.0
-      '@aws-sdk/middleware-signing': registry.npmmirror.com/@aws-sdk/middleware-signing@3.418.0
-      '@aws-sdk/middleware-user-agent': registry.npmmirror.com/@aws-sdk/middleware-user-agent@3.418.0
-      '@aws-sdk/region-config-resolver': registry.npmmirror.com/@aws-sdk/region-config-resolver@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@aws-sdk/util-endpoints': registry.npmmirror.com/@aws-sdk/util-endpoints@3.418.0
-      '@aws-sdk/util-user-agent-browser': registry.npmmirror.com/@aws-sdk/util-user-agent-browser@3.418.0
-      '@aws-sdk/util-user-agent-node': registry.npmmirror.com/@aws-sdk/util-user-agent-node@3.418.0
-      '@smithy/config-resolver': registry.npmmirror.com/@smithy/config-resolver@2.0.10
-      '@smithy/fetch-http-handler': registry.npmmirror.com/@smithy/fetch-http-handler@2.1.5
-      '@smithy/hash-node': registry.npmmirror.com/@smithy/hash-node@2.0.9
-      '@smithy/invalid-dependency': registry.npmmirror.com/@smithy/invalid-dependency@2.0.9
-      '@smithy/middleware-content-length': registry.npmmirror.com/@smithy/middleware-content-length@2.0.11
-      '@smithy/middleware-endpoint': registry.npmmirror.com/@smithy/middleware-endpoint@2.0.9
-      '@smithy/middleware-retry': registry.npmmirror.com/@smithy/middleware-retry@2.0.12
-      '@smithy/middleware-serde': registry.npmmirror.com/@smithy/middleware-serde@2.0.9
-      '@smithy/middleware-stack': registry.npmmirror.com/@smithy/middleware-stack@2.0.3
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/node-http-handler': registry.npmmirror.com/@smithy/node-http-handler@2.1.5
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/smithy-client': registry.npmmirror.com/@smithy/smithy-client@2.1.7
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/url-parser': registry.npmmirror.com/@smithy/url-parser@2.0.9
-      '@smithy/util-base64': registry.npmmirror.com/@smithy/util-base64@2.0.0
-      '@smithy/util-body-length-browser': registry.npmmirror.com/@smithy/util-body-length-browser@2.0.0
-      '@smithy/util-body-length-node': registry.npmmirror.com/@smithy/util-body-length-node@2.1.0
-      '@smithy/util-defaults-mode-browser': registry.npmmirror.com/@smithy/util-defaults-mode-browser@2.0.11
-      '@smithy/util-defaults-mode-node': registry.npmmirror.com/@smithy/util-defaults-mode-node@2.0.13
-      '@smithy/util-retry': registry.npmmirror.com/@smithy/util-retry@2.0.2
-      '@smithy/util-utf8': registry.npmmirror.com/@smithy/util-utf8@2.0.0
-      fast-xml-parser: registry.npmmirror.com/fast-xml-parser@4.2.5
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-provider-cognito-identity@3.418.0:
-    resolution: {integrity: sha512-MakYZsT7fkG1W9IgkBz7PTXG/e6YD2oSEk+hPgwfdMv0YX76qjTU02B2qbbKSGtXichX73MNUPOvygF5XAi6oA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-provider-cognito-identity/-/credential-provider-cognito-identity-3.418.0.tgz}
-    name: '@aws-sdk/credential-provider-cognito-identity'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/client-cognito-identity': registry.npmmirror.com/@aws-sdk/client-cognito-identity@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-provider-env@3.418.0:
-    resolution: {integrity: sha512-e74sS+x63EZUBO+HaI8zor886YdtmULzwKdctsZp5/37Xho1CVUNtEC+fYa69nigBD9afoiH33I4JggaHgrekQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-provider-env/-/credential-provider-env-3.418.0.tgz}
-    name: '@aws-sdk/credential-provider-env'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-provider-ini@3.418.0:
-    resolution: {integrity: sha512-LTAeKKV85unlSqGNIeqEZ4N9gufaSoH+670n5YTUEk564zHCkUQW0PJomzLF5jKBco6Yfzv6rPBTukd+x9XWqw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-provider-ini/-/credential-provider-ini-3.418.0.tgz}
-    name: '@aws-sdk/credential-provider-ini'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/credential-provider-env': registry.npmmirror.com/@aws-sdk/credential-provider-env@3.418.0
-      '@aws-sdk/credential-provider-process': registry.npmmirror.com/@aws-sdk/credential-provider-process@3.418.0
-      '@aws-sdk/credential-provider-sso': registry.npmmirror.com/@aws-sdk/credential-provider-sso@3.418.0
-      '@aws-sdk/credential-provider-web-identity': registry.npmmirror.com/@aws-sdk/credential-provider-web-identity@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/credential-provider-imds': registry.npmmirror.com/@smithy/credential-provider-imds@2.0.12
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/shared-ini-file-loader': registry.npmmirror.com/@smithy/shared-ini-file-loader@2.0.11
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-provider-node@3.418.0:
-    resolution: {integrity: sha512-VveTjtSC6m8YXj3fQDkMKEZuHv+CR2Z4u/NAN51Fi4xOtIWUtOBj5rfZ8HmBYoBjRF0DtRlPXuMiNnXAzTctfQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-provider-node/-/credential-provider-node-3.418.0.tgz}
-    name: '@aws-sdk/credential-provider-node'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/credential-provider-env': registry.npmmirror.com/@aws-sdk/credential-provider-env@3.418.0
-      '@aws-sdk/credential-provider-ini': registry.npmmirror.com/@aws-sdk/credential-provider-ini@3.418.0
-      '@aws-sdk/credential-provider-process': registry.npmmirror.com/@aws-sdk/credential-provider-process@3.418.0
-      '@aws-sdk/credential-provider-sso': registry.npmmirror.com/@aws-sdk/credential-provider-sso@3.418.0
-      '@aws-sdk/credential-provider-web-identity': registry.npmmirror.com/@aws-sdk/credential-provider-web-identity@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/credential-provider-imds': registry.npmmirror.com/@smithy/credential-provider-imds@2.0.12
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/shared-ini-file-loader': registry.npmmirror.com/@smithy/shared-ini-file-loader@2.0.11
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-provider-process@3.418.0:
-    resolution: {integrity: sha512-xPbdm2WKz1oH6pTkrJoUmr3OLuqvvcPYTQX0IIlc31tmDwDWPQjXGGFD/vwZGIZIkKaFpFxVMgAzfFScxox7dw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-provider-process/-/credential-provider-process-3.418.0.tgz}
-    name: '@aws-sdk/credential-provider-process'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/shared-ini-file-loader': registry.npmmirror.com/@smithy/shared-ini-file-loader@2.0.11
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-provider-sso@3.418.0:
-    resolution: {integrity: sha512-tUF5Hg/HfaU5t+E7IuvohYlodSIlBXa28xAJPPFxhKrUnvP6AIoW6JLazOtCIQjQgJYEUILV29XX+ojUuITcaw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-provider-sso/-/credential-provider-sso-3.418.0.tgz}
-    name: '@aws-sdk/credential-provider-sso'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/client-sso': registry.npmmirror.com/@aws-sdk/client-sso@3.418.0
-      '@aws-sdk/token-providers': registry.npmmirror.com/@aws-sdk/token-providers@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/shared-ini-file-loader': registry.npmmirror.com/@smithy/shared-ini-file-loader@2.0.11
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-provider-web-identity@3.418.0:
-    resolution: {integrity: sha512-do7ang565n9p3dS1JdsQY01rUfRx8vkxQqz5M8OlcEHBNiCdi2PvSjNwcBdrv/FKkyIxZb0TImOfBSt40hVdxQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-provider-web-identity/-/credential-provider-web-identity-3.418.0.tgz}
-    name: '@aws-sdk/credential-provider-web-identity'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/credential-providers@3.418.0:
-    resolution: {integrity: sha512-atEybTA0jvP9CpBCPKCoiPz1hjJ/lbRxf67r+fpAqPtfQKutGq/jZm78Yz5kV9F/NJEW2mK2GR/BslCAHc4H8g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/credential-providers/-/credential-providers-3.418.0.tgz}
-    name: '@aws-sdk/credential-providers'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/client-cognito-identity': registry.npmmirror.com/@aws-sdk/client-cognito-identity@3.418.0
-      '@aws-sdk/client-sso': registry.npmmirror.com/@aws-sdk/client-sso@3.418.0
-      '@aws-sdk/client-sts': registry.npmmirror.com/@aws-sdk/client-sts@3.418.0
-      '@aws-sdk/credential-provider-cognito-identity': registry.npmmirror.com/@aws-sdk/credential-provider-cognito-identity@3.418.0
-      '@aws-sdk/credential-provider-env': registry.npmmirror.com/@aws-sdk/credential-provider-env@3.418.0
-      '@aws-sdk/credential-provider-ini': registry.npmmirror.com/@aws-sdk/credential-provider-ini@3.418.0
-      '@aws-sdk/credential-provider-node': registry.npmmirror.com/@aws-sdk/credential-provider-node@3.418.0
-      '@aws-sdk/credential-provider-process': registry.npmmirror.com/@aws-sdk/credential-provider-process@3.418.0
-      '@aws-sdk/credential-provider-sso': registry.npmmirror.com/@aws-sdk/credential-provider-sso@3.418.0
-      '@aws-sdk/credential-provider-web-identity': registry.npmmirror.com/@aws-sdk/credential-provider-web-identity@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/credential-provider-imds': registry.npmmirror.com/@smithy/credential-provider-imds@2.0.12
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/middleware-host-header@3.418.0:
-    resolution: {integrity: sha512-LrMTdzalkPw/1ujLCKPLwCGvPMCmT4P+vOZQRbSEVZPnlZk+Aj++aL/RaHou0jL4kJH3zl8iQepriBt4a7UvXQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/middleware-host-header/-/middleware-host-header-3.418.0.tgz}
-    name: '@aws-sdk/middleware-host-header'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/middleware-logger@3.418.0:
-    resolution: {integrity: sha512-StKGmyPVfoO/wdNTtKemYwoJsqIl4l7oqarQY7VSf2Mp3mqaa+njLViHsQbirYpyqpgUEusOnuTlH5utxJ1NsQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/middleware-logger/-/middleware-logger-3.418.0.tgz}
-    name: '@aws-sdk/middleware-logger'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/middleware-recursion-detection@3.418.0:
-    resolution: {integrity: sha512-kKFrIQglBLUFPbHSDy1+bbe3Na2Kd70JSUC3QLMbUHmqipXN8KeXRfAj7vTv97zXl0WzG0buV++WcNwOm1rFjg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/middleware-recursion-detection/-/middleware-recursion-detection-3.418.0.tgz}
-    name: '@aws-sdk/middleware-recursion-detection'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/middleware-sdk-sts@3.418.0:
-    resolution: {integrity: sha512-cW8ijrCTP+mgihvcq4+TbhAcE/we5lFl4ydRqvTdtcSnYQAVQADg47rnTScQiFsPFEB3NKq7BGeyTJF9MKolPA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/middleware-sdk-sts/-/middleware-sdk-sts-3.418.0.tgz}
-    name: '@aws-sdk/middleware-sdk-sts'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/middleware-signing': registry.npmmirror.com/@aws-sdk/middleware-signing@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/middleware-signing@3.418.0:
-    resolution: {integrity: sha512-onvs5KoYQE8OlOE740RxWBGtsUyVIgAo0CzRKOQO63ZEYqpL1Os+MS1CGzdNhvQnJgJruE1WW+Ix8fjN30zKPA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/middleware-signing/-/middleware-signing-3.418.0.tgz}
-    name: '@aws-sdk/middleware-signing'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/signature-v4': registry.npmmirror.com/@smithy/signature-v4@2.0.9
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-middleware': registry.npmmirror.com/@smithy/util-middleware@2.0.2
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/middleware-user-agent@3.418.0:
-    resolution: {integrity: sha512-Jdcztg9Tal9SEAL0dKRrnpKrm6LFlWmAhvuwv0dQ7bNTJxIxyEFbpqdgy7mpQHsLVZgq1Aad/7gT/72c9igyZw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/middleware-user-agent/-/middleware-user-agent-3.418.0.tgz}
-    name: '@aws-sdk/middleware-user-agent'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@aws-sdk/util-endpoints': registry.npmmirror.com/@aws-sdk/util-endpoints@3.418.0
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/region-config-resolver@3.418.0:
-    resolution: {integrity: sha512-lJRZ/9TjZU6yLz+mAwxJkcJZ6BmyYoIJVo1p5+BN//EFdEmC8/c0c9gXMRzfISV/mqWSttdtccpAyN4/goHTYA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/region-config-resolver/-/region-config-resolver-3.418.0.tgz}
-    name: '@aws-sdk/region-config-resolver'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-config-provider': registry.npmmirror.com/@smithy/util-config-provider@2.0.0
-      '@smithy/util-middleware': registry.npmmirror.com/@smithy/util-middleware@2.0.2
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/token-providers@3.418.0:
-    resolution: {integrity: sha512-9P7Q0VN0hEzTngy3Sz5eya2qEOEf0Q8qf1vB3um0gE6ID6EVAdz/nc/DztfN32MFxk8FeVBrCP5vWdoOzmd72g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/token-providers/-/token-providers-3.418.0.tgz}
-    name: '@aws-sdk/token-providers'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/sha256-browser': registry.npmmirror.com/@aws-crypto/sha256-browser@3.0.0
-      '@aws-crypto/sha256-js': registry.npmmirror.com/@aws-crypto/sha256-js@3.0.0
-      '@aws-sdk/middleware-host-header': registry.npmmirror.com/@aws-sdk/middleware-host-header@3.418.0
-      '@aws-sdk/middleware-logger': registry.npmmirror.com/@aws-sdk/middleware-logger@3.418.0
-      '@aws-sdk/middleware-recursion-detection': registry.npmmirror.com/@aws-sdk/middleware-recursion-detection@3.418.0
-      '@aws-sdk/middleware-user-agent': registry.npmmirror.com/@aws-sdk/middleware-user-agent@3.418.0
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@aws-sdk/util-endpoints': registry.npmmirror.com/@aws-sdk/util-endpoints@3.418.0
-      '@aws-sdk/util-user-agent-browser': registry.npmmirror.com/@aws-sdk/util-user-agent-browser@3.418.0
-      '@aws-sdk/util-user-agent-node': registry.npmmirror.com/@aws-sdk/util-user-agent-node@3.418.0
-      '@smithy/config-resolver': registry.npmmirror.com/@smithy/config-resolver@2.0.10
-      '@smithy/fetch-http-handler': registry.npmmirror.com/@smithy/fetch-http-handler@2.1.5
-      '@smithy/hash-node': registry.npmmirror.com/@smithy/hash-node@2.0.9
-      '@smithy/invalid-dependency': registry.npmmirror.com/@smithy/invalid-dependency@2.0.9
-      '@smithy/middleware-content-length': registry.npmmirror.com/@smithy/middleware-content-length@2.0.11
-      '@smithy/middleware-endpoint': registry.npmmirror.com/@smithy/middleware-endpoint@2.0.9
-      '@smithy/middleware-retry': registry.npmmirror.com/@smithy/middleware-retry@2.0.12
-      '@smithy/middleware-serde': registry.npmmirror.com/@smithy/middleware-serde@2.0.9
-      '@smithy/middleware-stack': registry.npmmirror.com/@smithy/middleware-stack@2.0.3
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/node-http-handler': registry.npmmirror.com/@smithy/node-http-handler@2.1.5
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/shared-ini-file-loader': registry.npmmirror.com/@smithy/shared-ini-file-loader@2.0.11
-      '@smithy/smithy-client': registry.npmmirror.com/@smithy/smithy-client@2.1.7
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/url-parser': registry.npmmirror.com/@smithy/url-parser@2.0.9
-      '@smithy/util-base64': registry.npmmirror.com/@smithy/util-base64@2.0.0
-      '@smithy/util-body-length-browser': registry.npmmirror.com/@smithy/util-body-length-browser@2.0.0
-      '@smithy/util-body-length-node': registry.npmmirror.com/@smithy/util-body-length-node@2.1.0
-      '@smithy/util-defaults-mode-browser': registry.npmmirror.com/@smithy/util-defaults-mode-browser@2.0.11
-      '@smithy/util-defaults-mode-node': registry.npmmirror.com/@smithy/util-defaults-mode-node@2.0.13
-      '@smithy/util-retry': registry.npmmirror.com/@smithy/util-retry@2.0.2
-      '@smithy/util-utf8': registry.npmmirror.com/@smithy/util-utf8@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    transitivePeerDependencies:
-      - aws-crt
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/types@3.418.0:
-    resolution: {integrity: sha512-y4PQSH+ulfFLY0+FYkaK4qbIaQI9IJNMO2xsxukW6/aNoApNymN1D2FSi2la8Qbp/iPjNDKsG8suNPm9NtsWXQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/types/-/types-3.418.0.tgz}
-    name: '@aws-sdk/types'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/util-endpoints@3.418.0:
-    resolution: {integrity: sha512-sYSDwRTl7yE7LhHkPzemGzmIXFVHSsi3AQ1KeNEk84eBqxMHHcCc2kqklaBk2roXWe50QDgRMy1ikZUxvtzNHQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/util-endpoints/-/util-endpoints-3.418.0.tgz}
-    name: '@aws-sdk/util-endpoints'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/util-locate-window@3.310.0:
-    resolution: {integrity: sha512-qo2t/vBTnoXpjKxlsC2e1gBrRm80M3bId27r0BRB2VniSSe7bL1mmzM+/HFtujm0iAxtPM+aLEflLJlJeDPg0w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/util-locate-window/-/util-locate-window-3.310.0.tgz}
-    name: '@aws-sdk/util-locate-window'
-    version: 3.310.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/util-user-agent-browser@3.418.0:
-    resolution: {integrity: sha512-c4p4mc0VV/jIeNH0lsXzhJ1MpWRLuboGtNEpqE4s1Vl9ck2amv9VdUUZUmHbg+bVxlMgRQ4nmiovA4qIrqGuyg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/util-user-agent-browser/-/util-user-agent-browser-3.418.0.tgz}
-    name: '@aws-sdk/util-user-agent-browser'
-    version: 3.418.0
-    requiresBuild: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      bowser: registry.npmmirror.com/bowser@2.11.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/util-user-agent-node@3.418.0:
-    resolution: {integrity: sha512-BXMskXFtg+dmzSCgmnWOffokxIbPr1lFqa1D9kvM3l3IFRiFGx2IyDg+8MAhq11aPDLvoa/BDuQ0Yqma5izOhg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/util-user-agent-node/-/util-user-agent-node-3.418.0.tgz}
-    name: '@aws-sdk/util-user-agent-node'
-    version: 3.418.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    peerDependencies:
-      aws-crt: '>=1.0.0'
-    peerDependenciesMeta:
-      aws-crt:
-        optional: true
-    dependencies:
-      '@aws-sdk/types': registry.npmmirror.com/@aws-sdk/types@3.418.0
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@aws-sdk/util-utf8-browser@3.259.0:
-    resolution: {integrity: sha512-UvFa/vR+e19XookZF8RzFZBrw2EUkQWxiBW0yYQAhvk3C+QVGl0H3ouca8LDBlBfQKXwmW3huo/59H8rwb1wJw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@aws-sdk/util-utf8-browser/-/util-utf8-browser-3.259.0.tgz}
-    name: '@aws-sdk/util-utf8-browser'
-    version: 3.259.0
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
 
   registry.npmmirror.com/@babel/code-frame@7.22.13:
     resolution: {integrity: sha512-XktuhWlJ5g+3TJXc5upd9Ks1HutSArik6jf2eAjYFyIOf4ej3RN+184cZbzDvbPnuTJIUhPKKJE3cIsYTiAT3w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@babel/code-frame/-/code-frame-7.22.13.tgz}
@@ -4094,6 +3500,16 @@ packages:
       '@jridgewell/resolve-uri': registry.npmmirror.com/@jridgewell/resolve-uri@3.1.1
       '@jridgewell/sourcemap-codec': registry.npmmirror.com/@jridgewell/sourcemap-codec@1.4.15
 
+  registry.npmmirror.com/@mongodb-js/saslprep@1.1.0:
+    resolution: {integrity: sha512-Xfijy7HvfzzqiOAhAepF4SGN5e9leLkMvg/OPOF97XemjfVCYN/oWa75wnkc6mltMSTwY+XlbhWgUOJmkFspSw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@mongodb-js/saslprep/-/saslprep-1.1.0.tgz}
+    name: '@mongodb-js/saslprep'
+    version: 1.1.0
+    requiresBuild: true
+    dependencies:
+      sparse-bitfield: registry.npmmirror.com/sparse-bitfield@3.0.3
+    dev: false
+    optional: true
+
   registry.npmmirror.com/@motionone/animation@10.16.3:
     resolution: {integrity: sha512-QUGWpLbMFLhyqKlngjZhjtxM8IqiJQjLK0DF+XOF6od9nhSvlaeEpOY/UMCRVcZn/9Tr2rZO22EkuCIjYdI74g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@motionone/animation/-/animation-10.16.3.tgz}
     name: '@motionone/animation'
@@ -4425,502 +3841,6 @@ packages:
     name: '@rushstack/eslint-patch'
     version: 1.4.0
     dev: true
-
-  registry.npmmirror.com/@smithy/abort-controller@2.0.9:
-    resolution: {integrity: sha512-8liHOEbx99xcy4VndeQNQhyA0LS+e7UqsuRnDTSIA26IKBv/7vA9w09KOd4fgNULrvX0r3WpA6cwsQTRJpSWkg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/abort-controller/-/abort-controller-2.0.9.tgz}
-    name: '@smithy/abort-controller'
-    version: 2.0.9
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/config-resolver@2.0.10:
-    resolution: {integrity: sha512-MwToDsCltHjumkCuRn883qoNeJUawc2b8sX9caSn5vLz6J5crU1IklklNxWCaMO2z2nDL91Po4b/aI1eHv5PfA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/config-resolver/-/config-resolver-2.0.10.tgz}
-    name: '@smithy/config-resolver'
-    version: 2.0.10
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-config-provider': registry.npmmirror.com/@smithy/util-config-provider@2.0.0
-      '@smithy/util-middleware': registry.npmmirror.com/@smithy/util-middleware@2.0.2
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/credential-provider-imds@2.0.12:
-    resolution: {integrity: sha512-S3lUNe+2fEFwKcmiQniXGPXt69vaHvQCw8kYQOBL4OvJsgwfpkIYDZdroHbTshYi0M6WaKL26Mw+hvgma6dZqA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/credential-provider-imds/-/credential-provider-imds-2.0.12.tgz}
-    name: '@smithy/credential-provider-imds'
-    version: 2.0.12
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/url-parser': registry.npmmirror.com/@smithy/url-parser@2.0.9
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/eventstream-codec@2.0.9:
-    resolution: {integrity: sha512-sy0pcbKnawt1iu+qCoSFbs/h9PAaUgvlJEO3lqkE1HFFj4p5RgL98vH+9CyDoj6YY82cG5XsorFmcLqQJHTOYw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/eventstream-codec/-/eventstream-codec-2.0.9.tgz}
-    name: '@smithy/eventstream-codec'
-    version: 2.0.9
-    requiresBuild: true
-    dependencies:
-      '@aws-crypto/crc32': registry.npmmirror.com/@aws-crypto/crc32@3.0.0
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-hex-encoding': registry.npmmirror.com/@smithy/util-hex-encoding@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/fetch-http-handler@2.1.5:
-    resolution: {integrity: sha512-BIeCHGfr5JCGN+EMTwZK74ELvjPXOIrI7OLM5OhZJJ6AmZyRv2S9ANJk18AtLwht0TsSm+8WoXIEp8LuxNgUyA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/fetch-http-handler/-/fetch-http-handler-2.1.5.tgz}
-    name: '@smithy/fetch-http-handler'
-    version: 2.1.5
-    requiresBuild: true
-    dependencies:
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/querystring-builder': registry.npmmirror.com/@smithy/querystring-builder@2.0.9
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-base64': registry.npmmirror.com/@smithy/util-base64@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/hash-node@2.0.9:
-    resolution: {integrity: sha512-XP3yWd5wyCtiVmsY5Nuq/FUwyCEQ6YG7DsvRh7ThldNukGpCzyFdP8eivZJVjn4Fx7oYrrOnVoYZ0WEgpW1AvQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/hash-node/-/hash-node-2.0.9.tgz}
-    name: '@smithy/hash-node'
-    version: 2.0.9
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-buffer-from': registry.npmmirror.com/@smithy/util-buffer-from@2.0.0
-      '@smithy/util-utf8': registry.npmmirror.com/@smithy/util-utf8@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/invalid-dependency@2.0.9:
-    resolution: {integrity: sha512-RuJqhYf8nViK96IIO9JbTtjDUuFItVfuuJhWw2yk7fv67yltQ7fZD6IQ2OsHHluoVmstnQJuCg5raXJR696Ubw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/invalid-dependency/-/invalid-dependency-2.0.9.tgz}
-    name: '@smithy/invalid-dependency'
-    version: 2.0.9
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/is-array-buffer@2.0.0:
-    resolution: {integrity: sha512-z3PjFjMyZNI98JFRJi/U0nGoLWMSJlDjAW4QUX2WNZLas5C0CmVV6LJ01JI0k90l7FvpmixjWxPFmENSClQ7ug==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/is-array-buffer/-/is-array-buffer-2.0.0.tgz}
-    name: '@smithy/is-array-buffer'
-    version: 2.0.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/middleware-content-length@2.0.11:
-    resolution: {integrity: sha512-Malj4voNTL4+a5ZL3a6+Ij7JTUMTa2R7c3ZIBzMxN5OUUgAspU7uFi1Q97f4B0afVh2joQBAWH5IQJUG25nl8g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/middleware-content-length/-/middleware-content-length-2.0.11.tgz}
-    name: '@smithy/middleware-content-length'
-    version: 2.0.11
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/middleware-endpoint@2.0.9:
-    resolution: {integrity: sha512-72/o8R6AAO4+nyTI6h4z6PYGTSA4dr1M7tZz29U8DEUHuh1YkhC77js0P6RyF9G0wDLuYqxb+Yh0crI5WG2pJg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/middleware-endpoint/-/middleware-endpoint-2.0.9.tgz}
-    name: '@smithy/middleware-endpoint'
-    version: 2.0.9
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/middleware-serde': registry.npmmirror.com/@smithy/middleware-serde@2.0.9
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/url-parser': registry.npmmirror.com/@smithy/url-parser@2.0.9
-      '@smithy/util-middleware': registry.npmmirror.com/@smithy/util-middleware@2.0.2
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/middleware-retry@2.0.12:
-    resolution: {integrity: sha512-YQ/ufXX4/d9/+Jf1QQ4J+CVeupC7BW52qldBTvRV33PDX9vxndlAwkFwzBcmnUFC3Hjf1//HW6I77EItcjNSCA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/middleware-retry/-/middleware-retry-2.0.12.tgz}
-    name: '@smithy/middleware-retry'
-    version: 2.0.12
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/service-error-classification': registry.npmmirror.com/@smithy/service-error-classification@2.0.2
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-middleware': registry.npmmirror.com/@smithy/util-middleware@2.0.2
-      '@smithy/util-retry': registry.npmmirror.com/@smithy/util-retry@2.0.2
-      tslib: registry.npmmirror.com/tslib@2.5.3
-      uuid: registry.npmmirror.com/uuid@8.3.2
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/middleware-serde@2.0.9:
-    resolution: {integrity: sha512-GVbauxrr6WmtCaesakktg3t5LR/yDbajpC7KkWc8rtCpddMI4ShAVO5Q6DqwX8MDFi4CLaY8H7eTGcxhl3jbLg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/middleware-serde/-/middleware-serde-2.0.9.tgz}
-    name: '@smithy/middleware-serde'
-    version: 2.0.9
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/middleware-stack@2.0.3:
-    resolution: {integrity: sha512-AlhPmbwpkC4lQBVaVHXczmjFvsAhDHhrakqLt038qFLotnJcvDLhmMzAtu23alBeOSkKxkTQq0LsAt2N0WpAbw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/middleware-stack/-/middleware-stack-2.0.3.tgz}
-    name: '@smithy/middleware-stack'
-    version: 2.0.3
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/node-config-provider@2.0.12:
-    resolution: {integrity: sha512-df9y9ywv+JmS40Y60ZqJ4jfZiTCmyHQffwzIqjBjLJLJl0imf9F6DWBd+jiEWHvlohR+sFhyY+KL/qzKgnAq1A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/node-config-provider/-/node-config-provider-2.0.12.tgz}
-    name: '@smithy/node-config-provider'
-    version: 2.0.12
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/shared-ini-file-loader': registry.npmmirror.com/@smithy/shared-ini-file-loader@2.0.11
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/node-http-handler@2.1.5:
-    resolution: {integrity: sha512-52uF+BrZaFiBh+NT/bADiVDCQO91T+OwDRsuaAeWZC1mlCXFjAPPQdxeQohtuYOe9m7mPP/xIMNiqbe8jvndHA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/node-http-handler/-/node-http-handler-2.1.5.tgz}
-    name: '@smithy/node-http-handler'
-    version: 2.1.5
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/abort-controller': registry.npmmirror.com/@smithy/abort-controller@2.0.9
-      '@smithy/protocol-http': registry.npmmirror.com/@smithy/protocol-http@3.0.5
-      '@smithy/querystring-builder': registry.npmmirror.com/@smithy/querystring-builder@2.0.9
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/property-provider@2.0.10:
-    resolution: {integrity: sha512-YMBVfh0ZMmJtbsUn+WfSwR32iRljZPdRN0Tn2GAcdJ+ejX8WrBXD7Z0jIkQDrQZr8fEuuv5x8WxMIj+qVbsPQw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/property-provider/-/property-provider-2.0.10.tgz}
-    name: '@smithy/property-provider'
-    version: 2.0.10
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/protocol-http@3.0.5:
-    resolution: {integrity: sha512-3t3fxj+ip4EPHRC2fQ0JimMxR/qCQ1LSQJjZZVZFgROnFLYWPDgUZqpoi7chr+EzatxJVXF/Rtoi5yLHOWCoZQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/protocol-http/-/protocol-http-3.0.5.tgz}
-    name: '@smithy/protocol-http'
-    version: 3.0.5
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/querystring-builder@2.0.9:
-    resolution: {integrity: sha512-Yt6CPF4j3j1cuwod/DRflbuXxBFjJm7gAjy6W1RE21Rz5/kfGFqiZBXWmmXwGtnnhiLThYwoHK4S6/TQtnx0Fg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/querystring-builder/-/querystring-builder-2.0.9.tgz}
-    name: '@smithy/querystring-builder'
-    version: 2.0.9
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-uri-escape': registry.npmmirror.com/@smithy/util-uri-escape@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/querystring-parser@2.0.9:
-    resolution: {integrity: sha512-U6z4N743s4vrcxPW8p8+reLV0PjMCYEyb1/wtMVvv3VnbJ74gshdI8SR1sBnEh95cF8TxonmX5IxY25tS9qGfg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/querystring-parser/-/querystring-parser-2.0.9.tgz}
-    name: '@smithy/querystring-parser'
-    version: 2.0.9
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/service-error-classification@2.0.2:
-    resolution: {integrity: sha512-GTUd2j63gKy7A+ggvSdn2hc4sejG7LWfE+ZMF17vzWoNyqERWbRP7HTPS0d0Lwg1p6OQCAzvNigSrEIWVFt6iA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/service-error-classification/-/service-error-classification-2.0.2.tgz}
-    name: '@smithy/service-error-classification'
-    version: 2.0.2
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/shared-ini-file-loader@2.0.11:
-    resolution: {integrity: sha512-Sf0u5C5px6eykXi6jImDTp+edvG3REtPjXnFWU/J+b7S2wkXwUqFXqBL5DdM4zC1F+M8u57ZT7NRqDwMOw7/Tw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/shared-ini-file-loader/-/shared-ini-file-loader-2.0.11.tgz}
-    name: '@smithy/shared-ini-file-loader'
-    version: 2.0.11
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/signature-v4@2.0.9:
-    resolution: {integrity: sha512-RkHP0joSI1j2EI+mU55sOi33/aMMkKdL9ZY+SWrPxsiCe1oyzzuy79Tpn8X7uT+t0ilNmQlwPpkP/jUy940pEA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/signature-v4/-/signature-v4-2.0.9.tgz}
-    name: '@smithy/signature-v4'
-    version: 2.0.9
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/eventstream-codec': registry.npmmirror.com/@smithy/eventstream-codec@2.0.9
-      '@smithy/is-array-buffer': registry.npmmirror.com/@smithy/is-array-buffer@2.0.0
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-hex-encoding': registry.npmmirror.com/@smithy/util-hex-encoding@2.0.0
-      '@smithy/util-middleware': registry.npmmirror.com/@smithy/util-middleware@2.0.2
-      '@smithy/util-uri-escape': registry.npmmirror.com/@smithy/util-uri-escape@2.0.0
-      '@smithy/util-utf8': registry.npmmirror.com/@smithy/util-utf8@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/smithy-client@2.1.7:
-    resolution: {integrity: sha512-r6T/oiBQ8vCbGqObH4/h0YqD0jFB1hAS9KFRmuTfaNJueu/L2hjmjqFjv3PV5lkbNHTgUYraSv4cFQ1naxiELQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/smithy-client/-/smithy-client-2.1.7.tgz}
-    name: '@smithy/smithy-client'
-    version: 2.1.7
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/middleware-stack': registry.npmmirror.com/@smithy/middleware-stack@2.0.3
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-stream': registry.npmmirror.com/@smithy/util-stream@2.0.12
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/types@2.3.3:
-    resolution: {integrity: sha512-zTdIPR9PvFVNRdIKMQu4M5oyTaycIbUqLheQqaOi9rTWPkgjGO2wDBxMA1rBHQB81aqAEv+DbSS4jfKyQMnXRA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/types/-/types-2.3.3.tgz}
-    name: '@smithy/types'
-    version: 2.3.3
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/url-parser@2.0.9:
-    resolution: {integrity: sha512-NBnJ0NiY8z6E82Xd5VYUFQfKwK/wA/+QkKmpYUYP+cpH3aCzE6g2gvixd9vQKYjsIdRfNPCf+SFAozt8ljozOw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/url-parser/-/url-parser-2.0.9.tgz}
-    name: '@smithy/url-parser'
-    version: 2.0.9
-    requiresBuild: true
-    dependencies:
-      '@smithy/querystring-parser': registry.npmmirror.com/@smithy/querystring-parser@2.0.9
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-base64@2.0.0:
-    resolution: {integrity: sha512-Zb1E4xx+m5Lud8bbeYi5FkcMJMnn+1WUnJF3qD7rAdXpaL7UjkFQLdmW5fHadoKbdHpwH9vSR8EyTJFHJs++tA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-base64/-/util-base64-2.0.0.tgz}
-    name: '@smithy/util-base64'
-    version: 2.0.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/util-buffer-from': registry.npmmirror.com/@smithy/util-buffer-from@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-body-length-browser@2.0.0:
-    resolution: {integrity: sha512-JdDuS4ircJt+FDnaQj88TzZY3+njZ6O+D3uakS32f2VNnDo3vyEuNdBOh/oFd8Df1zSZOuH1HEChk2AOYDezZg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-body-length-browser/-/util-body-length-browser-2.0.0.tgz}
-    name: '@smithy/util-body-length-browser'
-    version: 2.0.0
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-body-length-node@2.1.0:
-    resolution: {integrity: sha512-/li0/kj/y3fQ3vyzn36NTLGmUwAICb7Jbe/CsWCktW363gh1MOcpEcSO3mJ344Gv2dqz8YJCLQpb6hju/0qOWw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-body-length-node/-/util-body-length-node-2.1.0.tgz}
-    name: '@smithy/util-body-length-node'
-    version: 2.1.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-buffer-from@2.0.0:
-    resolution: {integrity: sha512-/YNnLoHsR+4W4Vf2wL5lGv0ksg8Bmk3GEGxn2vEQt52AQaPSCuaO5PM5VM7lP1K9qHRKHwrPGktqVoAHKWHxzw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-buffer-from/-/util-buffer-from-2.0.0.tgz}
-    name: '@smithy/util-buffer-from'
-    version: 2.0.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/is-array-buffer': registry.npmmirror.com/@smithy/is-array-buffer@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-config-provider@2.0.0:
-    resolution: {integrity: sha512-xCQ6UapcIWKxXHEU4Mcs2s7LcFQRiU3XEluM2WcCjjBtQkUN71Tb+ydGmJFPxMUrW/GWMgQEEGipLym4XG0jZg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-config-provider/-/util-config-provider-2.0.0.tgz}
-    name: '@smithy/util-config-provider'
-    version: 2.0.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-defaults-mode-browser@2.0.11:
-    resolution: {integrity: sha512-0syV1Mz/mCQ7CG/MHKQfH+w86xq59jpD0EOXv5oe0WBXLmq2lWPpVHl2Y6+jQ+/9fYzyZ5NF+NC/WEIuiv690A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-defaults-mode-browser/-/util-defaults-mode-browser-2.0.11.tgz}
-    name: '@smithy/util-defaults-mode-browser'
-    version: 2.0.11
-    engines: {node: '>= 10.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/smithy-client': registry.npmmirror.com/@smithy/smithy-client@2.1.7
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      bowser: registry.npmmirror.com/bowser@2.11.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-defaults-mode-node@2.0.13:
-    resolution: {integrity: sha512-6BtCHYdw5Z8r6KpW8tRCc3yURgvcQwfIEeHhR70BeSOfx8T/TXPPjb8A+K45+KASspa3fzrsSxeIwB0sAeMoHA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-defaults-mode-node/-/util-defaults-mode-node-2.0.13.tgz}
-    name: '@smithy/util-defaults-mode-node'
-    version: 2.0.13
-    engines: {node: '>= 10.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/config-resolver': registry.npmmirror.com/@smithy/config-resolver@2.0.10
-      '@smithy/credential-provider-imds': registry.npmmirror.com/@smithy/credential-provider-imds@2.0.12
-      '@smithy/node-config-provider': registry.npmmirror.com/@smithy/node-config-provider@2.0.12
-      '@smithy/property-provider': registry.npmmirror.com/@smithy/property-provider@2.0.10
-      '@smithy/smithy-client': registry.npmmirror.com/@smithy/smithy-client@2.1.7
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-hex-encoding@2.0.0:
-    resolution: {integrity: sha512-c5xY+NUnFqG6d7HFh1IFfrm3mGl29lC+vF+geHv4ToiuJCBmIfzx6IeHLg+OgRdPFKDXIw6pvi+p3CsscaMcMA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-hex-encoding/-/util-hex-encoding-2.0.0.tgz}
-    name: '@smithy/util-hex-encoding'
-    version: 2.0.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-middleware@2.0.2:
-    resolution: {integrity: sha512-UGPZM+Ja/vke5pc/S8G0LNiHpVirtjppsXO+GK9m9wbzRGzPJTfnZA/gERUUN/AfxEy/8SL7U1kd7u4t2X8K1w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-middleware/-/util-middleware-2.0.2.tgz}
-    name: '@smithy/util-middleware'
-    version: 2.0.2
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-retry@2.0.2:
-    resolution: {integrity: sha512-ovWiayUB38moZcLhSFFfUgB2IMb7R1JfojU20qSahjxAgfOZvDWme3eOYUMtAVnouZ9kYJiFgHLy27qRH4NeeA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-retry/-/util-retry-2.0.2.tgz}
-    name: '@smithy/util-retry'
-    version: 2.0.2
-    engines: {node: '>= 14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/service-error-classification': registry.npmmirror.com/@smithy/service-error-classification@2.0.2
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-stream@2.0.12:
-    resolution: {integrity: sha512-FOCpRLaj6gvSyUC5mJAACT+sPMPmp9sD1o+hVbUH/QxwZfulypA3ZIFdAg/59/IY0d/1Q4CTztsiHEB5LgjN4g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-stream/-/util-stream-2.0.12.tgz}
-    name: '@smithy/util-stream'
-    version: 2.0.12
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/fetch-http-handler': registry.npmmirror.com/@smithy/fetch-http-handler@2.1.5
-      '@smithy/node-http-handler': registry.npmmirror.com/@smithy/node-http-handler@2.1.5
-      '@smithy/types': registry.npmmirror.com/@smithy/types@2.3.3
-      '@smithy/util-base64': registry.npmmirror.com/@smithy/util-base64@2.0.0
-      '@smithy/util-buffer-from': registry.npmmirror.com/@smithy/util-buffer-from@2.0.0
-      '@smithy/util-hex-encoding': registry.npmmirror.com/@smithy/util-hex-encoding@2.0.0
-      '@smithy/util-utf8': registry.npmmirror.com/@smithy/util-utf8@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-uri-escape@2.0.0:
-    resolution: {integrity: sha512-ebkxsqinSdEooQduuk9CbKcI+wheijxEb3utGXkCoYQkJnwTnLbH1JXGimJtUkQwNQbsbuYwG2+aFVyZf5TLaw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-uri-escape/-/util-uri-escape-2.0.0.tgz}
-    name: '@smithy/util-uri-escape'
-    version: 2.0.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
-
-  registry.npmmirror.com/@smithy/util-utf8@2.0.0:
-    resolution: {integrity: sha512-rctU1VkziY84n5OXe3bPNpKR001ZCME2JCaBBFgtiM2hfKbHFudc/BkMuPab8hRbLd0j3vbnBTTZ1igBf0wgiQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@smithy/util-utf8/-/util-utf8-2.0.0.tgz}
-    name: '@smithy/util-utf8'
-    version: 2.0.0
-    engines: {node: '>=14.0.0'}
-    requiresBuild: true
-    dependencies:
-      '@smithy/util-buffer-from': registry.npmmirror.com/@smithy/util-buffer-from@2.0.0
-      tslib: registry.npmmirror.com/tslib@2.5.3
-    dev: false
-    optional: true
 
   registry.npmmirror.com/@svgr/babel-plugin-add-jsx-attribute@6.5.1(@babel/core@7.22.20):
     resolution: {integrity: sha512-9PYGcXrAxitycIjRmZB+Q0JaN07GZIWaTBIGQzfaZv+qr1n8X1XUEJ5rZ/vx6OVD9RRYlrNnXWExQXcmZeD/BQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@svgr/babel-plugin-add-jsx-attribute/-/babel-plugin-add-jsx-attribute-6.5.1.tgz}
@@ -6272,14 +5192,6 @@ packages:
     version: 1.0.0
     dev: true
 
-  registry.npmmirror.com/bowser@2.11.0:
-    resolution: {integrity: sha512-AlcaJBi/pqqJBIQ8U9Mcpc9i8Aqxn88Skv5d+xBX006BY5u8N3mGLHa5Lgppa7L/HfwgwLgZ6NYs+Ag6uUmJRA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/bowser/-/bowser-2.11.0.tgz}
-    name: bowser
-    version: 2.11.0
-    requiresBuild: true
-    dev: false
-    optional: true
-
   registry.npmmirror.com/brace-expansion@1.1.11:
     resolution: {integrity: sha512-iCuPHDFgrHX7H2vEI/5xpz07zSHB00TpugqhmYtVmMO6518mCuRMoOYFldEBl0g187ufozdaHgWKcYFb61qGiA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/brace-expansion/-/brace-expansion-1.1.11.tgz}
     name: brace-expansion
@@ -6316,13 +5228,11 @@ packages:
     engines: {node: '>=0.6.19'}
     dev: false
 
-  registry.npmmirror.com/bson@4.7.2:
-    resolution: {integrity: sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/bson/-/bson-4.7.2.tgz}
+  registry.npmmirror.com/bson@5.5.0:
+    resolution: {integrity: sha512-B+QB4YmDx9RStKv8LLSl/aVIEV3nYJc3cJNNTK2Cd1TL+7P+cNpw9mAPeCgc5K+j01Dv6sxUzcITXDx7ZU3F0w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/bson/-/bson-5.5.0.tgz}
     name: bson
-    version: 4.7.2
-    engines: {node: '>=6.9.0'}
-    dependencies:
-      buffer: registry.npmmirror.com/buffer@5.7.1
+    version: 5.5.0
+    engines: {node: '>=14.20.1'}
     dev: false
 
   registry.npmmirror.com/buffer-equal-constant-time@1.0.1:
@@ -6342,15 +5252,6 @@ packages:
     name: buffer-writer
     version: 2.0.0
     engines: {node: '>=4'}
-    dev: false
-
-  registry.npmmirror.com/buffer@5.7.1:
-    resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/buffer/-/buffer-5.7.1.tgz}
-    name: buffer
-    version: 5.7.1
-    dependencies:
-      base64-js: registry.npmmirror.com/base64-js@1.5.1
-      ieee754: registry.npmmirror.com/ieee754@1.2.1
     dev: false
 
   registry.npmmirror.com/busboy@1.6.0:
@@ -8049,17 +6950,6 @@ packages:
     version: 2.0.6
     dev: true
 
-  registry.npmmirror.com/fast-xml-parser@4.2.5:
-    resolution: {integrity: sha512-B9/wizE4WngqQftFPmdaMYlXoJlJOYxGQOanC77fq9k8+Z0v5dDSVh+3glErdIROP//s/jgb7ZuxKfB8nVyo0g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/fast-xml-parser/-/fast-xml-parser-4.2.5.tgz}
-    name: fast-xml-parser
-    version: 4.2.5
-    hasBin: true
-    requiresBuild: true
-    dependencies:
-      strnum: registry.npmmirror.com/strnum@1.0.5
-    dev: false
-    optional: true
-
   registry.npmmirror.com/fastq@1.15.0:
     resolution: {integrity: sha512-wBrocU2LCXXa+lWBt8RoIRD89Fi8OdABODa/kEnyeyjS5aZO5/GNvI5sEINADqP/h8M29UHTHUb53sUu5Ihqdw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/fastq/-/fastq-1.15.0.tgz}
     name: fastq
@@ -8693,12 +7583,6 @@ packages:
     engines: {node: '>=0.10.0'}
     dependencies:
       safer-buffer: registry.npmmirror.com/safer-buffer@2.1.2
-    dev: false
-
-  registry.npmmirror.com/ieee754@1.2.1:
-    resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/ieee754/-/ieee754-1.2.1.tgz}
-    name: ieee754
-    version: 1.2.1
     dev: false
 
   registry.npmmirror.com/ignore@5.2.4:
@@ -10277,37 +9161,55 @@ packages:
       saslprep: registry.npmmirror.com/saslprep@1.0.3
     dev: false
 
-  registry.npmmirror.com/mongodb@4.14.0:
-    resolution: {integrity: sha512-coGKkWXIBczZPr284tYKFLg+KbGPPLlSbdgfKAb6QqCFt5bo5VFZ50O3FFzsw4rnkqjwT6D8Qcoo9nshYKM7Mg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mongodb/-/mongodb-4.14.0.tgz}
+  registry.npmmirror.com/mongodb@5.9.0:
+    resolution: {integrity: sha512-g+GCMHN1CoRUA+wb1Agv0TI4YTSiWr42B5ulkiAfLLHitGK1R+PkSAf3Lr5rPZwi/3F04LiaZEW0Kxro9Fi2TA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mongodb/-/mongodb-5.9.0.tgz}
     name: mongodb
-    version: 4.14.0
-    engines: {node: '>=12.9.0'}
+    version: 5.9.0
+    engines: {node: '>=14.20.1'}
+    peerDependencies:
+      '@aws-sdk/credential-providers': ^3.188.0
+      '@mongodb-js/zstd': ^1.0.0
+      kerberos: ^1.0.0 || ^2.0.0
+      mongodb-client-encryption: '>=2.3.0 <3'
+      snappy: ^7.2.2
+    peerDependenciesMeta:
+      '@aws-sdk/credential-providers':
+        optional: true
+      '@mongodb-js/zstd':
+        optional: true
+      kerberos:
+        optional: true
+      mongodb-client-encryption:
+        optional: true
+      snappy:
+        optional: true
     dependencies:
-      bson: registry.npmmirror.com/bson@4.7.2
+      bson: registry.npmmirror.com/bson@5.5.0
       mongodb-connection-string-url: registry.npmmirror.com/mongodb-connection-string-url@2.6.0
       socks: registry.npmmirror.com/socks@2.7.1
     optionalDependencies:
-      '@aws-sdk/credential-providers': registry.npmmirror.com/@aws-sdk/credential-providers@3.418.0
-      saslprep: registry.npmmirror.com/saslprep@1.0.3
-    transitivePeerDependencies:
-      - aws-crt
+      '@mongodb-js/saslprep': registry.npmmirror.com/@mongodb-js/saslprep@1.1.0
     dev: false
 
-  registry.npmmirror.com/mongoose@6.10.0:
-    resolution: {integrity: sha512-0zrKDEnmNscYyAyN94smo2LlJ63gaezKHpHM+KQ+6EiAgAnah5Kt3hQSYzOTQX/63YNdT1oJXiLlB5LqTdcjUw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mongoose/-/mongoose-6.10.0.tgz}
+  registry.npmmirror.com/mongoose@7.6.1:
+    resolution: {integrity: sha512-Iflr60FL7mabBdgAtumLTwEGdZGV6IKHfF7F75En2JWpPitorwQeCFqWPcPHRnBxncKANl3gwI9nh2Yb4y3/sA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mongoose/-/mongoose-7.6.1.tgz}
     name: mongoose
-    version: 6.10.0
-    engines: {node: '>=12.0.0'}
+    version: 7.6.1
+    engines: {node: '>=14.20.1'}
     dependencies:
-      bson: registry.npmmirror.com/bson@4.7.2
+      bson: registry.npmmirror.com/bson@5.5.0
       kareem: registry.npmmirror.com/kareem@2.5.1
-      mongodb: registry.npmmirror.com/mongodb@4.14.0
+      mongodb: registry.npmmirror.com/mongodb@5.9.0
       mpath: registry.npmmirror.com/mpath@0.9.0
-      mquery: registry.npmmirror.com/mquery@4.0.3
+      mquery: registry.npmmirror.com/mquery@5.0.0
       ms: registry.npmmirror.com/ms@2.1.3
       sift: registry.npmmirror.com/sift@16.0.1
     transitivePeerDependencies:
-      - aws-crt
+      - '@aws-sdk/credential-providers'
+      - '@mongodb-js/zstd'
+      - kerberos
+      - mongodb-client-encryption
+      - snappy
       - supports-color
     dev: false
 
@@ -10318,11 +9220,11 @@ packages:
     engines: {node: '>=4.0.0'}
     dev: false
 
-  registry.npmmirror.com/mquery@4.0.3:
-    resolution: {integrity: sha512-J5heI+P08I6VJ2Ky3+33IpCdAvlYGTSUjwTPxkAr8i8EoduPMBX2OY/wa3IKZIQl7MU4SbFk8ndgSKyB/cl1zA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mquery/-/mquery-4.0.3.tgz}
+  registry.npmmirror.com/mquery@5.0.0:
+    resolution: {integrity: sha512-iQMncpmEK8R8ncT8HJGsGc9Dsp8xcgYMVSbs5jgnm1lFHTZqMJTUWTDx1LBO8+mK3tPNZWFLBghQEIOULSTHZg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/mquery/-/mquery-5.0.0.tgz}
     name: mquery
-    version: 4.0.3
-    engines: {node: '>=12.0.0'}
+    version: 5.0.0
+    engines: {node: '>=14.0.0'}
     dependencies:
       debug: registry.npmmirror.com/debug@4.3.4
     transitivePeerDependencies:
@@ -12122,14 +11024,6 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
-  registry.npmmirror.com/strnum@1.0.5:
-    resolution: {integrity: sha512-J8bbNyKKXl5qYcR36TIO8W3mVGVHrmmxsd5PAItGkmyzwJvybiw2IVq5nqd0i4LSNSkB/sx9VHllbfFdr9k1JA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/strnum/-/strnum-1.0.5.tgz}
-    name: strnum
-    version: 1.0.5
-    requiresBuild: true
-    dev: false
-    optional: true
-
   registry.npmmirror.com/style-to-object@0.4.2:
     resolution: {integrity: sha512-1JGpfPB3lo42ZX8cuPrheZbfQ6kqPPnPHlKMyeRYtfKD+0jG+QsXgXN57O/dvJlzlB2elI6dGmrPnl5VPQFPaA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/style-to-object/-/style-to-object-0.4.2.tgz}
     name: style-to-object
@@ -12355,6 +11249,7 @@ packages:
     resolution: {integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/tslib/-/tslib-1.14.1.tgz}
     name: tslib
     version: 1.14.1
+    dev: true
 
   registry.npmmirror.com/tslib@2.3.0:
     resolution: {integrity: sha512-N82ooyxVNm6h1riLCoyS9e3fuJ3AMG2zIZs2Gd1ATcSFjSA23Q0fzjjZeh0jbJvWVDZ0cJT8yaNNaaXHzueNjg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/tslib/-/tslib-2.3.0.tgz}
@@ -12705,15 +11600,6 @@ packages:
     name: util-deprecate
     version: 1.0.2
     dev: false
-
-  registry.npmmirror.com/uuid@8.3.2:
-    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/uuid/-/uuid-8.3.2.tgz}
-    name: uuid
-    version: 8.3.2
-    hasBin: true
-    requiresBuild: true
-    dev: false
-    optional: true
 
   registry.npmmirror.com/uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/uuid/-/uuid-9.0.1.tgz}

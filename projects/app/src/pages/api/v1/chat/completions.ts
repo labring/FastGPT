@@ -27,7 +27,7 @@ import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
-import { UserModelSchema } from '@/types/mongoSchema';
+import type { UserModelSchema } from '@fastgpt/support/user/type.d';
 import { SystemInputEnum } from '@/constants/app';
 import { getSystemTime } from '@/utils/user';
 import { authOutLinkChat } from '@/service/support/outLink/auth';

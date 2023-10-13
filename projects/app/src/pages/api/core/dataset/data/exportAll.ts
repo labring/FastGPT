@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, User } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoUser } from '@fastgpt/support/user/schema';
 import { authUser } from '@/service/utils/auth';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { findAllChildrenIds } from '../delete';
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
 
     // auth export times
-    const authTimes = await User.findOne(
+    const authTimes = await MongoUser.findOne(
       {
         _id: userId,
         $or: [
@@ -101,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       stream.on('end', async () => {
         try {
           // update export time
-          await User.findByIdAndUpdate(userId, {
+          await MongoUser.findByIdAndUpdate(userId, {
             'limit.exportKbTime': new Date()
           });
         } catch (error) {}

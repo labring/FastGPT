@@ -19,5 +19,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "crypto": "^1.0.1",
+    "mongoose": "^7.6.1"
   }
 }

@@ -1,15 +1,9 @@
 import type { NextApiResponse, NextApiHandler, NextApiRequest } from 'next';
 import NextCors from 'nextjs-cors';
-import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { generateQA } from '../events/generateQA';
 import { generateVector } from '../events/generateVector';
 import { ERROR_ENUM } from '../errorCode';
-
-/* 密码加密 */
-export const hashPassword = (psw: string) => {
-  return crypto.createHash('sha256').update(psw).digest('hex');
-};
 
 /* 生成 token */
 export const generateToken = (userId: string) => {

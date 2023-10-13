@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { User } from '@/service/models/user';
+import { MongoUser } from '@fastgpt/support/user/schema';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@/service/utils/auth';
 import { UserUpdateParams } from '@/types/user';
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 更新对应的记录
-    await User.updateOne(
+    await MongoUser.updateOne(
       {
         _id: userId
       },
