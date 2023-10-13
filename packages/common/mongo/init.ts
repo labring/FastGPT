@@ -36,7 +36,7 @@ export async function connectMongo({
 
     afterHook && (await afterHook());
   } catch (error) {
-    console.log('error->', 'mongo connect error');
+    console.log('error->', 'mongo connect error', error);
     global.mongodb = undefined;
   }
 }
