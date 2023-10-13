@@ -1,6 +1,10 @@
 import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
 import { updateApiKeyUsedTime } from './tools';
 import { MongoOpenApi } from './schema';
+import { POST } from '@fastgpt/common/plusApi/request';
+import { OpenApiSchema } from './type.d';
+
+export type AuthOpenApiLimitProps = { openApi: OpenApiSchema };
 
 export async function authOpenApiKey({ apikey }: { apikey: string }) {
   if (!apikey) {
@@ -16,17 +20,7 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
 
     // auth limit
     if (global.feConfigs?.isPlus) {
-      if (openApi?.limit?.expiredTime && openApi.limit.expiredTime.getTime() < Date.now()) {
-        return Promise.reject(`Key ${openApi.apiKey} is expired`);
-      }
-
-      if (
-        openApi?.limit?.credit &&
-        openApi.limit.credit > -1 &&
-        openApi.usage > openApi.limit.credit
-      ) {
-        return Promise.reject(`Key ${openApi.apiKey} is over usage`);
-      }
+      await POST('/support/openapi/authLimit', { openApi } as AuthOpenApiLimitProps);
     }
 
     updateApiKeyUsedTime(openApi._id);
