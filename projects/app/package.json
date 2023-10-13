@@ -31,7 +31,6 @@
     "formidable": "^2.1.1",
     "framer-motion": "^9.0.6",
     "hyperdown": "^2.4.29",
-    "i18next": "^23.2.11",
     "immer": "^9.0.19",
     "js-cookie": "^3.0.5",
     "js-tiktoken": "^1.0.7",
@@ -44,7 +43,6 @@
     "multer": "1.4.5-lts.1",
     "nanoid": "^4.0.1",
     "next": "13.5.2",
-    "next-i18next": "^14.0.0",
     "nextjs-cors": "^2.1.2",
     "nprogress": "^0.2.0",
     "papaparse": "^5.4.1",
@@ -54,7 +52,6 @@
     "react-day-picker": "^8.7.1",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.43.1",
-    "react-i18next": "^13.0.2",
     "react-markdown": "^8.0.7",
     "react-syntax-highlighter": "^15.5.0",
     "reactflow": "^11.7.4",
@@ -65,7 +62,10 @@
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
     "timezones-list": "^3.0.2",
-    "zustand": "^4.3.5"
+    "zustand": "^4.3.5",
+    "i18next": "^23.2.11",
+    "react-i18next": "^13.0.2",
+    "next-i18next": "^14.0.0"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
