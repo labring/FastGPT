@@ -15,6 +15,7 @@ export type Response = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     let { dataId } = req.query as {
       dataId: string;
     };
@@ -24,8 +25,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const where: any = [['user_id', userId], 'AND', ['id', dataId]];
 

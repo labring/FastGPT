@@ -7,11 +7,13 @@ import { jsonRes } from '@/service/response';
 import { authUser } from '@fastgpt/support/user/auth';
 import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
 import { simpleText } from '@/utils/file';
+import { connectToDatabase } from '@/service/mongo';
 
 export type UrlFetchResponse = FetchResultItem[];
 
 const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
+    await connectToDatabase();
     let { urlList = [] } = req.body as { urlList: string[] };
 
     if (!urlList || urlList.length === 0) {

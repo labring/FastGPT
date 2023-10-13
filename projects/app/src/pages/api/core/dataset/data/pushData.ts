@@ -22,6 +22,7 @@ const modeMap = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { kbId, data, mode = TrainingModeEnum.index } = req.body as PushDataProps;
 
     if (!kbId || !Array.isArray(data)) {
@@ -35,8 +36,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (data.length > 500) {
       throw new Error('Data is too long, max 500');
     }
-
-    await connectToDatabase();
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true, authApiKey: true });

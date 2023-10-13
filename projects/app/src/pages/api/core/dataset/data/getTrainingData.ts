@@ -9,11 +9,11 @@ import { startQueue } from '@/service/utils/tools';
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { kbId, init = false } = req.body as { kbId: string; init: boolean };
     if (!kbId) {
       throw new Error('参数错误');
     }
-    await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
 

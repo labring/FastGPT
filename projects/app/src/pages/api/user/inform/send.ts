@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Inform } from '@/service/mongo';
+import { Inform } from '@/service/mongo';
 import { authUser } from '@fastgpt/support/user/auth';
 import { InformTypeEnum } from '@/constants/user';
 import { startSendInform } from '@/service/events/sendInform';
@@ -17,8 +17,6 @@ export type Props = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await authUser({ req, authRoot: true });
-
-    await connectToDatabase();
 
     jsonRes(res, {
       data: await sendInform(req.body),

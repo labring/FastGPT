@@ -9,11 +9,10 @@ import { MongoDataset } from '@fastgpt/core/dataset/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { parentId, type } = req.query as { parentId?: string; type?: `${DatasetTypeEnum}` };
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const kbList = await MongoDataset.find({
       userId,

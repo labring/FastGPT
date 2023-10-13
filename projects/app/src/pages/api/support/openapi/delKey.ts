@@ -7,6 +7,7 @@ import { authUser } from '@fastgpt/support/user/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { id } = req.query as { id: string };
 
     if (!id) {
@@ -14,8 +15,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     await MongoOpenApi.findOneAndRemove({ _id: id, userId });
 

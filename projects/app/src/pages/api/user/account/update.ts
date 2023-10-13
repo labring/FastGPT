@@ -2,7 +2,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { MongoUser } from '@fastgpt/support/user/schema';
-import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/support/user/auth';
 import { UserUpdateParams } from '@/types/user';
 import { getAIApi, openaiBaseUrl } from '@fastgpt/core/ai/config';
@@ -13,8 +12,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { avatar, timezone, openaiAccount } = req.body as UserUpdateParams;
 
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     // auth key
     if (openaiAccount?.key) {

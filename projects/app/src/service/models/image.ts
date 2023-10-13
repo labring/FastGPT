@@ -1,4 +1,5 @@
-import { Schema, model, models, Model } from '@fastgpt/common/mongo';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
 
 const ImageSchema = new Schema({
   userId: {

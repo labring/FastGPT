@@ -6,10 +6,9 @@ import { AppListItemType } from '@/types/app';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     // 根据 userId 获取模型信息
     const myApps = await App.find(

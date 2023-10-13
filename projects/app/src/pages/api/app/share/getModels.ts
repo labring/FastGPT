@@ -9,13 +9,12 @@ import { Types } from '@fastgpt/common/mongo';
 /* 获取模型列表 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const {
       searchText = '',
       pageNum = 1,
       pageSize = 20
     } = req.body as { searchText: string; pageNum: number; pageSize: number };
-
-    await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
 

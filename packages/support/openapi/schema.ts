@@ -1,4 +1,5 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
 import { OpenApiSchema } from './type.d';
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { formatPrice } from '@fastgpt/common/bill/index';

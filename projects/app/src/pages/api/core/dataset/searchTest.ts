@@ -8,9 +8,11 @@ import { PgDatasetTableName } from '@/constants/plugin';
 import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import type { SearchTestProps } from '@/global/core/api/datasetReq.d';
 import type { SearchTestResponseType } from '@/global/core/api/datasetRes.d';
+import { connectToDatabase } from '@/service/mongo';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { kbId, text } = req.body as SearchTestProps;
 
     if (!kbId || !text) {

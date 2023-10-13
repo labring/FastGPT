@@ -9,10 +9,9 @@ import type { EditApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId, name, limit } = req.body as EditApiKeyProps;
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const count = await MongoOpenApi.find({ userId, appId }).countDocuments();
 

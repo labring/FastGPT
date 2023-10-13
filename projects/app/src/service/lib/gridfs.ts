@@ -1,4 +1,4 @@
-import mongoose, { Types } from '@fastgpt/common/mongo';
+import { Types, connectionMongo } from '@fastgpt/common/mongo';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
@@ -18,10 +18,10 @@ export class GridFSStorage {
     this.uid = String(uid);
   }
   Collection() {
-    return mongoose.connection.db.collection(`${this.bucket}.files`);
+    return connectionMongo.connection.db.collection(`${this.bucket}.files`);
   }
   GridFSBucket() {
-    return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+    return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db, {
       bucketName: this.bucket
     });
   }

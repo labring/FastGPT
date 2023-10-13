@@ -8,6 +8,7 @@ import type { PgDataItemType } from '@/types/core/dataset/data';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     let {
       kbId,
       pageNum = 1,
@@ -28,7 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    await connectToDatabase();
     searchText = searchText.replace(/'/g, '');
 
     const where: any = [

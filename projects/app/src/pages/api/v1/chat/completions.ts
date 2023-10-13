@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase } from '@/service/mongo';
 import { authApp } from '@/service/utils/auth';
 import { authUser } from '@fastgpt/support/user/auth';
 import { AuthUserTypeEnum } from '@fastgpt/support/user/auth';
@@ -93,7 +92,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('messages is empty');
     }
 
-    await connectToDatabase();
     let startTime = Date.now();
 
     /* user auth */

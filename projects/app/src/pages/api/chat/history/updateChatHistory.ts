@@ -12,11 +12,10 @@ export type Props = {
 /* 更新聊天标题 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { chatId, customTitle, top } = req.body as Props;
 
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     await Chat.findOneAndUpdate(
       {

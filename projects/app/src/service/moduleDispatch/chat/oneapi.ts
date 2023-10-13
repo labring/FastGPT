@@ -151,7 +151,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       };
     } else {
       const unStreamResponse = response as ChatCompletion;
-      const answer = unStreamResponse.choices?.[0].message?.content || '';
+      const answer = unStreamResponse.choices?.[0]?.message?.content || '';
       const totalTokens = unStreamResponse.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({

@@ -6,6 +6,7 @@ import { authUser } from '@fastgpt/support/user/auth';
 /* 模型收藏切换 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { appId } = req.query as { appId: string };
 
     if (!appId) {
@@ -13,8 +14,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const collectionRecord = await Collection.findOne({
       userId,

@@ -6,10 +6,9 @@ import { Types } from '@fastgpt/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId, start, end } = req.body as { appId: string; start: number; end: number };
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const result = await Bill.aggregate([
       {

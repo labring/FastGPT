@@ -8,10 +8,9 @@ import type { DatasetsItemType } from '@/types/core/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const kbList = await MongoDataset.find({
       userId,

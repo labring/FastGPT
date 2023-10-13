@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from './index';
 import 'winston-mongodb';
 import { createLogger, format, transports } from 'winston';
 
@@ -15,7 +15,7 @@ export async function connectMongo({
   if (global.mongodb) {
     return;
   }
-  global.mongodb = 'connecting';
+  global.mongodb = mongoose;
 
   beforeHook && (await beforeHook());
 
@@ -25,7 +25,7 @@ export async function connectMongo({
   console.log('mongo start connect');
   try {
     mongoose.set('strictQuery', true);
-    global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
+    await mongoose.connect(process.env.MONGODB_URI as string, {
       bufferCommands: true,
       maxConnecting: Number(process.env.DB_MAX_LINK || 5),
       maxPoolSize: Number(process.env.DB_MAX_LINK || 5),
@@ -37,7 +37,7 @@ export async function connectMongo({
     afterHook && (await afterHook());
   } catch (error) {
     console.log('error->', 'mongo connect error');
-    global.mongodb = null;
+    global.mongodb = undefined;
   }
 }
 

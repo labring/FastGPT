@@ -7,10 +7,9 @@ import type { EditApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { _id, name, limit } = req.body as EditApiKeyProps & { _id: string };
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     await MongoOpenApi.findOneAndUpdate(
       {

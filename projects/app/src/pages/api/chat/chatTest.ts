@@ -30,14 +30,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let { modules = [], history = [], prompt, variables = {}, appName, appId } = req.body as Props;
   try {
+    await connectToDatabase();
     if (!history || !modules || !prompt) {
       throw new Error('Prams Error');
     }
     if (!Array.isArray(modules)) {
       throw new Error('history is not array');
     }
-
-    await connectToDatabase();
 
     /* user auth */
     const { userId, user } = await authUser({ req, authToken: true, authBalance: true });

@@ -7,6 +7,7 @@ import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { id, parentId, name, avatar, tags } = req.body as DatasetUpdateParams;
 
     if (!id) {
@@ -15,8 +16,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     await MongoDataset.findOneAndUpdate(
       {

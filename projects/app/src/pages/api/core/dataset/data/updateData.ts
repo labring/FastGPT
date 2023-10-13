@@ -11,13 +11,12 @@ import type { UpdateDatasetDataPrams } from '@/global/core/api/datasetReq.d';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { dataId, a = '', q = '', kbId } = req.body as UpdateDatasetDataPrams;
 
     if (!dataId) {
       throw new Error('缺少参数');
     }
-
-    await connectToDatabase();
 
     // auth user and get kb
     const [{ userId }, kb] = await Promise.all([

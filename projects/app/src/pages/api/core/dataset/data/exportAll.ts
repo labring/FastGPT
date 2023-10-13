@@ -12,6 +12,7 @@ import { responseWriteController } from '@/service/common/stream';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     let { kbId } = req.query as {
       kbId: string;
     };
@@ -19,8 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!kbId || !global.pgClient) {
       throw new Error('缺少参数');
     }
-
-    await connectToDatabase();
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });

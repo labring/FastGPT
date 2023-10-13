@@ -12,6 +12,7 @@ import { authShareChatInit } from '@fastgpt/support/outLink/auth';
 /* init share chat window */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     let { shareId, authToken } = req.query as {
       shareId: string;
       authToken?: string;
@@ -20,8 +21,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!shareId) {
       throw new Error('params is error');
     }
-
-    await connectToDatabase();
 
     // get shareChat
     const shareChat = await MongoOutLink.findOne({ shareId });

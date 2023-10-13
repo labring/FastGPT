@@ -12,12 +12,11 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 /* create a shareChat */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId, ...props } = req.body as OutLinkEditType & {
       appId: string;
       type: `${OutLinkTypeEnum}`;
     };
-
-    await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
     await authApp({

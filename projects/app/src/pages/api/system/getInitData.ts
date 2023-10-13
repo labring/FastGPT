@@ -9,9 +9,9 @@ import { formatPrice } from '@fastgpt/common/bill';
 import { connectToDatabase } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await connectToDatabase();
   getInitConfig();
   getModelPrice();
-  connectToDatabase();
 
   jsonRes<InitDateResponse>(res, {
     data: {

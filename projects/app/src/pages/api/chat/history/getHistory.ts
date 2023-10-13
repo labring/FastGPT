@@ -8,10 +8,9 @@ import { ChatSourceEnum } from '@/constants/chat';
 /* 获取历史记录 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId } = req.body as { appId?: string };
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const data = await Chat.find(
       {

@@ -8,6 +8,7 @@ import { authApp } from '@/service/utils/auth';
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { appId } = req.query as { appId: string };
 
     if (!appId) {
@@ -16,8 +17,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     // 验证是否是该用户的 app
     await authApp({

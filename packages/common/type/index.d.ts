@@ -1,4 +1,4 @@
-import type { Mongoose } from 'mongoose';
+import type { Mongoose } from '../mongo';
 import type { Logger } from 'winston';
 
 export type FeConfigsType = {
@@ -36,7 +36,7 @@ export type SystemEnvType = {
 };
 
 declare global {
-  var mongodb: Mongoose | string | null;
+  var mongodb: Mongoose | undefined;
   var logger: Logger;
   var feConfigs: FeConfigsType;
   var systemEnv: SystemEnvType;

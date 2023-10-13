@@ -12,10 +12,9 @@ type Props = {
 /* clear chat history */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { chatId, appId } = req.query as Props;
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     if (chatId) {
       await Promise.all([

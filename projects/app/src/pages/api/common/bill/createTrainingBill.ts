@@ -7,11 +7,10 @@ import { CreateTrainingBillType } from '@/global/common/api/billReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { name } = req.body as CreateTrainingBillType;
 
     const { userId } = await authUser({ req, authToken: true, authApiKey: true });
-
-    await connectToDatabase();
 
     const { _id } = await Bill.create({
       userId,

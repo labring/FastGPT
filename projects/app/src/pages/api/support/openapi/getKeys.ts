@@ -7,10 +7,9 @@ import type { GetApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId } = req.query as GetApiKeyProps;
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const findResponse = await MongoOpenApi.find({ userId, appId }).sort({ _id: -1 });
 

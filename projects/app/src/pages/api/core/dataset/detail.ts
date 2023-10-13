@@ -7,6 +7,7 @@ import { MongoDataset } from '@fastgpt/core/dataset/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { id } = req.query as {
       id: string;
     };
@@ -17,8 +18,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const data = await MongoDataset.findOne({
       _id: id,

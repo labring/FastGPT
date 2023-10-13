@@ -9,6 +9,7 @@ import { AppTypeEnum } from '@/constants/app';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const {
       name = 'APP',
       avatar,
@@ -22,8 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     // 上限校验
     const authCount = await App.countDocuments({
