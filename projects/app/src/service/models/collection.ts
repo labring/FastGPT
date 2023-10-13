@@ -1,4 +1,4 @@
-import { Schema, model, models, Model as MongoModel } from 'mongoose';
+import { Schema, model, models, Model as MongoModel } from '@fastgpt/common/mongo';
 import { CollectionSchema as CollectionType } from '@/types/mongoSchema';
 
 const CollectionSchema = new Schema({

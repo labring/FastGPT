@@ -1,4 +1,4 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { Schema, model, models, Model } from '@fastgpt/common/mongo';
 import { ChatItemSchema as ChatItemType } from '@/types/mongoSchema';
 import { ChatRoleMap, TaskResponseKeyEnum } from '@/constants/chat';
 import { customAlphabet } from 'nanoid';

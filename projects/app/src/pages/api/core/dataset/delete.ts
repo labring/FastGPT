@@ -6,7 +6,7 @@ import { authUser } from '@fastgpt/support/user/auth';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

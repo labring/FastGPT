@@ -1,4 +1,4 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { Schema, model, models, Model } from '@fastgpt/common/mongo';
 import { PaySchema as PayType } from '@/types/mongoSchema';
 const PaySchema = new Schema({
   userId: {

@@ -1,4 +1,4 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { Schema, model, models, Model } from '@fastgpt/common/mongo';
 import { PromotionRecordSchema as PromotionRecordType } from '@/types/mongoSchema';
 
 const PromotionRecordSchema = new Schema({

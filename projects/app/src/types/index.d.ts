@@ -1,7 +1,5 @@
-import type { Mongoose } from 'mongoose';
 import type { Pool } from 'pg';
 import type { Tiktoken } from 'js-tiktoken';
-import type { Logger } from 'winston';
 import {
   ChatModelItemType,
   FunctionModelItemType,
@@ -28,13 +26,10 @@ export type SystemEnvType = {
 };
 
 declare global {
-  var mongodb: Mongoose | string | null;
   var pgClient: Pool | null;
   var qaQueueLen: number;
   var vectorQueueLen: number;
   var TikToken: Tiktoken;
-
-  var logger: Logger;
 
   var sendInformQueue: (() => Promise<void>)[];
   var sendInformQueueLen: number;

@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@fastgpt/support/user/auth';
 import { connectToDatabase, ChatItem } from '@/service/mongo';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 import type { ChatItemType } from '@/types/chat';
 
 export type Props = {

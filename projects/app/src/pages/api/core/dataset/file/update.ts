@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/support/user/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { UpdateFileProps } from '@/global/core/api/datasetReq.d';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { addLog } from '@/service/utils/tools';

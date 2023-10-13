@@ -1,3 +1,6 @@
+import type { Mongoose } from 'mongoose';
+import type { Logger } from 'winston';
+
 export type FeConfigsType = {
   show_emptyChat?: boolean;
   show_register?: boolean;
@@ -33,6 +36,8 @@ export type SystemEnvType = {
 };
 
 declare global {
+  var mongodb: Mongoose | string | null;
+  var logger: Logger;
   var feConfigs: FeConfigsType;
   var systemEnv: SystemEnvType;
 }

@@ -1,91 +1,36 @@
-import mongoose from 'mongoose';
 import { startQueue } from './utils/tools';
-import { getInitConfig } from '@/pages/api/system/getInitData';
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { initPg } from './pg';
 import { createHashPassword } from '@/utils/tools';
-import { createLogger, format, transports } from 'winston';
-import 'winston-mongodb';
 import { getTikTokenEnc } from '@/utils/common/tiktoken';
 import { initHttpAgent } from '@fastgpt/core/init';
 import { MongoUser } from '@fastgpt/support/user/schema';
+import { connectMongo } from '@fastgpt/common/mongo/init';
 
 /**
  * connect MongoDB and init data
  */
 export async function connectToDatabase(): Promise<void> {
-  if (global.mongodb) {
-    return;
-  }
-  global.mongodb = 'connecting';
-
-  // init global data
-  global.qaQueueLen = 0;
-  global.vectorQueueLen = 0;
-  global.sendInformQueue = [];
-  global.sendInformQueueLen = 0;
-
-  // logger
-  initLogger();
-
-  // init function
-  getInitConfig();
-  // init tikToken
-  getTikTokenEnc();
-  initHttpAgent();
-
-  try {
-    mongoose.set('strictQuery', true);
-    global.mongodb = await mongoose.connect(process.env.MONGODB_URI as string, {
-      bufferCommands: true,
-      maxConnecting: Number(process.env.DB_MAX_LINK || 5),
-      maxPoolSize: Number(process.env.DB_MAX_LINK || 5),
-      minPoolSize: 2
-    });
-
-    await initRootUser();
-    initPg();
-    console.log('mongo connected');
-  } catch (error) {
-    console.log('error->', 'mongo connect error');
-    global.mongodb = null;
-  }
-
-  // init function
-  startQueue();
-}
-
-function initLogger() {
-  global.logger = createLogger({
-    transports: [
-      new transports.MongoDB({
-        db: process.env.MONGODB_URI as string,
-        collection: 'server_logs',
-        options: {
-          useUnifiedTopology: true
-        },
-        cappedSize: 500000000,
-        tryReconnect: true,
-        metaKey: 'meta',
-        format: format.combine(format.timestamp(), format.json())
-      }),
-      new transports.Console({
-        format: format.combine(
-          format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-          format.printf((info) => {
-            if (info.level === 'error') {
-              console.log(info.meta);
-              return `[${info.level.toLocaleUpperCase()}]: ${[info.timestamp]}: ${info.message}`;
-            }
-            return `[${info.level.toLocaleUpperCase()}]: ${[info.timestamp]}: ${info.message}${
-              info.meta ? `: ${JSON.stringify(info.meta)}` : ''
-            }`;
-          })
-        )
-      })
-    ]
+  await connectMongo({
+    beforeHook: () => {
+      // init global data
+      global.qaQueueLen = 0;
+      global.vectorQueueLen = 0;
+      global.sendInformQueue = [];
+      global.sendInformQueueLen = 0;
+      // init tikToken
+      getTikTokenEnc();
+      initHttpAgent();
+    },
+    afterHook: async () => {
+      await initRootUser();
+      initPg();
+      // start queue
+      startQueue();
+    }
   });
 }
+
 async function initRootUser() {
   try {
     const rootUser = await MongoUser.findOne({

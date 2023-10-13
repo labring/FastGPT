@@ -12,7 +12,7 @@ import {
   datasetSpecialIdMap,
   datasetSpecialIds
 } from '@fastgpt/core/dataset/constant';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

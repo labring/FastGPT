@@ -1,4 +1,4 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { Schema, model, models, Model } from '@fastgpt/common/mongo';
 import { ChatSchema as ChatType } from '@/types/mongoSchema';
 import { ChatRoleMap, TaskResponseKeyEnum } from '@/constants/chat';
 import { ChatSourceMap } from '@/constants/chat';

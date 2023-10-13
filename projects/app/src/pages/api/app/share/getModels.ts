@@ -4,7 +4,7 @@ import { connectToDatabase, App } from '@/service/mongo';
 import type { PagingData } from '@/types';
 import type { ShareAppItem } from '@/types/app';
 import { authUser } from '@fastgpt/support/user/auth';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 
 /* 获取模型列表 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

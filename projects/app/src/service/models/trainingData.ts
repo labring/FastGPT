@@ -1,5 +1,5 @@
 /* 模型的知识库 */
-import { Schema, model, models, Model as MongoModel } from 'mongoose';
+import { Schema, model, models, Model as MongoModel } from '@fastgpt/common/mongo';
 import { TrainingDataSchema as TrainingDateType } from '@/types/mongoSchema';
 import { TrainingTypeMap } from '@/constants/plugin';
 

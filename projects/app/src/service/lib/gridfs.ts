@@ -1,4 +1,4 @@
-import mongoose, { Types } from 'mongoose';
+import mongoose, { Types } from '@fastgpt/common/mongo';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';

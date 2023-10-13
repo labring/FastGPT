@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { authUser } from '@fastgpt/support/user/auth';
 import { TrainingModeEnum } from '@/constants/plugin';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 import { startQueue } from '@/service/utils/tools';
 
 /* 拆分数据成QA */

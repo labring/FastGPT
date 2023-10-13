@@ -1,4 +1,4 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { Schema, model, models, Model } from '@fastgpt/common/mongo';
 import { informSchema } from '@/types/mongoSchema';
 import { InformTypeMap } from '@/constants/user';
 
