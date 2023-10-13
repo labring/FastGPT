@@ -34,7 +34,7 @@ import { formatTimeToChatTime } from '@/utils/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/model';
-import type { OutLinkEditType } from '@/types/support/outLink';
+import type { OutLinkEditType } from '@fastgpt/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import { OutLinkTypeEnum } from '@fastgpt/support/outLink/constant';
