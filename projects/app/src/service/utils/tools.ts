@@ -34,6 +34,7 @@ export function withNextCors(handler: NextApiHandler): NextApiHandler {
 
 /* start task */
 export const startQueue = () => {
+  if (!global.systemEnv) return;
   for (let i = 0; i < global.systemEnv.qaMaxProcess; i++) {
     generateQA();
   }

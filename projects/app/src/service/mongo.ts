@@ -1,8 +1,6 @@
 import { startQueue } from './utils/tools';
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { initPg } from './pg';
-import { getTikTokenEnc } from '@/utils/common/tiktoken';
-import { initHttpAgent } from '@fastgpt/core/init';
 import { MongoUser } from '@fastgpt/support/user/schema';
 import { connectMongo } from '@fastgpt/common/mongo/init';
 import { hashStr } from '@fastgpt/common/tools/str';
@@ -12,16 +10,6 @@ import { hashStr } from '@fastgpt/common/tools/str';
  */
 export async function connectToDatabase(): Promise<void> {
   await connectMongo({
-    beforeHook: () => {
-      // init global data
-      global.qaQueueLen = 0;
-      global.vectorQueueLen = 0;
-      global.sendInformQueue = [];
-      global.sendInformQueueLen = 0;
-      // init tikToken
-      getTikTokenEnc();
-      initHttpAgent();
-    },
     afterHook: async () => {
       await initRootUser();
       initPg();

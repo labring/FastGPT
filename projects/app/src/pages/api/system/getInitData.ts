@@ -7,11 +7,14 @@ import type { InitDateResponse } from '@/global/common/api/systemRes';
 import type { VectorModelItemType, FunctionModelItemType } from '@/types/model';
 import { formatPrice } from '@fastgpt/common/bill';
 import { connectToDatabase } from '@/service/mongo';
+import { getTikTokenEnc } from '@/utils/common/tiktoken';
+import { initHttpAgent } from '@fastgpt/core/init';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await connectToDatabase();
   getInitConfig();
+  initGlobal();
   getModelPrice();
+  await connectToDatabase();
 
   jsonRes<InitDateResponse>(res, {
     data: {
@@ -108,6 +111,16 @@ const defaultVectorModels: VectorModelItemType[] = [
     maxToken: 3000
   }
 ];
+
+function initGlobal() {
+  // init tikToken
+  getTikTokenEnc();
+  initHttpAgent();
+  global.qaQueueLen = 0;
+  global.vectorQueueLen = 0;
+  global.sendInformQueue = [];
+  global.sendInformQueueLen = 0;
+}
 
 export function getInitConfig() {
   try {
