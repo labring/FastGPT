@@ -48,7 +48,6 @@ export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: 
     let chunk = '';
     for (let i = 0; i < splitTexts.length; i++) {
       let text = splitTexts[i];
-
       // chunk over size
       if (text.length > maxLen) {
         const innerChunks = splitTextRecursively({ text, step: step + 1 });
@@ -56,6 +55,7 @@ export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: 
         // If the last chunk is too small, it is merged into the next chunk
         if (innerChunks[innerChunks.length - 1].length <= maxLen * 0.5) {
           text = innerChunks.pop() || '';
+          chunks = chunks.concat(innerChunks);
         } else {
           chunks = chunks.concat(innerChunks);
           continue;
@@ -74,7 +74,7 @@ export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: 
       }
     }
 
-    if (chunk && chunk.length > overlapLen) {
+    if (chunk && !chunks[chunks.length - 1].endsWith(chunk)) {
       chunks.push(chunk);
     }
     return chunks;

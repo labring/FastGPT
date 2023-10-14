@@ -2,7 +2,7 @@ import type { BoxProps } from '@chakra-ui/react';
 
 export enum FlowInputItemTypeEnum {
   systemInput = 'systemInput', // history, userChatInput, variableInput
-  input = 'input',
+  input = 'input', // one line input
   textarea = 'textarea',
   numberInput = 'numberInput',
   select = 'select',
@@ -10,6 +10,7 @@ export enum FlowInputItemTypeEnum {
   custom = 'custom',
   target = 'target', // data input
   switch = 'switch',
+  chatInput = 'chatInput',
   selectApp = 'selectApp',
   // chat special input
   quoteList = 'quoteList',
