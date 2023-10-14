@@ -181,6 +181,7 @@
     "Choice QA Desc": "采用 QA 对的结构构建索引，适应问答、阅读等多种场景",
     "Choice Visual": "可视化工作流",
     "Choice Visual Desc": "可视化模块操作，轻松实现复杂工作流，让你的 AI 不再单一",
+    "Commercial": "商务咨询",
     "Community": "社区",
     "Dateset": "自动数据预处理",
     "Dateset Desc": "提供手动输入、直接分段、LLM 自动处理和 CSV 等多种数据导入途径",

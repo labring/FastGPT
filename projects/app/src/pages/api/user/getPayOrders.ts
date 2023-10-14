@@ -1,13 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@/service/utils/auth';
-import { connectToDatabase, Pay } from '@/service/mongo';
+import { authUser } from '@fastgpt/support/user/auth';
+import { Pay, connectToDatabase } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { userId } = await authUser({ req, authToken: true });
-
     await connectToDatabase();
+    const { userId } = await authUser({ req, authToken: true });
 
     const records = await Pay.find({
       userId,

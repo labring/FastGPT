@@ -1,4 +1,5 @@
-import { Schema, model, models, Model as MongoModel } from 'mongoose';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
 import { CollectionSchema as CollectionType } from '@/types/mongoSchema';
 
 const CollectionSchema = new Schema({
@@ -14,5 +15,5 @@ const CollectionSchema = new Schema({
   }
 });
 
-export const Collection: MongoModel<CollectionType> =
+export const Collection: Model<CollectionType> =
   models['collection'] || model('collection', CollectionSchema);

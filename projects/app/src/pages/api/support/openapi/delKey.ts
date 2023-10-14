@@ -1,11 +1,13 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, OpenApi } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoOpenApi } from '@fastgpt/support/openapi/schema';
+import { authUser } from '@fastgpt/support/user/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { id } = req.query as { id: string };
 
     if (!id) {
@@ -14,9 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
 
-    await connectToDatabase();
-
-    await OpenApi.findOneAndRemove({ _id: id, userId });
+    await MongoOpenApi.findOneAndRemove({ _id: id, userId });
 
     jsonRes(res);
   } catch (err) {

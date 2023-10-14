@@ -1,29 +1,29 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
+import { MongoUser } from '@fastgpt/support/user/schema';
+import { setCookie } from '@/service/utils/tools';
+import { generateToken } from '@fastgpt/support/user/tools';
 import { connectToDatabase } from '@/service/mongo';
-import { User } from '@/service/models/user';
-import { generateToken, setCookie } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { username, password } = req.body;
 
     if (!username || !password) {
       throw new Error('缺少参数');
     }
 
-    await connectToDatabase();
-
     // 检测用户是否存在
-    const authUser = await User.findOne({
+    const authUser = await MongoUser.findOne({
       username
     });
     if (!authUser) {
       throw new Error('用户未注册');
     }
 
-    const user = await User.findOne({
+    const user = await MongoUser.findOne({
       username,
       password
     });

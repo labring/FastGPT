@@ -12,6 +12,7 @@ export const postUploadFiles = (
   onUploadProgress: (progressEvent: AxiosProgressEvent) => void
 ) =>
   POST<string[]>('/system/file/upload', data, {
+    timeout: 60000,
     onUploadProgress,
     headers: {
       'Content-Type': 'multipart/form-data; charset=utf-8'

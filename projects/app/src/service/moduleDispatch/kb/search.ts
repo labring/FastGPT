@@ -24,6 +24,7 @@ export type KBSearchResponse = {
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
   const {
     moduleName,
+    user,
     inputs: { kbList = [], similarity = 0.4, limit = 5, userChatInput }
   } = props as KBSearchProps;
 
@@ -45,10 +46,10 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   // search kb
   const res: any = await PgClient.query(
     `BEGIN;
-    SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
+    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 40};
     select id, kb_id, q, a, source, file_id, (vector <#> '[${
       vectors[0]
-    }]') * -1 AS score from ${PgDatasetTableName} where kb_id IN (${kbList
+    }]') * -1 AS score from ${PgDatasetTableName} where user_id='${user._id}' AND kb_id IN (${kbList
       .map((item) => `'${item.kbId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]

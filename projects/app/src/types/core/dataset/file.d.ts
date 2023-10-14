@@ -1,4 +1,4 @@
-import { FileStatusEnum } from '@/constants/dataset';
+import { FileStatusEnum } from '@fastgpt/core/dataset/constant';
 
 export type DatasetFileItemType = {
   id: string;

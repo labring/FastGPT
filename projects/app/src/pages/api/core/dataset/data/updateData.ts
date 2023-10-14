@@ -1,27 +1,27 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
-import { KB, connectToDatabase } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { PgDatasetTableName } from '@/constants/plugin';
 import type { UpdateDatasetDataPrams } from '@/global/core/api/datasetReq.d';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { dataId, a = '', q = '', kbId } = req.body as UpdateDatasetDataPrams;
 
     if (!dataId) {
       throw new Error('缺少参数');
     }
 
-    await connectToDatabase();
-
     // auth user and get kb
     const [{ userId }, kb] = await Promise.all([
       authUser({ req, authToken: true }),
-      KB.findById(kbId, 'vectorModel')
+      MongoDataset.findById(kbId, 'vectorModel')
     ]);
 
     if (!kb) {

@@ -1,4 +1,5 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
 import { AppSchema as AppType } from '@/types/mongoSchema';
 
 const AppSchema = new Schema({

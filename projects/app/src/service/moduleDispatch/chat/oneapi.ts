@@ -10,7 +10,7 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
-import { postTextCensor } from '@/service/common/api/plugins';
+import { postTextCensor } from '@fastgpt/common/plusApi/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant';
 import { AppModuleItemType } from '@/types/app';
 import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
@@ -151,7 +151,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       };
     } else {
       const unStreamResponse = response as ChatCompletion;
-      const answer = unStreamResponse.choices?.[0].message?.content || '';
+      const answer = unStreamResponse.choices?.[0]?.message?.content || '';
       const totalTokens = unStreamResponse.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({

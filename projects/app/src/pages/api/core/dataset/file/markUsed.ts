@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { MarkFileUsedProps } from '@/global/core/api/datasetReq.d';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

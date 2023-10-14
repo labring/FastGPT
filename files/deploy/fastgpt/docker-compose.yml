@@ -2,8 +2,8 @@
 version: '3.3'
 services:
   pg:
-    image: ankane/pgvector:v0.4.2 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
+    image: ankane/pgvector:v0.5.0 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.5.0 # 阿里云
     container_name: pg
     restart: always
     ports: # 生产环境建议不要暴露
@@ -66,8 +66,8 @@ networks:
 # version: '3.3'
 # services:
 #   pg:
-#   image: ankane/pgvector:v0.4.2 # dockerhub
-#   # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.4.2 # 阿里云
+#   image: ankane/pgvector:v0.5.0 # dockerhub
+#   # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.5.0 # 阿里云
 #   container_name: pg
 #   restart: always
 #   ports: # 生产环境建议不要暴露

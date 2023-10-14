@@ -1,18 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, promotionRecord } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     let { pageNum = 1, pageSize = 10 } = req.body as {
       pageNum: number;
       pageSize: number;
     };
 
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const data = await promotionRecord
       .find(

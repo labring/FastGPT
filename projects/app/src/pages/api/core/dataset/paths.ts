@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import type { DatasetPathItemType } from '@/types/core/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -25,7 +26,7 @@ async function getParents(parentId?: string): Promise<DatasetPathItemType[]> {
     return [];
   }
 
-  const parent = await KB.findById(parentId, 'name parentId');
+  const parent = await MongoDataset.findById(parentId, 'name parentId');
 
   if (!parent) return [];
 

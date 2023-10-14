@@ -1,12 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@/service/utils/tools';
 import { PgDatasetTableName } from '@/constants/plugin';
+import { connectToDatabase } from '@/service/mongo';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     let { dataId } = req.query as {
       dataId: string;
     };

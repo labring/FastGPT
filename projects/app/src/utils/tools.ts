@@ -1,13 +1,4 @@
-import crypto from 'crypto';
 import dayjs from 'dayjs';
-
-/**
- * 密码加密
- */
-export const createHashPassword = (text: string) => {
-  const hash = crypto.createHash('sha256').update(text).digest('hex');
-  return hash;
-};
 
 /**
  * 对象转成 query 字符串

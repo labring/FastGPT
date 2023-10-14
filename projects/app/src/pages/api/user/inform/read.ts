@@ -1,14 +1,13 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Inform } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { Inform, connectToDatabase } from '@/service/mongo';
+import { authUser } from '@fastgpt/support/user/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { userId } = await authUser({ req, authToken: true });
-
     await connectToDatabase();
+    const { userId } = await authUser({ req, authToken: true });
 
     const { id } = req.query as { id: string };
 

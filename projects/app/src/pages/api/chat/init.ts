@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, ChatItem } from '@/service/mongo';
+import { Chat, ChatItem, connectToDatabase } from '@/service/mongo';
 import type { InitChatResponse } from '@/global/core/api/chatRes.d';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';
 import type { ChatSchema } from '@/types/mongoSchema';
@@ -12,6 +12,7 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { userId } = await authUser({ req, authToken: true });
 
     let { appId, chatId } = req.query as {

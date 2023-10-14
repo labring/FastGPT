@@ -1,4 +1,5 @@
-import { Bill, User, OutLink } from '@/service/mongo';
+import { Bill } from '@/service/mongo';
+import { MongoUser } from '@fastgpt/support/user/schema';
 import { BillSourceEnum } from '@/constants/user';
 import { getModel } from '@/service/utils/data';
 import { ChatHistoryItemResType } from '@/types/chat';
@@ -10,7 +11,7 @@ import { defaultQGModel } from '@/pages/api/system/getInitData';
 async function createBill(data: CreateBillType) {
   try {
     await Promise.all([
-      User.findByIdAndUpdate(data.userId, {
+      MongoUser.findByIdAndUpdate(data.userId, {
         $inc: { balance: -data.total }
       }),
       Bill.create(data)
@@ -50,7 +51,7 @@ async function concatBill({
           }
         }
       ),
-      User.findByIdAndUpdate(userId, {
+      MongoUser.findByIdAndUpdate(userId, {
         $inc: { balance: -total }
       })
     ]);
@@ -177,12 +178,12 @@ export const pushQuestionGuideBill = ({ tokens, userId }: { tokens: number; user
   const total = qgModel.price * tokens;
   createBill({
     userId,
-    appName: '问题指引',
+    appName: '下一步指引',
     total,
     source: BillSourceEnum.fastgpt,
     list: [
       {
-        moduleName: '问题指引',
+        moduleName: '下一步指引',
         amount: total,
         model: qgModel.name,
         tokenLen: tokens

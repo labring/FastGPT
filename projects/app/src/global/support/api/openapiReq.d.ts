@@ -1,4 +1,4 @@
-import type { OpenApiSchema } from '@/types/support/openapi';
+import type { OpenApiSchema } from '@fastgpt/support/openapi/type.d';
 
 export type GetApiKeyProps = {
   appId?: string;

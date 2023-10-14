@@ -53,11 +53,5 @@ export const ChatSourceMap = {
   }
 };
 
-export enum OutLinkTypeEnum {
-  'share' = 'share',
-  'iframe' = 'iframe',
-  apikey = 'apikey'
-}
-
 export const HUMAN_ICON = `/icon/human.svg`;
 export const LOGO_ICON = `/icon/logo.svg`;

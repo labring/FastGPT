@@ -1,9 +1,8 @@
-import { FileStatusEnum } from '@/constants/dataset';
 import { PgDataItemType } from './data';
 import { VectorModelItemType } from '../../model';
-import type { kbSchema } from '../../mongoSchema';
+import type { DatasetSchemaType } from '@fastgpt/core/dataset/type.d';
 
-export type DatasetsItemType = Omit<kbSchema, 'vectorModel'> & {
+export type DatasetsItemType = Omit<DatasetSchemaType, 'vectorModel'> & {
   vectorModel: VectorModelItemType;
 };
 

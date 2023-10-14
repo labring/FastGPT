@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { connectToDatabase } from '@/service/mongo';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
-import mongoose, { Types } from 'mongoose';
+import { Types, connectionMongo } from '@fastgpt/common/mongo';
 import { delay } from '@/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 async function init(rows: any[], initFileIds: string[]) {
-  const collection = mongoose.connection.db.collection(`dataset.files`);
+  const collection = connectionMongo.connection.db.collection(`dataset.files`);
 
   /* 遍历所有的 fileId，去找有没有对应的文件，没有的话则改成manual */
   const updateResult = await Promise.allSettled(

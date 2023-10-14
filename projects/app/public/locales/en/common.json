@@ -181,6 +181,7 @@
     "Choice QA Desc": "The index is constructed with the structure of QA pairs, and ADAPTS to various scenarios such as Q&A and reading",
     "Choice Visual": "Visual workflow",
     "Choice Visual Desc": "Visualize modular operations, easily implement complex workflows, and make your AI no longer monolithic",
+    "Commercial": "Commercial",
     "Community": "Community",
     "Dateset": "",
     "Dateset Desc": "",

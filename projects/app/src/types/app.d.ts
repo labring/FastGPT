@@ -11,7 +11,7 @@ import type {
   FlowOutputItemType,
   FlowOutputTargetItemType
 } from '@/types/core/app/flow';
-import type { AppSchema, ChatSchema, kbSchema } from './mongoSchema';
+import type { AppSchema, ChatSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
 import { FlowValueTypeEnum } from '@/constants/flow';
 

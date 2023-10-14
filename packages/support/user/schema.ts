@@ -1,7 +1,8 @@
-import { Schema, model, models, Model } from 'mongoose';
-import { hashPassword } from '@/service/utils/tools';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
+import { hashStr } from '@fastgpt/common/tools/str';
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
-import { UserModelSchema } from '@/types/mongoSchema';
+import type { UserModelSchema } from './type.d';
 
 const UserSchema = new Schema({
   username: {
@@ -13,8 +14,8 @@ const UserSchema = new Schema({
   password: {
     type: String,
     required: true,
-    set: (val: string) => hashPassword(val),
-    get: (val: string) => hashPassword(val),
+    set: (val: string) => hashStr(val),
+    get: (val: string) => hashStr(val),
     select: false
   },
   createTime: {
@@ -42,6 +43,9 @@ const UserSchema = new Schema({
     exportKbTime: {
       // Every half hour
       type: Date
+    },
+    datasetMaxCount: {
+      type: Number
     }
   },
   openaiAccount: {
@@ -56,4 +60,4 @@ const UserSchema = new Schema({
   }
 });
 
-export const User: Model<UserModelSchema> = models['user'] || model('user', UserSchema);
+export const MongoUser: Model<UserModelSchema> = models['user'] || model('user', UserSchema);

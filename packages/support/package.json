@@ -2,6 +2,13 @@
   "name": "@fastgpt/support",
   "version": "1.0.0",
   "dependencies": {
-    "@fastgpt/common": "workspace:*"
+    "@fastgpt/common": "workspace:*",
+    "cookie": "^0.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.5.1"
+  },
+  "devDependencies": {
+    "@types/cookie": "^0.5.2",
+    "@types/jsonwebtoken": "^9.0.3"
   }
 }

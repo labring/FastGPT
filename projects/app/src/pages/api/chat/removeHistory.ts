@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat, ChatItem } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { ChatSourceEnum } from '@/constants/chat';
 
 type Props = {
@@ -12,10 +12,9 @@ type Props = {
 /* clear chat history */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { chatId, appId } = req.query as Props;
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     if (chatId) {
       await Promise.all([

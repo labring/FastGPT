@@ -69,7 +69,8 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             postCreateApp({
               avatar: template.avatar,
               name: template.name,
-              modules: template.modules
+              modules: template.modules,
+              type: template.type
             });
           });
         }, 100);

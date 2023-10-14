@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, KB, TrainingData } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { connectToDatabase, TrainingData } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
+import { authUser } from '@fastgpt/support/user/auth';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -43,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await Promise.all(deletedIds.map((id) => gridFs.deleteFilesByKbId(id)));
 
     // delete kb data
-    await KB.deleteMany({
+    await MongoDataset.deleteMany({
       _id: { $in: deletedIds },
       userId
     });
@@ -59,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
 export async function findAllChildrenIds(id: string) {
   // find children
-  const children = await KB.find({ parentId: id });
+  const children = await MongoDataset.find({ parentId: id });
 
   let allChildrenIds = children.map((child) => String(child._id));
 

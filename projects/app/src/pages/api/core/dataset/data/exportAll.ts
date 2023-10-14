@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, User } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoUser } from '@fastgpt/support/user/schema';
+import { authUser } from '@fastgpt/support/user/auth';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
@@ -11,6 +12,7 @@ import { responseWriteController } from '@/service/common/stream';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     let { kbId } = req.query as {
       kbId: string;
     };
@@ -18,8 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!kbId || !global.pgClient) {
       throw new Error('缺少参数');
     }
-
-    await connectToDatabase();
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
 
     // auth export times
-    const authTimes = await User.findOne(
+    const authTimes = await MongoUser.findOne(
       {
         _id: userId,
         $or: [
@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       stream.on('end', async () => {
         try {
           // update export time
-          await User.findByIdAndUpdate(userId, {
+          await MongoUser.findByIdAndUpdate(userId, {
             'limit.exportKbTime': new Date()
           });
         } catch (error) {}

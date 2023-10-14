@@ -1,41 +1,8 @@
 import type { NextApiResponse, NextApiHandler, NextApiRequest } from 'next';
 import NextCors from 'nextjs-cors';
-import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import { generateQA } from '../events/generateQA';
 import { generateVector } from '../events/generateVector';
-import { ERROR_ENUM } from '../errorCode';
 
-/* 密码加密 */
-export const hashPassword = (psw: string) => {
-  return crypto.createHash('sha256').update(psw).digest('hex');
-};
-
-/* 生成 token */
-export const generateToken = (userId: string) => {
-  const key = process.env.TOKEN_KEY as string;
-  const token = jwt.sign(
-    {
-      userId,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
-    },
-    key
-  );
-  return token;
-};
-// auth token
-export const authJWT = (token: string) =>
-  new Promise<string>((resolve, reject) => {
-    const key = process.env.TOKEN_KEY as string;
-
-    jwt.verify(token, key, function (err, decoded: any) {
-      if (err || !decoded?.userId) {
-        reject(ERROR_ENUM.unAuthorization);
-        return;
-      }
-      resolve(decoded.userId);
-    });
-  });
 /* set cookie */
 export const setCookie = (res: NextApiResponse, token: string) => {
   res.setHeader(
@@ -67,6 +34,7 @@ export function withNextCors(handler: NextApiHandler): NextApiHandler {
 
 /* start task */
 export const startQueue = () => {
+  if (!global.systemEnv) return;
   for (let i = 0; i < global.systemEnv.qaMaxProcess; i++) {
     generateQA();
   }

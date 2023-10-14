@@ -1,6 +1,6 @@
 import { sseResponseEventEnum } from '@/constants/chat';
 import { NextApiResponse } from 'next';
-import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from './errorCode';
+import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
 import { clearCookie, sseResponse, addLog } from './utils/tools';
 
 export interface ResponseType<T = any> {

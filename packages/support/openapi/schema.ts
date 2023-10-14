@@ -1,5 +1,6 @@
-import { Schema, model, models, Model } from 'mongoose';
-import { OpenApiSchema } from '@/types/support/openapi';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
+import { OpenApiSchema } from './type.d';
 import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
 import { formatPrice } from '@fastgpt/common/bill/index';
 
@@ -54,4 +55,5 @@ const OpenApiSchema = new Schema(
   }
 );
 
-export const OpenApi: Model<OpenApiSchema> = models['openapi'] || model('openapi', OpenApiSchema);
+export const MongoOpenApi: Model<OpenApiSchema> =
+  models['openapi'] || model('openapi', OpenApiSchema);
