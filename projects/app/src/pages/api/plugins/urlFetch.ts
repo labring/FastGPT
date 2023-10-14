@@ -6,7 +6,7 @@ import { Readability } from '@mozilla/readability';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@fastgpt/support/user/auth';
 import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
-import { simpleText } from '@/utils/file';
+import { simpleText } from '@fastgpt/common/tools/str';
 import { connectToDatabase } from '@/service/mongo';
 
 export type UrlFetchResponse = FetchResultItem[];
