@@ -4,12 +4,17 @@ import { initPg } from './pg';
 import { MongoUser } from '@fastgpt/support/user/schema';
 import { connectMongo } from '@fastgpt/common/mongo/init';
 import { hashStr } from '@fastgpt/common/tools/str';
+import { getInitConfig, initGlobal } from '@/pages/api/system/getInitData';
 
 /**
  * connect MongoDB and init data
  */
 export async function connectToDatabase(): Promise<void> {
   await connectMongo({
+    beforeHook: () => {
+      initGlobal();
+      getInitConfig();
+    },
     afterHook: async () => {
       await initRootUser();
       initPg();

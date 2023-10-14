@@ -3,9 +3,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@fastgpt/support/user/auth';
 import { MongoUser } from '@fastgpt/support/user/schema';
+import { connectToDatabase } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
 
     if (!oldPsw || !newPsw) {

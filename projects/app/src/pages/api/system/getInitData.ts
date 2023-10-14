@@ -6,15 +6,12 @@ import { readFileSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import type { VectorModelItemType, FunctionModelItemType } from '@/types/model';
 import { formatPrice } from '@fastgpt/common/bill';
-import { connectToDatabase } from '@/service/mongo';
 import { getTikTokenEnc } from '@/utils/common/tiktoken';
 import { initHttpAgent } from '@fastgpt/core/init';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   getInitConfig();
-  initGlobal();
   getModelPrice();
-  await connectToDatabase();
 
   jsonRes<InitDateResponse>(res, {
     data: {
@@ -112,7 +109,7 @@ const defaultVectorModels: VectorModelItemType[] = [
   }
 ];
 
-function initGlobal() {
+export function initGlobal() {
   // init tikToken
   getTikTokenEnc();
   initHttpAgent();

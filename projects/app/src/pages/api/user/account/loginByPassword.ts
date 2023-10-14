@@ -4,9 +4,11 @@ import { jsonRes } from '@/service/response';
 import { MongoUser } from '@fastgpt/support/user/schema';
 import { setCookie } from '@/service/utils/tools';
 import { generateToken } from '@fastgpt/support/user/tools';
+import { connectToDatabase } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { username, password } = req.body;
 
     if (!username || !password) {

@@ -38,6 +38,7 @@ import { replaceVariable } from '@/utils/common/tools/text';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/support/openapi/tools';
+import { connectToDatabase } from '@/service/mongo';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -81,6 +82,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   } = req.body as Props;
 
   try {
+    await connectToDatabase();
     // body data check
     if (!messages) {
       throw new Error('Prams Error');

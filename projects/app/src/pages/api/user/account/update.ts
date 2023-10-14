@@ -5,10 +5,12 @@ import { MongoUser } from '@fastgpt/support/user/schema';
 import { authUser } from '@fastgpt/support/user/auth';
 import { UserUpdateParams } from '@/types/user';
 import { getAIApi, openaiBaseUrl } from '@fastgpt/core/ai/config';
+import { connectToDatabase } from '@/service/mongo';
 
 /* update user info */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { avatar, timezone, openaiAccount } = req.body as UserUpdateParams;
 
     const { userId } = await authUser({ req, authToken: true });
