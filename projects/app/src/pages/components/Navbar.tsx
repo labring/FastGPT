@@ -23,6 +23,16 @@ const Navbar = () => {
     ...(feConfigs?.show_contact
       ? [
           {
+            label: t('home.Commercial'),
+            key: 'community',
+            onClick: () => {
+              window.open(
+                'https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud',
+                '_blank'
+              );
+            }
+          },
+          {
             label: t('home.Community'),
             key: 'community',
             onClick: () => {

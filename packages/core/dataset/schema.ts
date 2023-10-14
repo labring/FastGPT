@@ -1,8 +1,9 @@
-import { Schema, model, models, Model } from 'mongoose';
-import { kbSchema as SchemaType } from '@/types/mongoSchema';
-import { KbTypeMap } from '@/constants/dataset';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
+import { DatasetSchemaType } from './type';
+import { DatasetTypeMap } from './constant';
 
-const kbSchema = new Schema({
+const DatasetSchema = new Schema({
   parentId: {
     type: Schema.Types.ObjectId,
     ref: 'kb',
@@ -32,7 +33,7 @@ const kbSchema = new Schema({
   },
   type: {
     type: String,
-    enum: Object.keys(KbTypeMap),
+    enum: Object.keys(DatasetTypeMap),
     required: true,
     default: 'dataset'
   },
@@ -42,4 +43,4 @@ const kbSchema = new Schema({
   }
 });
 
-export const KB: Model<SchemaType> = models['kb'] || model('kb', kbSchema);
+export const MongoDataset: Model<DatasetSchemaType> = models['kb'] || model('kb', DatasetSchema);

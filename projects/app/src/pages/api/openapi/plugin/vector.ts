@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authBalanceByUid, authUser } from '@/service/utils/auth';
+import { authBalanceByUid, authUser } from '@fastgpt/support/user/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { getAIApi } from '@fastgpt/core/ai/config';
 import { pushGenerateVectorBill } from '@/service/common/bill/push';
+import { connectToDatabase } from '@/service/mongo';
 
 type Props = {
   model: string;
@@ -17,6 +18,7 @@ type Response = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { userId } = await authUser({ req, authToken: true });
     let { input, model } = req.query as Props;
 

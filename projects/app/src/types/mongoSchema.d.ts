@@ -6,27 +6,6 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
 import { ChatSourceEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
-import { KbTypeEnum } from '@/constants/dataset';
-
-export interface UserModelSchema {
-  _id: string;
-  username: string;
-  password: string;
-  avatar: string;
-  balance: number;
-  promotionRate: number;
-  inviterId?: string;
-  openaiKey: string;
-  createTime: number;
-  timezone: string;
-  openaiAccount?: {
-    key: string;
-    baseUrl: string;
-  };
-  limit: {
-    exportKbTime?: Date;
-  };
-}
 
 export interface AuthCodeSchema {
   _id: string;
@@ -120,18 +99,6 @@ export interface PromotionRecordSchema {
   createTime: Date; // 记录时间
   amount: number;
 }
-
-export type kbSchema = {
-  _id: string;
-  userId: string;
-  parentId: string;
-  updateTime: Date;
-  avatar: string;
-  name: string;
-  vectorModel: string;
-  tags: string[];
-  type: `${KbTypeEnum}`;
-};
 
 export interface informSchema {
   _id: string;

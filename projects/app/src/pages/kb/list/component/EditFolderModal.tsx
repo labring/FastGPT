@@ -4,7 +4,7 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postCreateDataset, putDatasetById } from '@/web/core/api/dataset';
-import { FolderAvatarSrc, KbTypeEnum } from '@/constants/dataset';
+import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 
 const EditFolderModal = ({
   onClose,
@@ -47,7 +47,7 @@ const EditFolderModal = ({
       return postCreateDataset({
         parentId,
         name: val,
-        type: KbTypeEnum.folder,
+        type: DatasetTypeEnum.folder,
         avatar: FolderAvatarSrc,
         tags: []
       });

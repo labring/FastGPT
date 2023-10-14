@@ -1,10 +1,11 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, Inform, User } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { Inform, connectToDatabase } from '@/service/mongo';
+import { authUser } from '@fastgpt/support/user/auth';
 import { InformTypeEnum } from '@/constants/user';
 import { startSendInform } from '@/service/events/sendInform';
+import { MongoUser } from '@fastgpt/support/user/schema';
 
 export type Props = {
   type: `${InformTypeEnum}`;
@@ -15,9 +16,8 @@ export type Props = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    await authUser({ req, authRoot: true });
-
     await connectToDatabase();
+    await authUser({ req, authRoot: true });
 
     jsonRes(res, {
       data: await sendInform(req.body),
@@ -62,7 +62,7 @@ export async function sendInform({ type, title, content, userId }: Props) {
     }
 
     // send to all user
-    const users = await User.find({}, '_id');
+    const users = await MongoUser.find({}, '_id');
     await Inform.insertMany(
       users.map(({ _id }) => ({
         type,

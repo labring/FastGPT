@@ -1,9 +1,10 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, TrainingData, KB } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
-import { authKb } from '@/service/utils/auth';
+import { connectToDatabase, TrainingData } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
+import { authUser } from '@fastgpt/support/user/auth';
+import { authDataset } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
@@ -21,6 +22,7 @@ const modeMap = {
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { kbId, data, mode = TrainingModeEnum.index } = req.body as PushDataProps;
 
     if (!kbId || !Array.isArray(data)) {
@@ -34,8 +36,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (data.length > 500) {
       throw new Error('Data is too long, max 500');
     }
-
-    await connectToDatabase();
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true, authApiKey: true });
@@ -63,13 +63,13 @@ export async function pushDataToKb({
   billId
 }: { userId: string } & PushDataProps): Promise<PushDataResponse> {
   const [kb, vectorModel] = await Promise.all([
-    authKb({
+    authDataset({
       userId,
       kbId
     }),
     (async () => {
       if (mode === TrainingModeEnum.index) {
-        const vectorModel = (await KB.findById(kbId, 'vectorModel'))?.vectorModel;
+        const vectorModel = (await MongoDataset.findById(kbId, 'vectorModel'))?.vectorModel;
 
         return getVectorModel(vectorModel || global.vectorModels[0].model);
       }

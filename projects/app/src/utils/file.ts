@@ -7,25 +7,63 @@ import { countPromptTokens } from './common/tiktoken';
  * overlapLen - The size of the before and after Text
  * maxLen > overlapLen
  */
-export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: number }) => {
-  const overlapLen = Math.floor(maxLen * 0.25); // Overlap length
+export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: number }) => {
+  const overlapLen = Math.floor(maxLen * 0.2); // Overlap length
+  const tempMarker = 'SPLIT_HERE_SPLIT_HERE';
 
-  try {
-    const tempMarker = 'SPLIT_HERE';
-    text = text.replace(/\n{3,}/g, '\n');
-    text = text.replace(/\s/g, ' ');
-    text = text.replace('\n\n', '');
+  const stepReg: Record<number, RegExp> = {
+    0: /(\n)/g,
+    1: /([。]|\.\s)/g,
+    2: /([！？]|!\s|\?\s)/g,
+    3: /([；]|;\s)/g,
+    4: /([，]|,\s)/g
+  };
+
+  const splitTextRecursively = ({ text = '', step }: { text: string; step: number }) => {
+    if (text.length <= maxLen) {
+      return [text];
+    }
+    const reg = stepReg[step];
+
+    if (!reg) {
+      // use slice-maxLen to split text
+      const chunks: string[] = [];
+      let chunk = '';
+      for (let i = 0; i < text.length; i += maxLen - overlapLen) {
+        chunk = text.slice(i, i + maxLen);
+        chunks.push(chunk);
+      }
+      return chunks;
+    }
+
+    // split text by delimiters
     const splitTexts = text
-      .replace(/([。！？；]|\.\s|!\s|\?\s|;\s|\n)/g, `$1${tempMarker}`)
-      .split(tempMarker)
+      .replace(reg, `$1${tempMarker}`)
+      .split(`${tempMarker}`)
       .filter((part) => part);
-    const chunks: string[] = [];
+
+    let chunks: string[] = [];
 
     let preChunk = '';
     let chunk = '';
     for (let i = 0; i < splitTexts.length; i++) {
-      const text = splitTexts[i];
+      let text = splitTexts[i];
+      // chunk over size
+      if (text.length > maxLen) {
+        const innerChunks = splitTextRecursively({ text, step: step + 1 });
+        if (innerChunks.length === 0) continue;
+        // If the last chunk is too small, it is merged into the next chunk
+        if (innerChunks[innerChunks.length - 1].length <= maxLen * 0.5) {
+          text = innerChunks.pop() || '';
+          chunks = chunks.concat(innerChunks);
+        } else {
+          chunks = chunks.concat(innerChunks);
+          continue;
+        }
+      }
+
       chunk += text;
+      // size over lapLen, push it to next chunk
       if (chunk.length > maxLen - overlapLen) {
         preChunk += text;
       }
@@ -36,9 +74,14 @@ export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: numbe
       }
     }
 
-    if (chunk) {
+    if (chunk && !chunks[chunks.length - 1].endsWith(chunk)) {
       chunks.push(chunk);
     }
+    return chunks;
+  };
+
+  try {
+    const chunks = splitTextRecursively({ text, step: 0 });
 
     const tokens = chunks.reduce((sum, chunk) => sum + countPromptTokens(chunk, 'system'), 0);
 
@@ -49,15 +92,4 @@ export const splitText2Chunks = ({ text, maxLen }: { text: string; maxLen: numbe
   } catch (err) {
     throw new Error(getErrText(err));
   }
-};
-
-/* simple text, remove chinese space and extra \n */
-export const simpleText = (text: string) => {
-  text = text.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2');
-  text = text.replace(/\n{2,}/g, '\n');
-  text = text.replace(/\s{2,}/g, ' ');
-
-  text = text.replace(/[\x00-\x08]/g, ' ');
-
-  return text;
 };

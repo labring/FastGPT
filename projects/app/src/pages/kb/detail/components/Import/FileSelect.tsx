@@ -2,7 +2,8 @@ import MyIcon from '@/components/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSelectFile } from '@/web/common/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
-import { simpleText, splitText2Chunks } from '@/utils/file';
+import { splitText2Chunks } from '@/utils/file';
+import { simpleText } from '@fastgpt/common/tools/str';
 import {
   uploadFiles,
   fileDownload,

@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import type { ChatHistoryItemType } from '@/types/chat';
 import { ChatSourceEnum } from '@/constants/chat';
 
 /* 获取历史记录 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId } = req.body as { appId?: string };
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const data = await Chat.find(
       {

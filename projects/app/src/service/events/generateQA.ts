@@ -1,9 +1,9 @@
 import { TrainingData } from '@/service/mongo';
 import { pushQABill } from '@/service/common/bill/push';
 import { TrainingModeEnum } from '@/constants/plugin';
-import { ERROR_ENUM } from '../errorCode';
+import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
-import { authBalanceByUid } from '../utils/auth';
+import { authBalanceByUid } from '@fastgpt/support/user/auth';
 import { getAIApi } from '@fastgpt/core/ai/config';
 import type { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
 import { addLog } from '../utils/tools';

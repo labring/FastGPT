@@ -5,7 +5,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authKb, authUser } from '@/service/utils/auth';
+import { authDataset } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { insertData2Dataset, PgClient } from '@/service/pg';
@@ -50,7 +51,7 @@ export async function getVectorAndInsertDataset(
   }
 
   // auth kb
-  const kb = await authKb({ kbId, userId });
+  const kb = await authDataset({ kbId, userId });
 
   const q = data?.q?.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
   const a = data?.a?.replace(/\\n/g, '\n').trim().replace(/'/g, '"');

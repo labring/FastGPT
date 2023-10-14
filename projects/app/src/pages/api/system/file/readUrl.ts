@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import jwt from 'jsonwebtoken';
-import { ERROR_ENUM } from '@/service/errorCode';
+import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
 import { GridFSStorage } from '@/service/lib/gridfs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

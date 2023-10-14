@@ -1,15 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, OutLink, User } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoOutLink } from '@fastgpt/support/outLink/schema';
+import { MongoUser } from '@fastgpt/support/user/schema';
 import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
 import { getChatModelNameList, getGuideModule } from '@/components/ChatBox/utils';
-import { authShareChatInit } from '@/service/support/outLink/auth';
+import { authShareChatInit } from '@fastgpt/support/outLink/auth';
 
 /* init share chat window */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     let { shareId, authToken } = req.query as {
       shareId: string;
       authToken?: string;
@@ -19,10 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('params is error');
     }
 
-    await connectToDatabase();
-
     // get shareChat
-    const shareChat = await OutLink.findOne({ shareId });
+    const shareChat = await MongoOutLink.findOne({ shareId });
 
     if (!shareChat) {
       return jsonRes(res, {
@@ -38,8 +39,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userId: String(shareChat.userId),
         authOwner: false
       }),
-      User.findById(shareChat.userId, 'avatar'),
-      authShareChatInit(authToken, shareChat.limit?.hookUrl)
+      MongoUser.findById(shareChat.userId, 'avatar'),
+      authShareChatInit({
+        authToken,
+        tokenUrl: shareChat.limit?.hookUrl
+      })
     ]);
 
     jsonRes<InitShareChatResponse>(res, {

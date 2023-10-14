@@ -1,19 +1,19 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, OpenApi } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoOpenApi } from '@fastgpt/support/openapi/schema';
+import { authUser } from '@fastgpt/support/user/auth';
 import { customAlphabet } from 'nanoid';
 import type { EditApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId, name, limit } = req.body as EditApiKeyProps;
     const { userId } = await authUser({ req, authToken: true });
 
-    await connectToDatabase();
-
-    const count = await OpenApi.find({ userId, appId }).countDocuments();
+    const count = await MongoOpenApi.find({ userId, appId }).countDocuments();
 
     if (count >= 10) {
       throw new Error('最多 10 组 API 秘钥');
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid()}`;
 
-    await OpenApi.create({
+    await MongoOpenApi.create({
       userId,
       apiKey,
       appId,

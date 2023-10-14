@@ -1,9 +1,10 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@/service/utils/auth';
-import { connectToDatabase, KB } from '@/service/mongo';
-import { KbTypeEnum } from '@/constants/dataset';
+import { authUser } from '@fastgpt/support/user/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDataset } from '@fastgpt/core/dataset/schema';
+import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 
@@ -12,13 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     await authUser({ req, authRoot: true });
 
-    await KB.updateMany(
+    await MongoDataset.updateMany(
       {
         type: { $exists: false }
       },
       {
         $set: {
-          type: KbTypeEnum.dataset,
+          type: DatasetTypeEnum.dataset,
           parentId: null
         }
       }

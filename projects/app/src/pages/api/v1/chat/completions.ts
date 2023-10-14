@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase } from '@/service/mongo';
-import { authUser, authApp, AuthUserTypeEnum } from '@/service/utils/auth';
+import { authApp } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
+import { AuthUserTypeEnum } from '@fastgpt/support/user/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { addLog, withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -27,16 +28,17 @@ import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
-import { UserModelSchema } from '@/types/mongoSchema';
+import type { UserModelSchema } from '@fastgpt/support/user/type.d';
 import { SystemInputEnum } from '@/constants/app';
 import { getSystemTime } from '@/utils/user';
-import { authOutLinkChat } from '@/service/support/outLink/auth';
+import { authOutLinkChat } from '@fastgpt/support/outLink/auth';
+import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/support/outLink/tools';
 import requestIp from 'request-ip';
 import { replaceVariable } from '@/utils/common/tools/text';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { selectShareResponse } from '@/utils/service/core/chat';
-import { pushResult2Remote, updateOutLinkUsage } from '@/service/support/outLink';
-import { updateApiKeyUsage } from '@/service/support/openapi';
+import { updateApiKeyUsage } from '@fastgpt/support/openapi/tools';
+import { connectToDatabase } from '@/service/mongo';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -80,6 +82,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   } = req.body as Props;
 
   try {
+    await connectToDatabase();
     // body data check
     if (!messages) {
       throw new Error('Prams Error');
@@ -91,7 +94,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('messages is empty');
     }
 
-    await connectToDatabase();
     let startTime = Date.now();
 
     /* user auth */

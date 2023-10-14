@@ -12,7 +12,7 @@ import type {
   GetDatasetDataListProps
 } from '@/global/core/api/datasetReq.d';
 import type { SearchTestResponseType, PushDataResponse } from '@/global/core/api/datasetRes.d';
-import { KbTypeEnum } from '@/constants/dataset';
+import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import type { DatasetFileItemType } from '@/types/core/dataset/file';
 import type { GSFileInfoType } from '@/types/common/file';
 import type { QuoteItemType } from '@/types/chat';
@@ -21,7 +21,7 @@ import download from 'downloadjs';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
 
 /* ======================== dataset ======================= */
-export const getDatasets = (data: { parentId?: string; type?: `${KbTypeEnum}` }) =>
+export const getDatasets = (data: { parentId?: string; type?: `${DatasetTypeEnum}` }) =>
   GET<DatasetsItemType[]>(`/core/dataset/list`, data);
 
 /**

@@ -6,10 +6,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { getErrText } from '@/utils/tools';
 import { useTranslation } from 'react-i18next';
-import { formatPrice } from '@fastgpt/common/bill/index';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
-import { vectorModelList, chatModelList, qaModel } from '@/web/common/store/static';
+import { priceMd } from '@/web/common/store/static';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
@@ -70,10 +69,15 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       title={t('user.Pay')}
       isCentered={!payId}
     >
-      <ModalBody py={0}>
+      <ModalBody
+        p={0}
+        h={payId ? 'auto' : ['auto', '70vh']}
+        display={'flex'}
+        flexDirection={'column'}
+      >
         {!payId && (
           <>
-            <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4}>
+            <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4} px={6}>
               {[10, 20, 50, 100].map((item) => (
                 <Button
                   key={item}
@@ -84,7 +88,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                 </Button>
               ))}
             </Grid>
-            <Box mb={4}>
+            <Box mb={4} px={6}>
               <Input
                 value={inputVal}
                 type={'number'}
@@ -95,18 +99,9 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                 }}
               ></Input>
             </Box>
-            <Markdown
-              source={`
-| 计费项 | 价格: 元/ 1K tokens(包含上下文)|
-| --- | --- |
-${vectorModelList
-  .map((item) => `| 索引-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${chatModelList
-  .map((item) => `| 对话-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-| 文件QA拆分 | ${formatPrice(qaModel.price, 1000)} |`}
-            />
+            <Box flex={[1, '1 0 0']} overflow={'overlay'} px={6}>
+              <Markdown source={priceMd} />
+            </Box>
           </>
         )}
         {/* 付费二维码 */}

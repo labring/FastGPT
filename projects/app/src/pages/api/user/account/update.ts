@@ -1,20 +1,19 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { User } from '@/service/models/user';
-import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { MongoUser } from '@fastgpt/support/user/schema';
+import { authUser } from '@fastgpt/support/user/auth';
 import { UserUpdateParams } from '@/types/user';
 import { getAIApi, openaiBaseUrl } from '@fastgpt/core/ai/config';
+import { connectToDatabase } from '@/service/mongo';
 
 /* update user info */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    await connectToDatabase();
     const { avatar, timezone, openaiAccount } = req.body as UserUpdateParams;
 
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     // auth key
     if (openaiAccount?.key) {
@@ -35,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 更新对应的记录
-    await User.updateOne(
+    await MongoUser.updateOne(
       {
         _id: userId
       },

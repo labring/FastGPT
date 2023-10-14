@@ -2,7 +2,7 @@
   "SystemParams": {
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
-    "pgIvfflatProbe": 20
+    "pgHNSWEfSearch ": 40
   },
   "ChatModels": [
     {

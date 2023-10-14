@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import type { CreateQuestionGuideParams } from '@/global/core/api/aiReq.d';
 import { pushQuestionGuideBill } from '@/service/common/bill/push';
 import { defaultQGModel } from '@/pages/api/system/getInitData';

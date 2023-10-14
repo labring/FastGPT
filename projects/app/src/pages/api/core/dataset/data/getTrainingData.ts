@@ -1,19 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { TrainingModeEnum } from '@/constants/plugin';
-import { Types } from 'mongoose';
+import { Types } from '@fastgpt/common/mongo';
 import { startQueue } from '@/service/utils/tools';
 
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { kbId, init = false } = req.body as { kbId: string; init: boolean };
     if (!kbId) {
       throw new Error('参数错误');
     }
-    await connectToDatabase();
 
     const { userId } = await authUser({ req, authToken: true });
 

@@ -1,17 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, OpenApi } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoOpenApi } from '@fastgpt/support/openapi/schema';
+import { authUser } from '@fastgpt/support/user/auth';
 import type { GetApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId } = req.query as GetApiKeyProps;
     const { userId } = await authUser({ req, authToken: true });
 
-    await connectToDatabase();
-
-    const findResponse = await OpenApi.find({ userId, appId }).sort({ _id: -1 });
+    const findResponse = await MongoOpenApi.find({ userId, appId }).sort({ _id: -1 });
 
     jsonRes(res, {
       data: findResponse.map((item) => item.toObject())

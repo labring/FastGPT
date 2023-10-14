@@ -1,4 +1,5 @@
-import { Schema, model, models, Model } from 'mongoose';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
 import { BillSchema as BillType } from '@/types/common/bill';
 import { BillSourceMap } from '@/constants/user';
 

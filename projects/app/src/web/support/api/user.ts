@@ -1,5 +1,5 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
-import { createHashPassword } from '@/utils/tools';
+import { hashStr } from '@fastgpt/common/tools/str';
 import type { ResLogin, PromotionRecordType } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserType, UserUpdateParams } from '@/types/user';
@@ -11,7 +11,7 @@ export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
   googleToken: string;
-}) => POST(`/plusApi/user/inform/sendAuthCode`, data);
+}) => POST(`/plusApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
 export const oauthLogin = (params: {
@@ -19,7 +19,7 @@ export const oauthLogin = (params: {
   code: string;
   callbackUrl: string;
   inviterId?: string;
-}) => POST<ResLogin>('/plusApi/user/account/login/oauth', params);
+}) => POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
 
 export const postRegister = ({
   username,
@@ -32,11 +32,11 @@ export const postRegister = ({
   password: string;
   inviterId?: string;
 }) =>
-  POST<ResLogin>(`/plusApi/user/account/register/emailAndPhone`, {
+  POST<ResLogin>(`/plusApi/support/user/account/register/emailAndPhone`, {
     username,
     code,
     inviterId,
-    password: createHashPassword(password)
+    password: hashStr(password)
   });
 
 export const postFindPassword = ({
@@ -48,22 +48,22 @@ export const postFindPassword = ({
   code: string;
   password: string;
 }) =>
-  POST<ResLogin>(`/plusApi/user/account/password/updateByCode`, {
+  POST<ResLogin>(`/plusApi/support/user/account/password/updateByCode`, {
     username,
     code,
-    password: createHashPassword(password)
+    password: hashStr(password)
   });
 
 export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw: string }) =>
   POST('/user/account/updatePasswordByOld', {
-    oldPsw: createHashPassword(oldPsw),
-    newPsw: createHashPassword(newPsw)
+    oldPsw: hashStr(oldPsw),
+    newPsw: hashStr(newPsw)
   });
 
 export const postLogin = ({ username, password }: { username: string; password: string }) =>
   POST<ResLogin>('/user/account/loginByPassword', {
     username,
-    password: createHashPassword(password)
+    password: hashStr(password)
   });
 
 export const loginOut = () => GET('/user/account/loginout');

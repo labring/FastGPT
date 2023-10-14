@@ -5,9 +5,8 @@ const path = require('path');
 const nextConfig = {
   i18n,
   output: 'standalone',
-  reactStrictMode: false,
+  reactStrictMode: process.env.NODE_ENV === 'development' ? false : true,
   compress: true,
-  transpilePackages: ['@fastgpt/*'],
   webpack(config, { isServer }) {
     if (!isServer) {
       config.resolve = {
@@ -18,6 +17,16 @@ const nextConfig = {
         }
       };
     }
+    Object.assign(config.resolve.alias, {
+      '@mongodb-js/zstd': false,
+      '@aws-sdk/credential-providers': false,
+      snappy: false,
+      aws4: false,
+      'mongodb-client-encryption': false,
+      kerberos: false,
+      'supports-color': false,
+      'bson-ext': false
+    });
     config.module = {
       ...config.module,
       rules: config.module.rules.concat([
@@ -27,12 +36,15 @@ const nextConfig = {
           use: ['@svgr/webpack']
         }
       ]),
-      exprContextCritical: false
+      exprContextCritical: false,
+      unknownContextCritical: false
     };
 
     return config;
   },
+  transpilePackages: ['@fastgpt/*'],
   experimental: {
+    serverComponentsExternalPackages: ['mongoose'],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };

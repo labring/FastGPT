@@ -1,15 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
-import { Types } from 'mongoose';
+import { authUser } from '@fastgpt/support/user/auth';
+import { Types } from '@fastgpt/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    await connectToDatabase();
     const { appId, start, end } = req.body as { appId: string; start: number; end: number };
     const { userId } = await authUser({ req, authToken: true });
-
-    await connectToDatabase();
 
     const result = await Bill.aggregate([
       {

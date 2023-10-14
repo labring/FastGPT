@@ -9,8 +9,7 @@ ARG name
 # copy packages and one project
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY ./packages ./packages
-COPY ./projects/$name/package.json ./projects/$name/package.json
-COPY ./projects/$name/pnpm-lock.yaml ./projects/$name/pnpm-lock.yaml
+COPY ./projects/$name ./projects/$name
 
 RUN \
   [ -f pnpm-lock.yaml ] && pnpm install || \
@@ -27,10 +26,7 @@ ARG name
 # copy common node_modules and one project node_modules
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
-COPY ./projects/$name ./projects/$name
-COPY --from=deps /app/projects/$name/node_modules ./projects/$name/node_modules
-COPY pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY ./packages ./packages
+COPY --from=deps /app/projects/$name ./projects/$name
 
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1

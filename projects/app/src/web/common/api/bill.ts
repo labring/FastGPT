@@ -16,10 +16,10 @@ export const getPayCode = (amount: number) =>
   GET<{
     codeUrl: string;
     payId: string;
-  }>(`/plusApi/user/pay/getPayCode`, { amount });
+  }>(`/plusApi/support/user/pay/getPayCode`, { amount });
 
 export const checkPayResult = (payId: string) =>
-  GET<number>(`/plusApi/user/pay/checkPayResult`, { payId }).then(() => {
+  GET<number>(`/plusApi/support/user/pay/checkPayResult`, { payId }).then(() => {
     try {
       GET('/user/account/paySuccess');
     } catch (error) {}

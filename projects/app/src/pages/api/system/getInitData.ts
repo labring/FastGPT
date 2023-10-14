@@ -1,20 +1,25 @@
-import type { FeConfigsType, SystemEnvType } from '@/types';
+import type { SystemEnvType } from '@/types';
+import type { FeConfigsType } from '@fastgpt/common/type/index.d';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { readFileSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
-import { type VectorModelItemType, FunctionModelItemType } from '@/types/model';
+import type { VectorModelItemType, FunctionModelItemType } from '@/types/model';
+import { formatPrice } from '@fastgpt/common/bill';
+import { getTikTokenEnc } from '@/utils/common/tiktoken';
+import { initHttpAgent } from '@fastgpt/core/init';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!global.feConfigs) {
-    await getInitConfig();
-  }
+  getInitConfig();
+  getModelPrice();
+
   jsonRes<InitDateResponse>(res, {
     data: {
       feConfigs: global.feConfigs,
       chatModels: global.chatModels,
       qaModel: global.qaModel,
       vectorModels: global.vectorModels,
+      priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0'
     }
   });
@@ -23,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 const defaultSystemEnv: SystemEnvType = {
   vectorMaxProcess: 15,
   qaMaxProcess: 15,
-  pgIvfflatProbe: 20
+  pgHNSWEfSearch: 40
 };
 const defaultFeConfigs: FeConfigsType = {
   show_emptyChat: true,
@@ -104,7 +109,17 @@ const defaultVectorModels: VectorModelItemType[] = [
   }
 ];
 
-export async function getInitConfig() {
+export function initGlobal() {
+  // init tikToken
+  getTikTokenEnc();
+  initHttpAgent();
+  global.qaQueueLen = 0;
+  global.vectorQueueLen = 0;
+  global.sendInformQueue = [];
+  global.sendInformQueueLen = 0;
+}
+
+export function getInitConfig() {
   try {
     if (global.feConfigs) return;
 
@@ -143,6 +158,7 @@ export function setDefaultData() {
   global.extractModel = defaultExtractModel;
   global.cqModel = defaultCQModel;
   global.qgModel = defaultQGModel;
+  global.priceMd = '';
 }
 
 export function getSystemVersion() {
@@ -159,4 +175,22 @@ export function getSystemVersion() {
 
     global.systemVersion = '0.0.0';
   }
+}
+
+function getModelPrice() {
+  if (global.priceMd) return;
+  global.priceMd = `| 计费项 | 价格: 元/ 1K tokens(包含上下文)|
+| --- | --- |
+${global.vectorModels
+  ?.map((item) => `| 索引-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+${global.chatModels
+  ?.map((item) => `| 对话-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+| 文件QA拆分 | ${formatPrice(global.qaModel?.price, 1000)} |
+| 高级编排 - 问题分类 | ${formatPrice(global.cqModel?.price, 1000)} |
+| 高级编排 - 内容提取 | ${formatPrice(global.extractModel?.price, 1000)} |
+| 下一步指引 | ${formatPrice(global.qgModel?.price, 1000)} |
+`;
+  console.log(global.priceMd);
 }

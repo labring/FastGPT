@@ -66,7 +66,7 @@ git clone git@github.com:<github_username>/FastGPT.git
 
 - `vectorMaxProcess`: 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
 - `qaMaxProcess`: QA 生成最大进程
-- `pgIvfflatProbe`: PostgreSQL vector 搜索探针，没有添加 vector 索引时可忽略。
+- `pgHNSWEfSearch`: PostgreSQL vector 索引参数，越大搜索精度越高但是速度越慢，具体可看 pgvector 官方说明。
 
 ### 5. 运行
 

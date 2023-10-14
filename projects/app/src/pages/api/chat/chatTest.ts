@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { sseErrRes } from '@/service/response';
 import { sseResponseEventEnum } from '@/constants/chat';
 import { sseResponse } from '@/service/utils/tools';
@@ -30,14 +30,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let { modules = [], history = [], prompt, variables = {}, appName, appId } = req.body as Props;
   try {
+    await connectToDatabase();
     if (!history || !modules || !prompt) {
       throw new Error('Prams Error');
     }
     if (!Array.isArray(modules)) {
       throw new Error('history is not array');
     }
-
-    await connectToDatabase();
 
     /* user auth */
     const { userId, user } = await authUser({ req, authToken: true, authBalance: true });

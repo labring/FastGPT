@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@/service/utils/auth';
+import { authUser } from '@fastgpt/support/user/auth';
 import { connectToDatabase, App } from '@/service/mongo';
 import { FlowInputItemTypeEnum, FlowModuleTypeEnum } from '@/constants/flow';
 import { SystemInputEnum } from '@/constants/app';

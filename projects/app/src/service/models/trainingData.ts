@@ -1,5 +1,6 @@
 /* 模型的知识库 */
-import { Schema, model, models, Model as MongoModel } from 'mongoose';
+import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+const { Schema, model, models } = connectionMongo;
 import { TrainingDataSchema as TrainingDateType } from '@/types/mongoSchema';
 import { TrainingTypeMap } from '@/constants/plugin';
 
@@ -68,5 +69,5 @@ try {
   console.log(error);
 }
 
-export const TrainingData: MongoModel<TrainingDateType> =
+export const TrainingData: Model<TrainingDateType> =
   models['trainingData'] || model('trainingData', TrainingDataSchema);
