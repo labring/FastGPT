@@ -63,5 +63,6 @@ export type AuthShareChatInitProps = {
 };
 
 export function authShareChatInit(data: AuthShareChatInitProps) {
+  if (!global.feConfigs?.isPlus) return;
   return POST('/support/outLink/authShareChatInit', data);
 }

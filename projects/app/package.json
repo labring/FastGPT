@@ -42,8 +42,6 @@
     "mermaid": "^10.2.3",
     "multer": "1.4.5-lts.1",
     "nanoid": "^4.0.1",
-    "next": "13.5.2",
-    "nextjs-cors": "^2.1.2",
     "nprogress": "^0.2.0",
     "papaparse": "^5.4.1",
     "pg": "^8.10.0",
@@ -65,7 +63,8 @@
     "zustand": "^4.3.5",
     "i18next": "^23.2.11",
     "react-i18next": "^13.0.2",
-    "next-i18next": "^14.0.0"
+    "next-i18next": "^14.0.0",
+    "next": "13.5.2"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",

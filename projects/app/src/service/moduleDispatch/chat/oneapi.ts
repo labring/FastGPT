@@ -20,7 +20,7 @@ import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { responseWrite, responseWriteController } from '@/service/common/stream';
+import { responseWrite, responseWriteController } from '@fastgpt/common/tools/stream';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
@@ -110,6 +110,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     model,
     temperature,
     max_tokens,
+    stream,
     messages: [
       ...(modelConstantsData.defaultSystem
         ? [
@@ -120,8 +121,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           ]
         : []),
       ...messages
-    ],
-    stream
+    ]
   });
 
   const { answerText, totalTokens, completeMessages } = await (async () => {
@@ -349,7 +349,7 @@ async function streamResponse({
       stream.controller?.abort();
       break;
     }
-    const content = part.choices[0]?.delta?.content || '';
+    const content = part.choices?.[0]?.delta?.content || '';
     answer += content;
 
     responseWrite({

@@ -7,7 +7,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authDataset } from '@/service/utils/auth';
 import { authUser } from '@fastgpt/support/user/auth';
-import { withNextCors } from '@/service/utils/tools';
+import { withNextCors } from '@fastgpt/common/tools/nextjs';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { insertData2Dataset, PgClient } from '@/service/pg';
 import { getVectorModel } from '@/service/utils/data';

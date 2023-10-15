@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/support/user/auth';
 import { sseErrRes } from '@/service/response';
 import { sseResponseEventEnum } from '@/constants/chat';
-import { sseResponse } from '@/service/utils/tools';
+import { responseWrite } from '@fastgpt/common/tools/stream';
 import { AppModuleItemType } from '@/types/app';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { pushChatBill } from '@/service/common/bill/push';
@@ -59,12 +59,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       detail: true
     });
 
-    sseResponse({
+    responseWrite({
       res,
       event: sseResponseEventEnum.answer,
       data: '[DONE]'
     });
-    sseResponse({
+    responseWrite({
       res,
       event: sseResponseEventEnum.appStreamResponse,
       data: JSON.stringify(responseData)

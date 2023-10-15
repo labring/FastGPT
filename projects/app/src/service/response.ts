@@ -1,7 +1,9 @@
 import { sseResponseEventEnum } from '@/constants/chat';
 import { NextApiResponse } from 'next';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
-import { clearCookie, sseResponse, addLog } from './utils/tools';
+import { addLog } from './utils/tools';
+import { clearCookie } from '@fastgpt/support/user/auth';
+import { responseWrite } from '@fastgpt/common/tools/stream';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -66,7 +68,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
       clearCookie(res);
     }
 
-    return sseResponse({
+    return responseWrite({
       res,
       event: sseResponseEventEnum.error,
       data: JSON.stringify(ERROR_RESPONSE[errResponseKey])
@@ -86,7 +88,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
 
   addLog.error(`sse error: ${msg}`, error);
 
-  sseResponse({
+  responseWrite({
     res,
     event: sseResponseEventEnum.error,
     data: JSON.stringify({ message: msg })

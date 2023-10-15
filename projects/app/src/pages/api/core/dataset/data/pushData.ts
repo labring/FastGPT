@@ -5,7 +5,7 @@ import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { authUser } from '@fastgpt/support/user/auth';
 import { authDataset } from '@/service/utils/auth';
-import { withNextCors } from '@/service/utils/tools';
+import { withNextCors } from '@fastgpt/common/tools/nextjs';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { getVectorModel } from '@/service/utils/data';

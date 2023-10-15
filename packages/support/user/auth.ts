@@ -1,8 +1,8 @@
+import type { NextApiResponse, NextApiRequest } from 'next';
 import Cookie from 'cookie';
-import { authJWT } from './tools';
+import jwt from 'jsonwebtoken';
 import { authOpenApiKey } from '../openapi/auth';
 import { authOutLinkId } from '../outLink/auth';
-
 import { MongoUser } from './schema';
 import type { UserModelSchema } from './type.d';
 import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
@@ -39,7 +39,7 @@ export const authUser = async ({
   authBalance = false,
   authOutLink
 }: {
-  req: any;
+  req: NextApiRequest;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
@@ -164,4 +164,43 @@ export const authUser = async ({
     user,
     apikey: openApiKey
   };
+};
+
+/* 生成 token */
+export function generateToken(userId: string) {
+  const key = process.env.TOKEN_KEY as string;
+  const token = jwt.sign(
+    {
+      userId,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
+    },
+    key
+  );
+  return token;
+}
+// auth token
+export function authJWT(token: string) {
+  return new Promise<string>((resolve, reject) => {
+    const key = process.env.TOKEN_KEY as string;
+
+    jwt.verify(token, key, function (err, decoded: any) {
+      if (err || !decoded?.userId) {
+        reject(ERROR_ENUM.unAuthorization);
+        return;
+      }
+      resolve(decoded.userId);
+    });
+  });
+}
+
+/* set cookie */
+export const setCookie = (res: NextApiResponse, token: string) => {
+  res.setHeader(
+    'Set-Cookie',
+    `token=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=None; Secure;`
+  );
+};
+/* clear cookie */
+export const clearCookie = (res: NextApiResponse) => {
+  res.setHeader('Set-Cookie', 'token=; Path=/; Max-Age=0');
 };

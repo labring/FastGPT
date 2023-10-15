@@ -35,6 +35,12 @@ importers:
       mongoose:
         specifier: ^7.0.2
         version: registry.npmmirror.com/mongoose@7.0.2
+      next:
+        specifier: 13.5.2
+        version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
+      nextjs-cors:
+        specifier: ^2.1.2
+        version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
       winston:
         specifier: ^3.10.0
         version: registry.npmmirror.com/winston@3.10.0
@@ -54,12 +60,9 @@ importers:
       '@fastgpt/support':
         specifier: workspace:*
         version: link:../support
-      encoding:
-        specifier: ^0.1.13
-        version: registry.npmmirror.com/encoding@0.1.13
       openai:
-        specifier: ^4.11.1
-        version: registry.npmmirror.com/openai@4.11.1(encoding@0.1.13)
+        specifier: ^4.12.1
+        version: registry.npmmirror.com/openai@4.12.1
       tunnel:
         specifier: ^0.0.6
         version: registry.npmmirror.com/tunnel@0.0.6
@@ -82,6 +85,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: registry.npmmirror.com/jsonwebtoken@9.0.2
+      next:
+        specifier: 13.5.2
+        version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
     devDependencies:
       '@types/cookie':
         specifier: ^0.5.2
@@ -200,9 +206,6 @@ importers:
       next-i18next:
         specifier: ^14.0.0
         version: registry.npmmirror.com/next-i18next@14.0.3(i18next@23.5.1)(next@13.5.2)(react-i18next@13.2.2)(react@18.2.0)
-      nextjs-cors:
-        specifier: ^2.1.2
-        version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
       nprogress:
         specifier: ^0.2.0
         version: registry.npmmirror.com/nprogress@0.2.0
@@ -6401,14 +6404,6 @@ packages:
     version: 2.0.0
     dev: false
 
-  registry.npmmirror.com/encoding@0.1.13:
-    resolution: {integrity: sha512-ETBauow1T35Y/WZMkio9jiM0Z5xjHHmJ4XmjZOq1l/dXz3lr2sRn87nJy20RupqSh1F2m3HHPSp8ShIPQJrJ3A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/encoding/-/encoding-0.1.13.tgz}
-    name: encoding
-    version: 0.1.13
-    dependencies:
-      iconv-lite: registry.npmmirror.com/iconv-lite@0.6.3
-    dev: false
-
   registry.npmmirror.com/enhanced-resolve@5.15.0:
     resolution: {integrity: sha512-LXYT42KJ7lpIKECr2mAXIaMldcNCh/7E0KBKOu4KSfkHmP+mZmSs+8V5gBAqisWBy0OO4W5Oyys0GO1Y8KtdKg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/enhanced-resolve/-/enhanced-resolve-5.15.0.tgz}
     name: enhanced-resolve
@@ -9403,9 +9398,8 @@ packages:
     engines: {node: '>=10.5.0'}
     dev: false
 
-  registry.npmmirror.com/node-fetch@2.7.0(encoding@0.1.13):
+  registry.npmmirror.com/node-fetch@2.7.0:
     resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/node-fetch/-/node-fetch-2.7.0.tgz}
-    id: registry.npmmirror.com/node-fetch/2.7.0
     name: node-fetch
     version: 2.7.0
     engines: {node: 4.x || >=6.0.0}
@@ -9415,7 +9409,6 @@ packages:
       encoding:
         optional: true
     dependencies:
-      encoding: registry.npmmirror.com/encoding@0.1.13
       whatwg-url: registry.npmmirror.com/whatwg-url@5.0.0
     dev: false
 
@@ -9581,11 +9574,10 @@ packages:
       mimic-fn: registry.npmmirror.com/mimic-fn@4.0.0
     dev: true
 
-  registry.npmmirror.com/openai@4.11.1(encoding@0.1.13):
-    resolution: {integrity: sha512-GU0HQWbejXuVAQlDjxIE8pohqnjptFDIm32aPlNT1H9ucMz1VJJD0DaTJRQsagNaJ97awWjjVLEG7zCM6sm4SA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-4.11.1.tgz}
-    id: registry.npmmirror.com/openai/4.11.1
+  registry.npmmirror.com/openai@4.12.1:
+    resolution: {integrity: sha512-EAoUwm4dtiWvFwBhOCK/VfF8sj1ZU8+aAIJnfT4NyeTfrt1DM/6Gdd6fOZWTjBYryTAqu9Vpb5+9Wu6JMtm/gA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-4.12.1.tgz}
     name: openai
-    version: 4.11.1
+    version: 4.12.1
     hasBin: true
     dependencies:
       '@types/node': registry.npmmirror.com/@types/node@18.18.5
@@ -9595,7 +9587,7 @@ packages:
       digest-fetch: registry.npmmirror.com/digest-fetch@1.3.0
       form-data-encoder: registry.npmmirror.com/form-data-encoder@1.7.2
       formdata-node: registry.npmmirror.com/formdata-node@4.4.1
-      node-fetch: registry.npmmirror.com/node-fetch@2.7.0(encoding@0.1.13)
+      node-fetch: registry.npmmirror.com/node-fetch@2.7.0
     transitivePeerDependencies:
       - encoding
     dev: false
