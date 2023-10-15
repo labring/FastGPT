@@ -12,7 +12,7 @@ export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: 
   const tempMarker = 'SPLIT_HERE_SPLIT_HERE';
 
   const stepReg: Record<number, RegExp> = {
-    0: /(\n)/g,
+    0: /([\n\r])/g,
     1: /([。]|\.\s)/g,
     2: /([！？]|!\s|\?\s)/g,
     3: /([；]|;\s)/g,
@@ -43,7 +43,6 @@ export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: 
       .filter((part) => part);
 
     let chunks: string[] = [];
-
     let preChunk = '';
     let chunk = '';
     for (let i = 0; i < splitTexts.length; i++) {
