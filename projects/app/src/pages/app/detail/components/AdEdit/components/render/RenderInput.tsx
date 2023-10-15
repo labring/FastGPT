@@ -442,6 +442,39 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
 }: RenderProps) {
   const { onChangeNode } = useFlowStore();
 
+  function onChangeModel(e: string) {
+    {
+      onChangeNode({
+        moduleId,
+        type: 'inputs',
+        key: item.key,
+        value: {
+          ...item,
+          value: e
+        }
+      });
+
+      // update max tokens
+      const model = chatModelList.find((item) => item.model === e) || chatModelList[0];
+      if (!model) return;
+
+      onChangeNode({
+        moduleId,
+        type: 'inputs',
+        key: 'maxToken',
+        value: {
+          ...inputs.find((input) => input.key === 'maxToken'),
+          markList: [
+            { label: '100', value: 100 },
+            { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
+          ],
+          max: model.contextMaxToken,
+          value: model.contextMaxToken / 2
+        }
+      });
+    }
+  }
+
   const list = chatModelList.map((item) => {
     const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
 
@@ -451,43 +484,11 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
     };
   });
 
-  return (
-    <MySelect
-      width={'100%'}
-      value={item.value}
-      list={list}
-      onchange={(e) => {
-        onChangeNode({
-          moduleId,
-          type: 'inputs',
-          key: item.key,
-          value: {
-            ...item,
-            value: e
-          }
-        });
+  if (!item.value && list.length > 0) {
+    onChangeModel(list[0].value);
+  }
 
-        // update max tokens
-        const model = chatModelList.find((item) => item.model === e) || chatModelList[0];
-        if (!model) return;
-
-        onChangeNode({
-          moduleId,
-          type: 'inputs',
-          key: 'maxToken',
-          value: {
-            ...inputs.find((input) => input.key === 'maxToken'),
-            markList: [
-              { label: '100', value: 100 },
-              { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
-            ],
-            max: model.contextMaxToken,
-            value: model.contextMaxToken / 2
-          }
-        });
-      }}
-    />
-  );
+  return <MySelect width={'100%'} value={item.value} list={list} onchange={onChangeModel} />;
 });
 
 var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, moduleId }: RenderProps) {
