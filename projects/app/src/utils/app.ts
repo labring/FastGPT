@@ -336,7 +336,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     outputs: [
       {
         key: 'answerText',
-        label: '模型回复',
+        label: 'AI回复',
         description: '直接响应，无需配置',
         type: 'hidden',
         targets: []
@@ -541,7 +541,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     outputs: [
       {
         key: 'answerText',
-        label: '模型回复',
+        label: 'AI回复',
         description: '直接响应，无需配置',
         type: 'hidden',
         targets: []

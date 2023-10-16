@@ -229,7 +229,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: TaskResponseKeyEnum.answerText,
-      label: '模型回复',
+      label: 'AI回复',
       description: '将在 stream 回复完毕后触发',
       valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
@@ -517,7 +517,7 @@ export const AppModule: FlowModuleTemplateType = {
     },
     {
       key: TaskResponseKeyEnum.answerText,
-      label: '模型回复',
+      label: 'AI回复',
       description: '将在应用完全结束后触发',
       valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
@@ -770,7 +770,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '直接响应，无需配置',
             type: 'hidden',
             targets: []
@@ -1107,7 +1107,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '直接响应，无需配置',
             type: 'hidden',
             targets: []
@@ -1414,7 +1414,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '将在 stream 回复完毕后触发',
             valueType: 'string',
             type: 'source',
@@ -1876,7 +1876,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '将在 stream 回复完毕后触发',
             valueType: 'string',
             type: 'source',
