@@ -80,7 +80,7 @@ async function functionCall({
     {
       obj: ChatRoleEnum.Human,
       value: systemPrompt
-        ? `背景知识:
+        ? `补充的背景知识:
 """
 ${systemPrompt}
 """
@@ -89,6 +89,7 @@ ${systemPrompt}
         : userChatInput
     }
   ];
+
   const filterMessages = ChatContextFilter({
     messages,
     maxTokens: cqModel.maxToken
@@ -98,7 +99,7 @@ ${systemPrompt}
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: '判断用户的问题类型，并返回对应的字段',
+    description: '请根据对话记录及补充的背景知识，判断用户的问题类型，并返回对应的字段',
     parameters: {
       type: 'object',
       properties: {
