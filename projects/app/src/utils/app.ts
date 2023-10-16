@@ -36,6 +36,7 @@ export const getDefaultAppForm = (): EditFormType => {
       model: defaultChatModel?.model,
       systemPrompt: '',
       temperature: 0,
+      [SystemInputEnum.isResponseAnswerText]: true,
       quotePrompt: '',
       quoteTemplate: '',
       maxToken: defaultChatModel ? defaultChatModel.contextMaxToken / 2 : 4000,
@@ -183,6 +184,13 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
     value: formData.chatModel.systemPrompt || '',
     type: 'textarea',
     label: '系统提示词',
+    connected: true
+  },
+  {
+    key: SystemInputEnum.isResponseAnswerText,
+    value: true,
+    type: 'hidden',
+    label: '返回AI内容',
     connected: true
   },
   {

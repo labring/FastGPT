@@ -53,6 +53,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       history = [],
       quoteQA = [],
       userChatInput,
+      isResponseAnswerText = true,
       systemPrompt = '',
       limitPrompt,
       quoteTemplate,
@@ -62,6 +63,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
+
+  stream = stream && isResponseAnswerText;
 
   // temperature adapt
   const modelConstantsData = getChatModel(model);

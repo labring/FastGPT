@@ -186,8 +186,8 @@ const RenderInput = ({
                 {item.type === FlowInputItemTypeEnum.selectApp && (
                   <SelectAppRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.quoteList && (
-                  <QuoteListRender inputs={sortInputs} item={item} moduleId={moduleId} />
+                {item.type === FlowInputItemTypeEnum.aiSettings && (
+                  <AISetting inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowInputItemTypeEnum.maxToken && (
                   <MaxTokenRender inputs={sortInputs} item={item} moduleId={moduleId} />
@@ -343,7 +343,7 @@ var SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderPr
   );
 });
 
-var QuoteListRender = React.memo(function QuoteListRender({ inputs = [], moduleId }: RenderProps) {
+var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderProps) {
   const { onChangeNode } = useFlowStore();
   const { t } = useTranslation();
   const chatModulesData = useMemo(() => {
@@ -367,10 +367,11 @@ var QuoteListRender = React.memo(function QuoteListRender({ inputs = [], moduleI
         leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
         onClick={onOpenAIChatSetting}
       >
-        {t('app.Quote Prompt Settings')}
+        {t('app.AI Settings')}
       </Button>
       {isOpenAIChatSetting && (
         <AIChatSettingsModal
+          isAdEdit
           onClose={onCloseAIChatSetting}
           onSuccess={(e) => {
             for (let key in e) {

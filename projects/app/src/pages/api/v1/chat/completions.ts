@@ -324,13 +324,16 @@ export async function dispatchModules({
   let chatAnswerText = ''; // AI answer
   let runningTime = Date.now();
 
-  function pushStore({
-    answerText = '',
-    responseData
-  }: {
-    answerText?: string;
-    responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
-  }) {
+  function pushStore(
+    { inputs = [] }: RunningModuleItemType,
+    {
+      answerText = '',
+      responseData
+    }: {
+      answerText?: string;
+      responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
+    }
+  ) {
     const time = Date.now();
     if (responseData) {
       if (Array.isArray(responseData)) {
@@ -343,7 +346,12 @@ export async function dispatchModules({
       }
     }
     runningTime = time;
-    chatAnswerText += answerText;
+
+    const isResponseAnswerText =
+      inputs.find((item) => item.key === SystemInputEnum.isResponseAnswerText)?.value ?? true;
+    if (isResponseAnswerText) {
+      chatAnswerText += answerText;
+    }
   }
   function moduleInput(
     module: RunningModuleItemType,
@@ -377,7 +385,7 @@ export async function dispatchModules({
     module: RunningModuleItemType,
     result: Record<string, any> = {}
   ): Promise<any> {
-    pushStore(result);
+    pushStore(module, result);
     return Promise.all(
       module.outputs.map((outputItem) => {
         if (result[outputItem.key] === undefined) return;

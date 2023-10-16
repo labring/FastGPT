@@ -143,7 +143,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'temperature',
-      type: FlowInputItemTypeEnum.slider,
+      type: FlowInputItemTypeEnum.hidden,
       label: '温度',
       value: 0,
       min: 0,
@@ -156,7 +156,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'maxToken',
-      type: FlowInputItemTypeEnum.maxToken,
+      type: FlowInputItemTypeEnum.hidden,
       label: '回复上限',
       value: chatModelList[0] ? chatModelList[0].contextMaxToken / 2 : 2000,
       min: 100,
@@ -171,6 +171,12 @@ export const ChatModule: FlowModuleTemplateType = {
       ]
     },
     {
+      key: 'aiSettings',
+      type: FlowInputItemTypeEnum.aiSettings,
+      label: '',
+      connected: false
+    },
+    {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
       label: '系统提示词',
@@ -179,6 +185,13 @@ export const ChatModule: FlowModuleTemplateType = {
       description: ChatModelSystemTip,
       placeholder: ChatModelSystemTip,
       value: ''
+    },
+    {
+      key: SystemInputEnum.isResponseAnswerText,
+      type: FlowInputItemTypeEnum.hidden,
+      label: '返回AI内容',
+      valueType: FlowValueTypeEnum.boolean,
+      value: true
     },
     {
       key: 'quoteTemplate',
@@ -196,7 +209,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'quoteQA',
-      type: FlowInputItemTypeEnum.quoteList,
+      type: FlowInputItemTypeEnum.target,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
       valueType: FlowValueTypeEnum.kbQuote,
