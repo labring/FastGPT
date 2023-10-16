@@ -158,7 +158,7 @@ export const pushGenerateVectorBill = async ({
         {
           moduleName: '索引生成',
           amount: total,
-          model: vectorModel.model,
+          model: vectorModel.name,
           tokenLen
         }
       ]

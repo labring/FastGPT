@@ -1,6 +1,6 @@
 ---
-title: "AI高级配置说明"
-description: "FastGPT AI高级配置说明"
+title: "AI 高级配置说明"
+description: "FastGPT AI 高级配置说明"
 icon: "sign_language"
 draft: false
 toc: true
