@@ -16,10 +16,14 @@ import {
 } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { defaultQuotePrompt, defaultQuoteTemplate } from '@/global/core/prompt/AIChat';
+import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import { chatModelList, feConfigs } from '@/web/common/store/static';
 import MySlider from '@/components/Slider';
 import { SystemInputEnum } from '@/constants/app';
+import dynamic from 'next/dynamic';
+import { PromptTemplateItem } from '@fastgpt/core/ai/type';
+
+const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
 const AIChatSettingsModal = ({
   isAdEdit,
@@ -39,14 +43,22 @@ const AIChatSettingsModal = ({
     defaultValues: defaultData
   });
 
+  const [selectTemplateData, setSelectTemplateData] = useState<{
+    title: string;
+    key: 'quoteTemplate' | 'quotePrompt';
+    templates: PromptTemplateItem[];
+  }>();
+
   const tokenLimit = useMemo(() => {
     return chatModelList.find((item) => item.model === getValues('model'))?.contextMaxToken || 4000;
   }, [getValues, refresh]);
 
   const LabelStyles: BoxProps = {
-    whiteSpace: 'nowrap',
-    w: '80px',
     fontSize: ['sm', 'md']
+  };
+  const selectTemplateBtn: BoxProps = {
+    color: 'myBlue.600',
+    cursor: 'pointer'
   };
 
   return (
@@ -76,7 +88,9 @@ const AIChatSettingsModal = ({
       <ModalBody flex={['1 0 0', 'auto']} overflowY={'auto'}>
         {isAdEdit && (
           <Flex alignItems={'center'}>
-            <Box {...LabelStyles}>返回AI内容</Box>
+            <Box {...LabelStyles} w={'80px'}>
+              返回AI内容
+            </Box>
             <Box flex={1} ml={'10px'}>
               <Switch
                 isChecked={getValues(SystemInputEnum.isResponseAnswerText)}
@@ -91,7 +105,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         <Flex alignItems={'center'} mb={10} mt={isAdEdit ? 8 : 5}>
-          <Box {...LabelStyles} mr={2}>
+          <Box {...LabelStyles} mr={2} w={'80px'}>
             温度
           </Box>
           <Box flex={1} ml={'10px'}>
@@ -112,7 +126,7 @@ const AIChatSettingsModal = ({
           </Box>
         </Flex>
         <Flex alignItems={'center'} mt={12} mb={10}>
-          <Box {...LabelStyles} mr={2}>
+          <Box {...LabelStyles} mr={2} w={'80px'}>
             回复上限
           </Box>
           <Box flex={1} ml={'10px'}>
@@ -134,35 +148,67 @@ const AIChatSettingsModal = ({
           </Box>
         </Flex>
         <Box>
-          <Box {...LabelStyles} mb={1}>
+          <Flex {...LabelStyles} mb={1}>
             引用内容模板
             <MyTooltip
-              label={t('template.Quote Content Tip', { default: defaultQuoteTemplate })}
+              label={t('template.Quote Content Tip', {
+                default: Prompt_QuoteTemplateList[0].value
+              })}
               forceShow
             >
               <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
             </MyTooltip>
-          </Box>
+            <Box flex={1} />
+            <Box
+              {...selectTemplateBtn}
+              onClick={() =>
+                setSelectTemplateData({
+                  title: '选择引用内容模板',
+                  key: 'quoteTemplate',
+                  templates: Prompt_QuoteTemplateList
+                })
+              }
+            >
+              选择模板
+            </Box>
+          </Flex>
           <Textarea
             rows={6}
-            placeholder={t('template.Quote Content Tip', { default: defaultQuoteTemplate }) || ''}
+            placeholder={
+              t('template.Quote Content Tip', { default: Prompt_QuoteTemplateList[0].value }) || ''
+            }
             borderColor={'myGray.100'}
             {...register('quoteTemplate')}
           />
         </Box>
         <Box mt={4}>
-          <Box {...LabelStyles} mb={1}>
+          <Flex {...LabelStyles} mb={1}>
             引用内容提示词
             <MyTooltip
-              label={t('template.Quote Prompt Tip', { default: defaultQuotePrompt })}
+              label={t('template.Quote Prompt Tip', { default: Prompt_QuotePromptList[0].value })}
               forceShow
             >
               <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
             </MyTooltip>
-          </Box>
+            <Box flex={1} />
+            <Box
+              {...selectTemplateBtn}
+              onClick={() =>
+                setSelectTemplateData({
+                  title: '选择引用提示词模板',
+                  key: 'quotePrompt',
+                  templates: Prompt_QuotePromptList
+                })
+              }
+            >
+              选择模板
+            </Box>
+          </Flex>
           <Textarea
             rows={11}
-            placeholder={t('template.Quote Prompt Tip', { default: defaultQuotePrompt }) || ''}
+            placeholder={
+              t('template.Quote Prompt Tip', { default: Prompt_QuotePromptList[0].value }) || ''
+            }
             borderColor={'myGray.100'}
             {...register('quotePrompt')}
           />
@@ -176,6 +222,14 @@ const AIChatSettingsModal = ({
           {t('Confirm')}
         </Button>
       </ModalFooter>
+      {!!selectTemplateData && (
+        <PromptTemplate
+          title={selectTemplateData.title}
+          templates={selectTemplateData.templates}
+          onClose={() => setSelectTemplateData(undefined)}
+          onSuccess={(e) => setValue(selectTemplateData.key, e)}
+        />
+      )}
     </MyModal>
   );
 };

@@ -15,7 +15,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant'
 import { AppModuleItemType } from '@/types/app';
 import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
-import { defaultQuotePrompt, defaultQuoteTemplate } from '@/global/core/prompt/AIChat';
+import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';
@@ -201,7 +201,7 @@ function filterQuote({
     maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
-      value: replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+      value: replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
         ...item,
         index: index + 1
       })
@@ -215,7 +215,7 @@ function filterQuote({
     filterQuoteQA.length > 0
       ? `${filterQuoteQA
           .map((item, index) =>
-            replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+            replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
               ...item,
               index: `${index + 1}`
             })
@@ -246,7 +246,7 @@ function getChatMessages({
   model: ChatModelItemType;
 }) {
   const question = quoteText
-    ? replaceVariable(quotePrompt || defaultQuotePrompt, {
+    ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
         quote: quoteText,
         question: userChatInput
       })
