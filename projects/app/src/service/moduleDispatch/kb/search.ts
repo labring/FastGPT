@@ -8,6 +8,7 @@ import type { QuoteItemType } from '@/types/chat';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import { ModelTypeEnum } from '@/service/core/ai/model';
 type KBSearchProps = ModuleDispatchProps<{
   kbList: SelectedDatasetType;
   similarity: number;
@@ -66,7 +67,11 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
     responseData: {
       moduleType: FlowModuleTypeEnum.kbSearchNode,
       moduleName,
-      price: countModelPrice({ model: vectorModel.model, tokens: tokenLen }),
+      price: countModelPrice({
+        model: vectorModel.model,
+        tokens: tokenLen,
+        type: ModelTypeEnum.vector
+      }),
       model: vectorModel.name,
       tokens: tokenLen,
       similarity,

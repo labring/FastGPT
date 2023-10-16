@@ -39,7 +39,7 @@ export const getDefaultAppForm = (): EditFormType => {
       [SystemInputEnum.isResponseAnswerText]: true,
       quotePrompt: '',
       quoteTemplate: '',
-      maxToken: defaultChatModel ? defaultChatModel.contextMaxToken / 2 : 4000,
+      maxToken: defaultChatModel ? defaultChatModel.maxToken / 2 : 4000,
       frequency: 0.5,
       presence: -0.5
     },

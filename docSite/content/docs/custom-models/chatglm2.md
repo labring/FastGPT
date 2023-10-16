@@ -107,11 +107,11 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
   {
     "model": "chatglm2",
     "name": "chatglm2",
-    "contextMaxToken": 8000,
+    "maxToken": 8000,
+    "price": 0,
     "quoteMaxToken": 4000,
     "maxTemperature": 1.2,
-    "price": 0,
-    "defaultSystem": ""
+    "defaultSystemChatPrompt": ""
   }
 ]
 ```

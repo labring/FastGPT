@@ -139,6 +139,21 @@ docker-compose 端口定义为：`映射端口:运行端口`。
 
 （自行补习 docker 基本知识）
 
+### relation "modeldata" does not exist
+
+PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会在每次连接上 PG 时进行表初始化，如果报错会有对应日志。
+
+1. 检查数据库容器是否正常启动
+2. 非 docker 部署的，需要手动安装 pg vector 插件
+3. 查看 fastgpt 日志，有没有相关报错
+
+### Operation `auth_codes.findOne()` buffering timed out after 10000ms
+
+mongo连接失败，检查
+1. mongo 服务有没有起来(有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以dockerhub找个最新的4.x，修改镜像版本，重新运行）
+2. 环境变量（账号密码，注意host和port）
+
+
 ### 错误排查方式
 
 遇到问题先按下面方式排查。

@@ -10,9 +10,11 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { replaceVariable } from '@/utils/common/tools/text';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
-import { defaultCQModel } from '@/pages/api/system/getInitData';
+import { FunctionModelItemType } from '@/types/model';
+import { getCQModel } from '@/service/core/ai/model';
 
 type Props = ModuleDispatchProps<{
+  model: string;
   systemPrompt?: string;
   history?: ChatItemType[];
   [SystemInputEnum.userChatInput]: string;
@@ -30,20 +32,27 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const {
     moduleName,
     user,
-    inputs: { agents, userChatInput }
+    inputs: { model, agents, userChatInput }
   } = props as Props;
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
 
-  const cqModel = global.cqModel || defaultCQModel;
+  const cqModel = getCQModel(model);
+  console.log(cqModel, model);
 
   const { arg, tokens } = await (async () => {
     if (cqModel.functionCall) {
-      return functionCall(props);
+      return functionCall({
+        ...props,
+        cqModel
+      });
     }
-    return completions(props);
+    return completions({
+      ...props,
+      cqModel
+    });
   })();
 
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
@@ -64,23 +73,21 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
 async function functionCall({
   user,
+  cqModel,
   inputs: { agents, systemPrompt, history = [], userChatInput }
-}: Props) {
-  const cqModel = global.cqModel;
-
+}: Props & { cqModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
-    ...(systemPrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: systemPrompt
-          }
-        ]
-      : []),
     ...history,
     {
       obj: ChatRoleEnum.Human,
-      value: userChatInput
+      value: systemPrompt
+        ? `背景知识:
+"""
+${systemPrompt}
+"""
+我的问题: ${userChatInput}
+      `
+        : userChatInput
     }
   ];
   const filterMessages = ChatContextFilter({
@@ -89,20 +96,21 @@ async function functionCall({
   });
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
-  //   function body
+  // function body
   const agentFunction = {
     name: agentFunName,
-    description: '判断用户问题的类型属于哪方面，返回对应的字段',
+    description: '判断用户的问题类型，并返回对应的字段',
     parameters: {
       type: 'object',
       properties: {
         type: {
           type: 'string',
-          description: agents.map((item) => `${item.value}，返回：'${item.key}'`).join('；'),
+          description: `判断用户的问题类型，并返回对应的字段。下面是几种问题类型: ${agents
+            .map((item) => `${item.value}，返回：'${item.key}'`)
+            .join('；')}`,
           enum: agents.map((item) => item.key)
         }
-      },
-      required: ['type']
+      }
     }
   };
   const ai = getAIApi(user.openaiAccount, 48000);
@@ -133,15 +141,14 @@ async function functionCall({
 }
 
 async function completions({
+  cqModel,
   user,
   inputs: { agents, systemPrompt = '', history = [], userChatInput }
-}: Props) {
-  const extractModel = global.extractModel;
-
+}: Props & { cqModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(extractModel.prompt || Prompt_CQJson, {
+      value: replaceVariable(cqModel.functionPrompt || Prompt_CQJson, {
         systemPrompt,
         typeList: agents.map((item) => `ID: "${item.key}", 问题类型:${item.value}`).join('\n'),
         text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}
@@ -153,7 +160,7 @@ Human:${userChatInput}`
   const ai = getAIApi(user.openaiAccount, 480000);
 
   const data = await ai.chat.completions.create({
-    model: extractModel.model,
+    model: cqModel.model,
     temperature: 0.01,
     messages: adaptChat2GptMessages({ messages, reserveId: false }),
     stream: false

@@ -13,9 +13,9 @@ import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import { postCreateDataset } from '@/web/core/api/dataset';
 import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
-import { vectorModelList } from '@/web/common/store/static';
 import MySelect from '@/components/Select';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { vectorModelList } from '@/web/common/store/static';
 import Tag from '@/components/Tag';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {

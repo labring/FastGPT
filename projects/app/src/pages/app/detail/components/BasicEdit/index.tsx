@@ -34,7 +34,6 @@ import { chatModelList } from '@/web/common/store/static';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import {
   ChatModelSystemTip,
-  ChatModelLimitTip,
   welcomeTextTip,
   questionGuideTip
 } from '@/constants/flow/ModuleTemplate';
@@ -423,7 +422,7 @@ const Settings = ({ appId }: { appId: string }) => {
                 setValue('chatModel.model', val);
                 const maxToken =
                   chatModelList.find((item) => item.model === getValues('chatModel.model'))
-                    ?.contextMaxToken || 4000;
+                    ?.maxToken || 4000;
                 const token = maxToken / 2;
                 setValue('chatModel.maxToken', token);
                 setRefresh(!refresh);

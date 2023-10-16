@@ -32,6 +32,7 @@ import { formatPrice } from '@fastgpt/common/bill';
 import { useDatasetStore } from '@/web/core/store/dataset';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';
+import { LLMModelItemType } from '@/types/model';
 
 const SetInputFieldModal = dynamic(() => import('../modules/SetInputFieldModal'));
 const SelectAppModal = dynamic(() => import('../../../SelectAppModal'));
@@ -405,7 +406,7 @@ var MaxTokenRender = React.memo(function MaxTokenRender({
   const { onChangeNode } = useFlowStore();
   const model = inputs.find((item) => item.key === 'model')?.value;
   const modelData = chatModelList.find((item) => item.model === model);
-  const maxToken = modelData ? modelData.contextMaxToken : 4000;
+  const maxToken = modelData ? modelData.maxToken : 4000;
   const markList = [
     { label: '100', value: 100 },
     { label: `${maxToken}`, value: maxToken }
@@ -442,6 +443,7 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
   moduleId
 }: RenderProps) {
   const { onChangeNode } = useFlowStore();
+  const modelList = (item.customData?.() as LLMModelItemType[]) || chatModelList || [];
 
   function onChangeModel(e: string) {
     {
@@ -456,7 +458,7 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
       });
 
       // update max tokens
-      const model = chatModelList.find((item) => item.model === e) || chatModelList[0];
+      const model = modelList.find((item) => item.model === e) || modelList[0];
       if (!model) return;
 
       onChangeNode({
@@ -467,16 +469,16 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
           ...inputs.find((input) => input.key === 'maxToken'),
           markList: [
             { label: '100', value: 100 },
-            { label: `${model.contextMaxToken}`, value: model.contextMaxToken }
+            { label: `${model.maxToken}`, value: model.maxToken }
           ],
-          max: model.contextMaxToken,
-          value: model.contextMaxToken / 2
+          max: model.maxToken,
+          value: model.maxToken / 2
         }
       });
     }
   }
 
-  const list = chatModelList.map((item) => {
+  const list = modelList.map((item) => {
     const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
 
     return {

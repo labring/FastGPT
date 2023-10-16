@@ -27,31 +27,75 @@ weight: 520
   },
   "ChatModels": [
     {
-      "model": "gpt-3.5-turbo",
-      "name": "GPT35-4k",
-      "contextMaxToken": 4000, // 最大token，均按 gpt35 计算
+      "model": "gpt-3.5-turbo", // 实际调用的模型
+      "name": "GPT35-4k", // 展示的名字
+      "maxToken": 4000, // 最大token，均按 gpt35 计算
       "quoteMaxToken": 2000, // 引用内容最大 token
       "maxTemperature": 1.2, // 最大温度
       "price": 0,
-      "defaultSystem": ""
+      "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
-      "contextMaxToken": 16000,
+      "maxToken": 16000,
       "quoteMaxToken": 8000,
       "maxTemperature": 1.2,
       "price": 0,
-      "defaultSystem": ""
+      "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-4",
       "name": "GPT4-8k",
-      "contextMaxToken": 8000,
+      "maxToken": 8000,
       "quoteMaxToken": 4000,
       "maxTemperature": 1.2,
       "price": 0,
-      "defaultSystem": ""
+      "defaultSystemChatPrompt": ""
+    }
+  ],
+  "QAModel": [ // QA 拆分模型
+    { 
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxToken": 16000,
+      "price": 0
+    }
+  ],
+  "ExtractModels": [ // 内容提取模型
+    { 
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxToken": 16000, 
+      "price": 0,
+      "functionCall": true, // 是否支持 function call
+      "functionPrompt": "" // 自定义非 function call 提示词
+    }
+  ],
+  "CQModels": [ // Classify Question: 问题分类模型
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxToken": 16000,
+      "price": 0,
+      "functionCall": true,
+      "functionPrompt": ""
+    },
+    {
+      "model": "gpt-4",
+      "name": "GPT4-8k",
+      "maxToken": 8000,
+      "price": 0,
+      "functionCall": true,
+      "functionPrompt": ""
+    }
+  ],
+  "QGModels": [ // Question Generation: 生成下一步指引模型
+    { 
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35-4k",
+      "maxToken": 4000,
+      "price": 0
     }
   ],
   "VectorModels": [
@@ -62,36 +106,6 @@ weight: 520
       "defaultToken": 500,
       "maxToken": 3000
     }
-  ],
-  "QAModel": { // QA 拆分模型
-    "model": "gpt-3.5-turbo-16k",
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0
-  },
-  "ExtractModel": { // 内容提取模型
-    "model": "gpt-3.5-turbo-16k",
-    "functionCall": true, // 是否使用 functionCall
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0,
-    "prompt": ""
-  },
-  "CQModel": { // Classify Question: 问题分类模型
-    "model": "gpt-3.5-turbo-16k",
-    "functionCall": true,
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0,
-    "prompt": ""
-  },
-  "QGModel": { // Question Generation: 生成下一步指引模型
-    "model": "gpt-3.5-turbo",
-    "name": "GPT35-4k",
-    "maxToken": 4000,
-    "price": 0,
-    "prompt": "",
-    "functionCall": false
-  }
+  ]
 }
 ```

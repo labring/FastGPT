@@ -3,7 +3,7 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { authUser } from '@fastgpt/support/user/auth';
-import { getVectorModel } from '@/service/utils/data';
+import { getVectorModel } from '@/service/core/ai/model';
 import type { DatasetsItemType } from '@/types/core/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

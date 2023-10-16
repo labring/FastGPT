@@ -7,7 +7,6 @@ import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/core/ai/type';
 import { TaskResponseKeyEnum } from '@/constants/chat';
-import { getChatModel } from '@/service/utils/data';
 import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
 import { postTextCensor } from '@fastgpt/common/plusApi/censor';
@@ -21,6 +20,7 @@ import { replaceVariable } from '@/utils/common/tools/text';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/common/tools/stream';
+import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
@@ -47,7 +47,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     user,
     outputs,
     inputs: {
-      model = global.chatModels[0]?.model,
+      model,
       temperature = 0,
       maxToken = 4000,
       history = [],
@@ -115,11 +115,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     max_tokens,
     stream,
     messages: [
-      ...(modelConstantsData.defaultSystem
+      ...(modelConstantsData.defaultSystemChatPrompt
         ? [
             {
               role: ChatCompletionRequestMessageRoleEnum.System,
-              content: modelConstantsData.defaultSystem
+              content: modelConstantsData.defaultSystemChatPrompt
             }
           ]
         : []),
@@ -175,7 +175,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [TaskResponseKeyEnum.responseData]: {
       moduleType: FlowModuleTypeEnum.chatNode,
       moduleName,
-      price: user.openaiAccount?.key ? 0 : countModelPrice({ model, tokens: totalTokens }),
+      price: user.openaiAccount?.key
+        ? 0
+        : countModelPrice({ model, tokens: totalTokens, type: ModelTypeEnum.chat }),
       model: modelConstantsData.name,
       tokens: totalTokens,
       question: userChatInput,
@@ -278,7 +280,7 @@ function getChatMessages({
 
   const filterMessages = ChatContextFilter({
     messages,
-    maxTokens: Math.ceil(model.contextMaxToken - 300) // filter token. not response maxToken
+    maxTokens: Math.ceil(model.maxToken - 300) // filter token. not response maxToken
   });
 
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
@@ -297,7 +299,7 @@ function getMaxTokens({
   model: ChatModelItemType;
   filterMessages: ChatProps['inputs']['history'];
 }) {
-  const tokensLimit = model.contextMaxToken;
+  const tokensLimit = model.maxToken;
   /* count response max token */
 
   const promptsToken = countMessagesTokens({

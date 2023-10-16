@@ -3,7 +3,7 @@ import type { Tiktoken } from 'js-tiktoken';
 import {
   ChatModelItemType,
   FunctionModelItemType,
-  QAModelItemType,
+  LLMModelItemType,
   VectorModelItemType
 } from './model';
 import { TrackEventName } from '@/constants/common';
@@ -36,10 +36,10 @@ declare global {
 
   var vectorModels: VectorModelItemType[];
   var chatModels: ChatModelItemType[];
-  var qaModel: QAModelItemType;
-  var extractModel: FunctionModelItemType;
-  var cqModel: FunctionModelItemType;
-  var qgModel: FunctionModelItemType;
+  var qaModels: LLMModelItemType[];
+  var cqModels: FunctionModelItemType[];
+  var extractModels: FunctionModelItemType[];
+  var qgModels: LLMModelItemType[];
 
   var priceMd: string;
   var systemVersion: string;
