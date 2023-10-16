@@ -12,11 +12,12 @@ export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: 
   const tempMarker = 'SPLIT_HERE_SPLIT_HERE';
 
   const stepReg: Record<number, RegExp> = {
-    0: /([\n\r])/g,
-    1: /([。]|\.\s)/g,
-    2: /([！？]|!\s|\?\s)/g,
-    3: /([；]|;\s)/g,
-    4: /([，]|,\s)/g
+    0: /(\n\n)/g,
+    1: /([\n])/g,
+    2: /([。]|\.\s)/g,
+    3: /([！？]|!\s|\?\s)/g,
+    4: /([；]|;\s)/g,
+    5: /([，]|,\s)/g
   };
 
   const splitTextRecursively = ({ text = '', step }: { text: string; step: number }) => {

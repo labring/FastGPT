@@ -291,6 +291,9 @@ importers:
       '@types/multer':
         specifier: ^1.4.7
         version: registry.npmmirror.com/@types/multer@1.4.7
+      '@types/node':
+        specifier: ^20.8.5
+        version: registry.npmmirror.com/@types/node@20.8.5
       '@types/papaparse':
         specifier: ^5.3.7
         version: registry.npmmirror.com/@types/papaparse@5.3.7
