@@ -5,14 +5,11 @@ import {
   type EdgeChange,
   useNodesState,
   useEdgesState,
-  XYPosition,
-  useViewport,
   Connection,
   addEdge
 } from 'reactflow';
 import type {
   FlowModuleItemType,
-  FlowModuleTemplateType,
   FlowOutputTargetItemType,
   FlowModuleItemChangeProps
 } from '@/types/core/app/flow';
@@ -44,7 +41,6 @@ export type useFlowStoreType = {
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
   onFixView: () => void;
-  onAddNode: (e: { template: FlowModuleTemplateType; position: XYPosition }) => void;
   onDelNode: (nodeId: string) => void;
   onChangeNode: (e: FlowModuleItemChangeProps) => void;
   onCopyNode: (nodeId: string) => void;
@@ -80,9 +76,7 @@ const StateContext = createContext<useFlowStoreType>({
   onFixView: function (): void {
     return;
   },
-  onAddNode: function (e: { template: FlowModuleTemplateType; position: XYPosition }): void {
-    return;
-  },
+
   onDelNode: function (nodeId: string): void {
     return;
   },
@@ -117,7 +111,6 @@ export const FlowProvider = ({ appId, children }: { appId: string; children: Rea
   const { toast } = useToast();
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { x, y, zoom } = useViewport();
 
   const onFixView = useCallback(() => {
     const btn = document.querySelector('.react-flow__controls-fitview') as HTMLButtonElement;
@@ -203,27 +196,6 @@ export const FlowProvider = ({ appId, children }: { appId: string; children: Rea
       );
     },
     [nodes, onDelConnect, setEdges, t, toast]
-  );
-
-  const onAddNode = useCallback(
-    ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
-      if (!reactFlowWrapper.current) return;
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
-      const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
-      setNodes((state) =>
-        state.concat(
-          appModule2FlowNode({
-            item: {
-              ...template,
-              moduleId: nanoid(),
-              position: { x: mouseX, y: mouseY }
-            }
-          })
-        )
-      );
-    },
-    [setNodes, x, y, zoom]
   );
 
   const onDelNode = useCallback(
@@ -338,7 +310,6 @@ export const FlowProvider = ({ appId, children }: { appId: string; children: Rea
     setEdges,
     onEdgesChange,
     onFixView,
-    onAddNode,
     onDelNode,
     onChangeNode,
     onCopyNode,
