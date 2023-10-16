@@ -40,7 +40,6 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   }
 
   const cqModel = getCQModel(model);
-  console.log(cqModel, model);
 
   const { arg, tokens } = await (async () => {
     if (cqModel.functionCall) {
