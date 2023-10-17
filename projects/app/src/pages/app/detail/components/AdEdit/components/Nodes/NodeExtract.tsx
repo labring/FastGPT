@@ -14,13 +14,13 @@ import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
-import { useFlowStore } from '../Provider';
+import { useFlowStore, onChangeNode } from '../Provider';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { inputs, outputs, moduleId } = data;
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
-  const { onChangeNode, onDelEdge } = useFlowStore();
+  const { onDelEdge } = useFlowStore();
 
   return (
     <NodeCard minW={'400px'} {...data}>

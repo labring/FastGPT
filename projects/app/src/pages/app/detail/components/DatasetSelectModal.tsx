@@ -49,9 +49,7 @@ export const DatasetSelectModal = ({
   const [selectedKbList, setSelectedKbList] = useState<SelectedDatasetType>(activeKbs);
   const { toast } = useToast();
   const { paths, parentId, setParentId, datasets } = useDatasetSelect();
-  const { allDatasets, loadAllDatasets } = useDatasetStore();
-
-  useQuery(['loadAllDatasets'], loadAllDatasets);
+  const { allDatasets } = useDatasetStore();
 
   const filterKbList = useMemo(() => {
     return {

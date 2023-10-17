@@ -14,12 +14,11 @@ import { FlowOutputItemTypeEnum, FlowValueTypeEnum, SpecialInputKeyEnum } from '
 import { useTranslation } from 'react-i18next';
 import SourceHandle from '../render/SourceHandle';
 import MyTooltip from '@/components/MyTooltip';
-import { useFlowStore } from '../Provider';
+import { onChangeNode } from '../Provider';
 
 const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
-  const { onChangeNode } = useFlowStore();
 
   return (
     <NodeCard minW={'400px'} {...data}>

@@ -83,7 +83,10 @@ export const appModule2FlowNode = ({
   // replace item data
   const moduleItem: FlowModuleItemType = {
     ...template,
-    ...item,
+    flowType: item.flowType,
+    moduleId: item.moduleId,
+    name: item.name,
+    showStatus: item.showStatus,
     inputs: concatInputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;
