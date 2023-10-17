@@ -48,15 +48,30 @@ $code-block-padding-top: {{ if eq .Site.Params.docs.prism true -}}0{{ else }}1.2
 @import "custom/components/forms";
 @import "custom/components/table";
 @import "custom/components/tabs";
+@import "custom/components/tooltip";
 
 // Pages
 @import "custom/pages/features";
 @import "custom/pages/helper";
 
 // Plugins
-{{ if eq .Site.Params.docs.prism true -}}@import "custom/plugins/prism/prism";{{ end }}
+
+// Prism / Chroma
+{{- if eq .Site.Params.docs.prism true }}
+@import {{ printf "'%s%s'" "custom/plugins/prism/themes/" (.Site.Params.docs.prismTheme | default "lotusdocs") }}; // current prism theme
+@import "custom/plugins/prism/prism";
+{{- else }}
+@import "custom/plugins/chroma/default";
+{{- end -}}
+
+// FlexSearch
 {{ if or (not (isset .Site.Params.flexsearch "enabled")) (eq .Site.Params.flexsearch.enabled true) -}}@import "custom/plugins/flexsearch/flexsearch";{{ end }}
 
+// Feedback Widget
 {{ if .Site.Params.feedback.enabled | default false -}}@import "custom/plugins/feedback/feedback";{{ end}}
 
+// Mermaid
+@import "custom/plugins/mermaid/mermaid";
+
+// change
 @import "custom/pages/custom";

@@ -4,7 +4,7 @@ description: ' 将 FastGPT 接入私有化模型 M3E'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 100
+weight: 920
 ---
 
 ## 前言
@@ -66,7 +66,7 @@ Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型�
       "defaultToken": 500,
       "maxToken": 1800
     }
-],
+]
 ```
 
 ## 测试使用

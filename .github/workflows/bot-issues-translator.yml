@@ -1,0 +1,19 @@
+name: 'Github Rebot for issues-translator'
+on:
+  issues:
+    types: [ opened ]
+  issue_comment:
+    types: [ created ]
+jobs:
+  translate:
+    permissions:
+      issues: write
+      discussions: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: usthe/issues-translate-action@v2.7
+        with:
+          IS_MODIFY_TITLE: true
+          BOT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          CUSTOM_BOT_NOTE: Bot detected the issue body's language is not English, translate it automatically. 👯👭🏻🧑‍🤝‍🧑👫🧑🏿‍🤝‍🧑🏻👩🏾‍🤝‍👨🏿👬🏿

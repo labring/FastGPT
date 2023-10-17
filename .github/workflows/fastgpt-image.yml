@@ -1,9 +1,10 @@
-name: Build fastgpt images and copy image to docker hub
+name: Build FastGPT images and copy image to docker hub
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'client/**'
+      - 'projects/app/**'
+      - 'packages/**'
     branches:
       - 'main'
     tags:
@@ -25,6 +26,13 @@ jobs:
         uses: docker/setup-buildx-action@v2
         with:
           driver-opts: network=host
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -38,24 +46,26 @@ jobs:
           else
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt:${{ github.ref_name }}" >> $GITHUB_ENV
           fi
-
       - name: Build and publish image for main branch or tag push event
         env:
           DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
         run: |
-          cd client && \
           docker buildx build \
+          --build-arg name=app \
           --platform linux/amd64,linux/arm64 \
           --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
           --label "org.opencontainers.image.description=fastgpt image" \
-          --label "org.opencontainers.image.licenses=MIT" \
+          --label "org.opencontainers.image.licenses=Apache" \
           --push \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache \
           -t ${DOCKER_REPO_TAGGED} \
           -f Dockerfile \
           .
   push-to-docker-hub:
     needs: build-fastgpt-images
     runs-on: ubuntu-20.04
+    if: github.repository == 'labring/FastGPT'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -79,6 +89,7 @@ jobs:
         run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}:${{env.IMAGE_TAG}}
   push-to-ali-hub:
     needs: build-fastgpt-images
+    if: github.repository == 'labring/FastGPT'
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout code

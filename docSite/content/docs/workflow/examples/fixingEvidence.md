@@ -4,7 +4,7 @@ description: '利用指定回复，创建固定的开头和结尾'
 icon: 'healing'
 draft: false
 toc: true
-weight: 500
+weight: 142
 ---
 
 ![](/imgs/demo-fix-evidence1.png)
@@ -17,6 +17,8 @@ weight: 500
 ## 模块编排
 
 复制下面配置，点击「高级编排」右上角的导入按键，导入该配置。
+
+{{% details title="编排配置" closed="true" %}}
 
 ```json
 [
@@ -230,7 +232,7 @@ weight: 500
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -332,4 +334,6 @@ weight: 500
   }
 ]
 ```
+
+{{% /details %}}
 

@@ -1,11 +1,3 @@
-<!-- change -->
-<style>
-    .medium-zoom-overlay,
-    .medium-zoom-image--opened {
-      z-index: 1999;
-    }
-</style>
-
 {{ $dayjs := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/dayjs.min.js") }}
 {{ $relativeTime := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/relativeTime.min.js") }}
 {{ $app := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/app.js") -}}
@@ -37,7 +29,10 @@
 
 {{ if eq .Site.Params.docs.prism true -}}
     {{ $prism := resources.Get (printf "/%s/%s" ($.Scratch.Get "pathName") "js/prism.js") }}
-    {{ $prism := $prism | js.Build -}}
+    {{- $opts := dict
+        "params" (dict "langPath" (urls.JoinPath .Site.BaseURL "docs/js/components/"))
+    -}}
+    {{ $prism := $prism | js.Build $opts -}}
     {{ $slice = $slice | append $prism -}}
 {{ end -}}
 
@@ -63,7 +58,7 @@
 
 <!-- change -->
 <script
-  src="https://cdn.jsdelivr.us/npm/medium-zoom/dist/medium-zoom.min.js"
+  src="https://jsdelivr.icloudnative.io/npm/medium-zoom/dist/medium-zoom.min.js"
   crossorigin="anonymous"
   referrerpolicy="no-referrer"
 ></script>

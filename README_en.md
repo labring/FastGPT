@@ -1,25 +1,39 @@
 <div align="center">
+
 <a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
-FastGPT is a knowledge-based question answering system built on the LLM. It offers out-of-the-box data processing and model invocation capabilities. Moreover, it allows for workflow orchestration through Flow visualization, thereby enabling complex question and answer scenarios!
+<p align="center">
+  <a href="./README_en.md">English</a> |
+  <a href="./README.md">简体中文</a>
+</p>
+
+FastGPT is a knowledge-based Q&A system built on the LLM, offers out-of-the-box data processing and model invocation capabilities, allows for workflow orchestration through Flow visualization!
 
 </div>
 
 <p align="center">
-<a href="https://fastgpt.run/">Online</a>
-·
-<a href="https://doc.fastgpt.run/docs/intro">Document</a>
-·
-<a href="https://doc.fastgpt.run/docs/development">Development</a>
-·
-<a href="https://doc.fastgpt.run/docs/installation">Deploy</a>
-·
-<a href="#powered-by">Power By</a>
+  <a href="https://fastgpt.run/">
+    <img height="21" src="https://img.shields.io/badge/Website-fff?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+  </a>
+  <a href="https://doc.fastgpt.run/docs/intro">
+    <img height="21" src="https://img.shields.io/badge/Docs-7d09f1?style=flat-square" alt="document">
+  </a>
+  <a href="https://doc.fastgpt.run/docs/development">
+    <img height="21" src="https://img.shields.io/badge/Development-%23fff?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+  </a>
+  <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
+    <img height="21" src="https://img.shields.io/badge/Related Projects-7d09f1?style=flat-square" alt="project">
+  </a>
+  <a href="https://github.com/labring/FastGPT/blob/main/LICENSE">
+    <img height="21" src="https://img.shields.io/badge/License-Apache--2.0-ffffff?style=flat-square&labelColor=fff&color=7d09f1" alt="license">
+  </a>
 </p>
 
-## 🛸 Online
+https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
+
+## 🛸 Use Cloud Services
 
 [fastgpt.run](https://fastgpt.run/)
 | | |
@@ -29,35 +43,34 @@ FastGPT is a knowledge-based question answering system built on the LLM. It offe
 
 ## 💡 Features
 
-1. Powerful visual orchestration for easy AI application building
+1. Powerful visual workflows: Effortlessly craft AI applications
 
-   - [x] Provides a simple mode without the need for orchestration operations
+   - [x] Simple mode on deck - no need for manual arrangement
    - [x] User dialogue pre-guidance
    - [x] Global variables
    - [x] Knowledge base search
-   - [x] Multi-LLM model dialogue
-   - [x] Extraction of text content into structured data
-   - [x] HTTP extension
-   - [ ] Sandbox JS runtime module
-   - [ ] Continuous dialogue guidance
-   - [ ] Dialogue multi-path selection
-   - [ ] Source file reference tracking
+   - [x] Dialogue via multiple LLM models
+   - [x] Text magic - convert to structured data
+   - [x] Extend with HTTP
+   - [ ] Embed Laf for on-the-fly HTTP module crafting
+   - [x] Directions for the next dialogue steps
+   - [ ] Multiple dialogue paths selection
+   - [x] Tracking source file references
+   - [ ] Custom file reader
 
-2. Rich knowledge base preprocessing
+2. Extensive knowledge base preprocessing
 
-   - [x] Multiple library reuse and mixing
-   - [x] Chunk record modification and deletion
-   - [x] Supports direct segment import
-   - [x] Supports QA split import
-   - [x] Supports manual input content
-   - [ ] Supports URL import reading
-   - [x] Supports batch import of Q&A pairs in CSV format
-   - [ ] Supports separate vector model settings for knowledge bases
-   - [ ] Source file storage
+   - [x] Reuse and mix multiple knowledge bases
+   - [x] Track chunk modifications and deletions
+   - [x] Supports manual entries, direct segmentation, and QA split imports
+   - [x] Supports URL fetching and batch CSV imports
+   - [x] Supports Set unique vector models for knowledge bases
+   - [x] Store original files
+   - [ ] File learning Agent
 
 3. Multiple effect testing channels
 
-   - [x] Knowledge base single point search testing
+   - [x] Single-point knowledge base search test
    - [x] Feedback references and ability to modify and delete during dialogue
    - [x] Complete context presentation
    - [ ] Complete module intermediate value presentation
@@ -77,11 +90,17 @@ FastGPT is a knowledge-based question answering system built on the LLM. It offe
 
 Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 
+- **⚡ Deployment**
+
+  [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
+
+  Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a tad slow since we're using the basic settings.
+
 - [Getting Started with Local Development](https://doc.fastgpt.run/docs/development)
 - [Deploying FastGPT](https://doc.fastgpt.run/docs/installation)
-- [System Configuration File Explanation](https://doc.fastgpt.run/docs/installation/reference)
-- [Multi-model Configuration](https://doc.fastgpt.run/docs/installation/reference/models)
-- [V3 Upgrade V4 Initialization](https://doc.fastgpt.run/docs/installation/upgrading)
+- [Guide on System Configs](https://doc.fastgpt.run/docs/installation/reference)
+- [Configuring Multiple Models](https://doc.fastgpt.run/docs/installation/reference/models)
+- [Version Updates & Upgrades](https://doc.fastgpt.run/docs/installation/upgrading)
 
 <!-- ## :point_right: RoadMap
 - [FastGPT RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->

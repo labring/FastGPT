@@ -4,7 +4,7 @@ description: "FastGPT AI 对话模块介绍"
 icon: "chat"
 draft: false
 toc: true
-weight: 423
+weight: 123
 ---
 
 ## 特点

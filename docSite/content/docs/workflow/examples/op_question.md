@@ -4,7 +4,7 @@ description: '利用 GPT 优化和完善知识库搜索词，实现上下文关�
 icon: 'search'
 draft: false
 toc: true
-weight: 500
+weight: 144
 ---
 
 ![](/imgs/demo_op_question1.png)
@@ -18,6 +18,8 @@ weight: 500
 ## 模块编排
 
 复制下面配置，点击「高级编排」右上角的导入按键，导入该配置。
+
+{{% details title="编排配置" closed="true" %}}
 
 ```json
 [
@@ -311,7 +313,7 @@ weight: 500
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -496,6 +498,8 @@ weight: 500
   }
 ]
 ```
+
+{{% /details %}}
 
 ## 流程说明
 

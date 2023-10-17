@@ -4,7 +4,7 @@ description: '将 FastGPT 外接搜索引擎'
 icon: 'search'
 draft: false
 toc: true
-weight: 500
+weight: 143
 ---
 
 ![](/imgs/google_search_1.png)
@@ -63,6 +63,8 @@ export default async function (ctx: FunctionContext) {
 ## 模块编排
 
 复制下面配置，点击「高级编排」右上角的导入按键，导入该配置，导入后将接口地址复制到「HTTP 模块」。
+
+{{% details title="编排配置" closed="true" %}}
 
 ```json
 [
@@ -430,7 +432,7 @@ export default async function (ctx: FunctionContext) {
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "直接响应，无需配置",
         "type": "hidden",
         "targets": []
@@ -447,6 +449,8 @@ export default async function (ctx: FunctionContext) {
   }
 ]
 ```
+
+{{% /details %}}
 
 ## 流程说明
 

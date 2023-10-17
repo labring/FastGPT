@@ -4,7 +4,7 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 100
+weight: 910
 ---
 
 ## 前言
@@ -48,8 +48,8 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 1. 根据上面的环境配置配置好环境，具体教程自行 GPT；
 2. 下载 [python 文件](https://github.com/labring/FastGPT/blob/main/files/models/ChatGLM2/openai_api.py)
 3. 在命令行输入命令 `pip install -r requirments.txt`；
-4. 打开你需要启动的 py 文件，在代码的第 76 行配置 token，这里的 token 只是加一层验证，防止接口被人盗用；
-5. 执行命令 `python openai_api.py 16`。这里的数字根据上面的配置进行选择。
+4. 打开你需要启动的 py 文件，在代码的 `verify_token` 方法中配置 token，这里的 token 只是加一层验证，防止接口被人盗用；
+5. 执行命令 `python openai_api.py --model_name 16`。这里的数字根据上面的配置进行选择。
 
 然后等待模型下载，直到模型加载完毕为止。如果出现报错先问 GPT。
 
@@ -99,21 +99,21 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
 
 ## 接入 FastGPT
 
-修改 config.json 配置文件，在 VectorModels 中加入 chatglm2 和 M3E 模型：
+修改 config.json 配置文件，在 VectorModels 中加入 chatglm2 模型：
 
 ```json
-  "ChatModels": [
-    //已有模型
-    {
-      "model": "chatglm2",
-      "name": "chatglm2",
-      "contextMaxToken": 8000,
-      "quoteMaxToken": 4000,
-      "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
-    }
-  ],
+"ChatModels": [
+  //已有模型
+  {
+    "model": "chatglm2",
+    "name": "chatglm2",
+    "maxToken": 8000,
+    "price": 0,
+    "quoteMaxToken": 4000,
+    "maxTemperature": 1.2,
+    "defaultSystemChatPrompt": ""
+  }
+]
 ```
 
 ## 测试使用
