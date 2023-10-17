@@ -46,10 +46,14 @@ export const DatasetSelectModal = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const [selectedKbList, setSelectedKbList] = useState<SelectedDatasetType>(activeKbs);
+  const { allDatasets } = useDatasetStore();
+  const [selectedKbList, setSelectedKbList] = useState<SelectedDatasetType>(
+    activeKbs.filter((kb) => {
+      return allDatasets.find((item) => item._id === kb.kbId);
+    })
+  );
   const { toast } = useToast();
   const { paths, parentId, setParentId, datasets } = useDatasetSelect();
-  const { allDatasets } = useDatasetStore();
 
   const filterKbList = useMemo(() => {
     return {
@@ -60,7 +64,7 @@ export const DatasetSelectModal = ({
 
   return (
     <DatasetSelectContainer
-      isOpen={isOpen}
+      isOpen
       paths={paths}
       parentId={parentId}
       setParentId={setParentId}
@@ -191,6 +195,7 @@ export const DatasetSelectModal = ({
             const filterKbList = selectedKbList.filter((kb) => {
               return allDatasets.find((item) => item._id === kb.kbId);
             });
+            console.log(filterKbList);
 
             onClose();
             onChange(filterKbList);
