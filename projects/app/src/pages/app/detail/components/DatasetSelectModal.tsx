@@ -194,7 +194,6 @@ export const DatasetSelectModal = ({
             const filterKbList = selectedKbList.filter((kb) => {
               return allDatasets.find((item) => item._id === kb.kbId);
             });
-            console.log(filterKbList);
 
             onClose();
             onChange(filterKbList);
