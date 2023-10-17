@@ -22,7 +22,6 @@ import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { useDatasetStore } from '@/web/core/dataset/store';
 import { feConfigs } from '@/web/common/system/staticData';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
@@ -64,7 +63,7 @@ export const DatasetSelectModal = ({
 
   return (
     <DatasetSelectContainer
-      isOpen
+      isOpen={isOpen}
       paths={paths}
       parentId={parentId}
       setParentId={setParentId}
