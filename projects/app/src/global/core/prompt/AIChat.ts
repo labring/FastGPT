@@ -1,4 +1,4 @@
-import { PromptTemplateItem } from '@fastgpt/core/ai/type.d';
+import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {

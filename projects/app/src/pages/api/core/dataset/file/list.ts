@@ -1,18 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { PgClient, updateDataFileId } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { strIsLink } from '@fastgpt/common/tools/str';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 import {
   FileStatusEnum,
   DatasetSpecialIdEnum,
   datasetSpecialIdMap,
   datasetSpecialIds
-} from '@fastgpt/core/dataset/constant';
-import { Types } from '@fastgpt/common/mongo';
+} from '@fastgpt/global/core/dataset/constant';
+import { Types } from '@fastgpt/service/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

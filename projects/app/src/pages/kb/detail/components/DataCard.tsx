@@ -8,14 +8,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/web/common/hooks/useToast';
 import InputModal, { FormData as InputDataType, RawFileText } from './InputDataModal';
 import { debounce } from 'lodash';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/file/icon';
+import { getFileIcon, getSpecialFileIcon } from '@fastgpt/global/common/file/icon';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);

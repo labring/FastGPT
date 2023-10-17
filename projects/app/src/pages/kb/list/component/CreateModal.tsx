@@ -3,7 +3,7 @@ import { Box, Flex, Button, ModalHeader, ModalFooter, ModalBody, Input } from '@
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImg } from '@/web/common/file/utils';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

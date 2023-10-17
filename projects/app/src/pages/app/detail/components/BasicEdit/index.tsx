@@ -31,7 +31,7 @@ import {
   type EditFormType
 } from '@/web/core/app/basicSettings';
 import { chatModelList } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/common/bill/index';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import {
   ChatModelSystemTip,
   welcomeTextTip,

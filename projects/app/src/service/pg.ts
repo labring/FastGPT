@@ -3,7 +3,7 @@ import type { QueryResultRow } from 'pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { addLog } from './utils/tools';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
-import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
+import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/global/core/dataset/constant';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {

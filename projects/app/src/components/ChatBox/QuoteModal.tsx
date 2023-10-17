@@ -3,7 +3,7 @@ import { ModalBody, Box, useTheme, Flex, Progress } from '@chakra-ui/react';
 import { getDatasetDataItemById } from '@/web/core/dataset/api';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useToast } from '@/web/common/hooks/useToast';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { QuoteItemType } from '@/types/chat';
 import MyIcon from '@/components/Icon';
 import InputDataModal, { RawFileText } from '@/pages/kb/detail/components/InputDataModal';

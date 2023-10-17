@@ -21,7 +21,7 @@ import { chatModelList, feConfigs } from '@/web/common/system/staticData';
 import MySlider from '@/components/Slider';
 import { SystemInputEnum } from '@/constants/app';
 import dynamic from 'next/dynamic';
-import { PromptTemplateItem } from '@fastgpt/core/ai/type';
+import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 

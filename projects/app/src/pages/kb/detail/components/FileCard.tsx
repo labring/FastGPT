@@ -20,7 +20,8 @@ import {
 } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
-import { formatFileSize } from '@fastgpt/common/file/tools';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import { getFileIcon, getSpecialFileIcon } from '@fastgpt/global/common/file/icon';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
@@ -34,8 +35,7 @@ import type { DatasetFileItemType } from '@/types/core/dataset/file';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
-import { datasetSpecialIds, FileStatusEnum } from '@fastgpt/core/dataset/constant';
-import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/file/icon';
+import { datasetSpecialIds, FileStatusEnum } from '@fastgpt/global/core/dataset/constant';
 
 const FileCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);

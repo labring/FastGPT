@@ -4,7 +4,7 @@ import type {
   LLMModelItemType,
   VectorModelItemType
 } from '@/types/model';
-import type { FeConfigsType } from '@fastgpt/common/type/index.d';
+import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 
 export type InitDateResponse = {
   chatModels: ChatModelItemType[];

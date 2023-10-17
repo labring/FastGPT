@@ -4,13 +4,13 @@ import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { getAIApi } from '@fastgpt/core/ai/config';
-import type { ChatCompletion, StreamChatType } from '@fastgpt/core/ai/type';
+import { getAIApi } from '@fastgpt/service/core/ai/config';
+import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
-import { postTextCensor } from '@fastgpt/common/plusApi/censor';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant';
+import { postTextCensor } from '@/web/common/plusApi/censor';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import { AppModuleItemType } from '@/types/app';
 import { countMessagesTokens, sliceMessagesTB } from '@/global/common/tiktoken';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
@@ -19,7 +19,7 @@ import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/global/common/string/tools';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { responseWrite, responseWriteController } from '@fastgpt/common/tools/stream';
+import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 
 export type ChatProps = ModuleDispatchProps<

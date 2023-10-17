@@ -28,7 +28,7 @@ import SideBar from '@/components/SideBar';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import SliderApps from './components/SliderApps';
 import ChatHeader from './components/ChatHeader';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 

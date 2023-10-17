@@ -3,7 +3,7 @@ import { Box, Flex, Button, useTheme, Image } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyIcon from '@/components/Icon';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import { TrainingModeEnum } from '@/constants/plugin';

@@ -23,7 +23,7 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImg } from '@/web/common/file/utils';
 import { feConfigs, systemVersion } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
-import { timezoneList } from '@/global/common/time/timezone';
+import { timezoneList } from '@fastgpt/global/common/time/timezone';
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';

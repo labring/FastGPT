@@ -10,7 +10,7 @@ import { streamFetch } from '@/web/common/api/fetch';
 import { useShareChatStore, defaultHistory } from '@/web/core/chat/storeShareChat';
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatSiteItemType } from '@/types/chat';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);

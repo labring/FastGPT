@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import Avatar from '../Avatar';
 import MyIcon from '@/components/Icon';
-import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 const SelectDataset = ({

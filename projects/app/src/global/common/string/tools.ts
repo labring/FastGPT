@@ -1,4 +1,4 @@
-import { getErrText } from '@/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { countPromptTokens } from '@/global/common/tiktoken';
 
 /* 

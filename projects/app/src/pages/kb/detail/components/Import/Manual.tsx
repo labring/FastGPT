@@ -3,12 +3,12 @@ import { Box, Textarea, Button, Flex } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { postData2Dataset } from '@/web/core/dataset/api';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/web/core/dataset/store';
-import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
+import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/global/core/dataset/constant';
 
 type ManualFormType = { q: string; a: string };
 

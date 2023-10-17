@@ -3,7 +3,7 @@ import { sendAuthCode } from '@/web/support/user/api';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/system/staticData';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 let timer: any;
 

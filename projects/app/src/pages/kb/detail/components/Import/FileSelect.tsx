@@ -3,7 +3,7 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
 import { splitText2Chunks } from '@/global/common/string/tools';
-import { simpleText } from '@fastgpt/common/tools/str';
+import { simpleText } from '@fastgpt/global/common/string/tools';
 import {
   uploadFiles,
   fileDownload,
@@ -18,11 +18,11 @@ import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
-import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
+import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useDatasetStore } from '@/web/core/dataset/store';
-import { getFileIcon } from '@fastgpt/common/file/icon';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));

@@ -1,7 +1,7 @@
 import { App } from '../mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { AppSchema } from '@/types/mongoSchema';
-import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 // 模型使用权校验
 export const authApp = async ({

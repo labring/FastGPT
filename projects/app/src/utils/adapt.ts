@@ -1,8 +1,8 @@
-import { formatPrice } from '@fastgpt/common/bill/index';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import type { BillSchema } from '@/types/common/bill';
 import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/types/core/chat/type';
 import type { AppModuleItemType } from '@/types/app';

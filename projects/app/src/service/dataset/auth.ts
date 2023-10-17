@@ -1,6 +1,6 @@
-import { isSpecialFileId } from '@fastgpt/core/dataset/utils';
+import { isSpecialFileId } from '@fastgpt/global/core/dataset/utils';
 import { GridFSStorage } from '../lib/gridfs';
-import { Types } from '@fastgpt/common/mongo';
+import { Types } from '@fastgpt/service/common/mongo';
 
 export async function authFileIdValid(fileId?: string) {
   if (!fileId) return true;

@@ -28,7 +28,7 @@ import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { AIChatProps } from '@/types/core/aiChat';
 import { chatModelList } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/common/bill';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';

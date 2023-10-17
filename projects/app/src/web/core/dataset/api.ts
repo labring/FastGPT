@@ -12,7 +12,7 @@ import type {
   GetDatasetDataListProps
 } from '@/global/core/api/datasetReq.d';
 import type { SearchTestResponseType, PushDataResponse } from '@/global/core/api/datasetRes.d';
-import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { DatasetFileItemType } from '@/types/core/dataset/file';
 import type { GSFileInfoType } from '@/types/common/file';
 import type { QuoteItemType } from '@/types/chat';

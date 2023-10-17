@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { DatasetPathItemType } from '@/types/core/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

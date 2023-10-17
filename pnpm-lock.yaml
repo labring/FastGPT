@@ -27,11 +27,45 @@ importers:
         specifier: ^13.0.2
         version: registry.npmmirror.com/react-i18next@13.2.2(i18next@23.5.1)(react-dom@18.2.0)(react@18.2.0)
 
-  packages/common:
+  packages/global:
     dependencies:
       axios:
         specifier: ^1.5.1
         version: registry.npmmirror.com/axios@1.5.1
+      dayjs:
+        specifier: ^1.11.7
+        version: registry.npmmirror.com/dayjs@1.11.7
+      encoding:
+        specifier: ^0.1.13
+        version: registry.npmmirror.com/encoding@0.1.13
+      openai:
+        specifier: ^4.12.1
+        version: registry.npmmirror.com/openai@4.12.1(encoding@0.1.13)
+      timezones-list:
+        specifier: ^3.0.2
+        version: registry.npmmirror.com/timezones-list@3.0.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.8.5
+        version: registry.npmmirror.com/@types/node@20.8.5
+
+  packages/service:
+    dependencies:
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../global
+      axios:
+        specifier: ^1.5.1
+        version: registry.npmmirror.com/axios@1.5.1
+      cookie:
+        specifier: ^0.5.0
+        version: registry.npmmirror.com/cookie@0.5.0
+      encoding:
+        specifier: ^0.1.13
+        version: registry.npmmirror.com/encoding@0.1.13
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: registry.npmmirror.com/jsonwebtoken@9.0.2
       mongoose:
         specifier: ^7.0.2
         version: registry.npmmirror.com/mongoose@7.0.2
@@ -41,6 +75,12 @@ importers:
       nextjs-cors:
         specifier: ^2.1.2
         version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
+      openai:
+        specifier: ^4.12.1
+        version: registry.npmmirror.com/openai@4.12.1(encoding@0.1.13)
+      tunnel:
+        specifier: ^0.0.6
+        version: registry.npmmirror.com/tunnel@0.0.6
       winston:
         specifier: ^3.10.0
         version: registry.npmmirror.com/winston@3.10.0
@@ -48,56 +88,24 @@ importers:
         specifier: ^5.1.1
         version: registry.npmmirror.com/winston-mongodb@5.1.1(winston@3.10.0)
     devDependencies:
-      '@types/node':
-        specifier: ^20.8.5
-        version: registry.npmmirror.com/@types/node@20.8.5
-
-  packages/core:
-    dependencies:
-      '@fastgpt/common':
-        specifier: workspace:*
-        version: link:../common
-      '@fastgpt/support':
-        specifier: workspace:*
-        version: link:../support
-      encoding:
-        specifier: ^0.1.13
-        version: registry.npmmirror.com/encoding@0.1.13
-      openai:
-        specifier: ^4.12.1
-        version: registry.npmmirror.com/openai@4.12.1(encoding@0.1.13)
-      tunnel:
-        specifier: ^0.0.6
-        version: registry.npmmirror.com/tunnel@0.0.6
-    devDependencies:
-      '@types/tunnel':
-        specifier: ^0.0.4
-        version: registry.npmmirror.com/@types/tunnel@0.0.4
-
-  packages/support:
-    dependencies:
-      '@fastgpt/common':
-        specifier: workspace:*
-        version: link:../common
-      axios:
-        specifier: ^1.5.1
-        version: registry.npmmirror.com/axios@1.5.1
-      cookie:
-        specifier: ^0.5.0
-        version: registry.npmmirror.com/cookie@0.5.0
-      jsonwebtoken:
-        specifier: ^9.0.2
-        version: registry.npmmirror.com/jsonwebtoken@9.0.2
-      next:
-        specifier: 13.5.2
-        version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
-    devDependencies:
       '@types/cookie':
         specifier: ^0.5.2
         version: registry.npmmirror.com/@types/cookie@0.5.2
       '@types/jsonwebtoken':
         specifier: ^9.0.3
         version: registry.npmmirror.com/@types/jsonwebtoken@9.0.3
+      '@types/node':
+        specifier: ^20.8.5
+        version: registry.npmmirror.com/@types/node@20.8.5
+      '@types/tunnel':
+        specifier: ^0.0.4
+        version: registry.npmmirror.com/@types/tunnel@0.0.4
+
+  packages/web:
+    dependencies:
+      axios:
+        specifier: ^1.5.1
+        version: registry.npmmirror.com/axios@1.5.1
 
   projects/app:
     dependencies:
@@ -122,15 +130,15 @@ importers:
       '@emotion/styled':
         specifier: ^11.10.6
         version: registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.0.28)(react@18.2.0)
-      '@fastgpt/common':
+      '@fastgpt/global':
         specifier: workspace:*
-        version: link:../../packages/common
-      '@fastgpt/core':
+        version: link:../../packages/global
+      '@fastgpt/service':
         specifier: workspace:*
-        version: link:../../packages/core
-      '@fastgpt/support':
+        version: link:../../packages/service
+      '@fastgpt/web':
         specifier: workspace:*
-        version: link:../../packages/support
+        version: link:../../packages/web
       '@mozilla/readability':
         specifier: ^0.4.4
         version: registry.npmmirror.com/@mozilla/readability@0.4.4
@@ -263,9 +271,6 @@ importers:
       sass:
         specifier: ^1.58.3
         version: registry.npmmirror.com/sass@1.58.3
-      timezones-list:
-        specifier: ^3.0.2
-        version: registry.npmmirror.com/timezones-list@3.0.2
       zustand:
         specifier: ^4.3.5
         version: registry.npmmirror.com/zustand@4.3.5(immer@9.0.19)(react@18.2.0)

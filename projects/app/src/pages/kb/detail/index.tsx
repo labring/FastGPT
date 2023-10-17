@@ -5,7 +5,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { DatasetItemType } from '@/types/core/dataset';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ComponentRef } from './components/Info';
 import Tabs from '@/components/Tabs';

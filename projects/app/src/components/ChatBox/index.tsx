@@ -17,7 +17,7 @@ import {
 } from '@/types/chat';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import {
   Box,
@@ -63,7 +63,7 @@ import styles from './index.module.scss';
 import Script from 'next/script';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from './utils';
-import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
+import { DatasetSpecialIdEnum } from '@fastgpt/global/core/dataset/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 

@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoUser } from '@fastgpt/support/user/schema';
-import { authUser } from '@fastgpt/support/user/auth';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
 import { PgClient } from '@/service/pg';
 import { addLog } from '@/service/utils/tools';
-import { responseWriteController } from '@fastgpt/common/tools/stream';
+import { responseWriteController } from '@fastgpt/service/common/response';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

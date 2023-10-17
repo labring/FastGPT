@@ -1,5 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import type { CreateTrainingBillType } from '@/global/common/api/billReq.d';
+import type { CreateTrainingBillType } from '@fastgpt/global/common/bill/types/billReq.d';
 import type { PaySchema } from '@/types/mongoSchema';
 import type { PagingData, RequestPaging } from '@/types';
 import { UserBillType } from '@/types/user';

@@ -2,7 +2,7 @@ import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getAIApi } from '@fastgpt/core/ai/config';
+import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { SystemInputEnum } from '@/constants/app';
 import { SpecialInputKeyEnum } from '@/constants/flow';

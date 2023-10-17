@@ -8,7 +8,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
 import InputDataModal, { type FormData } from './InputDataModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';

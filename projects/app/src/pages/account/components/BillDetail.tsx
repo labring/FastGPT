@@ -14,7 +14,7 @@ import {
 import { UserBillType } from '@/types/user';
 import dayjs from 'dayjs';
 import { BillSourceMap } from '@/constants/user';
-import { formatPrice } from '@fastgpt/common/bill/index';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 

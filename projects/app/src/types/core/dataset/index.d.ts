@@ -1,6 +1,6 @@
 import { PgDataItemType } from './data';
 import { VectorModelItemType } from '../../model';
-import type { DatasetSchemaType } from '@fastgpt/core/dataset/type.d';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 
 export type DatasetsItemType = Omit<DatasetSchemaType, 'vectorModel'> & {
   vectorModel: VectorModelItemType;

@@ -13,7 +13,7 @@ import { appWithTranslation, useTranslation } from 'next-i18next';
 import { getLangStore, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { FeConfigsType } from '@fastgpt/common/type/index.d';
+import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 
 import 'nprogress/nprogress.css';
 import '@/web/styles/reset.scss';

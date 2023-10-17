@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@/components/MyModal';
 import { Box, Button, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
-import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
+import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postFetchUrls } from '@/web/common/plugin/api';
 

@@ -1,5 +1,5 @@
 /* 模型的知识库 */
-import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { TrainingDataSchema as TrainingDateType } from '@/types/mongoSchema';
 import { TrainingTypeMap } from '@/constants/plugin';

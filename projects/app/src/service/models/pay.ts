@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { PaySchema as PayType } from '@/types/mongoSchema';
 const PaySchema = new Schema({

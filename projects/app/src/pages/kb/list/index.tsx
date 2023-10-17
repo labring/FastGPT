@@ -26,7 +26,7 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
-import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
+import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/web/common/hooks/useRequest';

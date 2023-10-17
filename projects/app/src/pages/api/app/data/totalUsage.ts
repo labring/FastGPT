@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
-import { Types } from '@fastgpt/common/mongo';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import { Types } from '@fastgpt/service/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

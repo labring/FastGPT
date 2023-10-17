@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { authUser } from '@fastgpt/support/user/auth';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { Types } from '@fastgpt/common/mongo';
+import { Types } from '@fastgpt/service/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

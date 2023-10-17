@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgClient } from '@/service/pg';
-import { withNextCors } from '@fastgpt/common/tools/nextjs';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { PgDatasetTableName } from '@/constants/plugin';
 import type { UpdateDatasetDataPrams } from '@/global/core/api/datasetReq.d';

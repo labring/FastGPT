@@ -3,7 +3,7 @@ import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
 import { getMyModels, getModelById, putAppById } from '@/web/core/app/api';
-import { formatPrice } from '@fastgpt/common/bill/index';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 import { defaultApp } from '@/constants/model';
 import { AppListItemType, AppUpdateParams } from '@/types/app';

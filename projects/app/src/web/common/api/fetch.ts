@@ -1,5 +1,5 @@
 import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { StartChatFnProps } from '@/components/ChatBox';

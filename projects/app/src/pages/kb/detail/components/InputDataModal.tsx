@@ -7,7 +7,7 @@ import {
   delOneDatasetDataById
 } from '@/web/core/dataset/api';
 import { useToast } from '@/web/common/hooks/useToast';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
@@ -17,8 +17,8 @@ import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { useTranslation } from 'react-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store';
 import { getFileAndOpen } from '@/web/common/file/utils';
-import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/core/dataset/constant';
-import { strIsLink } from '@fastgpt/common/tools/str';
+import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/global/core/dataset/constant';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type FormData = { dataId?: string } & DatasetDataItemType;

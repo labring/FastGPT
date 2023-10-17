@@ -1,7 +1,7 @@
-import { Types, connectionMongo } from '@fastgpt/common/mongo';
+import { Types, connectionMongo } from '@fastgpt/service/common/mongo';
 import fs from 'fs';
 import fsp from 'fs/promises';
-import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { GSFileInfoType } from '@/types/common/file';
 
 enum BucketNameEnum {

@@ -1,11 +1,11 @@
 import { TrainingData } from '@/service/mongo';
 import { pushQABill } from '@/service/common/bill/push';
 import { TrainingModeEnum } from '@/constants/plugin';
-import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
-import { authBalanceByUid } from '@fastgpt/support/user/auth';
-import { getAIApi } from '@fastgpt/core/ai/config';
-import type { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
+import { authBalanceByUid } from '@fastgpt/service/support/user/auth';
+import { getAIApi } from '@fastgpt/service/core/ai/config';
+import type { ChatCompletionRequestMessage } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '../utils/tools';
 import { splitText2Chunks } from '@/global/common/string/tools';
 import { replaceVariable } from '@/global/common/string/tools';

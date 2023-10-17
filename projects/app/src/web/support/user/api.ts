@@ -1,5 +1,5 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
-import { hashStr } from '@fastgpt/common/tools/str';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { ResLogin, PromotionRecordType } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserType, UserUpdateParams } from '@/types/user';

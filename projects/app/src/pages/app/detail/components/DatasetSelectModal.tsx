@@ -20,7 +20,7 @@ import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
-import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useDatasetStore } from '@/web/core/dataset/store';

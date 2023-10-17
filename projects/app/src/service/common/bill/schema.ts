@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { BillSchema as BillType } from '@/types/common/bill';
 import { BillSourceMap } from '@/constants/user';

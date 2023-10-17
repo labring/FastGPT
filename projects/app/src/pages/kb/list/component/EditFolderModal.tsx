@@ -4,7 +4,7 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postCreateDataset, putDatasetById } from '@/web/core/dataset/api';
-import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
+import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 
 const EditFolderModal = ({
   onClose,

@@ -1,7 +1,7 @@
 import { useToast } from '@/web/common/hooks/useToast';
 import { useMutation } from '@tanstack/react-query';
 import type { UseMutationOptions } from '@tanstack/react-query';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'react-i18next';
 
 interface Props extends UseMutationOptions<any, any, any, any> {

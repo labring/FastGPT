@@ -2,10 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { authUser } from '@fastgpt/support/user/auth';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { authDataset } from '@/service/utils/auth';
-import { withNextCors } from '@fastgpt/common/tools/nextjs';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
