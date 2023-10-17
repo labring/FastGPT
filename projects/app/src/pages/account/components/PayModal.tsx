@@ -69,12 +69,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       title={t('user.Pay')}
       isCentered={!payId}
     >
-      <ModalBody
-        p={0}
-        h={payId ? 'auto' : ['auto', '70vh']}
-        display={'flex'}
-        flexDirection={'column'}
-      >
+      <ModalBody p={0} minH={payId ? 'auto' : '70vh'} display={'flex'} flexDirection={'column'}>
         {!payId && (
           <>
             <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4} px={6}>
