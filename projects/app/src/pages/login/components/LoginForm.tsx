@@ -3,11 +3,11 @@ import { FormControl, Flex, Input, Button, FormErrorMessage, Box, Link } from '@
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { OAuthEnum, PageTypeEnum } from '@/constants/user';
-import { postLogin } from '@/web/support/api/user';
+import { postLogin } from '@/web/support/user/api';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/store/static';
-import { useGlobalStore } from '@/web/common/store/global';
+import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
@@ -26,7 +26,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const router = useRouter();
   const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
   const { toast } = useToast();
-  const { setLoginStore } = useGlobalStore();
+  const { setLoginStore } = useSystemStore();
   const {
     register,
     handleSubmit,

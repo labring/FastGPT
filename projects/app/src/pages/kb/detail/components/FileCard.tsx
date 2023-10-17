@@ -17,10 +17,10 @@ import {
   getDatasetFiles,
   delDatasetFileById,
   updateDatasetFile
-} from '@/web/core/api/dataset';
+} from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
-import { formatFileSize } from '@/utils/tools';
+import { formatFileSize } from '@fastgpt/common/file/tools';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
@@ -31,11 +31,11 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import { useRouter } from 'next/router';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import type { DatasetFileItemType } from '@/types/core/dataset/file';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { datasetSpecialIds, FileStatusEnum } from '@fastgpt/core/dataset/constant';
-import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
+import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/file/icon';
 
 const FileCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -44,7 +44,7 @@ const FileCard = ({ kbId }: { kbId: string }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const [searchText, setSearchText] = useState('');
-  const { setLoading } = useGlobalStore();
+  const { setLoading } = useSystemStore();
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('kb.Confirm to delete the file')
   });

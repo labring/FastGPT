@@ -13,7 +13,7 @@ import { insertData2Dataset, PgClient } from '@/service/pg';
 import { getVectorModel } from '@/service/core/ai/model';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
-import { countPromptTokens } from '@/utils/common/tiktoken';
+import { countPromptTokens } from '@/global/common/tiktoken';
 import { authFileIdValid } from '@/service/dataset/auth';
 
 export type Props = {

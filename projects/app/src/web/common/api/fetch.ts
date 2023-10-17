@@ -3,7 +3,7 @@ import { getErrText } from '@/utils/tools';
 import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { StartChatFnProps } from '@/components/ChatBox';
-import { getToken } from '@/utils/user';
+import { getToken } from '@/web/support/user/auth';
 
 type StreamFetchProps = {
   url?: string;

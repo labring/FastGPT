@@ -7,8 +7,8 @@ import { authBalanceByUid } from '@fastgpt/support/user/auth';
 import { getAIApi } from '@fastgpt/core/ai/config';
 import type { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
 import { addLog } from '../utils/tools';
-import { splitText2Chunks } from '@/utils/file';
-import { replaceVariable } from '@/utils/common/tools/text';
+import { splitText2Chunks } from '@/global/common/string/tools';
+import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { pushDataToKb } from '@/pages/api/core/dataset/data/pushData';
 

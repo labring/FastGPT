@@ -9,13 +9,13 @@ import React, {
 import { useRouter } from 'next/router';
 import { Box, Flex, Button, FormControl, IconButton, Input } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
-import { delDatasetById, putDatasetById } from '@/web/core/api/dataset';
-import { useSelectFile } from '@/web/common/hooks/useSelectFile';
+import { delDatasetById, putDatasetById } from '@/web/core/dataset/api';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useDatasetStore } from '@/web/core/store/dataset';
+import { useDatasetStore } from '@/web/core/dataset/store';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
-import { compressImg } from '@/web/common/utils/file';
+import { compressImg } from '@/web/common/file/utils';
 import type { DatasetItemType } from '@/types/core/dataset';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';

@@ -9,9 +9,9 @@ import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-import { useDatasetStore } from '@/web/core/store/dataset';
-import { putMarkFilesUsed } from '@/web/core/api/dataset';
-import { chunksUpload } from '@/web/core/utils/dataset';
+import { useDatasetStore } from '@/web/core/dataset/store';
+import { putMarkFilesUsed } from '@/web/core/dataset/api';
+import { chunksUpload } from '@/web/core/dataset/utils';
 
 const fileExtension = '.csv';
 

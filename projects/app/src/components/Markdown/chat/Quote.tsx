@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
-import { getFileAndOpen } from '@/web/common/utils/file';
+import { getFileAndOpen } from '@/web/common/file/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 

@@ -4,7 +4,7 @@ import MyModal from '@/components/MyModal';
 import { Box, Button, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
 import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { postFetchUrls } from '@/web/common/api/plugin';
+import { postFetchUrls } from '@/web/common/plugin/api';
 
 const UrlFetchModal = ({
   onClose,

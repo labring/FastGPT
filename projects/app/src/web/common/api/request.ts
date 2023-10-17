@@ -4,7 +4,7 @@ import axios, {
   AxiosResponse,
   AxiosProgressEvent
 } from 'axios';
-import { clearToken, getToken } from '@/utils/user';
+import { clearToken, getToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/common/constant/errorCode';
 
 interface ConfigType {

@@ -30,7 +30,7 @@ import {
   BoxProps,
   FlexProps
 } from '@chakra-ui/react';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
@@ -38,14 +38,14 @@ import { AppModuleItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import type { MessageItemType } from '@/types/core/chat/type';
-import { fileDownload } from '@/web/common/utils/file';
+import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
-import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/web/core/api/chat';
+import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/web/core/chat/api';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -61,7 +61,7 @@ const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputD
 
 import styles from './index.module.scss';
 import Script from 'next/script';
-import { postQuestionGuide } from '@/web/core/api/ai';
+import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from './utils';
 import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
 
@@ -131,7 +131,7 @@ const ChatBox = (
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());

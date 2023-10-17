@@ -1,8 +1,8 @@
 import MyIcon from '@/components/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { useSelectFile } from '@/web/common/hooks/useSelectFile';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
-import { splitText2Chunks } from '@/utils/file';
+import { splitText2Chunks } from '@/global/common/string/tools';
 import { simpleText } from '@fastgpt/common/tools/str';
 import {
   uploadFiles,
@@ -11,7 +11,7 @@ import {
   readTxtContent,
   readPdfContent,
   readDocContent
-} from '@/web/common/utils/file';
+} from '@/web/common/file/utils';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -21,8 +21,8 @@ import MyTooltip from '@/components/MyTooltip';
 import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
 import type { DatasetDataItemType } from '@/types/core/dataset/data';
 import { getErrText } from '@/utils/tools';
-import { useDatasetStore } from '@/web/core/store/dataset';
-import { getFileIcon } from '@fastgpt/common/tools/file';
+import { useDatasetStore } from '@/web/core/dataset/store';
+import { getFileIcon } from '@fastgpt/common/file/icon';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));

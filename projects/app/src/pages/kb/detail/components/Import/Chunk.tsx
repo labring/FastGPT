@@ -15,7 +15,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRouter } from 'next/router';
 import { useMutation } from '@tanstack/react-query';
-import { splitText2Chunks } from '@/utils/file';
+import { splitText2Chunks } from '@/global/common/string/tools';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import MyIcon from '@/components/Icon';
@@ -25,9 +25,9 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
-import { useDatasetStore } from '@/web/core/store/dataset';
-import { putMarkFilesUsed } from '@/web/core/api/dataset';
-import { chunksUpload } from '@/web/core/utils/dataset';
+import { useDatasetStore } from '@/web/core/dataset/store';
+import { putMarkFilesUsed } from '@/web/core/dataset/api';
+import { chunksUpload } from '@/web/core/dataset/utils';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 

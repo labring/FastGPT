@@ -10,7 +10,7 @@ import {
   Image
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useDatasetStore } from '@/web/core/store/dataset';
+import { useDatasetStore } from '@/web/core/dataset/store';
 import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
@@ -20,7 +20,7 @@ import {
   getDatasetPaths,
   putDatasetById,
   exportDatasetData
-} from '@/web/core/api/dataset';
+} from '@/web/core/dataset/api';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
@@ -30,9 +30,9 @@ import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/core/dataset/constant
 import Tag from '@/components/Tag';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const EditFolderModal = dynamic(() => import('./component/EditFolderModal'), { ssr: false });
@@ -43,7 +43,7 @@ const Kb = () => {
   const theme = useTheme();
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
-  const { setLoading } = useGlobalStore();
+  const { setLoading } = useSystemStore();
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('kb.deleteFolderTips'),

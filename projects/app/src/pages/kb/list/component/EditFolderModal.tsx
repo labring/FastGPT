@@ -3,7 +3,7 @@ import { ModalFooter, ModalBody, Input, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { postCreateDataset, putDatasetById } from '@/web/core/api/dataset';
+import { postCreateDataset, putDatasetById } from '@/web/core/dataset/api';
 import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 
 const EditFolderModal = ({

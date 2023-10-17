@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Textarea, Button, Flex, useTheme, Grid, Progress } from '@chakra-ui/react';
-import { useDatasetStore } from '@/web/core/store/dataset';
+import { useDatasetStore } from '@/web/core/dataset/store';
 import type { SearchTestItemType } from '@/types/core/dataset';
-import { getDatasetDataItemById, postSearchText } from '@/web/core/api/dataset';
+import { getDatasetDataItemById, postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
 import InputDataModal, { type FormData } from './InputDataModal';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
@@ -18,7 +18,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 const Test = ({ kbId }: { kbId: string }) => {
   const theme = useTheme();
   const { toast } = useToast();
-  const { setLoading } = useGlobalStore();
+  const { setLoading } = useSystemStore();
   const { kbDetail, kbTestList, pushKbTestItem, delKbTestItemById, updateKbItemById } =
     useDatasetStore();
   const [inputText, setInputText] = useState('');

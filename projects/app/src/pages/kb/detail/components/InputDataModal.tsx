@@ -5,7 +5,7 @@ import {
   postData2Dataset,
   putDatasetDataById,
   delOneDatasetDataById
-} from '@/web/core/api/dataset';
+} from '@/web/core/dataset/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
@@ -15,11 +15,11 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { useTranslation } from 'react-i18next';
-import { useDatasetStore } from '@/web/core/store/dataset';
-import { getFileAndOpen } from '@/web/common/utils/file';
+import { useDatasetStore } from '@/web/core/dataset/store';
+import { getFileAndOpen } from '@/web/common/file/utils';
 import { datasetSpecialIdMap, datasetSpecialIds } from '@fastgpt/core/dataset/constant';
 import { strIsLink } from '@fastgpt/common/tools/str';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type FormData = { dataId?: string } & DatasetDataItemType;
 
@@ -260,7 +260,7 @@ interface RawFileTextProps extends BoxProps {
 export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { setLoading } = useGlobalStore();
+  const { setLoading } = useSystemStore();
 
   const hasFile = useMemo(() => fileId && !datasetSpecialIds.includes(fileId), [fileId]);
   const formatName = useMemo(

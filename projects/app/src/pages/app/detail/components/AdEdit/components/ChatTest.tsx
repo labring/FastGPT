@@ -13,7 +13,7 @@ import MyIcon from '@/components/Icon';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { getGuideModule } from '@/components/ChatBox/utils';
 

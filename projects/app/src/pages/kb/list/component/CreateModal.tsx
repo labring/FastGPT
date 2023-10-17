@@ -1,28 +1,28 @@
 import React, { useCallback, useState, useRef } from 'react';
 import { Box, Flex, Button, ModalHeader, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
-import { useSelectFile } from '@/web/common/hooks/useSelectFile';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/web/common/utils/file';
+import { compressImg } from '@/web/common/file/utils';
 import { getErrText } from '@/utils/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
-import { postCreateDataset } from '@/web/core/api/dataset';
+import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
 import MySelect from '@/components/Select';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { vectorModelList } from '@/web/common/store/static';
+import { vectorModelList } from '@/web/common/system/staticData';
 import Tag from '@/components/Tag';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const { register, setValue, getValues, handleSubmit } = useForm<CreateDatasetParams>({
     defaultValues: {
       avatar: '/icon/logo.svg',

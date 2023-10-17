@@ -17,7 +17,7 @@ import MyIcon from '@/components/Icon';
 import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getDatasets, putDatasetById, getDatasetPaths } from '@/web/core/api/dataset';
+import { getDatasets, putDatasetById, getDatasetPaths } from '@/web/core/dataset/api';
 import { useRequest } from '@/web/common/hooks/useRequest';
 
 const MoveModal = ({

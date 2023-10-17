@@ -6,7 +6,7 @@ import { FlowOutputTargetItemType } from '@/types/core/app/flow';
 import { AppModuleItemType } from '@/types/app';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { AppTypeEnum } from '@/constants/app';

@@ -19,18 +19,18 @@ import {
   Text,
   Switch
 } from '@chakra-ui/react';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   appModules2Form,
   getDefaultAppForm,
   appForm2Modules,
   type EditFormType
-} from '@/utils/app';
-import { chatModelList } from '@/web/common/store/static';
+} from '@/web/core/app/basicSettings';
+import { chatModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import {
   ChatModelSystemTip,
@@ -45,7 +45,7 @@ import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
 import { useToast } from '@/web/common/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
-import { delModelById } from '@/web/core/api/app';
+import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'react-i18next';
 import { getGuideModule } from '@/components/ChatBox/utils';
 
@@ -60,7 +60,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import { addVariable } from '../VariableEditModal';
 import { KbParamsModal } from '../DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
-import { useDatasetStore } from '@/web/core/store/dataset';
+import { useDatasetStore } from '@/web/core/dataset/store';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -74,7 +74,7 @@ const Settings = ({ appId }: { appId: string }) => {
   const { toast } = useToast();
   const { appDetail, updateAppDetail } = useUserStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
 
   const [editVariable, setEditVariable] = useState<VariableItemType>();
   const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
@@ -687,7 +687,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
 };
 
 const BasicEdit = ({ appId }: { appId: string }) => {
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   return (
     <Grid gridTemplateColumns={['1fr', '550px 1fr']} h={'100%'}>
       <Settings appId={appId} />

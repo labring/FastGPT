@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { ModalFooter, ModalBody, Button, Input, Box, Grid } from '@chakra-ui/react';
-import { getPayCode, checkPayResult } from '@/web/common/api/bill';
+import { getPayCode, checkPayResult } from '@/web/common/bill/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
@@ -8,7 +8,7 @@ import { getErrText } from '@/utils/tools';
 import { useTranslation } from 'react-i18next';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
-import { priceMd } from '@/web/common/store/static';
+import { priceMd } from '@/web/common/system/staticData';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();

@@ -8,7 +8,7 @@ import { SystemInputEnum } from '@/constants/app';
 import { SpecialInputKeyEnum } from '@/constants/flow';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { replaceVariable } from '@/utils/common/tools/text';
+import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { FunctionModelItemType } from '@/types/model';
 import { getCQModel } from '@/service/core/ai/model';

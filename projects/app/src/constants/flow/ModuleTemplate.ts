@@ -9,7 +9,7 @@ import {
 } from './index';
 import type { AppItemType } from '@/types/app';
 import type { FlowModuleTemplateType } from '@/types/core/app/flow';
-import { chatModelList, cqModelList } from '@/web/common/store/static';
+import { chatModelList, cqModelList } from '@/web/common/system/staticData';
 import {
   Input_Template_History,
   Input_Template_TFSwitch,

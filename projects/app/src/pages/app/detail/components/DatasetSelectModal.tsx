@@ -23,8 +23,8 @@ import MyIcon from '@/components/Icon';
 import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useDatasetStore } from '@/web/core/store/dataset';
-import { feConfigs } from '@/web/common/store/static';
+import { useDatasetStore } from '@/web/core/dataset/store';
+import { feConfigs } from '@/web/common/system/staticData';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 
 export type KbParamsType = {

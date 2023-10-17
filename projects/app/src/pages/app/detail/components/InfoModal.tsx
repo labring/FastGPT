@@ -12,10 +12,10 @@ import {
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@/types/mongoSchema';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useSelectFile } from '@/web/common/hooks/useSelectFile';
-import { compressImg } from '@/web/common/utils/file';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
+import { compressImg } from '@/web/common/file/utils';
 import { getErrText } from '@/utils/tools';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@/components/MyModal';

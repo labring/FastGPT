@@ -11,7 +11,7 @@ import {
   Flex,
   Box
 } from '@chakra-ui/react';
-import { getPayOrders, checkPayResult } from '@/web/common/api/bill';
+import { getPayOrders, checkPayResult } from '@/web/common/bill/api';
 import { PaySchema } from '@/types/mongoSchema';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';

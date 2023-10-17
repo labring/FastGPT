@@ -2,7 +2,7 @@ import React, { useCallback, useState, useRef, useMemo } from 'react';
 import { Box, Card, IconButton, Flex, Grid, Image, Button } from '@chakra-ui/react';
 import type { PgDataItemType } from '@/types/core/dataset/data';
 import { usePagination } from '@/web/common/hooks/usePagination';
-import { getDatasetDataList, delOneDatasetDataById, getFileInfoById } from '@/web/core/api/dataset';
+import { getDatasetDataList, delOneDatasetDataById, getFileInfoById } from '@/web/core/dataset/api';
 import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -15,7 +15,7 @@ import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/tools/file';
+import { getFileIcon, getSpecialFileIcon } from '@fastgpt/common/file/icon';
 
 const DataCard = ({ kbId }: { kbId: string }) => {
   const BoxRef = useRef<HTMLDivElement>(null);

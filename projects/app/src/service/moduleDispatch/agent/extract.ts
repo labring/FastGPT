@@ -8,7 +8,7 @@ import { ContextExtractEnum } from '@/constants/flow/flowField';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
-import { replaceVariable } from '@/utils/common/tools/text';
+import { replaceVariable } from '@/global/common/string/tools';
 import { FunctionModelItemType } from '@/types/model';
 
 type Props = ModuleDispatchProps<{

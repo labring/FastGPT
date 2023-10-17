@@ -9,7 +9,7 @@ import { withNextCors } from '@fastgpt/common/tools/nextjs';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
-import { countPromptTokens } from '@/utils/common/tiktoken';
+import { countPromptTokens } from '@/global/common/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDataProps } from '@/global/core/api/datasetReq.d';
 import { authFileIdValid } from '@/service/dataset/auth';
