@@ -745,7 +745,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -903,7 +903,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -1117,7 +1117,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -1484,7 +1484,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",

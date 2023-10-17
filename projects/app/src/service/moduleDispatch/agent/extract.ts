@@ -9,7 +9,7 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/utils/common/tools/text';
-import { defaultExtractModel } from '@/pages/api/system/getInitData';
+import { FunctionModelItemType } from '@/types/model';
 
 type Props = ModuleDispatchProps<{
   history?: ChatItemType[];
@@ -37,13 +37,19 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     return Promise.reject('Input is empty');
   }
 
-  const extractModel = global.extractModel || defaultExtractModel;
+  const extractModel = global.extractModels[0];
 
   const { arg, tokens } = await (async () => {
     if (extractModel.functionCall) {
-      return functionCall(props);
+      return functionCall({
+        ...props,
+        extractModel
+      });
     }
-    return completions(props);
+    return completions({
+      ...props,
+      extractModel
+    });
   })();
 
   // remove invalid key
@@ -83,11 +89,10 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 }
 
 async function functionCall({
+  extractModel,
   user,
   inputs: { history = [], content, extractKeys, description }
-}: Props) {
-  const extractModel = global.extractModel;
-
+}: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     ...history,
     {
@@ -152,15 +157,14 @@ async function functionCall({
 }
 
 async function completions({
+  extractModel,
   user,
   inputs: { history = [], content, extractKeys, description }
-}: Props) {
-  const extractModel = global.extractModel;
-
+}: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(extractModel.prompt || Prompt_ExtractJson, {
+      value: replaceVariable(extractModel.functionPrompt || Prompt_ExtractJson, {
         description,
         json: extractKeys
           .map(

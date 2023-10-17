@@ -6,7 +6,8 @@ import { authUser } from '@fastgpt/support/user/auth';
 import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';
 import type { ChatSchema } from '@/types/mongoSchema';
-import { getChatModelNameList, getGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/components/ChatBox/utils';
+import { getChatModelNameListByModules } from '@/service/core/app/module';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 
 /* 初始化我的聊天框，需要身份验证 */
@@ -83,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         appId,
         app: {
           userGuideModule: getGuideModule(app.modules),
-          chatModels: getChatModelNameList(app.modules),
+          chatModels: getChatModelNameListByModules(app.modules),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro,

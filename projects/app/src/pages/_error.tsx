@@ -32,8 +32,6 @@ function Error() {
 }
 
 export async function getServerSideProps(context: any) {
-  console.log('[render error]: ', context);
-
   return {
     props: { ...(await serviceSideProps(context)) }
   };

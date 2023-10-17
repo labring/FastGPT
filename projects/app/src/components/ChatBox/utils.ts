@@ -1,6 +1,5 @@
 import { SystemInputEnum } from '@/constants/app';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { getChatModel } from '@/service/utils/data';
 import { AppModuleItemType, VariableItemType } from '@/types/app';
 
 export const getGuideModule = (modules: AppModuleItemType[]) =>
@@ -22,12 +21,4 @@ export const splitGuideModule = (guideModules?: AppModuleItemType) => {
     variableModules,
     questionGuide
   };
-};
-export const getChatModelNameList = (modules: AppModuleItemType[]): string[] => {
-  const chatModules = modules.filter((item) => item.flowType === FlowModuleTypeEnum.chatNode);
-  return chatModules
-    .map(
-      (item) => getChatModel(item.inputs.find((input) => input.key === 'model')?.value)?.name || ''
-    )
-    .filter((item) => item);
 };

@@ -8,68 +8,85 @@
     {
       "model": "gpt-3.5-turbo",
       "name": "GPT35-4k",
-      "contextMaxToken": 4000,
+      "price": 0,
+      "maxToken": 4000,
       "quoteMaxToken": 2000,
       "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
+      "censor": false,
+      "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
-      "contextMaxToken": 16000,
+      "maxToken": 16000,
+      "price": 0,
       "quoteMaxToken": 8000,
       "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
+      "censor": false,
+      "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-4",
       "name": "GPT4-8k",
-      "contextMaxToken": 8000,
+      "maxToken": 8000,
+      "price": 0,
       "quoteMaxToken": 4000,
       "maxTemperature": 1.2,
+      "censor": false,
+      "defaultSystemChatPrompt": ""
+    }
+  ],
+  "QAModels": [
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxToken": 16000,
+      "price": 0
+    }
+  ],
+  "CQModels": [
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxToken": 16000,
       "price": 0,
-      "defaultSystem": ""
+      "functionCall": true,
+      "functionPrompt": ""
+    },
+    {
+      "model": "gpt-4",
+      "name": "GPT4-8k",
+      "maxToken": 8000,
+      "price": 0,
+      "functionCall": true,
+      "functionPrompt": ""
+    }
+  ],
+  "ExtractModels": [
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxToken": 16000,
+      "price": 0,
+      "functionCall": true,
+      "functionPrompt": ""
+    }
+  ],
+  "QGModels": [
+    {
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35-4K",
+      "maxToken": 4000,
+      "price": 0
     }
   ],
   "VectorModels": [
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "price": 0,
-      "defaultToken": 500,
+      "price": 0.2,
+      "defaultToken": 700,
       "maxToken": 3000
     }
-  ],
-  "QAModel": {
-    "model": "gpt-3.5-turbo-16k",
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0
-  },
-  "ExtractModel": {
-    "model": "gpt-3.5-turbo-16k",
-    "functionCall": true,
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0,
-    "prompt": ""
-  },
-  "CQModel": {
-    "model": "gpt-3.5-turbo-16k",
-    "functionCall": true,
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0,
-    "prompt": ""
-  },
-  "QGModel": {
-    "model": "gpt-3.5-turbo",
-    "name": "GPT35-4k",
-    "maxToken": 4000,
-    "price": 0,
-    "prompt": "",
-    "functionCall": false
-  }
+  ]
 }

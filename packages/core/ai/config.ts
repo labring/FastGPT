@@ -11,6 +11,7 @@ export const getAIApi = (props?: UserModelSchema['openaiAccount'], timeout = 600
     apiKey: props?.key || systemAIChatKey,
     baseURL: props?.baseUrl || baseUrl,
     httpAgent: global.httpsAgent,
-    timeout
+    timeout,
+    maxRetries: 2
   });
 };

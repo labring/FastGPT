@@ -8,7 +8,7 @@ import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
 import { PgClient } from '@/service/pg';
 import { addLog } from '@/service/utils/tools';
-import { responseWriteController } from '@/service/common/stream';
+import { responseWriteController } from '@fastgpt/common/tools/stream';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

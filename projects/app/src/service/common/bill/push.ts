@@ -1,12 +1,12 @@
 import { Bill } from '@/service/mongo';
 import { MongoUser } from '@fastgpt/support/user/schema';
 import { BillSourceEnum } from '@/constants/user';
-import { getModel } from '@/service/utils/data';
+import { getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import { addLog } from '@/service/utils/tools';
 import type { CreateBillType } from '@/types/common/bill';
-import { defaultQGModel } from '@/pages/api/system/getInitData';
+import { defaultQGModels } from '@/constants/model';
 
 async function createBill(data: CreateBillType) {
   try {
@@ -106,7 +106,7 @@ export const pushQABill = async ({
   addLog.info('splitData generate success', { totalTokens });
 
   // 获取模型单价格, 都是用 gpt35 拆分
-  const unitPrice = global.qaModel.price || 3;
+  const unitPrice = global.qaModels?.[0]?.price || 3;
   // 计算价格
   const total = unitPrice * totalTokens;
 
@@ -158,7 +158,7 @@ export const pushGenerateVectorBill = async ({
         {
           moduleName: '索引生成',
           amount: total,
-          model: vectorModel.model,
+          model: vectorModel.name,
           tokenLen
         }
       ]
@@ -167,14 +167,22 @@ export const pushGenerateVectorBill = async ({
   return { total };
 };
 
-export const countModelPrice = ({ model, tokens }: { model: string; tokens: number }) => {
-  const modelData = getModel(model);
+export const countModelPrice = ({
+  model,
+  tokens,
+  type
+}: {
+  model: string;
+  tokens: number;
+  type: `${ModelTypeEnum}`;
+}) => {
+  const modelData = getModelMap?.[type]?.(model);
   if (!modelData) return 0;
   return modelData.price * tokens;
 };
 
 export const pushQuestionGuideBill = ({ tokens, userId }: { tokens: number; userId: string }) => {
-  const qgModel = global.qgModel || defaultQGModel;
+  const qgModel = global.qgModels?.[0] || defaultQGModels[0];
   const total = qgModel.price * tokens;
   createBill({
     userId,

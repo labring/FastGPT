@@ -4,10 +4,23 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { readFileSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
-import type { VectorModelItemType, FunctionModelItemType } from '@/types/model';
 import { formatPrice } from '@fastgpt/common/bill';
 import { getTikTokenEnc } from '@/utils/common/tiktoken';
 import { initHttpAgent } from '@fastgpt/core/init';
+import {
+  defaultChatModels,
+  defaultQAModels,
+  defaultCQModels,
+  defaultExtractModels,
+  defaultQGModels,
+  defaultVectorModels
+} from '@/constants/model';
+import {
+  ChatModelItemType,
+  FunctionModelItemType,
+  LLMModelItemType,
+  VectorModelItemType
+} from '@/types/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   getInitConfig();
@@ -17,7 +30,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     data: {
       feConfigs: global.feConfigs,
       chatModels: global.chatModels,
-      qaModel: global.qaModel,
+      qaModels: global.qaModels,
+      cqModels: global.cqModels,
+      extractModels: global.extractModels,
+      qgModels: global.qgModels,
       vectorModels: global.vectorModels,
       priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0'
@@ -42,72 +58,6 @@ const defaultFeConfigs: FeConfigsType = {
   },
   scripts: []
 };
-const defaultChatModels = [
-  {
-    model: 'gpt-3.5-turbo',
-    name: 'GPT35-4k',
-    contextMaxToken: 4000,
-    quoteMaxToken: 2400,
-    maxTemperature: 1.2,
-    price: 0
-  },
-  {
-    model: 'gpt-3.5-turbo-16k',
-    name: 'GPT35-16k',
-    contextMaxToken: 16000,
-    quoteMaxToken: 8000,
-    maxTemperature: 1.2,
-    price: 0
-  },
-  {
-    model: 'gpt-4',
-    name: 'GPT4-8k',
-    contextMaxToken: 8000,
-    quoteMaxToken: 4000,
-    maxTemperature: 1.2,
-    price: 0
-  }
-];
-const defaultQAModel = {
-  model: 'gpt-3.5-turbo-16k',
-  name: 'GPT35-16k',
-  maxToken: 16000,
-  price: 0
-};
-export const defaultExtractModel: FunctionModelItemType = {
-  model: 'gpt-3.5-turbo-16k',
-  name: 'GPT35-16k',
-  maxToken: 16000,
-  price: 0,
-  prompt: '',
-  functionCall: true
-};
-export const defaultCQModel: FunctionModelItemType = {
-  model: 'gpt-3.5-turbo-16k',
-  name: 'GPT35-16k',
-  maxToken: 16000,
-  price: 0,
-  prompt: '',
-  functionCall: true
-};
-export const defaultQGModel: FunctionModelItemType = {
-  model: 'gpt-3.5-turbo',
-  name: 'FastAI-4k',
-  maxToken: 4000,
-  price: 1.5,
-  prompt: '',
-  functionCall: false
-};
-
-const defaultVectorModels: VectorModelItemType[] = [
-  {
-    model: 'text-embedding-ada-002',
-    name: 'Embedding-2',
-    price: 0,
-    defaultToken: 500,
-    maxToken: 3000
-  }
-];
 
 export function initGlobal() {
   // init tikToken
@@ -127,7 +77,16 @@ export function getInitConfig() {
 
     const filename =
       process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
-    const res = JSON.parse(readFileSync(filename, 'utf-8'));
+    const res = JSON.parse(readFileSync(filename, 'utf-8')) as {
+      FeConfig: FeConfigsType;
+      SystemParams: SystemEnvType;
+      ChatModels: ChatModelItemType[];
+      QAModels: LLMModelItemType[];
+      CQModels: FunctionModelItemType[];
+      ExtractModels: FunctionModelItemType[];
+      QGModels: LLMModelItemType[];
+      VectorModels: VectorModelItemType[];
+    };
 
     console.log(`System Version: ${global.systemVersion}`);
 
@@ -137,11 +96,13 @@ export function getInitConfig() {
       ? { ...defaultSystemEnv, ...res.SystemParams }
       : defaultSystemEnv;
     global.feConfigs = res.FeConfig ? { ...defaultFeConfigs, ...res.FeConfig } : defaultFeConfigs;
+
     global.chatModels = res.ChatModels || defaultChatModels;
-    global.qaModel = res.QAModel || defaultQAModel;
-    global.extractModel = res.ExtractModel || defaultExtractModel;
-    global.cqModel = res.CQModel || defaultCQModel;
-    global.qgModel = res.QGModel || defaultQGModel;
+    global.qaModels = res.QAModels || defaultQAModels;
+    global.cqModels = res.CQModels || defaultCQModels;
+    global.extractModels = res.ExtractModels || defaultExtractModels;
+    global.qgModels = res.QGModels || defaultQGModels;
+
     global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
@@ -152,13 +113,27 @@ export function getInitConfig() {
 export function setDefaultData() {
   global.systemEnv = defaultSystemEnv;
   global.feConfigs = defaultFeConfigs;
+
   global.chatModels = defaultChatModels;
-  global.qaModel = defaultQAModel;
+  global.qaModels = defaultQAModels;
+  global.cqModels = defaultCQModels;
+  global.extractModels = defaultExtractModels;
+  global.qgModels = defaultQGModels;
+
   global.vectorModels = defaultVectorModels;
-  global.extractModel = defaultExtractModel;
-  global.cqModel = defaultCQModel;
-  global.qgModel = defaultQGModel;
   global.priceMd = '';
+
+  console.log('use default config');
+  console.log({
+    feConfigs: defaultFeConfigs,
+    systemEnv: defaultSystemEnv,
+    chatModels: defaultChatModels,
+    qaModels: defaultQAModels,
+    cqModels: defaultCQModels,
+    extractModels: defaultExtractModels,
+    qgModels: defaultQGModels,
+    vectorModels: defaultVectorModels
+  });
 }
 
 export function getSystemVersion() {
@@ -187,10 +162,18 @@ ${global.vectorModels
 ${global.chatModels
   ?.map((item) => `| 对话-${item.name} | ${formatPrice(item.price, 1000)} |`)
   .join('\n')}
-| 文件QA拆分 | ${formatPrice(global.qaModel?.price, 1000)} |
-| 高级编排 - 问题分类 | ${formatPrice(global.cqModel?.price, 1000)} |
-| 高级编排 - 内容提取 | ${formatPrice(global.extractModel?.price, 1000)} |
-| 下一步指引 | ${formatPrice(global.qgModel?.price, 1000)} |
+${global.qaModels
+  ?.map((item) => `| 文件QA拆分-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+${global.cqModels
+  ?.map((item) => `| 问题分类-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+${global.extractModels
+  ?.map((item) => `| 内容提取-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+${global.qgModels
+  ?.map((item) => `| 下一步指引-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
 `;
   console.log(global.priceMd);
 }

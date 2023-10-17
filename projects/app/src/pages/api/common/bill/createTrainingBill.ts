@@ -12,6 +12,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true, authApiKey: true });
 
+    const qaModel = global.qaModels[0];
+
     const { _id } = await Bill.create({
       userId,
       appName: name,
@@ -25,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         {
           moduleName: 'QA 拆分',
-          model: global.qaModel.name,
+          model: qaModel?.name,
           amount: 0,
           tokenLen: 0
         }

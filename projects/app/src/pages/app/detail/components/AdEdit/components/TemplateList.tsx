@@ -1,24 +1,20 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import { FlowModuleItemType, FlowModuleTemplateType } from '@/types/core/app/flow';
-import type { Node } from 'reactflow';
+import { FlowModuleTemplateType } from '@/types/core/app/flow';
+import { useViewport, XYPosition } from 'reactflow';
 import { useGlobalStore } from '@/web/common/store/global';
 import Avatar from '@/components/Avatar';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { useFlowStore } from './Provider';
+import { customAlphabet } from 'nanoid';
+import { appModule2FlowNode } from '@/utils/adapt';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-const ModuleTemplateList = ({
-  nodes,
-  isOpen,
-  onClose
-}: {
-  nodes?: Node<FlowModuleItemType>[];
-  isOpen: boolean;
-  onClose: () => void;
-}) => {
-  const { onAddNode } = useFlowStore();
+const ModuleTemplateList = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const { nodes, setNodes, reactFlowWrapper } = useFlowStore();
   const { isPc } = useGlobalStore();
+  const { x, y, zoom } = useViewport();
 
   const filterTemplates = useMemo(() => {
     const guideModulesIndex = ModuleTemplates.findIndex((item) => item.label === '引导模块');
@@ -46,6 +42,28 @@ const ModuleTemplateList = ({
       ...ModuleTemplates.slice(guideModulesIndex + 1)
     ];
   }, [nodes]);
+
+  const onAddNode = useCallback(
+    ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
+      if (!reactFlowWrapper?.current) return;
+
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
+      const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
+      setNodes((state) =>
+        state.concat(
+          appModule2FlowNode({
+            item: {
+              ...template,
+              moduleId: nanoid(),
+              position: { x: mouseX, y: mouseY }
+            }
+          })
+        )
+      );
+    },
+    [reactFlowWrapper, setNodes, x, y, zoom]
+  );
 
   return (
     <>

@@ -34,7 +34,6 @@ import { chatModelList } from '@/web/common/store/static';
 import { formatPrice } from '@fastgpt/common/bill/index';
 import {
   ChatModelSystemTip,
-  ChatModelLimitTip,
   welcomeTextTip,
   questionGuideTip
 } from '@/constants/flow/ModuleTemplate';
@@ -128,12 +127,7 @@ const Settings = ({ appId }: { appId: string }) => {
       label: `${item.name} (${formatPrice(item.price, 1000)} 元/1k tokens)`
     }));
   }, [refresh]);
-  const tokenLimit = useMemo(() => {
-    return (
-      chatModelList.find((item) => item.model === getValues('chatModel.model'))?.contextMaxToken ||
-      4000
-    );
-  }, [getValues, refresh]);
+
   const selectedKbList = useMemo(
     () => allDatasets.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
     [allDatasets, kbList]
@@ -411,6 +405,10 @@ const Settings = ({ appId }: { appId: string }) => {
           <Box ml={2} flex={1}>
             AI 配置
           </Box>
+          <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
+            <MyIcon mr={1} name={'settingLight'} w={'14px'} />
+            高级配置
+          </Flex>
         </Flex>
 
         <Flex alignItems={'center'} mt={5}>
@@ -424,48 +422,9 @@ const Settings = ({ appId }: { appId: string }) => {
                 setValue('chatModel.model', val);
                 const maxToken =
                   chatModelList.find((item) => item.model === getValues('chatModel.model'))
-                    ?.contextMaxToken || 4000;
+                    ?.maxToken || 4000;
                 const token = maxToken / 2;
                 setValue('chatModel.maxToken', token);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
-        <Flex alignItems={'center'} my={10}>
-          <Box {...LabelStyles}>温度</Box>
-          <Box flex={1} ml={'10px'}>
-            <MySlider
-              markList={[
-                { label: '严谨', value: 0 },
-                { label: '发散', value: 10 }
-              ]}
-              width={'95%'}
-              min={0}
-              max={10}
-              value={getValues('chatModel.temperature')}
-              onChange={(e) => {
-                setValue('chatModel.temperature', e);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
-        <Flex alignItems={'center'} mt={12} mb={10}>
-          <Box {...LabelStyles}>回复上限</Box>
-          <Box flex={1} ml={'10px'}>
-            <MySlider
-              markList={[
-                { label: '100', value: 100 },
-                { label: `${tokenLimit}`, value: tokenLimit }
-              ]}
-              width={'95%'}
-              min={100}
-              max={tokenLimit}
-              step={50}
-              value={getValues('chatModel.maxToken')}
-              onChange={(val) => {
-                setValue('chatModel.maxToken', val);
                 setRefresh(!refresh);
               }}
             />
@@ -501,10 +460,6 @@ const Settings = ({ appId }: { appId: string }) => {
           <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbParams}>
             <MyIcon name={'edit'} w={'14px'} mr={1} />
             参数
-          </Flex>
-          <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
-            <MyIcon mr={1} name={'settingLight'} w={'14px'} />
-            提示词
           </Flex>
         </Flex>
         <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>

@@ -5,7 +5,8 @@
     "@fastgpt/common": "workspace:*",
     "cookie": "^0.5.0",
     "jsonwebtoken": "^9.0.2",
-    "axios": "^1.5.1"
+    "axios": "^1.5.1",
+    "next": "13.5.2"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.2",

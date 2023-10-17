@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/support/user/auth';
 import type { CreateQuestionGuideParams } from '@/global/core/api/aiReq.d';
 import { pushQuestionGuideBill } from '@/service/common/bill/push';
-import { defaultQGModel } from '@/pages/api/system/getInitData';
 import { createQuestionGuide } from '@fastgpt/core/ai/functions/createQuestionGuide';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -23,9 +22,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('user not found');
     }
 
+    const qgModel = global.qgModels[0];
+
     const { result, tokens } = await createQuestionGuide({
       messages,
-      model: (global.qgModel || defaultQGModel).model
+      model: qgModel.model
     });
 
     jsonRes(res, {

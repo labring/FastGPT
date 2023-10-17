@@ -13,7 +13,7 @@ export enum FlowInputItemTypeEnum {
   chatInput = 'chatInput',
   selectApp = 'selectApp',
   // chat special input
-  quoteList = 'quoteList',
+  aiSettings = 'aiSettings',
   maxToken = 'maxToken',
   selectChatModel = 'selectChatModel',
   // dataset special input

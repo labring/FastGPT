@@ -1,5 +1,5 @@
 import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { sseResponse } from '@/service/utils/tools';
+import { responseWrite } from '@fastgpt/common/tools/stream';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type AnswerProps = ModuleDispatchProps<{
@@ -21,7 +21,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   const formatText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
 
   if (stream) {
-    sseResponse({
+    responseWrite({
       res,
       event: detail ? sseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({

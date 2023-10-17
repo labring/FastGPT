@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@fastgpt/support/user/auth';
 import { PgClient } from '@/service/pg';
-import { withNextCors } from '@/service/utils/tools';
+import { withNextCors } from '@fastgpt/common/tools/nextjs';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { connectToDatabase } from '@/service/mongo';
 

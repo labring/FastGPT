@@ -29,7 +29,9 @@ export async function connectMongo({
       bufferCommands: true,
       maxConnecting: Number(process.env.DB_MAX_LINK || 5),
       maxPoolSize: Number(process.env.DB_MAX_LINK || 5),
-      minPoolSize: 2
+      minPoolSize: 2,
+      connectTimeoutMS: 20000,
+      waitQueueTimeoutMS: 20000
     });
 
     console.log('mongo connected');

@@ -9,13 +9,11 @@ ARG name
 # copy packages and one project
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY ./packages ./packages
-COPY ./projects/$name ./projects/$name
+COPY ./projects/$name/package.json ./projects/$name/package.json
 
 RUN \
   [ -f pnpm-lock.yaml ] && pnpm install || \
   (echo "Lockfile not found." && exit 1)
-
-RUN pnpm prune
 
 # Rebuild the source code only when needed
 FROM node:current-alpine AS builder
@@ -24,9 +22,11 @@ WORKDIR /app
 ARG name
 
 # copy common node_modules and one project node_modules
+COPY package.json pnpm-workspace.yaml ./
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
-COPY --from=deps /app/projects/$name ./projects/$name
+COPY ./projects/$name ./projects/$name
+COPY --from=deps /app/projects/$name/node_modules ./projects/$name/node_modules
 
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1

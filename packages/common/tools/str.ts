@@ -13,20 +13,10 @@ export const hashStr = (psw: string) => {
 /* simple text, remove chinese space and extra \n */
 export const simpleText = (text: string) => {
   text = text.replace(/([\u4e00-\u9fa5])[\s&&[^\n]]+([\u4e00-\u9fa5])/g, '$1$2');
-  text = text.replace(/\n{2,}/g, '\n');
+  text = text.replace(/\n{3,}/g, '\n\n');
   text = text.replace(/[\s&&[^\n]]{2,}/g, ' ');
   text = text.replace(/[\x00-\x08]/g, ' ');
+  text = text.replace(/\r\n|\r/g, '\n');
 
-  // replace empty \n
-  let newText = '';
-  let lastChar = '';
-  for (let i = 0; i < text.length; i++) {
-    const currentChar = text[i];
-    if (currentChar === '\n' && !/[。？！；.?!;]/g.test(lastChar)) {
-    } else {
-      newText += currentChar;
-    }
-    lastChar = currentChar;
-  }
-  return newText;
+  return text;
 };

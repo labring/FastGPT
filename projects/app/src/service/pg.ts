@@ -232,6 +232,6 @@ export async function initPg() {
     `);
     console.log('init pg successful');
   } catch (error) {
-    addLog.error('init pg error', error);
+    console.log('init pg error', error);
   }
 }
