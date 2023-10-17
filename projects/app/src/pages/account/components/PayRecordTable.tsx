@@ -58,7 +58,7 @@ const PayRecordTable = () => {
   );
 
   return (
-    <Box position={'relative'} h={'100%'}>
+    <Box position={'relative'} h={'100%'} overflow={'overlay'}>
       {!isInitialLoading && payOrders.length === 0 ? (
         <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
@@ -67,7 +67,7 @@ const PayRecordTable = () => {
           </Box>
         </Flex>
       ) : (
-        <TableContainer py={[0, 5]} px={[3, 8]} h={'100%'} overflow={'overlay'}>
+        <TableContainer py={[0, 5]} px={[3, 8]}>
           <Table>
             <Thead>
               <Tr>

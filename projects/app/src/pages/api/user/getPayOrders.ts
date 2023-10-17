@@ -11,7 +11,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const records = await Pay.find({
       userId,
       status: { $ne: 'CLOSED' }
-    }).sort({ createTime: -1 });
+    })
+      .sort({ createTime: -1 })
+      .limit(100);
 
     jsonRes(res, {
       data: records
