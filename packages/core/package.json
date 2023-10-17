@@ -5,7 +5,7 @@
     "@fastgpt/common": "workspace:*",
     "@fastgpt/support": "workspace:*",
     "encoding": "^0.1.13",
-    "openai": "^4.11.1",
+    "openai": "^4.12.1",
     "tunnel": "^0.0.6"
   },
   "devDependencies": {

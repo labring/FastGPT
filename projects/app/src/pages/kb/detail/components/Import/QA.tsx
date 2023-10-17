@@ -6,7 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@fastgpt/common/bill/index';
-import { qaModel } from '@/web/common/store/static';
+import { qaModelList } from '@/web/common/store/static';
 import MyIcon from '@/components/Icon';
 import CloseIcon from '@/components/Icon/close';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
@@ -23,8 +23,9 @@ import { chunksUpload } from '@/web/core/utils/dataset';
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const QAImport = ({ kbId }: { kbId: string }) => {
-  const unitPrice = qaModel.price || 3;
-  const chunkLen = qaModel.maxToken * 0.45;
+  const qaModel = qaModelList[0];
+  const unitPrice = qaModel?.price || 3;
+  const chunkLen = qaModel?.maxToken * 0.45;
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();

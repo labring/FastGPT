@@ -751,7 +751,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "模型AI回复回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",

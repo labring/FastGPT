@@ -5,15 +5,15 @@ import { connectToDatabase, TrainingData } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/core/dataset/schema';
 import { authUser } from '@fastgpt/support/user/auth';
 import { authDataset } from '@/service/utils/auth';
-import { withNextCors } from '@/service/utils/tools';
+import { withNextCors } from '@fastgpt/common/tools/nextjs';
 import { TrainingModeEnum } from '@/constants/plugin';
 import { startQueue } from '@/service/utils/tools';
-import { getVectorModel } from '@/service/utils/data';
 import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { countPromptTokens } from '@/utils/common/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDataProps } from '@/global/core/api/datasetReq.d';
 import { authFileIdValid } from '@/service/dataset/auth';
+import { getVectorModel } from '@/service/core/ai/model';
 
 const modeMap = {
   [TrainingModeEnum.index]: true,
@@ -71,7 +71,7 @@ export async function pushDataToKb({
       if (mode === TrainingModeEnum.index) {
         const vectorModel = (await MongoDataset.findById(kbId, 'vectorModel'))?.vectorModel;
 
-        return getVectorModel(vectorModel || global.vectorModels[0].model);
+        return getVectorModel(vectorModel);
       }
       return global.vectorModels[0];
     })()
@@ -79,7 +79,7 @@ export async function pushDataToKb({
 
   const modeMaxToken = {
     [TrainingModeEnum.index]: vectorModel.maxToken * 1.5,
-    [TrainingModeEnum.qa]: global.qaModel.maxToken * 0.8
+    [TrainingModeEnum.qa]: global.qaModels[0].maxToken * 0.8
   };
 
   // filter repeat or equal content

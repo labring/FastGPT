@@ -36,9 +36,10 @@ export const getDefaultAppForm = (): EditFormType => {
       model: defaultChatModel?.model,
       systemPrompt: '',
       temperature: 0,
+      [SystemInputEnum.isResponseAnswerText]: true,
       quotePrompt: '',
       quoteTemplate: '',
-      maxToken: defaultChatModel ? defaultChatModel.contextMaxToken / 2 : 4000,
+      maxToken: defaultChatModel ? defaultChatModel.maxToken / 2 : 4000,
       frequency: 0.5,
       presence: -0.5
     },
@@ -186,6 +187,13 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
     connected: true
   },
   {
+    key: SystemInputEnum.isResponseAnswerText,
+    value: true,
+    type: 'hidden',
+    label: '返回AI内容',
+    connected: true
+  },
+  {
     key: 'quoteTemplate',
     value: formData.chatModel.quoteTemplate || '',
     type: 'hidden',
@@ -328,7 +336,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     outputs: [
       {
         key: 'answerText',
-        label: '模型回复',
+        label: 'AI回复',
         description: '直接响应，无需配置',
         type: 'hidden',
         targets: []
@@ -533,7 +541,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     outputs: [
       {
         key: 'answerText',
-        label: '模型回复',
+        label: 'AI回复',
         description: '直接响应，无需配置',
         type: 'hidden',
         targets: []

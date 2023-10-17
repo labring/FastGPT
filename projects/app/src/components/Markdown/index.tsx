@@ -62,7 +62,9 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
     []
   );
 
-  const formatSource = source.replace(/\\n/g, '\n&nbsp;');
+  const formatSource = source
+    .replace(/\\n/g, '\n&nbsp;')
+    .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2');
 
   return (
     <ReactMarkdown

@@ -3,7 +3,8 @@ import { authApp } from '@/service/utils/auth';
 import { authUser } from '@fastgpt/support/user/auth';
 import { AuthUserTypeEnum } from '@fastgpt/support/user/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
-import { addLog, withNextCors } from '@/service/utils/tools';
+import { addLog } from '@/service/utils/tools';
+import { withNextCors } from '@fastgpt/common/tools/nextjs';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
 import {
   dispatchHistory,
@@ -21,7 +22,7 @@ import type { MessageItemType } from '@/types/core/chat/type';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
-import { sseResponse } from '@/service/utils/tools';
+import { responseWrite } from '@fastgpt/common/tools/stream';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
@@ -217,7 +218,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const feResponseData = isOwner ? responseData : selectShareResponse({ responseData });
 
     if (stream) {
-      sseResponse({
+      responseWrite({
         res,
         event: detail ? sseResponseEventEnum.answer : undefined,
         data: textAdaptGptResponse({
@@ -225,14 +226,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           finish_reason: 'stop'
         })
       });
-      sseResponse({
+      responseWrite({
         res,
         event: detail ? sseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
 
       if (responseDetail && detail) {
-        sseResponse({
+        responseWrite({
           res,
           event: sseResponseEventEnum.appStreamResponse,
           data: JSON.stringify(feResponseData)
@@ -323,13 +324,16 @@ export async function dispatchModules({
   let chatAnswerText = ''; // AI answer
   let runningTime = Date.now();
 
-  function pushStore({
-    answerText = '',
-    responseData
-  }: {
-    answerText?: string;
-    responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
-  }) {
+  function pushStore(
+    { inputs = [] }: RunningModuleItemType,
+    {
+      answerText = '',
+      responseData
+    }: {
+      answerText?: string;
+      responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
+    }
+  ) {
     const time = Date.now();
     if (responseData) {
       if (Array.isArray(responseData)) {
@@ -342,7 +346,12 @@ export async function dispatchModules({
       }
     }
     runningTime = time;
-    chatAnswerText += answerText;
+
+    const isResponseAnswerText =
+      inputs.find((item) => item.key === SystemInputEnum.isResponseAnswerText)?.value ?? true;
+    if (isResponseAnswerText) {
+      chatAnswerText += answerText;
+    }
   }
   function moduleInput(
     module: RunningModuleItemType,
@@ -376,7 +385,7 @@ export async function dispatchModules({
     module: RunningModuleItemType,
     result: Record<string, any> = {}
   ): Promise<any> {
-    pushStore(result);
+    pushStore(module, result);
     return Promise.all(
       module.outputs.map((outputItem) => {
         if (result[outputItem.key] === undefined) return;
@@ -505,7 +514,7 @@ export function responseStatus({
   name?: string;
 }) {
   if (!name) return;
-  sseResponse({
+  responseWrite({
     res,
     event: sseResponseEventEnum.moduleStatus,
     data: JSON.stringify({

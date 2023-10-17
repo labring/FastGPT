@@ -35,8 +35,6 @@ const MyModal = ({
     >
       <ModalOverlay />
       <ModalContent
-        display={'flex'}
-        flexDirection={'column'}
         w={w}
         minW={['90vw', '400px']}
         maxW={maxW}
@@ -46,7 +44,7 @@ const MyModal = ({
       >
         {!!title && <ModalHeader>{title}</ModalHeader>}
         {onClose && <ModalCloseButton />}
-        <Box overflow={'overlay'} h={'100%'}>
+        <Box overflow={'overlay'} h={'100%'} display={'flex'} flexDirection={'column'}>
           {children}
         </Box>
       </ModalContent>

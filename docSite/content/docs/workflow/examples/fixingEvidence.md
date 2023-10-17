@@ -232,7 +232,7 @@ weight: 142
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",

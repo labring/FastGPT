@@ -9,7 +9,7 @@ import {
 } from './index';
 import type { AppItemType } from '@/types/app';
 import type { FlowModuleTemplateType } from '@/types/core/app/flow';
-import { chatModelList } from '@/web/common/store/static';
+import { chatModelList, cqModelList } from '@/web/common/store/static';
 import {
   Input_Template_History,
   Input_Template_TFSwitch,
@@ -136,14 +136,14 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'model',
       type: FlowInputItemTypeEnum.selectChatModel,
       label: '对话模型',
-      value: chatModelList[0]?.model,
-      list: chatModelList.map((item) => ({ label: item.name, value: item.model })),
+      value: chatModelList?.[0]?.model,
+      customData: () => chatModelList,
       required: true,
       valueCheck: (val) => !!val
     },
     {
       key: 'temperature',
-      type: FlowInputItemTypeEnum.slider,
+      type: FlowInputItemTypeEnum.hidden,
       label: '温度',
       value: 0,
       min: 0,
@@ -156,19 +156,25 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'maxToken',
-      type: FlowInputItemTypeEnum.maxToken,
+      type: FlowInputItemTypeEnum.hidden,
       label: '回复上限',
-      value: chatModelList[0] ? chatModelList[0].contextMaxToken / 2 : 2000,
+      value: chatModelList?.[0] ? chatModelList[0].maxToken / 2 : 2000,
       min: 100,
-      max: chatModelList[0]?.contextMaxToken || 4000,
+      max: chatModelList?.[0]?.maxToken || 4000,
       step: 50,
       markList: [
         { label: '100', value: 100 },
         {
-          label: `${chatModelList[0]?.contextMaxToken || 4000}`,
-          value: chatModelList[0]?.contextMaxToken || 4000
+          label: `${chatModelList?.[0]?.maxToken || 4000}`,
+          value: chatModelList?.[0]?.maxToken || 4000
         }
       ]
+    },
+    {
+      key: 'aiSettings',
+      type: FlowInputItemTypeEnum.aiSettings,
+      label: '',
+      connected: false
     },
     {
       key: 'systemPrompt',
@@ -179,6 +185,13 @@ export const ChatModule: FlowModuleTemplateType = {
       description: ChatModelSystemTip,
       placeholder: ChatModelSystemTip,
       value: ''
+    },
+    {
+      key: SystemInputEnum.isResponseAnswerText,
+      type: FlowInputItemTypeEnum.hidden,
+      label: '返回AI内容',
+      valueType: FlowValueTypeEnum.boolean,
+      value: true
     },
     {
       key: 'quoteTemplate',
@@ -196,7 +209,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'quoteQA',
-      type: FlowInputItemTypeEnum.quoteList,
+      type: FlowInputItemTypeEnum.target,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
       valueType: FlowValueTypeEnum.kbQuote,
@@ -216,7 +229,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: TaskResponseKeyEnum.answerText,
-      label: '模型回复',
+      label: 'AI回复',
       description: '将在 stream 回复完毕后触发',
       valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
@@ -331,11 +344,20 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
+      key: 'model',
+      type: FlowInputItemTypeEnum.selectChatModel,
+      label: '分类模型',
+      value: cqModelList?.[0]?.model,
+      customData: () => cqModelList,
+      required: true,
+      valueCheck: (val) => !!val
+    },
+    {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
       valueType: FlowValueTypeEnum.string,
       value: '',
-      label: '系统提示词',
+      label: '背景知识',
       description:
         '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
       placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统'
@@ -504,7 +526,7 @@ export const AppModule: FlowModuleTemplateType = {
     },
     {
       key: TaskResponseKeyEnum.answerText,
-      label: '模型回复',
+      label: 'AI回复',
       description: '将在应用完全结束后触发',
       valueType: FlowValueTypeEnum.string,
       type: FlowOutputItemTypeEnum.source,
@@ -757,7 +779,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '直接响应，无需配置',
             type: 'hidden',
             targets: []
@@ -1094,7 +1116,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '直接响应，无需配置',
             type: 'hidden',
             targets: []
@@ -1401,7 +1423,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '将在 stream 回复完毕后触发',
             valueType: 'string',
             type: 'source',
@@ -1863,7 +1885,7 @@ export const appTemplates: (AppItemType & {
         outputs: [
           {
             key: 'answerText',
-            label: '模型回复',
+            label: 'AI回复',
             description: '将在 stream 回复完毕后触发',
             valueType: 'string',
             type: 'source',

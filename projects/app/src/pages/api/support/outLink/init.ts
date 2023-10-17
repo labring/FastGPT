@@ -6,8 +6,9 @@ import { MongoUser } from '@fastgpt/support/user/schema';
 import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
-import { getChatModelNameList, getGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/components/ChatBox/utils';
 import { authShareChatInit } from '@fastgpt/support/outLink/auth';
+import { getChatModelNameListByModules } from '@/service/core/app/module';
 
 /* init share chat window */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -51,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userAvatar: user?.avatar || HUMAN_ICON,
         app: {
           userGuideModule: getGuideModule(app.modules),
-          chatModels: getChatModelNameList(app.modules),
+          chatModels: getChatModelNameListByModules(app.modules),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro

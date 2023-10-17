@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@/types/core/app/flow';
@@ -7,11 +7,8 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-import { useFlowStore } from '../Provider';
-
 const NodeChat = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
-  const { onChangeNode } = useFlowStore();
 
   return (
     <NodeCard minW={'400px'} {...data}>

@@ -1,24 +1,26 @@
-import {
-  type QAModelItemType,
-  type ChatModelItemType,
-  type VectorModelItemType
-} from '@/types/model';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { getSystemInitData } from '@/web/common/api/system';
 import { delay } from '@/utils/tools';
 import type { FeConfigsType } from '@fastgpt/common/type/index.d';
+import {
+  defaultChatModels,
+  defaultQAModels,
+  defaultCQModels,
+  defaultExtractModels,
+  defaultQGModels,
+  defaultVectorModels
+} from '@/constants/model';
 
-export let chatModelList: ChatModelItemType[] = [];
-export let qaModel: QAModelItemType = {
-  model: 'gpt-3.5-turbo-16k',
-  name: 'GPT35-16k',
-  maxToken: 16000,
-  price: 0
-};
-export let vectorModelList: VectorModelItemType[] = [];
 export let feConfigs: FeConfigsType = {};
 export let priceMd = '';
 export let systemVersion = '0.0.0';
+
+export let vectorModelList = defaultVectorModels;
+export let chatModelList = defaultChatModels;
+export let qaModelList = defaultQAModels;
+export let cqModelList = defaultCQModels;
+export let extractModelList = defaultExtractModels;
+export let qgModelList = defaultQGModels;
 
 let retryTimes = 3;
 
@@ -26,9 +28,14 @@ export const clientInitData = async (): Promise<InitDateResponse> => {
   try {
     const res = await getSystemInitData();
 
-    chatModelList = res.chatModels;
-    qaModel = res.qaModel;
-    vectorModelList = res.vectorModels;
+    chatModelList = res.chatModels || [];
+    qaModelList = res.qaModels || [];
+    cqModelList = res.cqModels || [];
+    extractModelList = res.extractModels || [];
+    qgModelList = res.qgModels || [];
+
+    vectorModelList = res.vectorModels || [];
+
     feConfigs = res.feConfigs;
     priceMd = res.priceMd;
     systemVersion = res.systemVersion;

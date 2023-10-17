@@ -35,6 +35,12 @@ importers:
       mongoose:
         specifier: ^7.0.2
         version: registry.npmmirror.com/mongoose@7.0.2
+      next:
+        specifier: 13.5.2
+        version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
+      nextjs-cors:
+        specifier: ^2.1.2
+        version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
       winston:
         specifier: ^3.10.0
         version: registry.npmmirror.com/winston@3.10.0
@@ -58,8 +64,8 @@ importers:
         specifier: ^0.1.13
         version: registry.npmmirror.com/encoding@0.1.13
       openai:
-        specifier: ^4.11.1
-        version: registry.npmmirror.com/openai@4.11.1(encoding@0.1.13)
+        specifier: ^4.12.1
+        version: registry.npmmirror.com/openai@4.12.1(encoding@0.1.13)
       tunnel:
         specifier: ^0.0.6
         version: registry.npmmirror.com/tunnel@0.0.6
@@ -82,6 +88,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: registry.npmmirror.com/jsonwebtoken@9.0.2
+      next:
+        specifier: 13.5.2
+        version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
     devDependencies:
       '@types/cookie':
         specifier: ^0.5.2
@@ -200,9 +209,6 @@ importers:
       next-i18next:
         specifier: ^14.0.0
         version: registry.npmmirror.com/next-i18next@14.0.3(i18next@23.5.1)(next@13.5.2)(react-i18next@13.2.2)(react@18.2.0)
-      nextjs-cors:
-        specifier: ^2.1.2
-        version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
       nprogress:
         specifier: ^0.2.0
         version: registry.npmmirror.com/nprogress@0.2.0
@@ -288,6 +294,9 @@ importers:
       '@types/multer':
         specifier: ^1.4.7
         version: registry.npmmirror.com/@types/multer@1.4.7
+      '@types/node':
+        specifier: ^20.8.5
+        version: registry.npmmirror.com/@types/node@20.8.5
       '@types/papaparse':
         specifier: ^5.3.7
         version: registry.npmmirror.com/@types/papaparse@5.3.7
@@ -9581,11 +9590,11 @@ packages:
       mimic-fn: registry.npmmirror.com/mimic-fn@4.0.0
     dev: true
 
-  registry.npmmirror.com/openai@4.11.1(encoding@0.1.13):
-    resolution: {integrity: sha512-GU0HQWbejXuVAQlDjxIE8pohqnjptFDIm32aPlNT1H9ucMz1VJJD0DaTJRQsagNaJ97awWjjVLEG7zCM6sm4SA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-4.11.1.tgz}
-    id: registry.npmmirror.com/openai/4.11.1
+  registry.npmmirror.com/openai@4.12.1(encoding@0.1.13):
+    resolution: {integrity: sha512-EAoUwm4dtiWvFwBhOCK/VfF8sj1ZU8+aAIJnfT4NyeTfrt1DM/6Gdd6fOZWTjBYryTAqu9Vpb5+9Wu6JMtm/gA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-4.12.1.tgz}
+    id: registry.npmmirror.com/openai/4.12.1
     name: openai
-    version: 4.11.1
+    version: 4.12.1
     hasBin: true
     dependencies:
       '@types/node': registry.npmmirror.com/@types/node@18.18.5

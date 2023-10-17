@@ -5,7 +5,8 @@ export enum SystemInputEnum {
   'switch' = 'switch', // a trigger switch
   'history' = 'history',
   'userChatInput' = 'userChatInput',
-  'questionGuide' = 'questionGuide'
+  'questionGuide' = 'questionGuide',
+  isResponseAnswerText = 'isResponseAnswerText'
 }
 export enum SystemOutputEnum {
   finish = 'finish'
