@@ -15,19 +15,19 @@ FastGPT is a knowledge-based Q&A system built on the LLM, offers out-of-the-box 
 
 <p align="center">
   <a href="https://fastgpt.run/">
-    <img height="21" src="https://img.shields.io/badge/Website-fff?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
+    <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.run/docs/intro">
-    <img height="21" src="https://img.shields.io/badge/Docs-7d09f1?style=flat-square" alt="document">
+    <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.run/docs/development">
-    <img height="21" src="https://img.shields.io/badge/Development-%23fff?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
+    <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
-    <img height="21" src="https://img.shields.io/badge/Related Projects-7d09f1?style=flat-square" alt="project">
+    <img height="21" src="https://img.shields.io/badge/相关项目-7d09f1?style=flat-square" alt="project">
   </a>
   <a href="https://github.com/labring/FastGPT/blob/main/LICENSE">
-    <img height="21" src="https://img.shields.io/badge/License-Apache--2.0-ffffff?style=flat-square&labelColor=fff&color=7d09f1" alt="license">
+    <img height="21" src="https://img.shields.io/badge/License-Apache--2.0-ffffff?style=flat-square&labelColor=d4eaf7&color=7d09f1" alt="license">
   </a>
 </p>
 
