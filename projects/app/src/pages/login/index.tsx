@@ -110,6 +110,17 @@ const Login = () => {
             borderRadius={isPc ? 'md' : 'none'}
           >
             <DynamicComponent type={pageType} />
+            <Box>
+              <Flex justifyContent="center" mt={4}>
+                <a href="#" onClick={() => setPageType(PageTypeEnum.register)}>
+                  注册
+                </a>
+                <span> | </span>
+                <a href="#" onClick={() => setPageType(PageTypeEnum.forgetPassword)}>
+                  忘记密码
+                </a>
+              </Flex>
+            </Box>
 
             {feConfigs?.show_contact && (
               <Box

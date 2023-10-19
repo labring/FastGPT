@@ -1,4 +1,16 @@
 {
+  "FeConfigs": {
+    "show_emptyChat": true,
+    "show_contact": false,
+    "show_git": false,
+    "show_doc": false,
+    "systemTitle": "Ai Rails",
+    "authorText": "Made by Rails Team.",
+    "limit": {
+      "exportLimitMinutes": 0
+    },
+    "scripts": []
+  },
   "SystemParams": {
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,

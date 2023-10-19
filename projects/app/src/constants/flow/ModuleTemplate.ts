@@ -339,7 +339,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   name: '问题分类',
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
   description:
-    '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',
+    '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 公司的 通用问题\n类型3: 关于 公司的 经营问题\n类型4: 其他问题',
   showStatus: true,
   inputs: [
     Input_Template_TFSwitch,
@@ -360,7 +360,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
       label: '背景知识',
       description:
         '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
-      placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统'
+      placeholder: '例如: \n1. 我们公司是一个钢材批发平台……\n2. 主要经营品牌钢材'
     },
     Input_Template_History,
     Input_Template_UserChatInput,
@@ -480,7 +480,7 @@ export const HttpModule: FlowModuleTemplateType = {
       type: FlowInputItemTypeEnum.input,
       label: '请求地址',
       description: '请求目标地址',
-      placeholder: 'https://api.fastgpt.run/getInventory',
+      placeholder: 'https://chat.2rails.cn/proxy/openai.com/v1',
       required: true,
       valueCheck: (val) => !!val
     }
@@ -1552,12 +1552,11 @@ export const appTemplates: (AppItemType & {
             key: 'systemPrompt',
             type: 'textarea',
             valueType: 'string',
-            value:
-              'laf 是云开发平台，可以快速的开发应用\nlaf 是一个开源的 BaaS 开发平台（Backend as a Service)\nlaf 是一个开箱即用的 serverless 开发平台\nlaf 是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台\nlaf 可以是开源版的腾讯云开发、开源版的 Google Firebase、开源版的 UniCloud',
+            value: '我是一个企业智能问答专家',
             label: '系统提示词',
             description:
               '你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。',
-            placeholder: '例如: \n1. Laf 是一个云函数开发平台……\n2. Sealos 是一个集群操作系统',
+            placeholder: '例如: \n1. 我们公司是贸易型企业……\n2. 主要经营内容为钢材买卖',
             connected: true
           },
           {
@@ -1585,7 +1584,7 @@ export const appTemplates: (AppItemType & {
                 key: 'fasw'
               },
               {
-                value: '“laf” 的问题',
+                value: '“公司” 的问题',
                 key: 'fqsw'
               },
               {
@@ -1667,7 +1666,7 @@ export const appTemplates: (AppItemType & {
             key: 'text',
             type: 'textarea',
             valueType: 'string',
-            value: '你好，我是 laf 助手，有什么可以帮助你的？',
+            value: '你好，我是 AI Rails 助手，有什么可以帮助你的？',
             label: '回复的内容',
             description:
               '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
@@ -1705,7 +1704,7 @@ export const appTemplates: (AppItemType & {
             key: 'text',
             type: 'textarea',
             valueType: 'string',
-            value: '你好，我仅能回答 laf 相关问题，请问你有什么问题么？',
+            value: '你好，我仅能回答 渡海公司 相关问题，请问你有什么问题么？',
             label: '回复的内容',
             description:
               '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
@@ -1832,7 +1831,7 @@ export const appTemplates: (AppItemType & {
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
-            value: '知识库是关于 laf 的内容。',
+            value: '知识库是关于 渡海公司 的内容。',
             connected: true
           },
           {
@@ -2079,7 +2078,7 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '开场白',
             value:
-              '你好，我是 laf 助手，有什么可以帮助你的？\n[laf 是什么？有什么用？]\n[laf 在线体验地址]\n[官网地址是多少]',
+              '你好，我是AI Rails助手，有什么可以帮助你的？\n[我们公司是做什么的？我们公司年营业额有多少？]\n[我们公司的地址在哪里]\n[官网地址是多少]',
             connected: true
           },
           {

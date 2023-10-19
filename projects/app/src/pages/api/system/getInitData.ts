@@ -48,11 +48,11 @@ const defaultSystemEnv: SystemEnvType = {
 };
 const defaultFeConfigs: FeConfigsType = {
   show_emptyChat: true,
-  show_contact: true,
-  show_git: true,
-  show_doc: true,
-  systemTitle: 'FastGPT',
-  authorText: 'Made by FastGPT Team.',
+  show_contact: false,
+  show_git: false,
+  show_doc: false,
+  systemTitle: 'Ai Rails',
+  authorText: 'Made by Rails Team.',
   limit: {
     exportLimitMinutes: 0
   },
@@ -76,7 +76,8 @@ export function getInitConfig() {
     getSystemVersion();
 
     const filename =
-      process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
+      // process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
+      process.env.NODE_ENV === 'development' ? 'data/config.local.json' : 'data/config.json';
     const res = JSON.parse(readFileSync(filename, 'utf-8')) as {
       FeConfig: FeConfigsType;
       SystemParams: SystemEnvType;

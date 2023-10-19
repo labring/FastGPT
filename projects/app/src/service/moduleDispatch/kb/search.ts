@@ -9,6 +9,8 @@ import { PgDatasetTableName } from '@/constants/plugin';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
+import { Sequelize } from 'sequelize';
+
 type KBSearchProps = ModuleDispatchProps<{
   kbList: SelectedDatasetType;
   similarity: number;
@@ -60,6 +62,37 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
 
   const searchRes: QuoteItemType[] = res?.[2]?.rows || [];
 
+  // 处理 searchRes 中的每一行
+  for (let i = 0; i < searchRes.length; i++) {
+    const row = searchRes[i];
+    const q = row.q; // 获取 q 字段的值
+
+    try {
+      // 解析连接字符串和查询语句
+      const connectionMatch = q.match(/{{connec:(.*?)}}/);
+      const queryMatch = q.match(/{{query:(.*?)}}/);
+
+      if (connectionMatch && queryMatch) {
+        const connectionString = connectionMatch[1]; // 提取连接字符串
+        const query = queryMatch[1]; // 提取查询语句
+        const sequelize = new Sequelize(connectionString); //
+        const result = await sequelize.query(query); // 使用 Sequelize 执行查询语句
+        const formattedResult = JSON.stringify(result, null, 2); // 将结果格式化为字符串
+
+        // 将行中的查询语句替换为格式化后的结果
+        searchRes[i].q = searchRes[i].q
+          .replace(/{{connec:(.*?)}}/g, '')
+          .replace(/{{query:(.*?)}}/g, formattedResult);
+
+        // searchRes[i].q = formattedResult;
+      } else {
+        console.error(`无法解析连接字符串和查询语句：${q}`);
+      }
+    } catch (error) {
+      console.error(`执行查询时出错：${q}`);
+      console.error(error);
+    }
+  }
   return {
     isEmpty: searchRes.length === 0 ? true : undefined,
     unEmpty: searchRes.length > 0 ? true : undefined,
