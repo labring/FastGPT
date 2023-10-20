@@ -7,7 +7,7 @@ import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/global/common/string/tools';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 

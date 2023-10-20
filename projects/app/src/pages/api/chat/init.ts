@@ -6,7 +6,7 @@ import { authUser } from '@fastgpt/service/support/user/auth';
 import { ChatItemType } from '@/types/chat';
 import { authApp } from '@/service/utils/auth';
 import type { ChatSchema } from '@/types/mongoSchema';
-import { getGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/global/core/app/modules/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 

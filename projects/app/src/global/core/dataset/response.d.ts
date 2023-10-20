@@ -4,9 +4,9 @@ import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d
 /* ================= dataset ===================== */
 
 /* ================= collection ===================== */
-export type DatasetCollectionsResponse = {
+export type DatasetCollectionsListItemType = {
   _id: string;
-  parentId: string;
+  parentId?: string;
   name: string;
   type: DatasetCollectionSchemaType['type'];
   updateTime: Date;

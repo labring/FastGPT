@@ -14,7 +14,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { getFileAndOpen } from '@/web/common/file/utils';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -103,7 +103,7 @@ const InputDataModal = ({
 
   const { mutate: onUpdateData, isLoading: isUpdating } = useRequest({
     mutationFn: async (e: SetOneDatasetDataProps) => {
-      if (!e.id) return;
+      if (!e.id) return e;
 
       // not exactly same
       if (e.q !== defaultValues.q || e.a !== defaultValues.a) {
@@ -113,6 +113,8 @@ const InputDataModal = ({
         });
         return e;
       }
+
+      return e;
     },
     successToast: t('dataset.data.Update Success Tip'),
     errorToast: t('common.error.unKnow'),
@@ -132,7 +134,6 @@ const InputDataModal = ({
   return (
     <MyModal
       isOpen={true}
-      onClose={onClose}
       isCentered
       title={defaultValues.id ? t('dataset.data.Update Data') : t('dataset.data.Input Data')}
       w={'90vw'}
@@ -291,7 +292,7 @@ export function RawSourceText({ sourceId, sourceName = '', ...props }: RawSource
           : {})}
         {...props}
       >
-        {sourceName}
+        {sourceName || t('common.Unknow Source')}
       </Box>
     </MyTooltip>
   );

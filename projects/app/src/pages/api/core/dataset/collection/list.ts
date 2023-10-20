@@ -5,7 +5,7 @@ import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/tra
 import { authUser } from '@fastgpt/service/support/user/auth';
 
 import { Types } from '@fastgpt/service/common/mongo';
-import type { DatasetCollectionsResponse } from '@/global/core/dataset/response';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { PagingData } from '@/types';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -21,7 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       pageSize = 10,
       datasetId,
       parentId = null,
-      searchText = ''
+      searchText = '',
+      simple = false
     } = req.body as GetDatasetCollectionsProps;
     searchText = searchText?.replace(/'/g, '');
 
@@ -38,6 +39,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           }
         : {})
     };
+
+    if (simple) {
+      const collections = await MongoDatasetCollection.find(match, '_id name type parentId')
+        .sort({
+          updateTime: -1
+        })
+        .lean();
+      return jsonRes<PagingData<DatasetCollectionsListItemType>>(res, {
+        data: {
+          pageNum,
+          pageSize,
+          data: await Promise.all(
+            collections.map(async (item) => ({
+              ...item,
+              dataAmount: 0,
+              trainingAmount: 0
+            }))
+          ),
+          total: await MongoDatasetCollection.countDocuments(match)
+        }
+      });
+    }
 
     const collections = await MongoDatasetCollection.aggregate([
       {
@@ -75,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     ]);
 
     // count collections
-    jsonRes<PagingData<DatasetCollectionsResponse>>(res, {
+    jsonRes<PagingData<DatasetCollectionsListItemType>>(res, {
       data: {
         pageNum,
         pageSize,

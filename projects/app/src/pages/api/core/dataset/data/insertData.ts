@@ -22,7 +22,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    jsonRes(res, {
+    jsonRes<string>(res, {
       data: await getVectorAndInsertDataset({
         ...req.body,
         userId
@@ -85,7 +85,7 @@ export async function getVectorAndInsertDataset(
     a
   });
 
-  await insertData2Dataset({
+  return insertData2Dataset({
     userId,
     q: formatQ,
     a: formatA,
@@ -93,6 +93,4 @@ export async function getVectorAndInsertDataset(
     datasetId,
     model: dataset.vectorModel
   });
-
-  return '';
 }

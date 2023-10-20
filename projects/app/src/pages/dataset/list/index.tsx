@@ -10,7 +10,7 @@ import {
   Image
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';

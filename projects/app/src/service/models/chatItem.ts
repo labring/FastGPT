@@ -46,7 +46,8 @@ const ChatItemSchema = new Schema({
       datasetId: String,
       collectionId: String,
       dataId: String,
-      content: String
+      q: String,
+      a: String
     }
   },
   [TaskResponseKeyEnum.responseData]: {

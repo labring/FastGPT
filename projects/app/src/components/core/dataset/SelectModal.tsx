@@ -86,11 +86,11 @@ const DatasetSelectContainer = ({
   );
 };
 
-export const useDatasetSelect = () => {
+export function useDatasetSelect() {
   const { t } = useTranslation();
   const [parentId, setParentId] = useState<string>();
 
-  const { data } = useQuery(['loadDatasetData', parentId], () =>
+  const { data, isLoading } = useQuery(['loadDatasetData', parentId], () =>
     Promise.all([getDatasets({ parentId }), getDatasetPaths(parentId)])
   );
 
@@ -109,8 +109,9 @@ export const useDatasetSelect = () => {
     parentId,
     setParentId,
     datasets: data?.[0] || [],
-    paths
+    paths,
+    isLoading
   };
-};
+}
 
 export default DatasetSelectContainer;

@@ -9,7 +9,7 @@ const QAImport = dynamic(() => import('./QA'), {});
 const CsvImport = dynamic(() => import('./Csv'), {});
 import MyModal from '@/components/MyModal';
 import { Provider } from './Provider';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { qaModelList } from '@/web/common/system/staticData';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 

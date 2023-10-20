@@ -39,14 +39,14 @@ const ReadFeedbackModal = ({
     <MyModal isOpen={true} onClose={onClose} title={t('chat.Feedback Modal')}>
       <ModalBody>{content}</ModalBody>
       <ModalFooter>
+        <Button mr={2} isLoading={isLoading} variant={'base'} onClick={mutate}>
+          {t('chat.Feedback Close')}
+        </Button>
         {!isMarked && (
-          <Button variant={'base'} mr={2} onClick={onMark}>
+          <Button mr={2} onClick={onMark}>
             {t('chat.Feedback Mark')}
           </Button>
         )}
-        <Button isLoading={isLoading} onClick={mutate}>
-          {t('chat.Feedback Close')}
-        </Button>
       </ModalFooter>
     </MyModal>
   );

@@ -13,7 +13,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 

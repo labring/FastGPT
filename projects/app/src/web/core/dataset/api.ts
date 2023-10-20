@@ -22,6 +22,8 @@ import type {
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
+import { PagingData } from '@/types';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: { parentId?: string; type?: `${DatasetTypeEnum}` }) =>
@@ -50,7 +52,7 @@ export const postSearchText = (data: SearchTestProps) =>
 
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
-  POST(`/core/dataset/collection/list`, data);
+  POST<PagingData<DatasetCollectionsListItemType>>(`/core/dataset/collection/list`, data);
 export const getDatasetCollectionPathById = (parentId: string) =>
   GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
 export const getDatasetCollectionById = (id: string) =>

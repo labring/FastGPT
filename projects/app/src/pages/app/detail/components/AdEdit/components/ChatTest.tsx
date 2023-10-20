@@ -15,7 +15,7 @@ import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import { getGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/global/core/app/modules/utils';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;

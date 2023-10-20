@@ -62,7 +62,7 @@ export async function insertData2Dataset({
   let retry = 2;
   async function insertPg() {
     try {
-      await PgClient.insert(PgDatasetTableName, {
+      const { rows } = await PgClient.insert(PgDatasetTableName, {
         values: [
           [
             { key: 'vector', value: `[${vectors[0]}]` },
@@ -74,6 +74,7 @@ export async function insertData2Dataset({
           ]
         ]
       });
+      return rows[0].id;
     } catch (error) {
       if (--retry < 0) {
         return Promise.reject(error);
@@ -83,7 +84,7 @@ export async function insertData2Dataset({
     }
   }
 
-  await insertPg();
+  return insertPg();
 }
 
 /**

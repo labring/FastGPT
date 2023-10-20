@@ -7,14 +7,6 @@ import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/we
 import { defaultKbDetail } from '@/constants/dataset';
 import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
 
-export type SearchTestStoreItemType = {
-  id: string;
-  datasetId: string;
-  text: string;
-  time: Date;
-  results: SearchDataResponseItemType[];
-};
-
 type State = {
   allDatasets: DatasetsItemType[];
   loadAllDatasets: () => Promise<DatasetsItemType[]>;
@@ -24,11 +16,6 @@ type State = {
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
   updateDataset: (data: DatasetUpdateParams) => Promise<any>;
-
-  datasetTestList: SearchTestStoreItemType[];
-  pushDatasetTestItem: (data: SearchTestStoreItemType) => void;
-  delDatasetTestItemById: (id: string) => void;
-  updateDatasetItemById: (data: SearchTestStoreItemType) => void;
 };
 
 export const useDatasetStore = create<State>()(
@@ -89,31 +76,11 @@ export const useDatasetStore = create<State>()(
             );
           });
           await putDatasetById(data);
-        },
-        datasetTestList: [],
-        pushDatasetTestItem(data) {
-          set((state) => {
-            state.datasetTestList = [data, ...state.datasetTestList].slice(0, 100);
-          });
-        },
-        delDatasetTestItemById(id) {
-          set((state) => {
-            state.datasetTestList = state.datasetTestList.filter((item) => item.id !== id);
-          });
-        },
-        updateDatasetItemById(data: SearchTestStoreItemType) {
-          set((state) => {
-            state.datasetTestList = state.datasetTestList.map((item) =>
-              item.id === data.id ? data : item
-            );
-          });
         }
       })),
       {
         name: 'datasetStore',
-        partialize: (state) => ({
-          datasetTestList: state.datasetTestList
-        })
+        partialize: (state) => ({})
       }
     )
   )

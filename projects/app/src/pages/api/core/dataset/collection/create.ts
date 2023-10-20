@@ -6,10 +6,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import type {
-  CreateDatasetCollectionParams,
-  SetOneDatasetDataProps
-} from '@/global/core/api/datasetReq.d';
+import type { CreateDatasetCollectionParams } from '@/global/core/api/datasetReq.d';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 
@@ -43,6 +40,15 @@ export async function createOneCollection({
   metadata = {},
   userId
 }: CreateDatasetCollectionParams & { userId: string }) {
+  const total = await MongoDatasetCollection.countDocuments({
+    datasetId,
+    parentId
+  });
+
+  if (total >= 50) {
+    return Promise.reject('每层最多 50 个文件集合');
+  }
+
   const { _id } = await MongoDatasetCollection.create({
     name,
     userId,

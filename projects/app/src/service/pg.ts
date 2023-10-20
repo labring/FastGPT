@@ -141,7 +141,8 @@ class Pg {
   async insert(table: string, props: InsertProps) {
     if (props.values.length === 0) {
       return {
-        rowCount: 0
+        rowCount: 0,
+        rows: []
       };
     }
 
@@ -151,7 +152,7 @@ class Pg {
     )} RETURNING id`;
 
     const pg = await connectPg();
-    return pg.query(sql);
+    return pg.query<{ id: string }>(sql);
   }
   async query<T extends QueryResultRow = any>(sql: string) {
     const pg = await connectPg();

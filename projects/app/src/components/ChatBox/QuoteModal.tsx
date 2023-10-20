@@ -94,7 +94,7 @@ const QuoteModal = ({
             >
               {!isShare && (
                 <Flex alignItems={'center'} mb={1}>
-                  <RawSourceText sourceName={item?.sourceName} sourceId={item.sourceId} />
+                  <RawSourceText sourceName={item.sourceName} sourceId={item.sourceId} />
                   <Box flex={'1'} />
                   {item.score && (
                     <>

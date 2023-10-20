@@ -6,7 +6,7 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
-import { getGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/global/core/app/modules/utils';
 import { authShareChatInit } from '@fastgpt/service/support/outLink/auth';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
 

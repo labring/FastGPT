@@ -35,7 +35,7 @@ import { usePagination } from '@/web/common/hooks/usePagination';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
-import type { DatasetCollectionsResponse } from '@/global/core/dataset/response';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
 import EmptyTip from '@/components/EmptyTip';
 import { AddIcon } from '@chakra-ui/icons';
 import { FolderAvatarSrc, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
@@ -45,7 +45,7 @@ import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
 import { TabEnum } from '..';
 import ParentPath from '@/components/common/ParentPaths';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import dynamic from 'next/dynamic';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
@@ -90,7 +90,7 @@ const CollectionCard = () => {
     isLoading,
     pageNum,
     pageSize
-  } = usePagination<DatasetCollectionsResponse>({
+  } = usePagination<DatasetCollectionsListItemType>({
     api: getDatasetCollections,
     pageSize: 20,
     params: {

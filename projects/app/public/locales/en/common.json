@@ -123,10 +123,12 @@
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
+    "Last Step": "Last",
     "Max credit": "Credit",
     "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
     "Name": "Name",
     "Name is empty": "Name is empty",
+    "Next Step": "Next",
     "Output": "Output",
     "Password inconsistency": "Password inconsistency",
     "Rename": "Rename",
@@ -135,6 +137,7 @@
     "Search": "Search",
     "Status": "Status",
     "Unknow": "Unknow",
+    "Unknow Source": "UnKnow Source",
     "Update Successful": "Update Successful",
     "Update Time": "Update Time",
     "error": {
@@ -180,7 +183,9 @@
       "Create Training Data": "Training-{{filename}}",
       "Create Virtual File Success": "Create Virtual File Success",
       "Data Amount": "Data Amount",
-      "Ready": "Ready"
+      "Ready": "Ready",
+      "Select Collection": "Select Collection",
+      "Select One Collection To Store": "Select the collection to store"
     },
     "data": {
       "Delete Tip": "Confirm to delete the data?",

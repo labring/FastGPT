@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Textarea, Button, Flex, useTheme, Grid, Progress } from '@chakra-ui/react';
-import { useDatasetStore, SearchTestStoreItemType } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
 import { getDatasetDataItemById, postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -18,13 +19,9 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
-  const {
-    datasetDetail,
-    datasetTestList,
-    pushDatasetTestItem,
-    delDatasetTestItemById,
-    updateDatasetItemById
-  } = useDatasetStore();
+  const { datasetDetail } = useDatasetStore();
+  const { datasetTestList, pushDatasetTestItem, delDatasetTestItemById, updateDatasetItemById } =
+    useSearchTestStore();
   const [inputText, setInputText] = useState('');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
   const [editInputData, setEditInputData] = useState<InputDataType>();

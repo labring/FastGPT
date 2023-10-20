@@ -123,10 +123,12 @@
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Input": "输入",
+    "Last Step": "上一步",
     "Max credit": "最大金额",
     "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
     "Name": "名称",
     "Name is empty": "名称不能为空",
+    "Next Step": "下一步",
     "Output": "输出",
     "Password inconsistency": "两次密码不一致",
     "Rename": "重命名",
@@ -135,6 +137,7 @@
     "Search": "搜索",
     "Status": "状态",
     "Unknow": "未知",
+    "Unknow Source": "未知来源",
     "Update Successful": "更新成功",
     "Update Time": "更新时间",
     "error": {
@@ -180,7 +183,9 @@
       "Create Training Data": "文件训练-{{filename}}",
       "Create Virtual File Success": "创建虚拟文件成功",
       "Data Amount": "数据总量",
-      "Ready": "已就绪"
+      "Ready": "已就绪",
+      "Select Collection": "选择文件",
+      "Select One Collection To Store": "选择一个文件进行存储"
     },
     "data": {
       "Delete Tip": "确认删除该条数据？",

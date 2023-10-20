@@ -8,14 +8,9 @@ import { authUser } from '@fastgpt/service/support/user/auth';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const {
-      chatItemId,
-      datasetId,
-      dataId,
-      content = undefined
-    } = req.body as AdminUpdateFeedbackParams;
+    const { chatItemId, datasetId, dataId, q, a } = req.body as AdminUpdateFeedbackParams;
 
-    if (!chatItemId || !datasetId || !dataId || !content) {
+    if (!chatItemId || !datasetId || !dataId || !q) {
       throw new Error('missing parameter');
     }
 
@@ -30,7 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         adminFeedback: {
           datasetId,
           dataId,
-          content
+          q,
+          a
         }
       }
     );

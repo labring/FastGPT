@@ -23,7 +23,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { feConfigs } from '@/web/common/system/staticData';
 import Script from 'next/script';
 import CollectionCard from './components/CollectionCard';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false

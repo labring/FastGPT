@@ -47,7 +47,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'react-i18next';
-import { getGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/global/core/app/modules/utils';
 
 import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
@@ -60,7 +60,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import { addVariable } from '../VariableEditModal';
 import { KbParamsModal } from '../DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
-import { useDatasetStore } from '@/web/core/dataset/store';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));

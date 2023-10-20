@@ -10,7 +10,7 @@ import { SystemInputEnum } from '@/constants/app';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import type { FlowInputItemType } from '@/types/core/app/flow';
 import type { AIChatProps } from '@/types/core/aiChat';
-import { getGuideModule, splitGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule, splitGuideModule } from '@/global/core/app/modules/utils';
 
 export type EditFormType = {
   chatModel: AIChatProps;

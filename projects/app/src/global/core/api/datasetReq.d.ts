@@ -31,7 +31,8 @@ export type SearchTestProps = {
 export type GetDatasetCollectionsProps = RequestPaging & {
   datasetId: string;
   parentId?: string;
-  searchText: string;
+  searchText?: string;
+  simple?: boolean;
 };
 export type CreateDatasetCollectionParams = {
   datasetId: string;
