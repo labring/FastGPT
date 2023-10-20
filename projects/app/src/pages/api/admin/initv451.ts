@@ -96,7 +96,7 @@ async function rename() {
 }
 
 async function initMongo(limit: number) {
-  async function initApp(limit = 100) {
+  async function initApp(limit = 100): Promise<any> {
     // 遍历所有 app，更新 app modules 里的 FlowModuleTypeEnum.kbSearchNode
 
     const apps = await App.find({ inited: false }).limit(limit);
@@ -171,7 +171,7 @@ async function initMongo(limit: number) {
 
 async function createCollection(limit: number) {
   // collectionId 的类型：manual, mark, httpLink, fileId
-  async function initCollection(limit: number) {
+  async function initCollection(limit: number): Promise<any> {
     const { rows, rowCount } = await PgClient.query(`SELECT user_id,dataset_id,collection_id
   FROM ${PgDatasetTableName} 
   where inited = 0
@@ -311,7 +311,7 @@ async function createCollection(limit: number) {
   await initCollection(limit * 2);
 }
 
-async function updatePgCollection(limit: number) {
+async function updatePgCollection(limit: number): Promise<any> {
   try {
     const collections = await MongoDatasetCollection.find({
       'metadata.pgCollectionId': { $exists: true, $ne: '' }

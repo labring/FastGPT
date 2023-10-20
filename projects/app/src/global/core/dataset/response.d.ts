@@ -18,6 +18,6 @@ export type DatasetCollectionsListItemType = {
 /* ================= data ===================== */
 export type DatasetDataListItemType = {
   id: string;
-  index: string; // embedding content
-  content: string; // bonus content
+  q: string; // embedding content
+  a: string; // bonus content
 };

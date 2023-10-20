@@ -54,3 +54,9 @@ export async function getDatasetCollectionPaths({
 
   return await find(parentId);
 }
+
+export function getCollectionUpdateTime({ name, time }: { time?: Date; name: string }) {
+  if (time) return time;
+  if (name.startsWith('手动') || ['manual', 'mark'].includes(name)) return new Date('2999/9/9');
+  return new Date();
+}

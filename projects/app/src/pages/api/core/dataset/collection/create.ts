@@ -9,6 +9,7 @@ import { authUser } from '@fastgpt/service/support/user/auth';
 import type { CreateDatasetCollectionParams } from '@/global/core/api/datasetReq.d';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collection/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -40,22 +41,14 @@ export async function createOneCollection({
   metadata = {},
   userId
 }: CreateDatasetCollectionParams & { userId: string }) {
-  const total = await MongoDatasetCollection.countDocuments({
-    datasetId,
-    parentId
-  });
-
-  if (total >= 50) {
-    return Promise.reject('每层最多 50 个文件集合');
-  }
-
   const { _id } = await MongoDatasetCollection.create({
     name,
     userId,
     datasetId,
     parentId: parentId || null,
     type,
-    metadata
+    metadata,
+    updateTime: getCollectionUpdateTime({ name })
   });
 
   // create default collection
@@ -72,20 +65,23 @@ export async function createOneCollection({
 
 // create default collection
 export function createDefaultCollection({
+  name = '手动录入',
   datasetId,
   parentId,
   userId
 }: {
+  name?: '手动录入' | '手动标注';
   datasetId: string;
   parentId?: string;
   userId: string;
 }) {
-  return createOneCollection({
-    name: '手动录入',
+  return MongoDatasetCollection.create({
+    name,
     userId,
     datasetId,
     parentId,
     type: DatasetCollectionTypeEnum.virtual,
+    updateTime: new Date('2000'),
     metadata: {}
   });
 }

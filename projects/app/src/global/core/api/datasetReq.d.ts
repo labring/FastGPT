@@ -40,6 +40,7 @@ export type CreateDatasetCollectionParams = {
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
   metadata?: DatasetCollectionSchemaType['metadata'];
+  updateTime?: string;
 };
 export type UpdateDatasetCollectionParams = {
   id: string;

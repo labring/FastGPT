@@ -334,7 +334,7 @@ const CollectionCard = () => {
             <Tr>
               <Th>{t('common.Name')}</Th>
               <Th>{t('dataset.collections.Data Amount')}</Th>
-              <Th>{t('common.Update Time')}</Th>
+              <Th>{t('common.Time')}</Th>
               <Th>{t('common.Status')}</Th>
               <Th />
             </Tr>

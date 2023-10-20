@@ -11,9 +11,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY ./packages ./packages
 COPY ./projects/$name/package.json ./projects/$name/package.json
 
-RUN \
-  [ -f pnpm-lock.yaml ] && pnpm install || \
-  (echo "Lockfile not found." && exit 1)
+RUN [ -f pnpm-lock.yaml ] || (echo "Lockfile not found." && exit 1)
+
+RUN pnpm install
 
 # Rebuild the source code only when needed
 FROM node:current-alpine AS builder

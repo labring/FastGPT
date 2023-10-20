@@ -85,7 +85,7 @@ const StateContext = createContext<useImportStoreType>({
 });
 export const useImportStore = () => useContext(StateContext);
 
-export const Provider = ({
+const Provider = ({
   datasetId,
   parentId,
   unitPrice,
@@ -226,6 +226,8 @@ export const Provider = ({
   };
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;
 };
+
+export default React.memo(Provider);
 
 export const PreviewFileOrChunk = () => {
   const theme = useTheme();

@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import type { UpdateDatasetCollectionParams } from '@/global/core/api/datasetReq.d';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collection/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const updateFields: Record<string, any> = {
       ...(parentId !== undefined && { parentId: parentId || null }),
-      ...(name && { name })
+      ...(name && { name, updateTime: getCollectionUpdateTime({ name }) })
     };
 
     // 将metadata的每个字段添加到updateFields中

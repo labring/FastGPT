@@ -60,7 +60,7 @@ export async function insertData2Dataset({
   });
 
   let retry = 2;
-  async function insertPg() {
+  async function insertPg(): Promise<string> {
     try {
       const { rows } = await PgClient.insert(PgDatasetTableName, {
         values: [
