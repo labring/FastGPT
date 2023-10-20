@@ -24,7 +24,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 对话要求：
 1. 背景知识是最新的，其中 instruction 是相关介绍，output 是预期回答或补充。
 2. 使用背景知识回答问题。
-3. 以对话的风格去回答问题，答案要和背景知识表述一致。
+3. 使用对话的风格回答我的问题，答案要和背景知识表述一致。
 我的问题是:"{{question}}"`
   },
   {

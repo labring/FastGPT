@@ -71,8 +71,8 @@ export const getDatasetDataList = (data: GetDatasetDataListProps) =>
 /**
  * export and download data
  */
-export const exportDatasetData = (data: { kbId: string }) =>
-  fetch(`/api/core/dataset/data/exportAll?kbId=${data.kbId}`, {
+export const exportDatasetData = (data: { datasetId: string }) =>
+  fetch(`/api/core/dataset/data/exportAll?datasetId=${data.datasetId}`, {
     method: 'GET',
     headers: {
       token: getToken()
@@ -119,5 +119,5 @@ export const delOneDatasetDataById = (dataId: string) =>
 /* ================== file ======================== */
 export const getFileInfoById = (fileId: string) =>
   GET<GSFileInfoType>(`/core/dataset/file/detail`, { fileId });
-export const delDatasetEmptyFiles = (kbId: string) =>
-  DELETE(`/core/dataset/file/delEmptyFiles`, { kbId });
+export const delDatasetEmptyFiles = (datasetId: string) =>
+  DELETE(`/core/dataset/file/delEmptyFiles`, { datasetId });

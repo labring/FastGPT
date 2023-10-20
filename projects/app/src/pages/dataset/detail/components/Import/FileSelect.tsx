@@ -105,7 +105,7 @@ const FileSelect = ({
           if (!icon) continue;
 
           // upload file
-          const filesId = await uploadFiles([file], { kbId: datasetDetail._id }, (percent) => {
+          const filesId = await uploadFiles([file], { datasetId: datasetDetail._id }, (percent) => {
             if (percent < 100) {
               setSelectingText(
                 t('file.Uploading', { name: file.name.slice(0, 30), percent }) || ''
@@ -237,7 +237,7 @@ const FileSelect = ({
         type: txtBlob.type,
         lastModified: new Date().getTime()
       });
-      const fileIds = await uploadFiles([txtFile], { kbId: datasetDetail._id });
+      const fileIds = await uploadFiles([txtFile], { datasetId: datasetDetail._id });
 
       const splitRes = splitText2Chunks({
         text: content,

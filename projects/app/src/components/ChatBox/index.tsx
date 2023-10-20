@@ -63,7 +63,6 @@ import styles from './index.module.scss';
 import Script from 'next/script';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from './utils';
-import { DatasetSpecialIdEnum } from '@fastgpt/global/core/dataset/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -149,9 +148,10 @@ const ChatBox = (
   }>();
   const [adminMarkData, setAdminMarkData] = useState<{
     // mark modal data
-    kbId?: string;
     chatItemId: string;
     dataId?: string;
+    datasetId?: string;
+    collectionId?: string;
     q: string;
     a: string;
   }>();
@@ -674,7 +674,8 @@ const ChatBox = (
                                 if (item.adminFeedback) {
                                   setAdminMarkData({
                                     chatItemId: item.dataId,
-                                    kbId: item.adminFeedback.kbId,
+                                    datasetId: item.adminFeedback.datasetId,
+                                    collectionId: item.adminFeedback.collectionId,
                                     dataId: item.adminFeedback.dataId,
                                     q: chatHistory[index - 1]?.value || '',
                                     a: item.adminFeedback.content
@@ -944,24 +945,25 @@ const ChatBox = (
         <>
           {/* select one dataset to insert markData */}
           <SelectDataset
-            isOpen={!!adminMarkData && !adminMarkData.kbId}
+            isOpen={!!adminMarkData && !adminMarkData.datasetId}
             onClose={() => setAdminMarkData(undefined)}
             // @ts-ignore
-            onSuccess={(kbId) => setAdminMarkData((state) => ({ ...state, kbId }))}
+            onSuccess={(e) => setAdminMarkData((state) => ({ ...state, ...e }))}
           />
 
           {/* edit markData modal */}
-          {adminMarkData && adminMarkData.kbId && (
+          {adminMarkData && adminMarkData.datasetId && adminMarkData.collectionId && (
             <InputDataModal
               onClose={() => setAdminMarkData(undefined)}
               onSuccess={async (data) => {
-                if (!adminMarkData.kbId || !data.dataId) {
+                if (!adminMarkData.datasetId || !adminMarkData.collectionId || !data.id) {
                   return setAdminMarkData(undefined);
                 }
                 const adminFeedback = {
-                  kbId: adminMarkData.kbId,
-                  dataId: data.dataId,
-                  content: data.a
+                  dataId: data.id,
+                  datasetId: adminMarkData.datasetId,
+                  collectionId: adminMarkData.collectionId,
+                  content: `${data.q}\n${data.a}`
                 };
 
                 // update dom
@@ -999,12 +1001,14 @@ const ChatBox = (
                 } catch (error) {}
                 setAdminMarkData(undefined);
               }}
-              kbId={adminMarkData.kbId}
+              datasetId={adminMarkData.datasetId}
               defaultValues={{
-                dataId: adminMarkData.dataId,
+                id: adminMarkData.dataId,
+                datasetId: adminMarkData.datasetId,
+                collectionId: adminMarkData.collectionId,
                 q: adminMarkData.q,
                 a: adminMarkData.a,
-                file_id: DatasetSpecialIdEnum.mark
+                sourceName: '手动标注'
               }}
             />
           )}

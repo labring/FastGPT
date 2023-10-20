@@ -71,7 +71,7 @@ export function createDefaultCollection({
   userId
 }: {
   datasetId: string;
-  parentId: string;
+  parentId?: string;
   userId: string;
 }) {
   return createOneCollection({

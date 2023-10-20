@@ -14,7 +14,7 @@ import FlowProvider, { useFlowStore } from './components/Provider';
 import Header from './components/Header';
 
 const NodeChat = dynamic(() => import('./components/Nodes/NodeChat'));
-const NodeKbSearch = dynamic(() => import('./components/Nodes/NodeKbSearch'));
+const NodeDatasetSearch = dynamic(() => import('./components/Nodes/NodeDatasetSearch'));
 const NodeHistory = dynamic(() => import('./components/Nodes/NodeHistory'));
 const NodeTFSwitch = dynamic(() => import('./components/Nodes/NodeTFSwitch'));
 const NodeAnswer = dynamic(() => import('./components/Nodes/NodeAnswer'));
@@ -34,7 +34,7 @@ const nodeTypes = {
   [FlowModuleTypeEnum.questionInput]: NodeQuestionInput,
   [FlowModuleTypeEnum.historyNode]: NodeHistory,
   [FlowModuleTypeEnum.chatNode]: NodeChat,
-  [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
+  [FlowModuleTypeEnum.datasetSearchNode]: NodeDatasetSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
   [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode,

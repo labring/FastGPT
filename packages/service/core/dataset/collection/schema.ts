@@ -44,6 +44,10 @@ const DatasetCollectionSchema = new Schema({
       rawLink: {
         type: String,
         default: ''
+      },
+      // 451 初始化
+      pgCollectionId: {
+        type: String
       }
     },
     default: {}

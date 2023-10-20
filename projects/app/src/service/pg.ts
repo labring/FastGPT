@@ -194,8 +194,9 @@ export async function initPg() {
           q TEXT NOT NULL,
           a TEXT
       );
-      CREATE INDEX IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 24, ef_construction = 64);
+      CREATE INDEX IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 16, ef_construction = 64);
     `);
+
     console.log('init pg successful');
   } catch (error) {
     console.log('init pg error', error);

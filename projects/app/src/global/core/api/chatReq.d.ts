@@ -1,6 +1,6 @@
 export type AdminUpdateFeedbackParams = {
   chatItemId: string;
-  kbId: string;
+  datasetId: string;
   dataId: string;
   content: string;
 };

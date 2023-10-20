@@ -481,7 +481,7 @@ const Settings = ({ appId }: { appId: string }) => {
                   router.push({
                     pathname: '/dataset/detail',
                     query: {
-                      kbId: item._id
+                      datasetId: item._id
                     }
                   })
                 }

@@ -89,9 +89,9 @@ const Kb = () => {
 
   // export dataset to csv
   const { mutate: onclickExport } = useRequest({
-    mutationFn: (kbId: string) => {
+    mutationFn: (datasetId: string) => {
       setLoading(true);
-      return exportDatasetData({ kbId });
+      return exportDatasetData({ datasetId });
     },
     onSettled() {
       setLoading(false);

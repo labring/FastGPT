@@ -115,7 +115,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
         inputs: module.inputs,
         key: 'quotePrompt'
       });
-    } else if (module.flowType === FlowModuleTypeEnum.kbSearchNode) {
+    } else if (module.flowType === FlowModuleTypeEnum.datasetSearchNode) {
       updateVal({
         formKey: 'kb.list',
         inputs: module.inputs,
@@ -427,7 +427,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
   },
   {
     name: '知识库搜索',
-    flowType: FlowModuleTypeEnum.kbSearchNode,
+    flowType: FlowModuleTypeEnum.datasetSearchNode,
     showStatus: true,
     inputs: [
       {

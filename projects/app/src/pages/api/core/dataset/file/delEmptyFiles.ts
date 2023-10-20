@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
 
-    const { kbId } = req.query as { kbId: string };
+    const { datasetId } = req.query as { datasetId: string };
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const files = await collection.deleteMany({
       uploadDate: { $lte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-      ['metadata.kbId']: kbId,
+      ['metadata.datasetId']: datasetId,
       ['metadata.userId']: userId,
       ['metadata.datasetUsed']: { $ne: true }
     });

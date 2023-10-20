@@ -240,7 +240,7 @@ export const ChatModule: FlowModuleTemplateType = {
 };
 
 export const KBSearchModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.kbSearchNode,
+  flowType: FlowModuleTypeEnum.datasetSearchNode,
   logo: '/imgs/module/db.png',
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
@@ -900,7 +900,7 @@ export const appTemplates: (AppItemType & {
       {
         moduleId: 'kbSearch',
         name: '知识库搜索',
-        flowType: 'kbSearchNode',
+        flowType: 'datasetSearchNode',
         showStatus: true,
         position: {
           x: 956.0838440206068,
@@ -1952,7 +1952,7 @@ export const appTemplates: (AppItemType & {
       {
         moduleId: 'fljhzy',
         name: '知识库搜索',
-        flowType: 'kbSearchNode',
+        flowType: 'datasetSearchNode',
         showStatus: true,
         position: {
           x: 1305.5374262228029,

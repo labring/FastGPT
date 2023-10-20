@@ -13,7 +13,7 @@ const SelectDataset = ({
   onClose
 }: {
   isOpen: boolean;
-  onSuccess: (kbId: string) => void;
+  onSuccess: (e: { datasetId: string; collectionId: string }) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -101,7 +101,7 @@ const SelectDataset = ({
               });
             }
 
-            onSuccess(selectedId);
+            onSuccess({ datasetId: selectedId, collectionId: '' });
           }}
         >
           {t('Confirm')}

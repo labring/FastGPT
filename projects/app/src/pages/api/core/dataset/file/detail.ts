@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
 
-    const { fileId } = req.query as { kbId: string; fileId: string };
+    const { fileId } = req.query as { fileId: string };
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 

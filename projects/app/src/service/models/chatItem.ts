@@ -43,7 +43,8 @@ const ChatItemSchema = new Schema({
   },
   adminFeedback: {
     type: {
-      kbId: String,
+      datasetId: String,
+      collectionId: String,
       dataId: String,
       content: String
     }

@@ -13,18 +13,18 @@ import { responseWriteController } from '@fastgpt/service/common/response';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    let { kbId } = req.query as {
-      kbId: string;
+    let { datasetId } = req.query as {
+      datasetId: string;
     };
 
-    if (!kbId || !global.pgClient) {
+    if (!datasetId || !global.pgClient) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    const exportIds = [kbId, ...(await findAllChildrenIds(kbId))];
+    const exportIds = [datasetId, ...(await findAllChildrenIds(datasetId))];
 
     const limitMinutesAgo = new Date(
       Date.now() - (global.feConfigs?.limit?.exportLimitMinutes || 0) * 60 * 1000

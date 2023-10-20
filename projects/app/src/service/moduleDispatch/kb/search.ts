@@ -66,11 +66,20 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   );
 
   const rows = results?.[2]?.rows as SearchDataResultItemType[];
+  // const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
+  // const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
+  //   ...item,
+  //   score: rows[index].score
+  // }));
 
-  const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
-  const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
-    ...item,
-    score: rows[index].score
+  const searchRes = rows.map((item) => ({
+    id: item.id,
+    q: item.q,
+    a: item.a,
+    datasetId: item?.dataset_id || '',
+    collectionId: item.collection_id,
+    sourceName: '',
+    score: item.score
   }));
 
   return {
@@ -78,7 +87,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      moduleType: FlowModuleTypeEnum.kbSearchNode,
+      moduleType: FlowModuleTypeEnum.datasetSearchNode,
       moduleName,
       price: countModelPrice({
         model: vectorModel.model,

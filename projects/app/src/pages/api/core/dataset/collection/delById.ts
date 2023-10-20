@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { collectionId } = req.query as { collectionId: string };
 
     if (!collectionId) {
-      throw new Error('fileId and kbId is required');
+      throw new Error('CollectionIdId is required');
     }
 
     // 凭证校验

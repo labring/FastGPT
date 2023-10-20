@@ -23,6 +23,7 @@ export type DatasetCollectionSchemaType = {
   metadata: {
     fileId?: string;
     rawLink?: string;
+    pgCollectionId?: string;
   };
 };
 

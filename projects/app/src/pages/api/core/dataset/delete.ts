@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // delete training data
     await MongoDatasetTraining.deleteMany({
       userId,
-      kbId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
+      datasetId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
     });
 
     // delete all pg data

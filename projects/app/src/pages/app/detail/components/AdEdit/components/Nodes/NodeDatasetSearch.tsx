@@ -7,7 +7,7 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeKbSearch = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeDatasetSearch = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
 
   return (
@@ -23,4 +23,4 @@ const NodeKbSearch = ({ data }: NodeProps<FlowModuleItemType>) => {
     </NodeCard>
   );
 };
-export default React.memo(NodeKbSearch);
+export default React.memo(NodeDatasetSearch);

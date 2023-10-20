@@ -437,7 +437,7 @@ export async function dispatchModules({
         [FlowModuleTypeEnum.questionInput]: dispatchChatInput,
         [FlowModuleTypeEnum.answerNode]: dispatchAnswer,
         [FlowModuleTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowModuleTypeEnum.kbSearchNode]: dispatchKBSearch,
+        [FlowModuleTypeEnum.datasetSearchNode]: dispatchKBSearch,
         [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
         [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract,
         [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest,

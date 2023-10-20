@@ -26,7 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await createDefaultCollection({
       datasetId: _id,
-      parentId: '',
       userId
     });
 

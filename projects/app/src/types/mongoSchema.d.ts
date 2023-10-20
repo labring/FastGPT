@@ -60,8 +60,9 @@ export interface ChatItemSchema extends ChatItemType {
   time: Date;
   userFeedback?: string;
   adminFeedback?: {
-    kbId: string;
     dataId: string;
+    datasetId: string;
+    collectionId: string;
     content: string;
   };
 }

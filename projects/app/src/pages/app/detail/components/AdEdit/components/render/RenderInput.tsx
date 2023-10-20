@@ -491,7 +491,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
 
   const showKbList = useMemo(() => {
     const value = item.value as SelectedDatasetType;
-    return allDatasets.filter((dataset) => value.find((kb) => kb.kbId === dataset._id));
+    return allDatasets.filter((dataset) => value.find((kb) => kb.datasetId === dataset._id));
   }, [allDatasets, item.value]);
 
   useQuery(['loadAllDatasets'], loadAllDatasets);
@@ -520,7 +520,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
       </Grid>
       <DatasetSelectModal
         isOpen={isOpenKbSelect}
-        activeKbs={item.value}
+        activeDatasets={item.value}
         onChange={(e) => {
           onChangeNode({
             moduleId,

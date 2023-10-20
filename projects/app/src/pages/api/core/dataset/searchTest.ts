@@ -44,7 +44,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 60};
         select id, q, a, dataset_id, collection_id, (vector <#> '[${
           vectors[0]
-        }]') * -1 AS score from ${PgDatasetTableName} where dataset_id='${datasetId}' AND user_id='${userId}' order by vector <#> '[${
+        }]') * -1 AS score from ${PgDatasetTableName} where dataset_id='${datasetId}' AND user_id='${userId}' ORDER BY vector <#> '[${
           vectors[0]
         }]' limit 12;
         COMMIT;`
