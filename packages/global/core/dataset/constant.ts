@@ -12,10 +12,36 @@ export const DatasetTypeMap = {
   }
 };
 
-export enum FileStatusEnum {
-  embedding = 'embedding',
-  ready = 'ready'
+export enum DatasetCollectionTypeEnum {
+  file = 'file',
+  folder = 'folder',
+  link = 'link',
+  virtual = 'virtual'
 }
+
+export const DatasetCollectionTypeMap = {
+  [DatasetCollectionTypeEnum.file]: {
+    name: 'dataset.file'
+  },
+  [DatasetCollectionTypeEnum.folder]: {
+    name: 'dataset.folder'
+  },
+  [DatasetCollectionTypeEnum.link]: {
+    name: 'dataset.link'
+  },
+  [DatasetCollectionTypeEnum.virtual]: {
+    name: 'dataset.Virtual File'
+  }
+};
+
+export enum TrainingModeEnum {
+  'qa' = 'qa',
+  'index' = 'index'
+}
+export const TrainingTypeMap = {
+  [TrainingModeEnum.qa]: 'qa',
+  [TrainingModeEnum.index]: 'index'
+};
 
 export enum DatasetSpecialIdEnum {
   manual = 'manual',

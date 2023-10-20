@@ -1,0 +1,23 @@
+import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
+
+/* ================= dataset ===================== */
+
+/* ================= collection ===================== */
+export type DatasetCollectionsResponse = {
+  _id: string;
+  parentId: string;
+  name: string;
+  type: DatasetCollectionSchemaType['type'];
+  updateTime: Date;
+  dataAmount?: number;
+  trainingAmount: number;
+  metadata: DatasetCollectionSchemaType['metadata'];
+};
+
+/* ================= data ===================== */
+export type DatasetDataListItemType = {
+  id: string;
+  index: string; // embedding content
+  content: string; // bonus content
+};

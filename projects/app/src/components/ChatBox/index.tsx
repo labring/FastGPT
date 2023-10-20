@@ -57,7 +57,7 @@ const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
 const SelectDataset = dynamic(() => import('./SelectDataset'));
-const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputDataModal'));
+const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
 import styles from './index.module.scss';
 import Script from 'next/script';

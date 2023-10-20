@@ -27,7 +27,10 @@ export function getTikTokenEnc() {
 }
 
 /* count one prompt tokens */
-export function countPromptTokens(prompt = '', role: `${ChatCompletionRequestMessageRoleEnum}`) {
+export function countPromptTokens(
+  prompt = '',
+  role: '' | `${ChatCompletionRequestMessageRoleEnum}` = ''
+) {
   const enc = getTikTokenEnc();
   const text = `${role}\n${prompt}`;
   try {

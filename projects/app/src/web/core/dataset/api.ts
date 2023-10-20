@@ -4,21 +4,24 @@ import type {
   DatasetUpdateParams,
   CreateDatasetParams,
   SearchTestProps,
-  GetFileListProps,
-  UpdateFileProps,
-  MarkFileUsedProps,
+  GetDatasetCollectionsProps,
   PushDataProps,
-  UpdateDatasetDataPrams,
-  GetDatasetDataListProps
+  GetDatasetDataListProps,
+  CreateDatasetCollectionParams,
+  UpdateDatasetCollectionParams,
+  SetOneDatasetDataProps
 } from '@/global/core/api/datasetReq.d';
-import type { SearchTestResponseType, PushDataResponse } from '@/global/core/api/datasetRes.d';
+import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import type { DatasetFileItemType } from '@/types/core/dataset/file';
 import type { GSFileInfoType } from '@/types/common/file';
-import type { QuoteItemType } from '@/types/chat';
 import { getToken } from '@/web/support/user/auth';
 import download from 'downloadjs';
-import type { DatasetDataItemType } from '@/types/core/dataset/data';
+import type {
+  DatasetCollectionSchemaType,
+  DatasetDataItemType
+} from '@fastgpt/global/core/dataset/type';
+import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: { parentId?: string; type?: `${DatasetTypeEnum}` }) =>
@@ -41,27 +44,27 @@ export const putDatasetById = (data: DatasetUpdateParams) => PUT(`/core/dataset/
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
+/* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
-  POST<SearchTestResponseType>(`/core/dataset/searchTest`, data);
+  POST<SearchDataResponseItemType[]>(`/core/dataset/searchTest`, data);
 
-/* ============================= file ==================================== */
-export const getDatasetFiles = (data: GetFileListProps) =>
-  POST<DatasetFileItemType[]>(`/core/dataset/file/list`, data);
-export const delDatasetFileById = (params: { fileId: string; kbId: string }) =>
-  DELETE(`/core/dataset/file/delById`, params);
-export const getFileInfoById = (fileId: string) =>
-  GET<GSFileInfoType>(`/core/dataset/file/detail`, { fileId });
-export const delDatasetEmptyFiles = (kbId: string) =>
-  DELETE(`/core/dataset/file/delEmptyFiles`, { kbId });
-
-export const updateDatasetFile = (data: UpdateFileProps) => PUT(`/core/dataset/file/update`, data);
-
-export const putMarkFilesUsed = (data: MarkFileUsedProps) =>
-  PUT(`/core/dataset/file/markUsed`, data);
+/* ============================= collections ==================================== */
+export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
+  POST(`/core/dataset/collection/list`, data);
+export const getDatasetCollectionPathById = (parentId: string) =>
+  GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
+export const getDatasetCollectionById = (id: string) =>
+  GET<DatasetCollectionSchemaType>(`/core/dataset/collection/detail`, { id });
+export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
+  POST<string>(`/core/dataset/collection/create`, data);
+export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
+  POST(`/core/dataset/collection/update`, data);
+export const delDatasetCollectionById = (params: { collectionId: string }) =>
+  DELETE(`/core/dataset/collection/delById`, params);
 
 /* =============================== data ==================================== */
 
-/* kb data */
+/* get dataset list */
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
   POST(`/core/dataset/data/getDataList`, data);
 
@@ -84,20 +87,11 @@ export const exportDatasetData = (data: { kbId: string }) =>
     })
     .then((blob) => download(blob, 'dataset.csv', 'text/csv'));
 
-/**
- * 获取模型正在拆分数据的数量
- */
-export const getTrainingData = (data: { kbId: string; init: boolean }) =>
-  POST<{
-    qaListLen: number;
-    vectorListLen: number;
-  }>(`/core/dataset/data/getTrainingData`, data);
-
 /* get length of system training queue */
 export const getTrainingQueueLen = () => GET<number>(`/core/dataset/data/getQueueLen`);
 
 export const getDatasetDataItemById = (dataId: string) =>
-  GET<QuoteItemType>(`/core/dataset/data/getDataById`, { dataId });
+  GET<DatasetDataItemType>(`/core/dataset/data/getDataById`, { dataId });
 
 /**
  * push data to training queue
@@ -108,16 +102,22 @@ export const postChunks2Dataset = (data: PushDataProps) =>
 /**
  * insert one data to dataset (immediately insert)
  */
-export const postData2Dataset = (data: { kbId: string; data: DatasetDataItemType }) =>
+export const postData2Dataset = (data: SetOneDatasetDataProps) =>
   POST<string>(`/core/dataset/data/insertData`, data);
 
 /**
  * 更新一条数据
  */
-export const putDatasetDataById = (data: UpdateDatasetDataPrams) =>
+export const putDatasetDataById = (data: SetOneDatasetDataProps) =>
   PUT('/core/dataset/data/updateData', data);
 /**
  * 删除一条知识库数据
  */
 export const delOneDatasetDataById = (dataId: string) =>
   DELETE(`/core/dataset/data/delDataById?dataId=${dataId}`);
+
+/* ================== file ======================== */
+export const getFileInfoById = (fileId: string) =>
+  GET<GSFileInfoType>(`/core/dataset/file/detail`, { fileId });
+export const delDatasetEmptyFiles = (kbId: string) =>
+  DELETE(`/core/dataset/file/delEmptyFiles`, { kbId });

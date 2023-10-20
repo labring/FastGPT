@@ -14,14 +14,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    const kbList = await MongoDataset.find({
+    const datasets = await MongoDataset.find({
       userId,
       ...(parentId !== undefined && { parentId: parentId || null }),
       ...(type && { type })
     }).sort({ updateTime: -1 });
 
     const data = await Promise.all(
-      kbList.map(async (item) => ({
+      datasets.map(async (item) => ({
         ...item.toJSON(),
         vectorModel: getVectorModel(item.vectorModel)
       }))

@@ -9,12 +9,12 @@ import { connectToDatabase } from '@/service/mongo';
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    let { dataId } = req.query as {
+    const { dataId } = req.query as {
       dataId: string;
     };
 
     if (!dataId) {
-      throw new Error('缺少参数');
+      throw new Error('dataId is required');
     }
 
     // 凭证校验

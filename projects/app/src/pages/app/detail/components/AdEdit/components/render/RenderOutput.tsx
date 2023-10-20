@@ -128,7 +128,7 @@ const RenderOutput = ({
   flowOutputList: FlowOutputItemType[];
 }) => {
   const sortOutput = useMemo(
-    () => flowOutputList.sort((a, b) => (a.key === SystemOutputEnum.finish ? -1 : 1)),
+    () => [...flowOutputList].sort((a, b) => (a.key === SystemOutputEnum.finish ? -1 : 1)),
     [flowOutputList]
   );
   return (

@@ -36,22 +36,6 @@ export interface CollectionSchema {
   userId: string;
 }
 
-export interface TrainingDataSchema {
-  _id: string;
-  userId: string;
-  kbId: string;
-  expireAt: Date;
-  lockTime: Date;
-  vectorModel: string;
-  mode: `${TrainingModeEnum}`;
-  prompt: string;
-  q: string;
-  a: string;
-  source: string;
-  file_id: string;
-  billId: string;
-}
-
 export interface ChatSchema {
   _id: string;
   chatId: string;

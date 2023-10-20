@@ -12,12 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    const kbList = await MongoDataset.find({
+    const datasets = await MongoDataset.find({
       userId,
       type: 'dataset'
     });
 
-    const data = kbList.map((item) => ({
+    const data = datasets.map((item) => ({
       ...item.toJSON(),
       vectorModel: getVectorModel(item.vectorModel)
     }));

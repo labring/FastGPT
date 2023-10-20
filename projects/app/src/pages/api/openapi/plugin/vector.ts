@@ -44,55 +44,61 @@ export async function getVector({
   input,
   billId
 }: { userId?: string } & Props) {
-  userId && (await authBalanceByUid(userId));
+  try {
+    userId && (await authBalanceByUid(userId));
 
-  for (let i = 0; i < input.length; i++) {
-    if (!input[i]) {
-      return Promise.reject({
-        code: 500,
-        message: '向量生成模块输入内容为空'
-      });
+    for (let i = 0; i < input.length; i++) {
+      if (!input[i]) {
+        return Promise.reject({
+          code: 500,
+          message: '向量生成模块输入内容为空'
+        });
+      }
     }
-  }
 
-  // 获取 chatAPI
-  const ai = getAIApi();
+    // 获取 chatAPI
+    const ai = getAIApi();
 
-  // 把输入的内容转成向量
-  const result = await ai.embeddings
-    .create(
-      {
+    // 把输入的内容转成向量
+    const result = await ai.embeddings
+      .create(
+        {
+          model,
+          input
+        },
+        {
+          timeout: 60000
+        }
+      )
+      .then(async (res) => {
+        if (!res.data) {
+          return Promise.reject('Embedding API 404');
+        }
+        if (!res?.data?.[0]?.embedding) {
+          console.log(res?.data);
+          // @ts-ignore
+          return Promise.reject(res.data?.err?.message || 'Embedding API Error');
+        }
+        return {
+          tokenLen: res.usage.total_tokens || 0,
+          vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
+        };
+      });
+
+    userId &&
+      pushGenerateVectorBill({
+        userId,
+        tokenLen: result.tokenLen,
         model,
-        input
-      },
-      {
-        timeout: 60000
-      }
-    )
-    .then(async (res) => {
-      if (!res.data) {
-        return Promise.reject('Embedding API 404');
-      }
-      if (!res?.data?.[0]?.embedding) {
-        console.log(res?.data);
-        // @ts-ignore
-        return Promise.reject(res.data?.err?.message || 'Embedding API Error');
-      }
-      return {
-        tokenLen: res.usage.total_tokens || 0,
-        vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
-      };
-    });
+        billId
+      });
 
-  userId &&
-    pushGenerateVectorBill({
-      userId,
-      tokenLen: result.tokenLen,
-      model,
-      billId
-    });
+    return result;
+  } catch (error) {
+    console.log(`Embedding Error`, error);
 
-  return result;
+    return Promise.reject(error);
+  }
 }
 
 function unityDimensional(vector: number[]) {

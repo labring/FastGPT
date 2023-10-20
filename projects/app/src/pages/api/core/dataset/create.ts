@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
+import { createDefaultCollection } from './collection/create';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,6 +22,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       avatar,
       parentId: parentId || null,
       type
+    });
+
+    await createDefaultCollection({
+      datasetId: _id,
+      parentId: '',
+      userId
     });
 
     jsonRes(res, { data: _id });

@@ -10,14 +10,7 @@ export const fileImgs = [
 ];
 
 export function getFileIcon(name = '') {
-  return fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(name))?.src;
-}
-export function getSpecialFileIcon(name = '') {
-  if (name === 'manual') {
-    return '/imgs/files/manual.svg';
-  } else if (name === 'mark') {
-    return '/imgs/files/mark.svg';
-  } else if (strIsLink(name)) {
-    return '/imgs/files/link.svg';
-  }
+  return (
+    fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(name))?.src || '/imgs/files/file.svg'
+  );
 }

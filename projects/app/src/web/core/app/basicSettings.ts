@@ -119,7 +119,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
       updateVal({
         formKey: 'kb.list',
         inputs: module.inputs,
-        key: 'kbList'
+        key: 'datasets'
       });
       updateVal({
         formKey: 'kb.searchSimilarity',
@@ -431,7 +431,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     showStatus: true,
     inputs: [
       {
-        key: 'kbList',
+        key: 'datasets',
         value: formData.kb.list,
         type: FlowInputItemTypeEnum.custom,
         label: '关联的知识库',

@@ -44,8 +44,8 @@ const Navbar = ({ unread }: { unread: number }) => {
         label: t('navbar.Datasets'),
         icon: 'dbLight',
         activeIcon: 'dbFill',
-        link: `/kb/list`,
-        activeLink: ['/kb/list', '/kb/detail']
+        link: `/dataset/list`,
+        activeLink: ['/dataset/list', '/dataset/detail']
       },
       ...(feConfigs?.show_appStore
         ? [

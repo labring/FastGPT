@@ -3,7 +3,6 @@ import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { UpdateFileProps } from '@/global/core/api/datasetReq.d';
 import { Types } from '@fastgpt/service/common/mongo';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
@@ -14,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
 
-    const { id, name, datasetUsed } = req.body as UpdateFileProps;
+    const { id, name, datasetUsed } = req.body;
     const { userId } = await authUser({ req, authToken: true });
 
     const gridFs = new GridFSStorage('dataset', userId);

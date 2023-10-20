@@ -34,12 +34,12 @@ export type KbParamsType = {
 
 export const DatasetSelectModal = ({
   isOpen,
-  activeKbs = [],
+  activeDatasets = [],
   onChange,
   onClose
 }: {
   isOpen: boolean;
-  activeKbs: SelectedDatasetType;
+  activeDatasets: SelectedDatasetType;
   onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
 }) => {
@@ -47,8 +47,8 @@ export const DatasetSelectModal = ({
   const theme = useTheme();
   const { allDatasets } = useDatasetStore();
   const [selectedKbList, setSelectedKbList] = useState<SelectedDatasetType>(
-    activeKbs.filter((kb) => {
-      return allDatasets.find((item) => item._id === kb.kbId);
+    activeDatasets.filter((dataset) => {
+      return allDatasets.find((item) => item._id === dataset.datasetId);
     })
   );
   const { toast } = useToast();
@@ -56,8 +56,12 @@ export const DatasetSelectModal = ({
 
   const filterKbList = useMemo(() => {
     return {
-      selected: allDatasets.filter((item) => selectedKbList.find((kb) => kb.kbId === item._id)),
-      unSelected: datasets.filter((item) => !selectedKbList.find((kb) => kb.kbId === item._id))
+      selected: allDatasets.filter((item) =>
+        selectedKbList.find((dataset) => dataset.datasetId === item._id)
+      ),
+      unSelected: datasets.filter(
+        (item) => !selectedKbList.find((dataset) => dataset.datasetId === item._id)
+      )
     };
   }, [datasets, allDatasets, selectedKbList]);
 
@@ -98,7 +102,9 @@ export const DatasetSelectModal = ({
                       cursor={'pointer'}
                       _hover={{ color: 'red.500' }}
                       onClick={() => {
-                        setSelectedKbList((state) => state.filter((kb) => kb.kbId !== item._id));
+                        setSelectedKbList((state) =>
+                          state.filter((kb) => kb.datasetId !== item._id)
+                        );
                       }}
                     />
                   </Flex>
@@ -118,8 +124,8 @@ export const DatasetSelectModal = ({
                   key={item._id}
                   label={
                     item.type === DatasetTypeEnum.dataset
-                      ? t('kb.Select Dataset')
-                      : t('kb.Select Folder')
+                      ? t('dataset.Select Dataset')
+                      : t('dataset.Select Folder')
                   }
                 >
                   <Card
@@ -145,7 +151,7 @@ export const DatasetSelectModal = ({
                         }
                         setSelectedKbList((state) => [
                           ...state,
-                          { kbId: item._id, vectorModel: item.vectorModel }
+                          { datasetId: item._id, vectorModel: item.vectorModel }
                         ]);
                       }
                     }}
@@ -190,9 +196,9 @@ export const DatasetSelectModal = ({
       <ModalFooter>
         <Button
           onClick={() => {
-            // filter out the kb that is not in the kList
-            const filterKbList = selectedKbList.filter((kb) => {
-              return allDatasets.find((item) => item._id === kb.kbId);
+            // filter out the dataset that is not in the kList
+            const filterKbList = selectedKbList.filter((dataset) => {
+              return allDatasets.find((item) => item._id === dataset.datasetId);
             });
 
             onClose();

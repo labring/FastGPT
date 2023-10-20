@@ -1,4 +1,3 @@
-import { PgDataItemType } from './data';
 import { VectorModelItemType } from '../../model';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 
@@ -20,12 +19,4 @@ export type DatasetPathItemType = {
   parentName: string;
 };
 
-export type SearchTestItemType = {
-  id: string;
-  kbId: string;
-  text: string;
-  time: Date;
-  results: (PgDataItemType & { score: number })[];
-};
-
-export type SelectedDatasetType = { kbId: string; vectorModel: VectorModelItemType }[];
+export type SelectedDatasetType = { datasetId: string; vectorModel: VectorModelItemType }[];

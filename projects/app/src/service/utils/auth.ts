@@ -37,13 +37,13 @@ export const authApp = async ({
 };
 
 // 知识库操作权限
-export const authDataset = async ({ kbId, userId }: { kbId: string; userId: string }) => {
-  const kb = await MongoDataset.findOne({
-    _id: kbId,
+export const authDataset = async ({ datasetId, userId }: { datasetId: string; userId: string }) => {
+  const dataset = await MongoDataset.findOne({
+    _id: datasetId,
     userId
   });
-  if (kb) {
-    return kb;
+  if (dataset) {
+    return dataset;
   }
-  return Promise.reject(ERROR_ENUM.unAuthKb);
+  return Promise.reject(ERROR_ENUM.unAuthDataset);
 };

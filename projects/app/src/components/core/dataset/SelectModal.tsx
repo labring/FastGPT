@@ -98,7 +98,7 @@ export const useDatasetSelect = () => {
     () => [
       {
         parentId: '',
-        parentName: t('kb.My Dataset')
+        parentName: t('dataset.My Dataset')
       },
       ...(data?.[1] || [])
     ],

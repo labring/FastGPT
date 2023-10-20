@@ -14,7 +14,7 @@ const Tools = () => {
     {
       icon: 'dbLight',
       label: '我的知识库',
-      link: '/kb/list'
+      link: '/dataset/list'
     },
     ...(feConfigs?.show_appStore
       ? [

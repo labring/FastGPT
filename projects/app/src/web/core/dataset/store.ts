@@ -1,26 +1,34 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { SearchTestItemType } from '@/types/core/dataset';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetItemType, DatasetsItemType } from '@/types/core/dataset';
 import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
 import { defaultKbDetail } from '@/constants/dataset';
 import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
 
+export type SearchTestStoreItemType = {
+  id: string;
+  datasetId: string;
+  text: string;
+  time: Date;
+  results: SearchDataResponseItemType[];
+};
+
 type State = {
   allDatasets: DatasetsItemType[];
   loadAllDatasets: () => Promise<DatasetsItemType[]>;
-  myKbList: DatasetsItemType[];
-  loadKbList: (parentId?: string) => Promise<any>;
-  setKbList(val: DatasetsItemType[]): void;
-  kbDetail: DatasetItemType;
-  getKbDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
+  myDatasets: DatasetsItemType[];
+  loadDatasets: (parentId?: string) => Promise<any>;
+  setDatasets(val: DatasetsItemType[]): void;
+  datasetDetail: DatasetItemType;
+  loadDatasetDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
   updateDataset: (data: DatasetUpdateParams) => Promise<any>;
 
-  kbTestList: SearchTestItemType[];
-  pushKbTestItem: (data: SearchTestItemType) => void;
-  delKbTestItemById: (id: string) => void;
-  updateKbItemById: (data: SearchTestItemType) => void;
+  datasetTestList: SearchTestStoreItemType[];
+  pushDatasetTestItem: (data: SearchTestStoreItemType) => void;
+  delDatasetTestItemById: (id: string) => void;
+  updateDatasetItemById: (data: SearchTestStoreItemType) => void;
 };
 
 export const useDatasetStore = create<State>()(
@@ -35,42 +43,42 @@ export const useDatasetStore = create<State>()(
           });
           return res;
         },
-        myKbList: [],
-        async loadKbList(parentId = '') {
+        myDatasets: [],
+        async loadDatasets(parentId = '') {
           const res = await getDatasets({ parentId });
           set((state) => {
-            state.myKbList = res;
+            state.myDatasets = res;
           });
           return res;
         },
-        setKbList(val) {
+        setDatasets(val) {
           set((state) => {
-            state.myKbList = val;
+            state.myDatasets = val;
           });
         },
-        kbDetail: defaultKbDetail,
-        async getKbDetail(id: string, init = false) {
-          if (id === get().kbDetail._id && !init) return get().kbDetail;
+        datasetDetail: defaultKbDetail,
+        async loadDatasetDetail(id: string, init = false) {
+          if (!id || (id === get().datasetDetail._id && !init)) return get().datasetDetail;
 
           const data = await getDatasetById(id);
 
           set((state) => {
-            state.kbDetail = data;
+            state.datasetDetail = data;
           });
 
           return data;
         },
         async updateDataset(data) {
-          if (get().kbDetail._id === data.id) {
+          if (get().datasetDetail._id === data.id) {
             set((state) => {
-              state.kbDetail = {
-                ...state.kbDetail,
+              state.datasetDetail = {
+                ...state.datasetDetail,
                 ...data
               };
             });
           }
           set((state) => {
-            state.myKbList = state.myKbList = state.myKbList.map((item) =>
+            state.myDatasets = state.myDatasets = state.myDatasets.map((item) =>
               item._id === data.id
                 ? {
                     ...item,
@@ -82,27 +90,29 @@ export const useDatasetStore = create<State>()(
           });
           await putDatasetById(data);
         },
-        kbTestList: [],
-        pushKbTestItem(data) {
+        datasetTestList: [],
+        pushDatasetTestItem(data) {
           set((state) => {
-            state.kbTestList = [data, ...state.kbTestList].slice(0, 100);
+            state.datasetTestList = [data, ...state.datasetTestList].slice(0, 100);
           });
         },
-        delKbTestItemById(id) {
+        delDatasetTestItemById(id) {
           set((state) => {
-            state.kbTestList = state.kbTestList.filter((item) => item.id !== id);
+            state.datasetTestList = state.datasetTestList.filter((item) => item.id !== id);
           });
         },
-        updateKbItemById(data: SearchTestItemType) {
+        updateDatasetItemById(data: SearchTestStoreItemType) {
           set((state) => {
-            state.kbTestList = state.kbTestList.map((item) => (item.id === data.id ? data : item));
+            state.datasetTestList = state.datasetTestList.map((item) =>
+              item.id === data.id ? data : item
+            );
           });
         }
       })),
       {
-        name: 'kbStore',
+        name: 'datasetStore',
         partialize: (state) => ({
-          kbTestList: state.kbTestList
+          datasetTestList: state.datasetTestList
         })
       }
     )

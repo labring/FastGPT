@@ -100,7 +100,7 @@ const Settings = ({ appId }: { appId: string }) => {
     control,
     name: 'variables'
   });
-  const { fields: kbList, replace: replaceKbList } = useFieldArray({
+  const { fields: datasets, replace: replaceKbList } = useFieldArray({
     control,
     name: 'kb.list'
   });
@@ -128,9 +128,9 @@ const Settings = ({ appId }: { appId: string }) => {
     }));
   }, [refresh]);
 
-  const selectedKbList = useMemo(
-    () => allDatasets.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
-    [allDatasets, kbList]
+  const selectDatasets = useMemo(
+    () => allDatasets.filter((item) => datasets.find((kb) => kb.datasetId === item._id)),
+    [allDatasets, datasets]
   );
 
   /* 点击删除 */
@@ -467,7 +467,7 @@ const Settings = ({ appId }: { appId: string }) => {
           空搜索时拒绝回复: {getValues('kb.searchEmptyText') !== '' ? 'true' : 'false'}
         </Flex>
         <Grid templateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} my={2} gridGap={[2, 4]}>
-          {selectedKbList.map((item) => (
+          {selectDatasets.map((item) => (
             <MyTooltip key={item._id} label={'查看知识库详情'}>
               <Flex
                 alignItems={'center'}
@@ -479,7 +479,7 @@ const Settings = ({ appId }: { appId: string }) => {
                 cursor={'pointer'}
                 onClick={() =>
                   router.push({
-                    pathname: '/kb/detail',
+                    pathname: '/dataset/detail',
                     query: {
                       kbId: item._id
                     }
@@ -559,8 +559,8 @@ const Settings = ({ appId }: { appId: string }) => {
       {isOpenKbSelect && (
         <DatasetSelectModal
           isOpen={isOpenKbSelect}
-          activeKbs={selectedKbList.map((item) => ({
-            kbId: item._id,
+          activeDatasets={selectDatasets.map((item) => ({
+            datasetId: item._id,
             vectorModel: item.vectorModel
           }))}
           onClose={onCloseKbSelect}

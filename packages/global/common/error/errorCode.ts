@@ -27,7 +27,8 @@ export enum ERROR_ENUM {
   insufficientQuota = 'insufficientQuota',
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
-  unAuthKb = 'unAuthKb',
+  unAuthDataset = 'unAuthDataset',
+  unAuthDatasetCollection = 'unAuthDatasetCollection',
   unAuthFile = 'unAuthFile'
 }
 export const ERROR_RESPONSE: Record<
@@ -57,9 +58,9 @@ export const ERROR_RESPONSE: Record<
     message: '无权使用该模型',
     data: null
   },
-  [ERROR_ENUM.unAuthKb]: {
+  [ERROR_ENUM.unAuthDataset]: {
     code: 512,
-    statusText: ERROR_ENUM.unAuthKb,
+    statusText: ERROR_ENUM.unAuthDataset,
     message: '无权使用该知识库',
     data: null
   },
@@ -73,6 +74,12 @@ export const ERROR_RESPONSE: Record<
     code: 514,
     statusText: ERROR_ENUM.unAuthApiKey,
     message: 'Api Key 不合法',
+    data: null
+  },
+  [ERROR_ENUM.unAuthDatasetCollection]: {
+    code: 515,
+    statusText: ERROR_ENUM.unAuthDatasetCollection,
+    message: '无权使用该知识库文件',
     data: null
   }
 };

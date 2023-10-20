@@ -1,9 +1,7 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { addLog } from './utils/tools';
-import type { DatasetDataItemType } from '@/types/core/dataset/data';
-import { DatasetSpecialIdEnum, datasetSpecialIdMap } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSpecialIdEnum } from '@fastgpt/global/core/dataset/constant';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -151,6 +149,7 @@ class Pg {
     const sql = `INSERT INTO ${table} (${fields}) VALUES ${this.getInsertValStr(
       props.values
     )} RETURNING id`;
+
     const pg = await connectPg();
     return pg.query(sql);
   }
@@ -161,38 +160,6 @@ class Pg {
 }
 
 export const PgClient = new Pg();
-
-/**
- * data insert dataset
- */
-export const insertData2Dataset = ({
-  userId,
-  kbId,
-  data
-}: {
-  userId: string;
-  kbId: string;
-  data: (DatasetDataItemType & {
-    vector: number[];
-  })[];
-}) => {
-  return PgClient.insert(PgDatasetTableName, {
-    values: data.map((item) => [
-      { key: 'user_id', value: userId },
-      { key: 'kb_id', value: kbId },
-      {
-        key: 'source',
-        value:
-          item.source?.slice(0, 200)?.trim() ||
-          datasetSpecialIdMap[DatasetSpecialIdEnum.manual].sourceName
-      },
-      { key: 'file_id', value: item.file_id?.slice(0, 200)?.trim() || DatasetSpecialIdEnum.manual },
-      { key: 'q', value: item.q.replace(/'/g, '"') },
-      { key: 'a', value: item.a.replace(/'/g, '"') },
-      { key: 'vector', value: `[${item.vector}]` }
-    ])
-  });
-};
 
 /**
  * Update data file_id
@@ -222,13 +189,12 @@ export async function initPg() {
           id BIGSERIAL PRIMARY KEY,
           vector VECTOR(1536) NOT NULL,
           user_id VARCHAR(50) NOT NULL,
-          kb_id VARCHAR(50),
-          source VARCHAR(256),
-          file_id VARCHAR(256),
+          dataset_id VARCHAR(50) NOT NULL,
+          collection_id VARCHAR(50) NOT NULL,
           q TEXT NOT NULL,
           a TEXT
       );
-      CREATE INDEX IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 16, ef_construction = 64);
+      CREATE INDEX IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 24, ef_construction = 64);
     `);
     console.log('init pg successful');
   } catch (error) {

@@ -1,30 +1,28 @@
-import { postCreateTrainingBill } from '@/web/common/bill/api';
 import { postChunks2Dataset } from '@/web/core/dataset/api';
-import { TrainingModeEnum } from '@/constants/plugin';
-import type { DatasetDataItemType } from '@/types/core/dataset/data';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetChunkItemType } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@/utils/tools';
 
 export async function chunksUpload({
-  kbId,
+  collectionId,
+  billId,
   mode,
   chunks,
   prompt,
   rate = 150,
   onUploading
 }: {
-  kbId: string;
+  collectionId: string;
+  billId: string;
   mode: `${TrainingModeEnum}`;
-  chunks: DatasetDataItemType[];
+  chunks: DatasetChunkItemType[];
   prompt?: string;
   rate?: number;
   onUploading?: (insertLen: number, total: number) => void;
 }) {
-  // create training bill
-  const billId = await postCreateTrainingBill({ name: 'dataset.Training Name' });
-
-  async function upload(data: DatasetDataItemType[]) {
+  async function upload(data: DatasetChunkItemType[]) {
     return postChunks2Dataset({
-      kbId,
+      collectionId,
       data,
       mode,
       prompt,
@@ -37,7 +35,7 @@ export async function chunksUpload({
   for (let i = 0; i < chunks.length; i += rate) {
     try {
       const { insertLen } = await upload(chunks.slice(i, i + rate));
-      onUploading && onUploading(i + rate, chunks.length);
+      onUploading && onUploading(insertLen, chunks.length);
       successInsert += insertLen;
     } catch (error) {
       if (retryTimes === 0) {

@@ -9,7 +9,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
     title: '全部变量',
     desc: '包含 q 和 a 两个变量的标准模板',
-    value: `{instruction:"{{q}}",output:"{{a}}",source:"{{source}}",file_id:"{{file_id}}",index:"{{index}}"}`
+    value: `{instruction:"{{q}}",output:"{{a}}",source:"{{source}}",sourceId:"{{sourceId}}",index:"{{index}}"}`
   }
 ];
 

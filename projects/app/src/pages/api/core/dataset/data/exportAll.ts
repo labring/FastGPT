@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const { rows } = await PgClient.query(
-      `SELECT count(id) FROM ${PgDatasetTableName} where user_id='${userId}' AND kb_id IN (${exportIds
+      `SELECT count(id) FROM ${PgDatasetTableName} where user_id='${userId}' AND dataset_id IN (${exportIds
         .map((id) => `'${id}'`)
         .join(',')})`
     );
@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       // create pg select stream
       const query = new QueryStream(
-        `SELECT q, a, source FROM ${PgDatasetTableName} where user_id='${userId}' AND kb_id IN (${exportIds
+        `SELECT q, a FROM ${PgDatasetTableName} where user_id='${userId}' AND dataset_id IN (${exportIds
           .map((id) => `'${id}'`)
           .join(',')})`
       );
@@ -84,18 +84,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         readStream: stream
       });
 
-      write('index,content,source');
+      write('index,content');
 
       // parse data every row
-      stream.on('data', ({ q, a, source }: { q: string; a: string; source?: string }) => {
+      stream.on('data', ({ q, a }: { q: string; a: string }) => {
         if (res.closed) {
           return stream.destroy();
         }
         q = q.replace(/"/g, '""');
         a = a.replace(/"/g, '""');
-        source = source?.replace(/"/g, '""');
+        // source = source?.replace(/"/g, '""');
 
-        write(`\n"${q}","${a || ''}","${source || ''}"`);
+        write(`\n"${q}","${a || ''}"`);
       });
       // finish
       stream.on('end', async () => {

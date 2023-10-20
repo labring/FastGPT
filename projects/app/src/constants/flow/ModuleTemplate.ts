@@ -248,7 +248,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
-      key: 'kbList',
+      key: 'datasets',
       type: FlowInputItemTypeEnum.selectDataset,
       label: '关联的知识库',
       value: [],
@@ -908,7 +908,7 @@ export const appTemplates: (AppItemType & {
         },
         inputs: [
           {
-            key: 'kbList',
+            key: 'datasets',
             type: 'custom',
             label: '关联的知识库',
             value: [],
@@ -1960,7 +1960,7 @@ export const appTemplates: (AppItemType & {
         },
         inputs: [
           {
-            key: 'kbList',
+            key: 'datasets',
             type: 'custom',
             label: '关联的知识库',
             value: [],

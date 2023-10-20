@@ -3,10 +3,12 @@ const { Schema, model, models } = connectionMongo;
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constant';
 
+export const DatasetCollectionName = 'datasets';
+
 const DatasetSchema = new Schema({
   parentId: {
     type: Schema.Types.ObjectId,
-    ref: 'kb',
+    ref: DatasetCollectionName,
     default: null
   },
   userId: {
@@ -43,4 +45,5 @@ const DatasetSchema = new Schema({
   }
 });
 
-export const MongoDataset: Model<DatasetSchemaType> = models['kb'] || model('kb', DatasetSchema);
+export const MongoDataset: Model<DatasetSchemaType> =
+  models[DatasetCollectionName] || model(DatasetCollectionName, DatasetSchema);

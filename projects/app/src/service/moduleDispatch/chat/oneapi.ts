@@ -1,6 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { ChatItemType, QuoteItemType } from '@/types/chat';
+import type { ChatItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { textAdaptGptResponse } from '@/utils/adapt';
@@ -21,12 +21,13 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
     userChatInput: string;
     history?: ChatItemType[];
-    quoteQA?: QuoteItemType[];
+    quoteQA?: SearchDataResponseItemType[];
     limitPrompt?: string;
   }
 >;
@@ -204,7 +205,10 @@ function filterQuote({
     messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
       value: replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
-        ...item,
+        q: item.q,
+        a: item.a,
+        source: item.sourceName,
+        sourceId: item.sourceId || 'UnKnow',
         index: index + 1
       })
     }))
@@ -218,8 +222,11 @@ function filterQuote({
       ? `${filterQuoteQA
           .map((item, index) =>
             replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
-              ...item,
-              index: `${index + 1}`
+              q: item.q,
+              a: item.a,
+              source: item.sourceName,
+              sourceId: item.sourceId || 'UnKnow',
+              index: index + 1
             })
           )
           .join('\n')}`

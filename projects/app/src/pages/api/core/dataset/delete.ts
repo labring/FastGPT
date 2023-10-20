@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, TrainingData } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgClient } from '@/service/pg';
@@ -25,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const deletedIds = [id, ...(await findAllChildrenIds(id))];
 
     // delete training data
-    await TrainingData.deleteMany({
+    await MongoDatasetTraining.deleteMany({
       userId,
       kbId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
     });
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       where: [
         ['user_id', userId],
         'AND',
-        `kb_id IN (${deletedIds.map((id) => `'${id}'`).join(',')})`
+        `dataset_id IN (${deletedIds.map((id) => `'${id}'`).join(',')})`
       ]
     });
 

@@ -9,7 +9,7 @@ import type { AppSchema } from '@/types/mongoSchema';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { AppTypeEnum } from '@/constants/app';
+import { AppTypeEnum, SystemOutputEnum } from '@/constants/app';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
@@ -51,10 +51,12 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         ...item,
         connected: item.connected ?? item.type !== FlowInputItemTypeEnum.target
       })),
-      outputs: item.data.outputs.map((item) => ({
-        ...item,
-        targets: [] as FlowOutputTargetItemType[]
-      }))
+      outputs: item.data.outputs
+        .map((item) => ({
+          ...item,
+          targets: [] as FlowOutputTargetItemType[]
+        }))
+        .sort((a, b) => (a.key === SystemOutputEnum.finish ? 1 : -1)) // finish output always at last
     }));
 
     // update inputs and outputs
