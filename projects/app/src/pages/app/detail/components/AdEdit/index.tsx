@@ -6,12 +6,13 @@ import { edgeOptions, connectionLineStyle, FlowModuleTypeEnum } from '@/constant
 import type { AppSchema } from '@/types/mongoSchema';
 
 import dynamic from 'next/dynamic';
-import styles from './index.module.scss';
 
 import ButtonEdge from './components/modules/ButtonEdge';
 import TemplateList from './components/TemplateList';
 import FlowProvider, { useFlowStore } from './components/Provider';
 import Header from './components/Header';
+
+import 'reactflow/dist/style.css';
 
 const NodeChat = dynamic(() => import('./components/Nodes/NodeChat'));
 const NodeDatasetSearch = dynamic(() => import('./components/Nodes/NodeDatasetSearch'));
@@ -25,8 +26,6 @@ const NodeUserGuide = dynamic(() => import('./components/Nodes/NodeUserGuide'));
 const NodeExtract = dynamic(() => import('./components/Nodes/NodeExtract'));
 const NodeHttp = dynamic(() => import('./components/Nodes/NodeHttp'));
 const NodeAPP = dynamic(() => import('./components/Nodes/NodeAPP'));
-
-import 'reactflow/dist/style.css';
 
 const nodeTypes = {
   [FlowModuleTypeEnum.userGuide]: NodeUserGuide,
@@ -74,6 +73,11 @@ const AppEdit = React.memo(function AppEdit(props: Props) {
         w={'100%'}
         h={0}
         position={'relative'}
+        css={{
+          '& .react-flow__panel': {
+            display: 'none'
+          }
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           return false;
@@ -100,7 +104,6 @@ const AppEdit = React.memo(function AppEdit(props: Props) {
 
         <ReactFlow
           ref={reactFlowWrapper}
-          className={styles.panel}
           fitView
           nodes={nodes}
           edges={edges}

@@ -25,8 +25,6 @@ import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import CreateModal from './component/CreateModal';
 
-import styles from './index.module.scss';
-
 const MyApps = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -130,7 +128,7 @@ const MyApps = () => {
               />
             </Flex>
             <Box
-              className={styles.intro}
+              className={'textEllipsis3'}
               py={2}
               wordBreak={'break-all'}
               fontSize={'sm'}

@@ -4,7 +4,6 @@ import { addDays, format } from 'date-fns';
 import { type DateRange, DayPicker } from 'react-day-picker';
 import MyIcon from '../Icon';
 import 'react-day-picker/dist/style.css';
-import styles from './index.module.scss';
 import zhCN from 'date-fns/locale/zh-CN';
 
 const DateRangePicker = ({
@@ -59,6 +58,10 @@ const DateRangePicker = ({
         <Card
           position={'absolute'}
           zIndex={1}
+          css={{
+            '--rdp-background-color': '#d6e8ff',
+            ' --rdp-accent-color': '#0000ff'
+          }}
           {...(position === 'top'
             ? {
                 bottom: '40px'
@@ -69,7 +72,6 @@ const DateRangePicker = ({
             locale={zhCN}
             id="test"
             mode="range"
-            className={styles.datePicker}
             defaultMonth={defaultDate.to}
             selected={range}
             disabled={[

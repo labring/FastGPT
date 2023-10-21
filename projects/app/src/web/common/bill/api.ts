@@ -3,6 +3,7 @@ import type { CreateTrainingBillType } from '@fastgpt/global/common/bill/types/b
 import type { PaySchema } from '@/types/mongoSchema';
 import type { PagingData, RequestPaging } from '@/types';
 import { UserBillType } from '@/types/user';
+import { delay } from '@/utils/tools';
 
 export const getUserBills = (data: RequestPaging) =>
   POST<PagingData<UserBillType>>(`/user/getBill`, data);
@@ -20,8 +21,14 @@ export const getPayCode = (amount: number) =>
 
 export const checkPayResult = (payId: string) =>
   GET<number>(`/plusApi/support/user/pay/checkPayResult`, { payId }).then(() => {
-    try {
-      GET('/user/account/paySuccess');
-    } catch (error) {}
+    async function startQueue() {
+      try {
+        await GET('/user/account/paySuccess');
+      } catch (error) {
+        await delay(1000);
+        startQueue();
+      }
+    }
+    startQueue();
     return 'success';
   });

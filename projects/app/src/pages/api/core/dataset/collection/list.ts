@@ -11,6 +11,7 @@ import { PagingData } from '@/types';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { countCollectionData } from '@/service/core/dataset/data/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { startQueue } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -97,23 +98,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     ]);
 
+    const data = await Promise.all(
+      collections.map(async (item) => ({
+        ...item,
+        dataAmount:
+          item.type !== DatasetCollectionTypeEnum.folder
+            ? await countCollectionData({
+                collectionId: item._id,
+                userId
+              })
+            : undefined
+      }))
+    );
+
+    if (data.find((item) => item.trainingAmount > 0)) {
+      startQueue(1);
+    }
+
     // count collections
     jsonRes<PagingData<DatasetCollectionsListItemType>>(res, {
       data: {
         pageNum,
         pageSize,
-        data: await Promise.all(
-          collections.map(async (item) => ({
-            ...item,
-            dataAmount:
-              item.type !== DatasetCollectionTypeEnum.folder
-                ? await countCollectionData({
-                    collectionId: item._id,
-                    userId
-                  })
-                : undefined
-          }))
-        ),
+        data,
         total: await MongoDatasetCollection.countDocuments(match)
       }
     });

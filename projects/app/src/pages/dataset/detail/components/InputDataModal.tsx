@@ -57,7 +57,7 @@ const InputDataModal = ({
   });
 
   const { ConfirmModal, openConfirm } = useConfirm({
-    title: t('dataset.data.Delete Tip')
+    content: t('dataset.data.Delete Tip')
   });
 
   const maxToken = datasetDetail.vectorModel?.maxToken || 2000;
@@ -232,7 +232,7 @@ const InputDataModal = ({
           </Box>
           <Box>
             <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
-              取消
+              {t('common.Close')}
             </Button>
             <Button
               isLoading={loading}

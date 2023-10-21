@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import styles from './index.module.scss';
 import { Box, Flex, Image, useDisclosure } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -67,7 +66,9 @@ const Login = () => {
       <Flex
         alignItems={'center'}
         justifyContent={'center'}
-        className={styles.loginPage}
+        bg={`url('/icon/login-bg.svg') no-repeat`}
+        backgroundSize={'cover'}
+        userSelect={'none'}
         h={'100%'}
         px={[0, '10vw']}
       >
