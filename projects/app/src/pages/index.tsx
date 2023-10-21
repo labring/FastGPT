@@ -22,7 +22,7 @@ const Home = ({ homeUrl = '/' }: { homeUrl: string }) => {
   useEffect(() => {
     router.prefetch('/app/list');
     router.prefetch('/login');
-  }, []);
+  }, [router]);
 
   return (
     <>

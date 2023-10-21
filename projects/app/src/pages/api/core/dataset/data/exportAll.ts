@@ -67,6 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         res.end('Error connecting to database');
         return;
       }
+      if (!client) return;
 
       // create pg select stream
       const query = new QueryStream(

@@ -70,7 +70,7 @@ const Footer = () => {
         ]
       }
     ],
-    [onOpen, t]
+    [onOpen, router, t]
   );
 
   return (

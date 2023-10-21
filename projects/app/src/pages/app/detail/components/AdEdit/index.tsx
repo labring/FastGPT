@@ -73,11 +73,6 @@ const AppEdit = React.memo(function AppEdit(props: Props) {
         w={'100%'}
         h={0}
         position={'relative'}
-        css={{
-          '& .react-flow__panel': {
-            display: 'none'
-          }
-        }}
         onContextMenu={(e) => {
           e.preventDefault();
           return false;

@@ -8,6 +8,7 @@ import React, {
   ForwardedRef,
   useEffect
 } from 'react';
+import Script from 'next/script';
 import { throttle } from 'lodash';
 import {
   ChatHistoryItemResType,
@@ -60,7 +61,6 @@ const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 
 import styles from './index.module.scss';
-import Script from 'next/script';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from '@/global/core/app/modules/utils';
 
