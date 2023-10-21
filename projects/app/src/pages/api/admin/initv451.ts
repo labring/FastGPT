@@ -37,6 +37,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: {}
     });
   } catch (error) {
+    console.log(error);
+
     jsonRes(res, {
       code: 500,
       error
@@ -98,7 +100,6 @@ async function rename() {
 async function initMongo(limit: number) {
   async function initApp(limit = 100): Promise<any> {
     // 遍历所有 app，更新 app modules 里的 FlowModuleTypeEnum.kbSearchNode
-
     const apps = await App.find({ inited: false }).limit(limit);
 
     if (apps.length === 0) return;
@@ -136,17 +137,6 @@ async function initMongo(limit: number) {
       return initApp(limit);
     }
   }
-  async function initFile() {
-    // 找对应的文件
-    const collection = connectionMongo.connection.db.collection(`dataset.files`);
-    await collection.updateMany({ 'metadata.kbId': { $exists: true } }, [
-      {
-        $set: {
-          'metadata.datasetId': '$metadata.kbId'
-        }
-      }
-    ]);
-  }
 
   // init app
   await App.updateMany(
@@ -158,15 +148,13 @@ async function initMongo(limit: number) {
     }
   );
 
-  // successApp = 0;
+  successApp = 0;
   const totalApp = await App.countDocuments();
   console.log(`total app: ${totalApp}`);
   await delay(2000);
   console.log('start init app');
-  await initApp(limit * 2);
-  console.log('init app success');
-
-  await initFile();
+  await initApp(limit);
+  console.log('init mongo success');
 }
 
 async function createCollection(limit: number) {
@@ -184,6 +172,36 @@ async function createCollection(limit: number) {
       return;
     }
 
+    async function initInit({
+      userId,
+      datasetId,
+      collectionId
+    }: {
+      userId: string;
+      datasetId: string;
+      collectionId: string;
+    }) {
+      const where = `user_id = '${userId}' AND dataset_id='${datasetId}' AND collection_id='${collectionId}'`;
+
+      const { rows, rowCount } = await PgClient.query<{ id: number }>(
+        `select id from ${PgDatasetTableName} WHERE ${where}`
+      );
+
+      // 分段更新
+      const arr: number[][] = [];
+      for (let i = 0; i < rowCount; i += 1000) {
+        arr.push(rows.slice(i, i + 1000).map((item) => item.id));
+      }
+      console.log('分段更新', arr.length);
+      let success = 0;
+      for await (const idList of arr) {
+        await PgClient.query(
+          `update modeldata set inited = 1 where ${where} AND id in (${idList.join(',')})`
+        );
+        console.log(++success);
+      }
+    }
+
     try {
       await Promise.all(
         rows.map(async (row) => {
@@ -197,11 +215,11 @@ async function createCollection(limit: number) {
             ['metadata.pgCollectionId']: collectionId
           });
           if (count > 0) {
-            await PgClient.query(
-              `update ${PgDatasetTableName} set inited = 1 where user_id = '${userId}' AND dataset_id='${datasetId}' AND collection_id='${collectionId}'`
-            );
+            await initInit({ userId, datasetId, collectionId });
             console.log('collection already exist');
 
+            successCollection += 1;
+            console.log('create collection success', successCollection);
             return;
           }
 
@@ -212,6 +230,7 @@ async function createCollection(limit: number) {
               userId,
               name: '手动录入',
               type: DatasetCollectionTypeEnum.virtual,
+              updateTime: new Date('2099'),
               metadata: {
                 pgCollectionId: collectionId
               }
@@ -223,6 +242,7 @@ async function createCollection(limit: number) {
               userId,
               name: '手动标注',
               type: DatasetCollectionTypeEnum.virtual,
+              updateTime: new Date('2099'),
               metadata: {
                 pgCollectionId: collectionId
               }
@@ -275,9 +295,8 @@ async function createCollection(limit: number) {
           }
 
           // update data init
-          await PgClient.query(
-            `update ${PgDatasetTableName} set inited = 1 where user_id = '${userId}' AND dataset_id='${datasetId}' AND collection_id='${collectionId}'`
-          );
+          await initInit({ userId, datasetId, collectionId });
+
           successCollection += 1;
           console.log('create collection success', successCollection);
         })
@@ -308,7 +327,7 @@ async function createCollection(limit: number) {
   );
   const count = +rows[0].count;
   console.log(`total collection: ${count}`);
-  await initCollection(limit * 2);
+  await initCollection(limit);
 }
 
 async function updatePgCollection(limit: number): Promise<any> {
@@ -333,28 +352,34 @@ async function updatePgCollection(limit: number): Promise<any> {
             `select id from ${PgDatasetTableName} WHERE ${where}`
           );
 
-          if (rowCount < 10000) {
-            console.log('update collection', item.metadata.pgCollectionId);
-            await PgClient.query(
-              `update ${PgDatasetTableName} set collection_id = '${item._id}' where ${where}`
-            );
-          } else {
-            // 分段更新
-            const arr: number[][] = [];
-            for (let i = 0; i < rowCount; i += 3000) {
-              arr.push(rows.slice(i, i + 3000).map((item) => item.id));
-            }
-            console.log('分段更新', arr.length);
-            let success = 0;
-            for await (const idList of arr) {
-              await PgClient.query(
-                `update modeldata set collection_id = '${
-                  item._id
-                }' where ${where} AND id in (${idList.join(',')})`
-              );
-              console.log(++success);
-            }
+          // 分段更新
+          const arr: number[][] = [];
+          for (let i = 0; i < rowCount; i += 1000) {
+            arr.push(rows.slice(i, i + 1000).map((item) => item.id));
           }
+          console.log('分段更新', arr.length);
+          let success = 0;
+          for await (const idList of arr) {
+            await PgClient.query(
+              `update modeldata set collection_id = '${
+                item._id
+              }' where ${where} AND id in (${idList.join(',')})`
+            );
+            console.log(++success);
+          }
+        }
+
+        // 更新 file id
+        if (item.type === 'file' && item.metadata.fileId) {
+          const collection = connectionMongo.connection.db.collection(`dataset.files`);
+          await collection.findOneAndUpdate({ _id: new Types.ObjectId(item.metadata.fileId) }, [
+            {
+              $set: {
+                'metadata.datasetId': item.datasetId,
+                'metadata.collectionId': item._id
+              }
+            }
+          ]);
         }
 
         await MongoDatasetCollection.findByIdAndUpdate(item._id, {
