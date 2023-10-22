@@ -5,6 +5,4 @@
 3. 优化 - TextSplitter，采用递归拆解法。
 4. 优化 - 高级编排 UX 性能
 5. 优化数据集管理，区分手动录入和标注，可追数据至某个文件，保留链接读取的原始链接。
-6. [使用文档](https://doc.fastgpt.run/docs/intro/)
-7. [点击查看高级编排介绍文档](https://doc.fastgpt.run/docs/workflow)
-8. [点击查看商业版](https://doc.fastgpt.run/docs/commercial/)
+ 

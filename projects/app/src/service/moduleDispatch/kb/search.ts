@@ -9,7 +9,8 @@ import { PgDatasetTableName } from '@/constants/plugin';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-import { Sequelize } from 'sequelize';
+
+import { sqlz_connect, rows_to_markdown } from '@/service/utils/sqlz';
 
 type KBSearchProps = ModuleDispatchProps<{
   kbList: SelectedDatasetType;
@@ -70,21 +71,26 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
     try {
       // 解析连接字符串和查询语句
       const connectionMatch = q.match(/{{connec:(.*?)}}/);
-      const queryMatch = q.match(/{{query:(.*?)}}/);
+      const queryMatch = q.match(/{{query:(.*?)}}/s);
 
       if (connectionMatch && queryMatch) {
         const connectionString = connectionMatch[1]; // 提取连接字符串
         const query = queryMatch[1]; // 提取查询语句
-        const sequelize = new Sequelize(connectionString); //
-        const result = await sequelize.query(query); // 使用 Sequelize 执行查询语句
-        const formattedResult = JSON.stringify(result, null, 2); // 将结果格式化为字符串
+        const sqlz = sqlz_connect(connectionString);
 
-        // 将行中的查询语句替换为格式化后的结果
+        const result = await sqlz.query(query); // 使用 Sequelize 执行查询语句
+        const _cnt = result[1] as number;
+        const _rows = result[0] as object[];
+        var formattedResult = '';
+        if (_cnt > 0 && _rows.length > 0) {
+          formattedResult = rows_to_markdown(_rows);
+        } else {
+          console.log(`Query returned an empty result: ${query}`);
+        }
+        // Replace the query statement in the row with the formatted result
         searchRes[i].q = searchRes[i].q
           .replace(/{{connec:(.*?)}}/g, '')
-          .replace(/{{query:(.*?)}}/g, formattedResult);
-
-        // searchRes[i].q = formattedResult;
+          .replace(/{{query:(.*?)}}/gs, formattedResult);
       } else {
         console.error(`无法解析连接字符串和查询语句：${q}`);
       }

@@ -21,6 +21,7 @@ import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/common/tools/stream';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
+import { checkRunPythonCode } from '@/service/utils/tools';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
@@ -130,7 +131,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const { answerText, totalTokens, completeMessages } = await (async () => {
     if (stream) {
       // sse response
-      const { answer } = await streamResponse({
+      let { answer } = await streamResponse({
         res,
         detail,
         stream: response
@@ -154,14 +155,16 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       };
     } else {
       const unStreamResponse = response as ChatCompletion;
-      const answer = unStreamResponse.choices?.[0]?.message?.content || '';
+      let answer = unStreamResponse.choices?.[0]?.message?.content || '';
       const totalTokens = unStreamResponse.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({
         obj: ChatRoleEnum.AI,
         value: answer
       });
-
+      // if (answer != "") {
+      //   answer = await checkRunPythonCode(answer)
+      // }
       return {
         answerText: answer,
         totalTokens,
@@ -368,6 +371,18 @@ async function streamResponse({
 
   if (!answer) {
     return Promise.reject('Chat API is error or undefined');
+  } else {
+    let codeResult = await checkRunPythonCode(answer);
+    if (codeResult) {
+      answer += codeResult;
+      responseWrite({
+        write,
+        event: detail ? sseResponseEventEnum.answer : undefined,
+        data: textAdaptGptResponse({
+          text: codeResult
+        })
+      });
+    }
   }
 
   return { answer };

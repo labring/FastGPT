@@ -3,7 +3,7 @@ import { authApp } from '@/service/utils/auth';
 import { authUser } from '@fastgpt/support/user/auth';
 import { AuthUserTypeEnum } from '@fastgpt/support/user/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
-import { addLog } from '@/service/utils/tools';
+import { addLog, checkRunPythonCode } from '@/service/utils/tools';
 import { withNextCors } from '@fastgpt/common/tools/nextjs';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
 import {
@@ -432,7 +432,7 @@ export async function dispatchModules({
       inputs: params
     };
 
-    const dispatchRes = await (async () => {
+    let dispatchRes = await (async () => {
       const callbackMap: Record<string, Function> = {
         [FlowModuleTypeEnum.historyNode]: dispatchHistory,
         [FlowModuleTypeEnum.questionInput]: dispatchChatInput,
