@@ -149,6 +149,7 @@
     },
     "export": "",
     "folder": {
+      "Drag Tip": "点我可拖动",
       "Move Success": "移动成功",
       "No Folder": "这个目录空空的~",
       "Root Path": "根目录"

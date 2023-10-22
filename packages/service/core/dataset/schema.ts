@@ -45,5 +45,11 @@ const DatasetSchema = new Schema({
   }
 });
 
+try {
+  DatasetSchema.index({ userId: 1 });
+} catch (error) {
+  console.log(error);
+}
+
 export const MongoDataset: Model<DatasetSchemaType> =
   models[DatasetCollectionName] || model(DatasetCollectionName, DatasetSchema);

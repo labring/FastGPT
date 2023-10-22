@@ -52,6 +52,7 @@ import dynamic from 'next/dynamic';
 import { useDrag } from '@/web/common/hooks/useDrag';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useToast } from '@/web/common/hooks/useToast';
+import MyTooltip from '@/components/MyTooltip';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 
@@ -359,7 +360,6 @@ const CollectionCard = () => {
                 }
                 bg={dragTargetId === collection._id ? 'myBlue.200' : ''}
                 userSelect={'none'}
-                draggable
                 onDragStart={(e) => {
                   setDragStartId(collection._id);
                 }}
@@ -410,12 +410,14 @@ const CollectionCard = () => {
                   }
                 }}
               >
-                <Td maxW={['200px', '300px']}>
+                <Td maxW={['200px', '300px']} draggable>
                   <Flex alignItems={'center'}>
                     <Image src={collection.icon} w={'16px'} mr={2} alt={''} />
-                    <Box fontWeight={'bold'} className="textEllipsis">
-                      {collection.name}
-                    </Box>
+                    <MyTooltip label={t('common.folder.Drag Tip')} shouldWrapChildren={false}>
+                      <Box fontWeight={'bold'} className="textEllipsis">
+                        {collection.name}
+                      </Box>
+                    </MyTooltip>
                   </Flex>
                 </Td>
                 <Td fontSize={'md'}>{collection.dataAmount ?? '-'}</Td>

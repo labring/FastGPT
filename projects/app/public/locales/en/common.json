@@ -149,6 +149,7 @@
     },
     "export": "",
     "folder": {
+      "Drag Tip": "Click and move",
       "Move Success": "Move Success",
       "No Folder": "No Folder",
       "Root Path": "Root Folder"
