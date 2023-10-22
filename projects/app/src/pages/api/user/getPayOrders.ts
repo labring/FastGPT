@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { Pay, connectToDatabase } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,7 +11,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const records = await Pay.find({
       userId,
       status: { $ne: 'CLOSED' }
-    }).sort({ createTime: -1 });
+    })
+      .sort({ createTime: -1 })
+      .limit(100);
 
     jsonRes(res, {
       data: records

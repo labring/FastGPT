@@ -3,7 +3,7 @@ import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { SelectAppItemType } from '@/types/core/app/flow';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { App } from '@/service/mongo';
-import { responseWrite } from '@fastgpt/common/tools/stream';
+import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum, TaskResponseKeyEnum, sseResponseEventEnum } from '@/constants/chat';
 import { textAdaptGptResponse } from '@/utils/adapt';
 

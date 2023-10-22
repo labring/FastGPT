@@ -11,17 +11,17 @@ import {
   useTheme,
   Card
 } from '@chakra-ui/react';
-import { useSelectFile } from '@/web/common/hooks/useSelectFile';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/web/common/utils/file';
-import { getErrText } from '@/utils/tools';
+import { compressImg } from '@/web/common/file/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
-import { postCreateApp } from '@/web/core/api/app';
+import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { appTemplates } from '@/constants/flow/ModuleTemplate';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
@@ -37,7 +37,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   const { toast } = useToast();
   const router = useRouter();
   const theme = useTheme();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const { register, setValue, getValues, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: '/icon/logo.svg',

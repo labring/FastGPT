@@ -1,18 +1,17 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { authUser } from '@fastgpt/support/user/auth';
-import { authDataset } from '@/service/utils/auth';
-import { withNextCors } from '@fastgpt/common/tools/nextjs';
-import { TrainingModeEnum } from '@/constants/plugin';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCollection } from '@fastgpt/service/core/dataset/auth';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
-import { DatasetDataItemType } from '@/types/core/dataset/data';
-import { countPromptTokens } from '@/utils/common/tiktoken';
+import { DatasetChunkItemType } from '@fastgpt/global/core/dataset/type';
+import { countPromptTokens } from '@/global/common/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDataProps } from '@/global/core/api/datasetReq.d';
-import { authFileIdValid } from '@/service/dataset/auth';
 import { getVectorModel } from '@/service/core/ai/model';
 
 const modeMap = {
@@ -23,25 +22,25 @@ const modeMap = {
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { kbId, data, mode = TrainingModeEnum.index } = req.body as PushDataProps;
+    const { collectionId, data, mode = TrainingModeEnum.index } = req.body as PushDataProps;
 
-    if (!kbId || !Array.isArray(data)) {
-      throw new Error('KbId or data is empty');
+    if (!collectionId || !Array.isArray(data)) {
+      throw new Error('collectionId or data is empty');
     }
 
     if (modeMap[mode] === undefined) {
-      throw new Error('Mode is error');
+      throw new Error('Mode is not index or qa');
     }
 
-    if (data.length > 500) {
-      throw new Error('Data is too long, max 500');
+    if (data.length > 200) {
+      throw new Error('Data is too long, max 200');
     }
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true, authApiKey: true });
 
     jsonRes<PushDataResponse>(res, {
-      data: await pushDataToKb({
+      data: await pushDataToDatasetCollection({
         ...req.body,
         userId
       })
@@ -54,40 +53,40 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 });
 
-export async function pushDataToKb({
+export async function pushDataToDatasetCollection({
   userId,
-  kbId,
+  collectionId,
   data,
   mode,
   prompt,
   billId
 }: { userId: string } & PushDataProps): Promise<PushDataResponse> {
-  const [kb, vectorModel] = await Promise.all([
-    authDataset({
-      userId,
-      kbId
-    }),
-    (async () => {
-      if (mode === TrainingModeEnum.index) {
-        const vectorModel = (await MongoDataset.findById(kbId, 'vectorModel'))?.vectorModel;
+  // auth dataset & get training model
+  const {
+    dataset: { _id: datasetId, vectorModel }
+  } = await authCollection({
+    userId,
+    collectionId
+  });
+  const vectorModelData = getVectorModel(vectorModel);
 
-        return getVectorModel(vectorModel);
-      }
-      return global.vectorModels[0];
-    })()
-  ]);
-
-  const modeMaxToken = {
-    [TrainingModeEnum.index]: vectorModel.maxToken * 1.5,
-    [TrainingModeEnum.qa]: global.qaModels[0].maxToken * 0.8
+  const modeMap = {
+    [TrainingModeEnum.index]: {
+      maxToken: vectorModelData.maxToken * 1.5,
+      model: vectorModelData.model
+    },
+    [TrainingModeEnum.qa]: {
+      maxToken: global.qaModels[0].maxToken * 0.8,
+      model: global.qaModels[0].model
+    }
   };
 
   // filter repeat or equal content
   const set = new Set();
-  const filterResult: Record<string, DatasetDataItemType[]> = {
+  const filterResult: Record<string, DatasetChunkItemType[]> = {
     success: [],
     overToken: [],
-    fileIdInvalid: [],
+    repeat: [],
     error: []
   };
 
@@ -101,21 +100,16 @@ export async function pushDataToKb({
       const text = item.q + item.a;
 
       // count q token
-      const token = countPromptTokens(item.q, 'system');
+      const token = countPromptTokens(item.q);
 
-      if (token > modeMaxToken[mode]) {
+      if (token > modeMap[mode].maxToken) {
         filterResult.overToken.push(item);
         return;
       }
 
-      try {
-        await authFileIdValid(item.file_id);
-      } catch (error) {
-        filterResult.fileIdInvalid.push(item);
-        return;
-      }
-
-      if (!set.has(text)) {
+      if (set.has(text)) {
+        filterResult.repeat.push(item);
+      } else {
         filterResult.success.push(item);
         set.add(text);
       }
@@ -123,15 +117,17 @@ export async function pushDataToKb({
   );
 
   // 插入记录
-  const insertRes = await TrainingData.insertMany(
+  const insertRes = await MongoDatasetTraining.insertMany(
     filterResult.success.map((item) => ({
-      ...item,
       userId,
-      kbId,
+      datasetId,
+      datasetCollectionId: collectionId,
+      billId,
       mode,
       prompt,
-      billId,
-      vectorModel: vectorModel.model
+      model: modeMap[mode].model,
+      q: item.q,
+      a: item.a
     }))
   );
 

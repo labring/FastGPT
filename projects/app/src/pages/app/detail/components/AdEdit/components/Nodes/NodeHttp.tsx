@@ -12,11 +12,10 @@ import RenderOutput from '../render/RenderOutput';
 import { FlowInputItemTypeEnum, FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import { useFlowStore } from '../Provider';
+import { onChangeNode } from '../Provider';
 
 const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
-  const { onChangeNode } = useFlowStore();
 
   return (
     <NodeCard minW={'350px'} {...data}>

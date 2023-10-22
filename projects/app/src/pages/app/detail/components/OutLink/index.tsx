@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
 
-import { OutLinkTypeEnum } from '@fastgpt/support/outLink/constant';
+import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
 
 import MyRadio from '@/components/Radio';

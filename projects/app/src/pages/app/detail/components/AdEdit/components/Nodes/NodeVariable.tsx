@@ -12,7 +12,7 @@ import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
-import { useFlowStore } from '../Provider';
+import { onChangeNode } from '../Provider';
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
@@ -26,7 +26,6 @@ export const defaultVariable: VariableItemType = {
 
 const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { inputs, moduleId } = data;
-  const { onChangeNode } = useFlowStore();
 
   const variables = useMemo(
     () =>

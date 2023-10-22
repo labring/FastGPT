@@ -2,9 +2,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, promotionRecord } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
-import mongoose from '@fastgpt/common/mongo';
-import { MongoUser } from '@fastgpt/support/user/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import mongoose from '@fastgpt/service/common/mongo';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

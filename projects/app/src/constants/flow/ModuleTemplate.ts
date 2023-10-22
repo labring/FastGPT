@@ -9,7 +9,7 @@ import {
 } from './index';
 import type { AppItemType } from '@/types/app';
 import type { FlowModuleTemplateType } from '@/types/core/app/flow';
-import { chatModelList, cqModelList } from '@/web/common/store/static';
+import { chatModelList, cqModelList } from '@/web/common/system/staticData';
 import {
   Input_Template_History,
   Input_Template_TFSwitch,
@@ -240,7 +240,7 @@ export const ChatModule: FlowModuleTemplateType = {
 };
 
 export const KBSearchModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.kbSearchNode,
+  flowType: FlowModuleTypeEnum.datasetSearchNode,
   logo: '/imgs/module/db.png',
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
@@ -248,7 +248,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
-      key: 'kbList',
+      key: 'datasets',
       type: FlowInputItemTypeEnum.selectDataset,
       label: '关联的知识库',
       value: [],
@@ -900,7 +900,7 @@ export const appTemplates: (AppItemType & {
       {
         moduleId: 'kbSearch',
         name: '知识库搜索',
-        flowType: 'kbSearchNode',
+        flowType: 'datasetSearchNode',
         showStatus: true,
         position: {
           x: 956.0838440206068,
@@ -908,7 +908,7 @@ export const appTemplates: (AppItemType & {
         },
         inputs: [
           {
-            key: 'kbList',
+            key: 'datasets',
             type: 'custom',
             label: '关联的知识库',
             value: [],
@@ -1952,7 +1952,7 @@ export const appTemplates: (AppItemType & {
       {
         moduleId: 'fljhzy',
         name: '知识库搜索',
-        flowType: 'kbSearchNode',
+        flowType: 'datasetSearchNode',
         showStatus: true,
         position: {
           x: 1305.5374262228029,
@@ -1960,7 +1960,7 @@ export const appTemplates: (AppItemType & {
         },
         inputs: [
           {
-            key: 'kbList',
+            key: 'datasets',
             type: 'custom',
             label: '关联的知识库',
             value: [],

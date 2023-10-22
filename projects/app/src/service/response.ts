@@ -1,9 +1,9 @@
 import { sseResponseEventEnum } from '@/constants/chat';
 import { NextApiResponse } from 'next';
-import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
+import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { addLog } from './utils/tools';
-import { clearCookie } from '@fastgpt/support/user/auth';
-import { responseWrite } from '@fastgpt/common/tools/stream';
+import { clearCookie } from '@fastgpt/service/support/user/auth';
+import { responseWrite } from '@fastgpt/service/common/response';
 
 export interface ResponseType<T = any> {
   code: number;

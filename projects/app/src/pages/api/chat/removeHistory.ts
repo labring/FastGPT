@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Chat, ChatItem } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { ChatSourceEnum } from '@/constants/chat';
 
 type Props = {

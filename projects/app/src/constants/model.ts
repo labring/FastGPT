@@ -1,5 +1,5 @@
 import type { AppSchema } from '@/types/mongoSchema';
-import type { OutLinkEditType } from '@fastgpt/support/outLink/type.d';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import type {
   LLMModelItemType,
   ChatModelItemType,

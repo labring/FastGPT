@@ -1,32 +1,33 @@
 import type { NextApiResponse } from 'next';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { ChatItemType, QuoteItemType } from '@/types/chat';
+import type { ChatItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { getAIApi } from '@fastgpt/core/ai/config';
-import type { ChatCompletion, StreamChatType } from '@fastgpt/core/ai/type';
+import { getAIApi } from '@fastgpt/service/core/ai/config';
+import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
-import { postTextCensor } from '@fastgpt/common/plusApi/censor';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/core/ai/constant';
+import { postTextCensor } from '@/web/common/plusApi/censor';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import { AppModuleItemType } from '@/types/app';
-import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
+import { countMessagesTokens, sliceMessagesTB } from '@/global/common/tiktoken';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import type { AIChatProps } from '@/types/core/aiChat';
-import { replaceVariable } from '@/utils/common/tools/text';
+import { replaceVariable } from '@/global/common/string/tools';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { responseWrite, responseWriteController } from '@fastgpt/common/tools/stream';
+import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
     userChatInput: string;
     history?: ChatItemType[];
-    quoteQA?: QuoteItemType[];
+    quoteQA?: SearchDataResponseItemType[];
     limitPrompt?: string;
   }
 >;
@@ -204,7 +205,10 @@ function filterQuote({
     messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
       value: replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
-        ...item,
+        q: item.q,
+        a: item.a,
+        source: item.sourceName,
+        sourceId: item.sourceId || 'UnKnow',
         index: index + 1
       })
     }))
@@ -218,8 +222,11 @@ function filterQuote({
       ? `${filterQuoteQA
           .map((item, index) =>
             replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
-              ...item,
-              index: `${index + 1}`
+              q: item.q,
+              a: item.a,
+              source: item.sourceName,
+              sourceId: item.sourceId || 'UnKnow',
+              index: index + 1
             })
           )
           .join('\n')}`

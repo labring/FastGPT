@@ -3,7 +3,6 @@ import { Box, Flex, Button, Card } from '@chakra-ui/react';
 import type { ShareAppItem } from '@/types/app';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
-import styles from '../index.module.scss';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 
@@ -47,7 +46,7 @@ const ShareModelList = ({
           </Flex>
           <MyTooltip label={model.intro}>
             <Box
-              className={styles.intro}
+              className={'textEllipsis3'}
               flex={1}
               my={4}
               fontSize={'sm'}

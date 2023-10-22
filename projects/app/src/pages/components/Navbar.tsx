@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Flex, Box, type BoxProps, Button, useDisclosure } from '@chakra-ui/react';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
 import CommunityModal from '@/components/CommunityModal';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
 
 const Navbar = () => {
@@ -18,7 +18,7 @@ const Navbar = () => {
     onClose: onCloseCommunity
   } = useDisclosure();
   const { isOpen: isOpenMenu, onOpen: onOpenMenu, onClose: onCloseMenu } = useDisclosure();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const menuList = [
     ...(feConfigs?.show_contact
       ? [

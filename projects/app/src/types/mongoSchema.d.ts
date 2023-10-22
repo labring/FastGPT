@@ -6,6 +6,7 @@ import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
 import { ChatSourceEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
+import { MarkDataType } from '@/global/core/dataset/type';
 
 export interface AuthCodeSchema {
   _id: string;
@@ -36,22 +37,6 @@ export interface CollectionSchema {
   userId: string;
 }
 
-export interface TrainingDataSchema {
-  _id: string;
-  userId: string;
-  kbId: string;
-  expireAt: Date;
-  lockTime: Date;
-  vectorModel: string;
-  mode: `${TrainingModeEnum}`;
-  prompt: string;
-  q: string;
-  a: string;
-  source: string;
-  file_id: string;
-  billId: string;
-}
-
 export interface ChatSchema {
   _id: string;
   chatId: string;
@@ -75,11 +60,7 @@ export interface ChatItemSchema extends ChatItemType {
   appId: string;
   time: Date;
   userFeedback?: string;
-  adminFeedback?: {
-    kbId: string;
-    dataId: string;
-    content: string;
-  };
+  adminFeedback?: MarkDataType;
 }
 
 export interface PaySchema {

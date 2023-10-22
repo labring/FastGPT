@@ -2,10 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { Inform, connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { InformTypeEnum } from '@/constants/user';
 import { startSendInform } from '@/service/events/sendInform';
-import { MongoUser } from '@fastgpt/support/user/schema';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 
 export type Props = {
   type: `${InformTypeEnum}`;

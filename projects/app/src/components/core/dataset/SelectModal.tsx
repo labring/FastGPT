@@ -1,9 +1,9 @@
-import { getDatasets, getDatasetPaths } from '@/web/core/api/dataset';
+import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
 import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, ModalHeader } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 
@@ -30,7 +30,7 @@ const DatasetSelectContainer = ({
   children: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
 
   return (
     <MyModal isOpen={isOpen} onClose={onClose} w={'100%'} maxW={['90vw', '900px']} isCentered>
@@ -86,11 +86,11 @@ const DatasetSelectContainer = ({
   );
 };
 
-export const useDatasetSelect = () => {
+export function useDatasetSelect() {
   const { t } = useTranslation();
   const [parentId, setParentId] = useState<string>();
 
-  const { data } = useQuery(['loadDatasetData', parentId], () =>
+  const { data, isLoading } = useQuery(['loadDatasetData', parentId], () =>
     Promise.all([getDatasets({ parentId }), getDatasetPaths(parentId)])
   );
 
@@ -98,7 +98,7 @@ export const useDatasetSelect = () => {
     () => [
       {
         parentId: '',
-        parentName: t('kb.My Dataset')
+        parentName: t('dataset.My Dataset')
       },
       ...(data?.[1] || [])
     ],
@@ -109,8 +109,9 @@ export const useDatasetSelect = () => {
     parentId,
     setParentId,
     datasets: data?.[0] || [],
-    paths
+    paths,
+    isLoading
   };
-};
+}
 
 export default DatasetSelectContainer;

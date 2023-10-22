@@ -1,9 +1,9 @@
 import { startQueue } from './utils/tools';
-import { PRICE_SCALE } from '@fastgpt/common/bill/constants';
+import { PRICE_SCALE } from '@fastgpt/global/common/bill/constants';
 import { initPg } from './pg';
-import { MongoUser } from '@fastgpt/support/user/schema';
-import { connectMongo } from '@fastgpt/common/mongo/init';
-import { hashStr } from '@fastgpt/common/tools/str';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { connectMongo } from '@fastgpt/service/common/mongo/init';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getInitConfig, initGlobal } from '@/pages/api/system/getInitData';
 
 /**
@@ -61,7 +61,6 @@ export * from './models/chatItem';
 export * from './models/app';
 export * from './common/bill/schema';
 export * from './models/pay';
-export * from './models/trainingData';
 export * from './models/promotionRecord';
 export * from './models/collection';
 export * from './models/inform';

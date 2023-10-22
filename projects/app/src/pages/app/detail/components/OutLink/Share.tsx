@@ -29,18 +29,18 @@ import {
   delShareChatById,
   createShareChat,
   putShareChat
-} from '@/web/support/api/outLink';
+} from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/model';
-import type { OutLinkEditType } from '@fastgpt/support/outLink/type.d';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { formatPrice } from '@fastgpt/common/bill/index';
-import { OutLinkTypeEnum } from '@fastgpt/support/outLink/constant';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';

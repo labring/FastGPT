@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase, Bill } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { BillSourceEnum } from '@/constants/user';
-import { CreateTrainingBillType } from '@/global/common/api/billReq.d';
+import { CreateTrainingBillType } from '@fastgpt/global/common/bill/types/billReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

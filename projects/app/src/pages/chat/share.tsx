@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { initShareChatInfo } from '@/web/support/api/outLink';
+import { initShareChatInfo } from '@/web/support/outLink/api';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/web/common/api/fetch';
-import { useShareChatStore, defaultHistory } from '@/web/core/store/shareChat';
+import { useShareChatStore, defaultHistory } from '@/web/core/chat/storeShareChat';
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatSiteItemType } from '@/types/chat';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
@@ -35,7 +35,7 @@ const OutLink = ({
   const router = useRouter();
   const { toast } = useToast();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const forbidRefresh = useRef(false);
   const [isEmbed, setIdEmbed] = useState(true);
 

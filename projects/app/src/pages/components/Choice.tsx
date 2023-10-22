@@ -2,7 +2,7 @@ import { Box, Image, Flex, Grid, useTheme } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 
 const Choice = () => {
   const theme = useTheme();

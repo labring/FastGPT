@@ -1,57 +1,37 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/support/user/auth';
-import { PgClient } from '@/service/pg';
-import { withNextCors } from '@fastgpt/common/tools/nextjs';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { PgDatasetTableName } from '@/constants/plugin';
-import type { UpdateDatasetDataPrams } from '@/global/core/api/datasetReq.d';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import type { SetOneDatasetDataProps } from '@/global/core/api/datasetReq.d';
+import { updateData2Dataset } from '@/service/core/dataset/data/utils';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { dataId, a = '', q = '', kbId } = req.body as UpdateDatasetDataPrams;
+    const { id, datasetId, collectionId, q = '', a } = req.body as SetOneDatasetDataProps;
 
-    if (!dataId) {
+    if (!id || !collectionId) {
       throw new Error('缺少参数');
     }
 
     // auth user and get kb
-    const [{ userId }, kb] = await Promise.all([
+    const [{ userId }, dataset] = await Promise.all([
       authUser({ req, authToken: true }),
-      MongoDataset.findById(kbId, 'vectorModel')
+      MongoDataset.findById(datasetId, 'vectorModel')
     ]);
 
-    if (!kb) {
+    if (!dataset) {
       throw new Error("Can't find database");
     }
 
-    // get vector
-    const { vectors = [] } = await (async () => {
-      if (q) {
-        return getVector({
-          userId,
-          input: [q],
-          model: kb.vectorModel
-        });
-      }
-      return { vectors: [[]] };
-    })();
-
-    // 更新 pg 内容.仅修改a，不需要更新向量。
-    await PgClient.update(PgDatasetTableName, {
-      where: [['id', dataId], 'AND', ['user_id', userId]],
-      values: [
-        { key: 'a', value: a.replace(/'/g, '"') },
-        ...(q
-          ? [
-              { key: 'q', value: q.replace(/'/g, '"') },
-              { key: 'vector', value: `[${vectors[0]}]` }
-            ]
-          : [])
-      ]
+    await updateData2Dataset({
+      dataId: id,
+      userId,
+      q,
+      a,
+      model: dataset.vectorModel
     });
 
     jsonRes(res);

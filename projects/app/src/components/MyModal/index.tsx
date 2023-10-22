@@ -22,7 +22,7 @@ const MyModal = ({
   title,
   children,
   isCentered,
-  w = 'auto',
+  w = '100%',
   maxW = ['90vw', '600px'],
   ...props
 }: Props) => {
@@ -44,7 +44,12 @@ const MyModal = ({
       >
         {!!title && <ModalHeader>{title}</ModalHeader>}
         {onClose && <ModalCloseButton />}
-        <Box overflow={'overlay'} h={'100%'} display={'flex'} flexDirection={'column'}>
+        <Box
+          overflow={props.overflow || 'overlay'}
+          h={'100%'}
+          display={'flex'}
+          flexDirection={'column'}
+        >
           {children}
         </Box>
       </ModalContent>

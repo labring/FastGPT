@@ -1,20 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgClient } from '@/service/pg';
-import { withNextCors } from '@fastgpt/common/tools/nextjs';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { connectToDatabase } from '@/service/mongo';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    let { dataId } = req.query as {
+    const { dataId } = req.query as {
       dataId: string;
     };
 
     if (!dataId) {
-      throw new Error('缺少参数');
+      throw new Error('dataId is required');
     }
 
     // 凭证校验

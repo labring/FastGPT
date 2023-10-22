@@ -17,14 +17,6 @@ export type PagingData<T> = {
 
 export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 
-export type SystemEnvType = {
-  pluginBaseUrl?: string;
-  openapiPrefix?: string;
-  vectorMaxProcess: number;
-  qaMaxProcess: number;
-  pgHNSWEfSearch: number;
-};
-
 declare global {
   var pgClient: Pool | null;
   var qaQueueLen: number;

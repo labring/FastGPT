@@ -1,23 +1,24 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ModalBody, Box, useTheme, Flex, Progress } from '@chakra-ui/react';
-import { getDatasetDataItemById } from '@/web/core/api/dataset';
+import { getDatasetDataItemById } from '@/web/core/dataset/api';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useToast } from '@/web/common/hooks/useToast';
-import { getErrText } from '@/utils/tools';
-import { QuoteItemType } from '@/types/chat';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyIcon from '@/components/Icon';
-import InputDataModal, { RawFileText } from '@/pages/kb/detail/components/InputDataModal';
+import InputDataModal, {
+  RawSourceText,
+  type InputDataType
+} from '@/pages/dataset/detail/components/InputDataModal';
 import MyModal from '../MyModal';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 const QuoteModal = ({
-  onUpdateQuote,
   rawSearch = [],
   onClose
 }: {
-  onUpdateQuote: (quoteId: string, sourceText?: string) => Promise<void>;
-  rawSearch: QuoteItemType[];
+  rawSearch: SearchDataResponseItemType[];
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ const QuoteModal = ({
   const router = useRouter();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
-  const [editDataItem, setEditDataItem] = useState<QuoteItemType>();
+  const [editInputData, setEditInputData] = useState<InputDataType>();
 
   const isShare = useMemo(() => router.pathname === '/chat/share', [router.pathname]);
 
@@ -33,18 +34,17 @@ const QuoteModal = ({
    * click edit, get new kbDataItem
    */
   const onclickEdit = useCallback(
-    async (item: QuoteItemType) => {
+    async (item: InputDataType) => {
       if (!item.id) return;
       try {
         setIsLoading(true);
         const data = await getDatasetDataItemById(item.id);
 
         if (!data) {
-          onUpdateQuote(item.id, '已删除');
           throw new Error('该数据已被删除');
         }
 
-        setEditDataItem(data);
+        setEditInputData(data);
       } catch (err) {
         toast({
           status: 'warning',
@@ -53,7 +53,7 @@ const QuoteModal = ({
       }
       setIsLoading(false);
     },
-    [setIsLoading, toast, onUpdateQuote]
+    [setIsLoading, toast]
   );
 
   return (
@@ -94,10 +94,7 @@ const QuoteModal = ({
             >
               {!isShare && (
                 <Flex alignItems={'center'} mb={1}>
-                  <RawFileText
-                    filename={item.source || t('common.Unknow') || 'Unknow'}
-                    fileId={item.file_id}
-                  />
+                  <RawSourceText sourceName={item.sourceName} sourceId={item.sourceId} />
                   <Box flex={'1'} />
                   {item.score && (
                     <>
@@ -150,16 +147,17 @@ const QuoteModal = ({
         </ModalBody>
         <Loading fixed={false} />
       </MyModal>
-      {editDataItem && (
+      {editInputData && editInputData.id && (
         <InputDataModal
-          onClose={() => setEditDataItem(undefined)}
-          onSuccess={() => onUpdateQuote(editDataItem.id)}
-          onDelete={() => onUpdateQuote(editDataItem.id, '已删除')}
-          kbId={editDataItem.kb_id}
-          defaultValues={{
-            ...editDataItem,
-            dataId: editDataItem.id
+          onClose={() => setEditInputData(undefined)}
+          onSuccess={() => {
+            console.log('更新引用成功');
           }}
+          onDelete={() => {
+            console.log('删除引用成功');
+          }}
+          datasetId={editInputData.datasetId}
+          defaultValues={editInputData}
         />
       )}
     </>

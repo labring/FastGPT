@@ -8,12 +8,12 @@ import { theme } from '@/web/styles/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
-import { clientInitData, feConfigs } from '@/web/common/store/static';
+import { clientInitData, feConfigs } from '@/web/common/system/staticData';
 import { appWithTranslation, useTranslation } from 'next-i18next';
 import { getLangStore, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/web/common/store/global';
-import type { FeConfigsType } from '@fastgpt/common/type/index.d';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 
 import 'nprogress/nprogress.css';
 import '@/web/styles/reset.scss';
@@ -38,7 +38,7 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
-  const { setLastRoute } = useGlobalStore();
+  const { setLastRoute } = useSystemStore();
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
 
   useEffect(() => {

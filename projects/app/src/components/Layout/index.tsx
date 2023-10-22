@@ -2,14 +2,14 @@ import React, { useEffect, useMemo } from 'react';
 import { Box, useColorMode, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { throttle } from 'lodash';
 import Auth from './auth';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 import { useQuery } from '@tanstack/react-query';
-import { useUserStore } from '@/web/support/store/user';
-import { getUnreadCount } from '@/web/support/api/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { getUnreadCount } from '@/web/support/user/api';
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -30,7 +30,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
-  const { loading, setScreenWidth, isPc, loadGitStar } = useGlobalStore();
+  const { loading, setScreenWidth, isPc, loadGitStar } = useSystemStore();
   const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(

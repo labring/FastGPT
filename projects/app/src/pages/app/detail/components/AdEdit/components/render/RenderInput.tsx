@@ -18,7 +18,7 @@ import {
 import { FlowInputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
-import { useFlowStore } from '../Provider';
+import { onChangeNode, useFlowStore } from '../Provider';
 import Avatar from '@/components/Avatar';
 import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
@@ -27,9 +27,9 @@ import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { AIChatProps } from '@/types/core/aiChat';
-import { chatModelList } from '@/web/common/store/static';
-import { formatPrice } from '@fastgpt/common/bill';
-import { useDatasetStore } from '@/web/core/store/dataset';
+import { chatModelList } from '@/web/common/system/staticData';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';
 import { LLMModelItemType } from '@/types/model';
@@ -39,17 +39,16 @@ const SelectAppModal = dynamic(() => import('../../../SelectAppModal'));
 const AIChatSettingsModal = dynamic(() => import('../../../AIChatSettingsModal'));
 const DatasetSelectModal = dynamic(() => import('../../../DatasetSelectModal'));
 
-export const Label = ({
+export const Label = React.memo(function Label({
   moduleId,
   inputKey,
   ...item
 }: FlowInputItemType & {
   moduleId: string;
   inputKey: string;
-}) => {
+}) {
   const { required = false, description, edit, label, type, valueType } = item;
   const [editField, setEditField] = useState<FlowInputItemType>();
-  const { onChangeNode } = useFlowStore();
 
   return (
     <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
@@ -146,7 +145,7 @@ export const Label = ({
       )}
     </Flex>
   );
-};
+});
 
 const RenderInput = ({
   flowInputList,
@@ -219,8 +218,6 @@ type RenderProps = {
 };
 
 var NumberInputRender = React.memo(function NumberInputRender({ item, moduleId }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
-
   return (
     <NumberInput
       defaultValue={item.value}
@@ -248,13 +245,11 @@ var NumberInputRender = React.memo(function NumberInputRender({ item, moduleId }
 });
 
 var TextInputRender = React.memo(function TextInputRender({ item, moduleId }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
-
   return (
     <Input
       placeholder={item.placeholder}
       defaultValue={item.value}
-      onChange={(e) => {
+      onBlur={(e) => {
         onChangeNode({
           moduleId,
           type: 'inputs',
@@ -270,15 +265,13 @@ var TextInputRender = React.memo(function TextInputRender({ item, moduleId }: Re
 });
 
 var TextareaRender = React.memo(function TextareaRender({ item, moduleId }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
-
   return (
     <Textarea
       rows={5}
       placeholder={item.placeholder}
       resize={'both'}
       defaultValue={item.value}
-      onChange={(e) => {
+      onBlur={(e) => {
         onChangeNode({
           moduleId,
           type: 'inputs',
@@ -294,8 +287,6 @@ var TextareaRender = React.memo(function TextareaRender({ item, moduleId }: Rend
 });
 
 var SelectRender = React.memo(function SelectRender({ item, moduleId }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
-
   return (
     <MySelect
       width={'100%'}
@@ -317,8 +308,6 @@ var SelectRender = React.memo(function SelectRender({ item, moduleId }: RenderPr
 });
 
 var SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
-
   return (
     <Box pt={5} pb={4} px={2}>
       <MySlider
@@ -345,7 +334,6 @@ var SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderPr
 });
 
 var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
   const { t } = useTranslation();
   const chatModulesData = useMemo(() => {
     const obj: Record<string, any> = {};
@@ -403,7 +391,6 @@ var MaxTokenRender = React.memo(function MaxTokenRender({
   item,
   moduleId
 }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
   const model = inputs.find((item) => item.key === 'model')?.value;
   const modelData = chatModelList.find((item) => item.model === model);
   const maxToken = modelData ? modelData.maxToken : 4000;
@@ -442,7 +429,6 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
   item,
   moduleId
 }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
   const modelList = (item.customData?.() as LLMModelItemType[]) || chatModelList || [];
 
   function onChangeModel(e: string) {
@@ -495,8 +481,6 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
 });
 
 var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, moduleId }: RenderProps) {
-  const { onChangeNode } = useFlowStore();
-
   const theme = useTheme();
   const { allDatasets, loadAllDatasets } = useDatasetStore();
   const {
@@ -507,7 +491,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
 
   const showKbList = useMemo(() => {
     const value = item.value as SelectedDatasetType;
-    return allDatasets.filter((dataset) => value.find((kb) => kb.kbId === dataset._id));
+    return allDatasets.filter((dataset) => value.find((kb) => kb.datasetId === dataset._id));
   }, [allDatasets, item.value]);
 
   useQuery(['loadAllDatasets'], loadAllDatasets);
@@ -536,7 +520,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
       </Grid>
       <DatasetSelectModal
         isOpen={isOpenKbSelect}
-        activeKbs={item.value}
+        activeDatasets={item.value}
         onChange={(e) => {
           onChangeNode({
             moduleId,
@@ -555,7 +539,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
 });
 
 var SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: RenderProps) {
-  const { onChangeNode, appId } = useFlowStore();
+  const { appId } = useFlowStore();
   const theme = useTheme();
 
   const {

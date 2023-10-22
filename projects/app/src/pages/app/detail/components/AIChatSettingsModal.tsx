@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
-import { EditFormType } from '@/utils/app';
+import { EditFormType } from '@/web/core/app/basicSettings';
 import { useForm } from 'react-hook-form';
 import {
   Box,
@@ -17,11 +17,11 @@ import {
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
-import { chatModelList, feConfigs } from '@/web/common/store/static';
+import { chatModelList, feConfigs } from '@/web/common/system/staticData';
 import MySlider from '@/components/Slider';
 import { SystemInputEnum } from '@/constants/app';
 import dynamic from 'next/dynamic';
-import { PromptTemplateItem } from '@fastgpt/core/ai/type';
+import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 

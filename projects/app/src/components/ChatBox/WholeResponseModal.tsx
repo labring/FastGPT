@@ -8,7 +8,7 @@ import Tabs from '../Tabs';
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatPrice } from '@fastgpt/common/bill/index';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 
 function Row({ label, value }: { label: string; value?: string | number | React.ReactNode }) {
   const theme = useTheme();

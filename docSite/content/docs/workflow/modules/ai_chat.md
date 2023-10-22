@@ -42,17 +42,17 @@ weight: 123
 
 ```ts
 type DataType = {
-  kb_id?: string;
+  dataset_id?: string;
   id?: string;
   q: string;
   a: string;
   source?: string;
 };
-// 如果是外部引入的内容，尽量不要携带 kb_id 和 id
+// 如果是外部引入的内容，尽量不要携带 dataset_id 和 id
 const quoteList: DataType[] = [
-  { kb_id: '11', id: '222', q: '你还', a: '哈哈', source: '' },
-  { kb_id: '11', id: '333', q: '你还', a: '哈哈', source: '' },
-  { kb_id: '11', id: '444', q: '你还', a: '哈哈', source: '' }
+  { dataset_id: '11', id: '222', q: '你还', a: '哈哈', source: '' },
+  { dataset_id: '11', id: '333', q: '你还', a: '哈哈', source: '' },
+  { dataset_id: '11', id: '444', q: '你还', a: '哈哈', source: '' }
 ];
 ```
 
