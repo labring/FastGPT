@@ -33,6 +33,7 @@ export type GetDatasetCollectionsProps = RequestPaging & {
   parentId?: string;
   searchText?: string;
   simple?: boolean;
+  selectFolder?: boolean;
 };
 export type CreateDatasetCollectionParams = {
   datasetId: string;

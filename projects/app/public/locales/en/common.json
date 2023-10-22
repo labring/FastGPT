@@ -108,6 +108,7 @@
     "Add": "Add",
     "Close": "Clow",
     "Collect": "Collect",
+    "Confirm Move": "Move here",
     "Copy": "Copy",
     "Copy Successful": "Copy Successful",
     "Course": "",
@@ -134,7 +135,9 @@
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
+    "Request Error": "Request Error",
     "Search": "Search",
+    "Select One Folder": "Select a folder",
     "Status": "Status",
     "Time": "Time",
     "Unknow": "Unknow",
@@ -144,7 +147,12 @@
     "error": {
       "unKnow": "There was an accident"
     },
-    "export": ""
+    "export": "",
+    "folder": {
+      "Move Success": "Move Success",
+      "No Folder": "No Folder",
+      "Root Path": "Root Folder"
+    }
   },
   "dataset": {
     "Chunk Length": "Chunk Length",
@@ -168,7 +176,6 @@
     "Mark Data": "Mark Data",
     "Move Failed": "Move Failed",
     "My Dataset": "My Dataset",
-    "No Folder": "No Folder",
     "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
     "Select Dataset": "Select Dataset",
     "Select Folder": "Enter folder",

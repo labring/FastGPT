@@ -35,6 +35,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { feConfigs } from '@/web/common/system/staticData';
 import EditFolderModal, { useEditFolder } from '../component/EditFolderModal';
+import { useDrag } from '@/web/common/hooks/useDrag';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -59,9 +60,8 @@ const Kb = () => {
   const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('Rename')
   });
-  const [moveDataId, setMoveDataId] = useState<string>();
-  const [dragStartId, setDragStartId] = useState<string>();
-  const [dragTargetId, setDragTargetId] = useState<string>();
+  const { moveDataId, setMoveDataId, dragStartId, setDragStartId, dragTargetId, setDragTargetId } =
+    useDrag();
 
   const {
     isOpen: isOpenCreateModal,

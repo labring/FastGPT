@@ -87,10 +87,12 @@ export async function getDatasetDataItemInfo({
       _id: { $in: pgDataList.map((item) => item.collection_id) }
     },
     '_id name datasetId metadata'
-  );
+  ).lean();
 
   return pgDataList.map((item) => {
-    const collection = collections.find((collection) => collection._id === item.collection_id);
+    const collection = collections.find(
+      (collection) => String(collection._id) === item.collection_id
+    );
     return {
       id: item.id,
       q: item.q,

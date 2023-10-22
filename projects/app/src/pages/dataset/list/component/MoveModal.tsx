@@ -161,7 +161,7 @@ const MoveModal = ({
             <Flex mt={5} flexDirection={'column'} alignItems={'center'}>
               <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
               <Box mt={2} color={'myGray.500'}>
-                {t('dataset.No Folder')}
+                {t('common.folder.No Folder')}
               </Box>
             </Flex>
           )}

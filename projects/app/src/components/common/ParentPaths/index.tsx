@@ -2,18 +2,16 @@ import MyIcon from '@/components/Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
-const ParentPaths = ({
-  paths = [],
-  rootName = '',
-  FirstPathDom,
-  onClick
-}: {
+const ParentPaths = (props: {
   paths?: ParentTreePathItemType[];
   rootName?: string;
   FirstPathDom?: React.ReactNode;
   onClick: (parentId: string) => void;
 }) => {
+  const { t } = useTranslation();
+  const { paths = [], rootName = t('common.folder.Root Path'), FirstPathDom, onClick } = props;
   const concatPaths = useMemo(
     () => [
       {

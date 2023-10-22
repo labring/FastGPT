@@ -66,20 +66,10 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   );
 
   const rows = results?.[2]?.rows as SearchDataResultItemType[];
-  // const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
-  // const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
-  //   ...item,
-  //   score: rows[index].score
-  // }));
-
-  const searchRes = rows.map((item) => ({
-    id: item.id,
-    q: item.q,
-    a: item.a,
-    datasetId: item?.dataset_id || '',
-    collectionId: item.collection_id,
-    sourceName: '',
-    score: item.score
+  const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
+  const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
+    ...item,
+    score: rows[index].score
   }));
 
   return {

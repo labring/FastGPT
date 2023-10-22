@@ -50,14 +50,16 @@ async function updatePgCollection(limit: number): Promise<any> {
       console.log('start', item.name, item.datasetId, item.metadata.pgCollectionId);
       const time = Date.now();
       if (item.metadata.pgCollectionId) {
-        const total = PgClient.count(PgDatasetTableName, {
+        const { rows } = await PgClient.select(PgDatasetTableName, {
           fields: ['id'],
           where: [
             ['dataset_id', String(item.datasetId)],
+            'AND',
             ['collection_id', String(item.metadata.pgCollectionId)]
-          ]
+          ],
+          limit: 999999
         });
-        console.log('update date total', total);
+        console.log('update date total', rows.length, 'time:', Date.now() - time);
 
         await PgClient.query(`
     update ${PgDatasetTableName} set collection_id = '${item._id}' where dataset_id = '${String(
@@ -86,14 +88,16 @@ async function updatePgCollection(limit: number): Promise<any> {
       });
       console.log('success', ++success);
 
-      return update(i + 1);
+      return update(i + limit);
     } catch (error) {
       console.log(error);
 
-      await delay(500);
-      return update(i + 1);
+      await delay(5000);
+      return update(i);
     }
   }
 
-  return update(0);
+  const arr = new Array(limit).fill(0);
+
+  return Promise.all(arr.map((_, i) => update(i)));
 }

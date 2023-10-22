@@ -23,6 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       datasetId,
       parentId = null,
       searchText = '',
+      selectFolder = false,
       simple = false
     } = req.body as GetDatasetCollectionsProps;
     searchText = searchText?.replace(/'/g, '');
@@ -34,6 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userId: new Types.ObjectId(userId),
       datasetId: new Types.ObjectId(datasetId),
       parentId: parentId ? new Types.ObjectId(parentId) : null,
+      ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
       ...(searchText
         ? {
             name: new RegExp(searchText, 'i')

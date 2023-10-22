@@ -133,6 +133,8 @@ export async function countCollectionData({
   datasetId?: string;
 }) {
   collectionIds = collectionIds.map((item) => String(item));
+  if (collectionIds.length === 0) return [];
+
   const { rows } = await PgClient.query(`
   SELECT 
     ${collectionIds

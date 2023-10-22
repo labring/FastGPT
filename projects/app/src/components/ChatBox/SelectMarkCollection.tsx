@@ -7,7 +7,6 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import dynamic from 'next/dynamic';
 import { MarkDataType } from '@/global/core/dataset/type';
-import MyModal from '../MyModal';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
@@ -122,16 +121,15 @@ const SelectMarkCollection = ({
 
       {/* select collection */}
       {adminMarkData.datasetId && !adminMarkData.collectionId && (
-        <MyModal isOpen onClose={onClose} maxW={['90vw', '900px']} h={'80vh'} isCentered>
-          <Flex flexDirection={'column'} flex={'1 0 0'}>
-            <Box flex={'1 0 0'} px={4} py={2}>
-              <SelectCollections
-                datasetId={adminMarkData.datasetId}
-                selectedCollectionIds={selectedDatasetCollectionIds}
-                setSelectedCollectionIds={setSelectedDatasetCollectionIds}
-                title={t('dataset.collections.Select One Collection To Store')}
-              />
-            </Box>
+        <SelectCollections
+          datasetId={adminMarkData.datasetId}
+          type={'collection'}
+          title={t('dataset.collections.Select One Collection To Store')}
+          onClose={onClose}
+          onChange={({ collectionIds }) => {
+            setSelectedDatasetCollectionIds(collectionIds);
+          }}
+          CustomFooter={
             <ModalFooter>
               <Button
                 variant={'base'}
@@ -157,8 +155,8 @@ const SelectMarkCollection = ({
                 {t('common.Next Step')}
               </Button>
             </ModalFooter>
-          </Flex>
-        </MyModal>
+          }
+        />
       )}
 
       {/* input data */}

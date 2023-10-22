@@ -12,7 +12,9 @@ import {
   Image,
   MenuButton,
   useTheme,
-  useDisclosure
+  useDisclosure,
+  ModalFooter,
+  Button
 } from '@chakra-ui/react';
 import {
   getDatasetCollections,
@@ -47,6 +49,9 @@ import { TabEnum } from '..';
 import ParentPath from '@/components/common/ParentPaths';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import dynamic from 'next/dynamic';
+import { useDrag } from '@/web/common/hooks/useDrag';
+import SelectCollections from '@/web/core/dataset/components/SelectCollections';
+import { useToast } from '@/web/common/hooks/useToast';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 
@@ -55,6 +60,7 @@ const CollectionCard = () => {
   const theme = useTheme();
   const lastSearch = useRef('');
   const router = useRouter();
+  const { toast } = useToast();
   const { parentId = '', datasetId } = router.query as { parentId: string; datasetId: string };
   const { t } = useTranslation();
   const { Loading } = useLoading();
@@ -81,6 +87,7 @@ const CollectionCard = () => {
   });
 
   const { editFolderData, setEditFolderData } = useEditFolder();
+  const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
 
   const {
     data: collections,
@@ -105,6 +112,9 @@ const CollectionCard = () => {
       }
     }
   });
+
+  const { moveDataId, setMoveDataId, dragStartId, setDragStartId, dragTargetId, setDragTargetId } =
+    useDrag();
 
   // change search
   const debounceRefetch = useCallback(
@@ -224,7 +234,6 @@ const CollectionCard = () => {
               parentId: path.parentId,
               parentName: i === paths.length - 1 ? `${path.parentName}(${total})` : path.parentName
             }))}
-            rootName={datasetDetail.name}
             FirstPathDom={
               <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
                 {t('common.File')}({total})
@@ -329,8 +338,8 @@ const CollectionCard = () => {
         />
       </Flex>
       <TableContainer mt={[0, 3]} position={'relative'} minH={'50vh'}>
-        <Table variant={'simple'} fontSize={'sm'}>
-          <Thead>
+        <Table variant={'simple'} fontSize={'sm'} draggable={false}>
+          <Thead draggable={false}>
             <Tr>
               <Th>{t('common.Name')}</Th>
               <Th>{t('dataset.collections.Data Amount')}</Th>
@@ -345,6 +354,38 @@ const CollectionCard = () => {
                 key={collection._id}
                 _hover={{ bg: 'myWhite.600' }}
                 cursor={'pointer'}
+                data-drag-id={
+                  collection.type === DatasetCollectionTypeEnum.folder ? collection._id : undefined
+                }
+                bg={dragTargetId === collection._id ? 'myBlue.200' : ''}
+                userSelect={'none'}
+                draggable
+                onDragStart={(e) => {
+                  setDragStartId(collection._id);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  const targetId = e.currentTarget.getAttribute('data-drag-id');
+                  if (!targetId) return;
+                  DatasetCollectionTypeEnum.folder && setDragTargetId(targetId);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setDragTargetId(undefined);
+                }}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  if (!dragTargetId || !dragStartId || dragTargetId === dragStartId) return;
+                  // update parentId
+                  try {
+                    await putDatasetCollectionById({
+                      id: dragStartId,
+                      parentId: dragTargetId
+                    });
+                    getData(pageNum);
+                  } catch (error) {}
+                  setDragTargetId(undefined);
+                }}
                 title={
                   collection.type === DatasetCollectionTypeEnum.folder
                     ? t('dataset.collections.Click to view folder')
@@ -422,6 +463,15 @@ const CollectionCard = () => {
                       </MenuButton>
                     }
                     menuList={[
+                      {
+                        child: (
+                          <Flex alignItems={'center'}>
+                            <MyIcon name={'moveLight'} w={'14px'} mr={2} />
+                            {t('Move')}
+                          </Flex>
+                        ),
+                        onClick: () => setMoveCollectionData({ collectionId: collection._id })
+                      },
                       {
                         child: (
                           <Flex alignItems={'center'}>
@@ -519,6 +569,27 @@ const CollectionCard = () => {
           }}
           isEdit={!!editFolderData.id}
           name={editFolderData.name}
+        />
+      )}
+
+      {!!moveCollectionData && (
+        <SelectCollections
+          datasetId={datasetId}
+          type="folder"
+          defaultSelectedId={[moveCollectionData.collectionId]}
+          onClose={() => setMoveCollectionData(undefined)}
+          onSuccess={async ({ parentId }) => {
+            await putDatasetCollectionById({
+              id: moveCollectionData.collectionId,
+              parentId
+            });
+            getData(pageNum);
+            setMoveCollectionData(undefined);
+            toast({
+              status: 'success',
+              title: t('common.folder.Move Success')
+            });
+          }}
         />
       )}
     </Box>
