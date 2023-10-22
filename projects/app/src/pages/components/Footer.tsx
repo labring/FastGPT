@@ -47,7 +47,7 @@ const Footer = () => {
           {
             label: t('home.Footer Docs'),
             onClick: () => {
-              window.open('https://doc.fastgpt.run/docs/intro', '_blank');
+              window.open(`${feConfigs.docUrl}/docs/intro`, '_blank');
             }
           }
         ]

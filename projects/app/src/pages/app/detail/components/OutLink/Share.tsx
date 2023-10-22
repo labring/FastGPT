@@ -353,7 +353,7 @@ function EditLinkModal({
               />
             </Flex>
             <Link
-              href="https://doc.fastgpt.run/docs/development/openapi/#分享链接中增加额外-query"
+              href={`${feConfigs.docUrl}/docs/development/openapi/#分享链接中增加额外-query`}
               target={'_blank'}
               fontSize={'sm'}
               color={'myGray.500'}

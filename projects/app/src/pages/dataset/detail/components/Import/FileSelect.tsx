@@ -135,13 +135,16 @@ const FileSelect = ({
               filename: file.name,
               icon,
               tokens: filterData.reduce((sum, item) => sum + countPromptTokens(item.q), 0),
-              text: '',
+              text: `${header.join(',')}\n${data
+                .map((item) => `"${item[0]}","${item[1]}"`)
+                .join('\n')}`,
               chunks: filterData,
               type: DatasetCollectionTypeEnum.file,
               metadata: {
                 fileId
               }
             };
+            console.log(fileItem);
 
             onPushFiles([fileItem]);
             continue;

@@ -143,7 +143,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               <Box textAlign={'center'} mt={2} fontSize={'sm'}>
                 使用即代表你同意我们的{' '}
                 <Link
-                  href="https://doc.fastgpt.run/docs/intro/#%e5%85%8d%e8%b4%a3%e5%a3%b0%e6%98%8e"
+                  href={`${feConfigs.docUrl}/docs/intro/#%e5%85%8d%e8%b4%a3%e5%a3%b0%e6%98%8e`}
                   target={'_blank'}
                   color={'myBlue.600'}
                 >
