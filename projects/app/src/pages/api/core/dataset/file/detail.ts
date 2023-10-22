@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { datasetSpecialIdMap } from '@fastgpt/core/dataset/constant';
-import { datasetSpecialIds } from '@fastgpt/core/dataset/constant';
+import { datasetSpecialIdMap } from '@fastgpt/global/core/dataset/constant';
+import { datasetSpecialIds } from '@fastgpt/global/core/dataset/constant';
 import type { GSFileInfoType } from '@/types/common/file';
-import { strIsLink } from '@fastgpt/common/tools/str';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
 
-    const { fileId } = req.query as { kbId: string; fileId: string };
+    const { fileId } = req.query as { fileId: string };
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 

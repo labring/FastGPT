@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { sseErrRes } from '@/service/response';
 import { sseResponseEventEnum } from '@/constants/chat';
-import { responseWrite } from '@fastgpt/common/tools/stream';
+import { responseWrite } from '@fastgpt/service/common/response';
 import { AppModuleItemType } from '@/types/app';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { pushChatBill } from '@/service/common/bill/push';

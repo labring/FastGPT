@@ -16,8 +16,8 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getPromotionInitData, getPromotionRecords } from '@/web/support/api/user';
-import { useUserStore } from '@/web/support/store/user';
+import { getPromotionInitData, getPromotionRecords } from '@/web/support/user/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useLoading } from '@/web/common/hooks/useLoading';
 
 import MyTooltip from '@/components/MyTooltip';

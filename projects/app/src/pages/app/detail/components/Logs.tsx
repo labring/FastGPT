@@ -16,14 +16,14 @@ import {
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
 import { usePagination } from '@/web/common/hooks/usePagination';
-import { getAppChatLogs } from '@/web/core/api/app';
+import { getAppChatLogs } from '@/web/core/app/api';
 import dayjs from 'dayjs';
 import { ChatSourceMap, HUMAN_ICON } from '@/constants/chat';
 import { AppLogsListItemType } from '@/types/app';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';
 import { useQuery } from '@tanstack/react-query';
-import { getInitChatSiteInfo } from '@/web/core/api/chat';
+import { getInitChatSiteInfo } from '@/web/core/chat/api';
 import Tag from '@/components/Tag';
 import MyModal from '@/components/MyModal';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
@@ -31,7 +31,7 @@ import { addDays } from 'date-fns';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
@@ -190,7 +190,7 @@ function DetailLogsModal({
   onClose: () => void;
 }) {
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const theme = useTheme();
 
   const { data: chat } = useQuery(

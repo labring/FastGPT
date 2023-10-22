@@ -1,16 +1,16 @@
-import { TrainingData } from '@/service/mongo';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushQABill } from '@/service/common/bill/push';
-import { TrainingModeEnum } from '@/constants/plugin';
-import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
-import { authBalanceByUid } from '@fastgpt/support/user/auth';
-import { getAIApi } from '@fastgpt/core/ai/config';
-import type { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
+import { authBalanceByUid } from '@fastgpt/service/support/user/auth';
+import { getAIApi } from '@fastgpt/service/core/ai/config';
+import type { ChatCompletionRequestMessage } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '../utils/tools';
-import { splitText2Chunks } from '@/utils/file';
-import { replaceVariable } from '@/utils/common/tools/text';
+import { splitText2Chunks } from '@/global/common/string/tools';
+import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
-import { pushDataToKb } from '@/pages/api/core/dataset/data/pushData';
+import { pushDataToDatasetCollection } from '@/pages/api/core/dataset/data/pushData';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -24,10 +24,10 @@ export async function generateQA(): Promise<any> {
   let userId = '';
 
   try {
-    const data = await TrainingData.findOneAndUpdate(
+    const data = await MongoDatasetTraining.findOneAndUpdate(
       {
         mode: TrainingModeEnum.qa,
-        lockTime: { $lte: new Date(Date.now() - 4 * 60 * 1000) }
+        lockTime: { $lte: new Date(Date.now() - 10 * 60 * 1000) }
       },
       {
         lockTime: new Date()
@@ -35,11 +35,9 @@ export async function generateQA(): Promise<any> {
     ).select({
       _id: 1,
       userId: 1,
-      kbId: 1,
-      prompt: 1,
+      datasetCollectionId: 1,
       q: 1,
-      source: 1,
-      file_id: 1,
+      model: 1,
       billId: 1
     });
 
@@ -52,7 +50,6 @@ export async function generateQA(): Promise<any> {
 
     trainingId = data._id;
     userId = String(data.userId);
-    const kbId = String(data.kbId);
 
     await authBalanceByUid(userId);
 
@@ -84,20 +81,16 @@ export async function generateQA(): Promise<any> {
     const qaArr = formatSplitText(answer || ''); // 格式化后的QA对
 
     // get vector and insert
-    await pushDataToKb({
-      kbId,
-      data: qaArr.map((item) => ({
-        ...item,
-        source: data.source,
-        file_id: data.file_id
-      })),
+    await pushDataToDatasetCollection({
       userId,
+      collectionId: data.datasetCollectionId,
+      data: qaArr,
       mode: TrainingModeEnum.index,
       billId: data.billId
     });
 
     // delete data from training
-    await TrainingData.findByIdAndDelete(data._id);
+    await MongoDatasetTraining.findByIdAndDelete(data._id);
 
     console.log(`split result length: `, qaArr.length);
     console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
@@ -127,7 +120,7 @@ export async function generateQA(): Promise<any> {
 
     // message error or openai account error
     if (err?.message === 'invalid message format') {
-      await TrainingData.findByIdAndRemove(trainingId);
+      await MongoDatasetTraining.findByIdAndRemove(trainingId);
     }
 
     // 账号余额不足，删除任务
@@ -140,7 +133,7 @@ export async function generateQA(): Promise<any> {
         userId
       });
       console.log('余额不足，暂停向量生成任务');
-      await TrainingData.updateMany(
+      await MongoDatasetTraining.updateMany(
         {
           userId
         },

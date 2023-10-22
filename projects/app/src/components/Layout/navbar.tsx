@@ -1,16 +1,16 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Link } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/web/support/store/user';
-import { useChatStore } from '@/web/core/store/chat';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useChatStore } from '@/web/core/chat/storeChat';
 import { HUMAN_ICON } from '@/constants/chat';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '../Avatar';
 import MyIcon from '../Icon';
 import { useTranslation } from 'next-i18next';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '../MyTooltip';
 
 export enum NavbarTypeEnum {
@@ -22,7 +22,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
-  const { gitStar } = useGlobalStore();
+  const { gitStar } = useSystemStore();
   const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(
     () => [
@@ -44,8 +44,8 @@ const Navbar = ({ unread }: { unread: number }) => {
         label: t('navbar.Datasets'),
         icon: 'dbLight',
         activeIcon: 'dbFill',
-        link: `/kb/list`,
-        activeLink: ['/kb/list', '/kb/detail']
+        link: `/dataset/list`,
+        activeLink: ['/dataset/list', '/dataset/detail']
       },
       ...(feConfigs?.show_appStore
         ? [

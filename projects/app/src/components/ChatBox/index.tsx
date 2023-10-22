@@ -8,6 +8,7 @@ import React, {
   ForwardedRef,
   useEffect
 } from 'react';
+import Script from 'next/script';
 import { throttle } from 'lodash';
 import {
   ChatHistoryItemResType,
@@ -17,7 +18,7 @@ import {
 } from '@/types/chat';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import {
   Box,
@@ -30,7 +31,7 @@ import {
   BoxProps,
   FlexProps
 } from '@chakra-ui/react';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
@@ -38,14 +39,15 @@ import { AppModuleItemType } from '@/types/app';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import type { MessageItemType } from '@/types/core/chat/type';
-import { fileDownload } from '@/web/common/utils/file';
+import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
-import { userUpdateChatFeedback, adminUpdateChatFeedback } from '@/web/core/api/chat';
+import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';
+import type { AdminMarkType } from './SelectMarkCollection';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
@@ -56,14 +58,11 @@ import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
-const SelectDataset = dynamic(() => import('./SelectDataset'));
-const InputDataModal = dynamic(() => import('@/pages/kb/detail/components/InputDataModal'));
+const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 
 import styles from './index.module.scss';
-import Script from 'next/script';
-import { postQuestionGuide } from '@/web/core/api/ai';
-import { splitGuideModule } from './utils';
-import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
+import { postQuestionGuide } from '@/web/core/ai/api';
+import { splitGuideModule } from '@/global/core/app/modules/utils';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -131,7 +130,7 @@ const ChatBox = (
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
@@ -147,14 +146,7 @@ const ChatBox = (
     content: string;
     isMarked: boolean;
   }>();
-  const [adminMarkData, setAdminMarkData] = useState<{
-    // mark modal data
-    kbId?: string;
-    chatItemId: string;
-    dataId?: string;
-    q: string;
-    a: string;
-  }>();
+  const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
   const isChatting = useMemo(
@@ -674,10 +666,11 @@ const ChatBox = (
                                 if (item.adminFeedback) {
                                   setAdminMarkData({
                                     chatItemId: item.dataId,
-                                    kbId: item.adminFeedback.kbId,
+                                    datasetId: item.adminFeedback.datasetId,
+                                    collectionId: item.adminFeedback.collectionId,
                                     dataId: item.adminFeedback.dataId,
-                                    q: chatHistory[index - 1]?.value || '',
-                                    a: item.adminFeedback.content
+                                    q: item.adminFeedback.q || chatHistory[index - 1]?.value || '',
+                                    a: item.adminFeedback.a
                                   });
                                 } else {
                                   setAdminMarkData({
@@ -798,7 +791,9 @@ const ChatBox = (
                               </Box>
                               <Box h={'1px'} bg={'myGray.300'} flex={'1'} />
                             </Flex>
-                            <Box>{item.adminFeedback.content}</Box>
+                            <Box whiteSpace={'pre'}>{`${item.adminFeedback.q || ''}${
+                              item.adminFeedback.a ? `\n${item.adminFeedback.a}` : ''
+                            }`}</Box>
                           </Box>
                         )}
                       </Card>
@@ -940,75 +935,44 @@ const ChatBox = (
         />
       )}
       {/* admin mark data */}
-      {showMarkIcon && (
-        <>
-          {/* select one dataset to insert markData */}
-          <SelectDataset
-            isOpen={!!adminMarkData && !adminMarkData.kbId}
-            onClose={() => setAdminMarkData(undefined)}
-            // @ts-ignore
-            onSuccess={(kbId) => setAdminMarkData((state) => ({ ...state, kbId }))}
-          />
+      {!!adminMarkData && (
+        <SelectMarkCollection
+          adminMarkData={adminMarkData}
+          setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
+          onClose={() => setAdminMarkData(undefined)}
+          onSuccess={(adminFeedback) => {
+            adminUpdateChatFeedback({
+              chatItemId: adminMarkData.chatItemId,
+              ...adminFeedback
+            });
+            // update dom
+            setChatHistory((state) =>
+              state.map((chatItem) =>
+                chatItem.dataId === adminMarkData.chatItemId
+                  ? {
+                      ...chatItem,
+                      adminFeedback
+                    }
+                  : chatItem
+              )
+            );
 
-          {/* edit markData modal */}
-          {adminMarkData && adminMarkData.kbId && (
-            <InputDataModal
-              onClose={() => setAdminMarkData(undefined)}
-              onSuccess={async (data) => {
-                if (!adminMarkData.kbId || !data.dataId) {
-                  return setAdminMarkData(undefined);
-                }
-                const adminFeedback = {
-                  kbId: adminMarkData.kbId,
-                  dataId: data.dataId,
-                  content: data.a
-                };
-
-                // update dom
-                setChatHistory((state) =>
-                  state.map((chatItem) =>
-                    chatItem.dataId === adminMarkData.chatItemId
-                      ? {
-                          ...chatItem,
-                          adminFeedback
-                        }
-                      : chatItem
-                  )
-                );
-                // request to update adminFeedback
-                try {
-                  adminUpdateChatFeedback({
-                    chatItemId: adminMarkData.chatItemId,
-                    ...adminFeedback
-                  });
-
-                  if (readFeedbackData) {
-                    userUpdateChatFeedback({
-                      chatItemId: readFeedbackData.chatItemId,
-                      userFeedback: undefined
-                    });
-                    setChatHistory((state) =>
-                      state.map((chatItem) =>
-                        chatItem.dataId === readFeedbackData.chatItemId
-                          ? { ...chatItem, userFeedback: undefined }
-                          : chatItem
-                      )
-                    );
-                    setReadFeedbackData(undefined);
-                  }
-                } catch (error) {}
-                setAdminMarkData(undefined);
-              }}
-              kbId={adminMarkData.kbId}
-              defaultValues={{
-                dataId: adminMarkData.dataId,
-                q: adminMarkData.q,
-                a: adminMarkData.a,
-                file_id: DatasetSpecialIdEnum.mark
-              }}
-            />
-          )}
-        </>
+            if (readFeedbackData) {
+              userUpdateChatFeedback({
+                chatItemId: readFeedbackData.chatItemId,
+                userFeedback: undefined
+              });
+              setChatHistory((state) =>
+                state.map((chatItem) =>
+                  chatItem.dataId === readFeedbackData.chatItemId
+                    ? { ...chatItem, userFeedback: undefined }
+                    : chatItem
+                )
+              );
+              setReadFeedbackData(undefined);
+            }
+          }}
+        />
       )}
     </Flex>
   );

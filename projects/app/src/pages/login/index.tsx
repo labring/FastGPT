@@ -1,17 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import styles from './index.module.scss';
 import { Box, Flex, Image, useDisclosure } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/web/support/store/user';
-import { useChatStore } from '@/web/core/store/chat';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useChatStore } from '@/web/core/chat/storeChat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { setToken } from '@/utils/user';
-import { feConfigs } from '@/web/common/store/static';
+import { setToken } from '@/web/support/user/auth';
+import { feConfigs } from '@/web/common/system/staticData';
 import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
@@ -20,7 +19,7 @@ const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm
 const Login = () => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo } = useUserStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
@@ -67,7 +66,9 @@ const Login = () => {
       <Flex
         alignItems={'center'}
         justifyContent={'center'}
-        className={styles.loginPage}
+        bg={`url('/icon/login-bg.svg') no-repeat`}
+        backgroundSize={'cover'}
+        userSelect={'none'}
         h={'100%'}
         px={[0, '10vw']}
       >

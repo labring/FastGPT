@@ -19,19 +19,19 @@ import {
   Text,
   Switch
 } from '@chakra-ui/react';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   appModules2Form,
   getDefaultAppForm,
   appForm2Modules,
   type EditFormType
-} from '@/utils/app';
-import { chatModelList } from '@/web/common/store/static';
-import { formatPrice } from '@fastgpt/common/bill/index';
+} from '@/web/core/app/basicSettings';
+import { chatModelList } from '@/web/common/system/staticData';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import {
   ChatModelSystemTip,
   welcomeTextTip,
@@ -45,9 +45,9 @@ import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
 import { useToast } from '@/web/common/hooks/useToast';
 import { AppSchema } from '@/types/mongoSchema';
-import { delModelById } from '@/web/core/api/app';
+import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'react-i18next';
-import { getGuideModule } from '@/components/ChatBox/utils';
+import { getGuideModule } from '@/global/core/app/modules/utils';
 
 import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
@@ -60,7 +60,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import { addVariable } from '../VariableEditModal';
 import { KbParamsModal } from '../DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
-import { useDatasetStore } from '@/web/core/store/dataset';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -74,7 +74,7 @@ const Settings = ({ appId }: { appId: string }) => {
   const { toast } = useToast();
   const { appDetail, updateAppDetail } = useUserStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
 
   const [editVariable, setEditVariable] = useState<VariableItemType>();
   const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
@@ -100,7 +100,7 @@ const Settings = ({ appId }: { appId: string }) => {
     control,
     name: 'variables'
   });
-  const { fields: kbList, replace: replaceKbList } = useFieldArray({
+  const { fields: datasets, replace: replaceKbList } = useFieldArray({
     control,
     name: 'kb.list'
   });
@@ -128,9 +128,9 @@ const Settings = ({ appId }: { appId: string }) => {
     }));
   }, [refresh]);
 
-  const selectedKbList = useMemo(
-    () => allDatasets.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
-    [allDatasets, kbList]
+  const selectDatasets = useMemo(
+    () => allDatasets.filter((item) => datasets.find((kb) => kb.datasetId === item._id)),
+    [allDatasets, datasets]
   );
 
   /* 点击删除 */
@@ -467,7 +467,7 @@ const Settings = ({ appId }: { appId: string }) => {
           空搜索时拒绝回复: {getValues('kb.searchEmptyText') !== '' ? 'true' : 'false'}
         </Flex>
         <Grid templateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} my={2} gridGap={[2, 4]}>
-          {selectedKbList.map((item) => (
+          {selectDatasets.map((item) => (
             <MyTooltip key={item._id} label={'查看知识库详情'}>
               <Flex
                 alignItems={'center'}
@@ -479,9 +479,9 @@ const Settings = ({ appId }: { appId: string }) => {
                 cursor={'pointer'}
                 onClick={() =>
                   router.push({
-                    pathname: '/kb/detail',
+                    pathname: '/dataset/detail',
                     query: {
-                      kbId: item._id
+                      datasetId: item._id
                     }
                   })
                 }
@@ -559,8 +559,8 @@ const Settings = ({ appId }: { appId: string }) => {
       {isOpenKbSelect && (
         <DatasetSelectModal
           isOpen={isOpenKbSelect}
-          activeKbs={selectedKbList.map((item) => ({
-            kbId: item._id,
+          activeDatasets={selectDatasets.map((item) => ({
+            datasetId: item._id,
             vectorModel: item.vectorModel
           }))}
           onClose={onCloseKbSelect}
@@ -687,7 +687,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
 };
 
 const BasicEdit = ({ appId }: { appId: string }) => {
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   return (
     <Grid gridTemplateColumns={['1fr', '550px 1fr']} h={'100%'}>
       <Settings appId={appId} />

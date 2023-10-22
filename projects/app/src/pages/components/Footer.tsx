@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import { useTranslation } from 'react-i18next';
 import Avatar from '@/components/Avatar';
 import { useRouter } from 'next/router';
@@ -70,7 +70,7 @@ const Footer = () => {
         ]
       }
     ],
-    [onOpen, t]
+    [onOpen, router, t]
   );
 
   return (

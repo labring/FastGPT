@@ -3,7 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { ModuleTemplates } from '@/constants/flow/ModuleTemplate';
 import { FlowModuleTemplateType } from '@/types/core/app/flow';
 import { useViewport, XYPosition } from 'reactflow';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import { useFlowStore } from './Provider';
@@ -13,7 +13,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const ModuleTemplateList = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { nodes, setNodes, reactFlowWrapper } = useFlowStore();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const { x, y, zoom } = useViewport();
 
   const filterTemplates = useMemo(() => {

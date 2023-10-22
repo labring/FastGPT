@@ -1,35 +1,21 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
-import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import {
-  edgeOptions,
-  connectionLineStyle,
-  FlowModuleTypeEnum,
-  FlowInputItemTypeEnum
-} from '@/constants/flow';
-import { FlowOutputTargetItemType } from '@/types/core/app/flow';
-import { AppModuleItemType } from '@/types/app';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { edgeOptions, connectionLineStyle, FlowModuleTypeEnum } from '@/constants/flow';
 import type { AppSchema } from '@/types/mongoSchema';
-import { useUserStore } from '@/web/support/store/user';
-import { useTranslation } from 'next-i18next';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
-import dynamic from 'next/dynamic';
-import styles from './index.module.scss';
-import { AppTypeEnum } from '@/constants/app';
 
-import MyIcon from '@/components/Icon';
+import dynamic from 'next/dynamic';
+
 import ButtonEdge from './components/modules/ButtonEdge';
-import MyTooltip from '@/components/MyTooltip';
 import TemplateList from './components/TemplateList';
-import ChatTest, { type ChatTestComponentRef } from './components/ChatTest';
 import FlowProvider, { useFlowStore } from './components/Provider';
 import Header from './components/Header';
 
-const ImportSettings = dynamic(() => import('./components/ImportSettings'));
+import 'reactflow/dist/style.css';
+
 const NodeChat = dynamic(() => import('./components/Nodes/NodeChat'));
-const NodeKbSearch = dynamic(() => import('./components/Nodes/NodeKbSearch'));
+const NodeDatasetSearch = dynamic(() => import('./components/Nodes/NodeDatasetSearch'));
 const NodeHistory = dynamic(() => import('./components/Nodes/NodeHistory'));
 const NodeTFSwitch = dynamic(() => import('./components/Nodes/NodeTFSwitch'));
 const NodeAnswer = dynamic(() => import('./components/Nodes/NodeAnswer'));
@@ -41,15 +27,13 @@ const NodeExtract = dynamic(() => import('./components/Nodes/NodeExtract'));
 const NodeHttp = dynamic(() => import('./components/Nodes/NodeHttp'));
 const NodeAPP = dynamic(() => import('./components/Nodes/NodeAPP'));
 
-import 'reactflow/dist/style.css';
-
 const nodeTypes = {
   [FlowModuleTypeEnum.userGuide]: NodeUserGuide,
   [FlowModuleTypeEnum.variable]: NodeVariable,
   [FlowModuleTypeEnum.questionInput]: NodeQuestionInput,
   [FlowModuleTypeEnum.historyNode]: NodeHistory,
   [FlowModuleTypeEnum.chatNode]: NodeChat,
-  [FlowModuleTypeEnum.kbSearchNode]: NodeKbSearch,
+  [FlowModuleTypeEnum.datasetSearchNode]: NodeDatasetSearch,
   [FlowModuleTypeEnum.tfSwitchNode]: NodeTFSwitch,
   [FlowModuleTypeEnum.answerNode]: NodeAnswer,
   [FlowModuleTypeEnum.classifyQuestion]: NodeCQNode,
@@ -115,7 +99,6 @@ const AppEdit = React.memo(function AppEdit(props: Props) {
 
         <ReactFlow
           ref={reactFlowWrapper}
-          className={styles.panel}
           fitView
           nodes={nodes}
           edges={edges}

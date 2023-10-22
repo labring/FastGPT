@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { useChatStore } from '@/web/core/store/chat';
-import { useUserStore } from '@/web/support/store/user';
-import { setToken } from '@/utils/user';
-import { oauthLogin } from '@/web/support/api/user';
+import { useChatStore } from '@/web/core/chat/storeChat';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { setToken } from '@/web/support/user/auth';
+import { oauthLogin } from '@/web/support/user/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const provider = ({ code, state }: { code: string; state: string }) => {
-  const { loginStore } = useGlobalStore();
+  const { loginStore } = useSystemStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();

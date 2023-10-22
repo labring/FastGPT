@@ -10,7 +10,7 @@ import {
   MenuItem,
   IconButton
 } from '@chakra-ui/react';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
@@ -19,7 +19,7 @@ import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 
 type HistoryItemType = {
@@ -62,7 +62,7 @@ const ChatHistorySlider = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const { myApps, loadMyApps, userInfo } = useUserStore();
 
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);

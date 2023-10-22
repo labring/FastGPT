@@ -5,21 +5,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authDataset } from '@/service/utils/auth';
-import { authUser } from '@fastgpt/support/user/auth';
-import { withNextCors } from '@fastgpt/common/tools/nextjs';
-import { PgDatasetTableName } from '@/constants/plugin';
-import { insertData2Dataset, PgClient } from '@/service/pg';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
+import { SetOneDatasetDataProps } from '@/global/core/api/datasetReq';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { countPromptTokens } from '@/global/common/tiktoken';
 import { getVectorModel } from '@/service/core/ai/model';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { DatasetDataItemType } from '@/types/core/dataset/data';
-import { countPromptTokens } from '@/utils/common/tiktoken';
-import { authFileIdValid } from '@/service/dataset/auth';
-
-export type Props = {
-  kbId: string;
-  data: DatasetDataItemType;
-};
+import { insertData2Dataset, hasSameValue } from '@/service/core/dataset/data/utils';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -28,7 +22,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    jsonRes(res, {
+    jsonRes<string>(res, {
       data: await getVectorAndInsertDataset({
         ...req.body,
         userId
@@ -43,58 +37,59 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 });
 
 export async function getVectorAndInsertDataset(
-  props: Props & { userId: string }
+  props: SetOneDatasetDataProps & { userId: string }
 ): Promise<string> {
-  const { kbId, data, userId } = props;
-  if (!kbId || !data?.q) {
-    return Promise.reject('缺少参数');
+  let { datasetId, collectionId, q, a, userId } = props;
+
+  if (!datasetId) {
+    return Promise.reject('知识库 ID 不能为空');
   }
 
-  // auth kb
-  const kb = await authDataset({ kbId, userId });
+  if (!q) {
+    return Promise.reject('索引内容不能为空');
+  }
 
-  const q = data?.q?.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
-  const a = data?.a?.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
+  if (!collectionId) {
+    return Promise.reject('集合 ID 和集合类型不能同时为空');
+  }
+
+  // auth collection and get dataset
+  const collection = await MongoDatasetCollection.findOne({
+    _id: collectionId,
+    userId,
+    datasetId,
+    type: { $ne: DatasetCollectionTypeEnum.folder }
+  }).populate('datasetId', '_id vectorModel');
+
+  if (!collection) {
+    return Promise.reject('集合不存在');
+  }
+  const dataset = collection.datasetId as unknown as DatasetSchemaType;
+
+  // format data
+  const formatQ = q?.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
+  const formatA = a?.replace(/\\n/g, '\n').trim().replace(/'/g, '"') || '';
 
   // token check
-  const token = countPromptTokens(q, 'system');
+  const token = countPromptTokens(formatQ, 'system');
 
-  if (token > getVectorModel(kb.vectorModel).maxToken) {
-    return Promise.reject('Over Tokens');
+  if (token > getVectorModel(dataset.vectorModel).maxToken) {
+    return Promise.reject('Q Over Tokens');
   }
 
-  const { rows: existsRows } = await PgClient.query(`
-  SELECT COUNT(*) > 0 AS exists
-  FROM  ${PgDatasetTableName} 
-  WHERE md5(q)=md5('${q}') AND md5(a)=md5('${a}') AND user_id='${userId}' AND file_id='${data.file_id}' AND kb_id='${kbId}'
-`);
-  const exists = existsRows[0]?.exists || false;
-
-  if (exists) {
-    return Promise.reject('已经存在完全一致的数据');
-  }
-
-  await authFileIdValid(data.file_id);
-
-  const { vectors } = await getVector({
-    model: kb.vectorModel,
-    input: [q],
-    userId
+  // Duplicate data check
+  await hasSameValue({
+    collectionId,
+    q,
+    a
   });
 
-  const response = await insertData2Dataset({
+  return insertData2Dataset({
     userId,
-    kbId,
-    data: [
-      {
-        ...data,
-        q,
-        a,
-        vector: vectors[0]
-      }
-    ]
+    q: formatQ,
+    a: formatA,
+    collectionId,
+    datasetId,
+    model: dataset.vectorModel
   });
-
-  // @ts-ignore
-  return response?.rows?.[0]?.id || '';
 }

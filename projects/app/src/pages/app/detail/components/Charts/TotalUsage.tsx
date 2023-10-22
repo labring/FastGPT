@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as echarts from 'echarts';
-import { useGlobalStore } from '@/web/common/store/global';
-import { getAppTotalUsage } from '@/web/core/api/app';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getAppTotalUsage } from '@/web/core/app/api';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { formatPrice } from '@fastgpt/common/bill/index';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import Loading from '@/components/Loading';
 import { Box } from '@chakra-ui/react';
 
@@ -97,7 +97,7 @@ const map = {
 };
 
 const TokenUsage = ({ appId }: { appId: string }) => {
-  const { screenWidth } = useGlobalStore();
+  const { screenWidth } = useSystemStore();
 
   const Dom = useRef<HTMLDivElement>(null);
   const myChart = useRef<echarts.ECharts>();

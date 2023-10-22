@@ -3,7 +3,7 @@ import { ModalBody, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '../MyModal';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { userUpdateChatFeedback } from '@/web/core/api/chat';
+import { userUpdateChatFeedback } from '@/web/core/chat/api';
 
 const ReadFeedbackModal = ({
   chatItemId,
@@ -39,14 +39,14 @@ const ReadFeedbackModal = ({
     <MyModal isOpen={true} onClose={onClose} title={t('chat.Feedback Modal')}>
       <ModalBody>{content}</ModalBody>
       <ModalFooter>
+        <Button mr={2} isLoading={isLoading} variant={'base'} onClick={mutate}>
+          {t('chat.Feedback Close')}
+        </Button>
         {!isMarked && (
-          <Button variant={'base'} mr={2} onClick={onMark}>
+          <Button mr={2} onClick={onMark}>
             {t('chat.Feedback Mark')}
           </Button>
         )}
-        <Button isLoading={isLoading} onClick={mutate}>
-          {t('chat.Feedback Close')}
-        </Button>
       </ModalFooter>
     </MyModal>
   );

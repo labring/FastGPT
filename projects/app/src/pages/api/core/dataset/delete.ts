@@ -1,12 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, TrainingData } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { authUser } from '@fastgpt/support/user/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { Types } from '@fastgpt/common/mongo';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,9 +27,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const deletedIds = [id, ...(await findAllChildrenIds(id))];
 
     // delete training data
-    await TrainingData.deleteMany({
+    await MongoDatasetTraining.deleteMany({
       userId,
-      kbId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
+      datasetId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
     });
 
     // delete all pg data
@@ -35,15 +37,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       where: [
         ['user_id', userId],
         'AND',
-        `kb_id IN (${deletedIds.map((id) => `'${id}'`).join(',')})`
+        `dataset_id IN (${deletedIds.map((id) => `'${id}'`).join(',')})`
       ]
     });
 
     // delete related files
     const gridFs = new GridFSStorage('dataset', userId);
-    await Promise.all(deletedIds.map((id) => gridFs.deleteFilesByKbId(id)));
+    await Promise.all(deletedIds.map((id) => gridFs.deleteFilesByDatasetId(id)));
 
-    // delete kb data
+    // delete collections
+    await MongoDatasetCollection.deleteMany({
+      datasetId: { $in: deletedIds }
+    });
+
+    // delete dataset data
     await MongoDataset.deleteMany({
       _id: { $in: deletedIds },
       userId

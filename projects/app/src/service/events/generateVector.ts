@@ -1,10 +1,11 @@
-import { insertData2Dataset } from '@/service/pg';
+import { insertData2Dataset } from '../core/dataset/data/utils';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { TrainingData } from '../models/trainingData';
-import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
-import { TrainingModeEnum } from '@/constants/plugin';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { sendInform } from '@/pages/api/user/inform/send';
 import { addLog } from '../utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -20,10 +21,13 @@ export async function generateVector(): Promise<any> {
   let dataItems: {
     q: string;
     a: string;
-  }[] = [];
+  } = {
+    q: '',
+    a: ''
+  };
 
   try {
-    const data = await TrainingData.findOneAndUpdate(
+    const data = await MongoDatasetTraining.findOneAndUpdate(
       {
         mode: TrainingModeEnum.index,
         lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
@@ -31,17 +35,18 @@ export async function generateVector(): Promise<any> {
       {
         lockTime: new Date()
       }
-    ).select({
-      _id: 1,
-      userId: 1,
-      kbId: 1,
-      q: 1,
-      a: 1,
-      source: 1,
-      file_id: 1,
-      vectorModel: 1,
-      billId: 1
-    });
+    )
+      .select({
+        _id: 1,
+        userId: 1,
+        datasetId: 1,
+        datasetCollectionId: 1,
+        q: 1,
+        a: 1,
+        model: 1,
+        billId: 1
+      })
+      .lean();
 
     // task preemption
     if (!data) {
@@ -52,38 +57,25 @@ export async function generateVector(): Promise<any> {
 
     trainingId = data._id;
     userId = String(data.userId);
-    const kbId = String(data.kbId);
 
-    dataItems = [
-      {
-        q: data.q.replace(/[\x00-\x08]/g, ' '),
-        a: data.a.replace(/[\x00-\x08]/g, ' ')
-      }
-    ];
+    dataItems = {
+      q: data.q.replace(/[\x00-\x08]/g, ' '),
+      a: data.a?.replace(/[\x00-\x08]/g, ' ') || ''
+    };
 
-    // 生成词向量
-    const { vectors } = await getVector({
-      model: data.vectorModel,
-      input: dataItems.map((item) => item.q),
+    // insert data 2 pg
+    await insertData2Dataset({
       userId,
+      datasetId: data.datasetId,
+      collectionId: data.datasetCollectionId,
+      q: dataItems.q,
+      a: dataItems.a,
+      model: data.model,
       billId: data.billId
     });
 
-    // 生成结果插入到 pg
-    await insertData2Dataset({
-      userId,
-      kbId,
-      data: vectors.map((vector, i) => ({
-        q: dataItems[i].q,
-        a: dataItems[i].a,
-        source: data.source,
-        file_id: data.file_id,
-        vector
-      }))
-    });
-
     // delete data from training
-    await TrainingData.findByIdAndDelete(data._id);
+    await MongoDatasetTraining.findByIdAndDelete(data._id);
     // console.log(`生成向量成功: ${data._id}`);
 
     reduceQueue();
@@ -98,7 +90,7 @@ export async function generateVector(): Promise<any> {
         data: err.response?.data
       });
     } else {
-      addLog.error('openai error: 生成向量错误', err);
+      addLog.error(getErrText(err, '生成向量错误'));
     }
 
     // message error or openai account error
@@ -110,7 +102,7 @@ export async function generateVector(): Promise<any> {
         dataItems
       });
       try {
-        await TrainingData.findByIdAndUpdate(trainingId, {
+        await MongoDatasetTraining.findByIdAndUpdate(trainingId, {
           lockTime: new Date('2998/5/5')
         });
       } catch (error) {}
@@ -119,11 +111,11 @@ export async function generateVector(): Promise<any> {
 
     // err vector data
     if (err?.code === 500) {
-      await TrainingData.findByIdAndDelete(trainingId);
+      await MongoDatasetTraining.findByIdAndDelete(trainingId);
       return generateVector();
     }
 
-    // 账号余额不足，删除任务
+    // 账号余额不足，暂停任务
     if (userId && err === ERROR_ENUM.insufficientQuota) {
       try {
         sendInform({
@@ -134,7 +126,7 @@ export async function generateVector(): Promise<any> {
           userId
         });
         console.log('余额不足，暂停向量生成任务');
-        await TrainingData.updateMany(
+        await MongoDatasetTraining.updateMany(
           {
             userId
           },

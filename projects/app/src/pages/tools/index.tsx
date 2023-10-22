@@ -3,7 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'react-i18next';
 
@@ -14,7 +14,7 @@ const Tools = () => {
     {
       icon: 'dbLight',
       label: '我的知识库',
-      link: '/kb/list'
+      link: '/dataset/list'
     },
     ...(feConfigs?.show_appStore
       ? [

@@ -80,22 +80,6 @@ export const formatTimeToChatTime = (time: Date) => {
   return target.format('YYYY/M/D');
 };
 
-export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
-
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-export const getErrText = (err: any, def = '') => {
-  const msg: string = typeof err === 'string' ? err : err?.message || def || '';
-  msg && console.log('error =>', msg);
-  return msg;
-};
-
 export const delay = (ms: number) =>
   new Promise((resolve) => {
     setTimeout(() => {

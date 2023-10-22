@@ -1,7 +1,7 @@
 import { ChatItemType } from '@/types/chat';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { NextApiResponse } from 'next';
-import { countMessagesTokens, countPromptTokens } from '@/utils/common/tiktoken';
+import { countMessagesTokens, countPromptTokens } from '@/global/common/tiktoken';
 import { adaptRole_Chat2Message } from '@/utils/common/adapt/message';
 
 export type ChatCompletionResponseType = {

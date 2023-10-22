@@ -1,20 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { GridFSStorage } from '@/service/lib/gridfs';
-import { UpdateFileProps } from '@/global/core/api/datasetReq.d';
-import { Types } from '@fastgpt/common/mongo';
+import { Types } from '@fastgpt/service/common/mongo';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { addLog } from '@/service/utils/tools';
-import { strIsLink } from '@fastgpt/common/tools/str';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
 
-    const { id, name, datasetUsed } = req.body as UpdateFileProps;
+    const { id, name, datasetUsed } = req.body;
     const { userId } = await authUser({ req, authToken: true });
 
     const gridFs = new GridFSStorage('dataset', userId);

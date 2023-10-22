@@ -1,4 +1,4 @@
-import { ChatCompletionRequestMessage } from '@fastgpt/core/ai/type';
+import { ChatCompletionRequestMessage } from '@fastgpt/global/core/ai/type.d';
 
 export type CreateQuestionGuideParams = {
   messages: ChatCompletionRequestMessage[];

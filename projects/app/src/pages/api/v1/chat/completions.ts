@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@/service/utils/auth';
-import { authUser } from '@fastgpt/support/user/auth';
-import { AuthUserTypeEnum } from '@fastgpt/support/user/auth';
+import { authUser, AuthUserTypeEnum } from '@fastgpt/service/support/user/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { addLog } from '@/service/utils/tools';
-import { withNextCors } from '@fastgpt/common/tools/nextjs';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
 import {
   dispatchHistory,
@@ -17,28 +16,28 @@ import {
   dispatchHttpRequest,
   dispatchAppRequest
 } from '@/service/moduleDispatch';
-import type { CreateChatCompletionRequest } from '@fastgpt/core/ai/type';
+import type { CreateChatCompletionRequest } from '@fastgpt/global/core/ai/type.d';
 import type { MessageItemType } from '@/types/core/chat/type';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
-import { responseWrite } from '@fastgpt/common/tools/stream';
+import { responseWrite } from '@fastgpt/service/common/response';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
 import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
-import type { UserModelSchema } from '@fastgpt/support/user/type.d';
+import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { SystemInputEnum } from '@/constants/app';
-import { getSystemTime } from '@/utils/user';
-import { authOutLinkChat } from '@fastgpt/support/outLink/auth';
-import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/support/outLink/tools';
+import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { authOutLinkChat } from '@fastgpt/service/support/outLink/auth';
+import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
-import { replaceVariable } from '@/utils/common/tools/text';
+import { replaceVariable } from '@/global/common/string/tools';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { selectShareResponse } from '@/utils/service/core/chat';
-import { updateApiKeyUsage } from '@fastgpt/support/openapi/tools';
+import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
 
 type FastGptWebChatProps = {
@@ -438,7 +437,7 @@ export async function dispatchModules({
         [FlowModuleTypeEnum.questionInput]: dispatchChatInput,
         [FlowModuleTypeEnum.answerNode]: dispatchAnswer,
         [FlowModuleTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowModuleTypeEnum.kbSearchNode]: dispatchKBSearch,
+        [FlowModuleTypeEnum.datasetSearchNode]: dispatchKBSearch,
         [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
         [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract,
         [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest,

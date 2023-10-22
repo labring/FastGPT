@@ -1,12 +1,10 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Box, Flex, Card, Grid, Input } from '@chakra-ui/react';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { getShareModelList, triggerModelCollection } from '@/web/core/api/app';
+import { getShareModelList, triggerModelCollection } from '@/web/core/app/api';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import type { ShareAppItem } from '@/types/app';
-import { useUserStore } from '@/web/support/store/user';
 import ShareModelList from './components/list';
-import styles from './index.module.scss';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 
 const modelList = () => {

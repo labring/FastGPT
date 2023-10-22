@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { clearCookie } from '@fastgpt/support/user/auth';
+import { clearCookie } from '@fastgpt/service/support/user/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
