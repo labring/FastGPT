@@ -35,7 +35,8 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 在线使用
 
-[fastgpt.run](https://fastgpt.run/)（服务器在新加坡，部分地区可能无法直连）
++ 🌐 国内版：[ai.fastgpt.in](https://ai.fastgpt.in/)
++ 🌍 海外版：[fastgpt.run](https://fastgpt.run/)
 
 |                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
