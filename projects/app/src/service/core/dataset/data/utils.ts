@@ -126,15 +126,26 @@ export async function updateData2Dataset({
  * count one collection amount of total data
  */
 export async function countCollectionData({
-  collectionId,
-  userId
+  collectionIds,
+  datasetId
 }: {
-  collectionId: string;
-  userId: string;
+  collectionIds: string[];
+  datasetId?: string;
 }) {
-  return PgClient.count(PgDatasetTableName, {
-    where: [['collection_id', collectionId], 'AND', ['user_id', userId]]
-  });
+  collectionIds = collectionIds.map((item) => String(item));
+  const { rows } = await PgClient.query(`
+  SELECT 
+    ${collectionIds
+      .map((id) => `SUM(CASE WHEN collection_id = '${id}' THEN 1 ELSE 0 END) AS count${id}`)
+      .join(',')}
+  FROM ${PgDatasetTableName}
+  WHERE collection_id IN (${collectionIds.map((id) => `'${id}'`).join(',')}) 
+    ${datasetId ? `AND dataset_id='${String(datasetId)}` : ''}';
+  `);
+
+  const values = Object.values(rows[0]).map((item) => Number(item));
+
+  return values;
 }
 
 /**

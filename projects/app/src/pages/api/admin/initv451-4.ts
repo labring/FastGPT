@@ -37,49 +37,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 async function updatePgCollection(limit: number): Promise<any> {
-  try {
-    const collections = await MongoDatasetCollection.find({
-      'metadata.pgCollectionId': { $exists: true, $ne: '' }
-    })
-      .limit(limit)
-      .lean();
-    if (collections.length === 0) {
-      return;
-    }
+  const collections = await MongoDatasetCollection.find({
+    'metadata.pgCollectionId': { $exists: true, $ne: '' }
+  }).lean();
+  console.log('total:', collections.length);
 
-    await Promise.all(
-      collections.map(async (item) => {
-        console.log('start', item.name);
-        if (item.metadata.pgCollectionId) {
-          await PgClient.query(
-            `update modeldata set collection_id = '${item._id}' where dataset_id = '${String(
-              item.datasetId
-            )}' AND collection_id = '${String(item.metadata.pgCollectionId)}'`
-          );
-        }
+  async function update(i: number): Promise<any> {
+    const item = collections[i];
+    if (!item) return;
 
-        // 更新 file id
-        if (item.type === 'file' && item.metadata.fileId) {
-          const collection = connectionMongo.connection.db.collection(`dataset.files`);
-          await collection.findOneAndUpdate({ _id: new Types.ObjectId(item.metadata.fileId) }, [
-            {
-              $set: {
-                'metadata.datasetId': item.datasetId,
-                'metadata.collectionId': item._id
-              }
-            }
-          ]);
-        }
-
-        await MongoDatasetCollection.findByIdAndUpdate(item._id, {
-          $unset: { 'metadata.pgCollectionId': '' }
+    try {
+      console.log('start', item.name, item.datasetId, item.metadata.pgCollectionId);
+      const time = Date.now();
+      if (item.metadata.pgCollectionId) {
+        const total = PgClient.count(PgDatasetTableName, {
+          fields: ['id'],
+          where: [
+            ['dataset_id', String(item.datasetId)],
+            ['collection_id', String(item.metadata.pgCollectionId)]
+          ]
         });
-        console.log('success', ++success);
-      })
-    );
-    return updatePgCollection(limit);
-  } catch (error) {
-    await delay(500);
-    return updatePgCollection(limit);
+        console.log('update date total', total);
+
+        await PgClient.query(`
+    update ${PgDatasetTableName} set collection_id = '${item._id}' where dataset_id = '${String(
+      item.datasetId
+    )}' AND collection_id = '${String(item.metadata.pgCollectionId)}'
+              `);
+
+        console.log('pg update time', Date.now() - time);
+      }
+
+      // 更新 file id
+      if (item.type === 'file' && item.metadata.fileId) {
+        const collection = connectionMongo.connection.db.collection(`dataset.files`);
+        await collection.findOneAndUpdate({ _id: new Types.ObjectId(item.metadata.fileId) }, [
+          {
+            $set: {
+              'metadata.datasetId': item.datasetId,
+              'metadata.collectionId': item._id
+            }
+          }
+        ]);
+      }
+
+      await MongoDatasetCollection.findByIdAndUpdate(item._id, {
+        $unset: { 'metadata.pgCollectionId': '' }
+      });
+      console.log('success', ++success);
+
+      return update(i + 1);
+    } catch (error) {
+      console.log(error);
+
+      await delay(500);
+      return update(i + 1);
+    }
   }
+
+  return update(0);
 }

@@ -98,16 +98,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     ]);
 
+    const counts = await countCollectionData({
+      collectionIds: collections.map((item) => item._id),
+      datasetId
+    });
+
     const data = await Promise.all(
-      collections.map(async (item) => ({
+      collections.map(async (item, i) => ({
         ...item,
-        dataAmount:
-          item.type !== DatasetCollectionTypeEnum.folder
-            ? await countCollectionData({
-                collectionId: item._id,
-                userId
-              })
-            : undefined
+        dataAmount: item.type === DatasetCollectionTypeEnum.folder ? undefined : counts[i]
       }))
     );
 
