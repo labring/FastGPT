@@ -8,19 +8,17 @@ import { delay } from '@/utils/tools';
  */
 export async function hasSameValue({
   collectionId,
-  userId,
   q,
   a = ''
 }: {
   collectionId: string;
-  userId: string;
   q: string;
   a?: string;
 }) {
   const { rows: existsRows } = await PgClient.query(`
   SELECT COUNT(*) > 0 AS exists
   FROM  ${PgDatasetTableName} 
-  WHERE md5(q)=md5('${q}') AND md5(a)=md5('${a}') AND user_id='${userId}' AND collection_id='${collectionId}'
+  WHERE md5(q)=md5('${q}') AND md5(a)=md5('${a}') collection_id='${collectionId}'
 `);
   const exists = existsRows[0]?.exists || false;
 

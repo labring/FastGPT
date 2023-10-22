@@ -79,7 +79,6 @@ export async function getVectorAndInsertDataset(
 
   // Duplicate data check
   await hasSameValue({
-    userId,
     collectionId,
     q,
     a

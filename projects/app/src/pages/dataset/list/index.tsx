@@ -71,7 +71,7 @@ const Kb = () => {
   const { editFolderData, setEditFolderData } = useEditFolder();
 
   /* 点击删除 */
-  const { mutate: onclickDelKb } = useRequest({
+  const { mutate: onclickDelDataset } = useRequest({
     mutationFn: async (id: string) => {
       setLoading(true);
       await delDatasetById(id);
@@ -353,7 +353,7 @@ const Kb = () => {
                   ),
                   onClick: () => {
                     openConfirm(
-                      () => onclickDelKb(dataset._id),
+                      () => onclickDelDataset(dataset._id),
                       undefined,
                       DeleteTipsMap.current[dataset.type]
                     )();

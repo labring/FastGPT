@@ -342,8 +342,10 @@ export const PreviewFileOrChunk = () => {
                     fontSize={'sm'}
                     whiteSpace={'pre-wrap'}
                     wordBreak={'break-all'}
-                    contentEditable
-                    dangerouslySetInnerHTML={{ __html: chunk.q }}
+                    contentEditable={!chunk.a}
+                    dangerouslySetInnerHTML={{
+                      __html: chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q
+                    }}
                     onBlur={(e) => {
                       // @ts-ignore
                       const val = e.target.innerText;

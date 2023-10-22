@@ -97,17 +97,13 @@ export class GridFSStorage {
     return true;
   }
 
-  async deleteFilesByKbId(datasetId: string) {
+  async deleteFilesByDatasetId(datasetId: string) {
     if (!datasetId) return;
-    const bucket = this.GridFSBucket();
-    const files = await bucket
-      .find(
-        { ['metadata.datasetId']: datasetId, ['metadata.userId']: this.uid },
-        { projection: { _id: 1 } }
-      )
-      .toArray();
+    const collection = this.Collection();
 
-    return Promise.all(files.map((file) => this.delete(String(file._id))));
+    return collection.deleteMany({
+      'metadata.datasetId': String(datasetId)
+    });
   }
 
   async download(id: string) {

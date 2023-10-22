@@ -8,6 +8,7 @@ import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { GridFSStorage } from '@/service/lib/gridfs';
 import { Types } from '@fastgpt/service/common/mongo';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -42,9 +43,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // delete related files
     const gridFs = new GridFSStorage('dataset', userId);
-    await Promise.all(deletedIds.map((id) => gridFs.deleteFilesByKbId(id)));
+    await Promise.all(deletedIds.map((id) => gridFs.deleteFilesByDatasetId(id)));
 
-    // delete kb data
+    // delete collections
+    await MongoDatasetCollection.deleteMany({
+      datasetId: { $in: deletedIds }
+    });
+
+    // delete dataset data
     await MongoDataset.deleteMany({
       _id: { $in: deletedIds },
       userId
