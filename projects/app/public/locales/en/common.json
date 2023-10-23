@@ -151,7 +151,7 @@
     "folder": {
       "Drag Tip": "Click and move",
       "Move Success": "Move Success",
-      "No Folder": "There are no subdirectories~",
+      "No Folder": "There's no subdirectory. Just put it here",
       "Root Path": "Root Folder"
     }
   },
