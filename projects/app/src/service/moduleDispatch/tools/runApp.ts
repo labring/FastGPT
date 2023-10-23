@@ -42,13 +42,15 @@ export const dispatchAppRequest = async (props: Record<string, any>): Promise<Re
     return Promise.reject('App not found');
   }
 
-  responseWrite({
-    res,
-    event: detail ? sseResponseEventEnum.answer : undefined,
-    data: textAdaptGptResponse({
-      text: '\n'
-    })
-  });
+  if (stream) {
+    responseWrite({
+      res,
+      event: detail ? sseResponseEventEnum.answer : undefined,
+      data: textAdaptGptResponse({
+        text: '\n'
+      })
+    });
+  }
 
   const { responseData, answerText } = await dispatchModules({
     res,
