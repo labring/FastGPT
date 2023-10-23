@@ -76,7 +76,7 @@ importers:
         specifier: ^2.1.2
         version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
       openai:
-        specifier: ^4.12.1
+        specifier: ^4.12.4
         version: registry.npmmirror.com/openai@4.12.4(encoding@0.1.13)
       tunnel:
         specifier: ^0.0.6
