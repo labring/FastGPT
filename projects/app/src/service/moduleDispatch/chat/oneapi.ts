@@ -110,23 +110,30 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   temperature = Math.max(temperature, 0.01);
   const ai = getAIApi(user.openaiAccount, 480000);
 
-  const response = await ai.chat.completions.create({
-    model,
-    temperature,
-    max_tokens,
-    stream,
-    messages: [
-      ...(modelConstantsData.defaultSystemChatPrompt
-        ? [
-            {
-              role: ChatCompletionRequestMessageRoleEnum.System,
-              content: modelConstantsData.defaultSystemChatPrompt
-            }
-          ]
-        : []),
-      ...messages
-    ]
-  });
+  const response = await ai.chat.completions.create(
+    {
+      model,
+      temperature,
+      max_tokens,
+      stream,
+      messages: [
+        ...(modelConstantsData.defaultSystemChatPrompt
+          ? [
+              {
+                role: ChatCompletionRequestMessageRoleEnum.System,
+                content: modelConstantsData.defaultSystemChatPrompt
+              }
+            ]
+          : []),
+        ...messages
+      ]
+    },
+    {
+      headers: {
+        Accept: 'application/json, text/plain, */*'
+      }
+    }
+  );
 
   const { answerText, totalTokens, completeMessages } = await (async () => {
     if (stream) {
@@ -355,7 +362,6 @@ async function streamResponse({
     readStream: stream
   });
   let answer = '';
-
   for await (const part of stream) {
     if (res.closed) {
       stream.controller?.abort();

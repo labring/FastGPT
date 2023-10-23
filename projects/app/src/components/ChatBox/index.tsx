@@ -83,6 +83,7 @@ export type ComponentRef = {
   resetVariables: (data?: Record<string, any>) => void;
   resetHistory: (history: ChatSiteItemType[]) => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
+  sendPrompt: (question: string) => void;
 };
 
 enum FeedbackTypeEnum {
@@ -452,7 +453,8 @@ const ChatBox = (
       setVariableInputFinish(!!e.length);
       setChatHistory(e);
     },
-    scrollToBottom
+    scrollToBottom,
+    sendPrompt: (question: string) => handleSubmit((item) => sendPrompt(item, question))()
   }));
 
   /* style start */
