@@ -374,7 +374,7 @@ async function streamResponse({
   } else {
     let codeResult = await checkRunPythonCode(answer);
     if (codeResult) {
-      answer += codeResult;
+      answer += '这是运行后的结果:\n' + codeResult;
       responseWrite({
         write,
         event: detail ? sseResponseEventEnum.answer : undefined,

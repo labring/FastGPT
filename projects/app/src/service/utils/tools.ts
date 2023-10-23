@@ -5,6 +5,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { ChatResponse } from '@/service/moduleDispatch/chat/oneapi';
 import fs from 'fs';
 import path from 'path';
+import * as iconv from 'iconv-lite';
 
 interface ConnectionParams {
   prefix?: string;
@@ -52,25 +53,35 @@ export function parseConnectionString(connectionString: string): ConnectionParam
 }
 
 async function runPythonCode(pythonCode: string): Promise<string> {
-  const py = process.env.PY_PATH || 'python'; // 'D:\\pyenv\\.pyenv\\pyenv-win\\versions\\3.10.11\\python.exe'
+  let command = process.env.PY_PATH || 'python'; // 'D:\\pyenv\\.pyenv\\pyenv-win\\versions\\3.10.11\\python.exe'
+
   return new Promise<string>((resolve, reject) => {
-    const pythonProcess = spawn(py, ['-c', pythonCode]);
-    let result: string = '';
-    let error: string = '';
+    const pythonProcess = spawn(command, ['-c', pythonCode]);
+
+    let result: Buffer[] = [];
+    let error: Buffer[] = [];
 
     pythonProcess.stdout?.on('data', (data: Buffer) => {
-      result += data.toString();
+      result.push(data);
     });
 
     pythonProcess.stderr?.on('data', (data: Buffer) => {
-      error += data.toString();
+      error.push(data);
     });
 
     pythonProcess.on('close', (code: number) => {
+      let out = '';
+      let err = '';
+      const output = Buffer.concat(result);
+      const err_output = Buffer.concat(error);
+      if (process.platform == 'win32') {
+        out = iconv.decode(output, 'cp936');
+        err = iconv.decode(err_output, 'cp936');
+      }
       if (code === 0) {
-        resolve(result);
+        resolve(out);
       } else {
-        reject(new Error(`Python process exited with code ${code}\n${error}`));
+        reject(new Error(`Python process exited with code ${code}\n${err}`));
       }
     });
   });
@@ -117,15 +128,23 @@ function getMarkdownFile(folderName: string, fileName: string = 'axio_ai.png'): 
     return '';
   }
 }
-
+function getFileName(str: string): string {
+  const regex = /filename=([^&]+)/;
+  const match = str.match(regex);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return '';
+}
 export async function checkRunPythonCode(answer: string): Promise<string> {
   let answerText: string = '';
   const code: string[] = extractPythonCodeFromMarkdown(answer);
   if (code.length) {
     console.log('检测到python代码，现在开始运行代码');
-    const filename = (await runPythonCode(code.join('\n'))).trim();
+    let ret = (await runPythonCode(code.join('\n'))).trim();
+    const filename = getFileName(ret);
     console.log(`代码已运行完毕，得到:${filename}`);
-    answerText = getMarkdownFile('ai_temp', filename);
+    answerText = getMarkdownFile('ai_temp', filename) + '\n' + ret;
   }
   return answerText;
 }

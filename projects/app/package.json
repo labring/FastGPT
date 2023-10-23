@@ -32,6 +32,7 @@
     "framer-motion": "^9.0.6",
     "hyperdown": "^2.4.29",
     "i18next": "^23.2.11",
+    "iconv-lite": "^0.6.3",
     "immer": "^9.0.19",
     "js-cookie": "^3.0.5",
     "js-tiktoken": "^1.0.7",

@@ -91,8 +91,6 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
         searchRes[i].q = searchRes[i].q
           .replace(/{{connec:(.*?)}}/g, '')
           .replace(/{{query:(.*?)}}/gs, formattedResult);
-      } else {
-        console.error(`无法解析连接字符串和查询语句：${q}`);
       }
     } catch (error) {
       console.error(`执行查询时出错：${q}`);

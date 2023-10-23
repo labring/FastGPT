@@ -170,6 +170,9 @@ importers:
       i18next:
         specifier: ^23.2.11
         version: registry.npmmirror.com/i18next@23.5.1
+      iconv-lite:
+        specifier: ^0.6.3
+        version: 0.6.3
       immer:
         specifier: ^9.0.19
         version: registry.npmmirror.com/immer@9.0.19
@@ -7556,7 +7559,7 @@ packages:
     name: encoding
     version: 0.1.13
     dependencies:
-      iconv-lite: registry.npmmirror.com/iconv-lite@0.6.3
+      iconv-lite: 0.6.3
     dev: false
 
   registry.npmmirror.com/enhanced-resolve@5.15.0:
@@ -8534,15 +8537,6 @@ packages:
     version: 23.5.1
     dependencies:
       '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.23.2
-
-  registry.npmmirror.com/iconv-lite@0.6.3:
-    resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==, registry: https://registry.npmjs.org/, tarball: https://registry.npmmirror.com/iconv-lite/-/iconv-lite-0.6.3.tgz}
-    name: iconv-lite
-    version: 0.6.3
-    engines: {node: '>=0.10.0'}
-    dependencies:
-      safer-buffer: 2.1.2
-    dev: false
 
   registry.npmmirror.com/ignore@5.2.4:
     resolution: {integrity: sha512-MAb38BcSbH0eHNBxn7ql2NH/kX33OkB3lZ1BNdh7ENeRChHTYsTvWrMubiIAMNS2llXEEgZ1MUOBtXChP3kaFQ==, registry: https://registry.npmjs.org/, tarball: https://registry.npmmirror.com/ignore/-/ignore-5.2.4.tgz}
