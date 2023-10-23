@@ -69,7 +69,7 @@ const AIChatSettingsModal = ({
           {t('app.AI Settings')}
           {feConfigs?.show_doc && (
             <Link
-              href={'https://doc.fastgpt.run/docs/use-cases/ai_settings/'}
+              href={`${feConfigs.docUrl}/docs/use-cases/ai_settings/`}
               target={'_blank'}
               ml={1}
               textDecoration={'underline'}

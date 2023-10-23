@@ -174,7 +174,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             mb={0}
             color={'#9096a5'}
             onClick={() => {
-              window.open(`https://doc.fastgpt.run/docs/intro`);
+              window.open(`${feConfigs.docUrl}/docs/intro`);
             }}
           >
             <MyIcon name={'courseLight'} width={'26px'} height={'26px'} />

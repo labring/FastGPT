@@ -9,7 +9,8 @@ export type FeConfigsType = {
   show_openai_account?: boolean;
   show_promotion?: boolean;
   hide_app_flow?: boolean;
-  openAPIUrl?: string;
+  docUrl?: string;
+  openAPIDocUrl?: string;
   systemTitle?: string;
   authorText?: string;
   googleClientVerKey?: string;
