@@ -130,7 +130,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     },
     {
       headers: {
-        Accept: 'text/plain, */*'
+        Accept: 'application/json, text/plain, */*'
       }
     }
   );
