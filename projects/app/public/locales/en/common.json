@@ -151,7 +151,7 @@
     "folder": {
       "Drag Tip": "Click and move",
       "Move Success": "Move Success",
-      "No Folder": "No Folder",
+      "No Folder": "There are no subdirectories~",
       "Root Path": "Root Folder"
     }
   },
@@ -189,6 +189,7 @@
       "Click to view folder": "To Folder",
       "Collection Embedding": "{{total}}Embedding",
       "Confirm to delete the folder": "Are you sure to delete this folder and all its contents?",
+      "Create And Import": "Create/Import",
       "Create Training Data": "Training-{{filename}}",
       "Create Virtual File Success": "Create Virtual File Success",
       "Data Amount": "Data Amount",

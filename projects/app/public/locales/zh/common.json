@@ -151,7 +151,7 @@
     "folder": {
       "Drag Tip": "点我可拖动",
       "Move Success": "移动成功",
-      "No Folder": "这个目录空空的~",
+      "No Folder": "没有子目录了，就这吧~",
       "Root Path": "根目录"
     }
   },
@@ -189,6 +189,7 @@
       "Click to view folder": "进入目录",
       "Collection Embedding": "{{total}}组索引中",
       "Confirm to delete the folder": "确认删除该文件夹及里面所有内容？",
+      "Create And Import": "新建/导入",
       "Create Training Data": "文件训练-{{filename}}",
       "Create Virtual File Success": "创建虚拟文件成功",
       "Data Amount": "数据总量",
