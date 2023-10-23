@@ -166,7 +166,10 @@ const OutLink = ({
   });
 
   useEffect(() => {
-    setIdEmbed(window !== parent);
+    if (window !== top) {
+      window.top?.postMessage({ type: 'shareChatReady' }, '*');
+    }
+    setIdEmbed(window !== top);
   }, []);
 
   return (
@@ -280,7 +283,13 @@ export async function getServerSideProps(context: any) {
   const authToken = context?.query?.authToken || '';
 
   return {
-    props: { shareId, chatId, showHistory, authToken, ...(await serviceSideProps(context)) }
+    props: {
+      shareId,
+      chatId,
+      showHistory,
+      authToken,
+      ...(await serviceSideProps(context))
+    }
   };
 }
 
