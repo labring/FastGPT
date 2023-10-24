@@ -5,6 +5,7 @@ import { authUser } from '@fastgpt/service/support/user/auth';
 import { App } from '@/service/models/app';
 import type { AppUpdateParams } from '@/types/app';
 import { authApp } from '@/service/utils/auth';
+import { SystemOutputEnum } from '@/constants/app';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -40,7 +41,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           'share.isShare': share.isShare,
           'share.isShareDetail': share.isShareDetail
         }),
-        ...(modules && { modules })
+        ...(modules && {
+          modules: modules.map((modules) => ({
+            ...modules,
+            outputs: modules.outputs.sort((a, b) => {
+              // finish output always at last
+              if (a.key === SystemOutputEnum.finish) return 1;
+              if (b.key === SystemOutputEnum.finish) return -1;
+              return 0;
+            })
+          }))
+        })
       }
     );
 

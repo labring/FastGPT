@@ -47,7 +47,6 @@ import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
 import { TabEnum } from '..';
 import ParentPath from '@/components/common/ParentPaths';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import dynamic from 'next/dynamic';
 import { useDrag } from '@/web/common/hooks/useDrag';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
@@ -68,7 +67,6 @@ const CollectionCard = () => {
   const { isPc } = useSystemStore();
   const [searchText, setSearchText] = useState('');
   const { setLoading } = useSystemStore();
-  const { datasetDetail, loadDatasetDetail } = useDatasetStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('dataset.Confirm to delete the file')
@@ -114,8 +112,7 @@ const CollectionCard = () => {
     }
   });
 
-  const { moveDataId, setMoveDataId, dragStartId, setDragStartId, dragTargetId, setDragTargetId } =
-    useDrag();
+  const { dragStartId, setDragStartId, dragTargetId, setDragTargetId } = useDrag();
 
   // change search
   const debounceRefetch = useCallback(
@@ -209,7 +206,6 @@ const CollectionCard = () => {
     getDatasetCollectionPathById(parentId)
   );
 
-  useQuery(['loadDatasetDetail', datasetId], () => loadDatasetDetail(datasetId));
   useQuery(
     ['refreshCollection'],
     () => {
@@ -279,7 +275,7 @@ const CollectionCard = () => {
           </Flex>
         )}
         <MyMenu
-          offset={[-10, 10]}
+          offset={[-40, 10]}
           width={120}
           Button={
             <MenuButton
@@ -290,15 +286,17 @@ const CollectionCard = () => {
             >
               <Flex
                 alignItems={'center'}
-                border={theme.borders.base}
                 px={5}
                 py={2}
                 borderRadius={'md'}
                 cursor={'pointer'}
+                bg={'myBlue.600'}
+                overflow={'hidden'}
+                color={'white'}
                 h={['28px', '35px']}
               >
-                <AddIcon mr={2} />
-                <Box>{t('Create New')}</Box>
+                <MyIcon name={'importLight'} mr={2} w={'14px'} />
+                <Box>{t('dataset.collections.Create And Import')}</Box>
               </Flex>
             </MenuButton>
           }
@@ -410,7 +408,7 @@ const CollectionCard = () => {
                   }
                 }}
               >
-                <Td maxW={['200px', '300px']} draggable>
+                <Td minW={'150px'} maxW={['200px', '300px']} draggable>
                   <Flex alignItems={'center'}>
                     <Image src={collection.icon} w={'16px'} mr={2} alt={''} />
                     <MyTooltip label={t('common.folder.Drag Tip')} shouldWrapChildren={false}>

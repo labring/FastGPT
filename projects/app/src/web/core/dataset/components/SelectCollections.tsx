@@ -97,7 +97,14 @@ const SelectCollections = ({
   });
 
   return (
-    <MyModal isOpen onClose={onClose} maxW={['90vw', '900px']} h={['90vh', '80vh']} isCentered>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      maxW={['90vw', '900px']}
+      w={'100%'}
+      h={['90vh', '80vh']}
+      isCentered
+    >
       <Flex flexDirection={'column'} flex={'1 0 0'}>
         <Box flex={'1 0 0'} px={4} py={2}>
           <Flex flexDirection={'column'} h={'100%'} position={'relative'}>

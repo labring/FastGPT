@@ -11,9 +11,13 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
-export const useConfirm = (props: { title?: string | null; content?: string | null }) => {
+export const useConfirm = (props: {
+  title?: string | null;
+  content?: string | null;
+  bg?: string;
+}) => {
   const { t } = useTranslation();
-  const { title = t('Warning'), content } = props;
+  const { title = t('Warning'), content, bg } = props;
   const [customContent, setCustomContent] = useState(content);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -61,6 +65,7 @@ export const useConfirm = (props: { title?: string | null; content?: string | nu
                   {t('Cancel')}
                 </Button>
                 <Button
+                  {...(bg && { bg: `${bg} !important` })}
                   ml={4}
                   onClick={() => {
                     onClose();
@@ -74,7 +79,7 @@ export const useConfirm = (props: { title?: string | null; content?: string | nu
           </AlertDialogOverlay>
         </AlertDialog>
       ),
-      [customContent, isOpen, onClose, t, title]
+      [bg, customContent, isOpen, onClose, t, title]
     )
   };
 };

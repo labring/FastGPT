@@ -80,7 +80,7 @@ const DatasetSelectContainer = ({
             </Box>
           )}
         </ModalHeader>
-        {children}
+        <Box flex={'1 0 0'}>{children}</Box>
       </Flex>
     </MyModal>
   );

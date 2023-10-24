@@ -14,9 +14,12 @@
   "UnKnow": "未知",
   "Warning": "提示",
   "app": {
-    "AI Settings": "AI 高级配置",
+    "AI Advanced Settings": "AI 高级配置",
+    "AI Settings": "AI 配置",
     "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
+    "Basic Settings": "基本信息",
+    "Chat Debug": "调试预览",
     "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
     "Chat logs": "对话日志",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
@@ -38,6 +41,7 @@
     "Logs Title": "标题",
     "Mark Count": "标注答案数量",
     "My Apps": "我的应用",
+    "Open AI Advanced Settings": "高级配置",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置",
     "Variable Key Repeat Tip": "变量 key 重复",
@@ -106,6 +110,7 @@
   },
   "common": {
     "Add": "添加",
+    "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
     "Confirm Move": "移动到这",
@@ -131,6 +136,7 @@
     "Name is empty": "名称不能为空",
     "Next Step": "下一步",
     "Output": "输出",
+    "Params": "参数",
     "Password inconsistency": "两次密码不一致",
     "Rename": "重命名",
     "Rename Failed": "重命名失败",
@@ -151,8 +157,28 @@
     "folder": {
       "Drag Tip": "点我可拖动",
       "Move Success": "移动成功",
-      "No Folder": "这个目录空空的~",
+      "No Folder": "没有子目录了，就放这里吧",
       "Root Path": "根目录"
+    }
+  },
+  "core": {
+    "ai": {
+      "Model": "AI 模型",
+      "Prompt": "提示词"
+    },
+    "app": {
+      "Next Step Guide": "下一步指引"
+    },
+    "chat": {
+      "Restart": "重开对话"
+    },
+    "dataset": {
+      "Choose Dataset": "关联知识库",
+      "Dataset": "知识库",
+      "Read Dataset": "查看知识库详情",
+      "Search Top K": "单次搜索数量",
+      "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
+      "Similarity": "相似度"
     }
   },
   "dataset": {
@@ -189,6 +215,7 @@
       "Click to view folder": "进入目录",
       "Collection Embedding": "{{total}}组索引中",
       "Confirm to delete the folder": "确认删除该文件夹及里面所有内容？",
+      "Create And Import": "新建/导入",
       "Create Training Data": "文件训练-{{filename}}",
       "Create Virtual File Success": "创建虚拟文件成功",
       "Data Amount": "数据总量",
@@ -208,7 +235,7 @@
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
   },
   "file": {
-    "Click to download CSV template": "点击下载 CSV 模板",
+    "Click to download file template": "点击下载模板：{{name}}",
     "Click to view file": "点击查看原始文件",
     "Create File": "创建新文件",
     "Create file": "创建文件",

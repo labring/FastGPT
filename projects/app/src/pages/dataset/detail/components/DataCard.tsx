@@ -100,14 +100,23 @@ const DataCard = () => {
           }
         />
         <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
-          <Image src={fileIcon || '/imgs/files/file.svg'} w={'16px'} mr={2} alt={''} />
-          <RawSourceText
-            sourceName={collection?.name}
-            sourceId={collection?.metadata?.fileId || collection?.metadata?.rawLink}
-            fontSize={['md', 'lg']}
-            color={'black'}
-            textDecoration={'none'}
-          />
+          <Image src={fileIcon || '/imgs/files/file.svg'} w={['16px', '18px']} mr={2} alt={''} />
+
+          <Box lineHeight={1.2}>
+            <RawSourceText
+              sourceName={collection?.name}
+              sourceId={collection?.metadata?.fileId || collection?.metadata?.rawLink}
+              fontSize={['md', 'lg']}
+              color={'black'}
+              textDecoration={'none'}
+            />
+            <Box fontSize={'sm'} color={'myGray.500'}>
+              文件ID:{' '}
+              <Box as={'span'} userSelect={'all'}>
+                {collection?._id}
+              </Box>
+            </Box>
+          </Box>
         </Flex>
         <Box>
           <Button

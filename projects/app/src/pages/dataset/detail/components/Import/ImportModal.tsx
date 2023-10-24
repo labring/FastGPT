@@ -76,7 +76,7 @@ const ImportData = ({
       <Flex flexDirection={'column'} flex={'1 0 0'}>
         <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
           <MyRadio
-            gridTemplateColumns={['repeat(1,1fr)', 'repeat(3, 350px)']}
+            gridTemplateColumns={['repeat(1,1fr)', 'repeat(3,1fr)']}
             list={[
               {
                 icon: 'indexImport',
