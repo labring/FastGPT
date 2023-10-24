@@ -97,7 +97,7 @@ weight: 144
   {
     "moduleId": "nkxlso",
     "name": "知识库搜索",
-    "flowType": "kbSearchNode",
+    "flowType": "datasetSearchNode",
     "showStatus": true,
     "position": {
       "x": 1542.6434554710224,

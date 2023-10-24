@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ModalBody, Box, useTheme, Flex, Progress } from '@chakra-ui/react';
+import { ModalBody, Box, useTheme, Flex, Progress, Link } from '@chakra-ui/react';
 import { getDatasetDataItemById } from '@/web/core/dataset/api';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -13,6 +13,9 @@ import MyModal from '../MyModal';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import MyTooltip from '../MyTooltip';
+import NextLink from 'next/link';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const QuoteModal = ({
   rawSearch = [],
@@ -22,6 +25,7 @@ const QuoteModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const { isPc } = useSystemStore();
   const theme = useTheme();
   const router = useRouter();
   const { toast } = useToast();
@@ -67,7 +71,7 @@ const QuoteModal = ({
         title={
           <>
             知识库引用({rawSearch.length}条)
-            <Box fontSize={['xs', 'sm']} fontWeight={'normal'}>
+            <Box fontSize={'10px'} color={'myGray.500'} fontWeight={'normal'}>
               注意: 修改知识库内容成功后，此处不会显示变更情况。点击编辑后，会显示知识库最新的内容。
             </Box>
           </>
@@ -89,58 +93,83 @@ const QuoteModal = ({
               border={theme.borders.base}
               _notLast={{ mb: 2 }}
               position={'relative'}
-              _hover={{ '& .edit': { display: 'flex' } }}
               overflow={'hidden'}
             >
               {!isShare && (
-                <Flex alignItems={'center'} mb={1}>
+                <Flex alignItems={'flex-end'} mb={1}>
                   <RawSourceText sourceName={item.sourceName} sourceId={item.sourceId} />
-                  <Box flex={'1'} />
-                  {item.score && (
-                    <>
-                      <Progress
-                        mx={2}
-                        w={['60px', '100px']}
-                        value={item.score * 100}
-                        size="sm"
-                        borderRadius={'20px'}
-                        colorScheme="gray"
-                        border={theme.borders.base}
-                      />
-                      <Box>{item.score.toFixed(4)}</Box>
-                    </>
-                  )}
+                  <Box flex={1} />
+                  <Link
+                    as={NextLink}
+                    display={'flex'}
+                    alignItems={'center'}
+                    color={'myBlue.600'}
+                    href={`/dataset/detail?datasetId=${item.datasetId}&currentTab=dataCard&collectionId=${item.collectionId}`}
+                  >
+                    {t('core.dataset.Go Dataset')}
+                    <MyIcon name={'rightArrowLight'} w={'10px'} />
+                  </Link>
                 </Flex>
               )}
 
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
-              {item.id && !isShare && (
-                <Box
-                  className="edit"
-                  display={'none'}
-                  position={'absolute'}
-                  right={0}
-                  top={0}
-                  bottom={0}
-                  w={'40px'}
-                  bg={'rgba(255,255,255,0.9)'}
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  boxShadow={'-10px 0 10px rgba(255,255,255,1)'}
-                >
-                  <MyIcon
-                    name={'edit'}
-                    w={'18px'}
-                    h={'18px'}
-                    cursor={'pointer'}
-                    color={'myGray.600'}
-                    _hover={{
-                      color: 'myBlue.700'
-                    }}
-                    onClick={() => onclickEdit(item)}
-                  />
-                </Box>
+              {!isShare && (
+                <Flex alignItems={'center'} mt={2} gap={4}>
+                  {isPc && (
+                    <MyTooltip label={t('core.dataset.data.id')}>
+                      <Flex border={theme.borders.base} px={3} borderRadius={'md'}>
+                        # {item.id}
+                      </Flex>
+                    </MyTooltip>
+                  )}
+                  <MyTooltip label={t('core.dataset.Quote Length')}>
+                    <Flex alignItems={'center'}>
+                      <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
+                      {item.q.length + item.a.length}
+                    </Flex>
+                  </MyTooltip>
+                  {!isShare && item.score && (
+                    <MyTooltip label={t('core.dataset.Similarity')}>
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'kbTest'} w={'12px'} />
+                        <Progress
+                          mx={2}
+                          w={['60px', '90px']}
+                          value={item.score * 100}
+                          size="sm"
+                          borderRadius={'20px'}
+                          colorScheme="gray"
+                          border={theme.borders.base}
+                        />
+                        <Box>{item.score.toFixed(4)}</Box>
+                      </Flex>
+                    </MyTooltip>
+                  )}
+                  <Box flex={1} />
+                  {item.id && (
+                    <MyTooltip label={t('core.dataset.data.Edit')}>
+                      <Box
+                        bg={'rgba(255,255,255,0.9)'}
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        boxShadow={'-10px 0 10px rgba(255,255,255,1)'}
+                      >
+                        <MyIcon
+                          name={'edit'}
+                          w={['16px', '18px']}
+                          h={['16px', '18px']}
+                          cursor={'pointer'}
+                          color={'myGray.600'}
+                          _hover={{
+                            color: 'myBlue.700'
+                          }}
+                          onClick={() => onclickEdit(item)}
+                        />
+                      </Box>
+                    </MyTooltip>
+                  )}
+                </Flex>
               )}
             </Box>
           ))}

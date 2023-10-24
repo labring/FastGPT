@@ -186,7 +186,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               ]}
               gridGap={4}
             >
-              {datasetTestItem?.results.map((item) => (
+              {datasetTestItem?.results.map((item, index) => (
                 <Box
                   key={item.id}
                   pb={2}
@@ -223,6 +223,15 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   }}
                 >
                   <Flex p={3} alignItems={'center'} color={'myGray.500'}>
+                    <Box
+                      border={theme.borders.base}
+                      px={2}
+                      fontSize={'sm'}
+                      mr={1}
+                      borderRadius={'md'}
+                    >
+                      # {index + 1}
+                    </Box>
                     <MyIcon name={'kbTest'} w={'14px'} />
                     <Progress
                       mx={2}
@@ -234,13 +243,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                     />
                     <Box>{item.score.toFixed(4)}</Box>
                   </Flex>
-                  <Box
-                    px={2}
-                    fontSize={'xs'}
-                    color={'myGray.600'}
-                    maxH={'200px'}
-                    overflow={'overlay'}
-                  >
+                  <Box px={2} fontSize={'xs'} color={'myGray.600'}>
                     <Box>{item.q}</Box>
                     <Box>{item.a}</Box>
                   </Box>
