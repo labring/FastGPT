@@ -90,12 +90,12 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
   由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
 
-* [快开始本地开发](https://doc.fastgpt.run/docs/development/intro/)
-* [部署 FastGPT](https://doc.fastgpt.run/docs/installation)
-* [系统配置文件说明](https://doc.fastgpt.run/docs/development/configuration/)
-* [多模型配置](https://doc.fastgpt.run/docs/installation/one-api/)
-* [版本更新/升级介绍](https://doc.fastgpt.run/docs/installation/upgrading)
-* [API 文档](https://doc.fastgpt.run/docs/development/openapi/)
+* [快开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
+* [部署 FastGPT](https://doc.fastgpt.in/docs/installation)
+* [系统配置文件说明](https://doc.fastgpt.in/docs/development/configuration/)
+* [多模型配置](https://doc.fastgpt.in/docs/installation/one-api/)
+* [版本更新/升级介绍](https://doc.fastgpt.in/docs/installation/upgrading)
+* [API 文档](https://doc.fastgpt.in/docs/development/openapi/)
 
 ## 🏘️ 社区交流群
 
