@@ -51,7 +51,7 @@ const AIChatSettingsModal = ({
 
   const tokenLimit = useMemo(() => {
     return chatModelList.find((item) => item.model === getValues('model'))?.maxToken || 4000;
-  }, [getValues, refresh]);
+  }, [getValues]);
 
   const LabelStyles: BoxProps = {
     fontSize: ['sm', 'md']
