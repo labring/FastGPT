@@ -51,7 +51,6 @@ import { getGuideModule } from '@/global/core/app/modules/utils';
 
 import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
-import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
