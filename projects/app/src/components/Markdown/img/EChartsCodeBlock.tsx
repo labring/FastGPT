@@ -30,8 +30,11 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
           }
         }
       };
+
       setOption(option);
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    }
 
     if (!option) return;
 

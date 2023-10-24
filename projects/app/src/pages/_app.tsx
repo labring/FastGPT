@@ -61,11 +61,11 @@ function App({ Component, pageProps }: AppProps) {
         url
       });
     };
-    // log fastgpt
+    // log AiRails
     console.log(
-      '%cWelcome to FastGPT',
+      '%cWelcome to AiRails',
       'font-family:Arial; color:#3370ff ; font-size:18px; font-weight:bold;',
-      `GitHub：https://github.com/labring/FastGPT`
+      `GitHub：https://github.com/smjkzsl/FastGPT`
     );
     return () => {
       window.onerror = null;
@@ -92,7 +92,7 @@ function App({ Component, pageProps }: AppProps) {
         <title>{feConfigs?.systemTitle || 'AI'}</title>
         <meta
           name="description"
-          content="FastGPT is a knowledge-based question answering system built on the LLM. It offers out-of-the-box data processing and model invocation capabilities. Moreover, it allows for workflow orchestration through Flow visualization, thereby enabling complex question and answer scenarios!"
+          content="AiRails is a knowledge-based question answering system built on the LLM. It offers out-of-the-box data processing and model invocation capabilities. Moreover, it allows for workflow orchestration through Flow visualization, thereby enabling complex question and answer scenarios!"
         />
         <meta
           name="viewport"

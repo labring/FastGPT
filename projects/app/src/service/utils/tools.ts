@@ -54,7 +54,7 @@ export function parseConnectionString(connectionString: string): ConnectionParam
 
 async function runPythonCode(pythonCode: string): Promise<string> {
   let command = process.env.PY_PATH || 'python'; // 'D:\\pyenv\\.pyenv\\pyenv-win\\versions\\3.10.11\\python.exe'
-
+  console.log('\n----python----\n' + pythonCode);
   return new Promise<string>((resolve, reject) => {
     const pythonProcess = spawn(command, ['-c', pythonCode]);
 
@@ -89,16 +89,15 @@ async function runPythonCode(pythonCode: string): Promise<string> {
 
 function extractPythonCodeFromMarkdown(markdown: string): string[] {
   const codeBlocks: string[] = [];
-  const codeRegex = /```python([\s\S]*?)```/g;
-  let match;
-
-  while ((match = codeRegex.exec(markdown)) !== null) {
+  const codeRegex = /```python([\s\S]*?)```\n\n/g;
+  let match = codeRegex.exec(markdown);
+  if (match) {
     const codeBlock = match[1].trim();
     codeBlocks.push(codeBlock);
   }
-
   return codeBlocks;
 }
+
 function getMarkdownFile(folderName: string, fileName: string = 'axio_ai.png'): string {
   const rootDir = process.cwd();
   const folderPath = path.join(rootDir, 'public', folderName);
@@ -143,8 +142,12 @@ export async function checkRunPythonCode(answer: string): Promise<string> {
     console.log('检测到python代码，现在开始运行代码');
     let ret = (await runPythonCode(code.join('\n'))).trim();
     const filename = getFileName(ret);
-    console.log(`代码已运行完毕，得到:${filename}`);
-    answerText = getMarkdownFile('ai_temp', filename) + '\n' + ret;
+    console.log(`代码已运行完毕，得到:\n${ret}`);
+    if (filename) {
+      answerText = getMarkdownFile('ai_temp', filename) + '\n' + ret;
+    } else {
+      answerText = '\n\n' + ret;
+    }
   }
   return answerText;
 }

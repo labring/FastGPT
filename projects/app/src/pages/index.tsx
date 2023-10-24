@@ -27,7 +27,7 @@ const Home = ({ homeUrl = '/' }: { homeUrl: string }) => {
   return (
     <>
       <Head>
-        <title>{feConfigs?.systemTitle || 'FastGPT'}</title>
+        <title>{feConfigs?.systemTitle || 'AiRails'}</title>
       </Head>
       <Box id="home" bg={'myWhite.600'} h={'100vh'} overflowY={'auto'} overflowX={'hidden'}>
         <Box position={'fixed'} zIndex={10} top={0} left={0} right={0}>

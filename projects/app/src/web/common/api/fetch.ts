@@ -48,12 +48,23 @@ export const streamFetch = ({
       let responseData: ChatHistoryItemResType[] = [];
 
       const parseData = new SSEParseData();
-
+      let codeBlock = '';
+      let startCode = false;
       const read = async () => {
         try {
           const { done, value } = await reader.read();
           if (done) {
             if (response.status === 200 && !errMsg) {
+              // if (codeBlock != "") {
+              //   codeBlock = `<details>
+              //   <summary>代码</summary>
+              //   ${codeBlock}
+              //   </details>`
+
+              //   // onMessage({ text: codeBlock })
+              //   codeBlock = ""
+              //   startCode = false
+              // }
               return resolve({
                 responseText,
                 responseData
