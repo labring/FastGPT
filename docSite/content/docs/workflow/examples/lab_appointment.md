@@ -527,7 +527,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
   {
     "moduleId": "zltb5l",
     "name": "知识库搜索",
-    "flowType": "kbSearchNode",
+    "flowType": "datasetSearchNode",
     "showStatus": true,
     "position": {
       "x": 1634.995464753433,
