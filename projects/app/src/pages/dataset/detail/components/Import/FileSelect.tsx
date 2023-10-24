@@ -13,7 +13,7 @@ import {
   readDocContent
 } from '@/web/common/file/utils';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
-import { DragEvent, useCallback, useState } from 'react';
+import React, { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
@@ -33,7 +33,6 @@ const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-const csvTemplate = `index,content\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
 export type FileItemType = {
   id: string; // fileId / raw Link
@@ -46,12 +45,16 @@ export type FileItemType = {
   metadata: DatasetCollectionSchemaType['metadata'];
 };
 
-interface Props extends BoxProps {
+export interface Props extends BoxProps {
   fileExtension: string;
   onPushFiles: (files: FileItemType[]) => void;
   tipText?: string;
   chunkLen?: number;
-  isCsv?: boolean;
+  fileTemplate?: {
+    type: string;
+    filename: string;
+    value: string;
+  };
   showUrlFetch?: boolean;
   showCreateFile?: boolean;
 }
@@ -61,7 +64,7 @@ const FileSelect = ({
   onPushFiles,
   tipText,
   chunkLen = 500,
-  isCsv = false,
+  fileTemplate,
   showUrlFetch = true,
   showCreateFile = true,
   ...props
@@ -396,7 +399,7 @@ const FileSelect = ({
           {t(tipText)}
         </Box>
       )}
-      {isCsv && (
+      {!!fileTemplate && (
         <Box
           mt={1}
           cursor={'pointer'}
@@ -405,13 +408,13 @@ const FileSelect = ({
           fontSize={'12px'}
           onClick={() =>
             fileDownload({
-              text: csvTemplate,
-              type: 'text/csv',
-              filename: 'template.csv'
+              text: fileTemplate.value,
+              type: fileTemplate.type,
+              filename: fileTemplate.filename
             })
           }
         >
-          {t('file.Click to download CSV template')}
+          {t('file.Click to download file template', { name: fileTemplate.filename })}
         </Box>
       )}
       {selectingText !== undefined && (

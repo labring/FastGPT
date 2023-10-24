@@ -8,7 +8,7 @@ import React, {
   useMemo,
   useEffect
 } from 'react';
-import FileSelect, { FileItemType } from './FileSelect';
+import FileSelect, { FileItemType, Props as FileSelectProps } from './FileSelect';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';
@@ -394,11 +394,13 @@ export const SelectorContainer = ({
   fileExtension,
   showUrlFetch,
   showCreateFile,
+  fileTemplate,
   children
 }: {
   fileExtension: string;
   showUrlFetch?: boolean;
   showCreateFile?: boolean;
+  fileTemplate?: FileSelectProps['fileTemplate'];
   children: React.ReactNode;
 }) => {
   const { files, setPreviewFile, isUnselectedFile, setFiles, chunkLen } = useImportStore();
@@ -422,6 +424,7 @@ export const SelectorContainer = ({
         chunkLen={chunkLen}
         showUrlFetch={showUrlFetch}
         showCreateFile={showCreateFile}
+        fileTemplate={fileTemplate}
         py={isUnselectedFile ? '100px' : 5}
       />
       {!isUnselectedFile && (

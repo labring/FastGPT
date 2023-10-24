@@ -14,9 +14,12 @@
   "UnKnow": "UnKnow",
   "Warning": "Warning",
   "app": {
+    "AI Advanced Settings": "Advanced Settings",
     "AI Settings": "AI Settings",
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
+    "Basic Settings": "Basic Settings",
+    "Chat Debug": "Chat Debug",
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
     "Chat logs": "Chat Logs",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
@@ -38,6 +41,7 @@
     "Logs Title": "Title",
     "Mark Count": "Mark Count",
     "My Apps": "My Apps",
+    "Open AI Advanced Settings": "Advanced Settings",
     "Output Field Settings": "Output Field Settings",
     "Paste Config": "Paste Config",
     "Variable Key Repeat Tip": "Variable Key Repeat",
@@ -106,6 +110,7 @@
   },
   "common": {
     "Add": "Add",
+    "Choose": "Choose",
     "Close": "Clow",
     "Collect": "Collect",
     "Confirm Move": "Move here",
@@ -131,6 +136,7 @@
     "Name is empty": "Name is empty",
     "Next Step": "Next",
     "Output": "Output",
+    "Params": "Params",
     "Password inconsistency": "Password inconsistency",
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
@@ -151,8 +157,28 @@
     "folder": {
       "Drag Tip": "Click and move",
       "Move Success": "Move Success",
-      "No Folder": "No Folder",
+      "No Folder": "There's no subdirectory. Just put it here",
       "Root Path": "Root Folder"
+    }
+  },
+  "core": {
+    "ai": {
+      "Model": "Model",
+      "Prompt": "Prompt"
+    },
+    "app": {
+      "Next Step Guide": "Next step guide"
+    },
+    "chat": {
+      "Restart": "Restart"
+    },
+    "dataset": {
+      "Choose Dataset": "Chookse Dataset",
+      "Dataset": "Dataset",
+      "Read Dataset": "Read Dataset",
+      "Search Top K": "Top K",
+      "Set Empty Result Tip": ",Response empty text",
+      "Similarity": "Similarity"
     }
   },
   "dataset": {
@@ -189,6 +215,7 @@
       "Click to view folder": "To Folder",
       "Collection Embedding": "{{total}}Embedding",
       "Confirm to delete the folder": "Are you sure to delete this folder and all its contents?",
+      "Create And Import": "Create/Import",
       "Create Training Data": "Training-{{filename}}",
       "Create Virtual File Success": "Create Virtual File Success",
       "Data Amount": "Data Amount",
@@ -208,7 +235,7 @@
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
   },
   "file": {
-    "Click to download CSV template": "Click to download CSV template",
+    "Click to download file template": "Download Template: {{name}}",
     "Click to view file": "Click to view file",
     "Create File": "Create File",
     "Create file": "Create file",

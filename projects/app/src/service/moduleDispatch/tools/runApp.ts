@@ -13,7 +13,6 @@ type Props = ModuleDispatchProps<{
   app: SelectAppItemType;
 }>;
 type Response = {
-  finish: boolean;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
   [TaskResponseKeyEnum.answerText]: string;
   [TaskResponseKeyEnum.history]: ChatItemType[];
@@ -77,7 +76,6 @@ export const dispatchAppRequest = async (props: Record<string, any>): Promise<Re
   ]);
 
   return {
-    finish: true,
     responseData,
     [TaskResponseKeyEnum.answerText]: answerText,
     [TaskResponseKeyEnum.history]: completeMessages

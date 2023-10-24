@@ -82,7 +82,8 @@ const Settings = ({ appId }: { appId: string }) => {
   const [refresh, setRefresh] = useState(false);
 
   const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
-    content: t('app.Confirm Save App Tip')
+    content: t('app.Confirm Save App Tip'),
+    bg: appDetail.type === AppTypeEnum.basic ? '' : 'red.600'
   });
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('app.Confirm Del App Tip')
@@ -211,7 +212,7 @@ const Settings = ({ appId }: { appId: string }) => {
     >
       <Flex alignItems={'flex-end'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-          基础信息
+          {t('app.Basic Settings')}
         </Box>
         <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
           (
@@ -310,6 +311,7 @@ const Settings = ({ appId }: { appId: string }) => {
           isLoading={isSaving}
           fontSize={'sm'}
           size={['sm', 'md']}
+          variant={appDetail.type === AppTypeEnum.basic ? 'primary' : 'base'}
           onClick={() => {
             if (appDetail.type !== AppTypeEnum.basic) {
               openConfirmSave(handleSubmit((data) => onSubmitSave(data)))();
@@ -398,21 +400,21 @@ const Settings = ({ appId }: { appId: string }) => {
         )}
       </Box>
 
-      {/* model */}
+      {/* ai */}
       <Box mt={5} {...BoxStyles}>
         <Flex alignItems={'center'}>
           <Avatar src={'/imgs/module/AI.png'} w={'18px'} />
           <Box ml={2} flex={1}>
-            AI 配置
+            {t('app.AI Settings')}
           </Box>
           <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
             <MyIcon mr={1} name={'settingLight'} w={'14px'} />
-            高级配置
+            {t('app.Open AI Advanced Settings')}
           </Flex>
         </Flex>
 
         <Flex alignItems={'center'} mt={5}>
-          <Box {...LabelStyles}>对话模型</Box>
+          <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
           <Box flex={'1 0 0'}>
             <MySelect
               width={'100%'}
@@ -432,7 +434,7 @@ const Settings = ({ appId }: { appId: string }) => {
         </Flex>
         <Flex mt={10} alignItems={'flex-start'}>
           <Box {...LabelStyles}>
-            提示词
+            {t('core.ai.Prompt')}
             <MyTooltip label={ChatModelSystemTip} forceShow>
               <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
             </MyTooltip>
@@ -451,24 +453,29 @@ const Settings = ({ appId }: { appId: string }) => {
         <Flex alignItems={'center'}>
           <Flex alignItems={'center'} flex={1}>
             <Avatar src={'/imgs/module/db.png'} w={'18px'} />
-            <Box ml={2}>知识库</Box>
+            <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
           </Flex>
           <Flex alignItems={'center'} mr={3} {...BoxBtnStyles} onClick={onOpenKbSelect}>
             <SmallAddIcon />
-            选择
+            {t('common.Choose')}
           </Flex>
           <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbParams}>
             <MyIcon name={'edit'} w={'14px'} mr={1} />
-            参数
+            {t('common.Params')}
           </Flex>
         </Flex>
         <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-          相似度: {getValues('kb.searchSimilarity')}, 单次搜索数量: {getValues('kb.searchLimit')},
-          空搜索时拒绝回复: {getValues('kb.searchEmptyText') !== '' ? 'true' : 'false'}
+          {t('core.dataset.Similarity')}: {getValues('kb.searchSimilarity')},{' '}
+          {t('core.dataset.Search Top K')}: {getValues('kb.searchLimit')}
+          {getValues('kb.searchEmptyText') === '' ? '' : t('core.dataset.Set Empty Result Tip')}
         </Flex>
-        <Grid templateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} my={2} gridGap={[2, 4]}>
+        <Grid
+          gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
+          my={2}
+          gridGap={[2, 4]}
+        >
           {selectDatasets.map((item) => (
-            <MyTooltip key={item._id} label={'查看知识库详情'}>
+            <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')} overflow={'hidden'}>
               <Flex
                 alignItems={'center'}
                 p={2}
@@ -499,7 +506,7 @@ const Settings = ({ appId }: { appId: string }) => {
       <Box mt={5} {...BoxStyles}>
         <Flex alignItems={'center'}>
           <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
-          <Box>下一步指引</Box>
+          <Box>{t('core.app.Next Step Guide')}</Box>
           <MyTooltip label={questionGuideTip} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
@@ -635,9 +642,9 @@ const ChatTest = ({ appId }: { appId: string }) => {
     <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4} overflowX={'auto'}>
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'} flex={1}>
-          调试预览
+          {t('app.Chat Debug')}
         </Box>
-        <MyTooltip label={'重置'}>
+        <MyTooltip label={t('core.chat.Restart')}>
           <IconButton
             className="chat"
             size={'sm'}

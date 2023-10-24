@@ -225,9 +225,9 @@ data: [{"moduleName":"KB Search","price":1.2000000000000002,"model":"Embedding-2
 此部分 API 需使用全局通用的 API Key。
 {{% /alert %}}
 
-| 如何获取知识库ID（kbId） | 如何获取文件ID（file_id） |
+| 如何获取知识库ID（datasetId） | 如何获取文件ID（file_id） |
 | --------------------- | --------------------- |
-| ![](/imgs/getKbId.png) | ![](/imgs/getfile_id.png) |
+| ![](/imgs/getDatasetId.png) | ![](/imgs/getfile_id.png) |
 
 
 ### 知识库添加数据
@@ -241,7 +241,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushDa
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "kbId": "64663f451ba1676dbdef0499",
+    "collectionId": "64663f451ba1676dbdef0499",
     "mode": "index",
     "prompt": "qa 拆分引导词，index 模式下可以忽略",
     "billId": "可选。如果有这个值，本次的数据会被聚合到一个订单中，这个值可以重复使用。可以参考 [创建训练订单] 获取该值。",
@@ -268,7 +268,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushDa
 
 ```json
 {
-    "kbId": "知识库的ID，可以在知识库详情查看。",
+    "collectionId": "文件的ID，参考上面的第二张图",
     "mode": "index | qa ", //  index 模式: 直接将 q 转成向量存起来，a 直接入库。qa 模式: 只关注 data 里的 q，将 q 丢给大模型，让其根据 prompt 拆分成 qa 问答对。  
     "prompt": "拆分提示词，需严格按照模板，建议不要传入。",
     "data": [
@@ -351,7 +351,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
 --header 'Authorization: Bearer apiKey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "kbId": "xxxxx",
+    "datasetId": "知识库的ID",
     "text": "导演是谁"
 }'
 ```

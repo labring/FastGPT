@@ -99,6 +99,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             flex={1}
             autoFocus
             bg={'myWhite.600'}
+            maxLength={30}
             {...register('name', {
               required: '知识库名称不能为空~'
             })}

@@ -29,7 +29,7 @@ import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import { SystemInputEnum } from '@/constants/app';
+import { SystemInputEnum, SystemOutputEnum } from '@/constants/app';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { authOutLinkChat } from '@fastgpt/service/support/outLink/auth';
 import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -431,7 +431,7 @@ export async function dispatchModules({
       inputs: params
     };
 
-    const dispatchRes = await (async () => {
+    const dispatchRes: Record<string, any> = await (async () => {
       const callbackMap: Record<string, Function> = {
         [FlowModuleTypeEnum.historyNode]: dispatchHistory,
         [FlowModuleTypeEnum.questionInput]: dispatchChatInput,
@@ -449,7 +449,10 @@ export async function dispatchModules({
       return {};
     })();
 
-    return moduleOutput(module, dispatchRes);
+    return moduleOutput(module, {
+      [SystemOutputEnum.finish]: true,
+      ...dispatchRes
+    });
   }
 
   // start process width initInput
