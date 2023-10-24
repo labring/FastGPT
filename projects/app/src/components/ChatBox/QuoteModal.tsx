@@ -94,6 +94,7 @@ const QuoteModal = ({
               _notLast={{ mb: 2 }}
               position={'relative'}
               overflow={'hidden'}
+              _hover={{ '& .hover-data': { display: 'flex' } }}
             >
               {!isShare && (
                 <Flex alignItems={'flex-end'} mb={3} color={'myGray.500'}>
@@ -101,7 +102,8 @@ const QuoteModal = ({
                   <Box flex={1} />
                   <Link
                     as={NextLink}
-                    display={'flex'}
+                    className="hover-data"
+                    display={'none'}
                     alignItems={'center'}
                     color={'myBlue.600'}
                     href={`/dataset/detail?datasetId=${item.datasetId}&currentTab=dataCard&collectionId=${item.collectionId}`}
@@ -115,7 +117,7 @@ const QuoteModal = ({
               <Box color={'black'}>{item.q}</Box>
               <Box color={'black'}>{item.a}</Box>
               {!isShare && (
-                <Flex alignItems={'center'} mt={4} gap={4} color={'myGray.500'}>
+                <Flex alignItems={'center'} mt={3} gap={4} color={'myGray.500'}>
                   {isPc && (
                     <MyTooltip label={t('core.dataset.data.id')}>
                       <Flex border={theme.borders.base} px={3} borderRadius={'md'}>
