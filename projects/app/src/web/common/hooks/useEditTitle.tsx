@@ -1,12 +1,14 @@
 import React, { useCallback, useRef } from 'react';
-import { ModalFooter, ModalBody, Input, useDisclosure, Button } from '@chakra-ui/react';
+import { ModalFooter, ModalBody, Input, useDisclosure, Button, Box } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 
 export const useEditTitle = ({
   title,
+  tip,
   placeholder = ''
 }: {
   title: string;
+  tip?: string;
   placeholder?: string;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -48,15 +50,21 @@ export const useEditTitle = ({
 
   // eslint-disable-next-line react/display-name
   const EditModal = useCallback(
-    () => (
+    ({ maxLength = 30 }: { maxLength?: number }) => (
       <MyModal isOpen={isOpen} onClose={onClose} title={title}>
         <ModalBody>
+          {!!tip && (
+            <Box mb={2} color={'myGray.500'} fontSize={'sm'}>
+              {tip}
+            </Box>
+          )}
+
           <Input
             ref={inputRef}
             defaultValue={defaultValue.current}
             placeholder={placeholder}
             autoFocus
-            maxLength={20}
+            maxLength={maxLength}
           />
         </ModalBody>
         <ModalFooter>
@@ -67,7 +75,7 @@ export const useEditTitle = ({
         </ModalFooter>
       </MyModal>
     ),
-    [isOpen, onClose, onclickConfirm, placeholder, title]
+    [isOpen, onClose, onclickConfirm, placeholder, tip, title]
   );
 
   return {

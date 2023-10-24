@@ -1,12 +1,11 @@
 import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
-import { responseWrite } from '@fastgpt/common/tools/stream';
+import { responseWrite } from '@fastgpt/service/common/response';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type AnswerProps = ModuleDispatchProps<{
   text: string;
 }>;
 export type AnswerResponse = {
-  finish: boolean;
   [TaskResponseKeyEnum.answerText]: string;
 };
 
@@ -31,7 +30,6 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   }
 
   return {
-    finish: true,
     [TaskResponseKeyEnum.answerText]: formatText
   };
 };

@@ -1,14 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { ModalFooter, ModalBody, Button, Input, Box, Grid } from '@chakra-ui/react';
-import { getPayCode, checkPayResult } from '@/web/common/api/bill';
+import { getPayCode, checkPayResult } from '@/web/common/bill/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'react-i18next';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
-import { priceMd } from '@/web/common/store/static';
+import { priceMd } from '@/web/common/system/staticData';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
@@ -69,12 +69,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       title={t('user.Pay')}
       isCentered={!payId}
     >
-      <ModalBody
-        p={0}
-        h={payId ? 'auto' : ['auto', '70vh']}
-        display={'flex'}
-        flexDirection={'column'}
-      >
+      <ModalBody p={0} minH={payId ? 'auto' : '70vh'} display={'flex'} flexDirection={'column'}>
         {!payId && (
           <>
             <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4} px={6}>

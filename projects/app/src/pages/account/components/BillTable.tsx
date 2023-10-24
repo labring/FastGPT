@@ -12,7 +12,7 @@ import {
   Button
 } from '@chakra-ui/react';
 import { BillSourceMap } from '@/constants/user';
-import { getUserBills } from '@/web/common/api/bill';
+import { getUserBills } from '@/web/common/bill/api';
 import type { UserBillType } from '@/types/user';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
@@ -21,7 +21,7 @@ import MyIcon from '@/components/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 const BillDetail = dynamic(() => import('./BillDetail'));
 
@@ -32,7 +32,7 @@ const BillTable = () => {
     from: addDays(new Date(), -7),
     to: new Date()
   });
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
 
   const {
     data: bills,

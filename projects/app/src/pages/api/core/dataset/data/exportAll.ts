@@ -1,30 +1,30 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoUser } from '@fastgpt/support/user/schema';
-import { authUser } from '@fastgpt/support/user/auth';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
 import { PgClient } from '@/service/pg';
 import { addLog } from '@/service/utils/tools';
-import { responseWriteController } from '@fastgpt/common/tools/stream';
+import { responseWriteController } from '@fastgpt/service/common/response';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    let { kbId } = req.query as {
-      kbId: string;
+    let { datasetId } = req.query as {
+      datasetId: string;
     };
 
-    if (!kbId || !global.pgClient) {
+    if (!datasetId || !global.pgClient) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
     const { userId } = await authUser({ req, authToken: true });
 
-    const exportIds = [kbId, ...(await findAllChildrenIds(kbId))];
+    const exportIds = [datasetId, ...(await findAllChildrenIds(datasetId))];
 
     const limitMinutesAgo = new Date(
       Date.now() - (global.feConfigs?.limit?.exportLimitMinutes || 0) * 60 * 1000
@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const { rows } = await PgClient.query(
-      `SELECT count(id) FROM ${PgDatasetTableName} where user_id='${userId}' AND kb_id IN (${exportIds
+      `SELECT count(id) FROM ${PgDatasetTableName} where user_id='${userId}' AND dataset_id IN (${exportIds
         .map((id) => `'${id}'`)
         .join(',')})`
     );
@@ -67,10 +67,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         res.end('Error connecting to database');
         return;
       }
+      if (!client) return;
 
       // create pg select stream
       const query = new QueryStream(
-        `SELECT q, a, source FROM ${PgDatasetTableName} where user_id='${userId}' AND kb_id IN (${exportIds
+        `SELECT q, a FROM ${PgDatasetTableName} where user_id='${userId}' AND dataset_id IN (${exportIds
           .map((id) => `'${id}'`)
           .join(',')})`
       );
@@ -84,18 +85,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         readStream: stream
       });
 
-      write('index,content,source');
+      write('index,content');
 
       // parse data every row
-      stream.on('data', ({ q, a, source }: { q: string; a: string; source?: string }) => {
+      stream.on('data', ({ q, a }: { q: string; a: string }) => {
         if (res.closed) {
           return stream.destroy();
         }
         q = q.replace(/"/g, '""');
         a = a.replace(/"/g, '""');
-        source = source?.replace(/"/g, '""');
+        // source = source?.replace(/"/g, '""');
 
-        write(`\n"${q}","${a || ''}","${source || ''}"`);
+        write(`\n"${q}","${a || ''}"`);
       });
       // finish
       stream.on('end', async () => {

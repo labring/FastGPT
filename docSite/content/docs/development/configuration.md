@@ -54,7 +54,7 @@ weight: 520
       "defaultSystemChatPrompt": ""
     }
   ],
-  "QAModel": [ // QA 拆分模型
+  "QAModels": [ // QA 拆分模型
     { 
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",

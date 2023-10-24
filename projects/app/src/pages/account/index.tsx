@@ -1,17 +1,17 @@
 import React, { useCallback, useRef } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import { clearToken } from '@/utils/user';
-import { useUserStore } from '@/web/support/store/user';
+import { clearToken } from '@/web/support/user/auth';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import { useTranslation } from 'react-i18next';
 import Script from 'next/script';
 
@@ -86,7 +86,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const router = useRouter();
   const theme = useTheme();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const { setUserInfo } = useUserStore();
 
   const setCurrentTab = useCallback(

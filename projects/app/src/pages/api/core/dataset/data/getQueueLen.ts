@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { TrainingData, connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/support/user/auth';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { authUser } from '@fastgpt/service/support/user/auth';
 
 /* 拆分数据成QA */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authUser({ req, authToken: true });
 
     // split queue data
-    const result = await TrainingData.countDocuments({
+    const result = await MongoDatasetTraining.countDocuments({
       lockTime: { $lt: new Date('2040/1/1') }
     });
 

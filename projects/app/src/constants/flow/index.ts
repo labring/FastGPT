@@ -34,7 +34,7 @@ export enum FlowModuleTypeEnum {
   questionInput = 'questionInput',
   historyNode = 'historyNode',
   chatNode = 'chatNode',
-  kbSearchNode = 'kbSearchNode',
+  datasetSearchNode = 'datasetSearchNode',
   tfSwitchNode = 'tfSwitchNode',
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion',

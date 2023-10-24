@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 function Error() {
   const router = useRouter();
-  const { lastRoute } = useGlobalStore();
+  const { lastRoute } = useSystemStore();
 
   useEffect(() => {
     setTimeout(() => {

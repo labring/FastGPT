@@ -1,5 +1,5 @@
 import { BillSourceEnum } from '@/constants/user';
-import type { UserModelSchema } from '@fastgpt/support/user/type.d';
+import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import type { BillSchema } from '@/types/common/bill';
 
 export interface UserType {

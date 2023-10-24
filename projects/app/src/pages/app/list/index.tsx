@@ -10,10 +10,10 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
-import { delModelById } from '@/web/core/api/app';
+import { delModelById } from '@/web/core/app/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -24,8 +24,6 @@ import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import CreateModal from './component/CreateModal';
-
-import styles from './index.module.scss';
 
 const MyApps = () => {
   const { toast } = useToast();
@@ -130,7 +128,7 @@ const MyApps = () => {
               />
             </Flex>
             <Box
-              className={styles.intro}
+              className={'textEllipsis3'}
               py={2}
               wordBreak={'break-all'}
               fontSize={'sm'}

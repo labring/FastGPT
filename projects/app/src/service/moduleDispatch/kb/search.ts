@@ -4,13 +4,18 @@ import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice } from '@/service/common/bill/push';
 import type { SelectedDatasetType } from '@/types/core/dataset';
-import type { QuoteItemType } from '@/types/chat';
+import type {
+  SearchDataResponseItemType,
+  SearchDataResultItemType
+} from '@fastgpt/global/core/dataset/type';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-type KBSearchProps = ModuleDispatchProps<{
-  kbList: SelectedDatasetType;
+import { getDatasetDataItemInfo } from '@/pages/api/core/dataset/data/getDataById';
+
+type DatasetSearchProps = ModuleDispatchProps<{
+  datasets: SelectedDatasetType;
   similarity: number;
   limit: number;
   userChatInput: string;
@@ -19,17 +24,17 @@ export type KBSearchResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   isEmpty?: boolean;
   unEmpty?: boolean;
-  quoteQA: QuoteItemType[];
+  quoteQA: SearchDataResponseItemType[];
 };
 
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
   const {
     moduleName,
     user,
-    inputs: { kbList = [], similarity = 0.4, limit = 5, userChatInput }
-  } = props as KBSearchProps;
+    inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
+  } = props as DatasetSearchProps;
 
-  if (kbList.length === 0) {
+  if (datasets.length === 0) {
     return Promise.reject("You didn't choose the knowledge base");
   }
 
@@ -38,34 +43,41 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   }
 
   // get vector
-  const vectorModel = kbList[0]?.vectorModel || global.vectorModels[0];
+  const vectorModel = datasets[0]?.vectorModel || global.vectorModels[0];
   const { vectors, tokenLen } = await getVector({
     model: vectorModel.model,
     input: [userChatInput]
   });
 
   // search kb
-  const res: any = await PgClient.query(
+  const results: any = await PgClient.query(
     `BEGIN;
-    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 40};
-    select id, kb_id, q, a, source, file_id, (vector <#> '[${
+    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 60};
+    select id, q, a, dataset_id, collection_id, (vector <#> '[${
       vectors[0]
-    }]') * -1 AS score from ${PgDatasetTableName} where user_id='${user._id}' AND kb_id IN (${kbList
-      .map((item) => `'${item.kbId}'`)
+    }]') * -1 AS score from ${PgDatasetTableName} where user_id='${
+      user._id
+    }' AND dataset_id IN (${datasets
+      .map((item) => `'${item.datasetId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]
     }]' limit ${limit};
     COMMIT;`
   );
 
-  const searchRes: QuoteItemType[] = res?.[2]?.rows || [];
+  const rows = results?.[2]?.rows as SearchDataResultItemType[];
+  const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
+  const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
+    ...item,
+    score: rows[index].score
+  }));
 
   return {
     isEmpty: searchRes.length === 0 ? true : undefined,
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      moduleType: FlowModuleTypeEnum.kbSearchNode,
+      moduleType: FlowModuleTypeEnum.datasetSearchNode,
       moduleName,
       price: countModelPrice({
         model: vectorModel.model,

@@ -1,6 +1,5 @@
-export type AdminUpdateFeedbackParams = {
+import { MarkDataType } from '../dataset/type';
+
+export type AdminUpdateFeedbackParams = MarkDataType & {
   chatItemId: string;
-  kbId: string;
-  dataId: string;
-  content: string;
 };

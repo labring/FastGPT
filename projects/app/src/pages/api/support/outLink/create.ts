@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoOutLink } from '@fastgpt/support/outLink/schema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@/service/utils/auth';
-import { authUser } from '@fastgpt/support/user/auth';
-import type { OutLinkEditType } from '@fastgpt/support/outLink/type.d';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { customAlphabet } from 'nanoid';
-import { OutLinkTypeEnum } from '@fastgpt/support/outLink/constant';
+import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 /* create a shareChat */

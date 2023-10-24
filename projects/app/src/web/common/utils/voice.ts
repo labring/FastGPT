@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/web/common/hooks/useToast';
-import { getErrText } from '@/utils/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const useAudioPlay = (props?: { ttsUrl?: string }) => {
   const { ttsUrl } = props || {};

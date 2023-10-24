@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Flex, Box } from '@chakra-ui/react';
-import { useChatStore } from '@/web/core/store/chat';
+import { useChatStore } from '@/web/core/chat/storeChat';
 import { useTranslation } from 'react-i18next';
 import Badge from '../Badge';
 import MyIcon from '../Icon';
@@ -21,7 +21,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       },
       {
         label: t('navbar.Apps'),
-        icon: 'tabbarModel',
+        icon: 'core/app/aiLight',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail'],
         unread: 0

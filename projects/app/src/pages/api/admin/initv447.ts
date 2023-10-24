@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { connectToDatabase } from '@/service/mongo';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { DatasetSpecialIdEnum } from '@fastgpt/core/dataset/constant';
-import { Types, connectionMongo } from '@fastgpt/common/mongo';
+import { DatasetSpecialIdEnum } from '@fastgpt/global/core/dataset/constant';
+import { Types, connectionMongo } from '@fastgpt/service/common/mongo';
 import { delay } from '@/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

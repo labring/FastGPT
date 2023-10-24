@@ -19,7 +19,8 @@ import React, {
   useContext,
   useCallback,
   createContext,
-  useRef
+  useRef,
+  useEffect
 } from 'react';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
@@ -27,6 +28,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { FlowModuleTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
 import { useTranslation } from 'next-i18next';
 import { AppModuleItemType } from '@/types/app';
+import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
@@ -300,6 +302,17 @@ export const FlowProvider = ({ appId, children }: { appId: string; children: Rea
     [onDelConnect, setEdges, setNodes, onFixView]
   );
 
+  // use eventbus to avoid refresh ReactComponents
+  useEffect(() => {
+    const update = (e: FlowModuleItemChangeProps) => {
+      onChangeNode(e);
+    };
+    eventBus.on(EventNameEnum.updaterNode, update);
+    return () => {
+      eventBus.off(EventNameEnum.updaterNode);
+    };
+  }, [onChangeNode]);
+
   const value = {
     appId,
     reactFlowWrapper,
@@ -323,3 +336,7 @@ export const FlowProvider = ({ appId, children }: { appId: string; children: Rea
 };
 
 export default React.memo(FlowProvider);
+
+export const onChangeNode = (e: FlowModuleItemChangeProps) => {
+  eventBus.emit(EventNameEnum.updaterNode, e);
+};

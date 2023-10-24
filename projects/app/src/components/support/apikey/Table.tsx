@@ -25,14 +25,14 @@ import {
   createAOpenApiKey,
   delOpenApiById,
   putOpenApiKey
-} from '@/web/support/api/openapi';
+} from '@/web/support/openapi/api';
 import type { EditApiKeyProps } from '@/global/support/api/openapiReq';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
 import { AddIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { feConfigs } from '@/web/common/store/static';
+import { feConfigs } from '@/web/common/system/staticData';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';
@@ -83,7 +83,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
               API 秘钥管理
             </Box>
             <Link
-              href={feConfigs.openAPIUrl || 'https://doc.fastgpt.run/docs/development/openapi'}
+              href={feConfigs.openAPIDocUrl || 'https://doc.fastgpt.run/docs/development/openapi'}
               target={'_blank'}
               ml={1}
               color={'myBlue.600'}

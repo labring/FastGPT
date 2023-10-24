@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '@fastgpt/common/mongo';
+import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { informSchema } from '@/types/mongoSchema';
 import { InformTypeMap } from '@/constants/user';

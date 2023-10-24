@@ -1,8 +1,9 @@
-import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { RequestPaging } from '@/types';
-import { TrainingModeEnum } from '@/constants/plugin';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { SearchTestItemType } from '@/types/core/dataset';
-import { DatasetDataItemType } from '@/types/core/dataset/data';
+import { DatasetChunkItemType, UploadChunkItemType } from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 
 /* ===== dataset ===== */
 export type DatasetUpdateParams = {
@@ -22,38 +23,50 @@ export type CreateDatasetParams = {
 };
 
 export type SearchTestProps = {
-  kbId: string;
+  datasetId: string;
   text: string;
 };
 
-/* ======= file =========== */
-export type GetFileListProps = RequestPaging & {
-  kbId: string;
-  searchText: string;
+/* ======= collections =========== */
+export type GetDatasetCollectionsProps = RequestPaging & {
+  datasetId: string;
+  parentId?: string;
+  searchText?: string;
+  simple?: boolean;
+  selectFolder?: boolean;
+};
+export type CreateDatasetCollectionParams = {
+  datasetId: string;
+  parentId?: string;
+  name: string;
+  type: `${DatasetCollectionTypeEnum}`;
+  metadata?: DatasetCollectionSchemaType['metadata'];
+  updateTime?: string;
+};
+export type UpdateDatasetCollectionParams = {
+  id: string;
+  parentId?: string;
+  name?: string;
+  metadata?: DatasetCollectionSchemaType['metadata'];
 };
 
-export type UpdateFileProps = { id: string; name?: string; datasetUsed?: boolean };
-
-export type MarkFileUsedProps = { fileIds: string[] };
-
 /* ==== data ===== */
+export type SetOneDatasetDataProps = {
+  id?: string;
+  datasetId: string;
+  collectionId: string;
+  q?: string; // embedding content
+  a?: string; // bonus content
+};
 export type PushDataProps = {
-  kbId: string;
-  data: DatasetDataItemType[];
+  collectionId: string;
+  data: DatasetChunkItemType[];
   mode: `${TrainingModeEnum}`;
   prompt?: string;
   billId?: string;
 };
 
-export type UpdateDatasetDataPrams = {
-  dataId: string;
-  kbId: string;
-  a?: string;
-  q?: string;
-};
-
 export type GetDatasetDataListProps = RequestPaging & {
-  kbId: string;
-  searchText: string;
-  fileId: string;
+  searchText?: string;
+  collectionId: string;
 };

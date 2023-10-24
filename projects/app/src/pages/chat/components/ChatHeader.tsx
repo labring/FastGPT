@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Flex, useTheme, Box } from '@chakra-ui/react';
-import { useGlobalStore } from '@/web/common/store/global';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
 import Tag from '@/components/Tag';
 import Avatar from '@/components/Avatar';
@@ -25,7 +25,7 @@ const ChatHeader = ({
 }) => {
   const router = useRouter();
   const theme = useTheme();
-  const { isPc } = useGlobalStore();
+  const { isPc } = useSystemStore();
   const title = useMemo(
     () => history[history.length - 2]?.value?.slice(0, 8) || appName || '新对话',
     [appName, history]

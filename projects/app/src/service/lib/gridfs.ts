@@ -1,7 +1,7 @@
-import { Types, connectionMongo } from '@fastgpt/common/mongo';
+import { Types, connectionMongo } from '@fastgpt/service/common/mongo';
 import fs from 'fs';
 import fsp from 'fs/promises';
-import { ERROR_ENUM } from '@fastgpt/common/constant/errorCode';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { GSFileInfoType } from '@/types/common/file';
 
 enum BucketNameEnum {
@@ -97,14 +97,13 @@ export class GridFSStorage {
     return true;
   }
 
-  async deleteFilesByKbId(kbId: string) {
-    if (!kbId) return;
-    const bucket = this.GridFSBucket();
-    const files = await bucket
-      .find({ ['metadata.kbId']: kbId, ['metadata.userId']: this.uid }, { projection: { _id: 1 } })
-      .toArray();
+  async deleteFilesByDatasetId(datasetId: string) {
+    if (!datasetId) return;
+    const collection = this.Collection();
 
-    return Promise.all(files.map((file) => this.delete(String(file._id))));
+    return collection.deleteMany({
+      'metadata.datasetId': String(datasetId)
+    });
   }
 
   async download(id: string) {

@@ -1,15 +1,15 @@
 import { Box, Flex, Button, Image } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { feConfigs } from '@/web/common/store/static';
-import { useGlobalStore } from '@/web/common/store/global';
+import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
 
 const Hero = () => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { isPc, gitStar } = useGlobalStore();
+  const { isPc, gitStar } = useSystemStore();
   const [showVideo, setShowVide] = useState(false);
 
   return (

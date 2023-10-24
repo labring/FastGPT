@@ -8,7 +8,7 @@ import SourceHandle from './SourceHandle';
 import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
 const SetOutputFieldModal = dynamic(() => import('../modules/SetOutputFieldModal'));
-import { useFlowStore } from '../Provider';
+import { onChangeNode } from '../Provider';
 import { SystemOutputEnum } from '@/constants/app';
 
 const Label = ({
@@ -23,7 +23,6 @@ const Label = ({
 }) => {
   const { label, description, edit } = item;
   const [editField, setEditField] = useState<FlowOutputItemType>();
-  const { onChangeNode } = useFlowStore();
 
   return (
     <Flex
@@ -129,9 +128,15 @@ const RenderOutput = ({
   flowOutputList: FlowOutputItemType[];
 }) => {
   const sortOutput = useMemo(
-    () => flowOutputList.sort((a, b) => (a.key === SystemOutputEnum.finish ? -1 : 1)),
+    () =>
+      [...flowOutputList].sort((a, b) => {
+        if (a.key === SystemOutputEnum.finish) return -1;
+        if (b.key === SystemOutputEnum.finish) return 1;
+        return 0;
+      }),
     [flowOutputList]
   );
+
   return (
     <>
       {sortOutput.map(

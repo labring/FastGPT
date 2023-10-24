@@ -1,10 +1,10 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoDataset } from '@fastgpt/core/dataset/schema';
-import { DatasetTypeEnum } from '@fastgpt/core/dataset/constant';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 

@@ -1,13 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoOutLink } from '@fastgpt/support/outLink/schema';
-import { MongoUser } from '@fastgpt/support/user/schema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { authApp } from '@/service/utils/auth';
 import { HUMAN_ICON } from '@/constants/chat';
-import { getGuideModule } from '@/components/ChatBox/utils';
-import { authShareChatInit } from '@fastgpt/support/outLink/auth';
+import { getGuideModule } from '@/global/core/app/modules/utils';
+import { authShareChatInit } from '@fastgpt/service/support/outLink/auth';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
 
 /* init share chat window */

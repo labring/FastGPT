@@ -4,8 +4,8 @@ import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
 import { ChatItemSchema } from './mongoSchema';
-import type { PgDataItemType } from '@/types/core/dataset/data';
 import { FlowModuleTypeEnum } from '@/constants/flow';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
@@ -44,11 +44,6 @@ export type ShareChatType = InitShareChatResponse & {
   history: ShareChatHistoryItemType;
 };
 
-export type QuoteItemType = PgDataItemType & {
-  kb_id: string;
-  score?: number;
-};
-
 // response data
 export type ChatHistoryItemResType = {
   moduleType: `${FlowModuleTypeEnum}`;
@@ -62,7 +57,7 @@ export type ChatHistoryItemResType = {
   question?: string;
   temperature?: number;
   maxToken?: number;
-  quoteList?: QuoteItemType[];
+  quoteList?: SearchDataResponseItemType[];
   historyPreview?: ChatItemType[]; // completion context array. history will slice
 
   // dataset search

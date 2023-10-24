@@ -4,9 +4,9 @@ import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/support/user/auth';
-import type { FetchResultItem } from '@/global/common/api/pluginRes.d';
-import { simpleText } from '@fastgpt/common/tools/str';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
+import { simpleText } from '@fastgpt/global/common/string/tools';
 import { connectToDatabase } from '@/service/mongo';
 
 export type UrlFetchResponse = FetchResultItem[];

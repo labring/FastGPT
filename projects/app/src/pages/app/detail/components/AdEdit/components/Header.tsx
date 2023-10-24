@@ -6,10 +6,10 @@ import { FlowOutputTargetItemType } from '@/types/core/app/flow';
 import { AppModuleItemType } from '@/types/app';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
-import { useUserStore } from '@/web/support/store/user';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { AppTypeEnum } from '@/constants/app';
+import { AppTypeEnum, SystemOutputEnum } from '@/constants/app';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
@@ -98,7 +98,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       }
 
       return updateAppDetail(app._id, {
-        modules: modules,
+        modules,
         type: AppTypeEnum.advanced
       });
     },

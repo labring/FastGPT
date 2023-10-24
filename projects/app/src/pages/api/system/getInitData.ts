@@ -1,12 +1,11 @@
-import type { SystemEnvType } from '@/types';
-import type { FeConfigsType } from '@fastgpt/common/type/index.d';
+import type { FeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types/index.d';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { readFileSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
-import { formatPrice } from '@fastgpt/common/bill';
-import { getTikTokenEnc } from '@/utils/common/tiktoken';
-import { initHttpAgent } from '@fastgpt/core/init';
+import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { getTikTokenEnc } from '@/global/common/tiktoken';
+import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import {
   defaultChatModels,
   defaultQAModels,
@@ -51,6 +50,8 @@ const defaultFeConfigs: FeConfigsType = {
   show_contact: true,
   show_git: true,
   show_doc: true,
+  docUrl: 'https://docs.fastgpt.run',
+  openAPIDocUrl: 'https://doc.fastgpt.run/docs/development/openapi',
   systemTitle: 'FastGPT',
   authorText: 'Made by FastGPT Team.',
   limit: {
