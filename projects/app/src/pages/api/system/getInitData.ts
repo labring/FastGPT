@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 const defaultSystemEnv: SystemEnvType = {
   vectorMaxProcess: 15,
   qaMaxProcess: 15,
-  pgHNSWEfSearch: 40
+  pgHNSWEfSearch: 100
 };
 const defaultFeConfigs: FeConfigsType = {
   show_emptyChat: true,
