@@ -408,7 +408,7 @@ const CollectionCard = () => {
                   }
                 }}
               >
-                <Td maxW={['200px', '300px']} draggable>
+                <Td minW={'150px'} maxW={['200px', '300px']} draggable>
                   <Flex alignItems={'center'}>
                     <Image src={collection.icon} w={'16px'} mr={2} alt={''} />
                     <MyTooltip label={t('common.folder.Drag Tip')} shouldWrapChildren={false}>
