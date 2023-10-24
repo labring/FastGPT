@@ -498,7 +498,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
 
   return (
     <>
-      <Grid gridTemplateColumns={'1fr 1fr'} gridGap={4}>
+      <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={4} w={'100%'}>
         <Button h={'36px'} onClick={onOpenKbSelect}>
           选择知识库
         </Button>
@@ -512,7 +512,14 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
             borderRadius={'md'}
           >
             <Avatar src={item.avatar} w={'24px'}></Avatar>
-            <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg', 'xl']}>
+            <Box
+              ml={3}
+              flex={'1 0 0'}
+              w={0}
+              className="textEllipsis"
+              fontWeight={'bold'}
+              fontSize={['md', 'lg', 'xl']}
+            >
               {item.name}
             </Box>
           </Flex>

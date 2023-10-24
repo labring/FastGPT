@@ -114,61 +114,63 @@ const QuoteModal = ({
 
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
-              <Flex alignItems={'center'} mt={2} gap={4}>
-                {isPc && (
-                  <MyTooltip label={t('core.dataset.data.id')}>
-                    <Flex border={theme.borders.sm} px={3} borderRadius={'md'}>
-                      # {item.id}
-                    </Flex>
-                  </MyTooltip>
-                )}
-                <MyTooltip label={t('core.dataset.Quote Length')}>
-                  <Flex alignItems={'center'}>
-                    <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
-                    {item.q.length + item.a.length}
-                  </Flex>
-                </MyTooltip>
-                {!isShare && item.score && (
-                  <MyTooltip label={t('core.dataset.Similarity')}>
+              {!isShare && (
+                <Flex alignItems={'center'} mt={2} gap={4}>
+                  {isPc && (
+                    <MyTooltip label={t('core.dataset.data.id')}>
+                      <Flex border={theme.borders.base} px={3} borderRadius={'md'}>
+                        # {item.id}
+                      </Flex>
+                    </MyTooltip>
+                  )}
+                  <MyTooltip label={t('core.dataset.Quote Length')}>
                     <Flex alignItems={'center'}>
-                      <MyIcon name={'kbTest'} w={'12px'} />
-                      <Progress
-                        mx={2}
-                        w={['60px', '90px']}
-                        value={item.score * 100}
-                        size="sm"
-                        borderRadius={'20px'}
-                        colorScheme="gray"
-                        border={theme.borders.base}
-                      />
-                      <Box>{item.score.toFixed(4)}</Box>
+                      <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
+                      {item.q.length + item.a.length}
                     </Flex>
                   </MyTooltip>
-                )}
-                <Box flex={1} />
-                {item.id && !isShare && (
-                  <MyTooltip label={t('core.dataset.data.Edit')}>
-                    <Box
-                      bg={'rgba(255,255,255,0.9)'}
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      boxShadow={'-10px 0 10px rgba(255,255,255,1)'}
-                    >
-                      <MyIcon
-                        name={'edit'}
-                        w={['16px', '18px']}
-                        h={['16px', '18px']}
-                        cursor={'pointer'}
-                        color={'myGray.600'}
-                        _hover={{
-                          color: 'myBlue.700'
-                        }}
-                        onClick={() => onclickEdit(item)}
-                      />
-                    </Box>
-                  </MyTooltip>
-                )}
-              </Flex>
+                  {!isShare && item.score && (
+                    <MyTooltip label={t('core.dataset.Similarity')}>
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'kbTest'} w={'12px'} />
+                        <Progress
+                          mx={2}
+                          w={['60px', '90px']}
+                          value={item.score * 100}
+                          size="sm"
+                          borderRadius={'20px'}
+                          colorScheme="gray"
+                          border={theme.borders.base}
+                        />
+                        <Box>{item.score.toFixed(4)}</Box>
+                      </Flex>
+                    </MyTooltip>
+                  )}
+                  <Box flex={1} />
+                  {item.id && (
+                    <MyTooltip label={t('core.dataset.data.Edit')}>
+                      <Box
+                        bg={'rgba(255,255,255,0.9)'}
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        boxShadow={'-10px 0 10px rgba(255,255,255,1)'}
+                      >
+                        <MyIcon
+                          name={'edit'}
+                          w={['16px', '18px']}
+                          h={['16px', '18px']}
+                          cursor={'pointer'}
+                          color={'myGray.600'}
+                          _hover={{
+                            color: 'myBlue.700'
+                          }}
+                          onClick={() => onclickEdit(item)}
+                        />
+                      </Box>
+                    </MyTooltip>
+                  )}
+                </Flex>
+              )}
             </Box>
           ))}
         </ModalBody>
