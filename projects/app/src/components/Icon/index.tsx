@@ -91,7 +91,8 @@ const iconPaths = {
   loading: () => import('./icons/light/loading.svg'),
   pause: () => import('./icons/common/pause.svg'),
   'core/app/aiLight': () => import('./icons/core/app/aiLight.svg'),
-  'core/app/aiFill': () => import('./icons/core/app/aiFill.svg')
+  'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
+  'common/text/t': () => import('./icons/common/text/t.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

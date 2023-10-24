@@ -52,7 +52,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   // search kb
   const results: any = await PgClient.query(
     `BEGIN;
-    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 60};
+    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
     select id, q, a, dataset_id, collection_id, (vector <#> '[${
       vectors[0]
     }]') * -1 AS score from ${PgDatasetTableName} where user_id='${

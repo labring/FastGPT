@@ -175,10 +175,16 @@
     "dataset": {
       "Choose Dataset": "Chookse Dataset",
       "Dataset": "Dataset",
+      "Go Dataset": "To Dataset",
+      "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
       "Search Top K": "Top K",
       "Set Empty Result Tip": ",Response empty text",
-      "Similarity": "Similarity"
+      "Similarity": "Similarity",
+      "data": {
+        "Edit": "Edit Data",
+        "id": "Data ID"
+      }
     }
   },
   "dataset": {

@@ -22,7 +22,6 @@ const NodeCard = (props: Props) => {
     name = '未知模块',
     description,
     minW = '300px',
-
     moduleId
   } = props;
   const { onCopyNode, onDelNode } = useFlowStore();
@@ -81,7 +80,14 @@ const NodeCard = (props: Props) => {
   );
 
   return (
-    <Box minW={minW} bg={'white'} border={theme.borders.md} borderRadius={'md'} boxShadow={'sm'}>
+    <Box
+      minW={minW}
+      maxW={'500px'}
+      bg={'white'}
+      border={theme.borders.md}
+      borderRadius={'md'}
+      boxShadow={'sm'}
+    >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
         <Avatar src={logo} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>

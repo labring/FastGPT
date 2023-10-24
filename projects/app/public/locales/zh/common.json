@@ -175,10 +175,16 @@
     "dataset": {
       "Choose Dataset": "关联知识库",
       "Dataset": "知识库",
+      "Go Dataset": "前往知识库",
+      "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
       "Search Top K": "单次搜索数量",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
-      "Similarity": "相似度"
+      "Similarity": "相似度",
+      "data": {
+        "Edit": "编辑数据",
+        "id": "数据ID"
+      }
     }
   },
   "dataset": {
