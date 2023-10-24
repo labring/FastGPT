@@ -378,7 +378,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
             key: 'userChatInput'
           },
           {
-            moduleId: 'kbSearch',
+            moduleId: 'datasetSearch',
             key: 'userChatInput'
           }
         ]
@@ -501,7 +501,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
       x: 956.0838440206068,
       y: 887.462827870246
     },
-    moduleId: 'kbSearch'
+    moduleId: 'datasetSearch'
   },
   ...(formData.kb.searchEmptyText
     ? [

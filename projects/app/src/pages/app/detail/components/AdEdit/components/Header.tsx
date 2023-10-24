@@ -51,12 +51,10 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         ...item,
         connected: item.connected ?? item.type !== FlowInputItemTypeEnum.target
       })),
-      outputs: item.data.outputs
-        .map((item) => ({
-          ...item,
-          targets: [] as FlowOutputTargetItemType[]
-        }))
-        .sort((a, b) => (a.key === SystemOutputEnum.finish ? 1 : -1)) // finish output always at last
+      outputs: item.data.outputs.map((item) => ({
+        ...item,
+        targets: [] as FlowOutputTargetItemType[]
+      }))
     }));
 
     // update inputs and outputs
@@ -100,7 +98,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       }
 
       return updateAppDetail(app._id, {
-        modules: modules,
+        modules,
         type: AppTypeEnum.advanced
       });
     },

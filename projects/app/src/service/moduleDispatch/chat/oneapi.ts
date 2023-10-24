@@ -35,7 +35,6 @@ export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   [TaskResponseKeyEnum.history]: ChatItemType[];
-  finish: boolean;
 };
 
 /* request openai chat */
@@ -193,8 +192,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(completeMessages)
     },
-    [TaskResponseKeyEnum.history]: completeMessages,
-    finish: true
+    [TaskResponseKeyEnum.history]: completeMessages
   };
 };
 

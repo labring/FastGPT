@@ -850,7 +850,7 @@ export const appTemplates: (AppItemType & {
                 key: 'userChatInput'
               },
               {
-                moduleId: 'kbSearch',
+                moduleId: 'datasetSearch',
                 key: 'userChatInput'
               }
             ]
@@ -898,7 +898,7 @@ export const appTemplates: (AppItemType & {
         ]
       },
       {
-        moduleId: 'kbSearch',
+        moduleId: 'datasetSearch',
         name: '知识库搜索',
         flowType: 'datasetSearchNode',
         showStatus: true,

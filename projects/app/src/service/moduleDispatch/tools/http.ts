@@ -8,7 +8,6 @@ export type HttpRequestProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 export type HttpResponse = {
-  [HttpPropsEnum.finish]: boolean;
   [HttpPropsEnum.failed]?: boolean;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   [key: string]: any;
@@ -33,7 +32,6 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
     });
 
     return {
-      [HttpPropsEnum.finish]: true,
       [TaskResponseKeyEnum.responseData]: {
         moduleType: FlowModuleTypeEnum.httpRequest,
         moduleName,
@@ -45,7 +43,6 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
     };
   } catch (error) {
     return {
-      [HttpPropsEnum.finish]: true,
       [HttpPropsEnum.failed]: true,
       [TaskResponseKeyEnum.responseData]: {
         moduleType: FlowModuleTypeEnum.httpRequest,
