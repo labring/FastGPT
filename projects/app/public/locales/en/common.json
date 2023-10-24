@@ -14,9 +14,11 @@
   "UnKnow": "UnKnow",
   "Warning": "Warning",
   "app": {
+    "AI Advanced Settings": "Advanced Settings",
     "AI Settings": "AI Settings",
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
+    "Basic Settings": "Basic Settings",
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
     "Chat logs": "Chat Logs",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
@@ -209,7 +211,7 @@
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
   },
   "file": {
-    "Click to download CSV template": "Click to download CSV template",
+    "Click to download file template": "Download Template: {{name}}",
     "Click to view file": "Click to view file",
     "Create File": "Create File",
     "Create file": "Create file",

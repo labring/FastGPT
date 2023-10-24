@@ -4,6 +4,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 
 const fileExtension = '.csv';
+const csvTemplate = `index,content\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
 const CsvImport = () => {
   const { successChunks, totalChunks, isUnselectedFile, onclickUpload, uploading } =
@@ -15,7 +16,15 @@ const CsvImport = () => {
 
   return (
     <Box display={['block', 'flex']} h={['auto', '100%']}>
-      <SelectorContainer fileExtension={fileExtension} showUrlFetch={false}>
+      <SelectorContainer
+        fileExtension={fileExtension}
+        showUrlFetch={false}
+        fileTemplate={{
+          filename: 'csv 模板.csv',
+          value: csvTemplate,
+          type: 'text/csv'
+        }}
+      >
         <Flex mt={3}>
           <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
             {uploading ? <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box> : '确认导入'}

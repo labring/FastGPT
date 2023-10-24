@@ -185,6 +185,7 @@ const Info = (
         </Box>
         <Input
           flex={[1, '0 0 300px']}
+          maxLength={30}
           {...register('name', {
             required: '知识库名称不能为空'
           })}

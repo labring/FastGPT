@@ -35,8 +35,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       },
       {
         label: t('navbar.Apps'),
-        icon: 'appLight',
-        activeIcon: 'appFill',
+        icon: 'core/app/aiLight',
+        activeIcon: 'core/app/aiFill',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail']
       },

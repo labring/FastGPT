@@ -22,7 +22,7 @@ const MyModal = ({
   title,
   children,
   isCentered,
-  w = '100%',
+  w = 'auto',
   maxW = ['90vw', '600px'],
   ...props
 }: Props) => {

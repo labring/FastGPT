@@ -363,7 +363,9 @@ const Kb = () => {
             />
             <Flex alignItems={'center'} h={'38px'}>
               <Avatar src={dataset.avatar} borderRadius={'lg'} w={'28px'} />
-              <Box ml={3}>{dataset.name}</Box>
+              <Box mx={3} className="textEllipsis3">
+                {dataset.name}
+              </Box>
             </Flex>
             <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
               <Flex>

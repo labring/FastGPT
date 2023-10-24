@@ -14,9 +14,11 @@
   "UnKnow": "未知",
   "Warning": "提示",
   "app": {
-    "AI Settings": "AI 高级配置",
+    "AI Advanced Settings": "AI 高级配置",
+    "AI Settings": "AI 配置",
     "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
+    "Basic Settings": "基本信息",
     "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
     "Chat logs": "对话日志",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
@@ -209,7 +211,7 @@
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
   },
   "file": {
-    "Click to download CSV template": "点击下载 CSV 模板",
+    "Click to download file template": "点击下载模板：{{name}}",
     "Click to view file": "点击查看原始文件",
     "Create File": "创建新文件",
     "Create file": "创建文件",

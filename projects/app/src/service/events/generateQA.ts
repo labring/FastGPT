@@ -38,6 +38,7 @@ export async function generateQA(): Promise<any> {
       datasetCollectionId: 1,
       q: 1,
       model: 1,
+      prompt: 1,
       billId: 1
     });
 

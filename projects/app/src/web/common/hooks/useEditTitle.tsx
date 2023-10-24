@@ -50,7 +50,7 @@ export const useEditTitle = ({
 
   // eslint-disable-next-line react/display-name
   const EditModal = useCallback(
-    () => (
+    ({ maxLength = 30 }: { maxLength?: number }) => (
       <MyModal isOpen={isOpen} onClose={onClose} title={title}>
         <ModalBody>
           {!!tip && (
@@ -64,7 +64,7 @@ export const useEditTitle = ({
             defaultValue={defaultValue.current}
             placeholder={placeholder}
             autoFocus
-            maxLength={20}
+            maxLength={maxLength}
           />
         </ModalBody>
         <ModalFooter>

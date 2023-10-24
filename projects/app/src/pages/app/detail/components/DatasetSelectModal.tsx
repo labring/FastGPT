@@ -80,7 +80,14 @@ export const DatasetSelectModal = ({
         overflowY={['auto', 'unset']}
         userSelect={'none'}
       >
-        <Grid gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={3}>
+        <Grid
+          gridTemplateColumns={[
+            'repeat(1, minmax(0, 1fr))',
+            'repeat(2, minmax(0, 1fr))',
+            'repeat(3, minmax(0, 1fr))'
+          ]}
+          gridGap={3}
+        >
           {filterKbList.selected.map((item) =>
             (() => {
               return (
@@ -93,7 +100,7 @@ export const DatasetSelectModal = ({
                 >
                   <Flex alignItems={'center'} h={'38px'}>
                     <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
-                    <Box flex={'1 0 0'} mx={3}>
+                    <Box flex={'1 0 0'} w={0} className="textEllipsis" mx={3}>
                       {item.name}
                     </Box>
                     <MyIcon
@@ -116,7 +123,14 @@ export const DatasetSelectModal = ({
 
         {filterKbList.selected.length > 0 && <Divider my={3} />}
 
-        <Grid gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={3}>
+        <Grid
+          gridTemplateColumns={[
+            'repeat(1, minmax(0, 1fr))',
+            'repeat(2, minmax(0, 1fr))',
+            'repeat(3, minmax(0, 1fr))'
+          ]}
+          gridGap={3}
+        >
           {filterKbList.unSelected.map((item) =>
             (() => {
               return (
@@ -159,6 +173,8 @@ export const DatasetSelectModal = ({
                     <Flex alignItems={'center'} h={'38px'}>
                       <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
                       <Box
+                        flex={'1 0 0'}
+                        w={0}
                         className="textEllipsis"
                         ml={3}
                         fontWeight={'bold'}

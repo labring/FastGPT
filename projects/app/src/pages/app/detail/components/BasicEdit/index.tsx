@@ -211,7 +211,7 @@ const Settings = ({ appId }: { appId: string }) => {
     >
       <Flex alignItems={'flex-end'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-          基础信息
+          {t('app.Basic Settings')}
         </Box>
         <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
           (
@@ -398,12 +398,12 @@ const Settings = ({ appId }: { appId: string }) => {
         )}
       </Box>
 
-      {/* model */}
+      {/* ai */}
       <Box mt={5} {...BoxStyles}>
         <Flex alignItems={'center'}>
           <Avatar src={'/imgs/module/AI.png'} w={'18px'} />
           <Box ml={2} flex={1}>
-            AI 配置
+            {t('app.AI Settings')}
           </Box>
           <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
             <MyIcon mr={1} name={'settingLight'} w={'14px'} />
@@ -463,12 +463,16 @@ const Settings = ({ appId }: { appId: string }) => {
           </Flex>
         </Flex>
         <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-          相似度: {getValues('kb.searchSimilarity')}, 单次搜索数量: {getValues('kb.searchLimit')},
-          空搜索时拒绝回复: {getValues('kb.searchEmptyText') !== '' ? 'true' : 'false'}
+          相似度: {getValues('kb.searchSimilarity')}, 单次搜索数量: {getValues('kb.searchLimit')}
+          {getValues('kb.searchEmptyText') === '' ? '' : ',未搜索到内容时回复指定内容'}
         </Flex>
-        <Grid templateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} my={2} gridGap={[2, 4]}>
+        <Grid
+          gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
+          my={2}
+          gridGap={[2, 4]}
+        >
           {selectDatasets.map((item) => (
-            <MyTooltip key={item._id} label={'查看知识库详情'}>
+            <MyTooltip key={item._id} label={'查看知识库详情'} overflow={'hidden'}>
               <Flex
                 alignItems={'center'}
                 p={2}
