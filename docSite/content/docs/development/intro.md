@@ -54,7 +54,7 @@ git clone git@github.com:<github_username>/FastGPT.git
 
 **环境变量**
 
-复制.env.template 文件，生成一个.env.local 环境变量文件夹，修改.env.local 里内容才是有效的变量。变量说明见 .env.template
+复制.env.template 文件，在同级目录下生成一个.env.local 文件，修改.env.local 里内容才是有效的变量。变量说明见 .env.template
 
 **config 配置文件**
 
