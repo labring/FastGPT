@@ -251,7 +251,8 @@ const UserInfo = () => {
             </Flex>
           </>
         )}
-        {feConfigs?.show_openai_account && (
+        {
+          // {feConfigs?.show_openai_account && (
           <>
             <Divider my={3} />
 
@@ -282,7 +283,7 @@ const UserInfo = () => {
               </Flex>
             </MyTooltip>
           </>
-        )}
+        }
       </Box>
 
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
