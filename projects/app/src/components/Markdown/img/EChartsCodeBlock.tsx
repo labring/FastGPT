@@ -2,6 +2,24 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
 import type { ECharts } from 'echarts';
 import { Box, Skeleton } from '@chakra-ui/react';
+const default_option = {
+  tooltip: {
+    trigger: 'axis'
+  },
+  legend: {},
+  toolbox: {
+    show: true,
+    feature: {
+      dataZoom: {
+        yAxisIndex: 'none'
+      },
+      dataView: { readOnly: false },
+      magicType: { type: ['line', 'bar', 'stack'] },
+      restore: {},
+      saveAsImage: {}
+    }
+  }
+};
 
 const EChartsCodeBlock = ({ code }: { code: string }) => {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -22,14 +40,16 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     try {
       option = JSON.parse(code.trim());
       option = {
-        ...option,
-        toolbox: {
-          show: true,
-          feature: {
-            saveAsImage: {}
-          }
-        }
+        ...default_option,
+        ...option
+        // toolbox: {
+        //   show: true,
+        //   feature: {
+        //     saveAsImage: {}
+        //   }
+        // }
       };
+      //如何合并 default_option
 
       setOption(option);
     } catch (error) {
