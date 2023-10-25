@@ -7,9 +7,11 @@ import MyTooltip from '@/components/MyTooltip';
 import SourceHandle from './SourceHandle';
 import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
-const SetOutputFieldModal = dynamic(() => import('../modules/SetOutputFieldModal'));
 import { onChangeNode } from '../../FlowProvider';
 import { SystemOutputEnum } from '@/constants/app';
+
+import type { EditFieldType } from '../modules/FieldEditModal';
+const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 
 const Label = ({
   moduleId,
@@ -22,7 +24,7 @@ const Label = ({
   outputs: FlowOutputItemType[];
 }) => {
   const { label, description, edit } = item;
-  const [editField, setEditField] = useState<FlowOutputItemType>();
+  const [editField, setEditField] = useState<EditFieldType>();
 
   return (
     <Flex
@@ -42,7 +44,8 @@ const Label = ({
             _hover={{ color: 'myBlue.600' }}
             onClick={() =>
               setEditField({
-                ...item,
+                label: item.label,
+                valueType: item.valueType,
                 key: outputKey
               })
             }
@@ -73,10 +76,15 @@ const Label = ({
       <Box>{label}</Box>
 
       {!!editField && (
-        <SetOutputFieldModal
+        <FieldEditModal
+          type={'output'}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
-          onSubmit={(data) => {
+          onSubmit={(e) => {
+            const data = {
+              ...item,
+              ...e
+            };
             if (editField.key === data.key) {
               onChangeNode({
                 moduleId,

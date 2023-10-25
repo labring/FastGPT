@@ -132,7 +132,7 @@ export default async function (ctx: FunctionContext) {
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -179,7 +179,7 @@ export default async function (ctx: FunctionContext) {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -410,14 +410,14 @@ export default async function (ctx: FunctionContext) {
         "key": "quoteQA",
         "type": "target",
         "label": "引用内容",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": false
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {

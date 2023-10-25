@@ -1,25 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  Flex,
-  Switch,
-  Input,
-  FormControl
-} from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Button, ModalFooter, ModalBody, Flex, Switch, Input } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
-import { FlowInputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import { FlowValueTypeEnum } from '@/constants/flow';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
-import type { FlowInputItemType } from '@/types/core/app/flow';
 
 const typeSelectList = [
   {
@@ -35,45 +21,67 @@ const typeSelectList = [
     value: FlowValueTypeEnum.boolean
   },
   {
+    label: '历史记录',
+    value: FlowValueTypeEnum.chatHistory
+  },
+  {
+    label: '引用内容',
+    value: FlowValueTypeEnum.datasetQuote
+  },
+  {
     label: '任意',
     value: FlowValueTypeEnum.any
   }
 ];
 
-const SetInputFieldModal = ({
+export type EditFieldType = {
+  label?: string;
+  key: string;
+  valueType?: `${FlowValueTypeEnum}`;
+  required?: boolean;
+};
+
+const FieldEditModal = ({
+  type,
   defaultField = {
     label: '',
     key: '',
-    type: FlowInputItemTypeEnum.target,
     valueType: FlowValueTypeEnum.string,
-    description: '',
     required: false
   },
   onClose,
   onSubmit
 }: {
-  defaultField?: FlowInputItemType;
+  type: 'input' | 'output';
+  defaultField?: EditFieldType;
   onClose: () => void;
-  onSubmit: (data: FlowInputItemType) => void;
+  onSubmit: (data: EditFieldType) => void;
 }) => {
   const { t } = useTranslation();
-  const { register, getValues, setValue, handleSubmit } = useForm<FlowInputItemType>({
+  const { register, getValues, setValue, handleSubmit } = useForm<EditFieldType>({
     defaultValues: defaultField
   });
   const [refresh, setRefresh] = useState(false);
 
   return (
-    <MyModal isOpen={true} onClose={onClose}>
-      <ModalHeader display={'flex'} alignItems={'center'}>
-        <Avatar src={'/imgs/module/extract.png'} mr={2} w={'20px'} objectFit={'cover'} />
-        {t('app.Input Field Settings')}
-      </ModalHeader>
-      <ModalBody>
+    <MyModal
+      isOpen={true}
+      title={
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 70px'}>必填</Box>
-          <Switch {...register('required')} />
+          <Avatar src={'/imgs/module/extract.png'} mr={2} w={'20px'} objectFit={'cover'} />
+          {type === 'input' ? t('app.Input Field Settings') : t('app.Output Field Settings')}
         </Flex>
-        <Flex mt={5} alignItems={'center'}>
+      }
+      onClose={onClose}
+    >
+      <ModalBody minH={'260px'} overflow={'visible'}>
+        {type === 'input' && (
+          <Flex alignItems={'center'} mb={5}>
+            <Box flex={'0 0 70px'}>必填</Box>
+            <Switch {...register('required')} />
+          </Flex>
+        )}
+        <Flex mb={5} alignItems={'center'}>
           <Box flex={'0 0 70px'}>字段类型</Box>
           <MySelect
             w={'288px'}
@@ -85,7 +93,7 @@ const SetInputFieldModal = ({
             }}
           />
         </Flex>
-        <Flex mt={5} alignItems={'center'}>
+        <Flex mb={5} alignItems={'center'}>
           <Box flex={'0 0 70px'}>字段名</Box>
           <Input
             placeholder="预约字段/sql语句……"
@@ -93,7 +101,7 @@ const SetInputFieldModal = ({
           />
         </Flex>
 
-        <Flex mt={5} alignItems={'center'}>
+        <Flex mb={5} alignItems={'center'}>
           <Box flex={'0 0 70px'}>字段 key</Box>
           <Input
             placeholder="appointment/sql"
@@ -112,4 +120,4 @@ const SetInputFieldModal = ({
   );
 };
 
-export default React.memo(SetInputFieldModal);
+export default React.memo(FieldEditModal);

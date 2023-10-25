@@ -211,7 +211,7 @@ export const ChatModule: FlowModuleTemplateType = {
       type: FlowInputItemTypeEnum.target,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-      valueType: FlowValueTypeEnum.kbQuote,
+      valueType: FlowValueTypeEnum.datasetQuote,
       connected: false
     },
     Input_Template_History,
@@ -304,7 +304,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
       description:
         '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
       type: FlowOutputItemTypeEnum.source,
-      valueType: FlowValueTypeEnum.kbQuote,
+      valueType: FlowValueTypeEnum.datasetQuote,
       targets: []
     },
     Output_Template_Finish
@@ -689,7 +689,7 @@ export const appTemplates: (AppItemType & {
           {
             key: 'history',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             type: 'source',
             targets: [
               {
@@ -781,14 +781,14 @@ export const appTemplates: (AppItemType & {
             key: 'quoteQA',
             type: 'target',
             label: '引用内容',
-            valueType: 'kb_quote',
+            valueType: 'datasetQuote',
             connected: false
           },
           {
             key: 'history',
             type: 'target',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             connected: true
           },
           {
@@ -910,7 +910,7 @@ export const appTemplates: (AppItemType & {
           {
             key: 'history',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             type: 'source',
             targets: [
               {
@@ -1027,7 +1027,7 @@ export const appTemplates: (AppItemType & {
             description:
               '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
             type: 'source',
-            valueType: 'kb_quote',
+            valueType: 'datasetQuote',
             targets: [
               {
                 moduleId: 'chatModule',
@@ -1118,14 +1118,14 @@ export const appTemplates: (AppItemType & {
             key: 'quoteQA',
             type: 'target',
             label: '引用内容',
-            valueType: 'kb_quote',
+            valueType: 'datasetQuote',
             connected: true
           },
           {
             key: 'history',
             type: 'target',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             connected: true
           },
           {
@@ -1316,7 +1316,7 @@ export const appTemplates: (AppItemType & {
           {
             key: 'history',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             type: 'source',
             targets: [
               {
@@ -1425,14 +1425,14 @@ export const appTemplates: (AppItemType & {
             type: 'custom',
             label: '引用内容',
             description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-            valueType: 'kb_quote',
+            valueType: 'datasetQuote',
             connected: false
           },
           {
             key: 'history',
             type: 'target',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             connected: true
           },
           {
@@ -1465,7 +1465,7 @@ export const appTemplates: (AppItemType & {
             key: 'history',
             label: '新的上下文',
             description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             type: 'source',
             targets: []
           }
@@ -1544,7 +1544,7 @@ export const appTemplates: (AppItemType & {
           {
             key: 'history',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             type: 'source',
             targets: [
               {
@@ -1588,7 +1588,7 @@ export const appTemplates: (AppItemType & {
             key: 'history',
             type: 'target',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             connected: true
           },
           {
@@ -1887,14 +1887,14 @@ export const appTemplates: (AppItemType & {
             type: 'custom',
             label: '引用内容',
             description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-            valueType: 'kb_quote',
+            valueType: 'datasetQuote',
             connected: true
           },
           {
             key: 'history',
             type: 'target',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             connected: true
           },
           {
@@ -1927,7 +1927,7 @@ export const appTemplates: (AppItemType & {
             key: 'history',
             label: '新的上下文',
             description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             type: 'source',
             targets: []
           }
@@ -1962,7 +1962,7 @@ export const appTemplates: (AppItemType & {
           {
             key: 'history',
             label: '聊天记录',
-            valueType: 'chat_history',
+            valueType: 'chatHistory',
             type: 'source',
             targets: [
               {
@@ -2079,7 +2079,7 @@ export const appTemplates: (AppItemType & {
             description:
               '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
             type: 'source',
-            valueType: 'kb_quote',
+            valueType: 'datasetQuote',
             targets: [
               {
                 moduleId: 'nlfwkc',

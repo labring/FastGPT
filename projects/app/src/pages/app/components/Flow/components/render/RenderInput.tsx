@@ -33,8 +33,9 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';
 import { LLMModelItemType } from '@/types/model';
+import type { EditFieldType } from '../modules/FieldEditModal';
 
-const SetInputFieldModal = dynamic(() => import('../modules/SetInputFieldModal'));
+const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 const SelectAppModal = dynamic(() => import('./SelectAppModal'));
 const AIChatSettingsModal = dynamic(() => import('../../../AIChatSettingsModal'));
 const DatasetSelectModal = dynamic(() => import('../../../DatasetSelectModal'));
@@ -48,7 +49,7 @@ export const Label = React.memo(function Label({
   inputKey: string;
 }) {
   const { required = false, description, edit, label, type, valueType } = item;
-  const [editField, setEditField] = useState<FlowInputItemType>();
+  const [editField, setEditField] = useState<EditFieldType>();
 
   return (
     <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
@@ -86,7 +87,9 @@ export const Label = React.memo(function Label({
             _hover={{ color: 'myBlue.600' }}
             onClick={() =>
               setEditField({
-                ...item,
+                label: item.label,
+                valueType: item.valueType,
+                required: item.required,
                 key: inputKey
               })
             }
@@ -110,10 +113,15 @@ export const Label = React.memo(function Label({
         </>
       )}
       {!!editField && (
-        <SetInputFieldModal
+        <FieldEditModal
+          type={'input'}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
-          onSubmit={(data) => {
+          onSubmit={(e) => {
+            const data = {
+              ...item,
+              ...e
+            };
             // same key
             if (editField.key === data.key) {
               onChangeNode({
