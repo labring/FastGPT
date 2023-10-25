@@ -14,7 +14,7 @@ import { FlowOutputItemTypeEnum, FlowValueTypeEnum, SpecialInputKeyEnum } from '
 import { useTranslation } from 'react-i18next';
 import SourceHandle from '../render/SourceHandle';
 import MyTooltip from '@/components/MyTooltip';
-import { onChangeNode } from '../Provider';
+import { onChangeNode } from '../../FlowProvider';
 
 const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { t } = useTranslation();

@@ -8,7 +8,7 @@ import SourceHandle from './SourceHandle';
 import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
 const SetOutputFieldModal = dynamic(() => import('../modules/SetOutputFieldModal'));
-import { onChangeNode } from '../Provider';
+import { onChangeNode } from '../../FlowProvider';
 import { SystemOutputEnum } from '@/constants/app';
 
 const Label = ({

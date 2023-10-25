@@ -9,7 +9,7 @@ import type { CreateAppParams } from '@/types/app';
 /**
  * 获取模型列表
  */
-export const getMyModels = () => GET<AppListItemType[]>('/app/myApps');
+export const getMyApps = () => GET<AppListItemType[]>('/app/myApps');
 
 /**
  * 创建一个模型

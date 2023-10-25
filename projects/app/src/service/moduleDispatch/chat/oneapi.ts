@@ -1,7 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { ChatItemType } from '@/types/chat';
-import type { ChatHistoryItemResType } from '@/types/chat';
+import type { ChatItemType, moduleDispatchResType } from '@/types/chat';
 import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -17,7 +16,6 @@ import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import type { AIChatProps } from '@/types/core/aiChat';
 import { replaceVariable } from '@/global/common/string/tools';
-import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
@@ -33,7 +31,7 @@ export type ChatProps = ModuleDispatchProps<
 >;
 export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
-  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
   [TaskResponseKeyEnum.history]: ChatItemType[];
 };
 
@@ -41,7 +39,6 @@ export type ChatResponse = {
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
   let {
     res,
-    moduleName,
     stream = false,
     detail = false,
     user,
@@ -180,8 +177,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   return {
     [TaskResponseKeyEnum.answerText]: answerText,
     [TaskResponseKeyEnum.responseData]: {
-      moduleType: FlowModuleTypeEnum.chatNode,
-      moduleName,
       price: user.openaiAccount?.key
         ? 0
         : countModelPrice({ model, tokens: totalTokens, type: ModelTypeEnum.chat }),

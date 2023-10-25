@@ -9,15 +9,15 @@ import type { AppSchema } from '@/types/mongoSchema';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { AppTypeEnum, SystemOutputEnum } from '@/constants/app';
+import { AppTypeEnum } from '@/constants/app';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import ChatTest, { type ChatTestComponentRef } from './ChatTest';
-import { useFlowStore } from './Provider';
+import ChatTest, { type ChatTestComponentRef } from '@/pages/app/components/Flow/ChatTest';
+import { useFlowProviderStore } from '@/pages/app/components/Flow/FlowProvider';
 
-const ImportSettings = dynamic(() => import('./ImportSettings'));
+const ImportSettings = dynamic(() => import('@/pages/app/components/Flow/ImportSettings'));
 
 type Props = { app: AppSchema; onCloseSettings: () => void };
 
@@ -38,7 +38,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { updateAppDetail } = useUserStore();
 
-  const { nodes, edges, onFixView } = useFlowStore();
+  const { nodes, edges, onFixView } = useFlowProviderStore();
 
   const flow2AppModules = useCallback(() => {
     const modules: AppModuleItemType[] = nodes.map((item) => ({

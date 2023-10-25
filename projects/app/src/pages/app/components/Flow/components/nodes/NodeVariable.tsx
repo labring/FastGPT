@@ -12,7 +12,7 @@ import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
-import { onChangeNode } from '../Provider';
+import { onChangeNode } from '../../FlowProvider';
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
@@ -48,7 +48,7 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
         }
       });
     },
-    [inputs, onChangeNode, moduleId]
+    [inputs, moduleId]
   );
 
   const onclickSubmit = useCallback(

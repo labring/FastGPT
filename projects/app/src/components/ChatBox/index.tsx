@@ -488,7 +488,7 @@ const ChatBox = (
 
     return {
       bg: colorMap[chatContent.status] || colorMap.loading,
-      name: t(chatContent.moduleName || 'Running')
+      name: t(chatContent.moduleName || 'common.Loading')
     };
   }, [chatHistory, isChatting, t]);
   /* style end */

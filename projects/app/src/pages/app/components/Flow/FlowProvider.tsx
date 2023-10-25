@@ -33,9 +33,9 @@ import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
-export type useFlowStoreType = {
-  appId: string;
+export type useFlowProviderStoreType = {
   reactFlowWrapper: null | React.RefObject<HTMLDivElement>;
+  filterAppIds: string[];
   nodes: Node<FlowModuleItemType, string | undefined>[];
   setNodes: Dispatch<SetStateAction<Node<FlowModuleItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
@@ -56,9 +56,9 @@ export type useFlowStoreType = {
   initData: (modules: AppModuleItemType[]) => void;
 };
 
-const StateContext = createContext<useFlowStoreType>({
-  appId: '',
+const StateContext = createContext<useFlowProviderStoreType>({
   reactFlowWrapper: null,
+  filterAppIds: [],
   nodes: [],
   setNodes: function (
     value: React.SetStateAction<Node<FlowModuleItemType, string | undefined>[]>
@@ -78,7 +78,6 @@ const StateContext = createContext<useFlowStoreType>({
   onFixView: function (): void {
     return;
   },
-
   onDelNode: function (nodeId: string): void {
     return;
   },
@@ -105,9 +104,15 @@ const StateContext = createContext<useFlowStoreType>({
     throw new Error('Function not implemented.');
   }
 });
-export const useFlowStore = () => useContext(StateContext);
+export const useFlowProviderStore = () => useContext(StateContext);
 
-export const FlowProvider = ({ appId, children }: { appId: string; children: React.ReactNode }) => {
+export const FlowProvider = ({
+  filterAppIds = [],
+  children
+}: {
+  filterAppIds?: string[];
+  children: React.ReactNode;
+}) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -314,8 +319,8 @@ export const FlowProvider = ({ appId, children }: { appId: string; children: Rea
   }, [onChangeNode]);
 
   const value = {
-    appId,
     reactFlowWrapper,
+    filterAppIds,
     nodes,
     setNodes,
     onNodesChange,

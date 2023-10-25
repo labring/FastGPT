@@ -123,7 +123,6 @@ export const HistoryModule: FlowModuleTemplateType = {
     }
   ]
 };
-
 export const ChatModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.chatNode,
   logo: '/imgs/module/AI.png',
@@ -238,7 +237,6 @@ export const ChatModule: FlowModuleTemplateType = {
     Output_Template_Finish
   ]
 };
-
 export const KBSearchModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.datasetSearchNode,
   logo: '/imgs/module/db.png',
@@ -312,7 +310,6 @@ export const KBSearchModule: FlowModuleTemplateType = {
     Output_Template_Finish
   ]
 };
-
 export const AnswerModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.answerNode,
   logo: '/imgs/module/reply.png',
@@ -496,10 +493,10 @@ export const EmptyModule: FlowModuleTemplateType = {
   inputs: [],
   outputs: []
 };
-export const AppModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.app,
+export const RunAppModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.runApp,
   logo: '/imgs/module/app.png',
-  name: '应用调用(测试版)',
+  name: '应用调用',
   intro: '可以选择一个其他应用进行调用',
   description: '可以选择一个其他应用进行调用',
   showStatus: true,
@@ -535,6 +532,33 @@ export const AppModule: FlowModuleTemplateType = {
     Output_Template_Finish
   ]
 };
+export const CustomInputModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.customInput,
+  logo: '/imgs/module/app.png',
+  name: '自定义输入',
+  intro: '自定义配置外部输入，供封装模块使用',
+  description: '自定义配置外部输入，供封装模块使用',
+  showStatus: false,
+  inputs: [],
+  outputs: []
+};
+export const CustomOutputModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.customIOutput,
+  logo: '/imgs/module/app.png',
+  name: '自定义输入',
+  intro: '自定义配置模块输出，供封装模块使用',
+  description: '自定义配置模块输出，供封装模块使用',
+  showStatus: false,
+  inputs: [],
+  outputs: []
+};
+export const CustomModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.customModule,
+  name: '自定义模块',
+  showStatus: false,
+  inputs: [],
+  outputs: []
+};
 
 export const ModuleTemplates = [
   {
@@ -551,7 +575,7 @@ export const ModuleTemplates = [
   },
   {
     label: '核心调用',
-    list: [KBSearchModule, AppModule]
+    list: [KBSearchModule, RunAppModule]
   },
   {
     label: '函数模块',
@@ -570,7 +594,7 @@ export const ModuleTemplatesFlat = [
   ContextExtractModule,
   HttpModule,
   EmptyModule,
-  AppModule
+  RunAppModule
 ];
 
 // template

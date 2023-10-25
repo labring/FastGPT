@@ -109,6 +109,7 @@
     "retry": "重新生成"
   },
   "common": {
+    "Loading": "加载中",
     "Add": "添加",
     "Choose": "选择",
     "Close": "关闭",

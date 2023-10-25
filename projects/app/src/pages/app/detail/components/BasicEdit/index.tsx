@@ -56,15 +56,15 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 
-import { addVariable } from '../VariableEditModal';
-import { KbParamsModal } from '../DatasetSelectModal';
+import { addVariable } from '@/pages/app/components/VariableEditModal';
+import { KbParamsModal } from '@/pages/app/components/DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
-const VariableEditModal = dynamic(() => import('../VariableEditModal'));
+const VariableEditModal = dynamic(() => import('@/pages/app/components/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
-const DatasetSelectModal = dynamic(() => import('../DatasetSelectModal'));
-const AIChatSettingsModal = dynamic(() => import('../AIChatSettingsModal'));
+const DatasetSelectModal = dynamic(() => import('@/pages/app/components/DatasetSelectModal'));
+const AIChatSettingsModal = dynamic(() => import('../../../components/AIChatSettingsModal'));
 
 const Settings = ({ appId }: { appId: string }) => {
   const theme = useTheme();

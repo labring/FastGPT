@@ -1,5 +1,5 @@
 import { PgClient } from '@/service/pg';
-import type { ChatHistoryItemResType } from '@/types/chat';
+import type { moduleDispatchResType } from '@/types/chat';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { countModelPrice } from '@/service/common/bill/push';
@@ -9,7 +9,6 @@ import type {
   SearchDataResultItemType
 } from '@fastgpt/global/core/dataset/type';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { getDatasetDataItemInfo } from '@/pages/api/core/dataset/data/getDataById';
@@ -21,15 +20,14 @@ type DatasetSearchProps = ModuleDispatchProps<{
   userChatInput: string;
 }>;
 export type KBSearchResponse = {
-  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
   isEmpty?: boolean;
   unEmpty?: boolean;
   quoteQA: SearchDataResponseItemType[];
 };
 
-export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
+export async function dispatchDatasetSearch(props: Record<string, any>): Promise<KBSearchResponse> {
   const {
-    moduleName,
     user,
     inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
   } = props as DatasetSearchProps;
@@ -77,8 +75,6 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      moduleType: FlowModuleTypeEnum.datasetSearchNode,
-      moduleName,
       price: countModelPrice({
         model: vectorModel.model,
         tokens: tokenLen,

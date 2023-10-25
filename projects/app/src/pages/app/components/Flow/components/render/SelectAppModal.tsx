@@ -1,22 +1,23 @@
 import React, { useMemo } from 'react';
 import { ModalBody, Flex, Box, useTheme, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { getMyModels } from '@/web/core/app/api';
+import { getMyApps } from '@/web/core/app/api';
 import { useQuery } from '@tanstack/react-query';
 import type { SelectAppItemType } from '@/types/core/app/flow';
 import Avatar from '@/components/Avatar';
 import { useTranslation } from 'react-i18next';
 import { useLoading } from '@/web/common/hooks/useLoading';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const SelectAppModal = ({
   defaultApps = [],
-  filterApps = [],
+  filterAppIds = [],
   max = 1,
   onClose,
   onSuccess
 }: {
   defaultApps: string[];
-  filterApps?: string[];
+  filterAppIds?: string[];
   max?: number;
   onClose: () => void;
   onSuccess: (e: SelectAppItemType[]) => void;
@@ -26,11 +27,12 @@ const SelectAppModal = ({
   const theme = useTheme();
   const [selectedApps, setSelectedApps] = React.useState<string[]>(defaultApps);
   /* 加载模型 */
-  const { data = [], isLoading } = useQuery(['loadMyApos'], () => getMyModels());
+  const { myApps, loadMyApps } = useUserStore();
+  const { isLoading } = useQuery(['loadMyApos'], () => loadMyApps());
 
   const apps = useMemo(
-    () => data.filter((app) => !filterApps.includes(app._id)),
-    [data, filterApps]
+    () => myApps.filter((app) => !filterAppIds.includes(app._id)),
+    [myApps, filterAppIds]
   );
 
   return (
@@ -38,13 +40,13 @@ const SelectAppModal = ({
       isOpen
       title={`选择应用${max > 1 ? `(${selectedApps.length}/${max})` : ''}`}
       onClose={onClose}
-      w={'700px'}
+      minW={'700px'}
       position={'relative'}
     >
       <ModalBody
         minH={'300px'}
         display={'grid'}
-        gridTemplateColumns={['1fr', 'repeat(3,1fr)']}
+        gridTemplateColumns={['1fr', 'repeat(3, minmax(0, 1fr))']}
         gridGap={4}
       >
         {apps.map((app) => (
@@ -53,8 +55,7 @@ const SelectAppModal = ({
             alignItems={'center'}
             border={theme.borders.base}
             borderRadius={'md'}
-            px={1}
-            py={2}
+            p={2}
             cursor={'pointer'}
             {...(selectedApps.includes(app._id)
               ? {

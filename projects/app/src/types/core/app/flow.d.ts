@@ -51,10 +51,10 @@ export type FlowOutputItemType = {
 
 export type FlowModuleTemplateType = {
   flowType: `${FlowModuleTypeEnum}`; // unique
-  logo: string;
+  logo?: string;
   name: string;
   description?: string;
-  intro: string;
+  intro?: string;
   showStatus?: boolean; // chatting response step status
   inputs: FlowInputItemType[];
   outputs: FlowOutputItemType[];

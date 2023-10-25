@@ -6,13 +6,13 @@ import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
 import { FlowModuleTypeEnum } from '@/constants/flow';
-import { useFlowStore } from './Provider';
+import { useFlowProviderStore } from './FlowProvider';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowNode } from '@/utils/adapt';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const ModuleTemplateList = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { nodes, setNodes, reactFlowWrapper } = useFlowStore();
+  const { nodes, setNodes, reactFlowWrapper } = useFlowProviderStore();
   const { isPc } = useSystemStore();
   const { x, y, zoom } = useViewport();
 
@@ -56,7 +56,7 @@ const ModuleTemplateList = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             item: {
               ...template,
               moduleId: nanoid(),
-              position: { x: mouseX, y: mouseY }
+              position: { x: mouseX, y: mouseY - 20 }
             }
           })
         )

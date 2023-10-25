@@ -18,7 +18,7 @@ import {
 import { FlowInputItemTypeEnum } from '@/constants/flow';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
-import { onChangeNode, useFlowStore } from '../Provider';
+import { onChangeNode, useFlowProviderStore } from '../../FlowProvider';
 import Avatar from '@/components/Avatar';
 import MySelect from '@/components/Select';
 import MySlider from '@/components/Slider';
@@ -35,7 +35,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LLMModelItemType } from '@/types/model';
 
 const SetInputFieldModal = dynamic(() => import('../modules/SetInputFieldModal'));
-const SelectAppModal = dynamic(() => import('../../../SelectAppModal'));
+const SelectAppModal = dynamic(() => import('./SelectAppModal'));
 const AIChatSettingsModal = dynamic(() => import('../../../AIChatSettingsModal'));
 const DatasetSelectModal = dynamic(() => import('../../../DatasetSelectModal'));
 
@@ -546,7 +546,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
 });
 
 var SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: RenderProps) {
-  const { appId } = useFlowStore();
+  const { filterAppIds } = useFlowProviderStore();
   const theme = useTheme();
 
   const {
@@ -577,7 +577,7 @@ var SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: Re
       {isOpenSelectApp && (
         <SelectAppModal
           defaultApps={item.value?.id ? [item.value.id] : []}
-          filterApps={[appId]}
+          filterAppIds={filterAppIds}
           onClose={onCloseSelectApp}
           onSuccess={(e) => {
             onChangeNode({

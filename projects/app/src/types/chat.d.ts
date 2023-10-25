@@ -45,9 +45,7 @@ export type ShareChatType = InitShareChatResponse & {
 };
 
 // response data
-export type ChatHistoryItemResType = {
-  moduleType: `${FlowModuleTypeEnum}`;
-  moduleName: string;
+export type moduleDispatchResType = {
   price: number;
   runningTime?: number;
   tokens?: number;
@@ -75,4 +73,9 @@ export type ChatHistoryItemResType = {
   // http
   body?: Record<string, any>;
   httpResult?: Record<string, any>;
+};
+export type ChatHistoryItemResType = moduleDispatchResType & {
+  moduleType: `${FlowModuleTypeEnum}`;
+  moduleName: string;
+  moduleLogo?: string;
 };

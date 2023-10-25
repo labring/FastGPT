@@ -35,12 +35,14 @@ export enum FlowModuleTypeEnum {
   historyNode = 'historyNode',
   chatNode = 'chatNode',
   datasetSearchNode = 'datasetSearchNode',
-  tfSwitchNode = 'tfSwitchNode',
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion',
   contentExtract = 'contentExtract',
   httpRequest = 'httpRequest',
-  app = 'app'
+  runApp = 'app',
+  customModule = 'customModel',
+  customInput = 'customInput',
+  customIOutput = 'customIOutput'
 }
 
 export enum SpecialInputKeyEnum {

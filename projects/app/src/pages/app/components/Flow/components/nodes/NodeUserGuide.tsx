@@ -18,7 +18,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { FlowModuleItemType } from '@/types/core/app/flow';
 import { SystemInputEnum } from '@/constants/app';
 import { welcomeTextTip, variableTip, questionGuideTip } from '@/constants/flow/ModuleTemplate';
-import { onChangeNode } from '../Provider';
+import { onChangeNode } from '../../FlowProvider';
 
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
 import MyIcon from '@/components/Icon';
@@ -113,7 +113,7 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
         }
       });
     },
-    [inputs, onChangeNode, moduleId]
+    [inputs, moduleId]
   );
 
   const onclickSubmit = useCallback(

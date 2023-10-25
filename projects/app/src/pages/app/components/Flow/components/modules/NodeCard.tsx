@@ -8,7 +8,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'react-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useFlowStore, onChangeNode } from '../Provider';
+import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -24,7 +24,7 @@ const NodeCard = (props: Props) => {
     minW = '300px',
     moduleId
   } = props;
-  const { onCopyNode, onDelNode } = useFlowStore();
+  const { onCopyNode, onDelNode } = useFlowProviderStore();
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
@@ -76,7 +76,7 @@ const NodeCard = (props: Props) => {
         onClick: () => {}
       }
     ],
-    [moduleId, name, onChangeNode, onCopyNode, onDelNode, onOpenModal, t, toast]
+    [moduleId, name, onCopyNode, onDelNode, onOpenModal, t, toast]
   );
 
   return (

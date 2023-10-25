@@ -7,7 +7,7 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeAPP = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeRunAPP = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
 
   return (
@@ -22,4 +22,4 @@ const NodeAPP = ({ data }: NodeProps<FlowModuleItemType>) => {
     </NodeCard>
   );
 };
-export default React.memo(NodeAPP);
+export default React.memo(NodeRunAPP);

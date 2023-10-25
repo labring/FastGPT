@@ -9,7 +9,7 @@ import {
   dispatchHistory,
   dispatchChatInput,
   dispatchChatCompletion,
-  dispatchKBSearch,
+  dispatchDatasetSearch,
   dispatchAnswer,
   dispatchClassifyQuestion,
   dispatchContentExtract,
@@ -425,7 +425,6 @@ export async function dispatchModules({
       stream,
       detail,
       variables,
-      moduleName: module.name,
       outputs: module.outputs,
       user,
       inputs: params
@@ -437,11 +436,11 @@ export async function dispatchModules({
         [FlowModuleTypeEnum.questionInput]: dispatchChatInput,
         [FlowModuleTypeEnum.answerNode]: dispatchAnswer,
         [FlowModuleTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowModuleTypeEnum.datasetSearchNode]: dispatchKBSearch,
+        [FlowModuleTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
         [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
         [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract,
         [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowModuleTypeEnum.app]: dispatchAppRequest
+        [FlowModuleTypeEnum.runApp]: dispatchAppRequest
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);
@@ -451,7 +450,15 @@ export async function dispatchModules({
 
     return moduleOutput(module, {
       [SystemOutputEnum.finish]: true,
-      ...dispatchRes
+      ...dispatchRes,
+      [TaskResponseKeyEnum.responseData]: dispatchRes[TaskResponseKeyEnum.responseData] // rewrite responseData
+        ? {
+            ...dispatchRes[TaskResponseKeyEnum.responseData],
+            moduleName: module.name,
+            moduleLogo: '',
+            moduleType: module.flowType
+          }
+        : undefined
     });
   }
 

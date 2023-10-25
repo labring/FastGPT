@@ -109,6 +109,7 @@
     "retry": "Retry"
   },
   "common": {
+    "Loading": "Loading",
     "Add": "Add",
     "Choose": "Choose",
     "Close": "Clow",
