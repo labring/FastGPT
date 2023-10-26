@@ -14,10 +14,10 @@ import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import ChatTest, { type ChatTestComponentRef } from '@/pages/app/components/Flow/ChatTest';
-import { useFlowProviderStore } from '@/pages/app/components/Flow/FlowProvider';
+import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
+import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 
-const ImportSettings = dynamic(() => import('@/pages/app/components/Flow/ImportSettings'));
+const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
 type Props = { app: AppSchema; onClose: () => void };
 

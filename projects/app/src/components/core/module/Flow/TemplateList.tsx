@@ -113,7 +113,7 @@ const ModuleTemplateList = ({
               alignItems={'center'}
               _hover={{ textDecoration: 'underline' }}
               cursor={'pointer'}
-              onClick={() => router.push('/app/module/edit')}
+              onClick={() => router.push('/module/edit')}
             >
               <Box fontSize={'sm'} transform={'translateY(-1px)'}>
                 去创建

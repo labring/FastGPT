@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Header from './Header';
-import Flow from '@/pages/app/components/Flow';
-import FlowProvider, { useFlowProviderStore } from '@/pages/app/components/Flow/FlowProvider';
+import Flow from '@/components/core/module/Flow';
+import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { SystemModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 import { CombineModuleTemplates } from '@/constants/flow/ModuleTemplate';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';

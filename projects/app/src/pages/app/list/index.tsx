@@ -73,7 +73,7 @@ const MyApps = () => {
           {t('app.My Apps')}
         </Box>
         <Button leftIcon={<AddIcon />} variant={'base'} onClick={onOpenCreateModal}>
-          新建
+          {t('common.New Create')}
         </Button>
       </Flex>
       <Grid

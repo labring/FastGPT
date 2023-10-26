@@ -1,10 +1,11 @@
 import React from 'react';
 import { Box, useTheme, type BoxProps } from '@chakra-ui/react';
+import MyBox from '../common/MyBox';
 
-const PageContainer = ({ children, ...props }: BoxProps) => {
+const PageContainer = ({ children, ...props }: BoxProps & { isLoading?: boolean }) => {
   const theme = useTheme();
   return (
-    <Box bg={'myGray.100'} h={'100%'} p={[0, 5]} px={[0, 6]} {...props}>
+    <MyBox bg={'myGray.100'} h={'100%'} p={[0, 5]} px={[0, 6]} {...props}>
       <Box
         h={'100%'}
         bg={'white'}
@@ -14,7 +15,7 @@ const PageContainer = ({ children, ...props }: BoxProps) => {
       >
         {children}
       </Box>
-    </Box>
+    </MyBox>
   );
 };
 
