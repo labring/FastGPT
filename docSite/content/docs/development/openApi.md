@@ -225,7 +225,7 @@ data: [{"moduleName":"KB Search","price":1.2000000000000002,"model":"Embedding-2
 此部分 API 需使用全局通用的 API Key。
 {{% /alert %}}
 
-| 如何获取知识库ID（datasetId） | 如何获取文件ID（file_id） |
+| 如何获取知识库ID（kbId） | 如何获取文件ID（file_id） |
 | --------------------- | --------------------- |
 | ![](/imgs/getDatasetId.png) | ![](/imgs/getfile_id.png) |
 
@@ -241,7 +241,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushDa
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "collectionId": "64663f451ba1676dbdef0499",
+    "kbId": "64663f451ba1676dbdef0499",
     "mode": "index",
     "prompt": "qa 拆分引导词，index 模式下可以忽略",
     "billId": "可选。如果有这个值，本次的数据会被聚合到一个订单中，这个值可以重复使用。可以参考 [创建训练订单] 获取该值。",
