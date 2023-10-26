@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { getOneModuleDetail } from '@fastgpt/service/core/module/controller';
+import { getOnePluginDetail } from '@fastgpt/service/core/plugin/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     jsonRes(res, {
-      data: await getOneModuleDetail({ id, userId })
+      data: await getOnePluginDetail({ id, userId })
     });
   } catch (err) {
     jsonRes(res, {

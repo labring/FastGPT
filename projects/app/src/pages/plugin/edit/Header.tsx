@@ -1,21 +1,20 @@
 import React, { useCallback } from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
-import { FlowModuleItemSchema } from '@fastgpt/global/core/module/type';
+import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
-
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import { putUpdateModule } from '@/web/core/module/api';
+import { putUpdatePlugin } from '@/web/core/plugin/api';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
-type Props = { module: FlowModuleItemSchema; onClose: () => void };
+type Props = { plugin: PluginItemSchema; onClose: () => void };
 
-const Header = ({ module, onClose }: Props) => {
+const Header = ({ plugin, onClose }: Props) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
@@ -36,8 +35,8 @@ const Header = ({ module, onClose }: Props) => {
         }
       }
 
-      return putUpdateModule({
-        id: module._id,
+      return putUpdatePlugin({
+        id: plugin._id,
         modules
       });
     },
@@ -69,7 +68,7 @@ const Header = ({ module, onClose }: Props) => {
           />
         </MyTooltip>
         <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
-          {module.name}
+          {plugin.name}
         </Box>
 
         <MyTooltip label={t('app.Import Configs')}>

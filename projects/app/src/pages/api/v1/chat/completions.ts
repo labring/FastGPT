@@ -504,12 +504,19 @@ function loadModules(
             value: replacedVal
           };
         }),
-      outputs: module.outputs.map((item) => ({
-        key: item.key,
-        answer: item.key === TaskResponseKeyEnum.answerText,
-        value: undefined,
-        targets: item.targets
-      }))
+      outputs: module.outputs
+        .map((item) => ({
+          key: item.key,
+          answer: item.key === TaskResponseKeyEnum.answerText,
+          value: undefined,
+          targets: item.targets
+        }))
+        .sort((a, b) => {
+          // finish output always at last
+          if (a.key === SystemOutputEnum.finish) return 1;
+          if (b.key === SystemOutputEnum.finish) return -1;
+          return 0;
+        })
     };
   });
 }

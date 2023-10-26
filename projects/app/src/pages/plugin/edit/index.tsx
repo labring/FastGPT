@@ -8,15 +8,15 @@ import { CombineModuleTemplates } from '@/constants/flow/ModuleTemplate';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { getOneModule } from '@/web/core/module/api';
+import { getOnePlugin } from '@/web/core/plugin/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'react-i18next';
 
-type Props = { moduleId: string };
+type Props = { pluginId: string };
 
-const Render = ({ moduleId }: Props) => {
+const Render = ({ pluginId }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
@@ -48,13 +48,13 @@ const Render = ({ moduleId }: Props) => {
     return copyTemplates;
   }, [nodes]);
 
-  const { data } = useQuery(['getModuleDetail', moduleId], () => getOneModule(moduleId), {
+  const { data } = useQuery(['getOnePlugin', pluginId], () => getOnePlugin(pluginId), {
     onError: (error) => {
       toast({
         status: 'warning',
-        title: getErrText(error, t('module.Load Module Failed'))
+        title: getErrText(error, t('plugin.Load Plugin Failed'))
       });
-      router.replace('/module/list');
+      router.replace('/plugin/list');
     }
   });
 
@@ -63,7 +63,7 @@ const Render = ({ moduleId }: Props) => {
       systemTemplates={filterTemplates}
       combineTemplates={[]}
       modules={data?.modules || []}
-      Header={<Header module={data} onClose={() => router.back()} />}
+      Header={<Header plugin={data} onClose={() => router.back()} />}
     />
   ) : (
     <Loading />
@@ -81,7 +81,7 @@ export default function AdEdit(props: any) {
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      moduleId: context?.query?.moduleId || '',
+      pluginId: context?.query?.pluginId || '',
       ...(await serviceSideProps(context))
     }
   };

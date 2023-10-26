@@ -48,6 +48,7 @@
     "module": {
       "Combine Modules": "组合模块",
       "Custom Title Tip": "该标题名字会展示在对话过程中",
+      "My Modules": "",
       "No Modules": "还没有模块~",
       "System Module": "系统模块",
       "type": "\"{{type}}\"类型\n{{example}}",
@@ -343,6 +344,7 @@
     "Chat": "聊天",
     "Datasets": "知识库",
     "Module": "模块",
+    "Plugin": "插件",
     "Store": "应用市场",
     "Tools": "工具"
   },
@@ -371,6 +373,15 @@
     "token auth": "身份验证",
     "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会想指定服务器发送一个请求，进行身份校验",
     "token auth use cases": "查看身份验证使用说明"
+  },
+  "plugin": {
+    "Confirm Delete": "确认删除该插件？",
+    "Create Your Plugin": "创建你的插件",
+    "Intro": "插件介绍",
+    "Load Plugin Failed": "加载插件异常",
+    "My Plugins": "我的插件",
+    "No Intro": "这个插件没有介绍~",
+    "Update Your Plugin": "更新插件"
   },
   "system": {
     "Help Document": "帮助文档"

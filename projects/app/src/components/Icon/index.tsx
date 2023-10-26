@@ -93,8 +93,8 @@ const iconPaths = {
   'core/app/aiLight': () => import('./icons/core/app/aiLight.svg'),
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
   'common/text/t': () => import('./icons/common/text/t.svg'),
-  'common/navbar/combineLight': () => import('./icons/common/navbar/combineLight.svg'),
-  'common/navbar/combineFill': () => import('./icons/common/navbar/combineFill.svg')
+  'common/navbar/pluginLight': () => import('./icons/common/navbar/pluginLight.svg'),
+  'common/navbar/pluginFill': () => import('./icons/common/navbar/pluginFill.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

@@ -1,17 +1,19 @@
-export type CreateOneModuleParams = {
+import type { ModuleItemType } from '../module/type.d';
+
+export type CreateOnePluginParams = {
   name: string;
   avatar: string;
   intro: string;
   modules?: ModuleItemType[];
 };
-export type UpdateNoduleParams = {
+export type UpdatePluginParams = {
   id: string;
   name?: string;
   avatar?: string;
   intro?: string;
   modules?: ModuleItemType[];
 };
-export type ModuleListItemType = {
+export type PluginListItemType = {
   _id: string;
   name: string;
   avatar: string;

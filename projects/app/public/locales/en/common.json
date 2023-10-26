@@ -47,6 +47,7 @@
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
       "Combine Modules": "Combine Modules",
+      "Custom Title Tip": "",
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
@@ -343,6 +344,7 @@
     "Chat": "Chat",
     "Datasets": "DataSets",
     "Module": "Module",
+    "Plugin": "Plugin",
     "Store": "Store",
     "Tools": "Tools"
   },
@@ -371,6 +373,15 @@
     "token auth": "Token Auth",
     "token auth Tips": "Identity verification server address. If this value is set, the server will be specified to send a request for identity verification before each session",
     "token auth use cases": "Review the authentication instructions"
+  },
+  "plugin": {
+    "Confirm Delete": "Confirm to delete the plugin?",
+    "Create Your Plugin": "Create Plugin",
+    "Intro": "Plugin Intro",
+    "Load Plugin Failed": "Load Plugin Failed",
+    "My Plugins": "My Plugins",
+    "No Intro": "This plugin is not introduced",
+    "Update Your Plugin": "Update Plugin"
   },
   "system": {
     "Help Document": "Document"

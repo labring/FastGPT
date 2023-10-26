@@ -17,7 +17,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { delOneModule, postCreateModule, putUpdateModule } from '@/web/core/module/api';
+import { delOnePlugin, postCreatePlugin, putUpdatePlugin } from '@/web/core/plugin/api';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
@@ -55,7 +55,7 @@ const CreateModal = ({
   const { isPc } = useSystemStore();
   const { openConfirm, ConfirmModal } = useConfirm({
     title: t('common.Delete Tip'),
-    content: t('module.Confirm Delete Module')
+    content: t('plugin.Confirm Delete')
   });
 
   const { register, setValue, getValues, handleSubmit } = useForm<FormType>({
@@ -91,10 +91,10 @@ const CreateModal = ({
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (data: FormType) => {
-      return postCreateModule(data);
+      return postCreatePlugin(data);
     },
     onSuccess(id: string) {
-      router.push(`/module/edit?moduleId=${id}`);
+      router.push(`/plugin/edit?pluginId=${id}`);
       onSuccess();
       onClose();
     },
@@ -105,7 +105,7 @@ const CreateModal = ({
     mutationFn: async (data: FormType) => {
       if (!data.id) return Promise.resolve('');
       // @ts-ignore
-      return putUpdateModule(data);
+      return putUpdatePlugin(data);
     },
     onSuccess() {
       onSuccess();
@@ -118,7 +118,7 @@ const CreateModal = ({
   const onclickDelApp = useCallback(async () => {
     if (!defaultValue.id) return;
     try {
-      await delOneModule(defaultValue.id);
+      await delOnePlugin(defaultValue.id);
       toast({
         title: t('common.Delete Success'),
         status: 'success'
@@ -136,7 +136,7 @@ const CreateModal = ({
   return (
     <MyModal isOpen onClose={onClose} isCentered={!isPc}>
       <ModalHeader fontSize={'2xl'}>
-        {defaultValue.id ? t('module.Update Your Module') : t('module.Create Your Module')}
+        {defaultValue.id ? t('plugin.Update Your Plugin') : t('plugin.Create Your Plugin')}
       </ModalHeader>
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
@@ -165,8 +165,8 @@ const CreateModal = ({
           />
         </Flex>
         <Box mt={3}>
-          <Box mb={1}>{t('module.Intro')}</Box>
-          <Textarea {...register('intro')} bg={'myWhite.600'} rows={8} />
+          <Box mb={1}>{t('plugin.Intro')}</Box>
+          <Textarea {...register('intro')} bg={'myWhite.600'} rows={5} />
         </Box>
       </ModalBody>
 

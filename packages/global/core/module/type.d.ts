@@ -32,16 +32,6 @@ export type ModuleItemType = {
   outputs: FlowNodeOutputItemType[];
 };
 
-export type FlowModuleItemSchema = {
-  _id: string;
-  userId: string;
-  name: string;
-  avatar: string;
-  intro: string;
-  updateTime: Date;
-  modules: ModuleItemType[];
-};
-
 /* function type */
 export type SelectAppItemType = {
   id: string;

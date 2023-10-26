@@ -2,16 +2,17 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { deleteOneModule } from '@fastgpt/service/core/module/controller';
+import { createOnePlugin } from '@fastgpt/service/core/plugin/controller';
+import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { id } = req.query as { id: string };
     await connectToDatabase();
     const { userId } = await authUser({ req, authToken: true });
+    const body = req.body as CreateOnePluginParams;
 
     jsonRes(res, {
-      data: await deleteOneModule({ id, userId })
+      data: await createOnePlugin({ userId, ...body })
     });
   } catch (err) {
     jsonRes(res, {

@@ -10,7 +10,7 @@ import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import EditModal, { defaultForm, FormType } from './component/EditModal';
-import { getUserModules } from '@/web/core/module/api';
+import { getUserPlugins } from '@/web/core/plugin/api';
 import EmptyTip from '@/components/EmptyTip';
 
 const MyModules = () => {
@@ -19,12 +19,12 @@ const MyModules = () => {
   const router = useRouter();
   const [editModalData, setEditModalData] = useState<FormType>();
 
-  /* load modules */
+  /* load plugins */
   const {
     data = [],
     isLoading,
     refetch
-  } = useQuery(['loadModules'], () => getUserModules(), {
+  } = useQuery(['loadModules'], () => getUserPlugins(), {
     refetchOnMount: true
   });
 
@@ -32,9 +32,9 @@ const MyModules = () => {
     <PageContainer isLoading={isLoading}>
       <Flex pt={3} px={5} alignItems={'center'}>
         <Flex flex={1} alignItems={'center'}>
-          <Image src={'/imgs/module/combine.svg'} alt={''} mr={2} h={'24px'} />
+          <Image src={'/imgs/module/plugin.svg'} alt={''} mr={2} h={'24px'} />
           <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-            {t('app.module.Combine Modules')}
+            {t('plugin.My Plugins')}
           </Box>
         </Flex>
         <Button
@@ -50,9 +50,9 @@ const MyModules = () => {
         gridTemplateColumns={['1fr', 'repeat(3,1fr)', 'repeat(4,1fr)', 'repeat(5,1fr)']}
         gridGap={5}
       >
-        {data.map((module) => (
+        {data.map((plugin) => (
           <Card
-            key={module._id}
+            key={plugin._id}
             py={4}
             px={5}
             cursor={'pointer'}
@@ -71,11 +71,11 @@ const MyModules = () => {
                 display: 'block'
               }
             }}
-            onClick={() => router.push(`/module/edit?moduleId=${module._id}`)}
+            onClick={() => router.push(`/plugin/edit?pluginId=${plugin._id}`)}
           >
             <Flex alignItems={'center'} h={'38px'}>
-              <Avatar src={module.avatar} borderRadius={'md'} w={'28px'} />
-              <Box ml={3}>{module.name}</Box>
+              <Avatar src={plugin.avatar} borderRadius={'md'} w={'28px'} />
+              <Box ml={3}>{plugin.name}</Box>
               <IconButton
                 className="delete"
                 position={'absolute'}
@@ -93,10 +93,10 @@ const MyModules = () => {
                 onClick={(e) => {
                   e.stopPropagation();
                   setEditModalData({
-                    id: module._id,
-                    name: module.name,
-                    avatar: module.avatar,
-                    intro: module.intro
+                    id: plugin._id,
+                    name: plugin.name,
+                    avatar: plugin.avatar,
+                    intro: plugin.intro
                   });
                 }}
               />
@@ -108,7 +108,7 @@ const MyModules = () => {
               fontSize={'sm'}
               color={'myGray.600'}
             >
-              {module.intro || '这个模块还没写介绍~'}
+              {plugin.intro || t('plugin.No Intro')}
             </Box>
           </Card>
         ))}

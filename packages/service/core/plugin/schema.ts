@@ -1,10 +1,10 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import type { FlowModuleItemSchema } from '@fastgpt/global/core/module/type.d';
+import type { PluginItemSchema } from '@fastgpt/global/core/plugin/type.d';
 
-export const ModuleCollectionName = 'modules';
+export const ModuleCollectionName = 'plugins';
 
-const DatasetSchema = new Schema({
+const PluginSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user',
@@ -33,10 +33,10 @@ const DatasetSchema = new Schema({
 });
 
 try {
-  DatasetSchema.index({ userId: 1 });
+  PluginSchema.index({ userId: 1 });
 } catch (error) {
   console.log(error);
 }
 
-export const MongoModule: Model<FlowModuleItemSchema> =
-  models[ModuleCollectionName] || model(ModuleCollectionName, DatasetSchema);
+export const MongoPlugin: Model<PluginItemSchema> =
+  models[ModuleCollectionName] || model(ModuleCollectionName, PluginSchema);
