@@ -46,7 +46,16 @@
     "Paste Config": "粘贴配置",
     "Variable Key Repeat Tip": "变量 key 重复",
     "module": {
-      "Custom Title Tip": "该标题名字会展示在对话过程中"
+      "Custom Title Tip": "该标题名字会展示在对话过程中",
+      "type": "\"{{type}}\"类型\n{{example}}",
+      "valueType": {
+        "any": "任意",
+        "boolean": "布尔",
+        "chatHistory": "聊天记录",
+        "datasetQuote": "引用内容",
+        "number": "数字",
+        "string": "字符串"
+      }
     },
     "modules": {
       "Title is required": "模块名不能为空"
@@ -109,7 +118,6 @@
     "retry": "重新生成"
   },
   "common": {
-    "Loading": "加载中",
     "Add": "添加",
     "Choose": "选择",
     "Close": "关闭",
@@ -131,6 +139,7 @@
     "Filed is repeated": "字段重复了",
     "Input": "输入",
     "Last Step": "上一步",
+    "Loading": "加载中",
     "Max credit": "最大金额",
     "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
     "Name": "名称",

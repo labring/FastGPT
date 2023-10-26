@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { Handle, OnConnect, Position } from 'reactflow';
-import { FlowValueTypeEnum, FlowValueTypeStyle } from '@/constants/flow';
+import { FlowValueTypeEnum, FlowValueTypeStyle, FlowValueTypeTip } from '@/constants/flow';
 import MyTooltip from '@/components/MyTooltip';
+import { useTranslation } from 'next-i18next';
 
 interface Props extends BoxProps {
   handleKey: string;
@@ -11,6 +12,9 @@ interface Props extends BoxProps {
 }
 
 const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
+  const { t } = useTranslation();
+
+  const valType = valueType ?? FlowValueTypeEnum.any;
   const valueStyle = useMemo(
     () =>
       valueType
@@ -28,7 +32,12 @@ const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
       transform={'translate(50%,-50%)'}
       {...props}
     >
-      <MyTooltip label={`${valueType}类型`}>
+      <MyTooltip
+        label={t('app.module.type', {
+          type: t(FlowValueTypeTip[valType].label),
+          example: FlowValueTypeTip[valType].example
+        })}
+      >
         <Handle
           style={{
             width: '12px',

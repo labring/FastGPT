@@ -46,7 +46,16 @@
     "Paste Config": "Paste Config",
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
-      "Custom Title Tip": "The title name is displayed during the conversation"
+      "Custom Title Tip": "The title name is displayed during the conversation",
+      "type": "{{type}}\n{{example}}",
+      "valueType": {
+        "any": "any",
+        "boolean": "boolean",
+        "chatHistory": "Chat History",
+        "datasetQuote": "Dataset Quote",
+        "number": "number",
+        "string": "string"
+      }
     },
     "modules": {
       "Title is required": "Title is required"
@@ -109,7 +118,6 @@
     "retry": "Retry"
   },
   "common": {
-    "Loading": "Loading",
     "Add": "Add",
     "Choose": "Choose",
     "Close": "Clow",
@@ -131,6 +139,7 @@
     "Filed is repeated": "",
     "Input": "Input",
     "Last Step": "Last",
+    "Loading": "Loading",
     "Max credit": "Credit",
     "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
     "Name": "Name",

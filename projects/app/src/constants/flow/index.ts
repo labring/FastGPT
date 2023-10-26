@@ -79,6 +79,43 @@ export const FlowValueTypeStyle: Record<`${FlowValueTypeEnum}`, BoxProps> = {
     background: '#9CA2A8'
   }
 };
+export const FlowValueTypeTip = {
+  [FlowValueTypeEnum.string]: {
+    label: 'app.module.valueType.string',
+    example: ''
+  },
+  [FlowValueTypeEnum.number]: {
+    label: 'app.module.valueType.number',
+    example: ''
+  },
+  [FlowValueTypeEnum.boolean]: {
+    label: 'app.module.valueType.boolean',
+    example: ''
+  },
+  [FlowValueTypeEnum.chatHistory]: {
+    label: 'app.module.valueType.chatHistory',
+    example: `{
+  obj: System | Human | AI;
+  value: string;
+}`
+  },
+  [FlowValueTypeEnum.datasetQuote]: {
+    label: 'app.module.valueType.datasetQuote',
+    example: `{
+  id: string;
+  datasetId: string;
+  collectionId: string;
+  sourceName: string;
+  sourceId?: string;
+  q: string;
+  a: string
+}`
+  },
+  [FlowValueTypeEnum.any]: {
+    label: 'app.module.valueType.any',
+    example: ''
+  }
+};
 
 export const initModuleType: Record<string, boolean> = {
   [FlowModuleTypeEnum.historyNode]: true,
