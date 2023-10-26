@@ -46,9 +46,8 @@
     "Paste Config": "粘贴配置",
     "Variable Key Repeat Tip": "变量 key 重复",
     "module": {
-      "Combine Module": "组合模块",
+      "Combine Modules": "组合模块",
       "Custom Title Tip": "该标题名字会展示在对话过程中",
-      "My Modules": "我的自定义模块",
       "No Modules": "还没有模块~",
       "System Module": "系统模块",
       "type": "\"{{type}}\"类型\n{{example}}",
@@ -335,6 +334,7 @@
     "Confirm Delete Module": "确认删除该自定义模块？",
     "Create Your Module": "创建自定义模块",
     "Intro": "模块介绍",
+    "Load Module Failed": "加载模块失败",
     "Update Your Module": "更新模块信息"
   },
   "navbar": {
@@ -342,6 +342,7 @@
     "Apps": "应用",
     "Chat": "聊天",
     "Datasets": "知识库",
+    "Module": "模块",
     "Store": "应用市场",
     "Tools": "工具"
   },

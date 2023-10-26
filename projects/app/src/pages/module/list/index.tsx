@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Grid, Card, useTheme, Flex, IconButton, Button } from '@chakra-ui/react';
+import { Box, Grid, Card, useTheme, Flex, IconButton, Button, Image } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
@@ -31,9 +31,12 @@ const MyModules = () => {
   return (
     <PageContainer isLoading={isLoading}>
       <Flex pt={3} px={5} alignItems={'center'}>
-        <Box flex={1} className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-          {t('app.module.My Modules')}
-        </Box>
+        <Flex flex={1} alignItems={'center'}>
+          <Image src={'/imgs/module/combine.svg'} alt={''} mr={2} h={'24px'} />
+          <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
+            {t('app.module.Combine Modules')}
+          </Box>
+        </Flex>
         <Button
           leftIcon={<AddIcon />}
           variant={'base'}

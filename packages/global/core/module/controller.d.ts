@@ -2,14 +2,14 @@ export type CreateOneModuleParams = {
   name: string;
   avatar: string;
   intro: string;
-  module?: ModuleItemType[];
+  modules?: ModuleItemType[];
 };
 export type UpdateNoduleParams = {
   id: string;
   name?: string;
   avatar?: string;
   intro?: string;
-  module?: ModuleItemType[];
+  modules?: ModuleItemType[];
 };
 export type ModuleListItemType = {
   _id: string;

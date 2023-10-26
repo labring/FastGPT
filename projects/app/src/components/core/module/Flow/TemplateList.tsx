@@ -49,7 +49,7 @@ const ModuleTemplateList = ({
       },
       {
         type: TemplateTypeEnum.combine,
-        label: t('app.module.Combine Module'),
+        label: t('app.module.Combine Modules'),
         child: <RenderList templates={combineTemplates} onClose={onClose} />
       }
     ],
@@ -113,7 +113,7 @@ const ModuleTemplateList = ({
               alignItems={'center'}
               _hover={{ textDecoration: 'underline' }}
               cursor={'pointer'}
-              onClick={() => router.push('/module/edit')}
+              onClick={() => router.push('/module/list')}
             >
               <Box fontSize={'sm'} transform={'translateY(-1px)'}>
                 去创建

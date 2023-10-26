@@ -1,81 +1,30 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
-import { SmallCloseIcon } from '@chakra-ui/icons';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/module/node/type';
-import { ModuleItemType } from '@fastgpt/global/core/module/type';
+import { FlowModuleItemSchema } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import type { AppSchema } from '@/types/mongoSchema';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { AppTypeEnum } from '@/constants/app';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
-import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { putUpdateModule } from '@/web/core/module/api';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
-type Props = { onClose: () => void };
+type Props = { module: FlowModuleItemSchema; onClose: () => void };
 
-const Header = ({ onClose }: Props) => {
+const Header = ({ module, onClose }: Props) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { updateAppDetail } = useUserStore();
-
   const { nodes, edges, onFixView } = useFlowProviderStore();
-
-  const flow2AppModules = useCallback(() => {
-    const modules: ModuleItemType[] = nodes.map((item) => ({
-      moduleId: item.data.moduleId,
-      name: item.data.name,
-      flowType: item.data.flowType,
-      showStatus: item.data.showStatus,
-      position: item.position,
-      inputs: item.data.inputs.map((item) => ({
-        ...item,
-        connected: item.connected ?? item.type !== FlowNodeInputTypeEnum.target
-      })),
-      outputs: item.data.outputs.map((item) => ({
-        ...item,
-        targets: [] as FlowNodeOutputTargetItemType[]
-      }))
-    }));
-
-    // update inputs and outputs
-    modules.forEach((module) => {
-      module.inputs.forEach((input) => {
-        input.connected =
-          input.connected ||
-          !!edges.find(
-            (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
-          );
-      });
-      module.outputs.forEach((output) => {
-        output.targets = edges
-          .filter(
-            (edge) =>
-              edge.source === module.moduleId &&
-              edge.sourceHandle === output.key &&
-              edge.targetHandle
-          )
-          .map((edge) => ({
-            moduleId: edge.target,
-            key: edge.targetHandle || ''
-          }));
-      });
-    });
-    return modules;
-  }, [edges, nodes]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
-      const modules = flow2AppModules();
+      const modules = flowNode2Modules({ nodes, edges });
       // check required connect
       for (let i = 0; i < modules.length; i++) {
         const item = modules[i];
@@ -87,7 +36,10 @@ const Header = ({ onClose }: Props) => {
         }
       }
 
-      return Promise.resolve('');
+      return putUpdateModule({
+        id: module._id,
+        modules
+      });
     },
     successToast: '保存配置成功',
     errorToast: '保存配置异常'
@@ -117,7 +69,7 @@ const Header = ({ onClose }: Props) => {
           />
         </MyTooltip>
         <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
-          组合模块
+          {module.name}
         </Box>
 
         <MyTooltip label={t('app.Import Configs')}>
@@ -139,7 +91,7 @@ const Header = ({ onClose }: Props) => {
             aria-label={'save'}
             onClick={() =>
               copyData(
-                JSON.stringify(flow2AppModules(), null, 2),
+                JSON.stringify(flowNode2Modules({ nodes, edges }), null, 2),
                 t('app.Export Config Successful')
               )
             }

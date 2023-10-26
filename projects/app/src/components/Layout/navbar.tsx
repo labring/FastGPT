@@ -41,6 +41,13 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/app/list', '/app/detail']
       },
       {
+        label: t('navbar.Module'),
+        icon: 'common/navbar/combineLight',
+        activeIcon: 'common/navbar/combineFill',
+        link: `/module/list`,
+        activeLink: ['/module/list', '/module/edit']
+      },
+      {
         label: t('navbar.Datasets'),
         icon: 'dbLight',
         activeIcon: 'dbFill',

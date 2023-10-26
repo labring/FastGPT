@@ -46,8 +46,7 @@
     "Paste Config": "Paste Config",
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
-      "Combine Module": "Combine Module",
-      "Custom Title Tip": "The title name is displayed during the conversation",
+      "Combine Modules": "Combine Modules",
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
@@ -335,6 +334,7 @@
     "Confirm Delete Module": "Confirm to delete the custom module?",
     "Create Your Module": "Create You Module",
     "Intro": "Module Intro",
+    "Load Module Failed": "Load Module Failed",
     "Update Your Module": "Update Module"
   },
   "navbar": {
@@ -342,6 +342,7 @@
     "Apps": "Apps",
     "Chat": "Chat",
     "Datasets": "DataSets",
+    "Module": "Module",
     "Store": "Store",
     "Tools": "Tools"
   },

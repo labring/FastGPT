@@ -15,7 +15,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
-import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
@@ -40,52 +40,9 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
   const { nodes, edges, onFixView } = useFlowProviderStore();
 
-  const flow2AppModules = useCallback(() => {
-    const modules: ModuleItemType[] = nodes.map((item) => ({
-      moduleId: item.data.moduleId,
-      name: item.data.name,
-      flowType: item.data.flowType,
-      showStatus: item.data.showStatus,
-      position: item.position,
-      inputs: item.data.inputs.map((item) => ({
-        ...item,
-        connected: item.connected ?? item.type !== FlowNodeInputTypeEnum.target
-      })),
-      outputs: item.data.outputs.map((item) => ({
-        ...item,
-        targets: [] as FlowNodeOutputTargetItemType[]
-      }))
-    }));
-
-    // update inputs and outputs
-    modules.forEach((module) => {
-      module.inputs.forEach((input) => {
-        input.connected =
-          input.connected ||
-          !!edges.find(
-            (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
-          );
-      });
-      module.outputs.forEach((output) => {
-        output.targets = edges
-          .filter(
-            (edge) =>
-              edge.source === module.moduleId &&
-              edge.sourceHandle === output.key &&
-              edge.targetHandle
-          )
-          .map((edge) => ({
-            moduleId: edge.target,
-            key: edge.targetHandle || ''
-          }));
-      });
-    });
-    return modules;
-  }, [edges, nodes]);
-
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
-      const modules = flow2AppModules();
+      const modules = flowNode2Modules({ nodes, edges });
       // check required connect
       for (let i = 0; i < modules.length; i++) {
         const item = modules[i];
@@ -155,7 +112,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             aria-label={'save'}
             onClick={() =>
               copyData(
-                JSON.stringify(flow2AppModules(), null, 2),
+                JSON.stringify(flowNode2Modules({ nodes, edges }), null, 2),
                 t('app.Export Config Successful')
               )
             }
@@ -181,7 +138,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
               aria-label={'save'}
               variant={'base'}
               onClick={() => {
-                setTestModules(flow2AppModules());
+                setTestModules(flowNode2Modules({ nodes, edges }));
               }}
             />
           </MyTooltip>

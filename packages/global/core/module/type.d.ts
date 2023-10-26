@@ -39,7 +39,7 @@ export type FlowModuleItemSchema = {
   avatar: string;
   intro: string;
   updateTime: Date;
-  module: ModuleItemType[];
+  modules: ModuleItemType[];
 };
 
 /* function type */

@@ -11,5 +11,5 @@ export const postCreateModule = (data: CreateOneModuleParams) =>
 export const putUpdateModule = (data: UpdateNoduleParams) => PUT('/core/module/update', data);
 export const getUserModules = () => GET<ModuleListItemType[]>('/core/module/list');
 export const getOneModule = (id: string) =>
-  GET<FlowModuleItemSchema[]>('/core/module/detail', { id });
+  GET<FlowModuleItemSchema>('/core/module/detail', { id });
 export const delOneModule = (id: string) => DELETE('/core/module/delete', { id });

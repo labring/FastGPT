@@ -25,7 +25,11 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum,
+  FlowNodeValTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -346,3 +350,48 @@ export default React.memo(FlowProvider);
 export const onChangeNode = (e: FlowNodeChangeProps) => {
   eventBus.emit(EventNameEnum.updaterNode, e);
 };
+
+export function flowNode2Modules({
+  nodes,
+  edges
+}: {
+  nodes: Node<FlowModuleItemType, string | undefined>[];
+  edges: Edge<any>[];
+}) {
+  const modules: ModuleItemType[] = nodes.map((item) => ({
+    moduleId: item.data.moduleId,
+    name: item.data.name,
+    flowType: item.data.flowType,
+    showStatus: item.data.showStatus,
+    position: item.position,
+    inputs: item.data.inputs.map((item) => ({
+      ...item,
+      connected: item.connected ?? item.type !== FlowNodeInputTypeEnum.target
+    })),
+    outputs: item.data.outputs.map((item) => ({
+      ...item,
+      targets: [] as FlowNodeOutputTargetItemType[]
+    }))
+  }));
+
+  // update inputs and outputs
+  modules.forEach((module) => {
+    module.inputs.forEach((input) => {
+      input.connected =
+        input.connected ||
+        !!edges.find((edge) => edge.target === module.moduleId && edge.targetHandle === input.key);
+    });
+    module.outputs.forEach((output) => {
+      output.targets = edges
+        .filter(
+          (edge) =>
+            edge.source === module.moduleId && edge.sourceHandle === output.key && edge.targetHandle
+        )
+        .map((edge) => ({
+          moduleId: edge.target,
+          key: edge.targetHandle || ''
+        }));
+    });
+  });
+  return modules;
+}
