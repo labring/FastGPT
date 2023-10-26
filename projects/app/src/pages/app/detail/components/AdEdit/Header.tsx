@@ -19,14 +19,14 @@ import { useFlowProviderStore } from '@/pages/app/components/Flow/FlowProvider';
 
 const ImportSettings = dynamic(() => import('@/pages/app/components/Flow/ImportSettings'));
 
-type Props = { app: AppSchema; onCloseSettings: () => void };
+type Props = { app: AppSchema; onClose: () => void };
 
 const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   app,
   ChatTestRef,
   testModules,
   setTestModules,
-  onCloseSettings
+  onClose
 }: Props & {
   ChatTestRef: React.RefObject<ChatTestComponentRef>;
   testModules?: AppModuleItemType[];
@@ -127,7 +127,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             variant={'base'}
             aria-label={''}
             onClick={() => {
-              onCloseSettings();
+              onClose();
               onFixView();
             }}
           />

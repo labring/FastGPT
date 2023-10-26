@@ -19,19 +19,9 @@ import { useFlowProviderStore } from '@/pages/app/components/Flow/FlowProvider';
 
 const ImportSettings = dynamic(() => import('@/pages/app/components/Flow/ImportSettings'));
 
-type Props = { app: AppSchema; onCloseSettings: () => void };
+type Props = { onClose: () => void };
 
-const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
-  app,
-  ChatTestRef,
-  testModules,
-  setTestModules,
-  onCloseSettings
-}: Props & {
-  ChatTestRef: React.RefObject<ChatTestComponentRef>;
-  testModules?: AppModuleItemType[];
-  setTestModules: React.Dispatch<AppModuleItemType[] | undefined>;
-}) {
+const Header = ({ onClose }: Props) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
@@ -97,16 +87,10 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         }
       }
 
-      return updateAppDetail(app._id, {
-        modules,
-        type: AppTypeEnum.advanced
-      });
+      return Promise.resolve('');
     },
     successToast: '保存配置成功',
-    errorToast: '保存配置异常',
-    onSuccess() {
-      ChatTestRef.current?.resetChatTest();
-    }
+    errorToast: '保存配置异常'
   });
 
   return (
@@ -127,13 +111,13 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             variant={'base'}
             aria-label={''}
             onClick={() => {
-              onCloseSettings();
+              onClose();
               onFixView();
             }}
           />
         </MyTooltip>
         <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
-          {app.name}
+          组合模块
         </Box>
 
         <MyTooltip label={t('app.Import Configs')}>
@@ -162,31 +146,6 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           />
         </MyTooltip>
 
-        {testModules ? (
-          <IconButton
-            mr={[3, 6]}
-            icon={<SmallCloseIcon fontSize={'25px'} />}
-            variant={'base'}
-            color={'myGray.600'}
-            borderRadius={'lg'}
-            aria-label={''}
-            onClick={() => setTestModules(undefined)}
-          />
-        ) : (
-          <MyTooltip label={'测试对话'}>
-            <IconButton
-              mr={[3, 6]}
-              icon={<MyIcon name={'chat'} w={['14px', '16px']} />}
-              borderRadius={'lg'}
-              aria-label={'save'}
-              variant={'base'}
-              onClick={() => {
-                setTestModules(flow2AppModules());
-              }}
-            />
-          </MyTooltip>
-        )}
-
         <MyTooltip label={'保存配置'}>
           <IconButton
             icon={<MyIcon name={'save'} w={['14px', '16px']} />}
@@ -198,30 +157,6 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         </MyTooltip>
       </Flex>
       {isOpenImport && <ImportSettings onClose={onCloseImport} />}
-    </>
-  );
-});
-
-const Header = (props: Props) => {
-  const { app } = props;
-  const ChatTestRef = useRef<ChatTestComponentRef>(null);
-
-  const [testModules, setTestModules] = useState<AppModuleItemType[]>();
-
-  return (
-    <>
-      <RenderHeaderContainer
-        {...props}
-        ChatTestRef={ChatTestRef}
-        testModules={testModules}
-        setTestModules={setTestModules}
-      />
-      <ChatTest
-        ref={ChatTestRef}
-        modules={testModules}
-        app={app}
-        onClose={() => setTestModules(undefined)}
-      />
     </>
   );
 };

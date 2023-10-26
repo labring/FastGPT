@@ -46,7 +46,10 @@
     "Paste Config": "粘贴配置",
     "Variable Key Repeat Tip": "变量 key 重复",
     "module": {
+      "Combine Module": "组合模块",
       "Custom Title Tip": "该标题名字会展示在对话过程中",
+      "No Modules": "还没有模块~",
+      "System Module": "系统模块",
       "type": "\"{{type}}\"类型\n{{example}}",
       "valueType": {
         "any": "任意",
@@ -119,6 +122,7 @@
   },
   "common": {
     "Add": "添加",
+    "Back": "返回",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",

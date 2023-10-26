@@ -7,7 +7,7 @@ import { edgeOptions, connectionLineStyle, FlowModuleTypeEnum } from '@/constant
 import dynamic from 'next/dynamic';
 
 import ButtonEdge from './components/modules/ButtonEdge';
-import TemplateList from './TemplateList';
+import TemplateList, { type ModuleTemplateProps } from './TemplateList';
 import FlowProvider, { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
@@ -31,10 +31,13 @@ const nodeTypes = {
 const edgeTypes = {
   buttonedge: ButtonEdge
 };
-type Props = { modules: AppModuleItemType[]; filterAppIds?: string[]; Header: React.ReactNode };
+type Props = {
+  modules: AppModuleItemType[];
+  Header: React.ReactNode;
+} & ModuleTemplateProps;
 
 const Container = React.memo(function Container(props: Props) {
-  const { modules = [], Header } = props;
+  const { modules = [], Header, systemTemplates, combineTemplates, showCreateCombine } = props;
 
   const {
     isOpen: isOpenTemplate,
@@ -47,7 +50,7 @@ const Container = React.memo(function Container(props: Props) {
 
   useEffect(() => {
     initData(JSON.parse(JSON.stringify(modules)));
-  }, [modules]);
+  }, [modules.length]);
 
   return (
     <>
@@ -108,7 +111,13 @@ const Container = React.memo(function Container(props: Props) {
           <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
         </ReactFlow>
 
-        <TemplateList isOpen={isOpenTemplate} onClose={onCloseTemplate} />
+        <TemplateList
+          systemTemplates={systemTemplates}
+          combineTemplates={combineTemplates}
+          showCreateCombine={showCreateCombine}
+          isOpen={isOpenTemplate}
+          onClose={onCloseTemplate}
+        />
       </Box>
     </>
   );
@@ -118,11 +127,9 @@ const Flow = (data: Props) => {
   return (
     <Box h={'100%'} position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
       <ReactFlowProvider>
-        <FlowProvider filterAppIds={data.filterAppIds}>
-          <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
-            <Container {...data} />
-          </Flex>
-        </FlowProvider>
+        <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
+          <Container {...data} />
+        </Flex>
       </ReactFlowProvider>
     </Box>
   );

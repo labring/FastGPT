@@ -534,7 +534,7 @@ export const RunAppModule: FlowModuleTemplateType = {
 };
 export const CustomInputModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.customInput,
-  logo: '/imgs/module/app.png',
+  logo: '/imgs/module/input.png',
   name: '自定义输入',
   intro: '自定义配置外部输入，供封装模块使用',
   description: '自定义配置外部输入，供封装模块使用',
@@ -544,8 +544,8 @@ export const CustomInputModule: FlowModuleTemplateType = {
 };
 export const CustomOutputModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.customIOutput,
-  logo: '/imgs/module/app.png',
-  name: '自定义输入',
+  logo: '/imgs/module/output.png',
+  name: '自定义输出',
   intro: '自定义配置模块输出，供封装模块使用',
   description: '自定义配置模块输出，供封装模块使用',
   showStatus: false,
@@ -554,20 +554,39 @@ export const CustomOutputModule: FlowModuleTemplateType = {
 };
 export const CustomModule: FlowModuleTemplateType = {
   flowType: FlowModuleTypeEnum.customModule,
+  logo: '/imgs/module/custom.png',
   name: '自定义模块',
   showStatus: false,
   inputs: [],
   outputs: []
 };
 
-export const ModuleTemplates = [
+export const SystemModuleTemplates = [
+  {
+    label: '引导模块',
+    list: [UserGuideModule]
+  },
   {
     label: '输入模块',
     list: [UserInputModule, HistoryModule]
   },
   {
-    label: '引导模块',
-    list: [UserGuideModule]
+    label: '内容生成',
+    list: [ChatModule, AnswerModule]
+  },
+  {
+    label: '核心调用',
+    list: [KBSearchModule, RunAppModule]
+  },
+  {
+    label: '函数模块',
+    list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
+  }
+];
+export const CombineModuleTemplates = [
+  {
+    label: '输入输出',
+    list: [CustomInputModule, CustomOutputModule, HistoryModule]
   },
   {
     label: '内容生成',
@@ -594,7 +613,8 @@ export const ModuleTemplatesFlat = [
   ContextExtractModule,
   HttpModule,
   EmptyModule,
-  RunAppModule
+  RunAppModule,
+  CustomModule
 ];
 
 // template

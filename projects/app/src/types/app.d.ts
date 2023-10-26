@@ -75,6 +75,10 @@ export type VariableItemType = {
 };
 
 /* app module */
+export type SystemModuleTemplateType = {
+  label: string;
+  list: FlowModuleTemplateType[];
+}[];
 export type AppModuleItemType = {
   name: string;
   moduleId: string;

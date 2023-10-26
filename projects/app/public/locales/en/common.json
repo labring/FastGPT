@@ -46,7 +46,10 @@
     "Paste Config": "Paste Config",
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
+      "Combine Module": "Combine Module",
       "Custom Title Tip": "The title name is displayed during the conversation",
+      "No Modules": "No module",
+      "System Module": "System Module",
       "type": "{{type}}\n{{example}}",
       "valueType": {
         "any": "any",
@@ -119,6 +122,7 @@
   },
   "common": {
     "Add": "Add",
+    "Back": "Back",
     "Choose": "Choose",
     "Close": "Clow",
     "Collect": "Collect",

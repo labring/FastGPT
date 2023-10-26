@@ -72,7 +72,7 @@ const NodeCard = (props: Props) => {
 
       {
         icon: 'back',
-        label: t('common.Close'),
+        label: t('common.Back'),
         onClick: () => {}
       }
     ],
