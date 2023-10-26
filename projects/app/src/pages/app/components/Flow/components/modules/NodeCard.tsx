@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Box, Flex, useTheme, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
-import type { FlowModuleItemType } from '@/types/core/app/flow';
+import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'react-i18next';

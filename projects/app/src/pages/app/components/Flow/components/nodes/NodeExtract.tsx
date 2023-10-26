@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { NodeProps } from 'reactflow';
-import { FlowModuleItemType } from '@/types/core/app/flow';
+import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../modules/NodeCard';
 import Container from '../modules/Container';
@@ -13,7 +13,10 @@ import RenderOutput from '../render/RenderOutput';
 import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
-import { FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeValTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
@@ -162,8 +165,8 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
                   key: data.key,
                   label: `提取结果-${data.desc}`,
                   description: '无法提取时不会返回',
-                  valueType: FlowValueTypeEnum.string,
-                  type: FlowOutputItemTypeEnum.source,
+                  valueType: FlowNodeValTypeEnum.string,
+                  type: FlowNodeOutputTypeEnum.source,
                   targets: []
                 })
               });
@@ -202,8 +205,8 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
                       key: data.key,
                       label: `提取结果-${data.desc}`,
                       description: '无法提取时不会返回',
-                      valueType: FlowValueTypeEnum.string,
-                      type: FlowOutputItemTypeEnum.source,
+                      valueType: FlowNodeValTypeEnum.string,
+                      type: FlowNodeOutputTypeEnum.source,
                       targets: []
                     })
                   });

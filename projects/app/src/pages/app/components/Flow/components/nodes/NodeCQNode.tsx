@@ -2,7 +2,7 @@ import React from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Input, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/core/app/flow';
+import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
@@ -10,7 +10,11 @@ import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
-import { FlowOutputItemTypeEnum, FlowValueTypeEnum, SpecialInputKeyEnum } from '@/constants/flow';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeValTypeEnum,
+  FlowNodeSpecialInputKeyEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { useTranslation } from 'react-i18next';
 import SourceHandle from '../render/SourceHandle';
 import MyTooltip from '@/components/MyTooltip';
@@ -28,7 +32,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
           moduleId={moduleId}
           flowInputList={inputs}
           CustomComponent={{
-            [SpecialInputKeyEnum.agents]: ({
+            [FlowNodeSpecialInputKeyEnum.agents]: ({
               key: agentKey,
               value: agents = [],
               ...props
@@ -102,7 +106,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                           });
                         }}
                       />
-                      <SourceHandle handleKey={item.key} valueType={FlowValueTypeEnum.boolean} />
+                      <SourceHandle handleKey={item.key} valueType={FlowNodeValTypeEnum.boolean} />
                     </Box>
                   </Box>
                 ))}
@@ -113,7 +117,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                     const newOutputValue = outputs.concat({
                       key,
                       label: '',
-                      type: FlowOutputItemTypeEnum.hidden,
+                      type: FlowNodeOutputTypeEnum.hidden,
                       targets: []
                     });
 

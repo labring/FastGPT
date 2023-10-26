@@ -1,9 +1,9 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { FlowInputItemTypeEnum } from '@/constants/flow';
-import { FlowOutputTargetItemType } from '@/types/core/app/flow';
-import { AppModuleItemType } from '@/types/app';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/module/node/type';
+import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import type { AppSchema } from '@/types/mongoSchema';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -29,8 +29,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   onClose
 }: Props & {
   ChatTestRef: React.RefObject<ChatTestComponentRef>;
-  testModules?: AppModuleItemType[];
-  setTestModules: React.Dispatch<AppModuleItemType[] | undefined>;
+  testModules?: ModuleItemType[];
+  setTestModules: React.Dispatch<ModuleItemType[] | undefined>;
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -41,7 +41,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { nodes, edges, onFixView } = useFlowProviderStore();
 
   const flow2AppModules = useCallback(() => {
-    const modules: AppModuleItemType[] = nodes.map((item) => ({
+    const modules: ModuleItemType[] = nodes.map((item) => ({
       moduleId: item.data.moduleId,
       name: item.data.name,
       flowType: item.data.flowType,
@@ -49,11 +49,11 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       position: item.position,
       inputs: item.data.inputs.map((item) => ({
         ...item,
-        connected: item.connected ?? item.type !== FlowInputItemTypeEnum.target
+        connected: item.connected ?? item.type !== FlowNodeInputTypeEnum.target
       })),
       outputs: item.data.outputs.map((item) => ({
         ...item,
-        targets: [] as FlowOutputTargetItemType[]
+        targets: [] as FlowNodeOutputTargetItemType[]
       }))
     }));
 
@@ -206,7 +206,7 @@ const Header = (props: Props) => {
   const { app } = props;
   const ChatTestRef = useRef<ChatTestComponentRef>(null);
 
-  const [testModules, setTestModules] = useState<AppModuleItemType[]>();
+  const [testModules, setTestModules] = useState<ModuleItemType[]>();
 
   return (
     <>

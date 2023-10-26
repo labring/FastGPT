@@ -1,4 +1,4 @@
-import { AppModuleItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { AppSchema } from '@/types/mongoSchema';
 import React, {
   useMemo,
@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -28,7 +28,7 @@ const ChatTest = (
     onClose
   }: {
     app: AppSchema;
-    modules?: AppModuleItemType[];
+    modules?: ModuleItemType[];
     onClose: () => void;
   },
   ref: ForwardedRef<ChatTestComponentRef>
@@ -41,7 +41,7 @@ const ChatTest = (
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
       const historyMaxLen =
         modules
-          ?.find((item) => item.flowType === FlowModuleTypeEnum.historyNode)
+          ?.find((item) => item.flowType === FlowNodeTypeEnum.historyNode)
           ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
       const history = chatList.slice(-historyMaxLen - 2, -2);
 

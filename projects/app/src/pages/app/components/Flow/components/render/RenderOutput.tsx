@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import type { FlowOutputItemType } from '@/types/core/app/flow';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/module/node/type';
 import { Box, Flex } from '@chakra-ui/react';
-import { FlowOutputItemTypeEnum } from '@/constants/flow';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@/components/MyTooltip';
 import SourceHandle from './SourceHandle';
@@ -18,10 +18,10 @@ const Label = ({
   outputKey,
   outputs,
   ...item
-}: FlowOutputItemType & {
+}: FlowNodeOutputItemType & {
   outputKey: string;
   moduleId: string;
-  outputs: FlowOutputItemType[];
+  outputs: FlowNodeOutputItemType[];
 }) => {
   const { label, description, edit } = item;
   const [editField, setEditField] = useState<EditFieldType>();
@@ -133,7 +133,7 @@ const RenderOutput = ({
   flowOutputList
 }: {
   moduleId: string;
-  flowOutputList: FlowOutputItemType[];
+  flowOutputList: FlowNodeOutputItemType[];
 }) => {
   const sortOutput = useMemo(
     () =>
@@ -149,11 +149,11 @@ const RenderOutput = ({
     <>
       {sortOutput.map(
         (item) =>
-          item.type !== FlowOutputItemTypeEnum.hidden && (
+          item.type !== FlowNodeOutputTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
               <Label moduleId={moduleId} outputKey={item.key} outputs={sortOutput} {...item} />
-              <Box mt={FlowOutputItemTypeEnum.answer ? 0 : 2} className={'nodrag'}>
-                {item.type === FlowOutputItemTypeEnum.source && (
+              <Box mt={FlowNodeOutputTypeEnum.answer ? 0 : 2} className={'nodrag'}>
+                {item.type === FlowNodeOutputTypeEnum.source && (
                   <SourceHandle handleKey={item.key} valueType={item.valueType} />
                 )}
               </Box>

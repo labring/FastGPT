@@ -10,7 +10,7 @@ import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
 import { postTextCensor } from '@/web/common/plusApi/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
-import { AppModuleItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { countMessagesTokens, sliceMessagesTB } from '@/global/common/tiktoken';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
@@ -325,7 +325,7 @@ function targetResponse({
   detail
 }: {
   res: NextApiResponse;
-  outputs: AppModuleItemType['outputs'];
+  outputs: ModuleItemType['outputs'];
   detail: boolean;
 }) {
   const targets =

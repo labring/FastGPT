@@ -1,14 +1,14 @@
 import { AppTypeEnum, SystemInputEnum } from '../app';
 import { TaskResponseKeyEnum } from '../chat';
 import {
-  FlowModuleTypeEnum,
-  FlowInputItemTypeEnum,
-  FlowOutputItemTypeEnum,
-  SpecialInputKeyEnum,
-  FlowValueTypeEnum
-} from './index';
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeSpecialInputKeyEnum,
+  FlowNodeValTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import type { AppItemType } from '@/types/app';
-import type { FlowModuleTemplateType } from '@/types/core/app/flow';
+import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { chatModelList, cqModelList } from '@/web/common/system/staticData';
 import {
   Input_Template_History,
@@ -30,7 +30,7 @@ export const variableTip =
 export const questionGuideTip = `对话结束后，会为生成 3 个引导性问题。`;
 
 export const VariableModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.variable,
+  flowType: FlowNodeTypeEnum.variable,
   logo: '/imgs/module/variable.png',
   name: '全局变量',
   intro: variableTip,
@@ -39,7 +39,7 @@ export const VariableModule: FlowModuleTemplateType = {
   inputs: [
     {
       key: SystemInputEnum.variables,
-      type: FlowInputItemTypeEnum.systemInput,
+      type: FlowNodeInputTypeEnum.systemInput,
       label: '变量输入',
       value: []
     }
@@ -47,39 +47,39 @@ export const VariableModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const UserGuideModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.userGuide,
+  flowType: FlowNodeTypeEnum.userGuide,
   logo: '/imgs/module/userGuide.png',
   name: '用户引导',
   intro: userGuideTip,
   inputs: [
     {
       key: SystemInputEnum.welcomeText,
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '开场白'
     },
     {
       key: SystemInputEnum.variables,
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '对话框变量',
       value: []
     },
     {
       key: SystemInputEnum.questionGuide,
-      type: FlowInputItemTypeEnum.switch,
+      type: FlowNodeInputTypeEnum.switch,
       label: '问题引导'
     }
   ],
   outputs: []
 };
 export const UserInputModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.questionInput,
+  flowType: FlowNodeTypeEnum.questionInput,
   logo: '/imgs/module/userChatInput.png',
   name: '用户问题(对话入口)',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   inputs: [
     {
       key: SystemInputEnum.userChatInput,
-      type: FlowInputItemTypeEnum.systemInput,
+      type: FlowNodeInputTypeEnum.systemInput,
       label: '用户问题'
     }
   ],
@@ -87,21 +87,21 @@ export const UserInputModule: FlowModuleTemplateType = {
     {
       key: SystemInputEnum.userChatInput,
       label: '用户问题',
-      type: FlowOutputItemTypeEnum.source,
-      valueType: FlowValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.string,
       targets: []
     }
   ]
 };
 export const HistoryModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.historyNode,
+  flowType: FlowNodeTypeEnum.historyNode,
   logo: '/imgs/module/history.png',
   name: '聊天记录',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   inputs: [
     {
       key: 'maxContext',
-      type: FlowInputItemTypeEnum.numberInput,
+      type: FlowNodeInputTypeEnum.numberInput,
       label: '最长记录数',
       value: 6,
       min: 0,
@@ -109,7 +109,7 @@ export const HistoryModule: FlowModuleTemplateType = {
     },
     {
       key: SystemInputEnum.history,
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '聊天记录'
     }
   ],
@@ -117,14 +117,14 @@ export const HistoryModule: FlowModuleTemplateType = {
     {
       key: SystemInputEnum.history,
       label: '聊天记录',
-      valueType: FlowValueTypeEnum.chatHistory,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.chatHistory,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     }
   ]
 };
 export const ChatModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.chatNode,
+  flowType: FlowNodeTypeEnum.chatNode,
   logo: '/imgs/module/AI.png',
   name: 'AI 对话',
   intro: 'AI 大模型对话',
@@ -133,7 +133,7 @@ export const ChatModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: 'model',
-      type: FlowInputItemTypeEnum.selectChatModel,
+      type: FlowNodeInputTypeEnum.selectChatModel,
       label: '对话模型',
       value: chatModelList?.[0]?.model,
       customData: () => chatModelList,
@@ -142,7 +142,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'temperature',
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '温度',
       value: 0,
       min: 0,
@@ -155,7 +155,7 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'maxToken',
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '回复上限',
       value: chatModelList?.[0] ? chatModelList[0].maxToken / 2 : 2000,
       min: 100,
@@ -171,47 +171,47 @@ export const ChatModule: FlowModuleTemplateType = {
     },
     {
       key: 'aiSettings',
-      type: FlowInputItemTypeEnum.aiSettings,
+      type: FlowNodeInputTypeEnum.aiSettings,
       label: '',
       connected: false
     },
     {
       key: 'systemPrompt',
-      type: FlowInputItemTypeEnum.textarea,
+      type: FlowNodeInputTypeEnum.textarea,
       label: '系统提示词',
       max: 300,
-      valueType: FlowValueTypeEnum.string,
+      valueType: FlowNodeValTypeEnum.string,
       description: ChatModelSystemTip,
       placeholder: ChatModelSystemTip,
       value: ''
     },
     {
       key: SystemInputEnum.isResponseAnswerText,
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '返回AI内容',
-      valueType: FlowValueTypeEnum.boolean,
+      valueType: FlowNodeValTypeEnum.boolean,
       value: true
     },
     {
       key: 'quoteTemplate',
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容模板',
-      valueType: FlowValueTypeEnum.string,
+      valueType: FlowNodeValTypeEnum.string,
       value: ''
     },
     {
       key: 'quotePrompt',
-      type: FlowInputItemTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容提示词',
-      valueType: FlowValueTypeEnum.string,
+      valueType: FlowNodeValTypeEnum.string,
       value: ''
     },
     {
       key: 'quoteQA',
-      type: FlowInputItemTypeEnum.target,
+      type: FlowNodeInputTypeEnum.target,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-      valueType: FlowValueTypeEnum.datasetQuote,
+      valueType: FlowNodeValTypeEnum.datasetQuote,
       connected: false
     },
     Input_Template_History,
@@ -222,23 +222,23 @@ export const ChatModule: FlowModuleTemplateType = {
       key: TaskResponseKeyEnum.history,
       label: '新的上下文',
       description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
-      valueType: FlowValueTypeEnum.chatHistory,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.chatHistory,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     },
     {
       key: TaskResponseKeyEnum.answerText,
       label: 'AI回复',
       description: '将在 stream 回复完毕后触发',
-      valueType: FlowValueTypeEnum.string,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     },
     Output_Template_Finish
   ]
 };
 export const KBSearchModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.datasetSearchNode,
+  flowType: FlowNodeTypeEnum.datasetSearchNode,
   logo: '/imgs/module/db.png',
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
@@ -247,7 +247,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: 'datasets',
-      type: FlowInputItemTypeEnum.selectDataset,
+      type: FlowNodeInputTypeEnum.selectDataset,
       label: '关联的知识库',
       value: [],
       list: [],
@@ -256,7 +256,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
     },
     {
       key: 'similarity',
-      type: FlowInputItemTypeEnum.slider,
+      type: FlowNodeInputTypeEnum.slider,
       label: '相似度',
       value: 0.4,
       min: 0,
@@ -269,7 +269,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
     },
     {
       key: 'limit',
-      type: FlowInputItemTypeEnum.slider,
+      type: FlowNodeInputTypeEnum.slider,
       label: '单次搜索上限',
       description: '最多取 n 条记录作为本次问题引用',
       value: 5,
@@ -287,15 +287,15 @@ export const KBSearchModule: FlowModuleTemplateType = {
     {
       key: 'isEmpty',
       label: '搜索结果为空',
-      type: FlowOutputItemTypeEnum.source,
-      valueType: FlowValueTypeEnum.boolean,
+      type: FlowNodeOutputTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.boolean,
       targets: []
     },
     {
       key: 'unEmpty',
       label: '搜索结果不为空',
-      type: FlowOutputItemTypeEnum.source,
-      valueType: FlowValueTypeEnum.boolean,
+      type: FlowNodeOutputTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.boolean,
       targets: []
     },
     {
@@ -303,15 +303,15 @@ export const KBSearchModule: FlowModuleTemplateType = {
       label: '引用内容',
       description:
         '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
-      type: FlowOutputItemTypeEnum.source,
-      valueType: FlowValueTypeEnum.datasetQuote,
+      type: FlowNodeOutputTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.datasetQuote,
       targets: []
     },
     Output_Template_Finish
   ]
 };
 export const AnswerModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.answerNode,
+  flowType: FlowNodeTypeEnum.answerNode,
   logo: '/imgs/module/reply.png',
   name: '指定回复',
   intro: '该模块可以直接回复一段指定的内容。常用于引导、提示',
@@ -319,9 +319,9 @@ export const AnswerModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
-      key: SpecialInputKeyEnum.answerText,
-      type: FlowInputItemTypeEnum.textarea,
-      valueType: FlowValueTypeEnum.any,
+      key: FlowNodeSpecialInputKeyEnum.answerText,
+      type: FlowNodeInputTypeEnum.textarea,
+      valueType: FlowNodeValTypeEnum.any,
       value: '',
       label: '回复的内容',
       description:
@@ -331,7 +331,7 @@ export const AnswerModule: FlowModuleTemplateType = {
   outputs: [Output_Template_Finish]
 };
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.classifyQuestion,
+  flowType: FlowNodeTypeEnum.classifyQuestion,
   logo: '/imgs/module/cq.png',
   name: '问题分类',
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
@@ -342,7 +342,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: 'model',
-      type: FlowInputItemTypeEnum.selectChatModel,
+      type: FlowNodeInputTypeEnum.selectChatModel,
       label: '分类模型',
       value: cqModelList?.[0]?.model,
       customData: () => cqModelList,
@@ -351,8 +351,8 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     },
     {
       key: 'systemPrompt',
-      type: FlowInputItemTypeEnum.textarea,
-      valueType: FlowValueTypeEnum.string,
+      type: FlowNodeInputTypeEnum.textarea,
+      valueType: FlowNodeValTypeEnum.string,
       value: '',
       label: '背景知识',
       description:
@@ -362,8 +362,8 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     Input_Template_History,
     Input_Template_UserChatInput,
     {
-      key: SpecialInputKeyEnum.agents,
-      type: FlowInputItemTypeEnum.custom,
+      key: FlowNodeSpecialInputKeyEnum.agents,
+      type: FlowNodeInputTypeEnum.custom,
       label: '',
       value: [
         {
@@ -385,25 +385,25 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     {
       key: 'fasw',
       label: '',
-      type: FlowOutputItemTypeEnum.hidden,
+      type: FlowNodeOutputTypeEnum.hidden,
       targets: []
     },
     {
       key: 'fqsw',
       label: '',
-      type: FlowOutputItemTypeEnum.hidden,
+      type: FlowNodeOutputTypeEnum.hidden,
       targets: []
     },
     {
       key: 'fesw',
       label: '',
-      type: FlowOutputItemTypeEnum.hidden,
+      type: FlowNodeOutputTypeEnum.hidden,
       targets: []
     }
   ]
 };
 export const ContextExtractModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.contentExtract,
+  flowType: FlowNodeTypeEnum.contentExtract,
   logo: '/imgs/module/extract.png',
   name: '文本内容提取',
   intro: '从文本中提取出指定格式的数据',
@@ -413,8 +413,8 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: ContextExtractEnum.description,
-      type: FlowInputItemTypeEnum.textarea,
-      valueType: FlowValueTypeEnum.string,
+      type: FlowNodeInputTypeEnum.textarea,
+      valueType: FlowNodeValTypeEnum.string,
       value: '',
       label: '提取要求描述',
       description: '写一段提取要求，告诉 AI 需要提取哪些内容',
@@ -424,14 +424,14 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     Input_Template_History,
     {
       key: ContextExtractEnum.content,
-      type: FlowInputItemTypeEnum.target,
+      type: FlowNodeInputTypeEnum.target,
       label: '需要提取的文本',
       required: true,
-      valueType: FlowValueTypeEnum.string
+      valueType: FlowNodeValTypeEnum.string
     },
     {
       key: ContextExtractEnum.extractKeys,
-      type: FlowInputItemTypeEnum.custom,
+      type: FlowNodeInputTypeEnum.custom,
       label: '目标字段',
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
       value: []
@@ -441,29 +441,29 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     {
       key: ContextExtractEnum.success,
       label: '字段完全提取',
-      valueType: FlowValueTypeEnum.boolean,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.boolean,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     },
     {
       key: ContextExtractEnum.failed,
       label: '提取字段缺失',
-      valueType: FlowValueTypeEnum.boolean,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.boolean,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     },
     {
       key: ContextExtractEnum.fields,
       label: '完整提取结果',
       description: '一个 JSON 字符串，例如：{"name:":"YY","Time":"2023/7/2 18:00"}',
-      valueType: FlowValueTypeEnum.string,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     }
   ]
 };
 export const HttpModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.httpRequest,
+  flowType: FlowNodeTypeEnum.httpRequest,
   logo: '/imgs/module/http.png',
   name: 'HTTP模块',
   intro: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
@@ -474,7 +474,7 @@ export const HttpModule: FlowModuleTemplateType = {
     {
       key: HttpPropsEnum.url,
       value: '',
-      type: FlowInputItemTypeEnum.input,
+      type: FlowNodeInputTypeEnum.input,
       label: '请求地址',
       description: '请求目标地址',
       placeholder: 'https://api.fastgpt.run/getInventory',
@@ -485,7 +485,7 @@ export const HttpModule: FlowModuleTemplateType = {
   outputs: [Output_Template_Finish]
 };
 export const EmptyModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.empty,
+  flowType: FlowNodeTypeEnum.empty,
   logo: '/imgs/module/cq.png',
   name: '该模块已被移除',
   intro: '',
@@ -494,7 +494,7 @@ export const EmptyModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const RunAppModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.runApp,
+  flowType: FlowNodeTypeEnum.runApp,
   logo: '/imgs/module/app.png',
   name: '应用调用',
   intro: '可以选择一个其他应用进行调用',
@@ -504,7 +504,7 @@ export const RunAppModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: 'app',
-      type: FlowInputItemTypeEnum.selectApp,
+      type: FlowNodeInputTypeEnum.selectApp,
       label: '选择一个应用',
       description: '选择一个其他应用进行调用',
       required: true
@@ -517,23 +517,23 @@ export const RunAppModule: FlowModuleTemplateType = {
       key: TaskResponseKeyEnum.history,
       label: '新的上下文',
       description: '将该应用回复内容拼接到历史记录中，作为新的上下文返回',
-      valueType: FlowValueTypeEnum.chatHistory,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.chatHistory,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     },
     {
       key: TaskResponseKeyEnum.answerText,
       label: 'AI回复',
       description: '将在应用完全结束后触发',
-      valueType: FlowValueTypeEnum.string,
-      type: FlowOutputItemTypeEnum.source,
+      valueType: FlowNodeValTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.source,
       targets: []
     },
     Output_Template_Finish
   ]
 };
 export const CustomInputModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.customInput,
+  flowType: FlowNodeTypeEnum.customInput,
   logo: '/imgs/module/input.png',
   name: '自定义输入',
   intro: '自定义配置外部输入，供封装模块使用',
@@ -543,7 +543,7 @@ export const CustomInputModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const CustomOutputModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.customIOutput,
+  flowType: FlowNodeTypeEnum.customIOutput,
   logo: '/imgs/module/output.png',
   name: '自定义输出',
   intro: '自定义配置模块输出，供封装模块使用',
@@ -553,7 +553,7 @@ export const CustomOutputModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const CustomModule: FlowModuleTemplateType = {
-  flowType: FlowModuleTypeEnum.customModule,
+  flowType: FlowNodeTypeEnum.customModule,
   logo: '/imgs/module/custom.png',
   name: '自定义模块',
   showStatus: false,

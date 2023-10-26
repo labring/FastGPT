@@ -3,9 +3,9 @@ import { useRouter } from 'next/router';
 import Header from './Header';
 import Flow from '@/pages/app/components/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/pages/app/components/Flow/FlowProvider';
-import { SystemModuleTemplateType } from '@/types/app';
+import { SystemModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 import { CombineModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 
 type Props = {};
@@ -19,9 +19,9 @@ const Render = ({}: Props) => {
       JSON.stringify(CombineModuleTemplates)
     );
     const filterType: Record<string, 1> = {
-      [FlowModuleTypeEnum.userGuide]: 1,
-      [FlowModuleTypeEnum.customInput]: 1,
-      [FlowModuleTypeEnum.customIOutput]: 1
+      [FlowNodeTypeEnum.userGuide]: 1,
+      [FlowNodeTypeEnum.customInput]: 1,
+      [FlowNodeTypeEnum.customIOutput]: 1
     };
 
     // filter some template

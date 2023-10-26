@@ -4,9 +4,9 @@ import { AppSchema } from '@/types/mongoSchema';
 import Header from './Header';
 import Flow from '@/pages/app/components/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/pages/app/components/Flow/FlowProvider';
-import { SystemModuleTemplateType } from '@/types/app';
+import { SystemModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 import { SystemModuleTemplates } from '@/constants/flow/ModuleTemplate';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 type Props = { app: AppSchema; onClose: () => void };
 
@@ -18,7 +18,7 @@ const Render = ({ app, onClose }: Props) => {
       JSON.stringify(SystemModuleTemplates)
     );
     const filterType: Record<string, 1> = {
-      [FlowModuleTypeEnum.userGuide]: 1
+      [FlowNodeTypeEnum.userGuide]: 1
     };
     // filter some template
     nodes.forEach((node) => {

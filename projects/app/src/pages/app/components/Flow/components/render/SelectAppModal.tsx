@@ -3,7 +3,7 @@ import { ModalBody, Flex, Box, useTheme, ModalFooter, Button } from '@chakra-ui/
 import MyModal from '@/components/MyModal';
 import { getMyApps } from '@/web/core/app/api';
 import { useQuery } from '@tanstack/react-query';
-import type { SelectAppItemType } from '@/types/core/app/flow';
+import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
 import { useTranslation } from 'react-i18next';
 import { useLoading } from '@/web/common/hooks/useLoading';

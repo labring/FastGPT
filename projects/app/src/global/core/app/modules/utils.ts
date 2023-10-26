@@ -1,11 +1,12 @@
 import { SystemInputEnum } from '@/constants/app';
-import { FlowModuleTypeEnum } from '@/constants/flow';
-import { AppModuleItemType, VariableItemType } from '@/types/app';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { VariableItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 
-export const getGuideModule = (modules: AppModuleItemType[]) =>
-  modules.find((item) => item.flowType === FlowModuleTypeEnum.userGuide);
+export const getGuideModule = (modules: ModuleItemType[]) =>
+  modules.find((item) => item.flowType === FlowNodeTypeEnum.userGuide);
 
-export const splitGuideModule = (guideModules?: AppModuleItemType) => {
+export const splitGuideModule = (guideModules?: ModuleItemType) => {
   const welcomeText: string =
     guideModules?.inputs?.find((item) => item.key === SystemInputEnum.welcomeText)?.value || '';
 

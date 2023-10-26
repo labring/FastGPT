@@ -8,11 +8,11 @@ import {
   Connection,
   addEdge
 } from 'reactflow';
+import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type {
-  FlowModuleItemType,
-  FlowOutputTargetItemType,
-  FlowModuleItemChangeProps
-} from '@/types/core/app/flow';
+  FlowNodeOutputTargetItemType,
+  FlowNodeChangeProps
+} from '@fastgpt/global/core/module/node/type';
 import React, {
   type SetStateAction,
   type Dispatch,
@@ -25,9 +25,9 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import { FlowModuleTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { useTranslation } from 'next-i18next';
-import { AppModuleItemType } from '@/types/app';
+import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
@@ -44,7 +44,7 @@ export type useFlowProviderStoreType = {
   onEdgesChange: OnChange<EdgeChange>;
   onFixView: () => void;
   onDelNode: (nodeId: string) => void;
-  onChangeNode: (e: FlowModuleItemChangeProps) => void;
+  onChangeNode: (e: FlowNodeChangeProps) => void;
   onCopyNode: (nodeId: string) => void;
   onDelEdge: (e: {
     moduleId: string;
@@ -53,7 +53,7 @@ export type useFlowProviderStoreType = {
   }) => void;
   onDelConnect: (id: string) => void;
   onConnect: ({ connect }: { connect: Connection }) => any;
-  initData: (modules: AppModuleItemType[]) => void;
+  initData: (modules: ModuleItemType[]) => void;
 };
 
 const StateContext = createContext<useFlowProviderStoreType>({
@@ -81,7 +81,7 @@ const StateContext = createContext<useFlowProviderStoreType>({
   onDelNode: function (nodeId: string): void {
     return;
   },
-  onChangeNode: function (e: FlowModuleItemChangeProps): void {
+  onChangeNode: function (e: FlowNodeChangeProps): void {
     return;
   },
   onCopyNode: function (nodeId: string): void {
@@ -100,7 +100,7 @@ const StateContext = createContext<useFlowProviderStoreType>({
   onConnect: function ({ connect }: { connect: Connection }) {
     return;
   },
-  initData: function (modules: AppModuleItemType[]): void {
+  initData: function (modules: ModuleItemType[]): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -161,8 +161,8 @@ export const FlowProvider = ({
     ({ connect }: { connect: Connection }) => {
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
-        if (source?.flowType === FlowModuleTypeEnum.classifyQuestion) {
-          return FlowValueTypeEnum.boolean;
+        if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
+          return FlowNodeValTypeEnum.boolean;
         }
         return source?.outputs.find((output) => output.key === connect.sourceHandle)?.valueType;
       })();
@@ -178,8 +178,8 @@ export const FlowProvider = ({
         });
       }
       if (
-        sourceType !== FlowValueTypeEnum.any &&
-        targetType !== FlowValueTypeEnum.any &&
+        sourceType !== FlowNodeValTypeEnum.any &&
+        targetType !== FlowNodeValTypeEnum.any &&
         sourceType !== targetType
       ) {
         return toast({
@@ -214,7 +214,7 @@ export const FlowProvider = ({
   );
 
   const onChangeNode = useCallback(
-    ({ moduleId, key, type = 'inputs', value }: FlowModuleItemChangeProps) => {
+    ({ moduleId, key, type = 'inputs', value }: FlowNodeChangeProps) => {
       setNodes((nodes) =>
         nodes.map((node) => {
           if (node.id !== moduleId) return node;
@@ -242,7 +242,8 @@ export const FlowProvider = ({
           } else if (type === 'outputs') {
             // del output connect
             const delOutputs = node.data.outputs.filter(
-              (item) => !value.find((output: FlowOutputTargetItemType) => output.key === item.key)
+              (item) =>
+                !value.find((output: FlowNodeOutputTargetItemType) => output.key === item.key)
             );
             delOutputs.forEach((output) => {
               onDelEdge({ moduleId, sourceHandle: output.key });
@@ -293,7 +294,7 @@ export const FlowProvider = ({
   );
 
   const initData = useCallback(
-    (modules: AppModuleItemType[]) => {
+    (modules: ModuleItemType[]) => {
       const edges = appModule2FlowEdge({
         modules,
         onDelete: onDelConnect
@@ -309,7 +310,7 @@ export const FlowProvider = ({
 
   // use eventbus to avoid refresh ReactComponents
   useEffect(() => {
-    const update = (e: FlowModuleItemChangeProps) => {
+    const update = (e: FlowNodeChangeProps) => {
       onChangeNode(e);
     };
     eventBus.on(EventNameEnum.updaterNode, update);
@@ -342,6 +343,6 @@ export const FlowProvider = ({
 
 export default React.memo(FlowProvider);
 
-export const onChangeNode = (e: FlowModuleItemChangeProps) => {
+export const onChangeNode = (e: FlowNodeChangeProps) => {
   eventBus.emit(EventNameEnum.updaterNode, e);
 };

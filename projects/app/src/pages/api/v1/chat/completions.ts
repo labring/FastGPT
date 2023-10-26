@@ -23,8 +23,10 @@ import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { TaskResponseKeyEnum } from '@/constants/chat';
-import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
-import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
+import { initModuleType } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { RunningModuleItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
@@ -305,7 +307,7 @@ export async function dispatchModules({
   detail = false
 }: {
   res: NextApiResponse;
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
   user: UserModelSchema;
   params?: Record<string, any>;
   variables?: Record<string, any>;
@@ -432,15 +434,15 @@ export async function dispatchModules({
 
     const dispatchRes: Record<string, any> = await (async () => {
       const callbackMap: Record<string, Function> = {
-        [FlowModuleTypeEnum.historyNode]: dispatchHistory,
-        [FlowModuleTypeEnum.questionInput]: dispatchChatInput,
-        [FlowModuleTypeEnum.answerNode]: dispatchAnswer,
-        [FlowModuleTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowModuleTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
-        [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-        [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract,
-        [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowModuleTypeEnum.runApp]: dispatchAppRequest
+        [FlowNodeTypeEnum.historyNode]: dispatchHistory,
+        [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
+        [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+        [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+        [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+        [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+        [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
+        [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
+        [FlowNodeTypeEnum.runApp]: dispatchAppRequest
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);
@@ -475,7 +477,7 @@ export async function dispatchModules({
 
 /* init store modules to running modules */
 function loadModules(
-  modules: AppModuleItemType[],
+  modules: ModuleItemType[],
   variables: Record<string, any>
 ): RunningModuleItemType[] {
   return modules.map((module) => {

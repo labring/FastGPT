@@ -5,7 +5,7 @@ import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { SystemInputEnum } from '@/constants/app';
-import { SpecialInputKeyEnum } from '@/constants/flow';
+import { FlowNodeSpecialInputKeyEnum } from '@fastgpt/global/core/module/node/constant';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
@@ -17,7 +17,7 @@ type Props = ModuleDispatchProps<{
   systemPrompt?: string;
   history?: ChatItemType[];
   [SystemInputEnum.userChatInput]: string;
-  [SpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
+  [FlowNodeSpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
 type CQResponse = {
   [TaskResponseKeyEnum.responseData]: moduleDispatchResType;

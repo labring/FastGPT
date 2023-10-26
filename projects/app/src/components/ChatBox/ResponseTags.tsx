@@ -7,7 +7,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import dynamic from 'next/dynamic';
 import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
@@ -30,12 +30,12 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
     historyPreview = [],
     runningTime = 0
   } = useMemo(() => {
-    const chatData = responseData.find((item) => item.moduleType === FlowModuleTypeEnum.chatNode);
+    const chatData = responseData.find((item) => item.moduleType === FlowNodeTypeEnum.chatNode);
     return {
-      chatAccount: responseData.filter((item) => item.moduleType === FlowModuleTypeEnum.chatNode)
+      chatAccount: responseData.filter((item) => item.moduleType === FlowNodeTypeEnum.chatNode)
         .length,
       quoteList: responseData
-        .filter((item) => item.moduleType === FlowModuleTypeEnum.chatNode)
+        .filter((item) => item.moduleType === FlowNodeTypeEnum.chatNode)
         .map((item) => item.quoteList)
         .flat()
         .filter((item) => item) as SearchDataResponseItemType[],

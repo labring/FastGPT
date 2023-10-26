@@ -4,7 +4,7 @@ import { authUser } from '@fastgpt/service/support/user/auth';
 import { sseErrRes } from '@/service/response';
 import { sseResponseEventEnum } from '@/constants/chat';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { AppModuleItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
@@ -13,7 +13,7 @@ import { ChatItemType } from '@/types/chat';
 export type Props = {
   history: ChatItemType[];
   prompt: string;
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
   variables: Record<string, any>;
   appId: string;
   appName: string;

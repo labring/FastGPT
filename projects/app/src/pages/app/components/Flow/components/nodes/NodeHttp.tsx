@@ -1,7 +1,7 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../modules/NodeCard';
-import { FlowModuleItemType } from '@/types/core/app/flow';
+import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
@@ -9,7 +9,11 @@ import { Box, Button } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import RenderOutput from '../render/RenderOutput';
 
-import { FlowInputItemTypeEnum, FlowOutputItemTypeEnum, FlowValueTypeEnum } from '@/constants/flow';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeValTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import { onChangeNode } from '../../FlowProvider';
@@ -33,8 +37,8 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
               key,
               value: {
                 key,
-                valueType: FlowValueTypeEnum.string,
-                type: FlowInputItemTypeEnum.target,
+                valueType: FlowNodeValTypeEnum.string,
+                type: FlowNodeInputTypeEnum.target,
                 label: `入参${inputs.length - 1}`,
                 edit: true
               }
@@ -61,8 +65,8 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
                   {
                     key,
                     label: `出参${outputs.length}`,
-                    valueType: FlowValueTypeEnum.string,
-                    type: FlowOutputItemTypeEnum.source,
+                    valueType: FlowNodeValTypeEnum.string,
+                    type: FlowNodeOutputTypeEnum.source,
                     edit: true,
                     targets: []
                   }

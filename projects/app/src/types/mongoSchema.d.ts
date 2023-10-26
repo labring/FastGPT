@@ -3,7 +3,7 @@ import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/mo
 import type { DataType } from './data';
 import { InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
-import type { AppModuleItemType } from './app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { ChatSourceEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
 import { MarkDataType } from '@/global/core/dataset/type';
@@ -29,7 +29,7 @@ export interface AppSchema {
     isShareDetail: boolean;
     collection: number;
   };
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
 }
 
 export interface CollectionSchema {

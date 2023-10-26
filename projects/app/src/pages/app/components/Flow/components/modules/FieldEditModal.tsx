@@ -3,41 +3,41 @@ import { Box, Button, ModalFooter, ModalBody, Flex, Switch, Input } from '@chakr
 import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
-import { FlowValueTypeEnum } from '@/constants/flow';
+import { FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
 
 const typeSelectList = [
   {
     label: '字符串',
-    value: FlowValueTypeEnum.string
+    value: FlowNodeValTypeEnum.string
   },
   {
     label: '数字',
-    value: FlowValueTypeEnum.number
+    value: FlowNodeValTypeEnum.number
   },
   {
     label: '布尔',
-    value: FlowValueTypeEnum.boolean
+    value: FlowNodeValTypeEnum.boolean
   },
   {
     label: '历史记录',
-    value: FlowValueTypeEnum.chatHistory
+    value: FlowNodeValTypeEnum.chatHistory
   },
   {
     label: '引用内容',
-    value: FlowValueTypeEnum.datasetQuote
+    value: FlowNodeValTypeEnum.datasetQuote
   },
   {
     label: '任意',
-    value: FlowValueTypeEnum.any
+    value: FlowNodeValTypeEnum.any
   }
 ];
 
 export type EditFieldType = {
   label?: string;
   key: string;
-  valueType?: `${FlowValueTypeEnum}`;
+  valueType?: `${FlowNodeValTypeEnum}`;
   required?: boolean;
 };
 
@@ -46,7 +46,7 @@ const FieldEditModal = ({
   defaultField = {
     label: '',
     key: '',
-    valueType: FlowValueTypeEnum.string,
+    valueType: FlowNodeValTypeEnum.string,
     required: false
   },
   onClose,

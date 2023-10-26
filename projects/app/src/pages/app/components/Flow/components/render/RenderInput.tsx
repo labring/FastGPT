@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import type { FlowInputItemType, SelectAppItemType } from '@/types/core/app/flow';
+import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import {
   Box,
   Textarea,
@@ -15,7 +16,7 @@ import {
   useTheme,
   Grid
 } from '@chakra-ui/react';
-import { FlowInputItemTypeEnum } from '@/constants/flow';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
 import { onChangeNode, useFlowProviderStore } from '../../FlowProvider';
@@ -44,7 +45,7 @@ export const Label = React.memo(function Label({
   moduleId,
   inputKey,
   ...item
-}: FlowInputItemType & {
+}: FlowNodeInputItemType & {
   moduleId: string;
   inputKey: string;
 }) {
@@ -73,7 +74,7 @@ export const Label = React.memo(function Label({
         )}
       </Box>
 
-      {(type === FlowInputItemTypeEnum.target || valueType) && (
+      {(type === FlowNodeInputTypeEnum.target || valueType) && (
         <TargetHandle handleKey={inputKey} valueType={valueType} />
       )}
 
@@ -160,53 +161,53 @@ const RenderInput = ({
   moduleId,
   CustomComponent = {}
 }: {
-  flowInputList: FlowInputItemType[];
+  flowInputList: FlowNodeInputItemType[];
   moduleId: string;
-  CustomComponent?: Record<string, (e: FlowInputItemType) => React.ReactNode>;
+  CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
 }) => {
   const sortInputs = useMemo(
-    () => flowInputList.sort((a, b) => (a.key === FlowInputItemTypeEnum.switch ? -1 : 1)),
+    () => flowInputList.sort((a, b) => (a.key === FlowNodeInputTypeEnum.switch ? -1 : 1)),
     [flowInputList]
   );
   return (
     <>
       {sortInputs.map(
         (item) =>
-          item.type !== FlowInputItemTypeEnum.hidden && (
+          item.type !== FlowNodeInputTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
               {!!item.label && <Label moduleId={moduleId} inputKey={item.key} {...item} />}
               <Box mt={2} className={'nodrag'}>
-                {item.type === FlowInputItemTypeEnum.numberInput && (
+                {item.type === FlowNodeInputTypeEnum.numberInput && (
                   <NumberInputRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.input && (
+                {item.type === FlowNodeInputTypeEnum.input && (
                   <TextInputRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.textarea && (
+                {item.type === FlowNodeInputTypeEnum.textarea && (
                   <TextareaRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.select && (
+                {item.type === FlowNodeInputTypeEnum.select && (
                   <SelectRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.slider && (
+                {item.type === FlowNodeInputTypeEnum.slider && (
                   <SliderRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.selectApp && (
+                {item.type === FlowNodeInputTypeEnum.selectApp && (
                   <SelectAppRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.aiSettings && (
+                {item.type === FlowNodeInputTypeEnum.aiSettings && (
                   <AISetting inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.maxToken && (
+                {item.type === FlowNodeInputTypeEnum.maxToken && (
                   <MaxTokenRender inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.selectChatModel && (
+                {item.type === FlowNodeInputTypeEnum.selectChatModel && (
                   <SelectChatModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.selectDataset && (
+                {item.type === FlowNodeInputTypeEnum.selectDataset && (
                   <SelectDatasetRender item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowInputItemTypeEnum.custom && CustomComponent[item.key] && (
+                {item.type === FlowNodeInputTypeEnum.custom && CustomComponent[item.key] && (
                   <>{CustomComponent[item.key]({ ...item })}</>
                 )}
               </Box>
@@ -220,8 +221,8 @@ const RenderInput = ({
 export default React.memo(RenderInput);
 
 type RenderProps = {
-  inputs?: FlowInputItemType[];
-  item: FlowInputItemType;
+  inputs?: FlowNodeInputItemType[];
+  item: FlowNodeInputItemType;
   moduleId: string;
 };
 

@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { edgeOptions, connectionLineStyle, FlowModuleTypeEnum } from '@/constants/flow';
+import { edgeOptions, connectionLineStyle } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 import dynamic from 'next/dynamic';
 
@@ -11,28 +12,28 @@ import TemplateList, { type ModuleTemplateProps } from './TemplateList';
 import FlowProvider, { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
-import { AppModuleItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 
 const nodeTypes = {
-  [FlowModuleTypeEnum.userGuide]: dynamic(() => import('./components/nodes/NodeUserGuide')),
-  [FlowModuleTypeEnum.variable]: dynamic(() => import('./components/nodes/NodeVariable')),
-  [FlowModuleTypeEnum.questionInput]: dynamic(() => import('./components/nodes/NodeQuestionInput')),
-  [FlowModuleTypeEnum.historyNode]: dynamic(() => import('./components/nodes/NodeHistory')),
-  [FlowModuleTypeEnum.chatNode]: dynamic(() => import('./components/nodes/NodeChat')),
-  [FlowModuleTypeEnum.datasetSearchNode]: dynamic(
+  [FlowNodeTypeEnum.userGuide]: dynamic(() => import('./components/nodes/NodeUserGuide')),
+  [FlowNodeTypeEnum.variable]: dynamic(() => import('./components/nodes/NodeVariable')),
+  [FlowNodeTypeEnum.questionInput]: dynamic(() => import('./components/nodes/NodeQuestionInput')),
+  [FlowNodeTypeEnum.historyNode]: dynamic(() => import('./components/nodes/NodeHistory')),
+  [FlowNodeTypeEnum.chatNode]: dynamic(() => import('./components/nodes/NodeChat')),
+  [FlowNodeTypeEnum.datasetSearchNode]: dynamic(
     () => import('./components/nodes/NodeDatasetSearch')
   ),
-  [FlowModuleTypeEnum.answerNode]: dynamic(() => import('./components/nodes/NodeAnswer')),
-  [FlowModuleTypeEnum.classifyQuestion]: dynamic(() => import('./components/nodes/NodeCQNode')),
-  [FlowModuleTypeEnum.contentExtract]: dynamic(() => import('./components/nodes/NodeExtract')),
-  [FlowModuleTypeEnum.httpRequest]: dynamic(() => import('./components/nodes/NodeHttp')),
-  [FlowModuleTypeEnum.runApp]: dynamic(() => import('./components/nodes/NodeRunAPP'))
+  [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./components/nodes/NodeAnswer')),
+  [FlowNodeTypeEnum.classifyQuestion]: dynamic(() => import('./components/nodes/NodeCQNode')),
+  [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./components/nodes/NodeExtract')),
+  [FlowNodeTypeEnum.httpRequest]: dynamic(() => import('./components/nodes/NodeHttp')),
+  [FlowNodeTypeEnum.runApp]: dynamic(() => import('./components/nodes/NodeRunAPP'))
 };
 const edgeTypes = {
   buttonedge: ButtonEdge
 };
 type Props = {
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
   Header: React.ReactNode;
 } & ModuleTemplateProps;
 

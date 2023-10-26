@@ -1,25 +1,26 @@
 import React, { useMemo } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { Handle, OnConnect, Position } from 'reactflow';
-import { FlowValueTypeEnum, FlowValueTypeStyle, FlowValueTypeTip } from '@/constants/flow';
+import { FlowValueTypeStyle, FlowValueTypeTip } from '@/constants/flow';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
+import { FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 interface Props extends BoxProps {
   handleKey: string;
-  valueType?: `${FlowValueTypeEnum}`;
+  valueType?: `${FlowNodeValTypeEnum}`;
   onConnect?: OnConnect;
 }
 
 const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
   const { t } = useTranslation();
 
-  const valType = valueType ?? FlowValueTypeEnum.any;
+  const valType = valueType ?? FlowNodeValTypeEnum.any;
   const valueStyle = useMemo(
     () =>
       valueType
         ? FlowValueTypeStyle[valueType]
-        : (FlowValueTypeStyle[FlowValueTypeEnum.any] as any),
+        : (FlowValueTypeStyle[FlowNodeValTypeEnum.any] as any),
     [valueType]
   );
 

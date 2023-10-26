@@ -35,7 +35,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
-import { AppModuleItemType } from '@/types/app';
+import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import type { MessageItemType } from '@/types/core/chat/type';
@@ -99,7 +99,7 @@ type Props = {
   showEmptyIntro?: boolean;
   appAvatar?: string;
   userAvatar?: string;
-  userGuideModule?: AppModuleItemType;
+  userGuideModule?: ModuleItemType;
   active?: boolean;
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{

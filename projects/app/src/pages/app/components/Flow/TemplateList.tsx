@@ -1,6 +1,9 @@
 import React, { useCallback, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { FlowModuleTemplateType } from '@/types/core/app/flow';
+import type {
+  FlowModuleTemplateType,
+  SystemModuleTemplateType
+} from '@fastgpt/global/core/module/type.d';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -9,7 +12,6 @@ import { customAlphabet } from 'nanoid';
 import { appModule2FlowNode } from '@/utils/adapt';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
-import { SystemModuleTemplateType } from '@/types/app';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyIcon from '@/components/Icon';
 import EmptyTip from '@/components/EmptyTip';
