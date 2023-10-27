@@ -76,7 +76,7 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
             onChangeNode({
               moduleId,
               key: SystemInputEnum.welcomeText,
-              type: 'inputs',
+              type: 'updateInput',
               value: {
                 ...welcomeText,
                 value: e.target.value
@@ -106,7 +106,7 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
       onChangeNode({
         moduleId,
         key: SystemInputEnum.variables,
-        type: 'inputs',
+        type: 'updateInput',
         value: {
           ...inputs.find((item) => item.key === SystemInputEnum.variables),
           value
@@ -230,7 +230,7 @@ function QuestionGuide({ data }: { data: FlowModuleItemType }) {
           onChangeNode({
             moduleId,
             key: SystemInputEnum.questionGuide,
-            type: 'inputs',
+            type: 'updateInput',
             value: {
               ...inputs.find((item) => item.key === SystemInputEnum.questionGuide),
               value

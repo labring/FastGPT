@@ -544,31 +544,31 @@ export const RunAppModule: FlowModuleTemplateType = {
     Output_Template_Finish
   ]
 };
-export const CustomInputModule: FlowModuleTemplateType = {
-  id: FlowNodeTypeEnum.customInput,
-  flowType: FlowNodeTypeEnum.customInput,
+export const PluginInputModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.pluginInput,
+  flowType: FlowNodeTypeEnum.pluginInput,
   logo: '/imgs/module/input.png',
-  name: '自定义输入',
-  intro: '自定义配置外部输入，供封装模块使用',
-  description: '自定义配置外部输入，供封装模块使用',
+  name: '定义插件输入',
+  intro: '自定义配置外部输入，使用插件时，仅暴露自定义配置的输入',
+  description: '自定义配置外部输入，使用插件时，仅暴露自定义配置的输入',
   showStatus: false,
   inputs: [],
   outputs: []
 };
-export const CustomOutputModule: FlowModuleTemplateType = {
-  id: FlowNodeTypeEnum.customIOutput,
-  flowType: FlowNodeTypeEnum.customIOutput,
+export const PluginOutputModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.pluginOutput,
+  flowType: FlowNodeTypeEnum.pluginOutput,
   logo: '/imgs/module/output.png',
-  name: '自定义输出',
-  intro: '自定义配置模块输出，供封装模块使用',
-  description: '自定义配置模块输出，供封装模块使用',
+  name: '定义插件输出',
+  intro: '自定义配置外部输出，使用插件时，仅暴露自定义配置的输出',
+  description: '自定义配置外部输出，使用插件时，仅暴露自定义配置的输出',
   showStatus: false,
   inputs: [],
   outputs: []
 };
-export const CustomModule: FlowModuleTemplateType = {
-  id: FlowNodeTypeEnum.customModule,
-  flowType: FlowNodeTypeEnum.customModule,
+export const PluginModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.pluginModule,
+  flowType: FlowNodeTypeEnum.pluginModule,
   logo: '/imgs/module/custom.png',
   name: '自定义模块',
   showStatus: false,
@@ -601,7 +601,7 @@ export const SystemModuleTemplates = [
 export const PluginModuleTemplates = [
   {
     label: '输入输出',
-    list: [CustomInputModule, CustomOutputModule, HistoryModule]
+    list: [PluginInputModule, PluginOutputModule, HistoryModule]
   },
   {
     label: '内容生成',
@@ -629,9 +629,9 @@ export const ModuleTemplatesFlat = [
   HttpModule,
   EmptyModule,
   RunAppModule,
-  CustomInputModule,
-  CustomOutputModule,
-  CustomModule
+  PluginInputModule,
+  PluginOutputModule,
+  PluginModule
 ];
 
 // template

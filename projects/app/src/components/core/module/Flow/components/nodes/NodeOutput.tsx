@@ -86,9 +86,8 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
                 });
                 onChangeNode({
                   moduleId,
-                  type: 'outputs',
-                  key: '',
-                  value: outputs.filter((item) => item.key !== item.key)
+                  type: 'delOutput',
+                  key: item.key
                 });
               }}
             />
@@ -109,7 +108,6 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
               onChangeNode({
                 moduleId,
                 type: 'addInput',
-                key,
                 value: {
                   key,
                   valueType: FlowNodeValTypeEnum.string,
@@ -121,18 +119,15 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
               });
               onChangeNode({
                 moduleId,
-                type: 'outputs',
-                key,
-                value: [
-                  {
-                    key,
-                    label: `入参${inputs.length + 1}`,
-                    valueType: FlowNodeValTypeEnum.string,
-                    type: FlowNodeOutputTypeEnum.source,
-                    edit: true,
-                    targets: []
-                  }
-                ].concat(outputs as any)
+                type: 'addOutput',
+                value: {
+                  key,
+                  label: `入参${inputs.length + 1}`,
+                  valueType: FlowNodeValTypeEnum.string,
+                  type: FlowNodeOutputTypeEnum.source,
+                  edit: true,
+                  targets: []
+                }
               });
             }}
           >
@@ -161,54 +156,28 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
             if (editField.key === e.key) {
               onChangeNode({
                 moduleId,
-                type: 'inputs',
+                type: 'updateInput',
                 key: e.key,
                 value: input
               });
               onChangeNode({
                 moduleId,
-                type: 'outputs',
-                key: '',
-                value: outputs.map((item) => (item.key === output.key ? output : item))
+                type: 'updateOutput',
+                key: e.key,
+                value: output
               });
             } else {
-              // diff key. Add new input and delete old input; Delete old output and add new output
               onChangeNode({
                 moduleId,
-                type: 'addInput',
-                key: input.key,
+                type: 'replaceInput',
+                key: editField.key,
                 value: input
               });
-
-              let index = 0;
-              const storeOutputs = outputs.filter((item, i) => {
-                if (item.key !== editField.key) {
-                  return true;
-                }
-                index = i;
-                return false;
-              });
               onChangeNode({
                 moduleId,
-                type: 'outputs',
-                key: '',
-                value: storeOutputs
-              });
-
-              setTimeout(() => {
-                onChangeNode({
-                  moduleId,
-                  type: 'delInput',
-                  key: editField.key,
-                  value: ''
-                });
-                storeOutputs.splice(index, 0, output);
-                onChangeNode({
-                  moduleId,
-                  type: 'outputs',
-                  key: '',
-                  value: [...storeOutputs]
-                });
+                type: 'replaceOutput',
+                key: editField.key,
+                value: output
               });
             }
 

@@ -377,10 +377,13 @@
   "plugin": {
     "Confirm Delete": "确认删除该插件？",
     "Create Your Plugin": "创建你的插件",
+    "Get Plugin Module Detail Failed": "获取插件信息异常",
     "Intro": "插件介绍",
     "Load Plugin Failed": "加载插件异常",
     "My Plugins": "我的插件",
     "No Intro": "这个插件没有介绍~",
+    "Plugin Module": "插件模块",
+    "To Edit Plugin": "去编辑",
     "Update Your Plugin": "更新插件"
   },
   "system": {

@@ -56,21 +56,17 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
             variant={'base'}
             leftIcon={<SmallAddIcon />}
             onClick={() => {
-              const key = nanoid();
               onChangeNode({
                 moduleId,
-                type: 'outputs',
-                key,
-                value: [
-                  {
-                    key,
-                    label: `出参${outputs.length}`,
-                    valueType: FlowNodeValTypeEnum.string,
-                    type: FlowNodeOutputTypeEnum.source,
-                    edit: true,
-                    targets: []
-                  }
-                ].concat(outputs as any)
+                type: 'addOutput',
+                value: {
+                  key: nanoid(),
+                  label: `出参${outputs.length}`,
+                  valueType: FlowNodeValTypeEnum.string,
+                  type: FlowNodeOutputTypeEnum.source,
+                  edit: true,
+                  targets: []
+                }
               });
             }}
           >

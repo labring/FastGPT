@@ -31,7 +31,7 @@ const Header = ({ plugin, onClose }: Props) => {
         const item = modules[i];
 
         // update custom input connected
-        if (item.flowType === FlowNodeTypeEnum.customInput) {
+        if (item.flowType === FlowNodeTypeEnum.pluginInput) {
           item.inputs.forEach((item) => {
             item.connected = true;
           });

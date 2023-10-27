@@ -46,12 +46,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   });
 
   const outputVal =
-    responseData.find((item) => item.moduleType === FlowNodeTypeEnum.customIOutput)?.pluginOutput ||
+    responseData.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput)?.pluginOutput ||
     {};
 
   return {
     [TaskResponseKeyEnum.responseData]: responseData.filter(
-      (item) => item.moduleType !== FlowNodeTypeEnum.customIOutput
+      (item) => item.moduleType !== FlowNodeTypeEnum.pluginOutput
     ),
     ...outputVal
   };

@@ -38,9 +38,9 @@ export enum FlowNodeTypeEnum {
   contentExtract = 'contentExtract',
   httpRequest = 'httpRequest',
   runApp = 'app',
-  customModule = 'customModel',
-  customInput = 'customInput',
-  customIOutput = 'customIOutput'
+  pluginModule = 'pluginModule',
+  pluginInput = 'pluginInput',
+  pluginOutput = 'pluginOutput'
 }
 
 export enum FlowNodeSpecialInputKeyEnum {

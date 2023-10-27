@@ -63,9 +63,8 @@ export const Label = ({
             onClick={() => {
               onChangeNode({
                 moduleId,
-                type: 'outputs',
-                key: '',
-                value: outputs.filter((output) => output.key !== outputKey)
+                type: 'delOutput',
+                key: outputKey
               });
             }}
           />
@@ -91,36 +90,17 @@ export const Label = ({
             if (editField.key === data.key) {
               onChangeNode({
                 moduleId,
-                type: 'outputs',
-                key: '',
-                value: outputs.map((output) => (output.key === outputKey ? data : output))
+                type: 'updateOutput',
+                key: data.key,
+                value: data
               });
             } else {
-              let index = 0;
-              const storeOutputs = outputs.filter((output, i) => {
-                if (output.key !== editField.key) {
-                  return true;
-                }
-                index = i;
-                return false;
-              });
-
               onChangeNode({
                 moduleId,
-                type: 'outputs',
-                key: '',
-                value: storeOutputs
+                type: 'replaceOutput',
+                key: editField.key,
+                value: data
               });
-              setTimeout(() => {
-                storeOutputs.splice(index, 0, data);
-                console.log(index, storeOutputs);
-                onChangeNode({
-                  moduleId,
-                  type: 'outputs',
-                  key: '',
-                  value: [...storeOutputs]
-                });
-              }, 10);
             }
 
             setEditField(undefined);

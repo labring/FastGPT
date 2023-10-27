@@ -62,7 +62,7 @@ export const FlowValueTypeTip = {
 export const initModuleType: Record<string, boolean> = {
   [FlowNodeTypeEnum.historyNode]: true,
   [FlowNodeTypeEnum.questionInput]: true,
-  [FlowNodeTypeEnum.customInput]: true
+  [FlowNodeTypeEnum.pluginInput]: true
 };
 
 export const edgeOptions = {

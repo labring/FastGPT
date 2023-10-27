@@ -30,8 +30,8 @@ const Render = ({ pluginId }: Props) => {
     );
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1,
-      [FlowNodeTypeEnum.customInput]: 1,
-      [FlowNodeTypeEnum.customIOutput]: 1
+      [FlowNodeTypeEnum.pluginInput]: 1,
+      [FlowNodeTypeEnum.pluginOutput]: 1
     };
 
     // filter some template

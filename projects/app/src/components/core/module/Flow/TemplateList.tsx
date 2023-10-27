@@ -15,6 +15,11 @@ import { useRouter } from 'next/router';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyIcon from '@/components/Icon';
 import EmptyTip from '@/components/EmptyTip';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { getPluginModuleDetail } from '@/web/core/plugin/api';
+import { useToast } from '@/web/common/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+
 enum TemplateTypeEnum {
   system = 'system',
   combine = 'combine'
@@ -49,7 +54,7 @@ const ModuleTemplateList = ({
       },
       {
         type: TemplateTypeEnum.combine,
-        label: t('app.module.Combine Modules'),
+        label: t('plugin.Plugin Module'),
         child: <RenderList templates={pluginTemplates} onClose={onClose} />
       }
     ],
@@ -116,7 +121,7 @@ const ModuleTemplateList = ({
               onClick={() => router.push('/plugin/list')}
             >
               <Box fontSize={'sm'} transform={'translateY(-1px)'}>
-                去创建
+                {t('plugin.To Edit Plugin')}
               </Box>
               <MyIcon name={'rightArrowLight'} w={'12px'} />
             </Flex>
@@ -144,19 +149,41 @@ var RenderList = React.memo(function RenderList({
   const { isPc } = useSystemStore();
   const { setNodes, reactFlowWrapper } = useFlowProviderStore();
   const { x, y, zoom } = useViewport();
+  const { setLoading } = useSystemStore();
+  const { toast } = useToast();
 
   const onAddNode = useCallback(
-    ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
+    async ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
       if (!reactFlowWrapper?.current) return;
+
+      const templateModule = { ...template };
+
+      // get plugin module
+      try {
+        if (templateModule.flowType === FlowNodeTypeEnum.pluginModule) {
+          setLoading(true);
+          const pluginModule = await getPluginModuleDetail(templateModule.id);
+          templateModule.inputs = pluginModule.inputs;
+          templateModule.outputs = pluginModule.outputs;
+        }
+      } catch (e) {
+        return toast({
+          status: 'error',
+          title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
+        });
+      } finally {
+        setLoading(false);
+      }
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
       const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
+
       setNodes((state) =>
         state.concat(
           appModule2FlowNode({
             item: {
-              ...template,
+              ...templateModule,
               moduleId: nanoid(),
               position: { x: mouseX, y: mouseY - 20 }
             }
@@ -164,7 +191,7 @@ var RenderList = React.memo(function RenderList({
         )
       );
     },
-    [reactFlowWrapper, setNodes, x, y, zoom]
+    [reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );
 
   const list = useMemo(() => templates.map((item) => item.list).flat(), [templates]);

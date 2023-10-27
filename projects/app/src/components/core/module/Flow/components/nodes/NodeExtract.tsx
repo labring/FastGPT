@@ -91,29 +91,21 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
                               w={'16px'}
                               cursor={'pointer'}
                               onClick={() => {
-                                const newInputValue = extractKeys.filter(
-                                  (extract) => item.key !== extract.key
-                                );
-                                const newOutputVal = outputs.filter(
-                                  (output) => output.key !== item.key
-                                );
-
                                 onChangeNode({
                                   moduleId,
-                                  type: 'inputs',
+                                  type: 'updateInput',
                                   key: ContextExtractEnum.extractKeys,
                                   value: {
                                     ...props,
-                                    value: newInputValue
+                                    value: extractKeys.filter((extract) => item.key !== extract.key)
                                   }
                                 });
+
                                 onChangeNode({
                                   moduleId,
-                                  type: 'outputs',
-                                  key: '',
-                                  value: newOutputVal
+                                  type: 'delOutput',
+                                  key: item.key
                                 });
-                                onDelEdge({ moduleId, sourceHandle: item.key });
                               }}
                             />
                           </Td>
@@ -148,7 +140,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
 
             onChangeNode({
               moduleId,
-              type: 'inputs',
+              type: 'updateInput',
               key: ContextExtractEnum.extractKeys,
               value: {
                 ...inputs.find((input) => input.key === ContextExtractEnum.extractKeys),
@@ -156,62 +148,42 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
               }
             });
 
-            if (!exists) {
-              onChangeNode({
-                moduleId,
-                type: 'outputs',
-                key: '',
-                value: outputs.concat({
-                  key: data.key,
-                  label: `提取结果-${data.desc}`,
-                  description: '无法提取时不会返回',
-                  valueType: FlowNodeValTypeEnum.string,
-                  type: FlowNodeOutputTypeEnum.source,
-                  targets: []
-                })
-              });
-            } else {
+            const newOutput = {
+              key: data.key,
+              label: `提取结果-${data.desc}`,
+              description: '无法提取时不会返回',
+              valueType: FlowNodeValTypeEnum.string,
+              type: FlowNodeOutputTypeEnum.source,
+              targets: []
+            };
+
+            if (exists) {
               if (editExtractFiled.key === data.key) {
+                const output = outputs.find((output) => output.key === data.key);
                 // update
                 onChangeNode({
                   moduleId,
-                  type: 'outputs',
-                  key: '',
-                  value: outputs.map((output) =>
-                    output.key === data.key
-                      ? {
-                          ...output,
-                          label: `提取结果-${data.desc}`
-                        }
-                      : output
-                  )
+                  type: 'updateOutput',
+                  key: data.key,
+                  value: {
+                    ...output,
+                    label: `提取结果-${data.desc}`
+                  }
                 });
               } else {
-                // del and push
-                const newOutputs = outputs.filter((output) => output.key !== editExtractFiled.key);
-
                 onChangeNode({
                   moduleId,
-                  type: 'outputs',
-                  key: '',
-                  value: newOutputs
+                  type: 'replaceOutput',
+                  key: editExtractFiled.key,
+                  value: newOutput
                 });
-                setTimeout(() => {
-                  onChangeNode({
-                    moduleId,
-                    type: 'outputs',
-                    key: '',
-                    value: newOutputs.concat({
-                      key: data.key,
-                      label: `提取结果-${data.desc}`,
-                      description: '无法提取时不会返回',
-                      valueType: FlowNodeValTypeEnum.string,
-                      type: FlowNodeOutputTypeEnum.source,
-                      targets: []
-                    })
-                  });
-                }, 10);
               }
+            } else {
+              onChangeNode({
+                moduleId,
+                type: 'addOutput',
+                value: newOutput
+              });
             }
 
             setEditExtractField(undefined);

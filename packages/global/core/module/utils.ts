@@ -6,6 +6,16 @@ import {
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { ModuleItemType } from './type';
 
+export function getPluginTemplatePluginIdInput(pluginId: string) {
+  return {
+    key: FlowNodeSpecialInputKeyEnum.pluginId,
+    type: FlowNodeInputTypeEnum.hidden,
+    label: 'pluginId',
+    value: pluginId,
+    connected: true
+  };
+}
+
 export function formatPluginIOModules(
   pluginId: string,
   modules: ModuleItemType[]
@@ -13,20 +23,14 @@ export function formatPluginIOModules(
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 } {
-  const customInput = modules.find((module) => module.flowType === FlowNodeTypeEnum.customInput);
-  const customOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.customIOutput);
+  const pluginInput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginInput);
+  const customOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
 
   return {
-    inputs: customInput
+    inputs: pluginInput
       ? [
-          {
-            key: FlowNodeSpecialInputKeyEnum.pluginId,
-            type: FlowNodeInputTypeEnum.hidden,
-            label: 'pluginId',
-            value: pluginId,
-            connected: true
-          },
-          ...customInput.inputs.map((item) => ({
+          getPluginTemplatePluginIdInput(pluginId),
+          ...pluginInput.inputs.map((item) => ({
             ...item,
             edit: false,
             connected: false

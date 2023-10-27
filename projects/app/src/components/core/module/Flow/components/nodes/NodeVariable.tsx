@@ -41,7 +41,7 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
       onChangeNode({
         moduleId,
         key: SystemInputEnum.variables,
-        type: 'inputs',
+        type: 'updateInput',
         value: {
           ...inputs.find((item) => item.key === SystemInputEnum.variables),
           value

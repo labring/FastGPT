@@ -130,7 +130,7 @@ export const Label = React.memo(function Label({
             if (editField.key === data.key) {
               onChangeNode({
                 moduleId,
-                type: 'inputs',
+                type: 'updateInput',
                 key: data.key,
                 value: data
               });
@@ -138,17 +138,9 @@ export const Label = React.memo(function Label({
               // diff key. del and add
               onChangeNode({
                 moduleId,
-                type: 'addInput',
-                key: data.key,
+                type: 'replaceInput',
+                key: editField.key,
                 value: data
-              });
-              setTimeout(() => {
-                onChangeNode({
-                  moduleId,
-                  type: 'delInput',
-                  key: editField.key,
-                  value: ''
-                });
               });
             }
             setEditField(undefined);
@@ -247,7 +239,7 @@ var NumberInputRender = React.memo(function NumberInputRender({ item, moduleId }
       onChange={(e) => {
         onChangeNode({
           moduleId,
-          type: 'inputs',
+          type: 'updateInput',
           key: item.key,
           value: {
             ...item,
@@ -273,7 +265,7 @@ var TextInputRender = React.memo(function TextInputRender({ item, moduleId }: Re
       onBlur={(e) => {
         onChangeNode({
           moduleId,
-          type: 'inputs',
+          type: 'updateInput',
           key: item.key,
           value: {
             ...item,
@@ -295,7 +287,7 @@ var TextareaRender = React.memo(function TextareaRender({ item, moduleId }: Rend
       onBlur={(e) => {
         onChangeNode({
           moduleId,
-          type: 'inputs',
+          type: 'updateInput',
           key: item.key,
           value: {
             ...item,
@@ -316,7 +308,7 @@ var SelectRender = React.memo(function SelectRender({ item, moduleId }: RenderPr
       onchange={(e) => {
         onChangeNode({
           moduleId,
-          type: 'inputs',
+          type: 'updateInput',
           key: item.key,
           value: {
             ...item,
@@ -341,7 +333,7 @@ var SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderPr
         onChange={(e) => {
           onChangeNode({
             moduleId,
-            type: 'inputs',
+            type: 'updateInput',
             key: item.key,
             value: {
               ...item,
@@ -389,7 +381,7 @@ var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderP
               if (!item) continue;
               onChangeNode({
                 moduleId,
-                type: 'inputs',
+                type: 'updateInput',
                 key,
                 value: {
                   ...item,
@@ -432,7 +424,7 @@ var MaxTokenRender = React.memo(function MaxTokenRender({
         onChange={(e) => {
           onChangeNode({
             moduleId,
-            type: 'inputs',
+            type: 'updateInput',
             key: item.key,
             value: {
               ...item,
@@ -456,7 +448,7 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
     {
       onChangeNode({
         moduleId,
-        type: 'inputs',
+        type: 'updateInput',
         key: item.key,
         value: {
           ...item,
@@ -470,7 +462,7 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
 
       onChangeNode({
         moduleId,
-        type: 'inputs',
+        type: 'updateInput',
         key: 'maxToken',
         value: {
           ...inputs.find((input) => input.key === 'maxToken'),
@@ -561,7 +553,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
           onChangeNode({
             moduleId,
             key: item.key,
-            type: 'inputs',
+            type: 'updateInput',
             value: {
               ...item,
               value: e
@@ -611,7 +603,7 @@ var SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: Re
           onSuccess={(e) => {
             onChangeNode({
               moduleId,
-              type: 'inputs',
+              type: 'updateInput',
               key: 'app',
               value: {
                 ...item,

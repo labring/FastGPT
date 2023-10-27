@@ -41,7 +41,6 @@ const ResponseModal = ({
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  console.log(response);
 
   const list = useMemo(
     () =>

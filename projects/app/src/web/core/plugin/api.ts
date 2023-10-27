@@ -13,5 +13,7 @@ export const putUpdatePlugin = (data: UpdatePluginParams) => PUT('/core/plugin/u
 export const getUserPlugins = () => GET<PluginListItemType[]>('/core/plugin/list');
 export const getUserPlugs2ModuleTemplates = () =>
   GET<FlowModuleTemplateType[]>('/core/plugin/templateList');
+export const getPluginModuleDetail = (id: string) =>
+  GET<FlowModuleTemplateType>('/core/plugin/moduleDetail', { id });
 export const getOnePlugin = (id: string) => GET<PluginItemSchema>('/core/plugin/detail', { id });
 export const delOnePlugin = (id: string) => DELETE('/core/plugin/delete', { id });

@@ -168,7 +168,7 @@ export const FlowProvider = ({
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
           return FlowNodeValTypeEnum.boolean;
         }
-        if (source?.flowType === FlowNodeTypeEnum.customInput) {
+        if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
         }
         return source?.outputs.find((output) => output.key === connect.sourceHandle)?.valueType;
@@ -221,15 +221,31 @@ export const FlowProvider = ({
   );
 
   const onChangeNode = useCallback(
-    ({ moduleId, key, type = 'inputs', value }: FlowNodeChangeProps) => {
+    ({ moduleId, type, key, value, index }: FlowNodeChangeProps) => {
       setNodes((nodes) =>
         nodes.map((node) => {
           if (node.id !== moduleId) return node;
 
           const updateObj: Record<string, any> = {};
 
-          if (type === 'inputs') {
+          if (type === 'attr') {
+            if (key) {
+              updateObj[key] = value;
+            }
+          } else if (type === 'updateInput') {
             updateObj.inputs = node.data.inputs.map((item) => (item.key === key ? value : item));
+          } else if (type === 'replaceInput') {
+            onDelEdge({ moduleId, targetHandle: key });
+            const oldInputIndex = node.data.inputs.findIndex((item) => item.key === key);
+            updateObj.inputs = node.data.inputs.filter((item) => item.key !== key);
+            setTimeout(() => {
+              onChangeNode({
+                moduleId,
+                type: 'addInput',
+                index: oldInputIndex,
+                value
+              });
+            });
           } else if (type === 'addInput') {
             const input = node.data.inputs.find((input) => input.key === value.key);
             if (input) {
@@ -239,23 +255,51 @@ export const FlowProvider = ({
               });
               updateObj.inputs = node.data.inputs;
             } else {
-              updateObj.inputs = node.data.inputs.concat(value);
+              if (index) {
+                const inputs = [...node.data.inputs];
+                inputs.splice(index, 0, value);
+                updateObj.inputs = inputs;
+              } else {
+                updateObj.inputs = node.data.inputs.concat(value);
+              }
             }
           } else if (type === 'delInput') {
             onDelEdge({ moduleId, targetHandle: key });
             updateObj.inputs = node.data.inputs.filter((item) => item.key !== key);
-          } else if (type === 'attr') {
-            updateObj[key] = value;
-          } else if (type === 'outputs') {
-            // del output connect
-            const delOutputs = node.data.outputs.filter(
-              (item) =>
-                !value.find((output: FlowNodeOutputTargetItemType) => output.key === item.key)
-            );
-            delOutputs.forEach((output) => {
-              onDelEdge({ moduleId, sourceHandle: output.key });
+          } else if (type === 'updateOutput') {
+            updateObj.outputs = node.data.outputs.map((item) => (item.key === key ? value : item));
+          } else if (type === 'replaceOutput') {
+            onDelEdge({ moduleId, sourceHandle: key });
+            const oldOutputIndex = node.data.outputs.findIndex((item) => item.key === key);
+            updateObj.outputs = node.data.outputs.filter((item) => item.key !== key);
+            setTimeout(() => {
+              onChangeNode({
+                moduleId,
+                type: 'addOutput',
+                index: oldOutputIndex,
+                value
+              });
             });
-            updateObj.outputs = value;
+          } else if (type === 'addOutput') {
+            const output = node.data.outputs.find((output) => output.key === value.key);
+            if (output) {
+              toast({
+                status: 'warning',
+                title: 'key 重复'
+              });
+              updateObj.outputs = node.data.outputs;
+            } else {
+              if (index) {
+                const outputs = [...node.data.outputs];
+                outputs.splice(index, 0, value);
+                updateObj.outputs = outputs;
+              } else {
+                updateObj.outputs = node.data.outputs.concat(value);
+              }
+            }
+          } else if (type === 'delOutput') {
+            onDelEdge({ moduleId, sourceHandle: key });
+            updateObj.outputs = node.data.outputs.filter((item) => item.key !== key);
           }
 
           return {
@@ -396,7 +440,6 @@ export function flowNode2Modules({
         }));
     });
   });
-  console.log(modules);
 
   return modules;
 }

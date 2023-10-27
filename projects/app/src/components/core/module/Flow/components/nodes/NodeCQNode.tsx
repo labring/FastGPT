@@ -54,26 +54,20 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                           color={'myGray.600'}
                           _hover={{ color: 'red.600' }}
                           onClick={() => {
-                            const newInputValue = agents.filter((input) => input.key !== item.key);
-                            const newOutputVal = outputs.filter(
-                              (output) => output.key !== item.key
-                            );
-
                             onChangeNode({
                               moduleId,
-                              type: 'inputs',
+                              type: 'updateInput',
                               key: agentKey,
                               value: {
                                 ...props,
                                 key: agentKey,
-                                value: newInputValue
+                                value: agents.filter((input) => input.key !== item.key)
                               }
                             });
                             onChangeNode({
                               moduleId,
-                              type: 'outputs',
-                              key: '',
-                              value: newOutputVal
+                              type: 'delOutput',
+                              key: item.key
                             });
                           }}
                         />
@@ -96,7 +90,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                           );
                           onChangeNode({
                             moduleId,
-                            type: 'inputs',
+                            type: 'updateInput',
                             key: agentKey,
                             value: {
                               ...props,
@@ -113,29 +107,28 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                 <Button
                   onClick={() => {
                     const key = nanoid();
-                    const newInputValue = agents.concat({ value: '', key });
-                    const newOutputValue = outputs.concat({
-                      key,
-                      label: '',
-                      type: FlowNodeOutputTypeEnum.hidden,
-                      targets: []
-                    });
 
                     onChangeNode({
                       moduleId,
-                      type: 'inputs',
+                      type: 'updateInput',
                       key: agentKey,
                       value: {
                         ...props,
                         key: agentKey,
-                        value: newInputValue
+                        value: agents.concat({ value: '', key })
                       }
                     });
+
                     onChangeNode({
                       moduleId,
-                      type: 'outputs',
+                      type: 'updateOutput',
                       key: agentKey,
-                      value: newOutputValue
+                      value: outputs.concat({
+                        key,
+                        label: '',
+                        type: FlowNodeOutputTypeEnum.hidden,
+                        targets: []
+                      })
                     });
                   }}
                 >

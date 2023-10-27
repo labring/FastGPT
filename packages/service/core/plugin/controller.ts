@@ -2,7 +2,10 @@ import { CreateOnePluginParams, UpdatePluginParams } from '@fastgpt/global/core/
 import { MongoPlugin } from './schema';
 import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { formatPluginIOModules } from '@fastgpt/global/core/module/utils';
+import {
+  formatPluginIOModules,
+  getPluginTemplatePluginIdInput
+} from '@fastgpt/global/core/module/utils';
 
 export async function createOnePlugin(data: CreateOnePluginParams & { userId: string }) {
   const { _id } = await MongoPlugin.create(data);
@@ -23,6 +26,10 @@ export async function deleteOnePlugin({ id, userId }: { id: string; userId: stri
 export async function getUserPlugins({ userId }: { userId: string }) {
   return MongoPlugin.find({ userId }, 'name avatar intro');
 }
+export async function getOnePluginDetail({ id, userId }: { userId: string; id: string }) {
+  return MongoPlugin.findOne({ _id: id, userId });
+}
+/* plugin templates */
 export async function getUserPlugins2Templates({
   userId
 }: {
@@ -32,15 +39,28 @@ export async function getUserPlugins2Templates({
 
   return plugins.map((plugin) => ({
     id: String(plugin._id),
-    flowType: FlowNodeTypeEnum.customModule,
+    flowType: FlowNodeTypeEnum.pluginModule,
+    logo: plugin.avatar,
+    name: plugin.name,
+    description: plugin.intro,
+    intro: plugin.intro,
+    showStatus: false,
+    inputs: [],
+    outputs: []
+  }));
+}
+/* one plugin 2 module detail */
+export async function getPluginModuleDetail({ id, userId }: { userId: string; id: string }) {
+  const plugin = await getOnePluginDetail({ id, userId });
+  if (!plugin) return Promise.reject('plugin not found');
+  return {
+    id: String(plugin._id),
+    flowType: FlowNodeTypeEnum.pluginModule,
     logo: plugin.avatar,
     name: plugin.name,
     description: plugin.intro,
     intro: plugin.intro,
     showStatus: false,
     ...formatPluginIOModules(String(plugin._id), plugin.modules)
-  }));
-}
-export async function getOnePluginDetail({ id, userId }: { userId: string; id: string }) {
-  return MongoPlugin.findOne({ _id: id, userId });
+  };
 }

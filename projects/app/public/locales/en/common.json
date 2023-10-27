@@ -377,10 +377,13 @@
   "plugin": {
     "Confirm Delete": "Confirm to delete the plugin?",
     "Create Your Plugin": "Create Plugin",
+    "Get Plugin Module Detail Failed": "Get plugin detail failed",
     "Intro": "Plugin Intro",
     "Load Plugin Failed": "Load Plugin Failed",
     "My Plugins": "My Plugins",
     "No Intro": "This plugin is not introduced",
+    "Plugin Module": "Plugin",
+    "To Edit Plugin": "To Edit",
     "Update Your Plugin": "Update Plugin"
   },
   "system": {

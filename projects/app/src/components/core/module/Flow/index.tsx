@@ -27,9 +27,9 @@ const nodeTypes = {
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./components/nodes/NodeExtract')),
   [FlowNodeTypeEnum.httpRequest]: dynamic(() => import('./components/nodes/NodeHttp')),
   [FlowNodeTypeEnum.runApp]: NodeSimple,
-  [FlowNodeTypeEnum.customInput]: dynamic(() => import('./components/nodes/NodeInput')),
-  [FlowNodeTypeEnum.customIOutput]: dynamic(() => import('./components/nodes/NodeOutput')),
-  [FlowNodeTypeEnum.customModule]: NodeSimple
+  [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodeInput')),
+  [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodeOutput')),
+  [FlowNodeTypeEnum.pluginModule]: NodeSimple
 };
 const edgeTypes = {
   buttonedge: ButtonEdge

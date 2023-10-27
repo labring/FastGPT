@@ -446,9 +446,9 @@ export async function dispatchModules({
         [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
         [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
         [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
-        [FlowNodeTypeEnum.customModule]: dispatchRunPlugin,
-        [FlowNodeTypeEnum.customInput]: dispatchPluginInput,
-        [FlowNodeTypeEnum.customIOutput]: dispatchPluginOutput
+        [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
+        [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
+        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);
