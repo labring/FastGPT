@@ -2,6 +2,7 @@ import { FlowNodeTypeEnum } from './node/constant';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
+  id: string;
   flowType: `${FlowNodeTypeEnum}`; // unique
   logo?: string;
   name: string;

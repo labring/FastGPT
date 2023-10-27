@@ -9,6 +9,7 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { putUpdatePlugin } from '@/web/core/plugin/api';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
@@ -24,9 +25,18 @@ const Header = ({ plugin, onClose }: Props) => {
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
       const modules = flowNode2Modules({ nodes, edges });
+
       // check required connect
       for (let i = 0; i < modules.length; i++) {
         const item = modules[i];
+
+        // update custom input connected
+        if (item.flowType === FlowNodeTypeEnum.customInput) {
+          item.inputs.forEach((item) => {
+            item.connected = true;
+          });
+        }
+
         if (item.inputs.find((input) => input.required && !input.connected)) {
           return Promise.reject(`【${item.name}】存在未连接的必填输入`);
         }

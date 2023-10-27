@@ -7,8 +7,9 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeHistory = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { inputs, outputs, moduleId } = data;
+const NodeSimple = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { moduleId, inputs, outputs } = data;
+
   return (
     <NodeCard minW={'300px'} {...data}>
       <Divider text="Input" />
@@ -22,4 +23,4 @@ const NodeHistory = ({ data }: NodeProps<FlowModuleItemType>) => {
     </NodeCard>
   );
 };
-export default React.memo(NodeHistory);
+export default React.memo(NodeSimple);

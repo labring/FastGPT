@@ -14,7 +14,10 @@ import {
   dispatchClassifyQuestion,
   dispatchContentExtract,
   dispatchHttpRequest,
-  dispatchAppRequest
+  dispatchAppRequest,
+  dispatchRunPlugin,
+  dispatchPluginInput,
+  dispatchPluginOutput
 } from '@/service/moduleDispatch';
 import type { CreateChatCompletionRequest } from '@fastgpt/global/core/ai/type.d';
 import type { MessageItemType } from '@/types/core/chat/type';
@@ -442,7 +445,10 @@ export async function dispatchModules({
         [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
         [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
         [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowNodeTypeEnum.runApp]: dispatchAppRequest
+        [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+        [FlowNodeTypeEnum.customModule]: dispatchRunPlugin,
+        [FlowNodeTypeEnum.customInput]: dispatchPluginInput,
+        [FlowNodeTypeEnum.customIOutput]: dispatchPluginOutput
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);
@@ -450,17 +456,22 @@ export async function dispatchModules({
       return {};
     })();
 
+    const formatResponseData = (() => {
+      if (!dispatchRes[TaskResponseKeyEnum.responseData]) return undefined;
+      if (Array.isArray(dispatchRes[TaskResponseKeyEnum.responseData]))
+        return dispatchRes[TaskResponseKeyEnum.responseData];
+      return {
+        ...dispatchRes[TaskResponseKeyEnum.responseData],
+        moduleName: module.name,
+        moduleLogo: '',
+        moduleType: module.flowType
+      };
+    })();
+
     return moduleOutput(module, {
       [SystemOutputEnum.finish]: true,
       ...dispatchRes,
-      [TaskResponseKeyEnum.responseData]: dispatchRes[TaskResponseKeyEnum.responseData] // rewrite responseData
-        ? {
-            ...dispatchRes[TaskResponseKeyEnum.responseData],
-            moduleName: module.name,
-            moduleLogo: '',
-            moduleType: module.flowType
-          }
-        : undefined
+      [TaskResponseKeyEnum.responseData]: formatResponseData
     });
   }
 

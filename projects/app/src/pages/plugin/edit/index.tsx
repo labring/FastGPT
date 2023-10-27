@@ -4,15 +4,16 @@ import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { SystemModuleTemplateType } from '@fastgpt/global/core/module/type.d';
-import { CombineModuleTemplates } from '@/constants/flow/ModuleTemplate';
+import { PluginModuleTemplates } from '@/constants/flow/ModuleTemplate';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { getOnePlugin } from '@/web/core/plugin/api';
+import { getOnePlugin, getUserPlugs2ModuleTemplates } from '@/web/core/plugin/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'react-i18next';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
 type Props = { pluginId: string };
 
@@ -21,10 +22,11 @@ const Render = ({ pluginId }: Props) => {
   const router = useRouter();
   const { toast } = useToast();
   const { nodes = [] } = useFlowProviderStore();
+  const { pluginModuleTemplates, loadPluginModuleTemplates } = usePluginStore();
 
   const filterTemplates = useMemo(() => {
     const copyTemplates: SystemModuleTemplateType = JSON.parse(
-      JSON.stringify(CombineModuleTemplates)
+      JSON.stringify(PluginModuleTemplates)
     );
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1,
@@ -58,10 +60,16 @@ const Render = ({ pluginId }: Props) => {
     }
   });
 
+  useQuery(['getUserPlugs2ModuleTemplates'], () => loadPluginModuleTemplates());
+  const filterPlugins = useMemo(
+    () => pluginModuleTemplates.filter((item) => item.id !== pluginId),
+    [pluginId, pluginModuleTemplates]
+  );
+
   return data ? (
     <Flow
       systemTemplates={filterTemplates}
-      combineTemplates={[]}
+      pluginTemplates={[{ label: '', list: filterPlugins }]}
       modules={data?.modules || []}
       Header={<Header plugin={data} onClose={() => router.back()} />}
     />

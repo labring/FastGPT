@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
-import { Box, Button, ModalFooter, ModalBody, Flex, Switch, Input } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  ModalFooter,
+  ModalBody,
+  Flex,
+  Switch,
+  Input,
+  Textarea
+} from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
-import { FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeValTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
 
@@ -34,25 +46,28 @@ const typeSelectList = [
   }
 ];
 
+export type EditFieldModeType = 'input' | 'output';
 export type EditFieldType = {
-  label?: string;
   key: string;
+  label?: string;
   valueType?: `${FlowNodeValTypeEnum}`;
+  description?: string;
   required?: boolean;
 };
 
 const FieldEditModal = ({
-  type,
+  mode,
   defaultField = {
     label: '',
     key: '',
+    description: '',
     valueType: FlowNodeValTypeEnum.string,
     required: false
   },
   onClose,
   onSubmit
 }: {
-  type: 'input' | 'output';
+  mode: EditFieldModeType;
   defaultField?: EditFieldType;
   onClose: () => void;
   onSubmit: (data: EditFieldType) => void;
@@ -69,13 +84,13 @@ const FieldEditModal = ({
       title={
         <Flex alignItems={'center'}>
           <Avatar src={'/imgs/module/extract.png'} mr={2} w={'20px'} objectFit={'cover'} />
-          {type === 'input' ? t('app.Input Field Settings') : t('app.Output Field Settings')}
+          {mode === 'input' ? t('app.Input Field Settings') : t('app.Output Field Settings')}
         </Flex>
       }
       onClose={onClose}
     >
       <ModalBody minH={'260px'} overflow={'visible'}>
-        {type === 'input' && (
+        {mode === 'input' && (
           <Flex alignItems={'center'} mb={5}>
             <Box flex={'0 0 70px'}>必填</Box>
             <Switch {...register('required')} />
@@ -107,6 +122,10 @@ const FieldEditModal = ({
             placeholder="appointment/sql"
             {...register('key', { required: '字段 key 不能为空' })}
           />
+        </Flex>
+        <Flex mb={5} alignItems={'flex-start'}>
+          <Box flex={'0 0 70px'}>字段描述</Box>
+          <Textarea placeholder="可选" rows={3} {...register('description')} />
         </Flex>
       </ModalBody>
 

@@ -22,14 +22,14 @@ enum TemplateTypeEnum {
 
 export type ModuleTemplateProps = {
   systemTemplates: SystemModuleTemplateType;
-  combineTemplates: SystemModuleTemplateType;
-  showCreateCombine?: boolean;
+  pluginTemplates: SystemModuleTemplateType;
+  show2Plugin?: boolean;
 };
 
 const ModuleTemplateList = ({
   systemTemplates,
-  combineTemplates,
-  showCreateCombine = false,
+  pluginTemplates,
+  show2Plugin = false,
   isOpen,
   onClose
 }: ModuleTemplateProps & {
@@ -50,10 +50,10 @@ const ModuleTemplateList = ({
       {
         type: TemplateTypeEnum.combine,
         label: t('app.module.Combine Modules'),
-        child: <RenderList templates={combineTemplates} onClose={onClose} />
+        child: <RenderList templates={pluginTemplates} onClose={onClose} />
       }
     ],
-    [combineTemplates, onClose, systemTemplates, t]
+    [pluginTemplates, onClose, systemTemplates, t]
   );
   const TemplateItem = useMemo(
     () => typeList.find((item) => item.type === templateType)?.child,
@@ -108,7 +108,7 @@ const ModuleTemplateList = ({
             </Box>
           ))}
           <Box flex={1} />
-          {showCreateCombine && templateType === TemplateTypeEnum.combine && (
+          {show2Plugin && templateType === TemplateTypeEnum.combine && (
             <Flex
               alignItems={'center'}
               _hover={{ textDecoration: 'underline' }}
@@ -167,47 +167,47 @@ var RenderList = React.memo(function RenderList({
     [reactFlowWrapper, setNodes, x, y, zoom]
   );
 
-  return templates.length === 0 ? (
+  const list = useMemo(() => templates.map((item) => item.list).flat(), [templates]);
+
+  return list.length === 0 ? (
     <EmptyTip text={t('app.module.No Modules')} />
   ) : (
     <Box flex={'1 0 0'} overflow={'overlay'}>
       <Box w={['100%', '330px']} mx={'auto'}>
-        {templates.map((item) =>
-          item.list.map((item) => (
-            <Flex
-              key={item.flowType}
-              alignItems={'center'}
-              p={5}
-              cursor={'pointer'}
-              _hover={{ bg: 'myWhite.600' }}
-              borderRadius={'md'}
-              draggable
-              onDragEnd={(e) => {
-                if (e.clientX < 360) return;
-                onAddNode({
-                  template: item,
-                  position: { x: e.clientX, y: e.clientY }
-                });
-              }}
-              onClick={(e) => {
-                if (isPc) return;
-                onClose();
-                onAddNode({
-                  template: item,
-                  position: { x: e.clientX, y: e.clientY }
-                });
-              }}
-            >
-              <Avatar src={item.logo} w={'34px'} objectFit={'contain'} borderRadius={'0'} />
-              <Box ml={5} flex={'1 0 0'}>
-                <Box color={'black'}>{item.name}</Box>
-                <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
-                  {item.intro}
-                </Box>
+        {list.map((item) => (
+          <Flex
+            key={item.id}
+            alignItems={'center'}
+            p={5}
+            cursor={'pointer'}
+            _hover={{ bg: 'myWhite.600' }}
+            borderRadius={'md'}
+            draggable
+            onDragEnd={(e) => {
+              if (e.clientX < 360) return;
+              onAddNode({
+                template: item,
+                position: { x: e.clientX, y: e.clientY }
+              });
+            }}
+            onClick={(e) => {
+              if (isPc) return;
+              onClose();
+              onAddNode({
+                template: item,
+                position: { x: e.clientX, y: e.clientY }
+              });
+            }}
+          >
+            <Avatar src={item.logo} w={'34px'} objectFit={'contain'} borderRadius={'0'} />
+            <Box ml={5} flex={'1 0 0'}>
+              <Box color={'black'}>{item.name}</Box>
+              <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
+                {item.intro}
               </Box>
-            </Flex>
-          ))
-        )}
+            </Box>
+          </Flex>
+        ))}
       </Box>
     </Box>
   );

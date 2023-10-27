@@ -30,6 +30,7 @@ export const variableTip =
 export const questionGuideTip = `对话结束后，会为生成 3 个引导性问题。`;
 
 export const VariableModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.variable,
   flowType: FlowNodeTypeEnum.variable,
   logo: '/imgs/module/variable.png',
   name: '全局变量',
@@ -47,6 +48,7 @@ export const VariableModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const UserGuideModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.userGuide,
   flowType: FlowNodeTypeEnum.userGuide,
   logo: '/imgs/module/userGuide.png',
   name: '用户引导',
@@ -72,6 +74,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const UserInputModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.questionInput,
   flowType: FlowNodeTypeEnum.questionInput,
   logo: '/imgs/module/userChatInput.png',
   name: '用户问题(对话入口)',
@@ -94,6 +97,7 @@ export const UserInputModule: FlowModuleTemplateType = {
   ]
 };
 export const HistoryModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.historyNode,
   flowType: FlowNodeTypeEnum.historyNode,
   logo: '/imgs/module/history.png',
   name: '聊天记录',
@@ -124,6 +128,7 @@ export const HistoryModule: FlowModuleTemplateType = {
   ]
 };
 export const ChatModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.chatNode,
   flowType: FlowNodeTypeEnum.chatNode,
   logo: '/imgs/module/AI.png',
   name: 'AI 对话',
@@ -237,7 +242,8 @@ export const ChatModule: FlowModuleTemplateType = {
     Output_Template_Finish
   ]
 };
-export const KBSearchModule: FlowModuleTemplateType = {
+export const DatasetSearchModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.datasetSearchNode,
   flowType: FlowNodeTypeEnum.datasetSearchNode,
   logo: '/imgs/module/db.png',
   name: '知识库搜索',
@@ -311,6 +317,7 @@ export const KBSearchModule: FlowModuleTemplateType = {
   ]
 };
 export const AnswerModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.answerNode,
   flowType: FlowNodeTypeEnum.answerNode,
   logo: '/imgs/module/reply.png',
   name: '指定回复',
@@ -331,6 +338,7 @@ export const AnswerModule: FlowModuleTemplateType = {
   outputs: [Output_Template_Finish]
 };
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.classifyQuestion,
   flowType: FlowNodeTypeEnum.classifyQuestion,
   logo: '/imgs/module/cq.png',
   name: '问题分类',
@@ -403,6 +411,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   ]
 };
 export const ContextExtractModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.contentExtract,
   flowType: FlowNodeTypeEnum.contentExtract,
   logo: '/imgs/module/extract.png',
   name: '文本内容提取',
@@ -463,6 +472,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   ]
 };
 export const HttpModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.httpRequest,
   flowType: FlowNodeTypeEnum.httpRequest,
   logo: '/imgs/module/http.png',
   name: 'HTTP模块',
@@ -485,6 +495,7 @@ export const HttpModule: FlowModuleTemplateType = {
   outputs: [Output_Template_Finish]
 };
 export const EmptyModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.empty,
   flowType: FlowNodeTypeEnum.empty,
   logo: '/imgs/module/cq.png',
   name: '该模块已被移除',
@@ -494,6 +505,7 @@ export const EmptyModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const RunAppModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.runApp,
   flowType: FlowNodeTypeEnum.runApp,
   logo: '/imgs/module/app.png',
   name: '应用调用',
@@ -533,6 +545,7 @@ export const RunAppModule: FlowModuleTemplateType = {
   ]
 };
 export const CustomInputModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.customInput,
   flowType: FlowNodeTypeEnum.customInput,
   logo: '/imgs/module/input.png',
   name: '自定义输入',
@@ -543,6 +556,7 @@ export const CustomInputModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const CustomOutputModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.customIOutput,
   flowType: FlowNodeTypeEnum.customIOutput,
   logo: '/imgs/module/output.png',
   name: '自定义输出',
@@ -553,6 +567,7 @@ export const CustomOutputModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const CustomModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.customModule,
   flowType: FlowNodeTypeEnum.customModule,
   logo: '/imgs/module/custom.png',
   name: '自定义模块',
@@ -576,14 +591,14 @@ export const SystemModuleTemplates = [
   },
   {
     label: '核心调用',
-    list: [KBSearchModule, RunAppModule]
+    list: [DatasetSearchModule, RunAppModule]
   },
   {
     label: '函数模块',
     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
   }
 ];
-export const CombineModuleTemplates = [
+export const PluginModuleTemplates = [
   {
     label: '输入输出',
     list: [CustomInputModule, CustomOutputModule, HistoryModule]
@@ -594,7 +609,7 @@ export const CombineModuleTemplates = [
   },
   {
     label: '核心调用',
-    list: [KBSearchModule, RunAppModule]
+    list: [DatasetSearchModule, RunAppModule]
   },
   {
     label: '函数模块',
@@ -607,13 +622,15 @@ export const ModuleTemplatesFlat = [
   UserInputModule,
   HistoryModule,
   ChatModule,
-  KBSearchModule,
+  DatasetSearchModule,
   AnswerModule,
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule,
   EmptyModule,
   RunAppModule,
+  CustomInputModule,
+  CustomOutputModule,
   CustomModule
 ];
 

@@ -73,6 +73,9 @@ export type moduleDispatchResType = {
   // http
   body?: Record<string, any>;
   httpResult?: Record<string, any>;
+
+  // plugin output
+  pluginOutput?: Record<string, any>;
 };
 export type ChatHistoryItemResType = moduleDispatchResType & {
   moduleType: `${FlowNodeTypeEnum}`;

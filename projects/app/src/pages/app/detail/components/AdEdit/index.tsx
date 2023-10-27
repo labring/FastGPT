@@ -1,17 +1,19 @@
 import React, { useMemo } from 'react';
 import { AppSchema } from '@/types/mongoSchema';
-
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { SystemModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 import { SystemModuleTemplates } from '@/constants/flow/ModuleTemplate';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { usePluginStore } from '@/web/core/plugin/store/plugin';
+import { useQuery } from '@tanstack/react-query';
 
 type Props = { app: AppSchema; onClose: () => void };
 
 const Render = ({ app, onClose }: Props) => {
   const { nodes } = useFlowProviderStore();
+  const { pluginModuleTemplates, loadPluginModuleTemplates } = usePluginStore();
 
   const filterTemplates = useMemo(() => {
     const copyTemplates: SystemModuleTemplateType = JSON.parse(
@@ -36,11 +38,13 @@ const Render = ({ app, onClose }: Props) => {
     return copyTemplates;
   }, [nodes]);
 
+  useQuery(['getUserPlugs2ModuleTemplates'], () => loadPluginModuleTemplates());
+
   return (
     <Flow
       systemTemplates={filterTemplates}
-      combineTemplates={[]}
-      showCreateCombine
+      pluginTemplates={[{ label: '', list: pluginModuleTemplates }]}
+      show2Plugin
       modules={app.modules}
       Header={<Header app={app} onClose={onClose} />}
     />

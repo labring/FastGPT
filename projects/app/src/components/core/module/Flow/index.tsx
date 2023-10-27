@@ -9,25 +9,27 @@ import dynamic from 'next/dynamic';
 
 import ButtonEdge from './components/modules/ButtonEdge';
 import TemplateList, { type ModuleTemplateProps } from './TemplateList';
-import FlowProvider, { useFlowProviderStore } from './FlowProvider';
+import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 
+const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes = {
   [FlowNodeTypeEnum.userGuide]: dynamic(() => import('./components/nodes/NodeUserGuide')),
   [FlowNodeTypeEnum.variable]: dynamic(() => import('./components/nodes/NodeVariable')),
   [FlowNodeTypeEnum.questionInput]: dynamic(() => import('./components/nodes/NodeQuestionInput')),
-  [FlowNodeTypeEnum.historyNode]: dynamic(() => import('./components/nodes/NodeHistory')),
-  [FlowNodeTypeEnum.chatNode]: dynamic(() => import('./components/nodes/NodeChat')),
-  [FlowNodeTypeEnum.datasetSearchNode]: dynamic(
-    () => import('./components/nodes/NodeDatasetSearch')
-  ),
+  [FlowNodeTypeEnum.historyNode]: NodeSimple,
+  [FlowNodeTypeEnum.chatNode]: NodeSimple,
+  [FlowNodeTypeEnum.datasetSearchNode]: NodeSimple,
   [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./components/nodes/NodeAnswer')),
   [FlowNodeTypeEnum.classifyQuestion]: dynamic(() => import('./components/nodes/NodeCQNode')),
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./components/nodes/NodeExtract')),
   [FlowNodeTypeEnum.httpRequest]: dynamic(() => import('./components/nodes/NodeHttp')),
-  [FlowNodeTypeEnum.runApp]: dynamic(() => import('./components/nodes/NodeRunAPP'))
+  [FlowNodeTypeEnum.runApp]: NodeSimple,
+  [FlowNodeTypeEnum.customInput]: dynamic(() => import('./components/nodes/NodeInput')),
+  [FlowNodeTypeEnum.customIOutput]: dynamic(() => import('./components/nodes/NodeOutput')),
+  [FlowNodeTypeEnum.customModule]: NodeSimple
 };
 const edgeTypes = {
   buttonedge: ButtonEdge
@@ -38,7 +40,7 @@ type Props = {
 } & ModuleTemplateProps;
 
 const Container = React.memo(function Container(props: Props) {
-  const { modules = [], Header, systemTemplates, combineTemplates, showCreateCombine } = props;
+  const { modules = [], Header, systemTemplates, pluginTemplates, show2Plugin } = props;
 
   const {
     isOpen: isOpenTemplate,
@@ -114,8 +116,8 @@ const Container = React.memo(function Container(props: Props) {
 
         <TemplateList
           systemTemplates={systemTemplates}
-          combineTemplates={combineTemplates}
-          showCreateCombine={showCreateCombine}
+          pluginTemplates={pluginTemplates}
+          show2Plugin={show2Plugin}
           isOpen={isOpenTemplate}
           onClose={onCloseTemplate}
         />

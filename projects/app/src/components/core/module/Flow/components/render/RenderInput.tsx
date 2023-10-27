@@ -34,20 +34,22 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';
 import { LLMModelItemType } from '@/types/model';
-import type { EditFieldType } from '../modules/FieldEditModal';
+import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
-const SelectAppModal = dynamic(() => import('./SelectAppModal'));
+const SelectAppModal = dynamic(() => import('../../SelectAppModal'));
 const AIChatSettingsModal = dynamic(() => import('../../../AIChatSettingsModal'));
 const DatasetSelectModal = dynamic(() => import('../../../DatasetSelectModal'));
 
 export const Label = React.memo(function Label({
   moduleId,
   inputKey,
+  editFiledType = 'input',
   ...item
 }: FlowNodeInputItemType & {
   moduleId: string;
   inputKey: string;
+  editFiledType?: EditFieldModeType;
 }) {
   const { required = false, description, edit, label, type, valueType } = item;
   const [editField, setEditField] = useState<EditFieldType>();
@@ -91,7 +93,8 @@ export const Label = React.memo(function Label({
                 label: item.label,
                 valueType: item.valueType,
                 required: item.required,
-                key: inputKey
+                key: inputKey,
+                description: item.description
               })
             }
           />
@@ -115,7 +118,7 @@ export const Label = React.memo(function Label({
       )}
       {!!editField && (
         <FieldEditModal
-          type={'input'}
+          mode={editFiledType}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
           onSubmit={(e) => {
@@ -128,7 +131,7 @@ export const Label = React.memo(function Label({
               onChangeNode({
                 moduleId,
                 type: 'inputs',
-                key: inputKey,
+                key: data.key,
                 value: data
               });
             } else {
@@ -159,11 +162,13 @@ export const Label = React.memo(function Label({
 const RenderInput = ({
   flowInputList,
   moduleId,
-  CustomComponent = {}
+  CustomComponent = {},
+  editFiledType
 }: {
   flowInputList: FlowNodeInputItemType[];
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
+  editFiledType?: EditFieldModeType;
 }) => {
   const sortInputs = useMemo(
     () => flowInputList.sort((a, b) => (a.key === FlowNodeInputTypeEnum.switch ? -1 : 1)),
@@ -175,7 +180,14 @@ const RenderInput = ({
         (item) =>
           item.type !== FlowNodeInputTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
-              {!!item.label && <Label moduleId={moduleId} inputKey={item.key} {...item} />}
+              {!!item.label && (
+                <Label
+                  editFiledType={editFiledType}
+                  moduleId={moduleId}
+                  inputKey={item.key}
+                  {...item}
+                />
+              )}
               <Box mt={2} className={'nodrag'}>
                 {item.type === FlowNodeInputTypeEnum.numberInput && (
                   <NumberInputRender item={item} moduleId={moduleId} />
@@ -486,7 +498,15 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
     onChangeModel(list[0].value);
   }
 
-  return <MySelect width={'100%'} value={item.value} list={list} onchange={onChangeModel} />;
+  return (
+    <MySelect
+      minW={'350px'}
+      width={'100%'}
+      value={item.value}
+      list={list}
+      onchange={onChangeModel}
+    />
+  );
 });
 
 var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, moduleId }: RenderProps) {
@@ -507,7 +527,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
 
   return (
     <>
-      <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={4} w={'100%'}>
+      <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={4} minW={'350px'} w={'100%'}>
         <Button h={'36px'} onClick={onOpenKbSelect}>
           选择知识库
         </Button>

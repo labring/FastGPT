@@ -1,5 +1,8 @@
 import { CreateOnePluginParams, UpdatePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { MongoPlugin } from './schema';
+import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { formatPluginIOModules } from '@fastgpt/global/core/module/utils';
 
 export async function createOnePlugin(data: CreateOnePluginParams & { userId: string }) {
   const { _id } = await MongoPlugin.create(data);
@@ -19,6 +22,24 @@ export async function deleteOnePlugin({ id, userId }: { id: string; userId: stri
 }
 export async function getUserPlugins({ userId }: { userId: string }) {
   return MongoPlugin.find({ userId }, 'name avatar intro');
+}
+export async function getUserPlugins2Templates({
+  userId
+}: {
+  userId: string;
+}): Promise<FlowModuleTemplateType[]> {
+  const plugins = await MongoPlugin.find({ userId }).lean();
+
+  return plugins.map((plugin) => ({
+    id: String(plugin._id),
+    flowType: FlowNodeTypeEnum.customModule,
+    logo: plugin.avatar,
+    name: plugin.name,
+    description: plugin.intro,
+    intro: plugin.intro,
+    showStatus: false,
+    ...formatPluginIOModules(String(plugin._id), plugin.modules)
+  }));
 }
 export async function getOnePluginDetail({ id, userId }: { userId: string; id: string }) {
   return MongoPlugin.findOne({ _id: id, userId });

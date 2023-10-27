@@ -45,7 +45,8 @@ export enum FlowNodeTypeEnum {
 
 export enum FlowNodeSpecialInputKeyEnum {
   'answerText' = 'text',
-  'agents' = 'agents' // cq agent key
+  'agents' = 'agents', // cq agent key
+  'pluginId' = 'pluginId'
 }
 
 export enum FlowNodeValTypeEnum {

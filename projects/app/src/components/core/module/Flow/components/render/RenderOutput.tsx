@@ -10,18 +10,20 @@ import dynamic from 'next/dynamic';
 import { onChangeNode } from '../../FlowProvider';
 import { SystemOutputEnum } from '@/constants/app';
 
-import type { EditFieldType } from '../modules/FieldEditModal';
+import type { EditFieldType, EditFieldModeType } from '../modules/FieldEditModal';
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 
-const Label = ({
+export const Label = ({
   moduleId,
   outputKey,
   outputs,
+  editFiledType = 'output',
   ...item
 }: FlowNodeOutputItemType & {
   outputKey: string;
   moduleId: string;
   outputs: FlowNodeOutputItemType[];
+  editFiledType?: EditFieldModeType;
 }) => {
   const { label, description, edit } = item;
   const [editField, setEditField] = useState<EditFieldType>();
@@ -46,7 +48,8 @@ const Label = ({
               setEditField({
                 label: item.label,
                 valueType: item.valueType,
-                key: outputKey
+                key: outputKey,
+                description: item.description
               })
             }
           />
@@ -77,7 +80,7 @@ const Label = ({
 
       {!!editField && (
         <FieldEditModal
-          type={'output'}
+          mode={editFiledType}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
           onSubmit={(e) => {
@@ -130,10 +133,12 @@ const Label = ({
 
 const RenderOutput = ({
   moduleId,
-  flowOutputList
+  flowOutputList,
+  editFiledType
 }: {
   moduleId: string;
   flowOutputList: FlowNodeOutputItemType[];
+  editFiledType?: EditFieldModeType;
 }) => {
   const sortOutput = useMemo(
     () =>
@@ -151,7 +156,13 @@ const RenderOutput = ({
         (item) =>
           item.type !== FlowNodeOutputTypeEnum.hidden && (
             <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
-              <Label moduleId={moduleId} outputKey={item.key} outputs={sortOutput} {...item} />
+              <Label
+                editFiledType={editFiledType}
+                moduleId={moduleId}
+                outputKey={item.key}
+                outputs={sortOutput}
+                {...item}
+              />
               <Box mt={FlowNodeOutputTypeEnum.answer ? 0 : 2} className={'nodrag'}>
                 {item.type === FlowNodeOutputTypeEnum.source && (
                   <SourceHandle handleKey={item.key} valueType={item.valueType} />

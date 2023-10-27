@@ -168,6 +168,9 @@ export const FlowProvider = ({
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
           return FlowNodeValTypeEnum.boolean;
         }
+        if (source?.flowType === FlowNodeTypeEnum.customInput) {
+          return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
+        }
         return source?.outputs.find((output) => output.key === connect.sourceHandle)?.valueType;
       })();
 
@@ -393,5 +396,7 @@ export function flowNode2Modules({
         }));
     });
   });
+  console.log(modules);
+
   return modules;
 }
