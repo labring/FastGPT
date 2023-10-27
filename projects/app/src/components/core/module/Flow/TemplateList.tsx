@@ -156,15 +156,17 @@ var RenderList = React.memo(function RenderList({
     async ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
       if (!reactFlowWrapper?.current) return;
 
-      const templateModule = { ...template };
+      let templateModule = { ...template };
 
       // get plugin module
       try {
         if (templateModule.flowType === FlowNodeTypeEnum.pluginModule) {
           setLoading(true);
           const pluginModule = await getPluginModuleDetail(templateModule.id);
-          templateModule.inputs = pluginModule.inputs;
-          templateModule.outputs = pluginModule.outputs;
+          templateModule = {
+            ...templateModule,
+            ...pluginModule
+          };
         }
       } catch (e) {
         return toast({

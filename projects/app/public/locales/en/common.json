@@ -47,7 +47,7 @@
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
       "Combine Modules": "Combine Modules",
-      "Custom Title Tip": "",
+      "Custom Title Tip": "The title name is displayed during the conversation",
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
@@ -333,9 +333,12 @@
   },
   "module": {
     "Confirm Delete Module": "Confirm to delete the custom module?",
+    "Confirm Sync Plugin": "Confirm the latest sync plugin information? The plug-in connection and input content will be cleared, please confirm!",
     "Create Your Module": "Create You Module",
     "Intro": "Module Intro",
     "Load Module Failed": "Load Module Failed",
+    "Plugin input is not value": "User-defined input parameters cannot be null",
+    "Plugin input is required": "The plug setting must contain an input module",
     "Update Your Module": "Update Module"
   },
   "navbar": {
@@ -383,6 +386,7 @@
     "My Plugins": "My Plugins",
     "No Intro": "This plugin is not introduced",
     "Plugin Module": "Plugin",
+    "Synchronous version": "Sync Version",
     "To Edit Plugin": "To Edit",
     "Update Your Plugin": "Update Plugin"
   },

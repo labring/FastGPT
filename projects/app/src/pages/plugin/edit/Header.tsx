@@ -45,6 +45,18 @@ const Header = ({ plugin, onClose }: Props) => {
         }
       }
 
+      // plugin must have input
+      const pluginInputModule = modules.find(
+        (item) => item.flowType === FlowNodeTypeEnum.pluginInput
+      );
+
+      if (!pluginInputModule) {
+        return Promise.reject(t('module.Plugin input is required'));
+      }
+      if (pluginInputModule.inputs.length < 1) {
+        return Promise.reject(t('module.Plugin input is not value'));
+      }
+
       return putUpdatePlugin({
         id: plugin._id,
         modules

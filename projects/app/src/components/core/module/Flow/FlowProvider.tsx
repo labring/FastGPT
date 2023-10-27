@@ -8,7 +8,10 @@ import {
   Connection,
   addEdge
 } from 'reactflow';
-import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type {
+  FlowModuleItemType,
+  FlowModuleTemplateType
+} from '@fastgpt/global/core/module/type.d';
 import type {
   FlowNodeOutputTargetItemType,
   FlowNodeChangeProps
@@ -50,6 +53,7 @@ export type useFlowProviderStoreType = {
   onDelNode: (nodeId: string) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
   onCopyNode: (nodeId: string) => void;
+  onResetNode: (id: string, module: FlowModuleTemplateType) => void;
   onDelEdge: (e: {
     moduleId: string;
     sourceHandle?: string | undefined;
@@ -105,6 +109,9 @@ const StateContext = createContext<useFlowProviderStoreType>({
     return;
   },
   initData: function (modules: ModuleItemType[]): void {
+    throw new Error('Function not implemented.');
+  },
+  onResetNode: function (id: string, module: FlowModuleTemplateType): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -344,6 +351,34 @@ export const FlowProvider = ({
     [setNodes]
   );
 
+  // reset a node data. delete edge and replace it
+  const onResetNode = useCallback(
+    (id: string, module: FlowModuleTemplateType) => {
+      setNodes((state) =>
+        state.map((node) => {
+          if (node.id === id) {
+            // delete edge
+            node.data.inputs.forEach((item) => {
+              onDelEdge({ moduleId: id, targetHandle: item.key });
+            });
+            node.data.outputs.forEach((item) => {
+              onDelEdge({ moduleId: id, sourceHandle: item.key });
+            });
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                ...module
+              }
+            };
+          }
+          return node;
+        })
+      );
+    },
+    [onDelEdge, setNodes]
+  );
+
   const initData = useCallback(
     (modules: ModuleItemType[]) => {
       const edges = appModule2FlowEdge({
@@ -382,6 +417,7 @@ export const FlowProvider = ({
     onFixView,
     onDelNode,
     onChangeNode,
+    onResetNode,
     onCopyNode,
     onDelEdge,
     onDelConnect,
@@ -408,6 +444,7 @@ export function flowNode2Modules({
   const modules: ModuleItemType[] = nodes.map((item) => ({
     moduleId: item.data.moduleId,
     name: item.data.name,
+    logo: item.data.logo,
     flowType: item.data.flowType,
     showStatus: item.data.showStatus,
     position: item.position,

@@ -333,9 +333,12 @@
   },
   "module": {
     "Confirm Delete Module": "确认删除该自定义模块？",
+    "Confirm Sync Plugin": "确认同步插件最新信息？插件的连线和输入的内容将会被清空，请确认！",
     "Create Your Module": "创建自定义模块",
     "Intro": "模块介绍",
     "Load Module Failed": "加载模块失败",
+    "Plugin input is not value": "自定义输入的参数不能为空",
+    "Plugin input is required": "插件编排必须包含一个输入模块",
     "Update Your Module": "更新模块信息"
   },
   "navbar": {
@@ -383,6 +386,7 @@
     "My Plugins": "我的插件",
     "No Intro": "这个插件没有介绍~",
     "Plugin Module": "插件模块",
+    "Synchronous version": "同步版本",
     "To Edit Plugin": "去编辑",
     "Update Your Plugin": "更新插件"
   },

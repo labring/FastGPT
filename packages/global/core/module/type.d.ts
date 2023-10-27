@@ -22,6 +22,7 @@ export type SystemModuleTemplateType = {
 
 export type ModuleItemType = {
   name: string;
+  logo?: string;
   moduleId: string;
   position?: {
     x: number;

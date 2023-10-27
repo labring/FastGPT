@@ -9,6 +9,14 @@ import { useTranslation } from 'react-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
+import {
+  FlowNodeSpecialInputKeyEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getPluginModuleDetail } from '@/web/core/plugin/api';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -22,43 +30,77 @@ const NodeCard = (props: Props) => {
     name = '未知模块',
     description,
     minW = '300px',
-    moduleId
+    moduleId,
+    flowType,
+    inputs
   } = props;
-  const { onCopyNode, onDelNode } = useFlowProviderStore();
+  const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
+  const { setLoading } = useSystemStore();
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common.Custom Title'),
     placeholder: t('app.module.Custom Title Tip') || ''
   });
+  const { openConfirm, ConfirmModal } = useConfirm({
+    content: t('module.Confirm Sync Plugin')
+  });
 
   const menuList = useMemo(
     () => [
-      {
-        icon: 'edit',
-        label: t('common.Rename'),
-        onClick: () =>
-          onOpenModal({
-            defaultVal: name,
-            onSuccess: (e) => {
-              if (!e) {
-                return toast({
-                  title: t('app.modules.Title is required'),
-                  status: 'warning'
-                });
+      ...(flowType === FlowNodeTypeEnum.pluginModule
+        ? [
+            {
+              icon: 'common/refreshLight',
+              label: t('plugin.Synchronous version'),
+              onClick: () => {
+                const pluginId = inputs.find(
+                  (item) => item.key === FlowNodeSpecialInputKeyEnum.pluginId
+                )?.value;
+                if (!pluginId) return;
+                openConfirm(async () => {
+                  try {
+                    setLoading(true);
+                    const pluginModule = await getPluginModuleDetail(pluginId);
+                    onResetNode(moduleId, pluginModule);
+                  } catch (e) {
+                    return toast({
+                      status: 'error',
+                      title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
+                    });
+                  }
+                  setLoading(false);
+                })();
               }
-              onChangeNode({
-                moduleId,
-                type: 'attr',
-                key: 'name',
-                value: e
-              });
             }
-          })
-      },
+          ]
+        : [
+            {
+              icon: 'edit',
+              label: t('common.Rename'),
+              onClick: () =>
+                onOpenModal({
+                  defaultVal: name,
+                  onSuccess: (e) => {
+                    if (!e) {
+                      return toast({
+                        title: t('app.modules.Title is required'),
+                        status: 'warning'
+                      });
+                    }
+                    onChangeNode({
+                      moduleId,
+                      type: 'attr',
+                      key: 'name',
+                      value: e
+                    });
+                  }
+                })
+            }
+          ]),
       {
         icon: 'copy',
         label: t('common.Copy'),
@@ -76,7 +118,7 @@ const NodeCard = (props: Props) => {
         onClick: () => {}
       }
     ],
-    [moduleId, name, onCopyNode, onDelNode, onOpenModal, t, toast]
+    [flowType, inputs, moduleId, name, onCopyNode, onDelNode, onOpenModal, setLoading, t, toast]
   );
 
   return (
@@ -128,6 +170,7 @@ const NodeCard = (props: Props) => {
       </Flex>
       {children}
       <EditTitleModal />
+      <ConfirmModal />
     </Box>
   );
 };
