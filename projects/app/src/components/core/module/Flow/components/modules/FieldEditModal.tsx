@@ -12,10 +12,7 @@ import {
 import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeValTypeEnum
-} from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { useTranslation } from 'react-i18next';
 import MySelect from '@/components/Select';
 
@@ -46,7 +43,7 @@ const typeSelectList = [
   }
 ];
 
-export type EditFieldModeType = 'input' | 'output';
+export type EditFieldModeType = 'input' | 'output' | 'pluginInput';
 export type EditFieldType = {
   key: string;
   label?: string;
@@ -78,13 +75,17 @@ const FieldEditModal = ({
   });
   const [refresh, setRefresh] = useState(false);
 
+  const title = ['input', 'pluginInput'].includes(mode)
+    ? t('app.Input Field Settings')
+    : t('app.Output Field Settings');
+
   return (
     <MyModal
       isOpen={true}
       title={
         <Flex alignItems={'center'}>
           <Avatar src={'/imgs/module/extract.png'} mr={2} w={'20px'} objectFit={'cover'} />
-          {mode === 'input' ? t('app.Input Field Settings') : t('app.Output Field Settings')}
+          {title}
         </Flex>
       }
       onClose={onClose}
@@ -102,8 +103,18 @@ const FieldEditModal = ({
             w={'288px'}
             list={typeSelectList}
             value={getValues('valueType')}
-            onchange={(e: any) => {
-              setValue('valueType', e);
+            onchange={(e: string) => {
+              const type = e as `${FlowNodeValTypeEnum}`;
+              setValue('valueType', type);
+
+              if (
+                type === FlowNodeValTypeEnum.chatHistory ||
+                type === FlowNodeValTypeEnum.datasetQuote
+              ) {
+                const label = typeSelectList.find((item) => item.value === type)?.label;
+                setValue('label', label);
+              }
+
               setRefresh(!refresh);
             }}
           />

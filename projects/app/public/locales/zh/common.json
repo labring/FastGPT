@@ -343,6 +343,7 @@
     "Load Module Failed": "加载模块失败",
     "Plugin input is not value": "自定义输入的参数不能为空",
     "Plugin input is required": "插件编排必须包含一个输入模块",
+    "Plugin input must connect": "自定义输入模块必须全部连接",
     "Preview Plugin": "预览插件",
     "Save Config": "保存配置",
     "Update Your Module": "更新模块信息"

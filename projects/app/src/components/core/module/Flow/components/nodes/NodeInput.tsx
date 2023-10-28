@@ -112,7 +112,8 @@ const NodeInput = ({ data }: NodeProps<FlowModuleItemType>) => {
                   valueType: FlowNodeValTypeEnum.string,
                   type: FlowNodeInputTypeEnum.target,
                   label: `入参${inputs.length + 1}`,
-                  edit: true
+                  edit: true,
+                  required: true
                 }
               });
               onChangeNode({
@@ -135,7 +136,7 @@ const NodeInput = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
       {!!editField && (
         <FieldEditModal
-          mode={'input'}
+          mode={'pluginInput'}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
           onSubmit={(e) => {

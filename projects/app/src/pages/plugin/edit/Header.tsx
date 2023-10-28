@@ -38,6 +38,9 @@ const Header = ({ plugin, onClose }: Props) => {
           item.inputs.forEach((item) => {
             item.connected = true;
           });
+          if (item.outputs.find((output) => output.targets.length === 0)) {
+            return Promise.reject(t('module.Plugin input must connect'));
+          }
         }
 
         if (item.inputs.find((input) => input.required && !input.connected)) {

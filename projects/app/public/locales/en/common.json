@@ -343,6 +343,7 @@
     "Load Module Failed": "Load Module Failed",
     "Plugin input is not value": "User-defined input parameters cannot be null",
     "Plugin input is required": "The plug setting must contain an input module",
+    "Plugin input must connect": "Custom input modules must all be connected",
     "Preview Plugin": "Preview Plugin",
     "Save Config": "Save",
     "Update Your Module": "Update Module"
