@@ -10,8 +10,10 @@ import MyTooltip from '@/components/MyTooltip';
 import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleItemType } from '@fastgpt/global/core/module/type';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
+const PreviewPlugin = dynamic(() => import('./Preview'));
 
 type Props = { plugin: PluginItemSchema; onClose: () => void };
 
@@ -21,6 +23,7 @@ const Header = ({ plugin, onClose }: Props) => {
   const { copyData } = useCopyData();
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { nodes, edges, onFixView } = useFlowProviderStore();
+  const [previewModules, setPreviewModules] = React.useState<ModuleItemType[]>();
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: () => {
@@ -118,8 +121,19 @@ const Header = ({ plugin, onClose }: Props) => {
             }
           />
         </MyTooltip>
-
-        <MyTooltip label={'保存配置'}>
+        <MyTooltip label={t('module.Preview Plugin')}>
+          <IconButton
+            mr={[3, 6]}
+            icon={<MyIcon name={'core/module/previewLight'} w={['14px', '16px']} />}
+            borderRadius={'lg'}
+            aria-label={'save'}
+            variant={'base'}
+            onClick={() => {
+              setPreviewModules(flowNode2Modules({ nodes, edges }));
+            }}
+          />
+        </MyTooltip>
+        <MyTooltip label={t('module.Save Config')}>
           <IconButton
             icon={<MyIcon name={'save'} w={['14px', '16px']} />}
             borderRadius={'lg'}
@@ -130,6 +144,13 @@ const Header = ({ plugin, onClose }: Props) => {
         </MyTooltip>
       </Flex>
       {isOpenImport && <ImportSettings onClose={onCloseImport} />}
+      {!!previewModules && (
+        <PreviewPlugin
+          plugin={plugin}
+          modules={previewModules}
+          onClose={() => setPreviewModules(undefined)}
+        />
+      )}
     </>
   );
 };

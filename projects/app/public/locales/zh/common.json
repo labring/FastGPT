@@ -337,8 +337,10 @@
     "Create Your Module": "创建自定义模块",
     "Intro": "模块介绍",
     "Load Module Failed": "加载模块失败",
+    "Preview Plugin": "预览插件",
     "Plugin input is not value": "自定义输入的参数不能为空",
     "Plugin input is required": "插件编排必须包含一个输入模块",
+    "Save Config": "保存配置",
     "Update Your Module": "更新模块信息"
   },
   "navbar": {

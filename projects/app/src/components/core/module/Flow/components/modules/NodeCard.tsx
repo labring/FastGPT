@@ -21,6 +21,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
+  isPreview?: boolean;
 };
 
 const NodeCard = (props: Props) => {
@@ -32,7 +33,8 @@ const NodeCard = (props: Props) => {
     minW = '300px',
     moduleId,
     flowType,
-    inputs
+    inputs,
+    isPreview
   } = props;
   const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
   const { t } = useTranslation();
@@ -118,7 +120,20 @@ const NodeCard = (props: Props) => {
         onClick: () => {}
       }
     ],
-    [flowType, inputs, moduleId, name, onCopyNode, onDelNode, onOpenModal, setLoading, t, toast]
+    [
+      flowType,
+      inputs,
+      moduleId,
+      name,
+      onCopyNode,
+      onDelNode,
+      onOpenModal,
+      onResetNode,
+      openConfirm,
+      setLoading,
+      t,
+      toast
+    ]
   );
 
   return (
@@ -129,6 +144,7 @@ const NodeCard = (props: Props) => {
       border={theme.borders.md}
       borderRadius={'md'}
       boxShadow={'sm'}
+      className={isPreview ? 'nodrag' : ''}
     >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
         <Avatar src={logo} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
@@ -146,27 +162,29 @@ const NodeCard = (props: Props) => {
           </MyTooltip>
         )}
         <Box flex={1} />
-        <Menu autoSelect={false} isLazy>
-          <MenuButton
-            className={'nodrag'}
-            _hover={{ bg: 'myWhite.600' }}
-            cursor={'pointer'}
-            borderRadius={'md'}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <MyIcon name={'more'} w={'14px'} p={2} />
-          </MenuButton>
-          <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
-            {menuList.map((item) => (
-              <MenuItem key={item.label} onClick={item.onClick} py={[2, 3]}>
-                <MyIcon name={item.icon as any} w={['14px', '16px']} />
-                <Box ml={[1, 2]}>{item.label}</Box>
-              </MenuItem>
-            ))}
-          </MenuList>
-        </Menu>
+        {!isPreview && (
+          <Menu autoSelect={false} isLazy>
+            <MenuButton
+              className={'nodrag'}
+              _hover={{ bg: 'myWhite.600' }}
+              cursor={'pointer'}
+              borderRadius={'md'}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <MyIcon name={'more'} w={'14px'} p={2} />
+            </MenuButton>
+            <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
+              {menuList.map((item) => (
+                <MenuItem key={item.label} onClick={item.onClick} py={[2, 3]}>
+                  <MyIcon name={item.icon as any} w={['14px', '16px']} />
+                  <Box ml={[1, 2]}>{item.label}</Box>
+                </MenuItem>
+              ))}
+            </MenuList>
+          </Menu>
+        )}
       </Flex>
       {children}
       <EditTitleModal />

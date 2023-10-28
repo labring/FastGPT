@@ -156,13 +156,13 @@ const NodeInput = ({ data }: NodeProps<FlowModuleItemType>) => {
               onChangeNode({
                 moduleId,
                 type: 'updateInput',
-                key: e.key,
+                key: editField.key,
                 value: input
               });
               onChangeNode({
                 moduleId,
                 type: 'updateOutput',
-                key: e.key,
+                key: editField.key,
                 value: output
               });
             } else {

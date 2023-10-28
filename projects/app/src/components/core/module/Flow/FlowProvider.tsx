@@ -262,7 +262,7 @@ export const FlowProvider = ({
               });
               updateObj.inputs = node.data.inputs;
             } else {
-              if (index) {
+              if (index !== undefined) {
                 const inputs = [...node.data.inputs];
                 inputs.splice(index, 0, value);
                 updateObj.inputs = inputs;
@@ -296,7 +296,7 @@ export const FlowProvider = ({
               });
               updateObj.outputs = node.data.outputs;
             } else {
-              if (index) {
+              if (index !== undefined) {
                 const outputs = [...node.data.outputs];
                 outputs.splice(index, 0, value);
                 updateObj.outputs = outputs;

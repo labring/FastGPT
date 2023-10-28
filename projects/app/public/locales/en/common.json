@@ -337,8 +337,10 @@
     "Create Your Module": "Create You Module",
     "Intro": "Module Intro",
     "Load Module Failed": "Load Module Failed",
+    "Preview Plugin": "Preview Plugin",
     "Plugin input is not value": "User-defined input parameters cannot be null",
     "Plugin input is required": "The plug setting must contain an input module",
+    "Save Config": "Save",
     "Update Your Module": "Update Module"
   },
   "navbar": {

@@ -24,7 +24,7 @@ const Navbar = () => {
       ? [
           {
             label: t('home.Commercial'),
-            key: 'community',
+            key: 'Commercial',
             onClick: () => {
               window.open(
                 'https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud',
