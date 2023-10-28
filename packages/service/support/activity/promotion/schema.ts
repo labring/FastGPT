@@ -1,6 +1,6 @@
-import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
+import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { PromotionRecordSchema as PromotionRecordType } from '@/types/mongoSchema';
+import { PromotionRecordSchema as PromotionRecordType } from '@fastgpt/global/support/activity/type.d';
 
 const PromotionRecordSchema = new Schema({
   userId: {
@@ -28,5 +28,5 @@ const PromotionRecordSchema = new Schema({
   }
 });
 
-export const promotionRecord: Model<PromotionRecordType> =
+export const mongoPromotionRecord: Model<PromotionRecordType> =
   models['promotionRecord'] || model('promotionRecord', PromotionRecordSchema);

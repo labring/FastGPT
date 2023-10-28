@@ -60,5 +60,4 @@ export * from './models/chat';
 export * from './models/chatItem';
 export * from './models/app';
 export * from './common/bill/schema';
-export * from './models/promotionRecord';
 export * from './models/inform';

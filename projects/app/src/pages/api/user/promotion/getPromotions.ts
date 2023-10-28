@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, promotionRecord } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
+import { mongoPromotionRecord } from '@fastgpt/service/support/activity/promotion/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -13,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
 
-    const data = await promotionRecord
+    const data = await mongoPromotionRecord
       .find(
         {
           userId
@@ -29,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pageNum,
         pageSize,
         data,
-        total: await promotionRecord.countDocuments({
+        total: await mongoPromotionRecord.countDocuments({
           userId
         })
       }
