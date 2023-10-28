@@ -33,7 +33,7 @@ const MyModules = () => {
       <Flex pt={3} px={5} alignItems={'center'}>
         <Flex flex={1} alignItems={'center'}>
           <Image src={'/imgs/module/plugin.svg'} alt={''} mr={2} h={'24px'} />
-          <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
+          <Box className="textlg" letterSpacing={1} fontSize={['20px', '24px']} fontWeight={'bold'}>
             {t('plugin.My Plugins')}({t('common.Beta')})
           </Box>
         </Flex>

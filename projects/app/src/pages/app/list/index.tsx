@@ -72,7 +72,7 @@ const MyApps = () => {
       <Flex pt={3} px={5} alignItems={'center'}>
         <Flex flex={1} alignItems={'center'}>
           <Image src={'/imgs/module/ai.svg'} alt={''} mr={2} h={'24px'} />
-          <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
+          <Box className="textlg" letterSpacing={1} fontSize={['20px', '24px']} fontWeight={'bold'}>
             {t('app.My Apps')}
           </Box>
         </Flex>

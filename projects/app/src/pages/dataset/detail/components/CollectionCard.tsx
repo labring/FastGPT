@@ -12,9 +12,7 @@ import {
   Image,
   MenuButton,
   useTheme,
-  useDisclosure,
-  ModalFooter,
-  Button
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   getDatasetCollections,
@@ -57,7 +55,6 @@ const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
-  const theme = useTheme();
   const lastSearch = useRef('');
   const router = useRouter();
   const { toast } = useToast();
@@ -223,7 +220,7 @@ const CollectionCard = () => {
   }, [parentId]);
 
   return (
-    <Box ref={BoxRef} py={[1, 3]} h={'100%'} overflow={'overlay'}>
+    <Flex flexDirection={'column'} ref={BoxRef} py={[1, 3]} h={'100%'}>
       <Flex px={[2, 5]} alignItems={['flex-start', 'center']}>
         <Box flex={1}>
           <ParentPath
@@ -336,7 +333,8 @@ const CollectionCard = () => {
           ]}
         />
       </Flex>
-      <TableContainer mt={[0, 3]} position={'relative'} minH={'50vh'}>
+
+      <TableContainer mt={[0, 3]} position={'relative'} flex={'1 0 0'} overflowY={'auto'}>
         <Table variant={'simple'} fontSize={'sm'} draggable={false}>
           <Thead draggable={false}>
             <Tr>
@@ -592,7 +590,7 @@ const CollectionCard = () => {
           }}
         />
       )}
-    </Box>
+    </Flex>
   );
 };
 
