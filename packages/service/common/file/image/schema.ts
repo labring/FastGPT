@@ -1,4 +1,4 @@
-import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
+import { connectionMongo, type Model } from '../../mongo';
 const { Schema, model, models } = connectionMongo;
 
 const ImageSchema = new Schema({
@@ -12,5 +12,5 @@ const ImageSchema = new Schema({
   }
 });
 
-export const Image: Model<{ userId: string; binary: Buffer }> =
+export const MongoImage: Model<{ userId: string; binary: Buffer }> =
   models['image'] || model('image', ImageSchema);

@@ -62,4 +62,3 @@ export * from './models/app';
 export * from './common/bill/schema';
 export * from './models/promotionRecord';
 export * from './models/inform';
-export * from './models/image';
