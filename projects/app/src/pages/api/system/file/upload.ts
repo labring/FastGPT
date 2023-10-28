@@ -22,7 +22,7 @@ type FileType = {
 /**
  * Creates the multer uploader
  */
-const maxSize = 50 * 1024 * 1024;
+const maxSize = 500 * 1024 * 1024;
 class UploadModel {
   uploader = multer({
     limits: {
