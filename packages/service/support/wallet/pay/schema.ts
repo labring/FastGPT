@@ -1,6 +1,7 @@
-import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
+import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { PaySchema as PayType } from '@/types/mongoSchema';
+import { PaySchema as PayType } from '@fastgpt/global/support/wallet/type.d';
+
 const PaySchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
@@ -27,4 +28,4 @@ const PaySchema = new Schema({
   }
 });
 
-export const Pay: Model<PayType> = models['pay'] || model('pay', PaySchema);
+export const MongoPay: Model<PayType> = models['pay'] || model('pay', PaySchema);

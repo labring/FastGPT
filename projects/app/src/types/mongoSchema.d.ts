@@ -63,15 +63,6 @@ export interface ChatItemSchema extends ChatItemType {
   adminFeedback?: MarkDataType;
 }
 
-export interface PaySchema {
-  _id: string;
-  userId: string;
-  createTime: Date;
-  price: number;
-  orderId: string;
-  status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
-}
-
 export interface PromotionRecordSchema {
   _id: string;
   userId: string; // 收益人

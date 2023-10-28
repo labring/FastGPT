@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Chat, App, connectToDatabase, Collection } from '@/service/mongo';
+import { Chat, App, connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { authApp } from '@/service/utils/auth';
@@ -27,11 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 删除对应的聊天
     await Chat.deleteMany({
       appId
-    });
-
-    // 删除收藏列表
-    await Collection.deleteMany({
-      modelId: appId
     });
 
     // 删除分享链接
