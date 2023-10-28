@@ -9,7 +9,7 @@ import Tag from '../Tag';
 import MyTooltip from '../MyTooltip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import ChatBoxDivider from '../core/chat/Divider';
+import ChatBoxDivider from '@/components/core/chat/Divider';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });

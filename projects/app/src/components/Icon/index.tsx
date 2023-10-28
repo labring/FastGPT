@@ -97,7 +97,8 @@ const iconPaths = {
   'common/navbar/pluginFill': () => import('./icons/common/navbar/pluginFill.svg'),
   'common/refreshLight': () => import('./icons/common/refreshLight.svg'),
   'core/module/previewLight': () => import('./icons/core/module/previewLight.svg'),
-  'core/chat/quoteFill': () => import('./icons/core/chat/quoteFill.svg')
+  'core/chat/quoteFill': () => import('./icons/core/chat/quoteFill.svg'),
+  'core/chat/QGFill': () => import('./icons/core/chat/QGFill.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

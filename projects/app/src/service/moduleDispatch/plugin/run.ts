@@ -13,6 +13,7 @@ type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 type RunPluginResponse = {
+  answerText: string;
   [TaskResponseKeyEnum.responseData]?: moduleDispatchResType[];
 };
 
@@ -35,7 +36,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('Plugin not found');
   }
 
-  const { responseData } = await dispatchModules({
+  const { responseData, answerText } = await dispatchModules({
     res,
     modules: plugin.modules,
     user,
@@ -52,6 +53,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   return {
+    answerText,
     // [TaskResponseKeyEnum.responseData]: output,
     [TaskResponseKeyEnum.responseData]: responseData.filter(
       (item) => item.moduleType !== FlowNodeTypeEnum.pluginOutput

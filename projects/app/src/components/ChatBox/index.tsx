@@ -54,6 +54,7 @@ import Avatar from '@/components/Avatar';
 import Markdown from '@/components/Markdown';
 import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
+import ChatBoxDivider from '@/components/core/chat/Divider';
 import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
@@ -496,6 +497,7 @@ const ChatBox = (
   // page change and abort request
   useEffect(() => {
     isNewChatReplace.current = false;
+    setQuestionGuide([]);
     return () => {
       chatController.current?.abort('leave');
       if (!isNewChatReplace.current) {
@@ -750,38 +752,28 @@ const ChatBox = (
                         {index === chatHistory.length - 1 &&
                           !isChatting &&
                           questionGuides.length > 0 && (
-                            <Flex
-                              mt={2}
-                              borderTop={theme.borders.sm}
-                              alignItems={'center'}
-                              flexWrap={'wrap'}
-                            >
-                              <Box
-                                color={'myGray.500'}
-                                mt={2}
-                                mr={2}
-                                fontSize={'sm'}
-                                fontStyle={'italic'}
-                              >
-                                {t('chat.Question Guide Tips')}
-                              </Box>
-                              {questionGuides.map((item) => (
-                                <Button
-                                  mt={2}
-                                  key={item}
-                                  mr="2"
-                                  borderRadius={'md'}
-                                  variant={'outline'}
-                                  colorScheme={'gray'}
-                                  size={'xs'}
-                                  onClick={() => {
-                                    resetInputVal(item);
-                                  }}
-                                >
-                                  {item}
-                                </Button>
-                              ))}
-                            </Flex>
+                            <Box mt={2}>
+                              <ChatBoxDivider
+                                icon="core/chat/QGFill"
+                                text={t('chat.Question Guide Tips')}
+                              />
+                              <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
+                                {questionGuides.map((item) => (
+                                  <Button
+                                    key={item}
+                                    borderRadius={'md'}
+                                    variant={'outline'}
+                                    colorScheme={'gray'}
+                                    size={'xs'}
+                                    onClick={() => {
+                                      resetInputVal(item);
+                                    }}
+                                  >
+                                    {item}
+                                  </Button>
+                                ))}
+                              </Flex>
+                            </Box>
                           )}
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (
