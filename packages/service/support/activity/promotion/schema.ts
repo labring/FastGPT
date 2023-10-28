@@ -28,5 +28,5 @@ const PromotionRecordSchema = new Schema({
   }
 });
 
-export const mongoPromotionRecord: Model<PromotionRecordType> =
+export const MongoPromotionRecord: Model<PromotionRecordType> =
   models['promotionRecord'] || model('promotionRecord', PromotionRecordSchema);
