@@ -1,7 +1,7 @@
-import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
+import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { informSchema } from '@/types/mongoSchema';
-import { InformTypeMap } from '@/constants/user';
+import type { UserInformSchema } from '@fastgpt/global/support/user/type.d';
+import { InformTypeMap } from '@fastgpt/global/support/user/constant';
 
 const InformSchema = new Schema({
   userId: {
@@ -38,4 +38,5 @@ try {
   console.log(error);
 }
 
-export const Inform: Model<informSchema> = models['inform'] || model('inform', InformSchema);
+export const MongoUserInform: Model<UserInformSchema> =
+  models['inform'] || model('inform', InformSchema);

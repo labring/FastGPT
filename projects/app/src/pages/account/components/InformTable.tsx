@@ -3,7 +3,7 @@ import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/api';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import type { informSchema } from '@/types/mongoSchema';
+import type { UserInformSchema } from '@fastgpt/global/support/user/type';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
@@ -20,7 +20,7 @@ const BillTable = () => {
     Pagination,
     getData,
     pageNum
-  } = usePagination<informSchema>({
+  } = usePagination<UserInformSchema>({
     api: getInforms,
     pageSize: isPc ? 20 : 10
   });

@@ -62,13 +62,3 @@ export interface ChatItemSchema extends ChatItemType {
   userFeedback?: string;
   adminFeedback?: MarkDataType;
 }
-
-export interface informSchema {
-  _id: string;
-  userId: string;
-  time: Date;
-  type: `${InformTypeEnum}`;
-  title: string;
-  content: string;
-  read: boolean;
-}

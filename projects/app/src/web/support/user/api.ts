@@ -4,7 +4,7 @@ import type { ResLogin, PromotionRecordType } from '@/global/support/api/userRes
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserType, UserUpdateParams } from '@/types/user';
 import type { PagingData, RequestPaging } from '@/types';
-import { informSchema } from '@/types/mongoSchema';
+import type { UserInformSchema } from '@fastgpt/global/support/user/type';
 import { OAuthEnum } from '@/constants/user';
 
 export const sendAuthCode = (data: {
@@ -71,7 +71,7 @@ export const loginOut = () => GET('/user/account/loginout');
 export const putUserInfo = (data: UserUpdateParams) => PUT('/user/account/update', data);
 
 export const getInforms = (data: RequestPaging) =>
-  POST<PagingData<informSchema>>(`/user/inform/list`, data);
+  POST<PagingData<UserInformSchema>>(`/user/inform/list`, data);
 
 export const getUnreadCount = () => GET<number>(`/user/inform/countUnread`);
 export const readInform = (id: string) => GET(`/user/inform/read`, { id });
