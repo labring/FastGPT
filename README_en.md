@@ -54,9 +54,9 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] Extend with HTTP
    - [ ] Embed Laf for on-the-fly HTTP module crafting
    - [x] Directions for the next dialogue steps
-   - [ ] Multiple dialogue paths selection
    - [x] Tracking source file references
    - [ ] Custom file reader
+   - [ ] Modules are packaged into plug-ins to achieve reuse
 
 2. Extensive knowledge base preprocessing
 
