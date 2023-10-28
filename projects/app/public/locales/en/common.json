@@ -85,6 +85,7 @@
     "Mark Description Title": "Mark Description",
     "New Chat": "New Chat",
     "Question Guide Tips": "I guess what you're asking is",
+    "Quote": "Quote",
     "Read Mark Description": "Read mark description",
     "Read User Feedback": "Read user feedback",
     "Select Mark Kb": "Select Dataset",
@@ -117,7 +118,8 @@
       "module similarity": "Similarity",
       "module temperature": "Temperature",
       "module time": "Running Time",
-      "module tokens": "Tokens"
+      "module tokens": "Tokens",
+      "plugin output": "Plugin Output"
     },
     "retry": "Retry"
   },

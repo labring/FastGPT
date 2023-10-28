@@ -85,6 +85,7 @@
     "Mark Description Title": "标注功能介绍",
     "New Chat": "新对话",
     "Question Guide Tips": "猜你想问",
+    "Quote": "引用",
     "Read Mark Description": "查看标注功能介绍",
     "Read User Feedback": "查看用户反馈",
     "Select Mark Kb": "选择知识库",
@@ -117,7 +118,8 @@
       "module similarity": "相似度",
       "module temperature": "温度",
       "module time": "运行时长",
-      "module tokens": "Tokens"
+      "module tokens": "Tokens",
+      "plugin output": "插件输出值"
     },
     "retry": "重新生成"
   },

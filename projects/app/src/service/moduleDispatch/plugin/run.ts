@@ -13,7 +13,7 @@ type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 type RunPluginResponse = {
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType[];
+  [TaskResponseKeyEnum.responseData]?: moduleDispatchResType[];
 };
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
@@ -45,14 +45,17 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     detail
   });
 
-  const outputVal =
-    responseData.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput)?.pluginOutput ||
-    {};
+  const output = responseData.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
+
+  if (output) {
+    output.moduleLogo = plugin.avatar;
+  }
 
   return {
+    // [TaskResponseKeyEnum.responseData]: output,
     [TaskResponseKeyEnum.responseData]: responseData.filter(
       (item) => item.moduleType !== FlowNodeTypeEnum.pluginOutput
     ),
-    ...outputVal
+    ...(output ? output.pluginOutput : {})
   };
 };

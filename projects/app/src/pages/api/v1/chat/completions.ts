@@ -463,7 +463,6 @@ export async function dispatchModules({
       return {
         ...dispatchRes[TaskResponseKeyEnum.responseData],
         moduleName: module.name,
-        moduleLogo: '',
         moduleType: module.flowType
       };
     })();

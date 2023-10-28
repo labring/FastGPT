@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Button, Textarea, IconButton, BoxProps } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, IconButton, BoxProps, Image } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import {
   postData2Dataset,
@@ -22,10 +22,12 @@ import type { SetOneDatasetDataProps } from '@/global/core/api/datasetReq';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { countPromptTokens } from '@/global/common/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 
 export type RawSourceType = {
   sourceName?: string;
   sourceId?: string;
+  addr?: boolean;
 };
 export type RawSourceTextProps = BoxProps & RawSourceType;
 export type InputDataType = SetOneDatasetDataProps & RawSourceType;
@@ -251,21 +253,29 @@ const InputDataModal = ({
 
 export default InputDataModal;
 
-export function RawSourceText({ sourceId, sourceName = '', ...props }: RawSourceTextProps) {
+export function RawSourceText({
+  sourceId,
+  sourceName = '',
+  addr = true,
+  ...props
+}: RawSourceTextProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
 
-  const canPreview = useMemo(() => !!sourceId, [sourceId]);
+  const canPreview = useMemo(() => !!sourceId && addr, [addr, sourceId]);
+
+  const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
 
   return (
     <MyTooltip
-      label={sourceId ? t('file.Click to view file') || '' : ''}
+      label={canPreview ? t('file.Click to view file') || '' : ''}
       shouldWrapChildren={false}
     >
       <Box
         color={'myGray.600'}
-        display={'inline-block'}
+        display={'inline-flex'}
+        alignItems={'center'}
         whiteSpace={'nowrap'}
         maxW={['200px', '300px']}
         className={'textEllipsis'}
@@ -292,6 +302,7 @@ export function RawSourceText({ sourceId, sourceName = '', ...props }: RawSource
           : {})}
         {...props}
       >
+        <Image src={icon} alt="" w={'14px'} mr={2} />
         {sourceName || t('common.Unknow Source')}
       </Box>
     </MyTooltip>
