@@ -59,9 +59,9 @@ const Share = ({ appId }: { appId: string }) => {
   } = useQuery(['initShareChatList', appId], () => getShareChatList(appId));
 
   return (
-    <Box position={'relative'} pt={[3, 5, 8]} px={[2, 8]} minH={'50vh'}>
+    <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
-        <Box fontWeight={'bold'}>
+        <Box fontWeight={'bold'} fontSize={['md', 'xl']}>
           免登录窗口
           <MyTooltip
             forceShow

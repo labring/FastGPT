@@ -124,6 +124,7 @@
   "common": {
     "Add": "Add",
     "Back": "Back",
+    "Beta": "Beta",
     "Choose": "Choose",
     "Close": "Clow",
     "Collect": "Collect",
@@ -170,6 +171,7 @@
     "Set Avatar": "Set Avatar",
     "Set Name": "Make a nice name",
     "Status": "Status",
+    "Test": "Test",
     "Time": "Time",
     "Unknow": "Unknow",
     "Unknow Source": "UnKnow Source",
@@ -337,9 +339,9 @@
     "Create Your Module": "Create You Module",
     "Intro": "Module Intro",
     "Load Module Failed": "Load Module Failed",
-    "Preview Plugin": "Preview Plugin",
     "Plugin input is not value": "User-defined input parameters cannot be null",
     "Plugin input is required": "The plug setting must contain an input module",
+    "Preview Plugin": "Preview Plugin",
     "Save Config": "Save",
     "Update Your Module": "Update Module"
   },
@@ -388,6 +390,7 @@
     "My Plugins": "My Plugins",
     "No Intro": "This plugin is not introduced",
     "Plugin Module": "Plugin",
+    "Set Name": "Plugin Name",
     "Synchronous version": "Sync Version",
     "To Edit Plugin": "To Edit",
     "Update Your Plugin": "Update Plugin"

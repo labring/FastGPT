@@ -2,10 +2,7 @@ import { CreateOnePluginParams, UpdatePluginParams } from '@fastgpt/global/core/
 import { MongoPlugin } from './schema';
 import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import {
-  formatPluginIOModules,
-  getPluginTemplatePluginIdInput
-} from '@fastgpt/global/core/module/utils';
+import { formatPluginIOModules } from '@fastgpt/global/core/module/utils';
 
 export async function createOnePlugin(data: CreateOnePluginParams & { userId: string }) {
   const { _id } = await MongoPlugin.create(data);

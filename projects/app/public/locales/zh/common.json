@@ -124,6 +124,7 @@
   "common": {
     "Add": "添加",
     "Back": "返回",
+    "Beta": "实验版",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
@@ -170,6 +171,7 @@
     "Set Avatar": "点击设置头像",
     "Set Name": "取个响亮的名字",
     "Status": "状态",
+    "Test": "测试",
     "Time": "时间",
     "Unknow": "未知",
     "Unknow Source": "未知来源",
@@ -337,9 +339,9 @@
     "Create Your Module": "创建自定义模块",
     "Intro": "模块介绍",
     "Load Module Failed": "加载模块失败",
-    "Preview Plugin": "预览插件",
     "Plugin input is not value": "自定义输入的参数不能为空",
     "Plugin input is required": "插件编排必须包含一个输入模块",
+    "Preview Plugin": "预览插件",
     "Save Config": "保存配置",
     "Update Your Module": "更新模块信息"
   },
@@ -388,6 +390,7 @@
     "My Plugins": "我的插件",
     "No Intro": "这个插件没有介绍~",
     "Plugin Module": "插件模块",
+    "Set Name": "给插件取个名字",
     "Synchronous version": "同步版本",
     "To Edit Plugin": "去编辑",
     "Update Your Plugin": "更新插件"

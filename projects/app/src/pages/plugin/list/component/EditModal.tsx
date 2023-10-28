@@ -140,7 +140,7 @@ const CreateModal = ({
       </ModalHeader>
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
-          {t('common.Set Name')}
+          {t('plugin.Set Name')}
         </Box>
         <Flex mt={3} alignItems={'center'}>
           <MyTooltip label={t('common.Set Avatar')}>
