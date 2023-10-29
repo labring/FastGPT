@@ -41,6 +41,10 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 | ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 💡 Features
 
 1. Powerful visual workflows: Effortlessly craft AI applications
@@ -86,6 +90,10 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] One-click embedding with Iframe
    - [ ] Unified access to dialogue records
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 👨‍💻 Development
 
 Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
@@ -111,12 +119,20 @@ Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 | ------------------------------------------------- | ---------------------------------------------- |
 | ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) | -->
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 👀 Others
 
 - [FastGPT FAQ](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
 - [Docker Deployment Tutorial Video](https://www.bilibili.com/video/BV1jo4y147fT/)
 - [Official Account Integration Video Tutorial](https://www.bilibili.com/video/BV1xh4y1t7fy/)
 - [FastGPT Knowledge Base Demo](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
+</a>
 
 ## 💪 Related Projects
 
@@ -125,9 +141,17 @@ Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 - [One API: Multi-model management, supports Azure, Wenxin Yiyuan, etc.](https://github.com/songquanpeng/one-api)
 - [TuShan: Build a backend management system in 5 minutes](https://github.com/msgbyte/tushan)
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 🤝 Third-party Ecosystem
 
 - [luolinAI: Enterprise WeChat bot, ready to use](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
+</a>
 
 ## 🌟 Star History
 

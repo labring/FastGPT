@@ -43,6 +43,10 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 | ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 💡 功能
 
 1. 强大的可视化编排，轻松构建 AI 应用
@@ -78,6 +82,10 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] Iframe 一键嵌入
    - [x] 统一查阅对话记录，并对数据进行标注
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 👨‍💻 开发
 
 项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）
@@ -97,11 +105,19 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [版本更新/升级介绍](https://doc.fastgpt.in/docs/installation/upgrading)
 * [API 文档](https://doc.fastgpt.in/docs/development/openapi/)
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 🏘️ 社区交流群
 
 添加 wx 小助手加入：
 
 ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
 
 ## 💪 相关项目
 
@@ -110,19 +126,35 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 - [One API: 多模型管理，支持 Azure、文心一言等](https://github.com/songquanpeng/one-api)
 - [TuShan: 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 👀 其他
 
 - [保姆级 FastGPT 教程](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
 - [接入飞书](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
 - [接入企微](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 🤝 第三方生态
 
 - [OnWeChat 个人微信/企微机器人](https://doc.fastgpt.run/docs/use-cases/onwechat/)
 
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
+
 ## 🌟 Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=labring/FastGPT&type=Date)](https://star-history.com/#labring/FastGPT&Date)
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
+</a>
 
 ## 使用协议
 
