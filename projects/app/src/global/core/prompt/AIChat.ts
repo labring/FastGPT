@@ -3,7 +3,7 @@ import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
     title: '通用模板',
-    desc: '包含 q 和 a 两个变量的标准模板',
+    desc: '包含 q 和 a 两个变量的通用模板',
     value: `{{q}}\n{{a}}`
   },
   {
@@ -13,8 +13,8 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   },
   {
     title: '全部变量',
-    desc: '包含 q 和 a 两个变量的标准模板',
-    value: `{instruction:"{{q}}",output:"{{a}}",source:"{{source}}",sourceId:"{{sourceId}}",index:"{{index}}"}`
+    desc: '包含全部变量的模板',
+    value: `{instruction:"{{q}}",output:"{{a}}",source:"{{source}}",sourceId:"{{sourceId}}",index:"{{index}}",score:"{{score}}"}`
   }
 ];
 

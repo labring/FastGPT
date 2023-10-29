@@ -200,17 +200,21 @@ function filterQuote({
   model: ChatModelItemType;
   quoteTemplate?: string;
 }) {
+  function getValue(item: SearchDataResponseItemType, index: number) {
+    return replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
+      q: item.q,
+      a: item.a,
+      source: item.sourceName,
+      sourceId: String(item.sourceId || 'UnKnow'),
+      index: index + 1,
+      score: item.score.toFixed(4)
+    });
+  }
   const sliceResult = sliceMessagesTB({
     maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
-      value: replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
-        q: item.q,
-        a: item.a,
-        source: item.sourceName,
-        sourceId: item.sourceId || 'UnKnow',
-        index: index + 1
-      })
+      value: getValue(item, index)
     }))
   });
 
@@ -219,17 +223,7 @@ function filterQuote({
 
   const quoteText =
     filterQuoteQA.length > 0
-      ? `${filterQuoteQA
-          .map((item, index) =>
-            replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
-              q: item.q,
-              a: item.a,
-              source: item.sourceName,
-              sourceId: item.sourceId || 'UnKnow',
-              index: index + 1
-            })
-          )
-          .join('\n')}`
+      ? `${filterQuoteQA.map((item, index) => getValue(item, index)).join('\n')}`
       : '';
 
   return {
