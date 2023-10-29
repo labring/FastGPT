@@ -27,6 +27,7 @@
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
     "Copy Module Config": "Copy config",
+    "Dataset Quote Template": "Dataset Mode",
     "Export Config Successful": "The configuration has been copied. Please check for important data",
     "Export Configs": "Export Configs",
     "Feedback Count": "User Feedback",
@@ -403,7 +404,7 @@
   },
   "template": {
     "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search).\nYou can customize the structure of the reference content to better suit different scenarios. Some variables can be used for template configuration:\n{{q}} - retrieve content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the first n references, {{with}} - the reference points (0-1), they are optional, Here are the default values:\n{{default}}",
-    "Quote Prompt Tip": "This configuration takes effect only when reference content is passed in (knowledge base search). \n You can insert references with {{quote}}, here are the default values: \n\"\"\"{{quote}}\"\"\" The three quotes are the knowledge base I gave you, they have the highest priority. instruction is a relevant introduction and output is an expected answer or supplement."
+    "Quote Prompt Tip": "This configuration takes effect only when the knowledge base is searched.\nYou can use {{quote}} to insert the reference content template and {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
   "user": {
     "Account": "Account",

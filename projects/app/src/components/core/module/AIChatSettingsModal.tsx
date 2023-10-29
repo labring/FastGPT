@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { EditFormType } from '@/web/core/app/basicSettings';
@@ -45,7 +45,6 @@ const AIChatSettingsModal = ({
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;
-    key: 'quoteTemplate' | 'quotePrompt';
     templates: PromptTemplateItem[];
   }>();
 
@@ -163,8 +162,7 @@ const AIChatSettingsModal = ({
               {...selectTemplateBtn}
               onClick={() =>
                 setSelectTemplateData({
-                  title: '选择引用内容模板',
-                  key: 'quoteTemplate',
+                  title: '选择知识库提示词模板',
                   templates: Prompt_QuoteTemplateList
                 })
               }
@@ -190,19 +188,6 @@ const AIChatSettingsModal = ({
             >
               <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
             </MyTooltip>
-            <Box flex={1} />
-            <Box
-              {...selectTemplateBtn}
-              onClick={() =>
-                setSelectTemplateData({
-                  title: '选择引用提示词模板',
-                  key: 'quotePrompt',
-                  templates: Prompt_QuotePromptList
-                })
-              }
-            >
-              选择模板
-            </Box>
           </Flex>
           <Textarea
             rows={11}
@@ -227,7 +212,12 @@ const AIChatSettingsModal = ({
           title={selectTemplateData.title}
           templates={selectTemplateData.templates}
           onClose={() => setSelectTemplateData(undefined)}
-          onSuccess={(e) => setValue(selectTemplateData.key, e)}
+          onSuccess={(e) => {
+            const quoteVal = e.value;
+            const promptVal = Prompt_QuotePromptList.find((item) => item.title === e.title)?.value;
+            setValue('quoteTemplate', quoteVal);
+            setValue('quotePrompt', promptVal);
+          }}
         />
       )}
     </MyModal>

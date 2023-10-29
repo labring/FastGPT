@@ -27,6 +27,7 @@
     "Connection is invalid": "连接无效",
     "Connection type is different": "连接的类型不一致",
     "Copy Module Config": "复制配置",
+    "Dataset Quote Template": "知识库问答模式",
     "Export Config Successful": "已复制配置，请注意检查是否有重要数据",
     "Export Configs": "导出配置",
     "Feedback Count": "用户反馈",
@@ -403,7 +404,7 @@
   },
   "template": {
     "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第n个引用，{{score}} - 该引用的得分(0-1)，他们都是可选的，下面是默认值：\n{{default}}",
-    "Quote Prompt Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以用 {{quote}} 来插入引用内容，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
+    "Quote Prompt Tip": "该配置只在知识库搜索时生效。\n可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
   "user": {
     "Account": "账号",

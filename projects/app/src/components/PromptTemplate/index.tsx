@@ -13,7 +13,7 @@ const PromptTemplate = ({
   title: string;
   templates: PromptTemplateItem[];
   onClose: () => void;
-  onSuccess: (e: string) => void;
+  onSuccess: (e: PromptTemplateItem) => void;
 }) => {
   const theme = useTheme();
   const [selectTemplateTitle, setSelectTemplateTitle] = useState<PromptTemplateItem>();
@@ -38,8 +38,9 @@ const PromptTemplate = ({
               onClick={() => setSelectTemplateTitle(item)}
             >
               <Box>{item.title}</Box>
+
               <Box color={'myGray.600'} fontSize={'sm'} whiteSpace={'pre-wrap'}>
-                {item.value}
+                {item.desc}
               </Box>
             </Box>
           ))}
@@ -50,7 +51,7 @@ const PromptTemplate = ({
           disabled={!selectTemplateTitle}
           onClick={() => {
             if (!selectTemplateTitle) return;
-            onSuccess(selectTemplateTitle.value);
+            onSuccess(selectTemplateTitle);
             onClose();
           }}
         >
