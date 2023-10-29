@@ -116,7 +116,7 @@ const QuoteModal = ({
               </Flex>
 
               <Box color={'black'}>{item.q}</Box>
-              <Box color={'black'}>{item.a}</Box>
+              <Box color={'myGray.600'}>{item.a}</Box>
               {!isShare && (
                 <Flex alignItems={'center'} fontSize={'sm'} mt={3} gap={4} color={'myGray.500'}>
                   {isPc && (
