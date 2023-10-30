@@ -121,14 +121,13 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
 
                     onChangeNode({
                       moduleId,
-                      type: 'updateOutput',
-                      key: agentKey,
-                      value: outputs.concat({
+                      type: 'addOutput',
+                      value: {
                         key,
                         label: '',
                         type: FlowNodeOutputTypeEnum.hidden,
                         targets: []
-                      })
+                      }
                     });
                   }}
                 >
