@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "prepare": "husky install",
-    "format": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\""
+    "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
+    "format-doc": "zhlint --dir ./docSite *.md"
   },
   "devDependencies": {
     "husky": "^8.0.3",
@@ -15,7 +16,8 @@
     "next-i18next": "^14.0.0"
   },
   "lint-staged": {
-    "./**/**/*.{ts,tsx,scss}": "npm run format"
+    "./**/**/*.{ts,tsx,scss}": "npm run format-code",
+    "./**/**/*.md": "npm run format-doc"
   },
   "engines": {
     "node": ">=18.0.0"
