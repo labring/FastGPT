@@ -1,4 +1,4 @@
-import { InformTypeEnum } from './constant';
+import { InformTypeEnum, TeamMemberRoleEnum } from './constant';
 
 export type UserModelSchema = {
   _id: string;
@@ -29,4 +29,20 @@ export type UserInformSchema = {
   title: string;
   content: string;
   read: boolean;
+};
+
+export type TeamSchema = {
+  _id: string;
+  name: string;
+  ownerId: string;
+  avatar: string;
+  createTime: Date;
+};
+
+export type TeamMemberSchema = {
+  _id: string;
+  name: string;
+  teamId: string;
+  userId: string;
+  role: `${TeamMemberRoleEnum}`;
 };
