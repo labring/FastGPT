@@ -248,8 +248,6 @@ function EditLinkModal({
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
-  const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
-
   const {
     register,
     setValue,
@@ -257,6 +255,8 @@ function EditLinkModal({
   } = useForm({
     defaultValues: defaultData
   });
+
+  const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (e: OutLinkEditType) =>
