@@ -141,6 +141,9 @@ async function functionCall({
     try {
       return JSON.parse(response.choices?.[0]?.message?.function_call?.arguments || '{}');
     } catch (error) {
+      console.log(agentFunction.parameters);
+      console.log(response.choices?.[0]?.message);
+      console.log('Your model may not support function_call', error);
       return {};
     }
   })();
