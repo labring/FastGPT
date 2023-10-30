@@ -83,7 +83,7 @@ weight: 144
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -189,7 +189,7 @@ weight: 144
         "label": "引用内容",
         "description": "始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器",
         "type": "source",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "targets": [
           {
             "moduleId": "ol82hp",
@@ -291,14 +291,14 @@ weight: 144
         "type": "target",
         "label": "引用内容",
         "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": true
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -389,7 +389,7 @@ weight: 144
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -432,7 +432,7 @@ weight: 144
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {

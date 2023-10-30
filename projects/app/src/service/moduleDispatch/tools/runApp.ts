@@ -1,6 +1,6 @@
-import { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
+import { moduleDispatchResType, ChatItemType } from '@/types/chat';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { SelectAppItemType } from '@/types/core/app/flow';
+import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { App } from '@/service/mongo';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -13,7 +13,7 @@ type Props = ModuleDispatchProps<{
   app: SelectAppItemType;
 }>;
 type Response = {
-  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
+  [TaskResponseKeyEnum.responseData]: moduleDispatchResType[];
   [TaskResponseKeyEnum.answerText]: string;
   [TaskResponseKeyEnum.history]: ChatItemType[];
 };

@@ -4,7 +4,7 @@ import { App, connectToDatabase } from '@/service/mongo';
 import { PgClient } from '@/service/pg';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { delay } from '@/utils/tools';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
@@ -98,7 +98,7 @@ async function initMongo(limit: number) {
   let success = 0;
 
   async function initApp(limit = 100): Promise<any> {
-    // 遍历所有 app，更新 app modules 里的 FlowModuleTypeEnum.kbSearchNode
+    // 遍历所有 app，更新 app modules 里的 FlowNodeTypeEnum.kbSearchNode
     const apps = await App.find({ inited: false }).limit(limit);
 
     if (apps.length === 0) return;
@@ -113,7 +113,7 @@ async function initMongo(limit: number) {
           modules.forEach((module) => {
             // @ts-ignore
             if (module.flowType === 'kbSearchNode') {
-              module.flowType = FlowModuleTypeEnum.datasetSearchNode;
+              module.flowType = FlowNodeTypeEnum.datasetSearchNode;
               module.inputs.forEach((input) => {
                 if (input.key === 'kbList') {
                   input.key = 'datasets';

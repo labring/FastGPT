@@ -1,3 +1,5 @@
+import { InformTypeEnum } from './constant';
+
 export type UserModelSchema = {
   _id: string;
   username: string;
@@ -17,4 +19,14 @@ export type UserModelSchema = {
     exportKbTime?: Date;
     datasetMaxCount?: number;
   };
+};
+
+export type UserInformSchema = {
+  _id: string;
+  userId: string;
+  time: Date;
+  type: `${InformTypeEnum}`;
+  title: string;
+  content: string;
+  read: boolean;
 };

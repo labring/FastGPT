@@ -12,7 +12,7 @@ import {
   Box
 } from '@chakra-ui/react';
 import { getPayOrders, checkPayResult } from '@/web/common/bill/api';
-import { PaySchema } from '@/types/mongoSchema';
+import type { PaySchema } from '@fastgpt/global/support/wallet/type.d';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';

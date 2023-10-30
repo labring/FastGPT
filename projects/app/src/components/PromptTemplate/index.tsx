@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import MyModal from '../MyModal';
-import { Box, Button, Grid, useTheme } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, useTheme } from '@chakra-ui/react';
 import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 import { ModalBody, ModalFooter } from '@chakra-ui/react';
 
@@ -13,14 +13,14 @@ const PromptTemplate = ({
   title: string;
   templates: PromptTemplateItem[];
   onClose: () => void;
-  onSuccess: (e: string) => void;
+  onSuccess: (e: PromptTemplateItem) => void;
 }) => {
   const theme = useTheme();
   const [selectTemplateTitle, setSelectTemplateTitle] = useState<PromptTemplateItem>();
 
   return (
-    <MyModal isOpen title={title} onClose={onClose}>
-      <ModalBody w={'600px'}>
+    <MyModal isOpen title={title} onClose={onClose} isCentered>
+      <ModalBody h="100%" w={'600px'} maxW={'90vw'} overflowY={'auto'}>
         <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={4}>
           {templates.map((item) => (
             <Box
@@ -38,8 +38,9 @@ const PromptTemplate = ({
               onClick={() => setSelectTemplateTitle(item)}
             >
               <Box>{item.title}</Box>
+
               <Box color={'myGray.600'} fontSize={'sm'} whiteSpace={'pre-wrap'}>
-                {item.value}
+                {item.desc}
               </Box>
             </Box>
           ))}
@@ -50,7 +51,7 @@ const PromptTemplate = ({
           disabled={!selectTemplateTitle}
           onClick={() => {
             if (!selectTemplateTitle) return;
-            onSuccess(selectTemplateTitle.value);
+            onSuccess(selectTemplateTitle);
             onClose();
           }}
         >

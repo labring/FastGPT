@@ -1,12 +1,11 @@
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
+import type { moduleDispatchResType, ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
 import { SystemInputEnum } from '@/constants/app';
-import { SpecialInputKeyEnum } from '@/constants/flow';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeSpecialInputKeyEnum } from '@fastgpt/global/core/module/node/constant';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
@@ -18,10 +17,10 @@ type Props = ModuleDispatchProps<{
   systemPrompt?: string;
   history?: ChatItemType[];
   [SystemInputEnum.userChatInput]: string;
-  [SpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
+  [FlowNodeSpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
 type CQResponse = {
-  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
 };
 
@@ -30,7 +29,6 @@ const agentFunName = 'agent_user_question';
 /* request openai chat */
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
-    moduleName,
     user,
     inputs: { model, agents, userChatInput }
   } = props as Props;
@@ -59,8 +57,6 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   return {
     [result.key]: 1,
     [TaskResponseKeyEnum.responseData]: {
-      moduleType: FlowModuleTypeEnum.classifyQuestion,
-      moduleName,
       price: user.openaiAccount?.key ? 0 : cqModel.price * tokens,
       model: cqModel.name || '',
       tokens,

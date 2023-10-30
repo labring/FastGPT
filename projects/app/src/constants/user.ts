@@ -25,18 +25,3 @@ export enum PromotionEnum {
   register = 'register',
   pay = 'pay'
 }
-
-export enum InformTypeEnum {
-  system = 'system'
-}
-
-export const InformTypeMap = {
-  [InformTypeEnum.system]: {
-    label: '系统通知'
-  }
-};
-
-export enum MyModelsTypeEnum {
-  my = 'my',
-  collection = 'collection'
-}

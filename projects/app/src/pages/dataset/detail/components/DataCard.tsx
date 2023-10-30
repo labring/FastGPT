@@ -73,10 +73,6 @@ const DataCard = () => {
   const { data: collection } = useQuery(['getDatasetCollectionById', collectionId], () =>
     getDatasetCollectionById(collectionId)
   );
-  const fileIcon = useMemo(
-    () => getCollectionIcon(collection?.type, collection?.name),
-    [collection?.name, collection?.type]
-  );
 
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
@@ -100,8 +96,6 @@ const DataCard = () => {
           }
         />
         <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
-          <Image src={fileIcon || '/imgs/files/file.svg'} w={['16px', '18px']} mr={2} alt={''} />
-
           <Box lineHeight={1.2}>
             <RawSourceText
               sourceName={collection?.name}

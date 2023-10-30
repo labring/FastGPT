@@ -3,7 +3,7 @@ import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/mo
 import type { DataType } from './data';
 import { InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
-import type { AppModuleItemType } from './app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { ChatSourceEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
 import { MarkDataType } from '@/global/core/dataset/type';
@@ -29,7 +29,7 @@ export interface AppSchema {
     isShareDetail: boolean;
     collection: number;
   };
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
 }
 
 export interface CollectionSchema {
@@ -61,32 +61,4 @@ export interface ChatItemSchema extends ChatItemType {
   time: Date;
   userFeedback?: string;
   adminFeedback?: MarkDataType;
-}
-
-export interface PaySchema {
-  _id: string;
-  userId: string;
-  createTime: Date;
-  price: number;
-  orderId: string;
-  status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
-}
-
-export interface PromotionRecordSchema {
-  _id: string;
-  userId: string; // 收益人
-  objUId?: string; // 目标对象（如果是withdraw则为空）
-  type: 'register' | 'pay';
-  createTime: Date; // 记录时间
-  amount: number;
-}
-
-export interface informSchema {
-  _id: string;
-  userId: string;
-  time: Date;
-  type: `${InformTypeEnum}`;
-  title: string;
-  content: string;
-  read: boolean;
 }

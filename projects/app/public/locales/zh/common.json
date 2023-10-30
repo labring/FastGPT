@@ -27,6 +27,7 @@
     "Connection is invalid": "连接无效",
     "Connection type is different": "连接的类型不一致",
     "Copy Module Config": "复制配置",
+    "Dataset Quote Template": "知识库问答模式",
     "Export Config Successful": "已复制配置，请注意检查是否有重要数据",
     "Export Configs": "导出配置",
     "Feedback Count": "用户反馈",
@@ -46,7 +47,20 @@
     "Paste Config": "粘贴配置",
     "Variable Key Repeat Tip": "变量 key 重复",
     "module": {
-      "Custom Title Tip": "该标题名字会展示在对话过程中"
+      "Combine Modules": "组合模块",
+      "Custom Title Tip": "该标题名字会展示在对话过程中",
+      "My Modules": "",
+      "No Modules": "还没有模块~",
+      "System Module": "系统模块",
+      "type": "\"{{type}}\"类型\n{{example}}",
+      "valueType": {
+        "any": "任意",
+        "boolean": "布尔",
+        "chatHistory": "聊天记录",
+        "datasetQuote": "引用内容",
+        "number": "数字",
+        "string": "字符串"
+      }
     },
     "modules": {
       "Title is required": "模块名不能为空"
@@ -72,6 +86,7 @@
     "Mark Description Title": "标注功能介绍",
     "New Chat": "新对话",
     "Question Guide Tips": "猜你想问",
+    "Quote": "引用",
     "Read Mark Description": "查看标注功能介绍",
     "Read User Feedback": "查看用户反馈",
     "Select Mark Kb": "选择知识库",
@@ -104,24 +119,32 @@
       "module similarity": "相似度",
       "module temperature": "温度",
       "module time": "运行时长",
-      "module tokens": "Tokens"
+      "module tokens": "Tokens",
+      "plugin output": "插件输出值"
     },
     "retry": "重新生成"
   },
   "common": {
     "Add": "添加",
+    "Back": "返回",
+    "Beta": "实验版",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
+    "Confirm Create": "确认创建",
     "Confirm Move": "移动到这",
+    "Confirm Update": "确认更新",
     "Copy": "复制",
     "Copy Successful": "复制成功",
     "Course": "",
+    "Create Failed": "创建异常",
+    "Create Success": "创建成功",
     "Create Virtual File Failed": "创建虚拟文件失败",
     "Custom Title": "自定义标题",
     "Delete": "删除",
     "Delete Failed": "删除失败",
     "Delete Success": "删除成功",
+    "Delete Tip": "删除提示",
     "Delete Warning": "删除警告",
     "Edit": "编辑",
     "Expired Time": "过期时间",
@@ -130,10 +153,13 @@
     "Filed is repeated": "字段重复了",
     "Input": "输入",
     "Last Step": "上一步",
+    "Loading": "加载中",
     "Max credit": "最大金额",
     "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
     "Name": "名称",
+    "Name Can": "名称不能为空",
     "Name is empty": "名称不能为空",
+    "New Create": "新建",
     "Next Step": "下一步",
     "Output": "输出",
     "Params": "参数",
@@ -143,11 +169,17 @@
     "Rename Success": "重命名成功",
     "Request Error": "请求异常",
     "Search": "搜索",
+    "Select File Failed": "选择文件异常",
     "Select One Folder": "选择一个目录",
+    "Set Avatar": "点击设置头像",
+    "Set Name": "取个响亮的名字",
     "Status": "状态",
+    "Test": "测试",
     "Time": "时间",
     "Unknow": "未知",
     "Unknow Source": "未知来源",
+    "Update Failed": "更新异常",
+    "Update Success": "更新成功",
     "Update Successful": "更新成功",
     "Update Time": "更新时间",
     "error": {
@@ -232,7 +264,7 @@
     "data": {
       "Delete Tip": "确认删除该条数据？",
       "File import": "文件导入",
-      "Input Data": "导入数据",
+      "Input Data": "导入新数据",
       "Input Success Tip": "导入数据成功",
       "Update Data": "更新数据",
       "Update Success Tip": "更新数据成功"
@@ -304,11 +336,26 @@
     "desc": "基于 LLM 大模型的 AI 知识库问答平台",
     "slogan": "让 AI 更懂你的知识"
   },
+  "module": {
+    "Confirm Delete Module": "确认删除该自定义模块？",
+    "Confirm Sync Plugin": "确认同步插件最新信息？插件的连线和输入的内容将会被清空，请确认！",
+    "Create Your Module": "创建自定义模块",
+    "Intro": "模块介绍",
+    "Load Module Failed": "加载模块失败",
+    "Plugin input is not value": "自定义输入的参数不能为空",
+    "Plugin input is required": "插件编排必须包含一个输入模块",
+    "Plugin input must connect": "自定义输入模块必须全部连接",
+    "Preview Plugin": "预览插件",
+    "Save Config": "保存配置",
+    "Update Your Module": "更新模块信息"
+  },
   "navbar": {
     "Account": "账号",
     "Apps": "应用",
     "Chat": "聊天",
     "Datasets": "知识库",
+    "Module": "模块",
+    "Plugin": "插件",
     "Store": "应用市场",
     "Tools": "工具"
   },
@@ -338,12 +385,26 @@
     "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会想指定服务器发送一个请求，进行身份校验",
     "token auth use cases": "查看身份验证使用说明"
   },
+  "plugin": {
+    "Confirm Delete": "确认删除该插件？",
+    "Create Your Plugin": "创建你的插件",
+    "Get Plugin Module Detail Failed": "获取插件信息异常",
+    "Intro": "插件介绍",
+    "Load Plugin Failed": "加载插件异常",
+    "My Plugins": "我的插件",
+    "No Intro": "这个插件没有介绍~",
+    "Plugin Module": "插件模块",
+    "Set Name": "给插件取个名字",
+    "Synchronous version": "同步版本",
+    "To Edit Plugin": "去编辑",
+    "Update Your Plugin": "更新插件"
+  },
   "system": {
     "Help Document": "帮助文档"
   },
   "template": {
-    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{file_id}} - 来源文件名，{{index}} - 第n个引用，他们都是可选的，下面是默认值：\n{{default}}",
-    "Quote Prompt Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以用 {{quote}} 来插入引用内容，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
+    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第n个引用，{{score}} - 该引用的得分(0-1)，他们都是可选的，下面是默认值：\n{{default}}",
+    "Quote Prompt Tip": "该配置只在知识库搜索时生效。\n可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
   "user": {
     "Account": "账号",

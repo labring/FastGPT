@@ -77,13 +77,7 @@ const QuoteModal = ({
           </>
         }
       >
-        <ModalBody
-          pt={0}
-          whiteSpace={'pre-wrap'}
-          textAlign={'justify'}
-          wordBreak={'break-all'}
-          fontSize={'sm'}
-        >
+        <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} wordBreak={'break-all'}>
           {rawSearch.map((item, i) => (
             <Box
               key={i}
@@ -95,11 +89,18 @@ const QuoteModal = ({
               position={'relative'}
               overflow={'hidden'}
               _hover={{ '& .hover-data': { display: 'flex' } }}
+              bg={i % 2 === 0 ? 'white' : 'myWhite.500'}
             >
-              {!isShare && (
-                <Flex alignItems={'flex-end'} mb={3} color={'myGray.500'}>
-                  <RawSourceText sourceName={item.sourceName} sourceId={item.sourceId} />
-                  <Box flex={1} />
+              <Flex alignItems={'flex-end'} mb={3} fontSize={'sm'}>
+                <RawSourceText
+                  fontWeight={'bold'}
+                  color={'black'}
+                  sourceName={item.sourceName}
+                  sourceId={item.sourceId}
+                  addr={!isShare}
+                />
+                <Box flex={1} />
+                {!isShare && (
                   <Link
                     as={NextLink}
                     className="hover-data"
@@ -111,13 +112,13 @@ const QuoteModal = ({
                     {t('core.dataset.Go Dataset')}
                     <MyIcon name={'rightArrowLight'} w={'10px'} />
                   </Link>
-                </Flex>
-              )}
+                )}
+              </Flex>
 
               <Box color={'black'}>{item.q}</Box>
-              <Box color={'black'}>{item.a}</Box>
+              <Box color={'myGray.600'}>{item.a}</Box>
               {!isShare && (
-                <Flex alignItems={'center'} mt={3} gap={4} color={'myGray.500'}>
+                <Flex alignItems={'center'} fontSize={'sm'} mt={3} gap={4} color={'myGray.500'}>
                   {isPc && (
                     <MyTooltip label={t('core.dataset.data.id')}>
                       <Flex border={theme.borders.base} px={3} borderRadius={'md'}>

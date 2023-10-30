@@ -48,8 +48,7 @@ const Logs = ({ appId }: { appId: string }) => {
     data: logs,
     isLoading,
     Pagination,
-    getData,
-    pageNum
+    getData
   } = usePagination<AppLogsListItemType>({
     api: getAppChatLogs,
     pageSize: 20,
@@ -178,7 +177,7 @@ const Logs = ({ appId }: { appId: string }) => {
   );
 };
 
-export default Logs;
+export default React.memo(Logs);
 
 function DetailLogsModal({
   appId,

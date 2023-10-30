@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { UserType, UserUpdateParams } from '@/types/user';
-import { getMyModels, getModelById, putAppById } from '@/web/core/app/api';
+import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 import { defaultApp } from '@/constants/model';
@@ -66,7 +66,7 @@ export const useUserStore = create<State>()(
         myCollectionApps: [],
         async loadMyApps(init = true) {
           if (get().myApps.length > 0 && !init) return [];
-          const res = await getMyModels();
+          const res = await getMyApps();
           set((state) => {
             state.myApps = res;
           });

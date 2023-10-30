@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { connectToDatabase, App } from '@/service/mongo';
-import { FlowInputItemTypeEnum, FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { SystemInputEnum } from '@/constants/app';
 
 const limit = 300;
@@ -46,19 +46,19 @@ async function initVariable(): Promise<any> {
         const modules = jsonAPP.modules;
 
         // 找到 variable
-        const variable = modules.find((item) => item.flowType === FlowModuleTypeEnum.variable);
+        const variable = modules.find((item) => item.flowType === FlowNodeTypeEnum.variable);
         if (!variable) return await app.save();
 
         // 找到 guide 模块
         const userGuideModule = modules.find(
-          (item) => item.flowType === FlowModuleTypeEnum.userGuide
+          (item) => item.flowType === FlowNodeTypeEnum.userGuide
         );
         if (userGuideModule) {
           userGuideModule.inputs = [
             userGuideModule.inputs[0],
             {
               key: SystemInputEnum.variables,
-              type: FlowInputItemTypeEnum.systemInput,
+              type: FlowNodeInputTypeEnum.systemInput,
               label: '对话框变量',
               value: variable.inputs[0]?.value
             }
@@ -66,7 +66,7 @@ async function initVariable(): Promise<any> {
         } else {
           modules.unshift({
             moduleId: 'userGuide',
-            flowType: FlowModuleTypeEnum.userGuide,
+            flowType: FlowNodeTypeEnum.userGuide,
             name: '用户引导',
             position: {
               x: 447.98520778293346,
@@ -75,12 +75,12 @@ async function initVariable(): Promise<any> {
             inputs: [
               {
                 key: SystemInputEnum.welcomeText,
-                type: FlowInputItemTypeEnum.input,
+                type: FlowNodeInputTypeEnum.input,
                 label: '开场白'
               },
               {
                 key: SystemInputEnum.variables,
-                type: FlowInputItemTypeEnum.systemInput,
+                type: FlowNodeInputTypeEnum.systemInput,
                 label: '对话框变量',
                 value: variable.inputs[0]?.value
               }
@@ -90,7 +90,7 @@ async function initVariable(): Promise<any> {
         }
 
         jsonAPP.modules = jsonAPP.modules.filter(
-          (item) => item.flowType !== FlowModuleTypeEnum.variable
+          (item) => item.flowType !== FlowNodeTypeEnum.variable
         );
 
         app.modules = JSON.parse(JSON.stringify(jsonAPP.modules));

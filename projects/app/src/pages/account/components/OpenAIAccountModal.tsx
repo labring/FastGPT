@@ -32,8 +32,8 @@ const OpenAIAccountModal = ({
     <MyModal isOpen onClose={onClose} title={t('user.OpenAI Account Setting')}>
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          可以填写 OpenAI 的 key，也可以是 OneAPI 的可以。如果你填写了该内容，在线上平台使用 OpenAI
-          Chat 模型不会计费（不包含知识库训练、索引生成）。请注意你的 Key 是否有访问对应模型的权限。
+          可以填写 OpenAI/OneAPI 的相关秘钥。如果你填写了该内容，在线上平台使用 OpenAI Chat
+          模型不会计费（不包含知识库训练、索引生成）。请注意你的 Key 是否有访问对应模型的权限。
         </Box>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 65px'}>API Key:</Box>

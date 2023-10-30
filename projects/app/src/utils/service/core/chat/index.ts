@@ -1,7 +1,14 @@
 import { ChatHistoryItemResType } from '@/types/chat';
 
 export function selectShareResponse({ responseData }: { responseData: ChatHistoryItemResType[] }) {
-  const filedList = ['moduleType', 'moduleName', 'runningTime', 'quoteList', 'question'];
+  const filedList = [
+    'moduleType',
+    'moduleName',
+    'moduleLogo',
+    'runningTime',
+    'quoteList',
+    'question'
+  ];
   return responseData.map((item) => {
     const obj: Record<string, any> = {};
     for (let key in item) {

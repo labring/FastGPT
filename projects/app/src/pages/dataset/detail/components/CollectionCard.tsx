@@ -12,9 +12,7 @@ import {
   Image,
   MenuButton,
   useTheme,
-  useDisclosure,
-  ModalFooter,
-  Button
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   getDatasetCollections,
@@ -57,7 +55,6 @@ const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
-  const theme = useTheme();
   const lastSearch = useRef('');
   const router = useRouter();
   const { toast } = useToast();
@@ -223,7 +220,7 @@ const CollectionCard = () => {
   }, [parentId]);
 
   return (
-    <Box ref={BoxRef} py={[1, 3]} h={'100%'} overflow={'overlay'}>
+    <Flex flexDirection={'column'} ref={BoxRef} py={[1, 3]} h={'100%'}>
       <Flex px={[2, 5]} alignItems={['flex-start', 'center']}>
         <Box flex={1}>
           <ParentPath
@@ -336,10 +333,12 @@ const CollectionCard = () => {
           ]}
         />
       </Flex>
-      <TableContainer mt={[0, 3]} position={'relative'} minH={'50vh'}>
+
+      <TableContainer mt={[0, 3]} position={'relative'} flex={'1 0 0'} overflowY={'auto'}>
         <Table variant={'simple'} fontSize={'sm'} draggable={false}>
           <Thead draggable={false}>
             <Tr>
+              <Th>#</Th>
               <Th>{t('common.Name')}</Th>
               <Th>{t('dataset.collections.Data Amount')}</Th>
               <Th>{t('common.Time')}</Th>
@@ -348,7 +347,7 @@ const CollectionCard = () => {
             </Tr>
           </Thead>
           <Tbody>
-            {formatCollections.map((collection) => (
+            {formatCollections.map((collection, index) => (
               <Tr
                 key={collection._id}
                 _hover={{ bg: 'myWhite.600' }}
@@ -408,6 +407,7 @@ const CollectionCard = () => {
                   }
                 }}
               >
+                <Td w={'50px'}>{index + 1}</Td>
                 <Td minW={'150px'} maxW={['200px', '300px']} draggable>
                   <Flex alignItems={'center'}>
                     <Image src={collection.icon} w={'16px'} mr={2} alt={''} />
@@ -592,7 +592,7 @@ const CollectionCard = () => {
           }}
         />
       )}
-    </Box>
+    </Flex>
   );
 };
 

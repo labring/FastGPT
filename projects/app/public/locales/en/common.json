@@ -27,6 +27,7 @@
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
     "Copy Module Config": "Copy config",
+    "Dataset Quote Template": "Dataset Mode",
     "Export Config Successful": "The configuration has been copied. Please check for important data",
     "Export Configs": "Export Configs",
     "Feedback Count": "User Feedback",
@@ -46,7 +47,20 @@
     "Paste Config": "Paste Config",
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
-      "Custom Title Tip": "The title name is displayed during the conversation"
+      "Combine Modules": "Combine Modules",
+      "Custom Title Tip": "The title name is displayed during the conversation",
+      "My Modules": "My Custom Modules",
+      "No Modules": "No module",
+      "System Module": "System Module",
+      "type": "{{type}}\n{{example}}",
+      "valueType": {
+        "any": "any",
+        "boolean": "boolean",
+        "chatHistory": "Chat History",
+        "datasetQuote": "Dataset Quote",
+        "number": "number",
+        "string": "string"
+      }
     },
     "modules": {
       "Title is required": "Title is required"
@@ -72,6 +86,7 @@
     "Mark Description Title": "Mark Description",
     "New Chat": "New Chat",
     "Question Guide Tips": "I guess what you're asking is",
+    "Quote": "Quote",
     "Read Mark Description": "Read mark description",
     "Read User Feedback": "Read user feedback",
     "Select Mark Kb": "Select Dataset",
@@ -104,24 +119,32 @@
       "module similarity": "Similarity",
       "module temperature": "Temperature",
       "module time": "Running Time",
-      "module tokens": "Tokens"
+      "module tokens": "Tokens",
+      "plugin output": "Plugin Output"
     },
     "retry": "Retry"
   },
   "common": {
     "Add": "Add",
+    "Back": "Back",
+    "Beta": "Beta",
     "Choose": "Choose",
     "Close": "Clow",
     "Collect": "Collect",
+    "Confirm Create": "Create",
     "Confirm Move": "Move here",
+    "Confirm Update": "Update",
     "Copy": "Copy",
     "Copy Successful": "Copy Successful",
     "Course": "",
+    "Create Failed": "Create Failed",
+    "Create Success": "Create Success",
     "Create Virtual File Failed": "Create Virtual File Failed",
     "Custom Title": "Custom Title",
     "Delete": "Delete",
     "Delete Failed": "Delete Failed",
     "Delete Success": "Delete Successful",
+    "Delete Tip": "Delete Confirm",
     "Delete Warning": "Warning",
     "Edit": "Edit",
     "Expired Time": "Expired",
@@ -130,10 +153,13 @@
     "Filed is repeated": "",
     "Input": "Input",
     "Last Step": "Last",
+    "Loading": "Loading",
     "Max credit": "Credit",
     "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
     "Name": "Name",
+    "Name Can": "Name Can't Be Empty",
     "Name is empty": "Name is empty",
+    "New Create": "Create",
     "Next Step": "Next",
     "Output": "Output",
     "Params": "Params",
@@ -143,11 +169,17 @@
     "Rename Success": "Rename Success",
     "Request Error": "Request Error",
     "Search": "Search",
+    "Select File Failed": "Select File Failed",
     "Select One Folder": "Select a folder",
+    "Set Avatar": "Set Avatar",
+    "Set Name": "Make a nice name",
     "Status": "Status",
+    "Test": "Test",
     "Time": "Time",
     "Unknow": "Unknow",
     "Unknow Source": "UnKnow Source",
+    "Update Failed": "Update Failed",
+    "Update Success": "Update Success",
     "Update Successful": "Update Successful",
     "Update Time": "Update Time",
     "error": {
@@ -304,11 +336,26 @@
     "desc": "AI knowledge base question and answer platform based on LLM large model",
     "slogan": "Let the AI know more about you"
   },
+  "module": {
+    "Confirm Delete Module": "Confirm to delete the custom module?",
+    "Confirm Sync Plugin": "Confirm the latest sync plugin information? The plug-in connection and input content will be cleared, please confirm!",
+    "Create Your Module": "Create You Module",
+    "Intro": "Module Intro",
+    "Load Module Failed": "Load Module Failed",
+    "Plugin input is not value": "User-defined input parameters cannot be null",
+    "Plugin input is required": "The plug setting must contain an input module",
+    "Plugin input must connect": "Custom input modules must all be connected",
+    "Preview Plugin": "Preview Plugin",
+    "Save Config": "Save",
+    "Update Your Module": "Update Module"
+  },
   "navbar": {
     "Account": "Account",
     "Apps": "Apps",
     "Chat": "Chat",
     "Datasets": "DataSets",
+    "Module": "Module",
+    "Plugin": "Plugin",
     "Store": "Store",
     "Tools": "Tools"
   },
@@ -338,12 +385,26 @@
     "token auth Tips": "Identity verification server address. If this value is set, the server will be specified to send a request for identity verification before each session",
     "token auth use cases": "Review the authentication instructions"
   },
+  "plugin": {
+    "Confirm Delete": "Confirm to delete the plugin?",
+    "Create Your Plugin": "Create Plugin",
+    "Get Plugin Module Detail Failed": "Get plugin detail failed",
+    "Intro": "Plugin Intro",
+    "Load Plugin Failed": "Load Plugin Failed",
+    "My Plugins": "My Plugins",
+    "No Intro": "This plugin is not introduced",
+    "Plugin Module": "Plugin",
+    "Set Name": "Plugin Name",
+    "Synchronous version": "Sync Version",
+    "To Edit Plugin": "To Edit",
+    "Update Your Plugin": "Update Plugin"
+  },
   "system": {
     "Help Document": "Document"
   },
   "template": {
-    "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search). You can customize the structure of the reference content to better fit different scenarios. You can use {{q}}, {{a}}, {{source}} as \"search content\", \"expected content\", and \"source\", they are all optional, and here are the default values: \n{instruction:\"{{q}}\",output:\"{{a}}\"}",
-    "Quote Prompt Tip": "This configuration takes effect only when reference content is passed in (knowledge base search). \n You can insert references with {{quote}}, here are the default values: \n\"\"\"{{quote}}\"\"\" The three quotes are the knowledge base I gave you, they have the highest priority. instruction is a relevant introduction and output is an expected answer or supplement."
+    "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search).\nYou can customize the structure of the reference content to better suit different scenarios. Some variables can be used for template configuration:\n{{q}} - retrieve content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the first n references, {{with}} - the reference points (0-1), they are optional, Here are the default values:\n{{default}}",
+    "Quote Prompt Tip": "This configuration takes effect only when the knowledge base is searched.\nYou can use {{quote}} to insert the reference content template and {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
   "user": {
     "Account": "Account",
