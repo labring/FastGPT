@@ -1,86 +1,68 @@
 import type { BoxProps } from '@chakra-ui/react';
+import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
-export enum FlowInputItemTypeEnum {
-  systemInput = 'systemInput', // history, userChatInput, variableInput
-  input = 'input', // one line input
-  textarea = 'textarea',
-  numberInput = 'numberInput',
-  select = 'select',
-  slider = 'slider',
-  custom = 'custom',
-  target = 'target', // data input
-  switch = 'switch',
-  chatInput = 'chatInput',
-  selectApp = 'selectApp',
-  // chat special input
-  aiSettings = 'aiSettings',
-  maxToken = 'maxToken',
-  selectChatModel = 'selectChatModel',
-  // dataset special input
-  selectDataset = 'selectDataset',
-  hidden = 'hidden'
-}
-
-export enum FlowOutputItemTypeEnum {
-  answer = 'answer',
-  source = 'source',
-  hidden = 'hidden'
-}
-
-export enum FlowModuleTypeEnum {
-  empty = 'empty',
-  variable = 'variable',
-  userGuide = 'userGuide',
-  questionInput = 'questionInput',
-  historyNode = 'historyNode',
-  chatNode = 'chatNode',
-  datasetSearchNode = 'datasetSearchNode',
-  tfSwitchNode = 'tfSwitchNode',
-  answerNode = 'answerNode',
-  classifyQuestion = 'classifyQuestion',
-  contentExtract = 'contentExtract',
-  httpRequest = 'httpRequest',
-  app = 'app'
-}
-
-export enum SpecialInputKeyEnum {
-  'answerText' = 'text',
-  'agents' = 'agents' // cq agent key
-}
-
-export enum FlowValueTypeEnum {
-  'string' = 'string',
-  'number' = 'number',
-  'boolean' = 'boolean',
-  'chatHistory' = 'chat_history',
-  'kbQuote' = 'kb_quote',
-  'any' = 'any'
-}
-
-export const FlowValueTypeStyle: Record<`${FlowValueTypeEnum}`, BoxProps> = {
-  [FlowValueTypeEnum.string]: {
+export const FlowValueTypeStyle: Record<`${FlowNodeValTypeEnum}`, BoxProps> = {
+  [FlowNodeValTypeEnum.string]: {
     background: '#36ADEF'
   },
-  [FlowValueTypeEnum.number]: {
+  [FlowNodeValTypeEnum.number]: {
     background: '#FB7C3C'
   },
-  [FlowValueTypeEnum.boolean]: {
+  [FlowNodeValTypeEnum.boolean]: {
     background: '#E7D118'
   },
-  [FlowValueTypeEnum.chatHistory]: {
+  [FlowNodeValTypeEnum.chatHistory]: {
     background: '#00A9A6'
   },
-  [FlowValueTypeEnum.kbQuote]: {
+  [FlowNodeValTypeEnum.datasetQuote]: {
     background: '#A558C9'
   },
-  [FlowValueTypeEnum.any]: {
+  [FlowNodeValTypeEnum.any]: {
     background: '#9CA2A8'
+  }
+};
+export const FlowValueTypeTip = {
+  [FlowNodeValTypeEnum.string]: {
+    label: 'app.module.valueType.string',
+    example: ''
+  },
+  [FlowNodeValTypeEnum.number]: {
+    label: 'app.module.valueType.number',
+    example: ''
+  },
+  [FlowNodeValTypeEnum.boolean]: {
+    label: 'app.module.valueType.boolean',
+    example: ''
+  },
+  [FlowNodeValTypeEnum.chatHistory]: {
+    label: 'app.module.valueType.chatHistory',
+    example: `{
+  obj: System | Human | AI;
+  value: string;
+}`
+  },
+  [FlowNodeValTypeEnum.datasetQuote]: {
+    label: 'app.module.valueType.datasetQuote',
+    example: `{
+  id: string;
+  datasetId: string;
+  collectionId: string;
+  sourceName: string;
+  sourceId?: string;
+  q: string;
+  a: string
+}`
+  },
+  [FlowNodeValTypeEnum.any]: {
+    label: 'app.module.valueType.any',
+    example: ''
   }
 };
 
 export const initModuleType: Record<string, boolean> = {
-  [FlowModuleTypeEnum.historyNode]: true,
-  [FlowModuleTypeEnum.questionInput]: true
+  [FlowNodeTypeEnum.historyNode]: true,
+  [FlowNodeTypeEnum.questionInput]: true,
+  [FlowNodeTypeEnum.pluginInput]: true
 };
 
 export const edgeOptions = {

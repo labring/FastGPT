@@ -1,25 +1,28 @@
-import type { FlowInputItemType } from '@/types/core/app/flow';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type.d';
 import { SystemInputEnum } from '../app';
-import { FlowInputItemTypeEnum, FlowValueTypeEnum } from './index';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeValTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 
-export const Input_Template_TFSwitch: FlowInputItemType = {
+export const Input_Template_TFSwitch: FlowNodeInputItemType = {
   key: SystemInputEnum.switch,
-  type: FlowInputItemTypeEnum.target,
+  type: FlowNodeInputTypeEnum.target,
   label: '触发器',
-  valueType: FlowValueTypeEnum.any
+  valueType: FlowNodeValTypeEnum.any
 };
 
-export const Input_Template_History: FlowInputItemType = {
+export const Input_Template_History: FlowNodeInputItemType = {
   key: SystemInputEnum.history,
-  type: FlowInputItemTypeEnum.target,
+  type: FlowNodeInputTypeEnum.target,
   label: '聊天记录',
-  valueType: FlowValueTypeEnum.chatHistory
+  valueType: FlowNodeValTypeEnum.chatHistory
 };
 
-export const Input_Template_UserChatInput: FlowInputItemType = {
+export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   key: SystemInputEnum.userChatInput,
-  type: FlowInputItemTypeEnum.target,
+  type: FlowNodeInputTypeEnum.target,
   label: '用户问题',
   required: true,
-  valueType: FlowValueTypeEnum.string
+  valueType: FlowNodeValTypeEnum.string
 };

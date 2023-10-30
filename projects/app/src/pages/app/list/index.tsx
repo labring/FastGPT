@@ -7,7 +7,8 @@ import {
   Flex,
   IconButton,
   Button,
-  useDisclosure
+  useDisclosure,
+  Image
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -69,11 +70,14 @@ const MyApps = () => {
   return (
     <PageContainer>
       <Flex pt={3} px={5} alignItems={'center'}>
-        <Box flex={1} className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-          {t('app.My Apps')}
-        </Box>
+        <Flex flex={1} alignItems={'center'}>
+          <Image src={'/imgs/module/ai.svg'} alt={''} mr={2} h={'24px'} />
+          <Box className="textlg" letterSpacing={1} fontSize={['20px', '24px']} fontWeight={'bold'}>
+            {t('app.My Apps')}
+          </Box>
+        </Flex>
         <Button leftIcon={<AddIcon />} variant={'base'} onClick={onOpenCreateModal}>
-          新建
+          {t('common.New Create')}
         </Button>
       </Flex>
       <Grid

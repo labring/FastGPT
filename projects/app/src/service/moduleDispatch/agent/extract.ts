@@ -1,11 +1,10 @@
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
+import type { moduleDispatchResType, ChatItemType } from '@/types/chat';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ContextExtractAgentItemType } from '@/types/app';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
-import { FlowModuleTypeEnum } from '@/constants/flow';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/global/common/string/tools';
@@ -21,14 +20,13 @@ type Response = {
   [ContextExtractEnum.success]?: boolean;
   [ContextExtractEnum.failed]?: boolean;
   [ContextExtractEnum.fields]: string;
-  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
 };
 
 const agentFunName = 'agent_extract_data';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
-    moduleName,
     user,
     inputs: { content, description, extractKeys }
   } = props;
@@ -77,8 +75,6 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [ContextExtractEnum.fields]: JSON.stringify(arg),
     ...arg,
     [TaskResponseKeyEnum.responseData]: {
-      moduleType: FlowModuleTypeEnum.contentExtract,
-      moduleName,
       price: user.openaiAccount?.key ? 0 : extractModel.price * tokens,
       model: extractModel.name || '',
       tokens,

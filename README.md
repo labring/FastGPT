@@ -47,7 +47,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 1. 强大的可视化编排，轻松构建 AI 应用
    - [x] 提供简易模式，无需操作编排
-   - [x] 用户对话前引导, 全局字符串变量
+   - [x] 用户对话前引导，全局字符串变量
    - [x] 知识库搜索
    - [x] 多 LLM 模型对话
    - [x] 文本内容提取成结构化数据
@@ -56,12 +56,12 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 对话下一步指引
    - [ ] 对话多路线选择
    - [x] 源文件引用追踪
-   - [ ] 自定义文件阅读器
+   - [x] 模块封装，实现多级复用
 2. 丰富的知识库预处理
    - [x] 多库复用，混用
    - [x] chunk 记录修改和删除
-   - [x] 支持 手动输入, 直接分段, QA 拆分导入
-   - [x] 支持 url 读取、 CSV 批量导入
+   - [x] 支持手动输入，直接分段，QA 拆分导入
+   - [x] 支持 url 读取、CSV 批量导入
    - [x] 支持知识库单独设置向量模型
    - [x] 源文件存储
    - [ ] 文件学习 Agent
@@ -71,7 +71,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 完整上下文呈现
    - [x] 完整模块中间值呈现
 4. OpenAPI
-   - [x] completions 接口（对齐 GPT 接口）
+   - [x] completions 接口 (对齐 GPT 接口)
    - [ ] 知识库 CRUD
 5. 运营功能
    - [x] 免登录分享窗口
@@ -80,7 +80,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 👨‍💻 开发
 
-项目技术栈: NextJs + TS + ChakraUI + Mongo + Postgres（Vector 插件）
+项目技术栈：NextJs + TS + ChakraUI + Mongo + Postgres (Vector 插件)
 
 - **⚡ 快速部署**
 
@@ -95,7 +95,8 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [系统配置文件说明](https://doc.fastgpt.in/docs/development/configuration/)
 * [多模型配置](https://doc.fastgpt.in/docs/installation/one-api/)
 * [版本更新/升级介绍](https://doc.fastgpt.in/docs/installation/upgrading)
-* [API 文档](https://doc.fastgpt.in/docs/development/openapi/)
+* [OpenAPI API 文档](https://doc.fastgpt.in/docs/development/openapi/)
+* [知识库结构详解](https://doc.fastgpt.in/docs/use-cases/datasetengine/)
 
 ## 🏘️ 社区交流群
 
@@ -105,10 +106,10 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 💪 相关项目
 
-- [Laf: 3 分钟快速接入三方应用](https://github.com/labring/laf)
-- [Sealos: 快速部署集群应用](https://github.com/labring/sealos)
-- [One API: 多模型管理，支持 Azure、文心一言等](https://github.com/songquanpeng/one-api)
-- [TuShan: 5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
+- [Laf：3 分钟快速接入三方应用](https://github.com/labring/laf)
+- [Sealos：快速部署集群应用](https://github.com/labring/sealos)
+- [One API：多模型管理，支持 Azure、文心一言等](https://github.com/songquanpeng/one-api)
+- [TuShan：5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
 
 ## 👀 其他
 
@@ -129,6 +130,6 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 本仓库遵循 [FastGPT Open Source License](./LICENSE) 开源协议。
 
 1. 允许作为后台服务直接商用，但不允许提供 SaaS 服务。
-2. 需保留相关版权信息。
+2. 未经商业授权，任何形式的商用服务均需保留相关版权信息。
 3. 完整请查看 [FastGPT Open Source License](./LICENSE)
-4. 联系方式：yujinlong@sealos.io, [点击查看定价策略](https://doc.fastgpt.run/docs/commercial)
+4. 联系方式：yujinlong@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.run/docs/commercial)

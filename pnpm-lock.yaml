@@ -12,20 +12,20 @@ importers:
         specifier: ^8.0.3
         version: registry.npmmirror.com/husky@8.0.3
       i18next:
-        specifier: ^23.2.11
-        version: registry.npmmirror.com/i18next@23.6.0
+        specifier: ^22.5.1
+        version: registry.npmmirror.com/i18next@22.5.1
       lint-staged:
         specifier: ^13.2.1
         version: registry.npmmirror.com/lint-staged@13.3.0
       next-i18next:
-        specifier: ^14.0.0
-        version: registry.npmmirror.com/next-i18next@14.0.3(i18next@23.6.0)(next@13.5.2)(react-i18next@13.3.1)(react@18.2.0)
+        specifier: ^13.3.0
+        version: registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.5.2)(react-i18next@12.3.1)(react@18.2.0)
       prettier:
         specifier: ^3.0.3
         version: registry.npmmirror.com/prettier@3.0.3
       react-i18next:
-        specifier: ^13.0.2
-        version: registry.npmmirror.com/react-i18next@13.3.1(i18next@23.6.0)(react-dom@18.2.0)(react@18.2.0)
+        specifier: ^12.3.1
+        version: registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0)
 
   packages/global:
     dependencies:
@@ -176,8 +176,8 @@ importers:
         specifier: ^2.4.29
         version: registry.npmmirror.com/hyperdown@2.4.29
       i18next:
-        specifier: ^23.2.11
-        version: registry.npmmirror.com/i18next@23.6.0
+        specifier: ^22.5.1
+        version: registry.npmmirror.com/i18next@22.5.1
       immer:
         specifier: ^9.0.19
         version: registry.npmmirror.com/immer@9.0.21
@@ -215,8 +215,8 @@ importers:
         specifier: 13.5.2
         version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.69.4)
       next-i18next:
-        specifier: ^14.0.0
-        version: registry.npmmirror.com/next-i18next@14.0.3(i18next@23.6.0)(next@13.5.2)(react-i18next@13.3.1)(react@18.2.0)
+        specifier: ^13.3.0
+        version: registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.5.2)(react-i18next@12.3.1)(react@18.2.0)
       nprogress:
         specifier: ^0.2.0
         version: registry.npmmirror.com/nprogress@0.2.0
@@ -242,8 +242,8 @@ importers:
         specifier: ^7.43.1
         version: registry.npmmirror.com/react-hook-form@7.47.0(react@18.2.0)
       react-i18next:
-        specifier: ^13.0.2
-        version: registry.npmmirror.com/react-i18next@13.3.1(i18next@23.6.0)(react-dom@18.2.0)(react@18.2.0)
+        specifier: ^12.3.1
+        version: registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0)
       react-markdown:
         specifier: ^8.0.7
         version: registry.npmmirror.com/react-markdown@8.0.7(@types/react@18.0.28)(react@18.2.0)
@@ -7579,10 +7579,10 @@ packages:
     name: i18next-fs-backend
     version: 2.2.0
 
-  registry.npmmirror.com/i18next@23.6.0:
-    resolution: {integrity: sha512-z0Cxr0MGkt+kli306WS4nNNM++9cgt2b2VCMprY92j+AIab/oclgPxdwtTZVLP1zn5t5uo8M6uLsZmYrcjr3HA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/i18next/-/i18next-23.6.0.tgz}
+  registry.npmmirror.com/i18next@22.5.1:
+    resolution: {integrity: sha512-8TGPgM3pAD+VRsMtUMNknRz3kzqwp/gPALrWMsDnmC1mKqJwpWyooQRLMcbTwq8z8YwSmuj+ZYvc+xCuEpkssA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/i18next/-/i18next-22.5.1.tgz}
     name: i18next
-    version: 23.6.0
+    version: 22.5.1
     dependencies:
       '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.23.2
 
@@ -9327,27 +9327,27 @@ packages:
     version: 1.4.0
     dev: true
 
-  registry.npmmirror.com/next-i18next@14.0.3(i18next@23.6.0)(next@13.5.2)(react-i18next@13.3.1)(react@18.2.0):
-    resolution: {integrity: sha512-FtnjRMfhlamk8YyeyWqd+pndNL+3er83iMZnH4M4mhiGA93l0+vtBUvuObgOAMHDJGLLB2SS2xOOZq69oiJh7A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/next-i18next/-/next-i18next-14.0.3.tgz}
-    id: registry.npmmirror.com/next-i18next/14.0.3
+  registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.5.2)(react-i18next@12.3.1)(react@18.2.0):
+    resolution: {integrity: sha512-X4kgi51BCOoGdKbv87eZ8OU7ICQDg5IP+T5fNjqDY3os9ea0OKTY4YpAiVFiwcI9XimcUmSPbKO4a9jFUyYSgg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/next-i18next/-/next-i18next-13.3.0.tgz}
+    id: registry.npmmirror.com/next-i18next/13.3.0
     name: next-i18next
-    version: 14.0.3
+    version: 13.3.0
     engines: {node: '>=14'}
     peerDependencies:
-      i18next: ^23.4.6
+      i18next: ^22.0.6
       next: '>= 12.0.0'
       react: '>= 17.0.2'
-      react-i18next: ^13.2.1
+      react-i18next: ^12.2.0
     dependencies:
       '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.23.2
       '@types/hoist-non-react-statics': registry.npmmirror.com/@types/hoist-non-react-statics@3.3.4
       core-js: registry.npmmirror.com/core-js@3.33.1
       hoist-non-react-statics: registry.npmmirror.com/hoist-non-react-statics@3.3.2
-      i18next: registry.npmmirror.com/i18next@23.6.0
+      i18next: registry.npmmirror.com/i18next@22.5.1
       i18next-fs-backend: registry.npmmirror.com/i18next-fs-backend@2.2.0
       next: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.69.4)
       react: registry.npmmirror.com/react@18.2.0
-      react-i18next: registry.npmmirror.com/react-i18next@13.3.1(i18next@23.6.0)(react-dom@18.2.0)(react@18.2.0)
+      react-i18next: registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0)
 
   registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.69.4):
     resolution: {integrity: sha512-vog4UhUaMYAzeqfiAAmgB/QWLW7p01/sg+2vn6bqc/CxHFYizMzLv6gjxKzl31EVFkfl/F+GbxlKizlkTE9RdA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/next/-/next-13.5.2.tgz}
@@ -10150,13 +10150,13 @@ packages:
       react: registry.npmmirror.com/react@18.2.0
     dev: false
 
-  registry.npmmirror.com/react-i18next@13.3.1(i18next@23.6.0)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-JAtYREK879JXaN9GdzfBI4yJeo/XyLeXWUsRABvYXiFUakhZJ40l+kaTo+i+A/3cKIED41kS/HAbZ5BzFtq/Og==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-i18next/-/react-i18next-13.3.1.tgz}
-    id: registry.npmmirror.com/react-i18next/13.3.1
+  registry.npmmirror.com/react-i18next@12.3.1(i18next@22.5.1)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-5v8E2XjZDFzK7K87eSwC7AJcAkcLt5xYZ4+yTPDAW1i7C93oOY1dnr4BaQM7un4Hm+GmghuiPvevWwlca5PwDA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-i18next/-/react-i18next-12.3.1.tgz}
+    id: registry.npmmirror.com/react-i18next/12.3.1
     name: react-i18next
-    version: 13.3.1
+    version: 12.3.1
     peerDependencies:
-      i18next: '>= 23.2.3'
+      i18next: '>= 19.0.0'
       react: '>= 16.8.0'
       react-dom: '*'
       react-native: '*'
@@ -10168,7 +10168,7 @@ packages:
     dependencies:
       '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.23.2
       html-parse-stringify: registry.npmmirror.com/html-parse-stringify@3.0.1
-      i18next: registry.npmmirror.com/i18next@23.6.0
+      i18next: registry.npmmirror.com/i18next@22.5.1
       react: registry.npmmirror.com/react@18.2.0
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
 

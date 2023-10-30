@@ -1,5 +1,5 @@
 import type { UserType } from '@/types/user';
-import type { PromotionRecordSchema } from '@/types/mongoSchema';
+import type { PromotionRecordSchema } from '@fastgpt/global/support/activity/type.d';
 export interface ResLogin {
   user: UserType;
   token: string;

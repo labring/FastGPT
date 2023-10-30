@@ -1,4 +1,4 @@
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { XYPosition } from 'reactflow';
 import {
   AppModuleItemTypeEnum,
@@ -7,13 +7,13 @@ import {
   VariableInputEnum
 } from '../constants/app';
 import type {
-  FlowInputItemType,
-  FlowOutputItemType,
-  FlowOutputTargetItemType
-} from '@/types/core/app/flow';
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType,
+  FlowNodeOutputTargetItemType
+} from '@fastgpt/global/core/module/node/type.d';
+import type { FlowModuleTemplateType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { AppSchema, ChatSchema } from './mongoSchema';
 import { ChatModelType } from '@/constants/model';
-import { FlowValueTypeEnum } from '@/constants/flow';
 
 export type AppListItemType = {
   _id: string;
@@ -61,7 +61,7 @@ export type ContextExtractAgentItemType = {
 export type HttpFieldItemType = {
   label: string;
   key: string;
-  type: `${FlowValueTypeEnum}`;
+  type: `${FlowNodeValTypeEnum}`;
 };
 
 export type VariableItemType = {
@@ -75,27 +75,17 @@ export type VariableItemType = {
 };
 
 /* app module */
-export type AppModuleItemType = {
-  name: string;
-  moduleId: string;
-  position?: XYPosition;
-  flowType: `${FlowModuleTypeEnum}`;
-  showStatus?: boolean;
-  inputs: FlowInputItemType[];
-  outputs: FlowOutputItemType[];
-};
-
 export type AppItemType = {
   id: string;
   name: string;
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
 };
 
 export type RunningModuleItemType = {
-  name: AppModuleItemType['name'];
-  moduleId: AppModuleItemType['moduleId'];
-  flowType: AppModuleItemType['flowType'];
-  showStatus?: AppModuleItemType['showStatus'];
+  name: ModuleItemType['name'];
+  moduleId: ModuleItemType['moduleId'];
+  flowType: ModuleItemType['flowType'];
+  showStatus?: ModuleItemType['showStatus'];
 } & {
   inputs: {
     key: string;

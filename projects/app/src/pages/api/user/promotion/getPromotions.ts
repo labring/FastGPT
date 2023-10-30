@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, promotionRecord } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
+import { MongoPromotionRecord } from '@fastgpt/service/support/activity/promotion/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -13,13 +14,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
 
-    const data = await promotionRecord
-      .find(
-        {
-          userId
-        },
-        '_id createTime type amount'
-      )
+    const data = await MongoPromotionRecord.find(
+      {
+        userId
+      },
+      '_id createTime type amount'
+    )
       .sort({ _id: -1 })
       .skip((pageNum - 1) * pageSize)
       .limit(pageSize);
@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pageNum,
         pageSize,
         data,
-        total: await promotionRecord.countDocuments({
+        total: await MongoPromotionRecord.countDocuments({
           userId
         })
       }

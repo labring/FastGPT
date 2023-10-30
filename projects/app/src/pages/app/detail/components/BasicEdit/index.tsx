@@ -37,10 +37,11 @@ import {
   welcomeTextTip,
   questionGuideTip
 } from '@/constants/flow/ModuleTemplate';
-import { AppModuleItemType, VariableItemType } from '@/types/app';
+import { VariableItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -56,15 +57,15 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 
-import { addVariable } from '../VariableEditModal';
-import { KbParamsModal } from '../DatasetSelectModal';
+import { addVariable } from '@/components/core/module/VariableEditModal';
+import { KbParamsModal } from '@/components/core/module/DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
-const VariableEditModal = dynamic(() => import('../VariableEditModal'));
+const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
-const DatasetSelectModal = dynamic(() => import('../DatasetSelectModal'));
-const AIChatSettingsModal = dynamic(() => import('../AIChatSettingsModal'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
+const AIChatSettingsModal = dynamic(() => import('@/components/core/module/AIChatSettingsModal'));
 
 const Settings = ({ appId }: { appId: string }) => {
   const theme = useTheme();
@@ -596,13 +597,13 @@ const ChatTest = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { appDetail, userInfo } = useUserStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const [modules, setModules] = useState<AppModuleItemType[]>([]);
+  const [modules, setModules] = useState<ModuleItemType[]>([]);
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
       const historyMaxLen =
         modules
-          ?.find((item) => item.flowType === FlowModuleTypeEnum.historyNode)
+          ?.find((item) => item.flowType === FlowNodeTypeEnum.historyNode)
           ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
       const history = chatList.slice(-historyMaxLen - 2, -2);
 

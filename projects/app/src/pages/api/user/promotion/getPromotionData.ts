@@ -1,7 +1,8 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { connectToDatabase, promotionRecord } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoPromotionRecord } from '@fastgpt/service/support/activity/promotion/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import mongoose from '@fastgpt/service/common/mongo';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
@@ -16,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // 计算累计合
-    const countHistory: { totalAmount: number }[] = await promotionRecord.aggregate([
+    const countHistory: { totalAmount: number }[] = await MongoPromotionRecord.aggregate([
       {
         $match: {
           userId: new mongoose.Types.ObjectId(userId),

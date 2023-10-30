@@ -5,8 +5,7 @@ import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import { ChatRoleEnum } from '@/constants/chat';
 import type { MessageItemType } from '@/types/core/chat/type';
-import type { AppModuleItemType } from '@/types/app';
-import type { FlowModuleItemType } from '@/types/core/app/flow';
+import type { ModuleItemType, FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
@@ -63,7 +62,7 @@ export const textAdaptGptResponse = ({
 export const appModule2FlowNode = ({
   item
 }: {
-  item: AppModuleItemType;
+  item: ModuleItemType;
 }): Node<FlowModuleItemType> => {
   // init some static data
   const template =
@@ -83,10 +82,7 @@ export const appModule2FlowNode = ({
   // replace item data
   const moduleItem: FlowModuleItemType = {
     ...template,
-    flowType: item.flowType,
-    moduleId: item.moduleId,
-    name: item.name,
-    showStatus: item.showStatus,
+    ...item,
     inputs: concatInputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;
@@ -117,7 +113,7 @@ export const appModule2FlowEdge = ({
   modules,
   onDelete
 }: {
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
   onDelete: (id: string) => void;
 }) => {
   const edges: Edge[] = [];

@@ -7,9 +7,9 @@ import { countPromptTokens } from '@/global/common/tiktoken';
 export function replaceVariable(text: string, obj: Record<string, string | number>) {
   for (const key in obj) {
     const val = obj[key];
-    if (typeof val !== 'string') continue;
+    if (!['string', 'number'].includes(typeof val)) continue;
 
-    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), val);
+    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), String(val));
   }
   return text || '';
 }

@@ -9,12 +9,15 @@ import {
   dispatchHistory,
   dispatchChatInput,
   dispatchChatCompletion,
-  dispatchKBSearch,
+  dispatchDatasetSearch,
   dispatchAnswer,
   dispatchClassifyQuestion,
   dispatchContentExtract,
   dispatchHttpRequest,
-  dispatchAppRequest
+  dispatchAppRequest,
+  dispatchRunPlugin,
+  dispatchPluginInput,
+  dispatchPluginOutput
 } from '@/service/moduleDispatch';
 import type { CreateChatCompletionRequest } from '@fastgpt/global/core/ai/type.d';
 import type { MessageItemType } from '@/types/core/chat/type';
@@ -23,8 +26,10 @@ import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { TaskResponseKeyEnum } from '@/constants/chat';
-import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
-import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
+import { initModuleType } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { RunningModuleItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { pushChatBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
@@ -305,7 +310,7 @@ export async function dispatchModules({
   detail = false
 }: {
   res: NextApiResponse;
-  modules: AppModuleItemType[];
+  modules: ModuleItemType[];
   user: UserModelSchema;
   params?: Record<string, any>;
   variables?: Record<string, any>;
@@ -425,7 +430,6 @@ export async function dispatchModules({
       stream,
       detail,
       variables,
-      moduleName: module.name,
       outputs: module.outputs,
       user,
       inputs: params
@@ -433,15 +437,18 @@ export async function dispatchModules({
 
     const dispatchRes: Record<string, any> = await (async () => {
       const callbackMap: Record<string, Function> = {
-        [FlowModuleTypeEnum.historyNode]: dispatchHistory,
-        [FlowModuleTypeEnum.questionInput]: dispatchChatInput,
-        [FlowModuleTypeEnum.answerNode]: dispatchAnswer,
-        [FlowModuleTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowModuleTypeEnum.datasetSearchNode]: dispatchKBSearch,
-        [FlowModuleTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-        [FlowModuleTypeEnum.contentExtract]: dispatchContentExtract,
-        [FlowModuleTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowModuleTypeEnum.app]: dispatchAppRequest
+        [FlowNodeTypeEnum.historyNode]: dispatchHistory,
+        [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
+        [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+        [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+        [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+        [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+        [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
+        [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
+        [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+        [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
+        [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
+        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);
@@ -449,9 +456,21 @@ export async function dispatchModules({
       return {};
     })();
 
+    const formatResponseData = (() => {
+      if (!dispatchRes[TaskResponseKeyEnum.responseData]) return undefined;
+      if (Array.isArray(dispatchRes[TaskResponseKeyEnum.responseData]))
+        return dispatchRes[TaskResponseKeyEnum.responseData];
+      return {
+        ...dispatchRes[TaskResponseKeyEnum.responseData],
+        moduleName: module.name,
+        moduleType: module.flowType
+      };
+    })();
+
     return moduleOutput(module, {
       [SystemOutputEnum.finish]: true,
-      ...dispatchRes
+      ...dispatchRes,
+      [TaskResponseKeyEnum.responseData]: formatResponseData
     });
   }
 
@@ -468,7 +487,7 @@ export async function dispatchModules({
 
 /* init store modules to running modules */
 function loadModules(
-  modules: AppModuleItemType[],
+  modules: ModuleItemType[],
   variables: Record<string, any>
 ): RunningModuleItemType[] {
   return modules.map((module) => {
@@ -495,12 +514,19 @@ function loadModules(
             value: replacedVal
           };
         }),
-      outputs: module.outputs.map((item) => ({
-        key: item.key,
-        answer: item.key === TaskResponseKeyEnum.answerText,
-        value: undefined,
-        targets: item.targets
-      }))
+      outputs: module.outputs
+        .map((item) => ({
+          key: item.key,
+          answer: item.key === TaskResponseKeyEnum.answerText,
+          value: undefined,
+          targets: item.targets
+        }))
+        .sort((a, b) => {
+          // finish output always at last
+          if (a.key === SystemOutputEnum.finish) return 1;
+          if (b.key === SystemOutputEnum.finish) return -1;
+          return 0;
+        })
     };
   });
 }

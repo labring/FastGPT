@@ -25,6 +25,11 @@ const Tools = () => {
           }
         ]
       : []),
+    {
+      icon: 'common/navbar/pluginLight',
+      label: '自定义模块',
+      link: '/plugin/list'
+    },
     ...(feConfigs?.show_git
       ? [
           {

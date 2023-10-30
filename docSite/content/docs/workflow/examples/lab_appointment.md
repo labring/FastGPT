@@ -131,7 +131,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -174,7 +174,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -413,7 +413,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -630,7 +630,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
         "label": "引用内容",
         "description": "始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器",
         "type": "source",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "targets": [
           {
             "moduleId": "bjfklc",
@@ -729,14 +729,14 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
         "key": "quoteQA",
         "type": "target",
         "label": "引用内容",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": true
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -831,7 +831,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -874,7 +874,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -1006,7 +1006,7 @@ HTTP 模块允许你调用任意 POST 类型的 HTTP 接口，从而实验一些
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {

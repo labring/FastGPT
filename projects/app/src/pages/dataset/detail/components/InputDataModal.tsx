@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Button, Textarea, IconButton, BoxProps } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, IconButton, BoxProps, Image, Link } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import {
   postData2Dataset,
@@ -22,10 +22,13 @@ import type { SetOneDatasetDataProps } from '@/global/core/api/datasetReq';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { countPromptTokens } from '@/global/common/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import { feConfigs } from '@/web/common/system/staticData';
 
 export type RawSourceType = {
   sourceName?: string;
   sourceId?: string;
+  addr?: boolean;
 };
 export type RawSourceTextProps = BoxProps & RawSourceType;
 export type InputDataType = SetOneDatasetDataProps & RawSourceType;
@@ -135,7 +138,23 @@ const InputDataModal = ({
     <MyModal
       isOpen={true}
       isCentered
-      title={defaultValues.id ? t('dataset.data.Update Data') : t('dataset.data.Input Data')}
+      title={
+        <Flex alignItems={'flex-end'}>
+          <Box>
+            {defaultValues.id ? t('dataset.data.Update Data') : t('dataset.data.Input Data')}
+          </Box>
+          <Link
+            href={`${feConfigs.docUrl}/docs/use-cases/datasetengine`}
+            target={'_blank'}
+            fontSize={'sm'}
+            color={'myGray.600'}
+            textDecor={'underline'}
+            ml={2}
+          >
+            结构详解
+          </Link>
+        </Flex>
+      }
       w={'90vw'}
       maxW={'90vw'}
       h={'90vh'}
@@ -152,13 +171,17 @@ const InputDataModal = ({
         >
           <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['50%', '100%']}>
             <Flex>
-              <Box h={'30px'}>{'匹配的知识点'}</Box>
-              <MyTooltip label={'被向量化的部分，通常是问题，也可以是一段陈述描述'}>
+              <Box h={'25px'}>{'被搜索的内容'}</Box>
+              <MyTooltip
+                label={
+                  '被向量化的部分，该部分的质量决定了对话时，能否高效的查找到合适的知识点。\n该内容通常是问题，或是一段陈述描述介绍'
+                }
+              >
                 <QuestionOutlineIcon ml={1} />
               </MyTooltip>
             </Flex>
             <Textarea
-              placeholder={`匹配的知识点。这部分内容会被搜索，请把控内容的质量，最多 ${maxToken} 字。`}
+              placeholder={`被向量化的部分，该部分的质量决定了对话时，能否高效的查找到合适的知识点。\n该内容通常是问题，或是一段陈述描述介绍，最多 ${maxToken} 字。`}
               maxLength={maxToken}
               resize={'none'}
               h={'calc(100% - 30px)'}
@@ -169,16 +192,18 @@ const InputDataModal = ({
           </Box>
           <Box flex={1} h={['50%', '100%']}>
             <Flex>
-              <Box h={'30px'}>{'补充内容'}</Box>
+              <Box h={'25px'}>{'补充内容(可选)'}</Box>
               <MyTooltip
-                label={'匹配的知识点被命中后，这部分内容会随匹配知识点一起注入模型，引导模型回答'}
+                label={
+                  '该部分内容不影响搜索质量。当“被搜索的内容”被搜索到后，“补充内容”可以选择性被填入提示词，从而实现更加丰富的提示词组合。'
+                }
               >
                 <QuestionOutlineIcon ml={1} />
               </MyTooltip>
             </Flex>
             <Textarea
               placeholder={
-                '这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，通常是问题的答案。'
+                '该部分内容不影响搜索质量。当“被搜索的内容”被搜索到后，“补充内容”可以选择性被填入提示词，从而实现更加丰富的提示词组合。可以是问题的答案、代码、图片、表格等。'
               }
               resize={'none'}
               h={'calc(100% - 30px)'}
@@ -251,24 +276,30 @@ const InputDataModal = ({
 
 export default InputDataModal;
 
-export function RawSourceText({ sourceId, sourceName = '', ...props }: RawSourceTextProps) {
+export function RawSourceText({
+  sourceId,
+  sourceName = '',
+  addr = true,
+  ...props
+}: RawSourceTextProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
 
-  const canPreview = useMemo(() => !!sourceId, [sourceId]);
+  const canPreview = useMemo(() => !!sourceId && addr, [addr, sourceId]);
+
+  const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
 
   return (
     <MyTooltip
-      label={sourceId ? t('file.Click to view file') || '' : ''}
+      label={canPreview ? t('file.Click to view file') || '' : ''}
       shouldWrapChildren={false}
     >
       <Box
         color={'myGray.600'}
-        display={'inline-block'}
+        display={'inline-flex'}
+        alignItems={'center'}
         whiteSpace={'nowrap'}
-        maxW={['200px', '300px']}
-        className={'textEllipsis'}
         {...(canPreview
           ? {
               cursor: 'pointer',
@@ -292,7 +323,10 @@ export function RawSourceText({ sourceId, sourceName = '', ...props }: RawSource
           : {})}
         {...props}
       >
-        {sourceName || t('common.Unknow Source')}
+        <Image src={icon} alt="" w={'14px'} mr={2} />
+        <Box maxW={['200px', '300px']} className={'textEllipsis'}>
+          {sourceName || t('common.Unknow Source')}
+        </Box>
       </Box>
     </MyTooltip>
   );

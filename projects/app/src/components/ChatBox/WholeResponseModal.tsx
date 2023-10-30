@@ -32,7 +32,7 @@ function Row({ label, value }: { label: string; value?: string | number | React.
   ) : null;
 }
 
-const ResponseModal = ({
+const WholeResponseModal = ({
   response,
   onClose
 }: {
@@ -50,6 +50,7 @@ const ResponseModal = ({
             <Image
               mr={2}
               src={
+                item.moduleLogo ||
                 ModuleTemplatesFlat.find((template) => item.moduleType === template.flowType)?.logo
               }
               alt={''}
@@ -192,10 +193,22 @@ const ResponseModal = ({
               }
             })()}
           />
+
+          {/* plugin */}
+          <Row
+            label={t('chat.response.plugin output')}
+            value={(() => {
+              try {
+                return JSON.stringify(activeModule?.pluginOutput, null, 2);
+              } catch (error) {
+                return '';
+              }
+            })()}
+          />
         </Box>
       </Flex>
     </MyModal>
   );
 };
 
-export default ResponseModal;
+export default WholeResponseModal;

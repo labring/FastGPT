@@ -1,8 +1,9 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
-import { Inform, connectToDatabase } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
+import { MongoUserInform } from '@fastgpt/service/support/user/inform/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -15,11 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     const [informs, total] = await Promise.all([
-      Inform.find({ userId })
+      MongoUserInform.find({ userId })
         .sort({ time: -1 }) // 按照创建时间倒序排列
         .skip((pageNum - 1) * pageSize)
         .limit(pageSize),
-      Inform.countDocuments({ userId })
+      MongoUserInform.countDocuments({ userId })
     ]);
 
     jsonRes(res, {
