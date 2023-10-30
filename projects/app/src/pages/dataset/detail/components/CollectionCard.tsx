@@ -338,6 +338,7 @@ const CollectionCard = () => {
         <Table variant={'simple'} fontSize={'sm'} draggable={false}>
           <Thead draggable={false}>
             <Tr>
+              <Th>#</Th>
               <Th>{t('common.Name')}</Th>
               <Th>{t('dataset.collections.Data Amount')}</Th>
               <Th>{t('common.Time')}</Th>
@@ -346,7 +347,7 @@ const CollectionCard = () => {
             </Tr>
           </Thead>
           <Tbody>
-            {formatCollections.map((collection) => (
+            {formatCollections.map((collection, index) => (
               <Tr
                 key={collection._id}
                 _hover={{ bg: 'myWhite.600' }}
@@ -406,6 +407,7 @@ const CollectionCard = () => {
                   }
                 }}
               >
+                <Td w={'50px'}>{index + 1}</Td>
                 <Td minW={'150px'} maxW={['200px', '300px']} draggable>
                   <Flex alignItems={'center'}>
                     <Image src={collection.icon} w={'16px'} mr={2} alt={''} />
