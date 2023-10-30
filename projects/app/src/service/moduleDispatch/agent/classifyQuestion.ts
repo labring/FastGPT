@@ -127,6 +127,9 @@ ${systemPrompt}
       tokens: response.usage?.total_tokens || 0
     };
   } catch (error) {
+    console.log(agentFunction.parameters);
+    console.log(response.choices?.[0]?.message);
+
     console.log('Your model may not support function_call', error);
 
     return {
