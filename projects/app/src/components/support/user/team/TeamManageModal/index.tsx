@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
+import { getTeamList, getTeamMembers, putSwitchTeam } from '@/web/support/user/team/api';
 import {
   Box,
   Button,
@@ -65,7 +65,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     data = [],
     isLoading: isLoadingTeams,
     refetch: refetchTeam
-  } = useQuery(['getTeams'], () => getTeamList());
+  } = useQuery(['getTeams', userInfo?._id], () => getTeamList());
   const formatTeams = useMemo<TeamItemType[]>(() => [personalTeam, ...data], [data, personalTeam]);
 
   /* current select team */
@@ -89,14 +89,14 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
           userId: userInfo?._id || '',
           teamMemberId: personalTeam.teamId,
           teamId: personalTeam.teamId,
-          name: userInfo?.username || '',
+          memberUsername: userInfo?.username || '',
           avatar: userInfo?.avatar || '',
           role: 'owner',
           status: 'active'
         }
       ] as TeamMemberItemType[];
     }
-    return [];
+    return getTeamMembers(activeTeam.teamId);
   });
 
   return (
@@ -246,7 +246,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                         <Td display={'flex'} alignItems={'center'}>
                           <Avatar src={item.avatar} w={['18px', '22px']} />
                           <Box flex={'1 0 0'} w={0} ml={1} className={'textEllipsis'}>
-                            {item.name}
+                            {item.memberUsername}
                           </Box>
                         </Td>
                         <Td>
