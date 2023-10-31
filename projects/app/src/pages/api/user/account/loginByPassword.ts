@@ -4,11 +4,13 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { createJWT, setCookie } from '@fastgpt/service/support/permission/controller';
 import { connectToDatabase } from '@/service/mongo';
+import { getUserDetail } from '@/service/support/user/controller';
+import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { username, password } = req.body;
+    const { username, password, tmbId = '' } = req.body as PostLoginProps;
 
     if (!username || !password) {
       throw new Error('缺少参数');
@@ -31,12 +33,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('密码错误');
     }
 
-    const token = createJWT(user._id);
+    const userDetail = await getUserDetail(user._id, tmbId);
+
+    const token = createJWT(user._id, tmbId);
     setCookie(res, token);
 
     jsonRes(res, {
       data: {
-        user,
+        user: userDetail,
         token
       }
     });

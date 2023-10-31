@@ -1,7 +1,3 @@
-export enum OAuthEnum {
-  github = 'github',
-  google = 'google'
-}
 export enum BillSourceEnum {
   fastgpt = 'fastgpt',
   api = 'api',

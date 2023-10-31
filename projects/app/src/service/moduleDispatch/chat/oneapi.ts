@@ -1,14 +1,15 @@
 import type { NextApiResponse } from 'next';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatItemType, moduleDispatchResType } from '@/types/chat';
-import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
+import { ChatRoleEnum } from '@/constants/chat';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
-import { postTextCensor } from '@/web/common/plusApi/censor';
+import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { countMessagesTokens, sliceMessagesTB } from '@/global/common/tiktoken';

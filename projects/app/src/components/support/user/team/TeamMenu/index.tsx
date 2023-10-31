@@ -35,7 +35,7 @@ const TeamMenu = () => {
           {userInfo?.team ? (
             <>
               <Image src={userInfo.team.avatar} alt={''} w={'16px'} />
-              <Box>{userInfo.team.teamName}</Box>
+              <Box ml={2}>{userInfo.team.teamName}</Box>
             </>
           ) : (
             <>

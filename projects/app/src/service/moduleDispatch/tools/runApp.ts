@@ -4,7 +4,8 @@ import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { App } from '@/service/mongo';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { ChatRoleEnum, TaskResponseKeyEnum, sseResponseEventEnum } from '@/constants/chat';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 
 type Props = ModuleDispatchProps<{

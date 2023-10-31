@@ -8,5 +8,5 @@ export const postCreateTeam = (data: CreateTeamProps) =>
 export const putUpdateTeam = (data: UpdateTeamProps) =>
   PUT(`/plusApi/support/user/team/update`, data);
 export const deleteTeam = (id: number) => GET(`/plusApi/support/user/team/delete`, { id });
-export const putSwitchTeam = (teamId: string) =>
-  PUT<string>(`/plusApi/support/user/team/switch`, { teamId });
+export const putSwitchTeam = (tmbId: string) =>
+  PUT<string>(`/plusApi/support/user/team/switch`, { tmbId });

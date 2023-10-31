@@ -15,7 +15,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 const provider = ({ code, state }: { code: string; state: string }) => {
   const { loginStore } = useSystemStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
-  const { setUserInfo } = useUserStore();
+  const { setUserInfo, lastTmbId } = useUserStore();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -47,7 +47,8 @@ const provider = ({ code, state }: { code: string; state: string }) => {
           type: loginStore?.provider,
           code,
           callbackUrl: `${location.origin}/login/provider`,
-          inviterId: localStorage.getItem('inviterId') || undefined
+          inviterId: localStorage.getItem('inviterId') || undefined,
+          tmbId: lastTmbId
         });
         if (!res) {
           toast({
@@ -69,7 +70,7 @@ const provider = ({ code, state }: { code: string; state: string }) => {
         }, 1000);
       }
     },
-    [loginStore, loginSuccess, router, toast]
+    [loginStore, loginSuccess, lastTmbId, router, toast]
   );
 
   useQuery(['init', code], () => {

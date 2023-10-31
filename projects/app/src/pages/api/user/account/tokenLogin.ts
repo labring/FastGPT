@@ -2,23 +2,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectToDatabase } from '@/service/mongo';
+import { getUserDetail } from '@/service/support/user/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { userId } = await authUser({ req, authToken: true });
-
-    // 根据 id 获取用户信息
-    const user = await MongoUser.findById(userId);
-
-    if (!user) {
-      throw new Error('账号异常');
-    }
+    const { userId, tmbId } = await authUser({ req, authToken: true });
 
     jsonRes(res, {
-      data: user
+      data: await getUserDetail(userId, tmbId)
     });
   } catch (err) {
     jsonRes(res, {

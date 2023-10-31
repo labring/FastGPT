@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -34,12 +34,15 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { setToken } from '@/web/support/user/auth';
+import { useLoading } from '@/web/common/hooks/useLoading';
+import { FormDataType, defaultForm } from './EditModal';
 
-const CreateModal = dynamic(() => import('./CreateModal'));
+const EditModal = dynamic(() => import('./EditModal'));
 
 const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { Loading } = useLoading();
 
   const personalTeam = useMemo(
     () => ({
@@ -55,17 +58,29 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     [t]
   );
 
-  const { userInfo } = useUserStore();
-  const { isOpen: isOpenCreate, onOpen: onOpenCreate, onClose: onCloseCreate } = useDisclosure();
+  const { userInfo, initUserInfo } = useUserStore();
+  const [editTeamData, setEditTeamData] = useState<FormDataType>();
 
-  const { data = [], refetch: refetchTeam } = useQuery(['getTeams'], () => getTeamList());
-
+  const {
+    data = [],
+    isLoading: isLoadingTeams,
+    refetch: refetchTeam
+  } = useQuery(['getTeams'], () => getTeamList());
   const formatTeams = useMemo<TeamItemType[]>(() => [personalTeam, ...data], [data, personalTeam]);
 
   /* current select team */
   const activeTeam = useMemo(() => {
     return userInfo?.team || personalTeam;
   }, [personalTeam, userInfo?.team]);
+
+  const { mutate: onSwitchTeam, isLoading: isSwitchTeam } = useRequest({
+    mutationFn: async (tmbId: string) => {
+      const token = await putSwitchTeam(tmbId);
+      setToken(token);
+      return initUserInfo();
+    },
+    errorToast: t('user.team.Switch Team Failed')
+  });
 
   const { data: members = [] } = useQuery(['getMembers', activeTeam.teamId], () => {
     if (activeTeam.teamId === personalTeam.teamId) {
@@ -84,33 +99,30 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     return [];
   });
 
-  const { mutate: onSwitchTeam } = useRequest({
-    mutationFn: async (teamId: string) => {
-      return putSwitchTeam(teamId);
-    },
-    onSuccess(token) {
-      setToken(token);
-    },
-    errorToast: t('user.team.Switch Team Failed')
-  });
-
   return (
     <>
       <MyModal
         isOpen
         onClose={onClose}
-        maxW={'1000px'}
+        maxW={['90vw', '1000px']}
         w={'100%'}
         h={'550px'}
         isCentered
-        bg={'#eaeaeb'}
+        bg={'myWhite.600'}
         overflow={'hidden'}
       >
-        <Flex flex={1}>
+        <Box display={['block', 'flex']} flex={1} position={'relative'} overflow={'auto'}>
           {/* teams */}
-          <Flex flexDirection={'column'} w={'270px'} h={'100%'} pt={3} px={5}>
+          <Flex
+            flexDirection={'column'}
+            w={['auto', '270px']}
+            h={['auto', '100%']}
+            pt={3}
+            px={5}
+            mb={[2, 0]}
+          >
             <Flex alignItems={'center'} py={2} borderBottom={'1.5px solid rgba(0, 0, 0, 0.05)'}>
-              <Box flex={1} fontWeight={'bold'} fontSize={['md', 'lg']}>
+              <Box flex={['0 0 auto', 1]} fontWeight={'bold'} fontSize={['md', 'lg']}>
                 {t('common.Team')}
               </Box>
               <IconButton
@@ -125,10 +137,10 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   />
                 }
                 aria-label={''}
-                onClick={onOpenCreate}
+                onClick={() => setEditTeamData(defaultForm)}
               />
             </Flex>
-            <Box flex={'1 0 0'} overflow={'auto'}>
+            <Box flex={['auto', '1 0 0']} overflow={'auto'}>
               {formatTeams.map((team) => (
                 <Flex
                   key={team.teamId}
@@ -149,13 +161,17 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                       })}
                 >
                   <Avatar src={team.avatar} w={['18px', '22px']} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontWeight={'bold'}>
+                  <Box flex={'1 0 0'} w={0} fontWeight={'bold'}>
                     {team.teamName}
                   </Box>
                   {activeTeam.teamId === team.teamId ? (
                     <MyIcon name={'common/tickFill'} w={'16px'} color={'myBlue.600'} />
                   ) : (
-                    <Button size={'xs'} variant={'base'} onClick={() => onSwitchTeam(team.teamId)}>
+                    <Button
+                      size={'xs'}
+                      variant={'base'}
+                      onClick={() => onSwitchTeam(team.teamMemberId)}
+                    >
                       {t('user.team.Check Team')}
                     </Button>
                   )}
@@ -167,16 +183,32 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
           <Flex
             flexDirection={'column'}
             flex={'1'}
-            h={'100%'}
+            h={['auto', '100%']}
             bg={'white'}
-            borderTopLeftRadius={'xl'}
-            borderBottomLeftRadius={'xl'}
+            minH={['50vh', 'auto']}
+            borderRadius={['8px 8px 0 0', '8px 0 0 8px']}
             p={5}
           >
             <Flex alignItems={'center'}>
               <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
                 {activeTeam.teamName}
               </Box>
+              <MyIcon
+                name="edit"
+                w={'14px'}
+                ml={2}
+                cursor={'pointer'}
+                _hover={{
+                  color: 'myBlue.600'
+                }}
+                onClick={() => {
+                  setEditTeamData({
+                    id: activeTeam.teamId,
+                    name: activeTeam.teamName,
+                    avatar: activeTeam.avatar
+                  });
+                }}
+              />
             </Flex>
             <Box h={'2px'} w={'100%'} bg={'myGray.100'} my={3} />
             <Flex alignItems={'center'}>
@@ -235,11 +267,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               </TableContainer>
             </Box>
           </Flex>
-        </Flex>
+          <Loading loading={isSwitchTeam || isLoadingTeams} fixed={false} />
+        </Box>
       </MyModal>
-      {isOpenCreate && (
-        <CreateModal
-          onClose={onCloseCreate}
+      {!!editTeamData && (
+        <EditModal
+          defaultData={editTeamData}
+          onClose={() => setEditTeamData(undefined)}
           onSuccess={() => {
             refetchTeam();
           }}

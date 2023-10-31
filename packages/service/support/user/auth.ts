@@ -1,6 +1,5 @@
-import type { NextApiResponse, NextApiRequest } from 'next';
+import type { NextApiRequest } from 'next';
 import Cookie from 'cookie';
-import jwt from 'jsonwebtoken';
 import { authOpenApiKey } from '../openapi/auth';
 import { authOutLinkId } from '../outLink/auth';
 import { MongoUser } from './schema';
@@ -37,15 +36,15 @@ export const authUser = async ({
   authToken = false,
   authRoot = false,
   authApiKey = false,
-  authBalance = false,
-  authOutLink
+  authOutLink,
+  authBalance = false
 }: {
   req: NextApiRequest;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
-  authBalance?: boolean;
   authOutLink?: boolean;
+  authBalance?: boolean;
 }) => {
   const authCookieToken = async (cookie?: string, token?: string) => {
     // 获取 cookie
@@ -115,6 +114,7 @@ export const authUser = async ({
   const { shareId } = (req?.body || {}) as { shareId?: string };
 
   let uid = '';
+  let tmbId = '';
   let appId = '';
   let openApiKey = apikey;
   let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
@@ -127,6 +127,7 @@ export const authUser = async ({
     // user token(from fastgpt web)
     const res = await authCookieToken(cookie, token);
     uid = res.userId;
+    tmbId = res.tmbId;
     authType = AuthUserTypeEnum.token;
   } else if (authRoot && rootkey) {
     // root user
@@ -161,6 +162,7 @@ export const authUser = async ({
 
   return {
     userId: String(uid),
+    tmbId: String(tmbId),
     appId,
     authType,
     user,

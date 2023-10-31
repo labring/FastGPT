@@ -20,6 +20,13 @@ export type TeamMemberSchema = {
   status: `${TeamMemberStatusEnum}`;
 };
 
+export type TeamMemberSchemaWithTeam = TeamMemberSchema & {
+  teamId: TeamSchema;
+};
+export type TeamMemberSchemaWithUser = TeamMemberSchema & {
+  userId: UserModelSchema;
+};
+
 export type TeamItemType = {
   teamId: string;
   teamName: string;
@@ -39,11 +46,4 @@ export type TeamMemberItemType = {
   avatar: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
-};
-
-export type TeamMemberSchemaWithTeam = TeamMemberSchema & {
-  teamId: TeamSchema;
-};
-export type TeamMemberSchemaWithUser = TeamMemberSchema & {
-  userId: UserModelSchema;
 };

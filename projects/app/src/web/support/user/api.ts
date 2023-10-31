@@ -6,7 +6,7 @@ import { UserUpdateParams } from '@/types/user';
 import { UserType } from '@fastgpt/global/support/user/type.d';
 import type { PagingData, RequestPaging } from '@/types';
 import type { UserInformSchema } from '@fastgpt/global/support/user/type';
-import { OAuthEnum } from '@/constants/user';
+import type { OauthLoginProps, PostLoginProps } from '@fastgpt/global/support/user/api.d';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -15,12 +15,8 @@ export const sendAuthCode = (data: {
 }) => POST(`/plusApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
-export const oauthLogin = (params: {
-  type: `${OAuthEnum}`;
-  code: string;
-  callbackUrl: string;
-  inviterId?: string;
-}) => POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
+export const oauthLogin = (params: OauthLoginProps) =>
+  POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
 
 export const postRegister = ({
   username,
@@ -61,9 +57,9 @@ export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw
     newPsw: hashStr(newPsw)
   });
 
-export const postLogin = ({ username, password }: { username: string; password: string }) =>
+export const postLogin = ({ password, ...props }: PostLoginProps) =>
   POST<ResLogin>('/user/account/loginByPassword', {
-    username,
+    ...props,
     password: hashStr(password)
   });
 

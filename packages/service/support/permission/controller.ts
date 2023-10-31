@@ -3,12 +3,12 @@ import jwt from 'jsonwebtoken';
 import { NextApiResponse } from 'next';
 
 /* create token */
-export function createJWT(userId: string, teamMemberId = '') {
+export function createJWT(userId: string, tmbId = '') {
   const key = process.env.TOKEN_KEY as string;
   const token = jwt.sign(
     {
       userId,
-      teamMemberId,
+      tmbId,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
     },
     key
@@ -18,7 +18,7 @@ export function createJWT(userId: string, teamMemberId = '') {
 
 // auth token
 export function authJWT(token: string) {
-  return new Promise<{ userId: string; teamMemberId: string }>((resolve, reject) => {
+  return new Promise<{ userId: string; tmbId: string }>((resolve, reject) => {
     const key = process.env.TOKEN_KEY as string;
 
     jwt.verify(token, key, function (err, decoded: any) {
@@ -26,9 +26,10 @@ export function authJWT(token: string) {
         reject(ERROR_ENUM.unAuthorization);
         return;
       }
+
       resolve({
         userId: decoded.userId,
-        teamMemberId: decoded.teamMemberId
+        tmbId: decoded.tmbId
       });
     });
   });

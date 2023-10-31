@@ -1,4 +1,5 @@
-import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@/constants/chat';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@/types/chat';

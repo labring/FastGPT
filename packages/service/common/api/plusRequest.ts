@@ -73,7 +73,7 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
   if (!global.systemEnv?.pluginBaseUrl) {
-    return Promise.reject('商业版插件加载中...');
+    return Promise.reject('该功能为商业版特有...');
   }
 
   /* 去空 */
