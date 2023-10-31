@@ -6,6 +6,7 @@ import { authOutLinkId } from '../outLink/auth';
 import { MongoUser } from './schema';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { authJWT } from '../permission/controller';
 
 export enum AuthUserTypeEnum {
   token = 'token',
@@ -46,7 +47,7 @@ export const authUser = async ({
   authBalance?: boolean;
   authOutLink?: boolean;
 }) => {
-  const authCookieToken = async (cookie?: string, token?: string): Promise<string> => {
+  const authCookieToken = async (cookie?: string, token?: string) => {
     // 获取 cookie
     const cookies = Cookie.parse(cookie || '');
     const cookieToken = cookies.token || token;
@@ -106,8 +107,8 @@ export const authUser = async ({
   const { cookie, token, apikey, rootkey, userid, authorization } = (req.headers || {}) as {
     cookie?: string;
     token?: string;
-    apikey?: string;
-    rootkey?: string; // abandon
+    apikey?: string; // abandon
+    rootkey?: string;
     userid?: string;
     authorization?: string;
   };
@@ -124,7 +125,8 @@ export const authUser = async ({
     authType = AuthUserTypeEnum.outLink;
   } else if (authToken && (cookie || token)) {
     // user token(from fastgpt web)
-    uid = await authCookieToken(cookie, token);
+    const res = await authCookieToken(cookie, token);
+    uid = res.userId;
     authType = AuthUserTypeEnum.token;
   } else if (authRoot && rootkey) {
     // root user
@@ -164,43 +166,4 @@ export const authUser = async ({
     user,
     apikey: openApiKey
   };
-};
-
-/* 生成 token */
-export function generateToken(userId: string) {
-  const key = process.env.TOKEN_KEY as string;
-  const token = jwt.sign(
-    {
-      userId,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
-    },
-    key
-  );
-  return token;
-}
-// auth token
-export function authJWT(token: string) {
-  return new Promise<string>((resolve, reject) => {
-    const key = process.env.TOKEN_KEY as string;
-
-    jwt.verify(token, key, function (err, decoded: any) {
-      if (err || !decoded?.userId) {
-        reject(ERROR_ENUM.unAuthorization);
-        return;
-      }
-      resolve(decoded.userId);
-    });
-  });
-}
-
-/* set cookie */
-export const setCookie = (res: NextApiResponse, token: string) => {
-  res.setHeader(
-    'Set-Cookie',
-    `token=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=None; Secure;`
-  );
-};
-/* clear cookie */
-export const clearCookie = (res: NextApiResponse) => {
-  res.setHeader('Set-Cookie', 'token=; Path=/; Max-Age=0');
 };

@@ -7,7 +7,7 @@ import { PgDatasetTableName } from '@/constants/plugin';
 import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
 import { PgClient } from '@/service/pg';
-import { addLog } from '@/service/utils/tools';
+import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { responseWriteController } from '@fastgpt/service/common/response';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

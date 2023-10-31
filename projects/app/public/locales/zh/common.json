@@ -164,6 +164,7 @@
     "Output": "输出",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
+    "Please Input Name": "请输入名称",
     "Rename": "重命名",
     "Rename Failed": "重命名失败",
     "Rename Success": "重命名成功",
@@ -174,6 +175,7 @@
     "Set Avatar": "点击设置头像",
     "Set Name": "取个响亮的名字",
     "Status": "状态",
+    "Team": "团队",
     "Test": "测试",
     "Time": "时间",
     "Unknow": "未知",
@@ -182,6 +184,7 @@
     "Update Success": "更新成功",
     "Update Successful": "更新成功",
     "Update Time": "更新时间",
+    "Username": "用户名",
     "error": {
       "unKnow": "出现了点意外~"
     },
@@ -434,6 +437,7 @@
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Sign Out": "登出",
     "Source": "来源",
+    "Team": "团队",
     "Time": "时间",
     "Timezone": "时区",
     "Total Amount": "总金额",
@@ -447,6 +451,21 @@
     "promotion": {
       "pay": "好友充值",
       "register": "好友注册"
+    },
+    "team": {
+      "Check Team": "切换",
+      "Create Team": "创建新团队",
+      "Invite Member": "邀请成员",
+      "Manage": "团队管理",
+      "Member": "成员",
+      "Personal Team": "个人团队",
+      "Role": "身份",
+      "Select Team": "团队选择",
+      "Set Name": "给团队取个名字",
+      "Team Name": "团队名",
+      "role": {
+        "owner": "创建者"
+      }
     }
   }
 }

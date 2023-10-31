@@ -6,7 +6,7 @@ import { GridFSStorage } from '@/service/lib/gridfs';
 import { Types } from '@fastgpt/service/common/mongo';
 import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
-import { addLog } from '@/service/utils/tools';
+import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

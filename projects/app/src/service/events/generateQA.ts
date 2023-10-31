@@ -6,7 +6,7 @@ import { sendInform } from '@/pages/api/user/inform/send';
 import { authBalanceByUid } from '@fastgpt/service/support/user/auth';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletionRequestMessage } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '../utils/tools';
+import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { splitText2Chunks } from '@/global/common/string/tools';
 import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';

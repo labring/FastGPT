@@ -1,5 +1,7 @@
+import { TeamMemberRoleEnum } from './constant';
+
+export type AuthTeamRoleProps = { userId: string; teamId: string; role?: `${TeamMemberRoleEnum}` };
 export type CreateTeamProps = {
-  ownerId: string;
   name: string;
   avatar?: string;
 };
@@ -8,14 +10,14 @@ export type UpdateTeamProps = {
   name?: string;
   avatar?: string;
 };
-export type updateTeamBalanceProps = {
-  id: string;
-  balance: number;
-};
 
 export type CreateTeamMemberProps = {
   ownerId: string;
   teamId: string;
   userId: string;
+  name?: string;
+};
+export type UpdateTeamMemberProps = {
+  id: string;
   name?: string;
 };

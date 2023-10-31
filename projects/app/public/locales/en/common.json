@@ -164,6 +164,7 @@
     "Output": "Output",
     "Params": "Params",
     "Password inconsistency": "Password inconsistency",
+    "Please Input Name": "Please Input Name",
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
@@ -174,6 +175,7 @@
     "Set Avatar": "Set Avatar",
     "Set Name": "Make a nice name",
     "Status": "Status",
+    "Team": "Team",
     "Test": "Test",
     "Time": "Time",
     "Unknow": "Unknow",
@@ -182,6 +184,7 @@
     "Update Success": "Update Success",
     "Update Successful": "Update Successful",
     "Update Time": "Update Time",
+    "Username": "UserName",
     "error": {
       "unKnow": "There was an accident"
     },
@@ -434,6 +437,7 @@
     "Set OpenAI Account Failed": "Set OpenAI account failed",
     "Sign Out": "Sign Out",
     "Source": "Source",
+    "Team": "Team",
     "Time": "Time",
     "Timezone": "Timezone",
     "Total Amount": "Total Amount",
@@ -447,6 +451,21 @@
     "promotion": {
       "pay": "",
       "register": ""
+    },
+    "team": {
+      "Check Team": "Switch",
+      "Create Team": "Create Team",
+      "Invite Member": "Invite",
+      "Manage": "Team Manage",
+      "Member": "Member",
+      "Personal Team": "Persional",
+      "Role": "Role",
+      "Select Team": "Select Team",
+      "Set Name": "Team Name",
+      "Team Name": "Team Name",
+      "role": {
+        "owner": "Owner"
+      }
     }
   }
 }

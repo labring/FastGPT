@@ -16,7 +16,7 @@ import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { UserType } from '@/types/user';
+import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -33,6 +33,7 @@ import { useRouter } from 'next/router';
 import MyMenu from '@/components/MyMenu';
 import MySelect from '@/components/Select';
 
+const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
@@ -167,6 +168,12 @@ const UserInfo = () => {
         <Flex alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
+        </Flex>
+        <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
+          <Box flex={'0 0 80px'}>{t('user.Team')}:&nbsp;</Box>
+          <Box flex={1}>
+            <TeamMenu />
+          </Box>
         </Flex>
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Language')}:&nbsp;</Box>

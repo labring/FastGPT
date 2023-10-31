@@ -4,7 +4,7 @@ import { BillSourceEnum } from '@/constants/user';
 import { getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';
-import { addLog } from '@/service/utils/tools';
+import { addLog } from '@fastgpt/service/common/mongo/controller';
 import type { CreateBillType } from '@/types/common/bill';
 import { defaultQGModels } from '@/constants/model';
 

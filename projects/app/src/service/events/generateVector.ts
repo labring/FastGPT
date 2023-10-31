@@ -1,10 +1,9 @@
 import { insertData2Dataset } from '../core/dataset/data/utils';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { sendInform } from '@/pages/api/user/inform/send';
-import { addLog } from '../utils/tools';
+import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const reduceQueue = () => {

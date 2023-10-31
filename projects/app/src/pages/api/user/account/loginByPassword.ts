@@ -2,8 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { setCookie } from '@fastgpt/service/support/user/auth';
-import { generateToken } from '@fastgpt/service/support/user/auth';
+import { createJWT, setCookie } from '@fastgpt/service/support/permission/controller';
 import { connectToDatabase } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -32,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('密码错误');
     }
 
-    const token = generateToken(user._id);
+    const token = createJWT(user._id);
     setCookie(res, token);
 
     jsonRes(res, {

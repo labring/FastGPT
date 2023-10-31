@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { UserType, UserUpdateParams } from '@/types/user';
+import type { UserUpdateParams } from '@/types/user';
+import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@/service/utils/auth';
 import { authUser, AuthUserTypeEnum } from '@fastgpt/service/support/user/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
-import { addLog } from '@/service/utils/tools';
+import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
 import {
