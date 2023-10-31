@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@/service/utils/auth';
 import { authUser, AuthUserTypeEnum } from '@fastgpt/service/support/user/auth';
-import { sseErrRes, jsonRes } from '@/service/response';
+import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
+import { ChatRoleEnum, ChatSourceEnum } from '@/constants/chat';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import {
   dispatchHistory,
   dispatchChatInput,

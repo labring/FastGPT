@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { sseErrRes } from '@/service/response';
-import { sseResponseEventEnum } from '@/constants/chat';
+import { sseErrRes } from '@fastgpt/service/common/response';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { responseWrite } from '@fastgpt/service/common/response';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';

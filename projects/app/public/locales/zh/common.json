@@ -462,6 +462,7 @@
       "Role": "身份",
       "Select Team": "团队选择",
       "Set Name": "给团队取个名字",
+      "Switch Team Failed": "切换团队异常",
       "Team Name": "团队名",
       "role": {
         "owner": "创建者"

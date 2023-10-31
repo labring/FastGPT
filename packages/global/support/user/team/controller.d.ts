@@ -1,6 +1,11 @@
 import { TeamMemberRoleEnum } from './constant';
 
-export type AuthTeamRoleProps = { userId: string; teamId: string; role?: `${TeamMemberRoleEnum}` };
+export type AuthTeamRoleProps = {
+  userId: string;
+  teamId?: string;
+  teamMemberId?: string;
+  role?: `${TeamMemberRoleEnum}`;
+};
 export type CreateTeamProps = {
   name: string;
   avatar?: string;

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { App, connectToDatabase } from '@/service/mongo';
 import { PgClient } from '@/service/pg';
 import { connectionMongo } from '@fastgpt/service/common/mongo';

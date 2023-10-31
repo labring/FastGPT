@@ -1,12 +1,5 @@
 import dayjs from 'dayjs';
 
-export enum sseResponseEventEnum {
-  error = 'error',
-  answer = 'answer',
-  moduleStatus = 'moduleStatus',
-  appStreamResponse = 'appStreamResponse' // sse response request
-}
-
 export enum ChatRoleEnum {
   System = 'System',
   Human = 'Human',

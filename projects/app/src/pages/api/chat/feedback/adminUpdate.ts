@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase, ChatItem } from '@/service/mongo';
 import type { AdminUpdateFeedbackParams } from '@/global/core/api/chatReq.d';
 import { authUser } from '@fastgpt/service/support/user/auth';

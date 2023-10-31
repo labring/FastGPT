@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getTeamList } from '@/web/support/user/team/api';
+import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import {
   Box,
   Button,
@@ -32,6 +32,8 @@ import MySelect from '@/components/Select';
 import MyTooltip from '@/components/MyTooltip';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import dynamic from 'next/dynamic';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { setToken } from '@/web/support/user/auth';
 
 const CreateModal = dynamic(() => import('./CreateModal'));
 
@@ -60,6 +62,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
 
   const formatTeams = useMemo<TeamItemType[]>(() => [personalTeam, ...data], [data, personalTeam]);
 
+  /* current select team */
   const activeTeam = useMemo(() => {
     return userInfo?.team || personalTeam;
   }, [personalTeam, userInfo?.team]);
@@ -81,6 +84,16 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     return [];
   });
 
+  const { mutate: onSwitchTeam } = useRequest({
+    mutationFn: async (teamId: string) => {
+      return putSwitchTeam(teamId);
+    },
+    onSuccess(token) {
+      setToken(token);
+    },
+    errorToast: t('user.team.Switch Team Failed')
+  });
+
   return (
     <>
       <MyModal
@@ -94,6 +107,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
         overflow={'hidden'}
       >
         <Flex flex={1}>
+          {/* teams */}
           <Flex flexDirection={'column'} w={'270px'} h={'100%'} pt={3} px={5}>
             <Flex alignItems={'center'} py={2} borderBottom={'1.5px solid rgba(0, 0, 0, 0.05)'}>
               <Box flex={1} fontWeight={'bold'} fontSize={['md', 'lg']}>
@@ -141,7 +155,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   {activeTeam.teamId === team.teamId ? (
                     <MyIcon name={'common/tickFill'} w={'16px'} color={'myBlue.600'} />
                   ) : (
-                    <Button size={'xs'} variant={'base'}>
+                    <Button size={'xs'} variant={'base'} onClick={() => onSwitchTeam(team.teamId)}>
                       {t('user.team.Check Team')}
                     </Button>
                   )}
@@ -149,6 +163,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               ))}
             </Box>
           </Flex>
+          {/* team card */}
           <Flex
             flexDirection={'column'}
             flex={'1'}

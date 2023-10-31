@@ -1,6 +1,6 @@
 import type { FeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types/index.d';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { readFileSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';

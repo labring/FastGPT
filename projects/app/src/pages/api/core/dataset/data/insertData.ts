@@ -3,7 +3,7 @@
   manual input or mark data
 */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';

@@ -29,7 +29,8 @@ export enum ERROR_ENUM {
   unAuthApiKey = 'unAuthApiKey',
   unAuthDataset = 'unAuthDataset',
   unAuthDatasetCollection = 'unAuthDatasetCollection',
-  unAuthFile = 'unAuthFile'
+  unAuthFile = 'unAuthFile',
+  unAuthTeam = 'unAuthTeam'
 }
 export const ERROR_RESPONSE: Record<
   any,
@@ -80,6 +81,12 @@ export const ERROR_RESPONSE: Record<
     code: 515,
     statusText: ERROR_ENUM.unAuthDatasetCollection,
     message: '无权使用该知识库文件',
+    data: null
+  },
+  [ERROR_ENUM.unAuthTeam]: {
+    code: 516,
+    statusText: ERROR_ENUM.unAuthTeam,
+    message: '无权使用该团队',
     data: null
   }
 };

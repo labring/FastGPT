@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import type { DatasetPathItemType } from '@/types/core/dataset';
 import { getDatasetCollectionPaths } from '@fastgpt/service/core/dataset/collection/utils';

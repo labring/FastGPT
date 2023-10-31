@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { authBalanceByUid, authUser } from '@fastgpt/service/support/user/auth';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { getAIApi } from '@fastgpt/service/core/ai/config';

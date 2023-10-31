@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase, ChatItem } from '@/service/mongo';
 
 /* 初始化我的聊天框，需要身份验证 */

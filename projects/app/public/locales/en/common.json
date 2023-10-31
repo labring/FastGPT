@@ -462,6 +462,7 @@
       "Role": "Role",
       "Select Team": "Select Team",
       "Set Name": "Team Name",
+      "Switch Team Failed": "Switch Team Failed",
       "Team Name": "Team Name",
       "role": {
         "owner": "Owner"

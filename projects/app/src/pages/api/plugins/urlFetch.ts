@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
 import { simpleText } from '@fastgpt/global/common/string/tools';
