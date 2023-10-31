@@ -86,7 +86,7 @@ weight: 142
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -210,14 +210,14 @@ weight: 142
         "type": "target",
         "label": "引用内容",
         "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": false
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {

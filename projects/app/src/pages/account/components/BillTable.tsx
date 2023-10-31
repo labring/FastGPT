@@ -33,6 +33,7 @@ const BillTable = () => {
     to: new Date()
   });
   const { isPc } = useSystemStore();
+  const [billDetail, setBillDetail] = useState<UserBillType>();
 
   const {
     data: bills,
@@ -47,8 +48,6 @@ const BillTable = () => {
       dateEnd: addDays(dateRange.to || new Date(), 1)
     }
   });
-
-  const [billDetail, setBillDetail] = useState<UserBillType>();
 
   return (
     <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
@@ -106,4 +105,4 @@ const BillTable = () => {
   );
 };
 
-export default BillTable;
+export default React.memo(BillTable);

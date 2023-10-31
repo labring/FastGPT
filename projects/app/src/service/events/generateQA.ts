@@ -11,6 +11,7 @@ import { splitText2Chunks } from '@/global/common/string/tools';
 import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { pushDataToDatasetCollection } from '@/pages/api/core/dataset/data/pushData';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -116,7 +117,8 @@ export async function generateQA(): Promise<any> {
       console.log('openai error: 生成QA错误');
       console.log(err.response?.status, err.response?.statusText, err.response?.data);
     } else {
-      addLog.error('生成 QA 错误', err);
+      console.log(err);
+      addLog.error(getErrText(err, '生成 QA 错误'));
     }
 
     // message error or openai account error

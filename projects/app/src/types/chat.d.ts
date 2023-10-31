@@ -4,7 +4,7 @@ import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
 import { ChatItemSchema } from './mongoSchema';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
@@ -45,9 +45,7 @@ export type ShareChatType = InitShareChatResponse & {
 };
 
 // response data
-export type ChatHistoryItemResType = {
-  moduleType: `${FlowModuleTypeEnum}`;
-  moduleName: string;
+export type moduleDispatchResType = {
   price: number;
   runningTime?: number;
   tokens?: number;
@@ -75,4 +73,12 @@ export type ChatHistoryItemResType = {
   // http
   body?: Record<string, any>;
   httpResult?: Record<string, any>;
+
+  // plugin output
+  pluginOutput?: Record<string, any>;
+};
+export type ChatHistoryItemResType = moduleDispatchResType & {
+  moduleType: `${FlowNodeTypeEnum}`;
+  moduleName: string;
+  moduleLogo?: string;
 };

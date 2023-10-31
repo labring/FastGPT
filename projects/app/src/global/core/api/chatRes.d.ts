@@ -1,12 +1,13 @@
 import type { AppSchema } from '@/types/mongoSchema';
 import type { ChatItemType } from '@/types/chat';
-import { AppModuleItemType, VariableItemType } from '@/types/app';
+import { VariableItemType } from '@/types/app';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 
 export type InitChatResponse = {
   chatId: string;
   appId: string;
   app: {
-    userGuideModule?: AppModuleItemType;
+    userGuideModule?: ModuleItemType;
     chatModels?: string[];
     name: string;
     avatar: string;

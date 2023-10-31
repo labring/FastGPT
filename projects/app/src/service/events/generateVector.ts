@@ -90,6 +90,7 @@ export async function generateVector(): Promise<any> {
         data: err.response?.data
       });
     } else {
+      console.log(err);
       addLog.error(getErrText(err, '生成向量错误'));
     }
 

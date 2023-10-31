@@ -155,9 +155,12 @@ const Kb = () => {
             ))}
           </Flex>
         ) : (
-          <Box flex={1} className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-            我的知识库
-          </Box>
+          <Flex flex={1} alignItems={'center'}>
+            <Image src={'/imgs/module/db.png'} alt={''} mr={2} h={'24px'} />
+            <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
+              我的知识库
+            </Box>
+          </Flex>
         )}
 
         <MyMenu

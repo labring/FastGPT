@@ -8,7 +8,6 @@ export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string; 
 // module dispatch props type
 export type ModuleDispatchProps<T> = {
   res: NextApiResponse;
-  moduleName: string;
   stream: boolean;
   detail: boolean;
   variables: Record<string, any>;

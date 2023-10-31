@@ -63,6 +63,7 @@ const TrainingDataSchema = new Schema({
 try {
   TrainingDataSchema.index({ lockTime: 1 });
   TrainingDataSchema.index({ userId: 1 });
+  TrainingDataSchema.index({ datasetCollectionId: 1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 });
 } catch (error) {
   console.log(error);

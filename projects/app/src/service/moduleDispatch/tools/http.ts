@@ -1,7 +1,6 @@
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { HttpPropsEnum } from '@/constants/flow/flowField';
-import { ChatHistoryItemResType } from '@/types/chat';
-import { FlowModuleTypeEnum } from '@/constants/flow';
+import { moduleDispatchResType } from '@/types/chat';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type HttpRequestProps = ModuleDispatchProps<{
   [HttpPropsEnum.url]: string;
@@ -9,13 +8,12 @@ export type HttpRequestProps = ModuleDispatchProps<{
 }>;
 export type HttpResponse = {
   [HttpPropsEnum.failed]?: boolean;
-  [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
+  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
 };
 
 export const dispatchHttpRequest = async (props: Record<string, any>): Promise<HttpResponse> => {
   const {
-    moduleName,
     variables,
     inputs: { url, ...body }
   } = props as HttpRequestProps;
@@ -33,8 +31,6 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
 
     return {
       [TaskResponseKeyEnum.responseData]: {
-        moduleType: FlowModuleTypeEnum.httpRequest,
-        moduleName,
         price: 0,
         body: requestBody,
         httpResult: response
@@ -45,8 +41,6 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
     return {
       [HttpPropsEnum.failed]: true,
       [TaskResponseKeyEnum.responseData]: {
-        moduleType: FlowModuleTypeEnum.httpRequest,
-        moduleName,
         price: 0,
         body: requestBody,
         httpResult: { error }

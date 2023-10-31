@@ -7,9 +7,9 @@ import { countPromptTokens } from '@/global/common/tiktoken';
 export function replaceVariable(text: string, obj: Record<string, string | number>) {
   for (const key in obj) {
     const val = obj[key];
-    if (typeof val !== 'string') continue;
+    if (!['string', 'number'].includes(typeof val)) continue;
 
-    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), val);
+    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), String(val));
   }
   return text || '';
 }
@@ -21,13 +21,13 @@ export function replaceVariable(text: string, obj: Record<string, string | numbe
  * maxLen > overlapLen
  */
 export const splitText2Chunks = ({ text = '', maxLen }: { text: string; maxLen: number }) => {
-  const overlapLen = Math.floor(maxLen * 0.2); // Overlap length
+  const overlapLen = Math.floor(maxLen * 0.15); // Overlap length
   const tempMarker = 'SPLIT_HERE_SPLIT_HERE';
 
   const stepReg: Record<number, RegExp> = {
     0: /(\n\n)/g,
     1: /([\n])/g,
-    2: /([。]|\.\s)/g,
+    2: /[。]|(?!<[^a-zA-Z])\.\s/g,
     3: /([！？]|!\s|\?\s)/g,
     4: /([；]|;\s)/g,
     5: /([，]|,\s)/g

@@ -1,14 +1,15 @@
-import type { AppModuleItemType, VariableItemType } from '@/types/app';
+import type { VariableItemType } from '@/types/app';
 import { chatModelList } from '@/web/common/system/staticData';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import {
-  FlowInputItemTypeEnum,
-  FlowModuleTypeEnum,
-  FlowValueTypeEnum,
-  SpecialInputKeyEnum
-} from '@/constants/flow';
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum,
+  FlowNodeValTypeEnum,
+  FlowNodeSpecialInputKeyEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { SystemInputEnum } from '@/constants/app';
 import type { SelectedDatasetType } from '@/types/core/dataset';
-import type { FlowInputItemType } from '@/types/core/app/flow';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type.d';
 import type { AIChatProps } from '@/types/core/aiChat';
 import { getGuideModule, splitGuideModule } from '@/global/core/app/modules/utils';
 
@@ -59,7 +60,7 @@ export const getDefaultAppForm = (): EditFormType => {
   };
 };
 
-export const appModules2Form = (modules: AppModuleItemType[]) => {
+export const appModules2Form = (modules: ModuleItemType[]) => {
   const defaultAppForm = getDefaultAppForm();
   const updateVal = ({
     formKey,
@@ -67,7 +68,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
     key
   }: {
     formKey: string;
-    inputs: FlowInputItemType[];
+    inputs: FlowNodeInputItemType[];
     key: string;
   }) => {
     const propertyPath = formKey.split('.');
@@ -84,7 +85,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
   };
 
   modules.forEach((module) => {
-    if (module.flowType === FlowModuleTypeEnum.chatNode) {
+    if (module.flowType === FlowNodeTypeEnum.chatNode) {
       updateVal({
         formKey: 'chatModel.model',
         inputs: module.inputs,
@@ -115,7 +116,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
         inputs: module.inputs,
         key: 'quotePrompt'
       });
-    } else if (module.flowType === FlowModuleTypeEnum.datasetSearchNode) {
+    } else if (module.flowType === FlowNodeTypeEnum.datasetSearchNode) {
       updateVal({
         formKey: 'kb.list',
         inputs: module.inputs,
@@ -137,9 +138,10 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
       if (emptyOutput) {
         const target = modules.find((item) => item.moduleId === emptyOutput.moduleId);
         defaultAppForm.kb.searchEmptyText =
-          target?.inputs?.find((item) => item.key === SpecialInputKeyEnum.answerText)?.value || '';
+          target?.inputs?.find((item) => item.key === FlowNodeSpecialInputKeyEnum.answerText)
+            ?.value || '';
       }
-    } else if (module.flowType === FlowModuleTypeEnum.userGuide) {
+    } else if (module.flowType === FlowNodeTypeEnum.userGuide) {
       const { welcomeText, variableModules, questionGuide } = splitGuideModule(
         getGuideModule(modules)
       );
@@ -157,7 +159,7 @@ export const appModules2Form = (modules: AppModuleItemType[]) => {
   return defaultAppForm;
 };
 
-const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
+const chatModelInput = (formData: EditFormType): FlowNodeInputItemType[] => [
   {
     key: 'model',
     value: formData.chatModel.model,
@@ -232,26 +234,26 @@ const chatModelInput = (formData: EditFormType): FlowInputItemType[] => [
     connected: true
   }
 ];
-const userGuideTemplate = (formData: EditFormType): AppModuleItemType[] => [
+const userGuideTemplate = (formData: EditFormType): ModuleItemType[] => [
   {
     name: '用户引导',
-    flowType: FlowModuleTypeEnum.userGuide,
+    flowType: FlowNodeTypeEnum.userGuide,
     inputs: [
       {
         key: SystemInputEnum.welcomeText,
-        type: FlowInputItemTypeEnum.hidden,
+        type: FlowNodeInputTypeEnum.hidden,
         label: '开场白',
         value: formData.guide.welcome.text
       },
       {
         key: SystemInputEnum.variables,
-        type: FlowInputItemTypeEnum.hidden,
+        type: FlowNodeInputTypeEnum.hidden,
         label: '对话框变量',
         value: formData.variables
       },
       {
         key: SystemInputEnum.questionGuide,
-        type: FlowInputItemTypeEnum.hidden,
+        type: FlowNodeInputTypeEnum.hidden,
         label: '问题引导',
         value: formData.questionGuide
       }
@@ -264,10 +266,10 @@ const userGuideTemplate = (formData: EditFormType): AppModuleItemType[] => [
     moduleId: 'userGuide'
   }
 ];
-const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
+const simpleChatTemplate = (formData: EditFormType): ModuleItemType[] => [
   {
     name: '用户问题(对话入口)',
-    flowType: FlowModuleTypeEnum.questionInput,
+    flowType: FlowNodeTypeEnum.questionInput,
     inputs: [
       {
         key: 'userChatInput',
@@ -295,7 +297,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
   },
   {
     name: '聊天记录',
-    flowType: FlowModuleTypeEnum.historyNode,
+    flowType: FlowNodeTypeEnum.historyNode,
     inputs: [
       {
         key: 'maxContext',
@@ -330,7 +332,7 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
   },
   {
     name: 'AI 对话',
-    flowType: FlowModuleTypeEnum.chatNode,
+    flowType: FlowNodeTypeEnum.chatNode,
     inputs: chatModelInput(formData),
     showStatus: true,
     outputs: [
@@ -357,10 +359,10 @@ const simpleChatTemplate = (formData: EditFormType): AppModuleItemType[] => [
     moduleId: 'chatModule'
   }
 ];
-const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
+const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
   {
     name: '用户问题(对话入口)',
-    flowType: FlowModuleTypeEnum.questionInput,
+    flowType: FlowNodeTypeEnum.questionInput,
     inputs: [
       {
         key: 'userChatInput',
@@ -392,7 +394,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
   },
   {
     name: '聊天记录',
-    flowType: FlowModuleTypeEnum.historyNode,
+    flowType: FlowNodeTypeEnum.historyNode,
     inputs: [
       {
         key: 'maxContext',
@@ -427,39 +429,39 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
   },
   {
     name: '知识库搜索',
-    flowType: FlowModuleTypeEnum.datasetSearchNode,
+    flowType: FlowNodeTypeEnum.datasetSearchNode,
     showStatus: true,
     inputs: [
       {
         key: 'datasets',
         value: formData.kb.list,
-        type: FlowInputItemTypeEnum.custom,
+        type: FlowNodeInputTypeEnum.custom,
         label: '关联的知识库',
         connected: true
       },
       {
         key: 'similarity',
         value: formData.kb.searchSimilarity,
-        type: FlowInputItemTypeEnum.slider,
+        type: FlowNodeInputTypeEnum.slider,
         label: '相似度',
         connected: true
       },
       {
         key: 'limit',
         value: formData.kb.searchLimit,
-        type: FlowInputItemTypeEnum.slider,
+        type: FlowNodeInputTypeEnum.slider,
         label: '单次搜索上限',
         connected: true
       },
       {
         key: 'switch',
-        type: FlowInputItemTypeEnum.target,
+        type: FlowNodeInputTypeEnum.target,
         label: '触发器',
         connected: false
       },
       {
         key: 'userChatInput',
-        type: FlowInputItemTypeEnum.target,
+        type: FlowNodeInputTypeEnum.target,
         label: '用户问题',
         connected: true
       }
@@ -507,19 +509,19 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     ? [
         {
           name: '指定回复',
-          flowType: FlowModuleTypeEnum.answerNode,
+          flowType: FlowNodeTypeEnum.answerNode,
           inputs: [
             {
               key: 'switch',
-              type: FlowInputItemTypeEnum.target,
+              type: FlowNodeInputTypeEnum.target,
               label: '触发器',
               connected: true
             },
             {
-              key: SpecialInputKeyEnum.answerText,
+              key: FlowNodeSpecialInputKeyEnum.answerText,
               value: formData.kb.searchEmptyText,
-              type: FlowInputItemTypeEnum.textarea,
-              valueType: FlowValueTypeEnum.string,
+              type: FlowNodeInputTypeEnum.textarea,
+              valueType: FlowNodeValTypeEnum.string,
               label: '回复的内容',
               connected: true
             }
@@ -535,7 +537,7 @@ const kbTemplate = (formData: EditFormType): AppModuleItemType[] => [
     : []),
   {
     name: 'AI 对话',
-    flowType: FlowModuleTypeEnum.chatNode,
+    flowType: FlowNodeTypeEnum.chatNode,
     inputs: chatModelInput(formData),
     showStatus: true,
     outputs: [
@@ -569,5 +571,5 @@ export const appForm2Modules = (formData: EditFormType) => {
     ...(formData.kb.list.length > 0 ? kbTemplate(formData) : simpleChatTemplate(formData))
   ];
 
-  return modules as AppModuleItemType[];
+  return modules as ModuleItemType[];
 };

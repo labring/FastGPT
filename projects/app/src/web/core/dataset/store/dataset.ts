@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetItemType, DatasetsItemType } from '@/types/core/dataset';
 import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
 import { defaultKbDetail } from '@/constants/dataset';

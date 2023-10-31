@@ -4,6 +4,8 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { PRICE_SCALE } from '@fastgpt/global/common/bill/constants';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 
+export const userCollectionName = 'users';
+
 const UserSchema = new Schema({
   username: {
     // 可以是手机/邮箱，新的验证都只用手机
@@ -60,4 +62,5 @@ const UserSchema = new Schema({
   }
 });
 
-export const MongoUser: Model<UserModelSchema> = models['user'] || model('user', UserSchema);
+export const MongoUser: Model<UserModelSchema> =
+  models[userCollectionName] || model(userCollectionName, UserSchema);
