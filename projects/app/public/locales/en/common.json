@@ -280,6 +280,11 @@
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
   },
+  "error": {
+    "team": {
+      "overSize": "Team member exceeds limit"
+    }
+  },
   "file": {
     "Click to download file template": "Download Template: {{name}}",
     "Click to view file": "Click to view file",
@@ -464,7 +469,7 @@
       "Invite Member": "Invite",
       "Invite Member Failed Tip": "Invite Member Failed",
       "Invite Member Result Tip": "Invite Member Result",
-      "Invite Member Success Tip": "Invite member completed \n successful :{{success}} Person \n username invalid :{{inExit}}\n Already on team :{{inTeam}}",
+      "Invite Member Success Tip": "Invite member completed \n successful :{{success}} Person \n username invalid :{{inValid}}\n Already on team :{{inTeam}}",
       "Invite Member Tips": "They can access or use other resources within your team",
       "Invite Role Member Alias": "Invite full members to join",
       "Invite Role Member Tip": "Members can view, use, and create team resources",

@@ -280,6 +280,11 @@
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
   },
+  "error": {
+    "team": {
+      "overSize": "团队成员超出上限"
+    }
+  },
   "file": {
     "Click to download file template": "点击下载模板：{{name}}",
     "Click to view file": "点击查看原始文件",
@@ -464,7 +469,7 @@
       "Invite Member": "邀请成员",
       "Invite Member Failed Tip": "邀请成员出现异常",
       "Invite Member Result Tip": "邀请结果提示",
-      "Invite Member Success Tip": "邀请成员完成\n成功: {{success}}人\n用户名无效: {{inExit}}\n已在团队中:{{inTeam}}",
+      "Invite Member Success Tip": "邀请成员完成\n成功: {{success}}人\n用户名无效: {{inValid}}\n已在团队中:{{inTeam}}",
       "Invite Member Tips": "对方可查阅或使用团队内的其他资源",
       "Invite Role Member Alias": "邀请正式成员加入",
       "Invite Role Member Tip": "成员\n可查看、使用和创建团队资源",

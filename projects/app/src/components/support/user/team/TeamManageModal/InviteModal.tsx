@@ -57,7 +57,7 @@ const InviteModal = ({
         undefined,
         t('user.team.Invite Member Success Tip', {
           success: res.invite.length,
-          inExit: res.inExist.join(', '),
+          inValid: res.inValid.join(', '),
           inTeam: res.inTeam.join(', ')
         })
       )();

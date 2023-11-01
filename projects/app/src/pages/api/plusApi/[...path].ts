@@ -33,6 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method
     );
 
+    /* special response */
+    // response cookie
     if (repose?.cookie) {
       setCookie(res, repose.cookie);
 

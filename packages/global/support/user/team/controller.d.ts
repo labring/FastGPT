@@ -37,4 +37,4 @@ export type UpdateInviteProps = {
   tmbId: string;
   status: TeamMemberSchema['status'];
 };
-export type InviteMemberResponse = Record<'invite' | 'inExist' | 'inTeam', string[]>;
+export type InviteMemberResponse = Record<'invite' | 'inValid' | 'inTeam', string[]>;

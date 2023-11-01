@@ -32,6 +32,20 @@ export enum ERROR_ENUM {
   unAuthFile = 'unAuthFile',
   unAuthTeam = 'unAuthTeam'
 }
+
+/* 500000 */
+export enum TeamErrEnum {
+  teamOverSize = 'teamOverSize'
+}
+export const TeamError = {
+  [TeamErrEnum.teamOverSize]: {
+    code: 500000,
+    statusText: TeamErrEnum.teamOverSize,
+    message: 'error.team.overSize',
+    data: null
+  }
+};
+
 export const ERROR_RESPONSE: Record<
   any,
   {
@@ -88,5 +102,6 @@ export const ERROR_RESPONSE: Record<
     statusText: ERROR_ENUM.unAuthTeam,
     message: '无权使用操作团队',
     data: null
-  }
+  },
+  ...TeamError
 };

@@ -8,6 +8,7 @@ export type TeamSchema = {
   avatar: string;
   createTime: Date;
   balance: number;
+  maxSize: number;
 };
 
 export type TeamMemberSchema = {
