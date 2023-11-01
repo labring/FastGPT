@@ -7,12 +7,11 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyModal from '@/components/MyModal';
-import { Box, Button, Flex, IconButton, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import { postCreateTeam, putUpdateTeam } from '@/web/support/user/team/api';
 import { CreateTeamProps } from '@fastgpt/global/support/user/team/controller.d';
-import MyIcon from '@/components/Icon';
 
 export type FormDataType = CreateTeamProps & {
   id?: string;
@@ -96,7 +95,11 @@ function EditModal({
   });
 
   return (
-    <MyModal isOpen onClose={onClose} title={t('user.team.Create Team')}>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      title={defaultData.id ? t('user.team.Update Team') : t('user.team.Create Team')}
+    >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
           {t('user.team.Set Name')}

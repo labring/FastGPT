@@ -128,6 +128,7 @@
     "Add": "Add",
     "Back": "Back",
     "Beta": "Beta",
+    "Business edition features": "This is the commercial version function ~",
     "Choose": "Choose",
     "Close": "Clow",
     "Collect": "Collect",
@@ -484,6 +485,7 @@
       "Set Name": "Team Name",
       "Switch Team Failed": "Switch Team Failed",
       "Team Name": "Team Name",
+      "Update Team": "Update Team",
       "invite": {
         "Accept Confirm": "Want to join the team?",
         "Accepted": "Accepted",

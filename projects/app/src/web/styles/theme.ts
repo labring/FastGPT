@@ -186,8 +186,7 @@ const Select = selectMultiStyle({
   variants: {
     outline: selectPart({
       field: {
-        borderColor: 'myGray.100',
-
+        borderColor: 'myGray.200',
         _focusWithin: {
           boxShadow: '0px 0px 4px #A8DBFF',
           borderColor: 'myBlue.600'

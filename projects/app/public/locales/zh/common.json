@@ -128,6 +128,7 @@
     "Add": "添加",
     "Back": "返回",
     "Beta": "实验版",
+    "Business edition features": "这是商业版功能~",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
@@ -484,6 +485,7 @@
       "Set Name": "给团队取个名字",
       "Switch Team Failed": "切换团队异常",
       "Team Name": "团队名",
+      "Update Team": "更新团队信息",
       "invite": {
         "Accept Confirm": "确认加入该团队？",
         "Accepted": "已加入团队",

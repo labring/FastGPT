@@ -86,7 +86,7 @@ export const ERROR_RESPONSE: Record<
   [ERROR_ENUM.unAuthTeam]: {
     code: 516,
     statusText: ERROR_ENUM.unAuthTeam,
-    message: '无权使用该团队',
+    message: '无权使用操作团队',
     data: null
   }
 };

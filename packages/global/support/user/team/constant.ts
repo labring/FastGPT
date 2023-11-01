@@ -1,3 +1,6 @@
+export const TeamCollectionName = 'teams';
+export const TeamMemberCollectionName = 'team.members';
+
 export enum TeamMemberRoleEnum {
   owner = 'owner',
   member = 'member',

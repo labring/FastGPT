@@ -1,14 +1,15 @@
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { UserType } from '@fastgpt/global/support/user/type';
 import jwt from 'jsonwebtoken';
 import { NextApiResponse } from 'next';
 
 /* create token */
-export function createJWT(userId: string, tmbId = '') {
+export function createJWT(user: { _id: string; team?: { teamMemberId: string } }) {
   const key = process.env.TOKEN_KEY as string;
   const token = jwt.sign(
     {
-      userId: String(userId),
-      tmbId: String(tmbId),
+      userId: String(user._id),
+      tmbId: String(user.team?.teamMemberId),
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
     },
     key

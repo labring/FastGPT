@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -24,12 +24,10 @@ import {
   TableContainer,
   useTheme,
   useDisclosure,
-  ModalBody,
   MenuButton
 } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
-import { TeamItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   TeamMemberRoleEnum,
@@ -53,20 +51,6 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
 
-  const personalTeam = useMemo(
-    () => ({
-      teamId: 'personal',
-      teamName: t('user.team.Personal Team'),
-      avatar: '/icon/logo.svg',
-      balance: 999,
-      teamMemberId: '',
-      memberName: t('user.team.Personal Team'),
-      role: TeamMemberRoleEnum.owner,
-      status: TeamMemberStatusEnum.active
-    }),
-    [t]
-  );
-
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm();
   const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
     content: t('user.team.member.Confirm Leave')
@@ -81,19 +65,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     isLoading: isLoadingTeams,
     refetch: refetchTeam
   } = useQuery(['getTeams', userInfo?._id], () => getTeamList(TeamMemberStatusEnum.active));
-  const formatTeams = useMemo<TeamItemType[]>(
-    () => [personalTeam, ...myTeams],
-    [myTeams, personalTeam]
+  const defaultTeam = useMemo(
+    () => myTeams.find((item) => item.defaultTeam) || myTeams[0],
+    [myTeams]
   );
-
-  /* current select team */
-  const activeTeam = useMemo(() => {
-    return userInfo?.team || personalTeam;
-  }, [personalTeam, userInfo?.team]);
 
   const { mutate: onSwitchTeam, isLoading: isSwitchTeam } = useRequest({
     mutationFn: async (teamId: string) => {
-      teamId = teamId === personalTeam.teamId ? '' : teamId;
       const token = await putSwitchTeam(teamId);
       setToken(token);
       return initUserInfo();
@@ -103,22 +81,10 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
 
   // member action
   const { data: members = [], refetch: refetchMembers } = useQuery(
-    ['getMembers', activeTeam.teamId],
+    ['getMembers', userInfo?.team?.teamId],
     () => {
-      if (activeTeam.teamId === personalTeam.teamId) {
-        return [
-          {
-            userId: userInfo?._id || '',
-            teamMemberId: personalTeam.teamId,
-            teamId: personalTeam.teamId,
-            memberUsername: userInfo?.username || '',
-            avatar: userInfo?.avatar || '',
-            role: 'owner',
-            status: 'active'
-          }
-        ] as TeamMemberItemType[];
-      }
-      return getTeamMembers(activeTeam.teamId);
+      if (!userInfo?.team?.teamId) return [];
+      return getTeamMembers(userInfo.team.teamId);
     }
   );
 
@@ -135,11 +101,10 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
   const { mutate: onLeaveTeam, isLoading: isLoadingLeaveTeam } = useRequest({
-    mutationFn: async (teamId: string) => {
-      console.log(teamId);
-
+    mutationFn: async (teamId?: string) => {
+      if (!teamId) return;
       // change to personal team
-      await onSwitchTeam(personalTeam.teamId);
+      await onSwitchTeam(defaultTeam.teamId);
       return delLeaveTeam(teamId);
     },
     onSuccess() {
@@ -148,7 +113,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     errorToast: t('user.team.Leave Team Failed')
   });
 
-  return (
+  return !!userInfo?.team ? (
     <>
       <MyModal
         isOpen
@@ -197,7 +162,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               )}
             </Flex>
             <Box flex={['auto', '1 0 0']} overflow={'auto'}>
-              {formatTeams.map((team) => (
+              {myTeams.map((team) => (
                 <Flex
                   key={team.teamId}
                   alignItems={'center'}
@@ -206,7 +171,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   p={3}
                   cursor={'default'}
                   gap={3}
-                  {...(activeTeam.teamId === team.teamId
+                  {...(userInfo?.team?.teamId === team.teamId
                     ? {
                         bg: 'myBlue.300'
                       }
@@ -217,10 +182,18 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                       })}
                 >
                   <Avatar src={team.avatar} w={['18px', '22px']} />
-                  <Box flex={'1 0 0'} w={0} fontWeight={'bold'}>
+                  <Box
+                    flex={'1 0 0'}
+                    w={0}
+                    {...(team.role === TeamMemberRoleEnum.owner
+                      ? {
+                          fontWeight: 'bold'
+                        }
+                      : {})}
+                  >
                     {team.teamName}
                   </Box>
-                  {activeTeam.teamId === team.teamId ? (
+                  {userInfo?.team?.teamId === team.teamId ? (
                     <MyIcon name={'common/tickFill'} w={'16px'} color={'myBlue.600'} />
                   ) : (
                     <Button size={'xs'} variant={'base'} onClick={() => onSwitchTeam(team.teamId)}>
@@ -249,24 +222,27 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               mb={3}
             >
               <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
-                {activeTeam.teamName}
+                {userInfo.team.teamName}
               </Box>
-              <MyIcon
-                name="edit"
-                w={'14px'}
-                ml={2}
-                cursor={'pointer'}
-                _hover={{
-                  color: 'myBlue.600'
-                }}
-                onClick={() => {
-                  setEditTeamData({
-                    id: activeTeam.teamId,
-                    name: activeTeam.teamName,
-                    avatar: activeTeam.avatar
-                  });
-                }}
-              />
+              {userInfo.team.role === TeamMemberRoleEnum.owner && (
+                <MyIcon
+                  name="edit"
+                  w={'14px'}
+                  ml={2}
+                  cursor={'pointer'}
+                  _hover={{
+                    color: 'myBlue.600'
+                  }}
+                  onClick={() => {
+                    if (!userInfo?.team) return;
+                    setEditTeamData({
+                      id: userInfo.team.teamId,
+                      name: userInfo.team.teamName,
+                      avatar: userInfo.team.avatar
+                    });
+                  }}
+                />
+              )}
             </Flex>
             <Flex px={5} alignItems={'center'}>
               <MyIcon name="support/team/memberLight" w={'14px'} />
@@ -274,35 +250,33 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               <Box ml={2} bg={'myGray.100'} borderRadius={'20px'} px={3} fontSize={'xs'}>
                 {members.length}
               </Box>
-              {activeTeam.teamId !== personalTeam.teamId &&
-                userInfo?.team?.role === TeamMemberRoleEnum.owner && (
-                  <Button
-                    variant={'base'}
-                    size="sm"
-                    borderRadius={'md'}
-                    ml={3}
-                    leftIcon={
-                      <MyIcon name={'common/inviteLight'} w={'14px'} color={'myBlue.600'} />
-                    }
-                    onClick={onOpenInvite}
-                  >
-                    {t('user.team.Invite Member')}
-                  </Button>
-                )}
+              {userInfo.team.role === TeamMemberRoleEnum.owner && (
+                <Button
+                  variant={'base'}
+                  size="sm"
+                  borderRadius={'md'}
+                  ml={3}
+                  leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'myBlue.600'} />}
+                  onClick={onOpenInvite}
+                >
+                  {t('user.team.Invite Member')}
+                </Button>
+              )}
               <Box flex={1} />
-              {activeTeam.teamId !== personalTeam.teamId &&
-                userInfo?.team?.role !== TeamMemberRoleEnum.owner && (
-                  <Button
-                    variant={'base'}
-                    size="sm"
-                    borderRadius={'md'}
-                    ml={3}
-                    leftIcon={<MyIcon name={'loginoutLight'} w={'14px'} color={'myBlue.600'} />}
-                    onClick={() => openLeaveConfirm(() => onLeaveTeam(activeTeam.teamId))()}
-                  >
-                    {t('user.team.Leave Team')}
-                  </Button>
-                )}
+              {userInfo.team.role !== TeamMemberRoleEnum.owner && (
+                <Button
+                  variant={'base'}
+                  size="sm"
+                  borderRadius={'md'}
+                  ml={3}
+                  leftIcon={<MyIcon name={'loginoutLight'} w={'14px'} color={'myBlue.600'} />}
+                  onClick={() => {
+                    openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
+                  }}
+                >
+                  {t('user.team.Leave Team')}
+                </Button>
+              )}
             </Flex>
             <Box mt={3} flex={'1 0 0'} overflow={'auto'}>
               <TableContainer overflow={'unset'}>
@@ -435,9 +409,9 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
           }}
         />
       )}
-      {isOpenInvite && (
+      {isOpenInvite && userInfo?.team?.teamId && (
         <InviteModal
-          teamId={activeTeam.teamId}
+          teamId={userInfo.team.teamId}
           onClose={onCloseInvite}
           onSuccess={refetchMembers}
         />
@@ -445,7 +419,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
       <ConfirmRemoveMemberModal />
       <ConfirmLeaveTeamModal />
     </>
-  );
+  ) : null;
 };
 
 export default React.memo(TeamManageModal);

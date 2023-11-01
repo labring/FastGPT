@@ -17,6 +17,7 @@ import Avatar from '@/components/Avatar';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { feConfigs } from '@/web/common/system/staticData';
 
 const UpdateInviteModal = () => {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ const UpdateInviteModal = () => {
   const { ConfirmModal, openConfirm } = useConfirm({});
 
   const { data: inviteList = [], refetch } = useQuery(['getInviteList'], () =>
-    getTeamList(TeamMemberStatusEnum.waiting)
+    feConfigs.isPlus ? getTeamList(TeamMemberStatusEnum.waiting) : []
   );
 
   const { mutate: onAccept, isLoading: isLoadingAccept } = useRequest({

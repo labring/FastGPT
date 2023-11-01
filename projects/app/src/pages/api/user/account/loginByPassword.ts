@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const userDetail = await getUserDetail(user._id, tmbId);
 
-    const token = createJWT(user._id, tmbId);
+    const token = createJWT(userDetail);
     setCookie(res, token);
 
     jsonRes(res, {

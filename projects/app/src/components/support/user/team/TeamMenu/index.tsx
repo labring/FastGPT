@@ -1,9 +1,11 @@
 import React from 'react';
-import { Box, Flex, Image, useDisclosure, useTheme } from '@chakra-ui/react';
+import { Box, Button, Flex, Image, useDisclosure, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'react-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import dynamic from 'next/dynamic';
+import { feConfigs } from '@/web/common/system/staticData';
+import { useToast } from '@/web/common/hooks/useToast';
 
 const TeamManageModal = dynamic(() => import('../TeamManageModal'));
 
@@ -11,24 +13,34 @@ const TeamMenu = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
+  const { toast } = useToast();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
-    <Box
-      py={1}
-      pl={4}
-      border={theme.borders.sm}
-      borderWidth={'1.5px'}
-      borderRadius={'md'}
-      cursor={'pointer'}
+    <Button
+      variant={'base'}
       userSelect={'none'}
+      w={'100%'}
+      display={'block'}
+      h={'34px'}
+      px={3}
       css={{
         '& span': {
           display: 'block'
         }
       }}
-      onClick={onOpen}
+      transform={'none !important'}
+      onClick={() => {
+        if (feConfigs.isPlus) {
+          onOpen();
+        } else {
+          toast({
+            status: 'warning',
+            title: t('common.Business edition features')
+          });
+        }
+      }}
     >
       <MyTooltip label={t('user.team.Select Team')}>
         <Flex w={'100%'} alignItems={'center'}>
@@ -46,7 +58,7 @@ const TeamMenu = () => {
         </Flex>
       </MyTooltip>
       {isOpen && <TeamManageModal onClose={onClose} />}
-    </Box>
+    </Button>
   );
 };
 

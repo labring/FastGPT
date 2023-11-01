@@ -32,10 +32,12 @@ export const useUserStore = create<State>()(
     persist(
       immer((set, get) => ({
         lastTmbId: '',
-        setLastTmbId(tmbId = '') {
-          set((state) => {
-            state.lastTmbId = tmbId;
-          });
+        setLastTmbId(tmbId) {
+          if (tmbId) {
+            set((state) => {
+              state.lastTmbId = tmbId;
+            });
+          }
         },
         userInfo: null,
         async initUserInfo() {

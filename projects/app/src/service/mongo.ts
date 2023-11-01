@@ -5,6 +5,8 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getInitConfig, initGlobal } from '@/pages/api/system/getInitData';
+import { createDefaultTeam } from './support/user/team/controller';
+import { exit } from 'process';
 
 /**
  * connect MongoDB and init data
@@ -31,6 +33,9 @@ async function initRootUser() {
     });
     const psw = process.env.DEFAULT_ROOT_PSW || '123456';
 
+    let rootId = rootUser?._id || '';
+
+    // init root user
     if (rootUser) {
       await MongoUser.findOneAndUpdate(
         { username: 'root' },
@@ -40,12 +45,15 @@ async function initRootUser() {
         }
       );
     } else {
-      await MongoUser.create({
+      const { _id } = await MongoUser.create({
         username: 'root',
         password: hashStr(psw),
         balance: 999999 * PRICE_SCALE
       });
+      rootId = _id;
     }
+    // init root team
+    await createDefaultTeam({ userId: rootId });
 
     console.log(`root user init:`, {
       username: 'root',
@@ -53,6 +61,7 @@ async function initRootUser() {
     });
   } catch (error) {
     console.log('init root user error', error);
+    exit(1);
   }
 }
 
