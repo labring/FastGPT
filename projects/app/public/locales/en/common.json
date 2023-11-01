@@ -146,6 +146,7 @@
     "Delete Success": "Delete Successful",
     "Delete Tip": "Delete Confirm",
     "Delete Warning": "Warning",
+    "Done": "Done",
     "Edit": "Edit",
     "Expired Time": "Expired",
     "File": "File",
@@ -194,6 +195,9 @@
       "Move Success": "Move Success",
       "No Folder": "There's no subdirectory. Just put it here",
       "Root Path": "Root Folder"
+    },
+    "input": {
+      "Repeat Value": "Repeat Value"
     }
   },
   "core": {
@@ -454,18 +458,52 @@
     },
     "team": {
       "Check Team": "Switch",
+      "Confirm Invite": "Confirm Invite",
       "Create Team": "Create Team",
       "Invite Member": "Invite",
+      "Invite Member Failed Tip": "Invite Member Failed",
+      "Invite Member Result Tip": "Invite Member Result",
+      "Invite Member Success Tip": "Invite member completed \n successful :{{success}} Person \n username invalid :{{inExit}}\n Already on team :{{inTeam}}",
+      "Invite Member Tips": "They can access or use other resources within your team",
+      "Invite Role Member Alias": "Invite full members to join",
+      "Invite Role Member Tip": "Members can view, use, and create team resources",
+      "Invite Role Visitor Alias": "Invite visitors to Join",
+      "Invite Role Visitor Tip": "Visitors \n can view and use team resources, but cannot create resources",
+      "Leave Team": "Leave",
+      "Leave Team Failed": "Leave Team Failed",
       "Manage": "Team Manage",
       "Member": "Member",
       "Personal Team": "Persional",
+      "Processing invitations": "Processing invitations",
+      "Processing invitations Tips": "You have {{amount}} of team invitations that need to be processed",
+      "Reinvite": "Reinvite",
+      "Remove Member Confirm Tip": "Confirm to move {{username}} off the team",
+      "Remove Member Tip": "Move out team",
       "Role": "Role",
       "Select Team": "Select Team",
       "Set Name": "Team Name",
       "Switch Team Failed": "Switch Team Failed",
       "Team Name": "Team Name",
+      "invite": {
+        "Accept Confirm": "Want to join the team?",
+        "Accepted": "Accepted",
+        "Deal Width Footer Tip": "It will automatically shut down after processing~",
+        "Reject": "Rejected",
+        "Reject Confirm": "Confirm to decline the invitation?",
+        "accept": "Accept",
+        "reject": "Reject"
+      },
+      "member": {
+        "Confirm Leave": "Confirm leave the team?",
+        "active": "Accept",
+        "reject": "Rejected",
+        "waiting": "Waiting"
+      },
       "role": {
-        "owner": "Owner"
+        "Member": "Member",
+        "Owner": "Owner",
+        "Update to Vistor": "Set to visitor",
+        "Visitor": "Visitor"
       }
     }
   }

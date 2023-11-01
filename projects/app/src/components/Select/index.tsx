@@ -1,4 +1,4 @@
-import React, { useRef, forwardRef } from 'react';
+import React, { useRef, forwardRef, useMemo } from 'react';
 import {
   Menu,
   Box,
@@ -14,10 +14,11 @@ interface Props extends ButtonProps {
   value?: string;
   placeholder?: string;
   list: {
-    label: string;
+    alias?: string;
+    label: string | React.ReactNode;
     value: string;
   }[];
-  onchange?: (val: string) => void;
+  onchange?: (val: any) => void;
 }
 
 const MySelect = (
@@ -36,6 +37,7 @@ const MySelect = (
     }
   };
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
   useOutsideClick({
     ref: SelectRef,
@@ -72,7 +74,7 @@ const MySelect = (
             : {})}
           {...props}
         >
-          {list.find((item) => item.value === value)?.label || placeholder}
+          {selectItem?.alias || selectItem?.label || placeholder}
           <Box flex={1} />
           <ChevronDownIcon />
         </Button>
@@ -103,7 +105,8 @@ const MySelect = (
               {...menuItemStyles}
               {...(value === item.value
                 ? {
-                    color: 'myBlue.600'
+                    color: 'myBlue.600',
+                    bg: 'myWhite.300'
                   }
                 : {})}
               onClick={() => {
@@ -111,6 +114,7 @@ const MySelect = (
                   onchange(item.value);
                 }
               }}
+              whiteSpace={'pre-wrap'}
             >
               {item.label}
             </MenuItem>

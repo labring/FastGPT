@@ -1,7 +1,8 @@
 import { TeamMemberRoleEnum } from './constant';
+import { TeamMemberSchema } from './type';
 
 export type AuthTeamRoleProps = {
-  userId: string;
+  teamId: string;
   tmbId: string;
   role?: `${TeamMemberRoleEnum}`;
 };
@@ -15,13 +16,24 @@ export type UpdateTeamProps = {
   avatar?: string;
 };
 
-export type CreateTeamMemberProps = {
-  ownerId: string;
+/* ------------- member ----------- */
+export type DelMemberProps = {
   teamId: string;
-  userId: string;
-  name?: string;
+  memberId: string;
 };
 export type UpdateTeamMemberProps = {
-  id: string;
-  name?: string;
+  teamId: string;
+  memberId: string;
+  role?: TeamMemberSchema['role'];
+  status?: TeamMemberSchema['status'];
 };
+export type InviteMemberProps = {
+  teamId: string;
+  usernames: string[];
+  role: `${TeamMemberRoleEnum}`;
+};
+export type UpdateInviteProps = {
+  tmbId: string;
+  status: TeamMemberSchema['status'];
+};
+export type InviteMemberResponse = Record<'invite' | 'inExist' | 'inTeam', string[]>;

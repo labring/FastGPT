@@ -4,12 +4,19 @@ import { useRouter } from 'next/router';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { throttle } from 'lodash';
-import Auth from './auth';
-import Navbar from './navbar';
-import NavbarPhone from './navbarPhone';
+
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/api';
+import dynamic from 'next/dynamic';
+
+import Auth from './auth';
+import Navbar from './navbar';
+import NavbarPhone from './navbarPhone';
+const UpdateInviteModal = dynamic(
+  () => import('@/components/support/user/team/UpdateInviteModal'),
+  { ssr: false }
+);
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -103,6 +110,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         )}
       </Box>
       <Loading loading={loading} zIndex={9999} />
+      {!!userInfo && <UpdateInviteModal />}
     </>
   );
 };

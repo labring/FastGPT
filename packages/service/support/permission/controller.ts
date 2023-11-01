@@ -7,8 +7,8 @@ export function createJWT(userId: string, tmbId = '') {
   const key = process.env.TOKEN_KEY as string;
   const token = jwt.sign(
     {
-      userId,
-      tmbId,
+      userId: String(userId),
+      tmbId: String(tmbId),
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
     },
     key

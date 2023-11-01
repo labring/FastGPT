@@ -146,6 +146,7 @@
     "Delete Success": "删除成功",
     "Delete Tip": "删除提示",
     "Delete Warning": "删除警告",
+    "Done": "完成",
     "Edit": "编辑",
     "Expired Time": "过期时间",
     "File": "文件",
@@ -194,6 +195,9 @@
       "Move Success": "移动成功",
       "No Folder": "没有子目录了，就放这里吧",
       "Root Path": "根目录"
+    },
+    "input": {
+      "Repeat Value": "有重复的值"
     }
   },
   "core": {
@@ -454,18 +458,52 @@
     },
     "team": {
       "Check Team": "切换",
+      "Confirm Invite": "确认邀请",
       "Create Team": "创建新团队",
       "Invite Member": "邀请成员",
+      "Invite Member Failed Tip": "邀请成员出现异常",
+      "Invite Member Result Tip": "邀请结果提示",
+      "Invite Member Success Tip": "邀请成员完成\n成功: {{success}}人\n用户名无效: {{inExit}}\n已在团队中:{{inTeam}}",
+      "Invite Member Tips": "对方可查阅或使用团队内的其他资源",
+      "Invite Role Member Alias": "邀请正式成员加入",
+      "Invite Role Member Tip": "成员\n可查看、使用和创建团队资源",
+      "Invite Role Visitor Alias": "邀请访客加入",
+      "Invite Role Visitor Tip": "访客\n可查看和使用团队资源，不能创建资源",
+      "Leave Team": "离开团队",
+      "Leave Team Failed": "离开团队异常",
       "Manage": "团队管理",
       "Member": "成员",
       "Personal Team": "个人团队",
+      "Processing invitations": "处理邀请",
+      "Processing invitations Tips": "你有{{amount}}个需要处理的团队邀请",
+      "Reinvite": "重新邀请",
+      "Remove Member Confirm Tip": "确认将 {{username}} 移出团队？",
+      "Remove Member Tip": "移出团队",
       "Role": "身份",
       "Select Team": "团队选择",
       "Set Name": "给团队取个名字",
       "Switch Team Failed": "切换团队异常",
       "Team Name": "团队名",
+      "invite": {
+        "Accept Confirm": "确认加入该团队？",
+        "Accepted": "已加入团队",
+        "Deal Width Footer Tip": "处理完会自动关闭噢~",
+        "Reject": "已拒绝邀请",
+        "Reject Confirm": "确认拒绝该邀请？",
+        "accept": "接受",
+        "reject": "拒绝"
+      },
+      "member": {
+        "Confirm Leave": "确认离开该团队？",
+        "active": "已加入",
+        "reject": "拒绝",
+        "waiting": "待接受"
+      },
       "role": {
-        "owner": "创建者"
+        "Member": "成员",
+        "Owner": "创建者",
+        "Update to Vistor": "修改成访客",
+        "Visitor": "访客"
       }
     }
   }

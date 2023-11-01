@@ -30,7 +30,6 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { getLangStore, LangEnum, langMap, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
-import MyMenu from '@/components/MyMenu';
 import MySelect from '@/components/Select';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
