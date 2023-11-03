@@ -1,12 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { Chat, connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import type { PagingData } from '@/types';
 import { AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
 import { addDays } from 'date-fns';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
+import { authApp } from '@/service/support/permission/auth/app';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authApp({ req, authToken: true, appId, per: 'r' });
 
     const where = {
       appId: new Types.ObjectId(appId),

@@ -14,4 +14,5 @@ export type AuthModeType = {
   authRoot?: boolean;
   authApiKey?: boolean;
   authOutLink?: boolean;
+  per?: 'r' | 'w' | 'owner';
 };

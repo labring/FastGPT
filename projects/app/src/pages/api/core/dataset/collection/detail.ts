@@ -20,7 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { collection, canWrite } = await authDatasetCollection({
       req,
       authToken: true,
-      collectionId: id
+      collectionId: id,
+      per: 'r'
     });
 
     jsonRes<DatasetCollectionItemType>(res, {

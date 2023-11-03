@@ -1,3 +1,7 @@
+import { appErrMap } from './code/app';
+import { TeamErrorMap } from './code/team';
+import { datasetErrMap } from './code/dataset';
+
 export const ERROR_CODE: { [key: number]: string } = {
   400: '请求失败',
   401: '无权访问',
@@ -30,7 +34,7 @@ export enum ERROR_ENUM {
   unAuthFile = 'unAuthFile'
 }
 
-type ErrType<T> = Record<
+export type ErrType<T> = Record<
   string,
   {
     code: number;
@@ -39,69 +43,6 @@ type ErrType<T> = Record<
     data: null;
   }
 >;
-
-/* team: 500000 */
-export enum TeamErrEnum {
-  teamOverSize = 'teamOverSize',
-  unAuthTeam = 'unAuthTeam'
-}
-const teamErr = [
-  { statusText: TeamErrEnum.teamOverSize, message: 'error.team.overSize' },
-  { statusText: TeamErrEnum.unAuthTeam, message: '无权操作该团队' }
-];
-export const TeamError = teamErr.reduce((acc, cur, index) => {
-  return {
-    ...acc,
-    [cur.statusText]: {
-      code: 500000 + index,
-      statusText: cur.statusText,
-      message: cur.message,
-      data: null
-    }
-  };
-}, {} as ErrType<`${TeamErrEnum}`>);
-
-/* dataset: 501000 */
-export enum DatasetErrEnum {
-  unAuthDataset = 'unAuthDataset',
-  unCreateCollection = 'unCreateCollection',
-  unAuthDatasetCollection = 'unAuthDatasetCollection',
-  unAuthDatasetData = 'unAuthDatasetData',
-  unAuthDatasetFile = 'unAuthDatasetFile'
-}
-const datasetErr = [
-  {
-    statusText: DatasetErrEnum.unAuthDataset,
-    message: '无权操作该知识库'
-  },
-  {
-    statusText: DatasetErrEnum.unAuthDatasetCollection,
-    message: '无权操作该数据集'
-  },
-  {
-    statusText: DatasetErrEnum.unAuthDatasetData,
-    message: '无权操作该数据'
-  },
-  {
-    statusText: DatasetErrEnum.unAuthDatasetFile,
-    message: '无权操作该文件'
-  },
-  {
-    statusText: DatasetErrEnum.unCreateCollection,
-    message: '无权创建数据集'
-  }
-];
-export const datasetErrMap = datasetErr.reduce((acc, cur, index) => {
-  return {
-    ...acc,
-    [cur.statusText]: {
-      code: 501000 + index,
-      statusText: cur.statusText,
-      message: cur.message,
-      data: null
-    }
-  };
-}, {} as ErrType<`${DatasetErrEnum}`>);
 
 export const ERROR_RESPONSE: Record<
   any,
@@ -144,5 +85,6 @@ export const ERROR_RESPONSE: Record<
     data: null
   },
   ...datasetErrMap,
-  ...TeamError
+  ...TeamErrorMap,
+  ...appErrMap
 };

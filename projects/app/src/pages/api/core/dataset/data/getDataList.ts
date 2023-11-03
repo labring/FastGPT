@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     } = req.body as GetDatasetDataListProps;
 
     // 凭证校验
-    await authDatasetCollection({ req, authToken: true, collectionId });
+    await authDatasetCollection({ req, authToken: true, collectionId, per: 'r' });
 
     searchText = searchText.replace(/'/g, '');
 

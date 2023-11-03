@@ -21,6 +21,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 type HistoryItemType = {
   id: string;
@@ -63,7 +64,8 @@ const ChatHistorySlider = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystemStore();
-  const { myApps, loadMyApps, userInfo } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
+  const { userInfo } = useUserStore();
 
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
 

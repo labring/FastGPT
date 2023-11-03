@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
     }
 
-    await authDataset({ req, authToken: true, datasetId: parentId });
+    await authDataset({ req, authToken: true, datasetId: parentId, per: 'r' });
 
     jsonRes<DatasetPathItemType[]>(res, {
       data: await getParents(parentId)

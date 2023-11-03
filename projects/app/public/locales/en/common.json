@@ -45,6 +45,8 @@
     "Open AI Advanced Settings": "Advanced Settings",
     "Output Field Settings": "Output Field Settings",
     "Paste Config": "Paste Config",
+    "To Chat": "To Chat Page",
+    "To Settings": "To Settings Page",
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
       "Combine Modules": "Combine Modules",
@@ -171,6 +173,8 @@
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
     "Request Error": "Request Error",
+    "Save Failed": "Save Failed",
+    "Save Success": "Save Success",
     "Search": "Search",
     "Select File Failed": "Select File Failed",
     "Select One Folder": "Select a folder",

@@ -1,15 +1,14 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import { AppSchema } from '@fastgpt/global/core/app/type.d';
-import type { AppListItemType, AppUpdateParams } from '@/types/app';
+import type { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
 import { RequestPaging } from '@/types/index';
 import { addDays } from 'date-fns';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
-import type { CreateAppParams } from '@/types/app';
+import type { CreateAppParams, AppUpdateParams } from '@fastgpt/global/core/app/api.d';
 
 /**
  * 获取模型列表
  */
-export const getMyApps = () => GET<AppListItemType[]>('/app/myApps');
+export const getMyApps = () => GET<AppListItemType[]>('/app/list');
 
 /**
  * 创建一个模型
@@ -24,7 +23,7 @@ export const delModelById = (id: string) => DELETE(`/app/del?appId=${id}`);
 /**
  * 根据 ID 获取模型
  */
-export const getModelById = (id: string) => GET<AppSchema>(`/app/detail?appId=${id}`);
+export const getModelById = (id: string) => GET<AppDetailType>(`/app/detail?appId=${id}`);
 
 /**
  * 根据 ID 更新模型

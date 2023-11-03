@@ -227,7 +227,7 @@ const Info = (
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('user.Permission')}
         </Box>
-        <Box flex={[1]}>
+        <Box>
           <PermissionRadio
             value={getValues('permission')}
             onChange={(e) => {

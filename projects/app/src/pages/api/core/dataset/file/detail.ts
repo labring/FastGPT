@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { fileId } = req.query as { fileId: string };
     // 凭证校验
-    const { file } = await authDatasetFile({ req, authToken: true, fileId });
+    const { file } = await authDatasetFile({ req, authToken: true, fileId, per: 'r' });
 
     jsonRes<DatasetFileSchema>(res, {
       data: file

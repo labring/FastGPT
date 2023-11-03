@@ -29,7 +29,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       req,
       authToken: true,
       authApiKey: true,
-      datasetId
+      datasetId,
+      per: 'r'
     });
 
     // auth balance

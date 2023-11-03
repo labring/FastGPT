@@ -45,6 +45,8 @@
     "Open AI Advanced Settings": "高级配置",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置",
+    "To Chat": "前去对话",
+    "To Settings": "查看详情",
     "Variable Key Repeat Tip": "变量 key 重复",
     "module": {
       "Combine Modules": "组合模块",
@@ -171,6 +173,8 @@
     "Rename Failed": "重命名失败",
     "Rename Success": "重命名成功",
     "Request Error": "请求异常",
+    "Save Failed": "保存失败",
+    "Save Success": "保存成功",
     "Search": "搜索",
     "Select File Failed": "选择文件异常",
     "Select One Folder": "选择一个目录",

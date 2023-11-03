@@ -15,3 +15,18 @@ export interface AppSchema {
   modules: ModuleItemType[];
   permission: `${PermissionTypeEnum}`;
 }
+
+export type AppListItemType = {
+  _id: string;
+  name: string;
+  avatar: string;
+  intro: string;
+  isOwner: boolean;
+  canWrite: boolean;
+  permission: `${PermissionTypeEnum}`;
+};
+
+export type AppDetailType = AppSchema & {
+  isOwner: boolean;
+  canWrite: boolean;
+};

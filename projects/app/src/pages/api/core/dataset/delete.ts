@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // auth owner
-    await authDataset({ req, authToken: true, datasetId: id, per: 'w' });
+    await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
 
     const deletedIds = [id, ...(await findAllChildrenIds(id))];
 

@@ -16,6 +16,7 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
 import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
@@ -36,7 +37,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { updateAppDetail } = useUserStore();
+  const { updateAppDetail } = useAppStore();
 
   const { nodes, edges, onFixView } = useFlowProviderStore();
 

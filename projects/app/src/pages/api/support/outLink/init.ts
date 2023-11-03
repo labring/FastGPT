@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
-import { authApp } from '@/service/utils/auth';
+import { authApp } from '@/service/support/permission/auth/app';
 import { HUMAN_ICON } from '@/constants/chat';
 import { getGuideModule } from '@/global/core/app/modules/utils';
 import { authShareChatInit } from '@fastgpt/service/support/outLink/auth';
@@ -36,9 +36,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 校验使用权限
     const [{ app }, user] = await Promise.all([
       authApp({
+        req,
         appId: shareChat.appId,
-        userId: String(shareChat.userId),
-        authOwner: false
+        per: 'r'
       }),
       MongoUser.findById(shareChat.userId, 'avatar'),
       authShareChatInit({

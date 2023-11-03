@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { authApp } from '@/service/utils/auth';
+import { authApp } from '@/service/support/permission/auth/app';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -15,12 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
-
-    const { app } = await authApp({
-      appId,
-      userId
-    });
+    const { app } = await authApp({ req, authToken: true, appId, per: 'w' });
 
     jsonRes(res, {
       data: app

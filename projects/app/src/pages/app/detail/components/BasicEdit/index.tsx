@@ -61,6 +61,8 @@ import { addVariable } from '@/components/core/module/VariableEditModal';
 import { KbParamsModal } from '@/components/core/module/DatasetSelectModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import PermissionIconText from '@/components/support/permission/IconText';
 
 const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -72,7 +74,7 @@ const Settings = ({ appId }: { appId: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { appDetail, updateAppDetail } = useUserStore();
+  const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useSystemStore();
 
@@ -144,12 +146,12 @@ const Settings = ({ appId }: { appId: string }) => {
     onSuccess(res) {
       if (!res) return;
       toast({
-        title: '删除成功',
+        title: t('common.Delete Success'),
         status: 'success'
       });
       router.replace(`/app/list`);
     },
-    errorToast: '删除失败'
+    errorToast: t('common.Delete Failed')
   });
 
   const appModule2Form = useCallback(() => {
@@ -169,8 +171,8 @@ const Settings = ({ appId }: { appId: string }) => {
         type: AppTypeEnum.basic
       });
     },
-    successToast: '保存成功',
-    errorToast: '保存出现异常'
+    successToast: t('common.Save Success'),
+    errorToast: t('common.Save Failed')
   });
 
   useEffect(() => {
@@ -212,10 +214,10 @@ const Settings = ({ appId }: { appId: string }) => {
     >
       <Flex alignItems={'flex-end'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-          {t('app.Basic Settings')}
+          <PermissionIconText permission={appDetail.permission} />
         </Box>
         <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
-          (
+          (AppId:{' '}
           <Box as={'span'} userSelect={'all'}>
             {appId}
           </Box>
@@ -237,23 +239,25 @@ const Settings = ({ appId }: { appId: string }) => {
           <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
             {appDetail.name}
           </Box>
-          <IconButton
-            className="delete"
-            position={'absolute'}
-            top={4}
-            right={4}
-            size={'sm'}
-            icon={<MyIcon name={'delete'} w={'14px'} />}
-            variant={'base'}
-            borderRadius={'md'}
-            aria-label={'delete'}
-            _hover={{
-              bg: 'myGray.100',
-              color: 'red.600'
-            }}
-            isLoading={isLoading}
-            onClick={openConfirmDel(handleDelModel)}
-          />
+          {appDetail.isOwner && (
+            <IconButton
+              className="delete"
+              position={'absolute'}
+              top={4}
+              right={4}
+              size={'sm'}
+              icon={<MyIcon name={'delete'} w={'14px'} />}
+              variant={'base'}
+              borderRadius={'md'}
+              aria-label={'delete'}
+              _hover={{
+                bg: 'myGray.100',
+                color: 'red.600'
+              }}
+              isLoading={isLoading}
+              onClick={openConfirmDel(handleDelModel)}
+            />
+          )}
         </Flex>
         <Box
           flex={1}
@@ -289,14 +293,16 @@ const Settings = ({ appId }: { appId: string }) => {
           >
             外接
           </Button>
-          <Button
-            size={['sm', 'md']}
-            variant={'base'}
-            leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
-            onClick={() => setSettingAppInfo(appDetail)}
-          >
-            设置
-          </Button>
+          {appDetail.isOwner && (
+            <Button
+              size={['sm', 'md']}
+              variant={'base'}
+              leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
+              onClick={() => setSettingAppInfo(appDetail)}
+            >
+              设置
+            </Button>
+          )}
         </Flex>
       </Box>
 
@@ -595,7 +601,8 @@ const Settings = ({ appId }: { appId: string }) => {
 
 const ChatTest = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
-  const { appDetail, userInfo } = useUserStore();
+  const { userInfo } = useUserStore();
+  const { appDetail } = useAppStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const [modules, setModules] = useState<ModuleItemType[]>([]);
 

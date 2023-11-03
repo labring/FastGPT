@@ -11,102 +11,49 @@ import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import {
   CollectionWithDatasetType,
   DatasetFileSchema,
-  DatasetSchemaType,
   PgDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/errorCode';
 
-export async function authCreateDatasetCollection({
-  req,
-  authToken,
-  ...props
-}: AuthModeType & {
-  datasetId: string;
-}): Promise<
-  AuthResponseType & {
-    dataset: DatasetSchemaType;
+export async function authDatasetCollection(
+  props: AuthModeType & {
+    collectionId: string;
   }
-> {
-  const { userId, teamId, tmbId } = await parseHeaderAuth({
-    req,
-    authToken
-  });
-  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
-  const { dataset } = await authDataset({
-    req,
-    authToken,
-    ...props,
-    per: 'r'
-  });
-
-  if (team.role === TeamMemberRoleEnum.visitor) {
-    return Promise.reject(DatasetErrEnum.unCreateCollection);
-  }
-
-  return {
-    dataset,
-    userId,
-    teamId,
-    tmbId,
-    canWrite: team.role !== TeamMemberRoleEnum.visitor
-  };
-}
-
-export async function authDatasetCollection({
-  req,
-  authToken,
-  ...props
-}: AuthModeType & {
-  collectionId: string;
-  per?: 'r' | 'w';
-}): Promise<
+): Promise<
   AuthResponseType & {
     collection: CollectionWithDatasetType;
   }
 > {
-  const { userId, tmbId } = await parseHeaderAuth({
-    req,
-    authToken
-  });
+  const { userId, tmbId } = await parseHeaderAuth(props);
 
   // get role
   const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
 
   return packageAuthDatasetCollection({
-    req,
-    authToken,
-    role: team.role,
-    ...props
+    ...props,
+    role: team.role
   });
 }
 
 /* permission same of collection */
 export async function authDatasetData({
-  req,
-  authToken,
   dataId,
-  per
+  ...props
 }: AuthModeType & {
   dataId: string;
-  per?: 'r' | 'w';
 }): Promise<
   AuthResponseType & {
     datasetData: PgDataItemType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth({
-    req,
-    authToken
-  });
+  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
   // get pg data
   const datasetData = await getDatasetPgData({ id: dataId });
 
+  const isOwner = String(datasetData.tmbId) === tmbId;
+  // data has the same permissions as collection
   const { canWrite } = await authDatasetCollection({
-    req,
-    authToken,
-    collectionId: datasetData.collectionId,
-    per
+    ...props,
+    collectionId: datasetData.collectionId
   });
 
   return {
@@ -114,34 +61,27 @@ export async function authDatasetData({
     teamId,
     tmbId,
     datasetData,
+    isOwner,
     canWrite
   };
 }
 
-export async function authDatasetFile({
-  req,
-  authToken,
-  ...props
-}: AuthModeType & {
-  fileId: string;
-  per?: 'r' | 'w';
-}): Promise<
+export async function authDatasetFile(
+  props: AuthModeType & {
+    fileId: string;
+  }
+): Promise<
   AuthResponseType & {
     file: DatasetFileSchema;
   }
 > {
-  const { userId, tmbId } = await parseHeaderAuth({
-    req,
-    authToken
-  });
+  const { userId, tmbId } = await parseHeaderAuth(props);
 
   // get role
   const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
 
   return packageAuthDatasetFile({
-    req,
-    authToken,
-    role: team.role,
-    ...props
+    ...props,
+    role: team.role
   });
 }

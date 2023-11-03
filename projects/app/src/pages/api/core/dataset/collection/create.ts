@@ -8,17 +8,21 @@ import type { CreateDatasetCollectionParams } from '@/global/core/api/datasetReq
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collection/utils';
-import { authCreateDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { authUserNotVisitor } from '@/service/support/permission/auth/user';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const body = req.body as CreateDatasetCollectionParams;
 
-    const { teamId, tmbId } = await authCreateDatasetCollection({
+    // auth. not visitor and dataset is public
+    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
+    await authDataset({
       req,
       authToken: true,
-      datasetId: body.datasetId
+      datasetId: body.datasetId,
+      per: 'r'
     });
 
     jsonRes(res, {

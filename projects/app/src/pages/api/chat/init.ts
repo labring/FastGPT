@@ -4,7 +4,7 @@ import { Chat, ChatItem, connectToDatabase } from '@/service/mongo';
 import type { InitChatResponse } from '@/global/core/api/chatRes.d';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { ChatItemType } from '@/types/chat';
-import { authApp } from '@/service/utils/auth';
+import { authApp } from '@/service/support/permission/auth/app';
 import type { ChatSchema } from '@/types/mongoSchema';
 import { getGuideModule } from '@/global/core/app/modules/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
@@ -29,14 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 校验使用权限
-    const app = (
-      await authApp({
-        appId,
-        userId,
-        authUser: false,
-        authOwner: false
-      })
-    ).app;
+    const { app } = await authApp({
+      req,
+      appId,
+      per: 'r'
+    });
 
     // get app and history
     const { chat, history = [] }: { chat?: ChatSchema; history?: ChatItemType[] } =
@@ -72,12 +69,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return {};
       })();
 
-    if (!app) {
-      throw new Error('Auth App Error');
-    }
-
-    const isOwner = String(app.userId) === userId;
-
     jsonRes<InitChatResponse>(res, {
       data: {
         chatId,
@@ -87,8 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           chatModels: getChatModelNameListByModules(app.modules),
           name: app.name,
           avatar: app.avatar,
-          intro: app.intro,
-          canUse: app.share.isShare || isOwner
+          intro: app.intro
         },
         title: chat?.title || '新对话',
         variables: chat?.variables || {},

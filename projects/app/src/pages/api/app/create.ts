@@ -2,10 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import type { CreateAppParams } from '@/types/app';
+import type { CreateAppParams } from '@fastgpt/global/core/app/api.d';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { authUserNotVisitor } from '@/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -22,21 +22,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { teamId, team, tmbId } = await authUserNotVisitor({ req, authToken: true });
 
     // 上限校验
     const authCount = await MongoApp.countDocuments({
-      userId
+      teamId
     });
     if (authCount >= 50) {
-      throw new Error('上限 50 个应用');
+      throw new Error('每个团队上限 50 个应用');
     }
 
     // 创建模型
     const response = await MongoApp.create({
       avatar,
       name,
-      userId,
+      team,
+      tmbId,
       modules,
       type
     });

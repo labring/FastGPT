@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authApp } from '@/service/utils/auth';
+import { authApp } from '@/service/support/permission/auth/app';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { customAlphabet } from 'nanoid';
@@ -20,9 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
     await authApp({
+      req,
       appId,
-      userId,
-      authOwner: false
+      per: 'w'
     });
 
     const shareId = nanoid();

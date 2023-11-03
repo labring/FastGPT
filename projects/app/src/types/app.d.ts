@@ -16,28 +16,6 @@ import type { ChatSchema } from './mongoSchema';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';
 
-export type AppListItemType = {
-  _id: string;
-  name: string;
-  avatar: string;
-  intro: string;
-};
-
-export type CreateAppParams = {
-  name?: string;
-  avatar?: string;
-  type?: `${AppTypeEnum}`;
-  modules: AppSchema['modules'];
-};
-export interface AppUpdateParams {
-  name?: string;
-  type?: `${AppTypeEnum}`;
-  avatar?: string;
-  intro?: string;
-  share?: AppSchema['share'];
-  modules?: AppSchema['modules'];
-}
-
 export interface ShareAppItem {
   _id: string;
   avatar: string;

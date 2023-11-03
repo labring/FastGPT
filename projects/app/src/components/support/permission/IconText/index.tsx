@@ -9,12 +9,12 @@ const PermissionIconText = ({
   ...props
 }: { permission: `${PermissionTypeEnum}` } & FlexProps) => {
   const { t } = useTranslation();
-  return (
+  return PermissionTypeMap[permission] ? (
     <Flex alignItems={'center'} {...props}>
-      <MyIcon name={PermissionTypeMap[permission].iconLight as any} w={'14px'} />
-      <Box ml={'1px'}>{t(PermissionTypeMap[permission].label)}</Box>
+      <MyIcon name={PermissionTypeMap[permission]?.iconLight as any} w={'14px'} />
+      <Box ml={'1px'}>{t(PermissionTypeMap[permission]?.label)}</Box>
     </Flex>
-  );
+  ) : null;
 };
 
 export default PermissionIconText;

@@ -1,4 +1,4 @@
-import { AppSchema } from '@fastgpt/global/core/app/type.d';
+import { AppDetailType, AppSchema } from '@fastgpt/global/core/app/type.d';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import type {
   LLMModelItemType,
@@ -94,7 +94,7 @@ export const defaultVectorModels: VectorModelItemType[] = [
   }
 ];
 
-export const defaultApp: AppSchema = {
+export const defaultApp: AppDetailType = {
   _id: '',
   userId: 'userId',
   name: '模型加载中',
@@ -102,7 +102,12 @@ export const defaultApp: AppSchema = {
   avatar: '/icon/logo.svg',
   intro: '',
   updateTime: Date.now(),
-  modules: []
+  modules: [],
+  teamId: '',
+  tmbId: '',
+  permission: 'private',
+  isOwner: false,
+  canWrite: false
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {

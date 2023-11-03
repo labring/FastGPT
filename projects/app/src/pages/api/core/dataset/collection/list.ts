@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     searchText = searchText?.replace(/'/g, '');
 
     // auth dataset
-    const { tmbId, canWrite } = await authDataset({ req, authToken: true, datasetId });
+    const { tmbId, canWrite } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
 
     const match = {
       datasetId: new Types.ObjectId(datasetId),

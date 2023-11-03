@@ -3,8 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { Chat, connectToDatabase } from '@/service/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { authApp } from '@/service/utils/auth';
+import { authApp } from '@/service/support/permission/auth/app';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -17,13 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
-
-    // 验证是否是该用户的 app
-    await authApp({
-      appId,
-      userId
-    });
+    await authApp({ req, authToken: true, appId, per: 'owner' });
 
     // 删除对应的聊天
     await Chat.deleteMany({
@@ -37,8 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 删除模型
     await MongoApp.deleteOne({
-      _id: appId,
-      userId
+      _id: appId
     });
 
     jsonRes(res);

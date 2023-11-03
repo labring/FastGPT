@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
     const { parentId, type } = req.query as { parentId?: string; type?: `${DatasetTypeEnum}` };
     // 凭证校验
-    const { teamId, tmbId } = await authUser({ req, authToken: true });
+    const { teamId, tmbId } = await authUser({ req, authToken: true, per: 'r' });
 
     const datasets = await MongoDataset.find({
       ...mongoRPermission({ teamId, tmbId }),

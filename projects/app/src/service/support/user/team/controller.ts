@@ -75,7 +75,7 @@ export async function createDefaultTeam({
     console.log('default team exist', userId);
   }
 }
-export async function getDefaultTeamMember(userId: string) {
+export async function getDefaultTeamMember(userId: string): Promise<TeamItemType> {
   const db = connectionMongo.connection.db;
   const TeamMember = db.collection(TeamMemberCollectionName);
 

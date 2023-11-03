@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { datasetData } = await authDatasetData({ req, authToken: true, dataId });
+    const { datasetData } = await authDatasetData({ req, authToken: true, dataId, per: 'r' });
 
     jsonRes(res, {
       data: datasetData

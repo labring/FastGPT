@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
     // 凭证校验
-    const { teamId, tmbId } = await authUser({ req, authToken: true });
+    const { teamId, tmbId } = await authUser({ req, authToken: true, per: 'r' });
 
     const datasets = await MongoDataset.find({
       ...mongoRPermission({ teamId, tmbId }),

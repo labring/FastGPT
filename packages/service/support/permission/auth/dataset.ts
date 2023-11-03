@@ -1,6 +1,6 @@
 import { AuthModeType } from '../type';
 import { parseHeaderAuth } from '../controller';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/errorCode';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDataset } from '../../../core/dataset/schema';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -18,10 +18,9 @@ export async function authDataset({
   req,
   authToken,
   datasetId,
-  per = 'r'
+  per = 'owner'
 }: AuthModeType & {
   datasetId: string;
-  per?: 'r' | 'w';
 }): Promise<
   AuthResponseType & {
     dataset: DatasetSchemaType;
@@ -32,25 +31,29 @@ export async function authDataset({
     authToken
   });
 
-  const { dataset, canWrite } = await (async () => {
+  const { dataset, isOwner, canWrite } = await (async () => {
     const dataset = (await MongoDataset.findById(datasetId))?.toJSON();
 
     if (!dataset || String(dataset?.teamId) !== teamId) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);
     }
 
-    const isDatasetOwner = String(dataset.tmbId) === tmbId;
-    const canWrite = isDatasetOwner;
+    const isOwner = String(dataset.tmbId) === tmbId;
+    const canWrite = isOwner;
 
     if (per === 'r') {
-      if (!isDatasetOwner && dataset.permission !== PermissionTypeEnum.public) {
+      if (!isOwner && dataset.permission !== PermissionTypeEnum.public) {
         return Promise.reject(DatasetErrEnum.unAuthDataset);
       }
     }
     if (per === 'w' && !canWrite) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);
     }
-    return { dataset, canWrite };
+    if (per === 'owner' && !isOwner) {
+      return Promise.reject(DatasetErrEnum.unAuthDataset);
+    }
+
+    return { dataset, isOwner, canWrite };
   })();
 
   return {
@@ -58,6 +61,7 @@ export async function authDataset({
     teamId,
     tmbId,
     dataset,
+    isOwner,
     canWrite
   };
 }
@@ -71,11 +75,10 @@ export async function authDatasetCollection({
   authToken,
   collectionId,
   role,
-  per = 'r'
+  per = 'owner'
 }: AuthModeType & {
   collectionId: string;
   role: `${TeamMemberRoleEnum}`;
-  per?: 'r' | 'w';
 }): Promise<
   AuthResponseType & {
     collection: CollectionWithDatasetType;
@@ -86,31 +89,34 @@ export async function authDatasetCollection({
     authToken
   });
 
-  const { collection, canWrite } = await (async () => {
+  const { collection, isOwner, canWrite } = await (async () => {
     const collection = await getCollectionWithDataset(collectionId);
 
     if (!collection || String(collection.teamId) !== teamId) {
       return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
     }
 
-    const isDatasetOwner = String(collection.datasetId.tmbId) === tmbId;
+    const isOwner = String(collection.datasetId.tmbId) === tmbId;
     const canWrite =
-      isDatasetOwner ||
+      isOwner ||
       (role !== TeamMemberRoleEnum.visitor &&
         collection.datasetId.permission === PermissionTypeEnum.public);
 
     if (per === 'r') {
-      if (!isDatasetOwner && collection.datasetId.permission !== PermissionTypeEnum.public) {
+      if (!isOwner && collection.datasetId.permission !== PermissionTypeEnum.public) {
         return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
       }
     }
-    if (per === 'w') {
-      if (!canWrite) {
-        return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
-      }
+    if (per === 'w' && !canWrite) {
+      return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
     }
+    if (per === 'owner' && !isOwner) {
+      return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+    }
+
     return {
       collection,
+      isOwner,
       canWrite
     };
   })();
@@ -120,6 +126,7 @@ export async function authDatasetCollection({
     teamId,
     tmbId,
     collection,
+    isOwner,
     canWrite
   };
 }
@@ -129,11 +136,10 @@ export async function authDatasetFile({
   authToken,
   fileId,
   role,
-  per = 'r'
+  per = 'owner'
 }: AuthModeType & {
   fileId: string;
   role: `${TeamMemberRoleEnum}`;
-  per?: 'r' | 'w';
 }): Promise<
   AuthResponseType & {
     file: DatasetFileSchema;
@@ -156,17 +162,30 @@ export async function authDatasetFile({
     datasetId: file.metadata.datasetId,
     per
   });
-  const isDatasetOwner = String(dataset.tmbId) === tmbId;
+  const isOwner = String(dataset.tmbId) === tmbId;
 
   const canWrite =
-    isDatasetOwner ||
+    isOwner ||
     (role !== TeamMemberRoleEnum.visitor && dataset.permission === PermissionTypeEnum.public);
+
+  if (per === 'r') {
+    if (!isOwner && dataset.permission !== PermissionTypeEnum.public) {
+      return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+    }
+  }
+  if (per === 'w' && !canWrite) {
+    return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+  }
+  if (per === 'owner' && !isOwner) {
+    return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+  }
 
   return {
     userId,
     teamId,
     tmbId,
     file,
+    isOwner,
     canWrite
   };
 }

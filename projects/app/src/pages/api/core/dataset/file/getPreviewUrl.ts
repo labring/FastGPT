@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('fileId is empty');
     }
 
-    const { teamId, tmbId } = await authDatasetFile({ req, authToken: true, fileId });
+    const { teamId, tmbId } = await authDatasetFile({ req, authToken: true, fileId, per: 'r' });
 
     const token = await createFileToken({
       bucketName: BucketNameEnum.dataset,

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authApp } from '@/service/utils/auth';
+import { authApp } from '@/service/support/permission/auth/app';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
@@ -146,8 +146,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // auth app, get history
     const [{ app }, { history }] = await Promise.all([
       authApp({
+        req,
         appId,
-        userId
+        per: 'r'
       }),
       getChatHistory({ chatId, appId, userId })
     ]);

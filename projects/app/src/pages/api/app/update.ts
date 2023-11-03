@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import type { AppUpdateParams } from '@/types/app';
-import { authApp } from '@/service/utils/auth';
+import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
+import { authApp } from '@/service/support/permission/auth/app';
 import { SystemOutputEnum } from '@/constants/app';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, avatar, type, share, intro, modules } = req.body as AppUpdateParams;
+    const { name, avatar, type, intro, modules, permission } = req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
     if (!appId) {
@@ -19,28 +18,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
-
-    await authApp({
-      appId,
-      userId
-    });
+    await authApp({ req, authToken: true, appId, per: 'owner' });
 
     // 更新模型
     await MongoApp.updateOne(
       {
-        _id: appId,
-        userId
+        _id: appId
       },
       {
         name,
         type,
         avatar,
         intro,
-        ...(share && {
-          'share.isShare': share.isShare,
-          'share.isShareDetail': share.isShareDetail
-        }),
+        permission,
         ...(modules && {
           modules: modules.map((modules) => ({
             ...modules,

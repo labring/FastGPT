@@ -14,7 +14,7 @@ const PermissionRadio = ({
 
   return (
     <MyRadio
-      gridTemplateColumns={['repeat(1,1fr)', 'repeat(3,1fr)']}
+      gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
       list={[
         {
           icon: 'support/permission/privateLight',

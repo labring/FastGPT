@@ -31,6 +31,7 @@ import ChatHeader from './components/ChatHeader';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -54,7 +55,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     chatData,
     setChatData
   } = useChatStore();
-  const { myApps, loadMyApps, userInfo } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
+  const { userInfo } = useUserStore();
 
   const { isPc } = useSystemStore();
   const { Loading, setIsLoading } = useLoading();
