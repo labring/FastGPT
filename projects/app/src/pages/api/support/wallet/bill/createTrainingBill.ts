@@ -1,15 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoBill } from '@fastgpt/service/common/bill/schema';
+import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { BillSourceEnum } from '@fastgpt/global/common/bill/constants';
-import { CreateTrainingBillType } from '@fastgpt/global/common/bill/types/billReq.d';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { CreateTrainingBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { name } = req.body as CreateTrainingBillType;
+    const { name } = req.body as CreateTrainingBillProps;
 
     const { teamId, tmbId } = await authUser({ req, authToken: true, authApiKey: true });
 

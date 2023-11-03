@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { Types } from '@fastgpt/service/common/mongo';
-import { MongoBill } from '@fastgpt/service/common/bill/schema';
+import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

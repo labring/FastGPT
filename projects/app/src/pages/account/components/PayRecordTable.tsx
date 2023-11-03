@@ -11,11 +11,11 @@ import {
   Flex,
   Box
 } from '@chakra-ui/react';
-import { getPayOrders, checkPayResult } from '@/web/common/bill/api';
-import type { PaySchema } from '@fastgpt/global/support/wallet/type.d';
+import { getPayOrders, checkPayResult } from '@/web/support/wallet/pay/api';
+import type { PaySchema } from '@fastgpt/global/support/wallet/pay/type.d';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import MyIcon from '@/components/Icon';

@@ -11,9 +11,9 @@ import {
   Box,
   Button
 } from '@chakra-ui/react';
-import { BillSourceMap } from '@fastgpt/global/common/bill/constants';
-import { getUserBills } from '@/web/common/bill/api';
-import type { UserBillType } from '@/types/user';
+import { BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
+import { getUserBills } from '@/web/support/wallet/bill/api';
+import type { BillItemType } from '@fastgpt/global/support/wallet/bill/type';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
@@ -33,14 +33,14 @@ const BillTable = () => {
     to: new Date()
   });
   const { isPc } = useSystemStore();
-  const [billDetail, setBillDetail] = useState<UserBillType>();
+  const [billDetail, setBillDetail] = useState<BillItemType>();
 
   const {
     data: bills,
     isLoading,
     Pagination,
     getData
-  } = usePagination<UserBillType>({
+  } = usePagination<BillItemType>({
     api: getUserBills,
     pageSize: isPc ? 20 : 10,
     params: {

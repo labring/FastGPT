@@ -1,19 +1,19 @@
-import { BillSourceEnum } from '@fastgpt/global/common/bill/constants';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
 import { ChatHistoryItemResType } from '@/types/chat';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
-import type { ConcatBillProps, CreateBillType } from '@fastgpt/global/common/bill/type.d';
+import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
 import { defaultQGModels } from '@/constants/model';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 
-function createBill(data: CreateBillType) {
+function createBill(data: CreateBillProps) {
   if (!global.systemEnv.pluginBaseUrl) return;
-  POST('/common/bill/createBill', data);
+  POST('/support/wallet/bill/createBill', data);
 }
 async function concatBill(data: ConcatBillProps) {
   if (!global.systemEnv.pluginBaseUrl) return;
-  POST('/common/bill/concatBill', data);
+  POST('/support/wallet/bill/concatBill', data);
 }
 
 export const pushChatBill = ({

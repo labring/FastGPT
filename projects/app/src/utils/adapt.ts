@@ -1,6 +1,3 @@
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
-import { BillSchema } from '@fastgpt/global/common/bill/type.d';
-import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import { ChatRoleEnum } from '@/constants/chat';
@@ -11,17 +8,6 @@ import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
 import { EmptyModule, ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-
-export const adaptBill = (bill: BillSchema): UserBillType => {
-  return {
-    id: bill._id,
-    source: bill.source,
-    time: bill.time,
-    total: formatPrice(bill.total),
-    appName: bill.appName,
-    list: bill.list
-  };
-};
 
 export const gptMessage2ChatType = (messages: MessageItemType[]): ChatItemType[] => {
   const roleMap = {

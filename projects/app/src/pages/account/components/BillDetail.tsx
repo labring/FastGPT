@@ -11,14 +11,14 @@ import {
   Td,
   TableContainer
 } from '@chakra-ui/react';
-import { UserBillType } from '@/types/user';
+import { BillItemType } from '@fastgpt/global/support/wallet/bill/type.d';
 import dayjs from 'dayjs';
-import { BillSourceMap } from '@fastgpt/global/common/bill/constants';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 
-const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void }) => {
+const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void }) => {
   const { t } = useTranslation();
   const filterBillList = useMemo(
     () => bill.list.filter((item) => item && item.moduleName),

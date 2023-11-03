@@ -1,9 +1,7 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushQABill } from '@/service/common/bill/push';
+import { pushQABill } from '@/service/support/wallet/bill/push';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { sendInform } from '@/pages/api/user/inform/send';
-import { authBalanceByUid } from '@fastgpt/service/support/user/auth';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletionRequestMessage } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/mongo/controller';

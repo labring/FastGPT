@@ -5,7 +5,7 @@ import { sendInform } from '@/pages/api/user/inform/send';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '../common/bill/push';
+import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;

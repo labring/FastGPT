@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { pushGenerateVectorBill } from '@/service/common/bill/push';
+import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { connectToDatabase } from '@/service/mongo';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { getVectorsByText, GetVectorProps } from '@/service/core/ai/vector';

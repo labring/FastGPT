@@ -4,7 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 import { defaultApp } from '@/constants/model';
 import { AppListItemType, AppUpdateParams } from '@/types/app';

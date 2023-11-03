@@ -1,7 +1,7 @@
-import { connectionMongo, type Model } from '../mongo';
+import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { BillSchema as BillType } from '@fastgpt/global/common/bill/type.d';
-import { BillSourceMap } from '@fastgpt/global/common/bill/constants';
+import { BillSchema as BillType } from '@fastgpt/global/support/wallet/bill/type';
+import { BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName

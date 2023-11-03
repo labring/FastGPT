@@ -1,6 +1,6 @@
 import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { PaySchema as PayType } from '@fastgpt/global/support/wallet/type.d';
+import { PaySchema as PayType } from '@fastgpt/global/support/wallet/pay/type.d';
 
 const PaySchema = new Schema({
   userId: {

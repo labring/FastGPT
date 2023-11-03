@@ -7,7 +7,7 @@ import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { TaskResponseKeyEnum } from '@/constants/chat';
-import { countModelPrice } from '@/service/common/bill/push';
+import { countModelPrice } from '@/service/support/wallet/bill/push';
 import { ChatModelItemType } from '@/types/model';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';

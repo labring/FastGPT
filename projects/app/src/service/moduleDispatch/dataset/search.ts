@@ -2,7 +2,7 @@ import { PgClient } from '@/service/pg';
 import type { moduleDispatchResType } from '@/types/chat';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getVectorsByText } from '@/service/core/ai/vector';
-import { countModelPrice } from '@/service/common/bill/push';
+import { countModelPrice } from '@/service/support/wallet/bill/push';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import type {
   SearchDataResponseItemType,

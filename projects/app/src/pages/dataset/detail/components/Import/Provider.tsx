@@ -11,7 +11,7 @@ import React, {
 import FileSelect, { FileItemType, Props as FileSelectProps } from './FileSelect';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -21,7 +21,7 @@ import { CloseIcon } from '@chakra-ui/icons';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import MyIcon from '@/components/Icon';
 import { chunksUpload } from '@/web/core/dataset/utils';
-import { postCreateTrainingBill } from '@/web/common/bill/api';
+import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
 import { useTranslation } from 'react-i18next';
 import { ImportTypeEnum } from './ImportModal';
 

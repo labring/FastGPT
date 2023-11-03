@@ -39,12 +39,16 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       label: t('user.Personal Information'),
       id: TabEnum.info
     },
+    ...(feConfigs?.isPlus
+      ? [
+          {
+            icon: 'billRecordLight',
+            label: t('user.Usage Record'),
+            id: TabEnum.bill
+          }
+        ]
+      : []),
 
-    {
-      icon: 'billRecordLight',
-      label: t('user.Usage Record'),
-      id: TabEnum.bill
-    },
     ...(feConfigs?.show_promotion
       ? [
           {

@@ -36,7 +36,7 @@ import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/model';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/web/common/hooks/useToast';

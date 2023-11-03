@@ -16,7 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getPromotionInitData, getPromotionRecords } from '@/web/support/user/api';
+import { getPromotionInitData, getPromotionRecords } from '@/web/support/activity/promotion/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useLoading } from '@/web/common/hooks/useLoading';
 
@@ -42,7 +42,8 @@ const Promotion = () => {
     pageSize,
     Pagination
   } = usePagination<PromotionRecordType>({
-    api: getPromotionRecords
+    api: getPromotionRecords,
+    pageSize: 20
   });
 
   const { data: { invitedAmount = 0, earningsAmount = 0 } = {} } = useQuery(

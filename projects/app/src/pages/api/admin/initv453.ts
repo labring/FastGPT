@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoBill } from '@fastgpt/service/common/bill/schema';
+import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
 import { createDefaultTeam, getDefaultTeamMember } from '@/service/support/user/team/controller';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';

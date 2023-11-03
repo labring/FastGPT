@@ -13,7 +13,7 @@ import type {
 import { getPgDataWithCollection } from '@/service/core/dataset/data/controller';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '@/service/common/bill/push';
+import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

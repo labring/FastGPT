@@ -10,7 +10,7 @@ import {
   NumberDecrementStepper
 } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';

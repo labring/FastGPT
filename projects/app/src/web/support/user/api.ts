@@ -1,6 +1,6 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { ResLogin, PromotionRecordType } from '@/global/support/api/userRes.d';
+import type { ResLogin } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserUpdateParams } from '@/types/user';
 import { UserType } from '@fastgpt/global/support/user/type.d';
@@ -72,14 +72,3 @@ export const getInforms = (data: RequestPaging) =>
 
 export const getUnreadCount = () => GET<number>(`/user/inform/countUnread`);
 export const readInform = (id: string) => GET(`/user/inform/read`, { id });
-
-/* get promotion init data */
-export const getPromotionInitData = () =>
-  GET<{
-    invitedAmount: number;
-    earningsAmount: number;
-  }>('/user/promotion/getPromotionData');
-
-/* promotion records */
-export const getPromotionRecords = (data: RequestPaging) =>
-  POST<PromotionRecordType>(`/user/promotion/getPromotions`, data);

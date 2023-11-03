@@ -14,7 +14,7 @@ import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '@/service/common/bill/push';
+import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

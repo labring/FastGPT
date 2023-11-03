@@ -1,5 +1,5 @@
 import { startQueue } from './utils/tools';
-import { PRICE_SCALE } from '@fastgpt/global/common/bill/constants';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
 import { initPg } from './pg';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';

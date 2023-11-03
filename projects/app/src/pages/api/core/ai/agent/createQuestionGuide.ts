@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import type { CreateQuestionGuideParams } from '@/global/core/api/aiReq.d';
-import { pushQuestionGuideBill } from '@/service/common/bill/push';
+import { pushQuestionGuideBill } from '@/service/support/wallet/bill/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
