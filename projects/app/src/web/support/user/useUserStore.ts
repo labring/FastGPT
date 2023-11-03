@@ -43,12 +43,12 @@ export const useUserStore = create<State>()(
         async initUserInfo() {
           const res = await getTokenLogin();
           get().setUserInfo(res);
-          get().setLastTmbId(res.team?.teamMemberId);
+          get().setLastTmbId(res.team?.tmbId);
 
           return res;
         },
         setUserInfo(user: UserType | null) {
-          get().setLastTmbId(user?.team?.teamMemberId);
+          get().setLastTmbId(user?.team?.tmbId);
           set((state) => {
             state.userInfo = user
               ? {

@@ -1,80 +1,41 @@
-import { Bill } from '@/service/mongo';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { BillSourceEnum } from '@/constants/user';
+import { BillSourceEnum } from '@fastgpt/global/common/bill/constants';
 import { getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
-import type { CreateBillType } from '@/types/common/bill';
+import type { ConcatBillProps, CreateBillType } from '@fastgpt/global/common/bill/type.d';
 import { defaultQGModels } from '@/constants/model';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
 
-async function createBill(data: CreateBillType) {
-  try {
-    await Promise.all([
-      MongoUser.findByIdAndUpdate(data.userId, {
-        $inc: { balance: -data.total }
-      }),
-      Bill.create(data)
-    ]);
-  } catch (error) {
-    addLog.error(`createBill error`, error);
-  }
+function createBill(data: CreateBillType) {
+  if (!global.systemEnv.pluginBaseUrl) return;
+  POST('/common/bill/createBill', data);
 }
-async function concatBill({
-  billId,
-  total,
-  listIndex,
-  tokens = 0,
-  userId
-}: {
-  billId?: string;
-  total: number;
-  listIndex?: number;
-  tokens?: number;
-  userId: string;
-}) {
-  if (!billId) return;
-  try {
-    await Promise.all([
-      Bill.findOneAndUpdate(
-        {
-          _id: billId,
-          userId
-        },
-        {
-          $inc: {
-            total,
-            ...(listIndex !== undefined && {
-              [`list.${listIndex}.amount`]: total,
-              [`list.${listIndex}.tokenLen`]: tokens
-            })
-          }
-        }
-      ),
-      MongoUser.findByIdAndUpdate(userId, {
-        $inc: { balance: -total }
-      })
-    ]);
-  } catch (error) {}
+async function concatBill(data: ConcatBillProps) {
+  if (!global.systemEnv.pluginBaseUrl) return;
+  POST('/common/bill/concatBill', data);
 }
 
 export const pushChatBill = ({
   appName,
   appId,
-  userId,
+  teamId,
+  tmbId,
   source,
   response
 }: {
   appName: string;
   appId: string;
-  userId: string;
+  teamId: string;
+  tmbId: string;
   source: `${BillSourceEnum}`;
   response: ChatHistoryItemResType[];
 }) => {
   const total = response.reduce((sum, item) => sum + item.price, 0);
 
   createBill({
-    userId,
+    teamId,
+    tmbId,
     appName,
     appId,
     total,
@@ -88,31 +49,35 @@ export const pushChatBill = ({
   });
   addLog.info(`finish completions`, {
     source,
-    userId,
+    teamId,
+    tmbId,
     price: formatPrice(total)
   });
   return { total };
 };
 
 export const pushQABill = async ({
-  userId,
+  teamId,
+  tmbId,
   totalTokens,
   billId
 }: {
-  userId: string;
+  teamId: string;
+  tmbId: string;
   totalTokens: number;
   billId: string;
 }) => {
   addLog.info('splitData generate success', { totalTokens });
 
-  // 获取模型单价格, 都是用 gpt35 拆分
+  // 获取模型单价格
   const unitPrice = global.qaModels?.[0]?.price || 3;
   // 计算价格
   const total = unitPrice * totalTokens;
 
   concatBill({
     billId,
-    userId,
+    teamId,
+    tmbId,
     total,
     tokens: totalTokens,
     listIndex: 1
@@ -123,12 +88,14 @@ export const pushQABill = async ({
 
 export const pushGenerateVectorBill = async ({
   billId,
-  userId,
+  teamId,
+  tmbId,
   tokenLen,
   model
 }: {
   billId?: string;
-  userId: string;
+  teamId: string;
+  tmbId: string;
   tokenLen: number;
   model: string;
 }) => {
@@ -142,7 +109,8 @@ export const pushGenerateVectorBill = async ({
   // 插入 Bill 记录
   if (billId) {
     concatBill({
-      userId,
+      teamId,
+      tmbId,
       total,
       billId,
       tokens: tokenLen,
@@ -150,7 +118,8 @@ export const pushGenerateVectorBill = async ({
     });
   } else {
     createBill({
-      userId,
+      teamId,
+      tmbId,
       appName: '索引生成',
       total,
       source: BillSourceEnum.fastgpt,
@@ -181,11 +150,20 @@ export const countModelPrice = ({
   return modelData.price * tokens;
 };
 
-export const pushQuestionGuideBill = ({ tokens, userId }: { tokens: number; userId: string }) => {
+export const pushQuestionGuideBill = ({
+  tokens,
+  teamId,
+  tmbId
+}: {
+  tokens: number;
+  teamId: string;
+  tmbId: string;
+}) => {
   const qgModel = global.qgModels?.[0] || defaultQGModels[0];
   const total = qgModel.price * tokens;
   createBill({
-    userId,
+    teamId,
+    tmbId,
     appName: '下一步指引',
     total,
     source: BillSourceEnum.fastgpt,

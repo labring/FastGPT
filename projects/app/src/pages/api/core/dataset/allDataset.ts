@@ -4,25 +4,28 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { getVectorModel } from '@/service/core/ai/model';
-import type { DatasetsItemType } from '@/types/core/dataset';
+import type { DatasetItemType } from '@/types/core/dataset';
+import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { teamId, tmbId } = await authUser({ req, authToken: true });
 
     const datasets = await MongoDataset.find({
-      userId,
+      ...mongoRPermission({ teamId, tmbId }),
       type: 'dataset'
     });
 
     const data = datasets.map((item) => ({
       ...item.toJSON(),
-      vectorModel: getVectorModel(item.vectorModel)
+      tags: item.tags.join(' '),
+      vectorModel: getVectorModel(item.vectorModel),
+      isOwner: String(item.tmbId) === tmbId
     }));
 
-    jsonRes<DatasetsItemType[]>(res, {
+    jsonRes<DatasetItemType[]>(res, {
       data
     });
   } catch (err) {

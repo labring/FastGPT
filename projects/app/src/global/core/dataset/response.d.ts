@@ -7,12 +7,14 @@ import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d
 export type DatasetCollectionsListItemType = {
   _id: string;
   parentId?: string;
+  tmbId: string;
   name: string;
   type: DatasetCollectionSchemaType['type'];
   updateTime: Date;
   dataAmount?: number;
   trainingAmount: number;
   metadata: DatasetCollectionSchemaType['metadata'];
+  canWrite: boolean;
 };
 
 /* ================= data ===================== */

@@ -1,5 +1,5 @@
 import { formatPrice } from '@fastgpt/global/common/bill/tools';
-import type { BillSchema } from '@/types/common/bill';
+import { BillSchema } from '@fastgpt/global/common/bill/type.d';
 import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';

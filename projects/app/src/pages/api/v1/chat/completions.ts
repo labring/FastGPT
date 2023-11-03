@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@/service/utils/auth';
-import { authUser, AuthUserTypeEnum } from '@fastgpt/service/support/user/auth';
+import { authUser } from '@fastgpt/service/support/user/auth';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
@@ -32,7 +33,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { RunningModuleItemType } from '@/types/app';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { pushChatBill } from '@/service/common/bill/push';
-import { BillSourceEnum } from '@/constants/user';
+import { BillSourceEnum } from '@fastgpt/global/common/bill/constants';
 import { ChatHistoryItemResType } from '@/types/chat';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { SystemInputEnum, SystemOutputEnum } from '@/constants/app';

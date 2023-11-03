@@ -2,6 +2,11 @@ import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constant';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
+import { PermissionTypeEnum, PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -12,8 +17,18 @@ const DatasetSchema = new Schema({
     default: null
   },
   userId: {
+    //abandon
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: 'user'
+  },
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
     required: true
   },
   updateTime: {
@@ -41,7 +56,16 @@ const DatasetSchema = new Schema({
   },
   tags: {
     type: [String],
-    default: []
+    default: [],
+    set(val: string | string[]) {
+      if (Array.isArray(val)) return val;
+      return val.split(' ').filter((item) => item);
+    }
+  },
+  permission: {
+    type: String,
+    enum: Object.keys(PermissionTypeMap),
+    default: PermissionTypeEnum.private
   }
 });
 

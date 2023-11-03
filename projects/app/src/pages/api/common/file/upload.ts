@@ -2,10 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { GridFSStorage } from '@/service/lib/gridfs';
 import { customAlphabet } from 'nanoid';
 import multer from 'multer';
 import path from 'path';
+import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
 const nanoid = customAlphabet('1234567890abcdef', 12);
 
@@ -38,7 +39,11 @@ class UploadModel {
   }).any();
 
   async doUpload(req: NextApiRequest, res: NextApiResponse) {
-    return new Promise<{ files: FileType[]; metadata: Record<string, any> }>((resolve, reject) => {
+    return new Promise<{
+      files: FileType[];
+      bucketName: `${BucketNameEnum}`;
+      metadata: Record<string, any>;
+    }>((resolve, reject) => {
       // @ts-ignore
       this.uploader(req, res, (error) => {
         if (error) {
@@ -52,6 +57,7 @@ class UploadModel {
               ...file,
               originalname: decodeURIComponent(file.originalname)
             })) || [],
+          bucketName: req.body.bucketName,
           metadata: (() => {
             if (!req.body?.metadata) return {};
             try {
@@ -73,15 +79,16 @@ const upload = new UploadModel();
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId, teamId, tmbId } = await authUser({ req, authToken: true });
 
-    const { files, metadata } = await upload.doUpload(req, res);
-
-    const gridFs = new GridFSStorage('dataset', userId);
+    const { files, bucketName, metadata } = await upload.doUpload(req, res);
 
     const upLoadResults = await Promise.all(
       files.map((file) =>
-        gridFs.save({
+        uploadFile({
+          teamId,
+          tmbId,
+          bucketName,
           path: file.path,
           filename: file.originalname,
           metadata: {

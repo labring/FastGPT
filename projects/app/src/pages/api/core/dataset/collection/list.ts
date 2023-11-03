@@ -2,8 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
-
 import { Types } from '@fastgpt/service/common/mongo';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
@@ -12,6 +10,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { countCollectionData } from '@/service/core/dataset/data/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -28,11 +27,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     } = req.body as GetDatasetCollectionsProps;
     searchText = searchText?.replace(/'/g, '');
 
-    // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    // auth dataset
+    const { tmbId, canWrite } = await authDataset({ req, authToken: true, datasetId });
 
     const match = {
-      userId: new Types.ObjectId(userId),
       datasetId: new Types.ObjectId(datasetId),
       parentId: parentId ? new Types.ObjectId(parentId) : null,
       ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
@@ -43,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         : {})
     };
 
+    // not count data amount
     if (simple) {
       const collections = await MongoDatasetCollection.find(match, '_id name type parentId')
         .sort({
@@ -57,7 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             collections.map(async (item) => ({
               ...item,
               dataAmount: 0,
-              trainingAmount: 0
+              trainingAmount: 0,
+              canWrite: String(item.tmbId) === tmbId || canWrite
             }))
           ),
           total: await MongoDatasetCollection.countDocuments(match)
@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
     }
 
-    const collections = await MongoDatasetCollection.aggregate([
+    const collections: DatasetCollectionsListItemType[] = await MongoDatasetCollection.aggregate([
       {
         $match: match
       },
@@ -82,11 +82,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         $project: {
           _id: 1,
           parentId: 1,
-          fileId: 1,
+          tmbId: 1,
           name: 1,
           type: 1,
           updateTime: 1,
-          trainingAmount: { $size: '$trainings_amount' }
+          trainingAmount: { $size: '$trainings_amount' },
+          metadata: 1
         }
       },
       {
@@ -108,7 +109,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const data = await Promise.all(
       collections.map(async (item, i) => ({
         ...item,
-        dataAmount: item.type === DatasetCollectionTypeEnum.folder ? undefined : counts[i]
+        dataAmount: item.type === DatasetCollectionTypeEnum.folder ? undefined : counts[i],
+        canWrite: String(item.tmbId) === tmbId || canWrite
       }))
     );
 

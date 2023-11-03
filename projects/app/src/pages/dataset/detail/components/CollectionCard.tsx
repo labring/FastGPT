@@ -50,6 +50,8 @@ import { useDrag } from '@/web/common/hooks/useDrag';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useToast } from '@/web/common/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 
@@ -62,6 +64,7 @@ const CollectionCard = () => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { isPc } = useSystemStore();
+  const { userInfo } = useUserStore();
   const [searchText, setSearchText] = useState('');
   const { setLoading } = useSystemStore();
 
@@ -271,67 +274,69 @@ const CollectionCard = () => {
             />
           </Flex>
         )}
-        <MyMenu
-          offset={[-40, 10]}
-          width={120}
-          Button={
-            <MenuButton
-              _hover={{
-                color: 'myBlue.600'
-              }}
-              fontSize={['sm', 'md']}
-            >
-              <Flex
-                alignItems={'center'}
-                px={5}
-                py={2}
-                borderRadius={'md'}
-                cursor={'pointer'}
-                bg={'myBlue.600'}
-                overflow={'hidden'}
-                color={'white'}
-                h={['28px', '35px']}
+        {userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
+          <MyMenu
+            offset={[-40, 10]}
+            width={120}
+            Button={
+              <MenuButton
+                _hover={{
+                  color: 'myBlue.600'
+                }}
+                fontSize={['sm', 'md']}
               >
-                <MyIcon name={'importLight'} mr={2} w={'14px'} />
-                <Box>{t('dataset.collections.Create And Import')}</Box>
-              </Flex>
-            </MenuButton>
-          }
-          menuList={[
-            {
-              child: (
-                <Flex>
-                  <Image src={FolderAvatarSrc} alt={''} w={'20px'} mr={2} />
-                  {t('Folder')}
+                <Flex
+                  alignItems={'center'}
+                  px={5}
+                  py={2}
+                  borderRadius={'md'}
+                  cursor={'pointer'}
+                  bg={'myBlue.600'}
+                  overflow={'hidden'}
+                  color={'white'}
+                  h={['28px', '35px']}
+                >
+                  <MyIcon name={'importLight'} mr={2} w={'14px'} />
+                  <Box>{t('dataset.collections.Create And Import')}</Box>
                 </Flex>
-              ),
-              onClick: () => setEditFolderData({})
-            },
-            {
-              child: (
-                <Flex>
-                  <Image src={'/imgs/files/collection.svg'} alt={''} w={'20px'} mr={2} />
-                  {t('dataset.Create Virtual File')}
-                </Flex>
-              ),
-              onClick: () => {
-                onOpenCreateVirtualFileModal({
-                  defaultVal: '',
-                  onSuccess: (name) => onCreateVirtualFile({ name })
-                });
-              }
-            },
-            {
-              child: (
-                <Flex>
-                  <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
-                  {t('dataset.File Input')}
-                </Flex>
-              ),
-              onClick: onOpenFileImportModal
+              </MenuButton>
             }
-          ]}
-        />
+            menuList={[
+              {
+                child: (
+                  <Flex>
+                    <Image src={FolderAvatarSrc} alt={''} w={'20px'} mr={2} />
+                    {t('Folder')}
+                  </Flex>
+                ),
+                onClick: () => setEditFolderData({})
+              },
+              {
+                child: (
+                  <Flex>
+                    <Image src={'/imgs/files/collection.svg'} alt={''} w={'20px'} mr={2} />
+                    {t('dataset.Create Virtual File')}
+                  </Flex>
+                ),
+                onClick: () => {
+                  onOpenCreateVirtualFileModal({
+                    defaultVal: '',
+                    onSuccess: (name) => onCreateVirtualFile({ name })
+                  });
+                }
+              },
+              {
+                child: (
+                  <Flex>
+                    <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
+                    {t('dataset.File Input')}
+                  </Flex>
+                ),
+                onClick: onOpenFileImportModal
+              }
+            ]}
+          />
+        )}
       </Flex>
 
       <TableContainer mt={[0, 3]} position={'relative'} flex={'1 0 0'} overflowY={'auto'}>
@@ -436,85 +441,87 @@ const CollectionCard = () => {
                   </Flex>
                 </Td>
                 <Td onClick={(e) => e.stopPropagation()}>
-                  <MyMenu
-                    width={100}
-                    Button={
-                      <MenuButton
-                        w={'22px'}
-                        h={'22px'}
-                        borderRadius={'md'}
-                        _hover={{
-                          color: 'myBlue.600',
-                          '& .icon': {
-                            bg: 'myGray.100'
-                          }
-                        }}
-                      >
-                        <MyIcon
-                          className="icon"
-                          name={'more'}
-                          h={'16px'}
-                          w={'16px'}
-                          px={1}
-                          py={1}
+                  {collection.canWrite && userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
+                    <MyMenu
+                      width={100}
+                      Button={
+                        <MenuButton
+                          w={'22px'}
+                          h={'22px'}
                           borderRadius={'md'}
-                          cursor={'pointer'}
-                        />
-                      </MenuButton>
-                    }
-                    menuList={[
-                      {
-                        child: (
-                          <Flex alignItems={'center'}>
-                            <MyIcon name={'moveLight'} w={'14px'} mr={2} />
-                            {t('Move')}
-                          </Flex>
-                        ),
-                        onClick: () => setMoveCollectionData({ collectionId: collection._id })
-                      },
-                      {
-                        child: (
-                          <Flex alignItems={'center'}>
-                            <MyIcon name={'edit'} w={'14px'} mr={2} />
-                            {t('Rename')}
-                          </Flex>
-                        ),
-                        onClick: () =>
-                          onOpenEditTitleModal({
-                            defaultVal: collection.name,
-                            onSuccess: (newName) => {
-                              onUpdateCollectionName({
-                                collectionId: collection._id,
-                                name: newName
-                              });
+                          _hover={{
+                            color: 'myBlue.600',
+                            '& .icon': {
+                              bg: 'myGray.100'
                             }
-                          })
-                      },
-                      {
-                        child: (
-                          <Flex alignItems={'center'}>
-                            <MyIcon
-                              mr={1}
-                              name={'delete'}
-                              w={'14px'}
-                              _hover={{ color: 'red.600' }}
-                            />
-                            <Box>{t('common.Delete')}</Box>
-                          </Flex>
-                        ),
-                        onClick: () =>
-                          openConfirm(
-                            () => {
-                              onDelCollection(collection._id);
-                            },
-                            undefined,
-                            collection.type === DatasetCollectionTypeEnum.folder
-                              ? t('dataset.collections.Confirm to delete the folder')
-                              : t('dataset.Confirm to delete the file')
-                          )()
+                          }}
+                        >
+                          <MyIcon
+                            className="icon"
+                            name={'more'}
+                            h={'16px'}
+                            w={'16px'}
+                            px={1}
+                            py={1}
+                            borderRadius={'md'}
+                            cursor={'pointer'}
+                          />
+                        </MenuButton>
                       }
-                    ]}
-                  />
+                      menuList={[
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'moveLight'} w={'14px'} mr={2} />
+                              {t('Move')}
+                            </Flex>
+                          ),
+                          onClick: () => setMoveCollectionData({ collectionId: collection._id })
+                        },
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'edit'} w={'14px'} mr={2} />
+                              {t('Rename')}
+                            </Flex>
+                          ),
+                          onClick: () =>
+                            onOpenEditTitleModal({
+                              defaultVal: collection.name,
+                              onSuccess: (newName) => {
+                                onUpdateCollectionName({
+                                  collectionId: collection._id,
+                                  name: newName
+                                });
+                              }
+                            })
+                        },
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon
+                                mr={1}
+                                name={'delete'}
+                                w={'14px'}
+                                _hover={{ color: 'red.600' }}
+                              />
+                              <Box>{t('common.Delete')}</Box>
+                            </Flex>
+                          ),
+                          onClick: () =>
+                            openConfirm(
+                              () => {
+                                onDelCollection(collection._id);
+                              },
+                              undefined,
+                              collection.type === DatasetCollectionTypeEnum.folder
+                                ? t('dataset.collections.Confirm to delete the folder')
+                                : t('dataset.Confirm to delete the file')
+                            )()
+                        }
+                      ]}
+                    />
+                  )}
                 </Td>
               </Tr>
             ))}

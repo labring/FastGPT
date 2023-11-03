@@ -1,6 +1,6 @@
-import { BillSourceEnum } from '@/constants/user';
+import { BillSourceEnum } from '@fastgpt/global/common/bill/constants';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import type { BillSchema } from '@/types/common/bill';
+import { BillSchema } from '@fastgpt/global/common/bill/type.d';
 
 export interface UserUpdateParams {
   balance?: number;

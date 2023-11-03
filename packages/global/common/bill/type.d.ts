@@ -1,5 +1,4 @@
-import { BillSourceEnum } from '@/constants/user';
-import type { BillListItemType } from '@/types/common/bill';
+import { BillSourceEnum } from './constants';
 
 export type BillListItemType = {
   moduleName: string;
@@ -9,7 +8,8 @@ export type BillListItemType = {
 };
 
 export type CreateBillType = {
-  userId: string;
+  teamId: string;
+  tmbId: string;
   appName: string;
   appId?: string;
   total: number;
@@ -20,4 +20,13 @@ export type CreateBillType = {
 export type BillSchema = CreateBillType & {
   _id: string;
   time: Date;
+};
+
+export type ConcatBillProps = {
+  teamId: string;
+  tmbId: string;
+  billId?: string;
+  total: number;
+  listIndex?: number;
+  tokens?: number;
 };

@@ -2,7 +2,7 @@ import React, { useCallback, useState, useRef } from 'react';
 import { Box, Flex, Button, ModalHeader, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useRouter } from 'next/router';
@@ -27,7 +27,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
     defaultValues: {
       avatar: '/icon/logo.svg',
       name: '',
-      tags: [],
+      tags: '',
       vectorModel: vectorModelList[0].model,
       type: 'dataset',
       parentId
@@ -45,7 +45,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgAndUpload({
           file,
           maxW: 100,
           maxH: 100
@@ -135,13 +135,14 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             placeholder={'标签,使用空格分割。'}
             maxLength={30}
             onChange={(e) => {
-              setValue('tags', e.target.value.split(' '));
+              setValue('tags', e.target.value);
               setRefresh(!refresh);
             }}
           />
         </Flex>
         <Flex mt={2} flexWrap={'wrap'}>
           {getValues('tags')
+            .split(' ')
             .filter((item) => item)
             .map((item, i) => (
               <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>

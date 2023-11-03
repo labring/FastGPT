@@ -11,26 +11,35 @@ import {
 import { Types } from 'mongoose';
 
 export async function getTeamInfoByUIdAndTmbId(userId: string, tmbId = '') {
-  let team: TeamItemType | undefined = undefined;
-  try {
-    team = await GET<TeamItemType>(
+  if (global.systemEnv.pluginBaseUrl) {
+    return await GET<TeamItemType>(
       '/support/user/team/getTokenTeam',
       {},
       {
         headers: {
-          token: createJWT({ _id: userId, team: { teamMemberId: tmbId } })
+          token: createJWT({ _id: userId, team: { tmbId } })
         }
       }
     );
-  } catch (error) {}
-  return team;
+  } else {
+    return getDefaultTeamMember(userId);
+  }
+}
+export async function getTeamRole(userId: string, tmbId = '') {
+  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+  return {
+    role: team.role,
+    canWrite: team.canWrite
+  };
 }
 export async function createDefaultTeam({
   userId,
-  teamName = 'My Team'
+  teamName = 'My Team',
+  balance = 0
 }: {
   userId: string;
   teamName?: string;
+  balance?: number;
 }) {
   const db = connectionMongo.connection.db;
   const Team = db.collection(TeamCollectionName);
@@ -50,7 +59,7 @@ export async function createDefaultTeam({
       ownerId: userId,
       name: teamName,
       avatar: '/icon/logo.svg',
-      balance: 0,
+      balance,
       maxSize: 1,
       createTime: new Date()
     });
@@ -65,4 +74,45 @@ export async function createDefaultTeam({
   } else {
     console.log('default team exist', userId);
   }
+}
+export async function getDefaultTeamMember(userId: string) {
+  const db = connectionMongo.connection.db;
+  const TeamMember = db.collection(TeamMemberCollectionName);
+
+  const results = await TeamMember.aggregate([
+    {
+      $match: {
+        userId: new Types.ObjectId(userId),
+        defaultTeam: true
+      }
+    },
+    {
+      $lookup: {
+        from: TeamCollectionName, // 关联的集合名
+        localField: 'teamId', // TeamMember 集合中用于关联的字段
+        foreignField: '_id', // Team 集合中用于关联的字段
+        as: 'team' // 查询结果中的字段名，存放关联查询的结果
+      }
+    },
+    {
+      $unwind: '$team' // 将查询结果中的 team 字段展开，变成一个对象
+    }
+  ]).toArray();
+  const tmb = results[0];
+
+  if (!tmb) {
+    return Promise.reject('default team not exist');
+  }
+
+  return {
+    teamId: String(tmb.teamId),
+    teamName: tmb.team.name,
+    avatar: tmb.team.avatar,
+    balance: tmb.team.balance,
+    tmbId: String(tmb._id),
+    role: tmb.role,
+    status: tmb.status,
+    defaultTeam: tmb.defaultTeam,
+    canWrite: tmb.role !== TeamMemberRoleEnum.visitor
+  };
 }

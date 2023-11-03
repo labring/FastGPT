@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { GridFSStorage } from '@/service/lib/gridfs';
-import { authFileToken } from './readUrl';
+import { authFileToken } from '@fastgpt/service/support/permission/controller';
 import jschardet from 'jschardet';
+import { getDownloadBuf, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -11,17 +11,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { token } = req.query as { token: string };
 
-    const { fileId, userId } = await authFileToken(token);
+    const { fileId, teamId, tmbId, bucketName } = await authFileToken(token);
 
     if (!fileId) {
       throw new Error('fileId is empty');
     }
 
-    const gridFs = new GridFSStorage('dataset', userId);
-
     const [file, buffer] = await Promise.all([
-      gridFs.findAndAuthFile(fileId),
-      gridFs.download(fileId)
+      getFileById({ bucketName, fileId }),
+      getDownloadBuf({ bucketName, fileId })
     ]);
 
     const encoding = jschardet.detect(buffer)?.encoding;

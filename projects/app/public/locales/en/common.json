@@ -398,6 +398,14 @@
     "token auth Tips": "Identity verification server address. If this value is set, the server will be specified to send a request for identity verification before each session",
     "token auth use cases": "Review the authentication instructions"
   },
+  "permission": {
+    "Private": "Private",
+    "Private Tip": "Be used only to oneself",
+    "Public": "Public",
+    "Public Tip": "Available to all team members",
+    "Set Private": "Set Private",
+    "Set Public": "Set to public"
+  },
   "plugin": {
     "Confirm Delete": "Confirm to delete the plugin?",
     "Create Your Plugin": "Create Plugin",
@@ -437,6 +445,7 @@
     "OpenAI Account Setting": "OpenAI Account Setting",
     "Password": "Password",
     "Pay": "Pay",
+    "Permission": "Permission",
     "Personal Information": "Personal",
     "Promotion": "Promotion",
     "Promotion Rate": "Promotion Rate",

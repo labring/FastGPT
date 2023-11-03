@@ -5,6 +5,7 @@ import { PgClient } from '@/service/pg';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { connectToDatabase } from '@/service/mongo';
+import { authDatasetData } from '@/service/support/permission/auth/dataset';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -18,10 +19,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    await authDatasetData({ req, authToken: true, dataId, per: 'w' });
 
     await PgClient.delete(PgDatasetTableName, {
-      where: [['user_id', userId], 'AND', ['id', dataId]]
+      where: [['id', dataId]]
     });
 
     jsonRes(res);

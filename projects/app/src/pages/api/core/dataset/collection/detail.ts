@@ -4,8 +4,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -17,16 +17,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { collection, canWrite } = await authDatasetCollection({
+      req,
+      authToken: true,
+      collectionId: id
+    });
 
-    const collection = await MongoDatasetCollection.findOne({ _id: id, userId }).lean();
-
-    if (!collection) {
-      throw new Error('Collection not found');
-    }
-
-    jsonRes(res, {
-      data: collection
+    jsonRes<DatasetCollectionItemType>(res, {
+      data: {
+        ...collection,
+        datasetId: collection.datasetId._id,
+        canWrite
+      }
     });
   } catch (err) {
     jsonRes(res, {

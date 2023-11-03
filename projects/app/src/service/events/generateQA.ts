@@ -12,6 +12,7 @@ import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { pushDataToDatasetCollection } from '@/pages/api/core/dataset/data/pushData';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { authTeamBalance } from '../support/permission/auth/bill';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -21,44 +22,91 @@ export async function generateQA(): Promise<any> {
   if (global.qaQueueLen >= global.systemEnv.qaMaxProcess) return;
   global.qaQueueLen++;
 
-  let trainingId = '';
-  let userId = '';
+  // get training data
+  const {
+    data,
+    text,
+    done = false,
+    error = false
+  } = await (async () => {
+    try {
+      const data = (
+        await MongoDatasetTraining.findOneAndUpdate(
+          {
+            mode: TrainingModeEnum.qa,
+            lockTime: { $lte: new Date(Date.now() - 10 * 60 * 1000) }
+          },
+          {
+            lockTime: new Date()
+          }
+        ).select({
+          _id: 1,
+          userId: 1,
+          teamId: 1,
+          tmbId: 1,
+          datasetId: 1,
+          datasetCollectionId: 1,
+          q: 1,
+          model: 1,
+          billId: 1,
+          prompt: 1
+        })
+      )?.toJSON();
+
+      // task preemption
+      if (!data) {
+        return {
+          done: true
+        };
+      }
+      return {
+        data,
+        text: data.q
+      };
+    } catch (error) {
+      console.log(`Get Training Data error`, error);
+      return {
+        error: true
+      };
+    }
+  })();
+
+  if (done) {
+    reduceQueue();
+    global.vectorQueueLen <= 0 && console.log(`【索引】任务完成`);
+    return;
+  }
+  if (error || !data) {
+    reduceQueue();
+    return generateQA();
+  }
+
+  // auth balance
+  try {
+    await authTeamBalance(data.teamId);
+  } catch (error) {
+    // send inform and lock data
+    try {
+      sendInform({
+        type: 'system',
+        title: '索引生成任务中止',
+        content:
+          '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+        userId: data.userId
+      });
+      console.log('余额不足，暂停向量生成任务');
+      await MongoDatasetTraining.findById(data._id, {
+        lockTime: new Date('2999/5/5')
+      });
+    } catch (error) {}
+    reduceQueue();
+    return generateQA();
+  }
 
   try {
-    const data = await MongoDatasetTraining.findOneAndUpdate(
-      {
-        mode: TrainingModeEnum.qa,
-        lockTime: { $lte: new Date(Date.now() - 10 * 60 * 1000) }
-      },
-      {
-        lockTime: new Date()
-      }
-    ).select({
-      _id: 1,
-      userId: 1,
-      datasetCollectionId: 1,
-      q: 1,
-      model: 1,
-      prompt: 1,
-      billId: 1
-    });
-
-    // task preemption
-    if (!data) {
-      reduceQueue();
-      global.qaQueueLen <= 0 && console.log(`【QA】任务完成`);
-      return;
-    }
-
-    trainingId = data._id;
-    userId = String(data.userId);
-
-    await authBalanceByUid(userId);
-
     const startTime = Date.now();
 
     // request LLM to get QA
-    const text = data.q;
     const messages: ChatCompletionRequestMessage[] = [
       {
         role: 'user',
@@ -84,7 +132,8 @@ export async function generateQA(): Promise<any> {
 
     // get vector and insert
     await pushDataToDatasetCollection({
-      userId,
+      teamId: data.teamId,
+      tmbId: data.tmbId,
       collectionId: data.datasetCollectionId,
       data: qaArr,
       mode: TrainingModeEnum.index,
@@ -97,10 +146,11 @@ export async function generateQA(): Promise<any> {
     console.log(`split result length: `, qaArr.length);
     console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
 
-    // 计费
+    // add bill
     if (qaArr.length > 0) {
       pushQABill({
-        userId: data.userId,
+        teamId: data.teamId,
+        tmbId: data.tmbId,
         totalTokens,
         billId: data.billId
       });
@@ -114,36 +164,30 @@ export async function generateQA(): Promise<any> {
     reduceQueue();
     // log
     if (err?.response) {
-      console.log('openai error: 生成QA错误');
-      console.log(err.response?.status, err.response?.statusText, err.response?.data);
+      addLog.info('openai error: 生成QA错误', {
+        status: err.response?.status,
+        stateusText: err.response?.statusText,
+        data: err.response?.data
+      });
     } else {
       console.log(err);
       addLog.error(getErrText(err, '生成 QA 错误'));
     }
 
     // message error or openai account error
-    if (err?.message === 'invalid message format') {
-      await MongoDatasetTraining.findByIdAndRemove(trainingId);
-    }
-
-    // 账号余额不足，删除任务
-    if (userId && err === ERROR_ENUM.insufficientQuota) {
-      sendInform({
-        type: 'system',
-        title: 'QA 任务中止',
-        content:
-          '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-        userId
+    if (
+      err?.message === 'invalid message format' ||
+      err.response?.data?.error?.type === 'invalid_request_error' ||
+      err?.code === 500
+    ) {
+      addLog.info('invalid message format', {
+        text
       });
-      console.log('余额不足，暂停向量生成任务');
-      await MongoDatasetTraining.updateMany(
-        {
-          userId
-        },
-        {
-          lockTime: new Date('2999/5/5')
-        }
-      );
+      try {
+        await MongoDatasetTraining.findByIdAndUpdate(data._id, {
+          lockTime: new Date('2998/5/5')
+        });
+      } catch (error) {}
       return generateQA();
     }
 

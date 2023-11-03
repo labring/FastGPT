@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase, Bill } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoBill } from '@fastgpt/service/common/bill/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { BillSourceEnum } from '@/constants/user';
+import { BillSourceEnum } from '@fastgpt/global/common/bill/constants';
 import { CreateTrainingBillType } from '@fastgpt/global/common/bill/types/billReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,12 +11,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     const { name } = req.body as CreateTrainingBillType;
 
-    const { userId } = await authUser({ req, authToken: true, authApiKey: true });
+    const { teamId, tmbId } = await authUser({ req, authToken: true, authApiKey: true });
 
     const qaModel = global.qaModels[0];
 
-    const { _id } = await Bill.create({
-      userId,
+    const { _id } = await MongoBill.create({
+      teamId,
+      tmbId,
       appName: name,
       source: BillSourceEnum.training,
       list: [

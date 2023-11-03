@@ -7,7 +7,7 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { pushChatBill } from '@/service/common/bill/push';
-import { BillSourceEnum } from '@/constants/user';
+import { BillSourceEnum } from '@fastgpt/global/common/bill/constants';
 import { ChatItemType } from '@/types/chat';
 
 export type Props = {

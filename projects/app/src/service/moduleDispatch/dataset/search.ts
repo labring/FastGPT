@@ -1,7 +1,7 @@
 import { PgClient } from '@/service/pg';
 import type { moduleDispatchResType } from '@/types/chat';
 import { TaskResponseKeyEnum } from '@/constants/chat';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
+import { getVectorsByText } from '@/service/core/ai/vector';
 import { countModelPrice } from '@/service/common/bill/push';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import type {
@@ -11,7 +11,7 @@ import type {
 import { PgDatasetTableName } from '@/constants/plugin';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-import { getDatasetDataItemInfo } from '@/pages/api/core/dataset/data/getDataById';
+import { getPgDataWithCollection } from '@/service/core/dataset/data/controller';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   datasets: SelectedDatasetType;
@@ -28,6 +28,8 @@ export type KBSearchResponse = {
 
 export async function dispatchDatasetSearch(props: Record<string, any>): Promise<KBSearchResponse> {
   const {
+    teamId,
+    tmbId,
     user,
     inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
   } = props as DatasetSearchProps;
@@ -42,7 +44,8 @@ export async function dispatchDatasetSearch(props: Record<string, any>): Promise
 
   // get vector
   const vectorModel = datasets[0]?.vectorModel || global.vectorModels[0];
-  const { vectors, tokenLen } = await getVector({
+
+  const { vectors, tokenLen } = await getVectorsByText({
     model: vectorModel.model,
     input: [userChatInput]
   });
@@ -64,7 +67,7 @@ export async function dispatchDatasetSearch(props: Record<string, any>): Promise
   );
 
   const rows = results?.[2]?.rows as SearchDataResultItemType[];
-  const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
+  const collectionsData = await getPgDataWithCollection({ pgDataList: rows });
   const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
     ...item,
     score: rows[index].score

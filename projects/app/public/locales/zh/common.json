@@ -398,6 +398,14 @@
     "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会想指定服务器发送一个请求，进行身份校验",
     "token auth use cases": "查看身份验证使用说明"
   },
+  "permission": {
+    "Private": "私有",
+    "Private Tip": "仅自己可用",
+    "Public": "团队",
+    "Public Tip": "团队所有成员可使用",
+    "Set Private": "设为私有",
+    "Set Public": "设为团队可用"
+  },
   "plugin": {
     "Confirm Delete": "确认删除该插件？",
     "Create Your Plugin": "创建你的插件",
@@ -437,6 +445,7 @@
     "OpenAI Account Setting": "OpenAI 账号配置",
     "Password": "密码",
     "Pay": "充值",
+    "Permission": "使用权限",
     "Personal Information": "个人信息",
     "Promotion": "",
     "Promotion Rate": "返现比例",

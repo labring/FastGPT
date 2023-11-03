@@ -12,6 +12,8 @@ export type ModuleDispatchProps<T> = {
   detail: boolean;
   variables: Record<string, any>;
   outputs: RunningModuleItemType['outputs'];
+  teamId: string;
+  tmbId: string;
   user: UserModelSchema;
   inputs: T;
 };

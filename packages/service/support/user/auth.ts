@@ -1,18 +1,8 @@
-import type { NextApiRequest } from 'next';
-import Cookie from 'cookie';
-import { authOpenApiKey } from '../openapi/auth';
-import { authOutLinkId } from '../outLink/auth';
 import { MongoUser } from './schema';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { authJWT } from '../permission/controller';
-
-export enum AuthUserTypeEnum {
-  token = 'token',
-  root = 'root',
-  apikey = 'apikey',
-  outLink = 'outLink'
-}
+import { parseHeaderAuth } from '../permission/controller';
+import { AuthModeType } from '../permission/type';
 
 /* auth balance */
 export const authBalanceByUid = async (uid: string) => {
@@ -32,140 +22,12 @@ export const authBalanceByUid = async (uid: string) => {
 
 /* uniform auth user */
 export const authUser = async ({
-  req,
-  authToken = false,
-  authRoot = false,
-  authApiKey = false,
-  authOutLink,
-  authBalance = false
-}: {
-  req: NextApiRequest;
-  authToken?: boolean;
-  authRoot?: boolean;
-  authApiKey?: boolean;
-  authOutLink?: boolean;
+  authBalance = false,
+  ...props
+}: AuthModeType & {
   authBalance?: boolean;
 }) => {
-  const authCookieToken = async (cookie?: string, token?: string) => {
-    // 获取 cookie
-    const cookies = Cookie.parse(cookie || '');
-    const cookieToken = cookies.token || token;
+  const result = await parseHeaderAuth(props);
 
-    if (!cookieToken) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-
-    return await authJWT(cookieToken);
-  };
-  // from authorization get apikey
-  const parseAuthorization = async (authorization?: string) => {
-    if (!authorization) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-
-    // Bearer fastgpt-xxxx-appId
-    const auth = authorization.split(' ')[1];
-    if (!auth) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-
-    const { apikey, appId: authorizationAppid = '' } = await (async () => {
-      const arr = auth.split('-');
-      // abandon
-      if (arr.length === 3) {
-        return {
-          apikey: `${arr[0]}-${arr[1]}`,
-          appId: arr[2]
-        };
-      }
-      if (arr.length === 2) {
-        return {
-          apikey: auth
-        };
-      }
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    })();
-
-    // auth apikey
-    const { userId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
-
-    return {
-      uid: userId,
-      apikey,
-      appId: apiKeyAppId || authorizationAppid
-    };
-  };
-  // root user
-  const parseRootKey = async (rootKey?: string, userId = '') => {
-    if (!rootKey || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    }
-    return userId;
-  };
-
-  const { cookie, token, apikey, rootkey, userid, authorization } = (req.headers || {}) as {
-    cookie?: string;
-    token?: string;
-    apikey?: string; // abandon
-    rootkey?: string;
-    userid?: string;
-    authorization?: string;
-  };
-  const { shareId } = (req?.body || {}) as { shareId?: string };
-
-  let uid = '';
-  let tmbId = '';
-  let appId = '';
-  let openApiKey = apikey;
-  let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
-
-  if (authOutLink && shareId) {
-    const res = await authOutLinkId({ id: shareId });
-    uid = res.userId;
-    authType = AuthUserTypeEnum.outLink;
-  } else if (authToken && (cookie || token)) {
-    // user token(from fastgpt web)
-    const res = await authCookieToken(cookie, token);
-    uid = res.userId;
-    tmbId = res.tmbId;
-    authType = AuthUserTypeEnum.token;
-  } else if (authRoot && rootkey) {
-    // root user
-    uid = await parseRootKey(rootkey, userid);
-    authType = AuthUserTypeEnum.root;
-  } else if (authApiKey && apikey) {
-    // apikey
-    const parseResult = await authOpenApiKey({ apikey });
-    uid = parseResult.userId;
-    authType = AuthUserTypeEnum.apikey;
-    openApiKey = parseResult.apikey;
-  } else if (authApiKey && authorization) {
-    // apikey from authorization
-    const authResponse = await parseAuthorization(authorization);
-    uid = authResponse.uid;
-    appId = authResponse.appId;
-    openApiKey = authResponse.apikey;
-    authType = AuthUserTypeEnum.apikey;
-  }
-
-  // not rootUser and no uid, reject request
-  if (!rootkey && !uid) {
-    return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
-
-  // balance check
-  const user = await (() => {
-    if (authBalance) {
-      return authBalanceByUid(uid);
-    }
-  })();
-
-  return {
-    userId: String(uid),
-    tmbId: String(tmbId),
-    appId,
-    authType,
-    user,
-    apikey: openApiKey
-  };
+  return result;
 };

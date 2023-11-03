@@ -27,24 +27,81 @@ export enum ERROR_ENUM {
   insufficientQuota = 'insufficientQuota',
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
-  unAuthDataset = 'unAuthDataset',
-  unAuthDatasetCollection = 'unAuthDatasetCollection',
-  unAuthFile = 'unAuthFile',
-  unAuthTeam = 'unAuthTeam'
+  unAuthFile = 'unAuthFile'
 }
 
-/* 500000 */
-export enum TeamErrEnum {
-  teamOverSize = 'teamOverSize'
-}
-export const TeamError = {
-  [TeamErrEnum.teamOverSize]: {
-    code: 500000,
-    statusText: TeamErrEnum.teamOverSize,
-    message: 'error.team.overSize',
-    data: null
+type ErrType<T> = Record<
+  string,
+  {
+    code: number;
+    statusText: T;
+    message: string;
+    data: null;
   }
-};
+>;
+
+/* team: 500000 */
+export enum TeamErrEnum {
+  teamOverSize = 'teamOverSize',
+  unAuthTeam = 'unAuthTeam'
+}
+const teamErr = [
+  { statusText: TeamErrEnum.teamOverSize, message: 'error.team.overSize' },
+  { statusText: TeamErrEnum.unAuthTeam, message: '无权操作该团队' }
+];
+export const TeamError = teamErr.reduce((acc, cur, index) => {
+  return {
+    ...acc,
+    [cur.statusText]: {
+      code: 500000 + index,
+      statusText: cur.statusText,
+      message: cur.message,
+      data: null
+    }
+  };
+}, {} as ErrType<`${TeamErrEnum}`>);
+
+/* dataset: 501000 */
+export enum DatasetErrEnum {
+  unAuthDataset = 'unAuthDataset',
+  unCreateCollection = 'unCreateCollection',
+  unAuthDatasetCollection = 'unAuthDatasetCollection',
+  unAuthDatasetData = 'unAuthDatasetData',
+  unAuthDatasetFile = 'unAuthDatasetFile'
+}
+const datasetErr = [
+  {
+    statusText: DatasetErrEnum.unAuthDataset,
+    message: '无权操作该知识库'
+  },
+  {
+    statusText: DatasetErrEnum.unAuthDatasetCollection,
+    message: '无权操作该数据集'
+  },
+  {
+    statusText: DatasetErrEnum.unAuthDatasetData,
+    message: '无权操作该数据'
+  },
+  {
+    statusText: DatasetErrEnum.unAuthDatasetFile,
+    message: '无权操作该文件'
+  },
+  {
+    statusText: DatasetErrEnum.unCreateCollection,
+    message: '无权创建数据集'
+  }
+];
+export const datasetErrMap = datasetErr.reduce((acc, cur, index) => {
+  return {
+    ...acc,
+    [cur.statusText]: {
+      code: 501000 + index,
+      statusText: cur.statusText,
+      message: cur.message,
+      data: null
+    }
+  };
+}, {} as ErrType<`${DatasetErrEnum}`>);
 
 export const ERROR_RESPONSE: Record<
   any,
@@ -70,15 +127,10 @@ export const ERROR_RESPONSE: Record<
   [ERROR_ENUM.unAuthModel]: {
     code: 511,
     statusText: ERROR_ENUM.unAuthModel,
-    message: '无权使用该模型',
+    message: '无权操作该模型',
     data: null
   },
-  [ERROR_ENUM.unAuthDataset]: {
-    code: 512,
-    statusText: ERROR_ENUM.unAuthDataset,
-    message: '无权使用该知识库',
-    data: null
-  },
+
   [ERROR_ENUM.unAuthFile]: {
     code: 513,
     statusText: ERROR_ENUM.unAuthFile,
@@ -91,17 +143,6 @@ export const ERROR_RESPONSE: Record<
     message: 'Api Key 不合法',
     data: null
   },
-  [ERROR_ENUM.unAuthDatasetCollection]: {
-    code: 515,
-    statusText: ERROR_ENUM.unAuthDatasetCollection,
-    message: '无权使用该知识库文件',
-    data: null
-  },
-  [ERROR_ENUM.unAuthTeam]: {
-    code: 516,
-    statusText: ERROR_ENUM.unAuthTeam,
-    message: '无权使用操作团队',
-    data: null
-  },
+  ...datasetErrMap,
   ...TeamError
 };

@@ -1,12 +1,25 @@
-import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
+import { connectionMongo, type Model } from '../mongo';
 const { Schema, model, models } = connectionMongo;
-import { BillSchema as BillType } from '@/types/common/bill';
-import { BillSourceMap } from '@/constants/user';
+import { BillSchema as BillType } from '@fastgpt/global/common/bill/type.d';
+import { BillSourceMap } from '@fastgpt/global/common/bill/constants';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 const BillSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: 'user'
+  },
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
     required: true
   },
   appName: {
@@ -44,4 +57,4 @@ try {
   console.log(error);
 }
 
-export const Bill: Model<BillType> = models['bill'] || model('bill', BillSchema);
+export const MongoBill: Model<BillType> = models['bill'] || model('bill', BillSchema);

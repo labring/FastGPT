@@ -20,7 +20,7 @@ import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgAndUpload } from '@/web/common/file/controller';
 import { feConfigs, systemVersion } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@fastgpt/global/common/time/timezone';
@@ -97,7 +97,7 @@ const UserInfo = () => {
       const file = e[0];
       if (!file || !userInfo) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgAndUpload({
           file,
           maxW: 100,
           maxH: 100

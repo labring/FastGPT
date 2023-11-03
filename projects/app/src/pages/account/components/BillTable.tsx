@@ -11,7 +11,7 @@ import {
   Box,
   Button
 } from '@chakra-ui/react';
-import { BillSourceMap } from '@/constants/user';
+import { BillSourceMap } from '@fastgpt/global/common/bill/constants';
 import { getUserBills } from '@/web/common/bill/api';
 import type { UserBillType } from '@/types/user';
 import { usePagination } from '@/web/common/hooks/usePagination';

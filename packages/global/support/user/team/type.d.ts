@@ -26,15 +26,16 @@ export type TeamItemType = {
   teamName: string;
   avatar: string;
   balance: number;
-  teamMemberId: string;
+  tmbId: string;
   defaultTeam: boolean;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
+  canWrite: boolean;
 };
 
 export type TeamMemberItemType = {
   userId: string;
-  teamMemberId: string;
+  tmbId: string;
   teamId: string;
   memberUsername: string;
   avatar: string;

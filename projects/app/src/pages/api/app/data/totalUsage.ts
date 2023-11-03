@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase, Bill } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { Types } from '@fastgpt/service/common/mongo';
+import { MongoBill } from '@fastgpt/service/common/bill/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -10,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { appId, start, end } = req.body as { appId: string; start: number; end: number };
     const { userId } = await authUser({ req, authToken: true });
 
-    const result = await Bill.aggregate([
+    const result = await MongoBill.aggregate([
       {
         $match: {
           appId: new Types.ObjectId(appId),

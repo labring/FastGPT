@@ -129,19 +129,19 @@ const Provider = ({
       let totalInsertion = 0;
       for await (const file of files) {
         const chunks = file.chunks;
+        // create training bill
+        const billId = await postCreateTrainingBill({
+          name: t('dataset.collections.Create Training Data', { filename: file.filename })
+        });
         // create a file collection and training bill
-        const [collectionId, billId] = await Promise.all([
-          postDatasetCollection({
-            datasetId,
-            parentId,
-            name: file.filename,
-            type: file.type,
-            metadata: file.metadata
-          }),
-          postCreateTrainingBill({
-            name: t('dataset.collections.Create Training Data', { filename: file.filename })
-          })
-        ]);
+        const collectionId = await postDatasetCollection({
+          datasetId,
+          parentId,
+          name: file.filename,
+          type: file.type,
+          metadata: file.metadata
+        });
+
         // upload data
         const { insertLen } = await chunksUpload({
           collectionId,

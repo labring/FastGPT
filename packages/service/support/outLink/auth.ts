@@ -1,7 +1,8 @@
-import { AuthUserTypeEnum, authBalanceByUid } from '../user/auth';
+import { authBalanceByUid } from '../user/auth';
 import { MongoOutLink } from './schema';
 import { POST } from '../../common/api/plusRequest';
 import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 export type AuthLinkProps = { ip?: string | null; authToken?: string; question: string };
 export type AuthLinkLimitProps = AuthLinkProps & { outLink: OutLinkSchema };

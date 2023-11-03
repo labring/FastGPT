@@ -88,7 +88,7 @@ const UpdateInviteModal = () => {
                 openConfirm(
                   () =>
                     onAccept({
-                      tmbId: item.teamMemberId,
+                      tmbId: item.tmbId,
                       status: TeamMemberStatusEnum.active
                     }),
                   undefined,
@@ -108,7 +108,7 @@ const UpdateInviteModal = () => {
                 openConfirm(
                   () =>
                     onReject({
-                      tmbId: item.teamMemberId,
+                      tmbId: item.tmbId,
                       status: TeamMemberStatusEnum.reject
                     }),
                   undefined,

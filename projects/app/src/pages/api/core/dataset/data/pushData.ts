@@ -3,8 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { authCollection } from '@fastgpt/service/core/dataset/auth';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
@@ -13,6 +11,8 @@ import { countPromptTokens } from '@/global/common/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDataProps } from '@/global/core/api/datasetReq.d';
 import { getVectorModel } from '@/service/core/ai/model';
+import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 
 const modeMap = {
   [TrainingModeEnum.index]: true,
@@ -37,12 +37,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true, authApiKey: true });
+    const { teamId, tmbId } = await authDatasetCollection({
+      req,
+      authToken: true,
+      authApiKey: true,
+      collectionId,
+      per: 'w'
+    });
 
     jsonRes<PushDataResponse>(res, {
       data: await pushDataToDatasetCollection({
         ...req.body,
-        userId
+        teamId,
+        tmbId
       })
     });
   } catch (err) {
@@ -54,20 +61,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 });
 
 export async function pushDataToDatasetCollection({
-  userId,
+  teamId,
+  tmbId,
   collectionId,
   data,
   mode,
   prompt,
   billId
-}: { userId: string } & PushDataProps): Promise<PushDataResponse> {
-  // auth dataset & get training model
+}: { teamId: string; tmbId: string } & PushDataProps): Promise<PushDataResponse> {
+  // get vector model
   const {
-    dataset: { _id: datasetId, vectorModel }
-  } = await authCollection({
-    userId,
-    collectionId
-  });
+    datasetId: { _id: datasetId, vectorModel }
+  } = await getCollectionWithDataset(collectionId);
+
   const vectorModelData = getVectorModel(vectorModel);
 
   const modeMap = {
@@ -119,7 +125,8 @@ export async function pushDataToDatasetCollection({
   // 插入记录
   const insertRes = await MongoDatasetTraining.insertMany(
     filterResult.success.map((item) => ({
-      userId,
+      teamId,
+      tmbId,
       datasetId,
       datasetCollectionId: collectionId,
       billId,

@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import { AppSchema } from '@/types/mongoSchema';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -97,7 +97,7 @@ const InfoModal = ({
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgAndUpload({
           file,
           maxW: 100,
           maxH: 100

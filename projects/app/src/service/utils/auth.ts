@@ -35,15 +35,3 @@ export const authApp = async ({
     showModelDetail: userId === String(app.userId)
   };
 };
-
-// 知识库操作权限
-export const authDataset = async ({ datasetId, userId }: { datasetId: string; userId: string }) => {
-  const dataset = await MongoDataset.findOne({
-    _id: datasetId,
-    userId
-  });
-  if (dataset) {
-    return dataset;
-  }
-  return Promise.reject(ERROR_ENUM.unAuthDataset);
-};

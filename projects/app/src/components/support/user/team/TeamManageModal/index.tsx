@@ -331,7 +331,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                     onClick: () => {
                                       onUpdateMember({
                                         teamId: item.teamId,
-                                        memberId: item.teamMemberId,
+                                        memberId: item.tmbId,
                                         role: TeamMemberRoleEnum.visitor
                                       });
                                     }
@@ -342,7 +342,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                     onClick: () => {
                                       onUpdateMember({
                                         teamId: item.teamId,
-                                        memberId: item.teamMemberId,
+                                        memberId: item.tmbId,
                                         role: TeamMemberRoleEnum.member
                                       });
                                     }
@@ -354,7 +354,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                           onClick: () => {
                                             onUpdateMember({
                                               teamId: item.teamId,
-                                              memberId: item.teamMemberId,
+                                              memberId: item.tmbId,
                                               status: TeamMemberStatusEnum.waiting
                                             });
                                           }
@@ -368,7 +368,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                         () =>
                                           onRemoveMember({
                                             teamId: item.teamId,
-                                            memberId: item.teamMemberId
+                                            memberId: item.tmbId
                                           }),
                                         undefined,
                                         t('user.team.Remove Member Confirm Tip', {

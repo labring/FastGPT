@@ -101,7 +101,9 @@ const iconPaths = {
   'core/chat/QGFill': () => import('./icons/core/chat/QGFill.svg'),
   'common/tickFill': () => import('./icons/common/tickFill.svg'),
   'common/inviteLight': () => import('./icons/common/inviteLight.svg'),
-  'support/team/memberLight': () => import('./icons/support/team/memberLight.svg')
+  'support/team/memberLight': () => import('./icons/support/team/memberLight.svg'),
+  'support/permission/privateLight': () => import('./icons/support/permission/privateLight.svg'),
+  'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

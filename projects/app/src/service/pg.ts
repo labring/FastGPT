@@ -189,7 +189,8 @@ export async function initPg() {
       CREATE TABLE IF NOT EXISTS ${PgDatasetTableName} (
           id BIGSERIAL PRIMARY KEY,
           vector VECTOR(1536) NOT NULL,
-          user_id VARCHAR(50) NOT NULL,
+          team_id VARCHAR(50) NOT NULL,
+          tmb_id VARCHAR(50) NOT NULL,
           dataset_id VARCHAR(50) NOT NULL,
           collection_id VARCHAR(50) NOT NULL,
           q TEXT NOT NULL,

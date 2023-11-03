@@ -12,11 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { name, tags, avatar, vectorModel, parentId, type } = req.body as CreateDatasetParams;
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { teamId, tmbId } = await authUser({ req, authToken: true });
 
     const { _id } = await MongoDataset.create({
       name,
-      userId,
+      teamId,
+      tmbId,
       tags,
       vectorModel,
       avatar,
@@ -26,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await createDefaultCollection({
       datasetId: _id,
-      userId
+      teamId,
+      tmbId
     });
 
     jsonRes(res, { data: _id });
