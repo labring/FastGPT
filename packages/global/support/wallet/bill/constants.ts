@@ -1,3 +1,4 @@
+// ￥1 = 100000
 export const PRICE_SCALE = 100000;
 
 export enum BillSourceEnum {

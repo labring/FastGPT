@@ -48,16 +48,15 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           }
         ]
       : []),
-
-    ...(feConfigs?.show_promotion
-      ? [
-          {
-            icon: 'promotionLight',
-            label: t('user.Promotion Record'),
-            id: TabEnum.promotion
-          }
-        ]
-      : []),
+    // ...(feConfigs?.show_promotion
+    //   ? [
+    //       {
+    //         icon: 'promotionLight',
+    //         label: t('user.Promotion Record'),
+    //         id: TabEnum.promotion
+    //       }
+    //     ]
+    //   : []),
     ...(feConfigs?.show_pay
       ? [
           {

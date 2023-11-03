@@ -1,17 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  useDisclosure,
-  useTheme,
-  Divider,
-  Select,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem
-} from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, useTheme, Divider, Select } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -31,6 +19,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { getLangStore, LangEnum, langMap, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'), {
@@ -220,7 +209,7 @@ const UserInfo = () => {
           <Flex alignItems={'center'}>
             <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
             <Box flex={1}>
-              <strong>{userInfo?.balance.toFixed(3)}</strong> 元
+              <strong>{formatPrice(userInfo?.team?.balance).toFixed(3)}</strong> 元
             </Box>
             {feConfigs?.show_pay && (
               <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>

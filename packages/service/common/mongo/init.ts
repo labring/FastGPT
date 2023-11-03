@@ -73,4 +73,8 @@ function initLogger() {
       })
     ]
   });
+  global.logger.on('error', (err) => {
+    console.log(err);
+    global.mongodb = undefined;
+  });
 }
