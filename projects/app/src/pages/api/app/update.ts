@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { App } from '@/service/models/app';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@/types/app';
 import { authApp } from '@/service/utils/auth';
 import { SystemOutputEnum } from '@/constants/app';
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 更新模型
-    await App.updateOne(
+    await MongoApp.updateOne(
       {
         _id: appId,
         userId

@@ -5,11 +5,11 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant
 import { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/module/node/type';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import type { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { AppTypeEnum } from '@/constants/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';

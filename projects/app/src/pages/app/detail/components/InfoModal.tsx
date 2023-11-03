@@ -10,7 +10,7 @@ import {
   ModalBody
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgAndUpload } from '@/web/common/file/controller';
@@ -54,8 +54,7 @@ const InfoModal = ({
       await updateAppDetail(data._id, {
         name: data.name,
         avatar: data.avatar,
-        intro: data.intro,
-        share: data.share
+        intro: data.intro
       });
     },
     onSuccess() {

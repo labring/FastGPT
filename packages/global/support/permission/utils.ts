@@ -1,5 +1,4 @@
 import { PermissionTypeEnum } from './constant';
-import { ERROR_ENUM } from 'common/error/errorCode';
 
 export function mongoRPermission({ teamId, tmbId }: { teamId: string; tmbId: string }) {
   return {

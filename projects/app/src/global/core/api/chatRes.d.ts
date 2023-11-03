@@ -1,4 +1,4 @@
-import type { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import type { ChatItemType } from '@/types/chat';
 import { VariableItemType } from '@/types/app';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';

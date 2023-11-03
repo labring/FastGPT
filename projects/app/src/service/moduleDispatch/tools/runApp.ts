@@ -2,7 +2,7 @@ import { moduleDispatchResType, ChatItemType } from '@/types/chat';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
-import { App } from '@/service/mongo';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
@@ -33,7 +33,7 @@ export const dispatchAppRequest = async (props: Record<string, any>): Promise<Re
     return Promise.reject('Input is empty');
   }
 
-  const appData = await App.findOne({
+  const appData = await MongoApp.findOne({
     _id: app.id,
     userId: user._id
   });

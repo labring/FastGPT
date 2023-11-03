@@ -67,4 +67,3 @@ async function initRootUser() {
 
 export * from './models/chat';
 export * from './models/chatItem';
-export * from './models/app';

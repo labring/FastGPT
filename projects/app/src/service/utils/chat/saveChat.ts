@@ -1,5 +1,6 @@
 import { ChatItemType } from '@/types/chat';
-import { Chat, App, ChatItem } from '@/service/mongo';
+import { Chat, ChatItem } from '@/service/mongo';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { ChatSourceEnum } from '@/constants/chat';
 
 type Props = {
@@ -70,7 +71,7 @@ export async function saveChat({
 
     if (isOwner && source === ChatSourceEnum.online) {
       promise.push(
-        App.findByIdAndUpdate(appId, {
+        MongoApp.findByIdAndUpdate(appId, {
           updateTime: new Date()
         })
       );

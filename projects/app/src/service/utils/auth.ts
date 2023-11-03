@@ -1,6 +1,5 @@
-import { App } from '../mongo';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import type { AppSchema } from '@/types/mongoSchema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 // 模型使用权校验
@@ -16,7 +15,7 @@ export const authApp = async ({
   authOwner?: boolean;
 }) => {
   // 获取 app 数据
-  const app = await App.findById<AppSchema>(appId);
+  const app = await MongoApp.findById<AppSchema>(appId);
   if (!app) {
     return Promise.reject('App is not exists');
   }

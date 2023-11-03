@@ -6,7 +6,6 @@ import { getVectorModel } from '@/service/core/ai/model';
 import type { DatasetItemType } from '@/types/core/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

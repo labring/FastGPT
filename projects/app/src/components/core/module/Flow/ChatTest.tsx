@@ -1,5 +1,5 @@
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import React, {
   useMemo,
   useCallback,

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase, App } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { AppListItemType } from '@/types/app';
 
@@ -11,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     // 根据 userId 获取模型信息
-    const myApps = await App.find(
+    const myApps = await MongoApp.find(
       {
         userId
       },

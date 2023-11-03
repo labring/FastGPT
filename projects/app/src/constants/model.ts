@@ -1,4 +1,4 @@
-import type { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import type {
   LLMModelItemType,
@@ -102,11 +102,6 @@ export const defaultApp: AppSchema = {
   avatar: '/icon/logo.svg',
   intro: '',
   updateTime: Date.now(),
-  share: {
-    isShare: false,
-    isShareDetail: false,
-    collection: 0
-  },
   modules: []
 };
 

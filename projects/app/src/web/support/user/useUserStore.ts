@@ -9,7 +9,7 @@ import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 import { defaultApp } from '@/constants/model';
 import { AppListItemType, AppUpdateParams } from '@/types/app';
 
-import type { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 
 type State = {
   lastTmbId: string;

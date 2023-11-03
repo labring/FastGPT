@@ -21,6 +21,7 @@ import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@/constants/plugin';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -29,8 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // await initDefaultTeam(limit);
     // await initMongoTeamId(limit);
-    // await initDataset();
-    await initCollectionFileTeam(limit);
+    await initDatasetAndApp();
+    // await initCollectionFileTeam(limit);
     // await initPgData();
 
     jsonRes(res, {
@@ -78,6 +79,10 @@ async function initDefaultTeam(limit: number) {
 }
 async function initMongoTeamId(limit: number) {
   const mongoSchema = [
+    {
+      label: 'MongoApp',
+      schema: MongoApp
+    }
     // {
     //   label: 'MongoDataset',
     //   schema: MongoDataset
@@ -94,14 +99,14 @@ async function initMongoTeamId(limit: number) {
     //   label: 'MongoBill',
     //   schema: MongoBill
     // },
-    {
-      label: 'MongoOutLink',
-      schema: MongoOutLink
-    },
-    {
-      label: 'MongoOpenApi',
-      schema: MongoOpenApi
-    }
+    // {
+    //   label: 'MongoOutLink',
+    //   schema: MongoOutLink
+    // },
+    // {
+    //   label: 'MongoOpenApi',
+    //   schema: MongoOpenApi
+    // }
   ];
   /* init user default Team */
   const users = await MongoUser.find({}, '_id');
@@ -151,8 +156,16 @@ async function initMongoTeamId(limit: number) {
     }
   }
 }
-async function initDataset() {
-  await MongoDataset.updateMany(
+async function initDatasetAndApp() {
+  // await MongoDataset.updateMany(
+  //   {},
+  //   {
+  //     $set: {
+  //       permission: PermissionTypeEnum.private
+  //     }
+  //   }
+  // );
+  await MongoApp.updateMany(
     {},
     {
       $set: {

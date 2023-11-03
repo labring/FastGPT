@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { Chat, App, connectToDatabase } from '@/service/mongo';
+import { Chat, connectToDatabase } from '@/service/mongo';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { authApp } from '@/service/utils/auth';
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 删除模型
-    await App.deleteOne({
+    await MongoApp.deleteOne({
       _id: appId,
       userId
     });

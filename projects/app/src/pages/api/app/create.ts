@@ -3,9 +3,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { App } from '@/service/models/app';
 import type { CreateAppParams } from '@/types/app';
-import { AppTypeEnum } from '@/constants/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { userId } = await authUser({ req, authToken: true });
 
     // 上限校验
-    const authCount = await App.countDocuments({
+    const authCount = await MongoApp.countDocuments({
       userId
     });
     if (authCount >= 50) {
@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 创建模型
-    const response = await App.create({
+    const response = await MongoApp.create({
       avatar,
       name,
       userId,

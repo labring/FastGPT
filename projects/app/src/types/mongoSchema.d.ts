@@ -3,39 +3,8 @@ import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/mo
 import type { DataType } from './data';
 import { InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
-import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { ChatSourceEnum } from '@/constants/chat';
-import { AppTypeEnum } from '@/constants/app';
 import { MarkDataType } from '@/global/core/dataset/type';
-
-export interface AuthCodeSchema {
-  _id: string;
-  username: string;
-  code: string;
-  type: 'register' | 'findPassword';
-  expiredTime: number;
-}
-
-export interface AppSchema {
-  _id: string;
-  userId: string;
-  name: string;
-  type: `${AppTypeEnum}`;
-  avatar: string;
-  intro: string;
-  updateTime: number;
-  share: {
-    isShare: boolean;
-    isShareDetail: boolean;
-    collection: number;
-  };
-  modules: ModuleItemType[];
-}
-
-export interface CollectionSchema {
-  appId: string;
-  userId: string;
-}
 
 export interface ChatSchema {
   _id: string;

@@ -2,17 +2,18 @@ import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from '@fastgpt/global/core/modu
 import { XYPosition } from 'reactflow';
 import {
   AppModuleItemTypeEnum,
-  AppTypeEnum,
   ModulesInputItemTypeEnum,
   VariableInputEnum
 } from '../constants/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
   FlowNodeOutputTargetItemType
 } from '@fastgpt/global/core/module/node/type.d';
 import type { FlowModuleTemplateType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import type { AppSchema, ChatSchema } from './mongoSchema';
+import type { ChatSchema } from './mongoSchema';
+import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';
 
 export type AppListItemType = {

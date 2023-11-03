@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import type { AppListItemType, AppUpdateParams } from '@/types/app';
 import { RequestPaging } from '@/types/index';
 import { addDays } from 'date-fns';

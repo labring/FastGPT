@@ -45,7 +45,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
 import { useToast } from '@/web/common/hooks/useToast';
-import { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'react-i18next';
 import { getGuideModule } from '@/global/core/app/modules/utils';
@@ -59,7 +59,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 
 import { addVariable } from '@/components/core/module/VariableEditModal';
 import { KbParamsModal } from '@/components/core/module/DatasetSelectModal';
-import { AppTypeEnum } from '@/constants/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));

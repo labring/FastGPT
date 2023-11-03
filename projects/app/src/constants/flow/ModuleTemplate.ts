@@ -1,4 +1,5 @@
-import { AppTypeEnum, SystemInputEnum } from '../app';
+import { SystemInputEnum } from '../app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { TaskResponseKeyEnum } from '../chat';
 import {
   FlowNodeTypeEnum,
