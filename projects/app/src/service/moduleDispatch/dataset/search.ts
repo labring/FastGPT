@@ -1,6 +1,6 @@
 import { PgClient } from '@/service/pg';
-import type { moduleDispatchResType } from '@/types/chat';
-import { TaskResponseKeyEnum } from '@/constants/chat';
+import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { getVectorsByText } from '@/service/core/ai/vector';
 import { countModelPrice } from '@/service/support/wallet/bill/push';
 import type { SelectedDatasetType } from '@/types/core/dataset';
@@ -8,7 +8,7 @@ import type {
   SearchDataResponseItemType,
   SearchDataResultItemType
 } from '@fastgpt/global/core/dataset/type';
-import { PgDatasetTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { getPgDataWithCollection } from '@/service/core/dataset/data/controller';

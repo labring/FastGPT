@@ -1,4 +1,4 @@
-import { PgDatasetTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { getVectorsByText } from '@/service/core/ai/vector';
 import { PgClient } from '@/service/pg';
 import { delay } from '@/utils/tools';

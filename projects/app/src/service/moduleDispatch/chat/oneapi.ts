@@ -1,12 +1,12 @@
 import type { NextApiResponse } from 'next';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { ChatItemType, moduleDispatchResType } from '@/types/chat';
-import { ChatRoleEnum } from '@/constants/chat';
+import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
-import { TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { countModelPrice } from '@/service/support/wallet/bill/push';
 import { ChatModelItemType } from '@/types/model';
 import { postTextCensor } from '@/service/common/censor';

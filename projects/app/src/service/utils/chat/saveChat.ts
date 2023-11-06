@@ -1,7 +1,9 @@
-import { ChatItemType } from '@/types/chat';
-import { Chat, ChatItem } from '@/service/mongo';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { ChatSourceEnum } from '@/constants/chat';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { addLog } from '@fastgpt/service/common/mongo/controller';
 
 type Props = {
   chatId: string;
@@ -25,7 +27,7 @@ export async function saveChat({
   content
 }: Props) {
   try {
-    const chatHistory = await Chat.findOne(
+    const chatHistory = await MongoChat.findOne(
       {
         chatId,
         userId,
@@ -35,7 +37,7 @@ export async function saveChat({
     );
 
     const promise: any[] = [
-      ChatItem.insertMany(
+      MongoChatItem.insertMany(
         content.map((item) => ({
           chatId,
           userId,
@@ -47,7 +49,7 @@ export async function saveChat({
 
     if (chatHistory) {
       promise.push(
-        Chat.updateOne(
+        MongoChat.updateOne(
           { chatId, userId, appId },
           {
             title: content[0].value.slice(0, 20),
@@ -57,7 +59,7 @@ export async function saveChat({
       );
     } else {
       promise.push(
-        Chat.create({
+        MongoChat.create({
           chatId,
           userId,
           appId,
@@ -79,16 +81,6 @@ export async function saveChat({
 
     await Promise.all(promise);
   } catch (error) {
-    Chat.updateOne(
-      { chatId, userId },
-      {
-        $push: {
-          content: {
-            $each: [],
-            $slice: -10
-          }
-        }
-      }
-    );
+    addLog.error(`update chat history error`, error);
   }
 }

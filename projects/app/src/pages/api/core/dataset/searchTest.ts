@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { getVectorsByText } from '@/service/core/ai/vector';
-import { PgDatasetTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type { SearchTestProps } from '@/global/core/api/datasetReq.d';
 import { connectToDatabase } from '@/service/mongo';
 import type {

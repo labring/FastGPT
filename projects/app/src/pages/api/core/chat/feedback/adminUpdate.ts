@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase, ChatItem } from '@/service/mongo';
-import type { AdminUpdateFeedbackParams } from '@/global/core/api/chatReq.d';
+import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
+import type { AdminUpdateFeedbackParams } from '@fastgpt/global/core/chat/api.d';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -16,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { userId } = await authUser({ req, authToken: true });
 
-    await ChatItem.findOneAndUpdate(
+    await MongoChatItem.findOneAndUpdate(
       {
         userId,
         dataId: chatItemId

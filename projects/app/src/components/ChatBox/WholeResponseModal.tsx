@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
-import type { ChatHistoryItemResType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { useTranslation } from 'react-i18next';
 import { ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
 import Tabs from '../Tabs';

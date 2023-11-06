@@ -64,6 +64,3 @@ async function initRootUser() {
     exit(1);
   }
 }
-
-export * from './models/chat';
-export * from './models/chatItem';

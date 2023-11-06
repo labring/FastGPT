@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { PgClient } from '@/service/pg';
-import { PgDatasetTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { delDatasetFiles } from '@fastgpt/service/core/dataset/file/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';

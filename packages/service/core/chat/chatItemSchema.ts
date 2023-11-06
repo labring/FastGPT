@@ -1,9 +1,13 @@
-import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
+import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { ChatItemSchema as ChatItemType } from '@/types/mongoSchema';
-import { ChatRoleMap, TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleMap, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 const ChatItemSchema = new Schema({
   dataId: {
@@ -17,7 +21,16 @@ const ChatItemSchema = new Schema({
   },
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: 'user'
+  },
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
     required: true
   },
   appId: {
@@ -66,5 +79,5 @@ try {
   console.log(error);
 }
 
-export const ChatItem: Model<ChatItemType> =
+export const MongoChatItem: Model<ChatItemType> =
   models['chatItem'] || model('chatItem', ChatItemSchema);

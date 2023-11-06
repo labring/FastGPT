@@ -10,12 +10,9 @@ import React, {
 } from 'react';
 import Script from 'next/script';
 import { throttle } from 'lodash';
-import {
-  ChatHistoryItemResType,
-  ChatItemType,
-  ChatSiteItemType,
-  ExportChatType
-} from '@/types/chat';
+import type { ExportChatType } from '@/types/chat.d';
+import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -43,7 +40,7 @@ import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
 import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';

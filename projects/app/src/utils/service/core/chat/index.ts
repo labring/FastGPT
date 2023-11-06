@@ -1,4 +1,4 @@
-import { ChatHistoryItemResType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 
 export function selectShareResponse({ responseData }: { responseData: ChatHistoryItemResType[] }) {
   const filedList = [

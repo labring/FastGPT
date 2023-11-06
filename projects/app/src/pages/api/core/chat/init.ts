@@ -1,14 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { Chat, ChatItem, connectToDatabase } from '@/service/mongo';
-import type { InitChatResponse } from '@/global/core/api/chatRes.d';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import type { InitChatResponse } from '@fastgpt/global/core/chat/api.d';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { ChatItemType } from '@/types/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { authApp } from '@/service/support/permission/auth/app';
-import type { ChatSchema } from '@/types/mongoSchema';
+import type { ChatSchema } from '@fastgpt/global/core/chat/type.d';
 import { getGuideModule } from '@/global/core/app/modules/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
-import { TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (chatId) {
           // auth chatId
           const [chat, history] = await Promise.all([
-            Chat.findOne(
+            MongoChat.findOne(
               {
                 chatId,
                 userId,
@@ -49,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               },
               'title variables'
             ),
-            ChatItem.find(
+            MongoChatItem.find(
               {
                 chatId,
                 userId,

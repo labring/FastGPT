@@ -8,7 +8,7 @@ import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { ChatItemType } from '@/types/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 
 export type Props = {
   history: ChatItemType[];

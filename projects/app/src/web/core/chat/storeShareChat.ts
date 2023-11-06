@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-
-import type { ChatSiteItemType, ShareChatHistoryItemType, ShareChatType } from '@/types/chat';
-import { HUMAN_ICON } from '@/constants/chat';
+import type {
+  ShareChatHistoryItemType,
+  ShareChatType
+} from '@fastgpt/global/support/outLink/api.d';
+import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
+import { HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
 
 type State = {
   shareChatData: ShareChatType;

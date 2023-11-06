@@ -13,6 +13,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   tags: '',
   permission: 'private',
   isOwner: false,
+  canWrite: false,
   vectorModel: {
     model: 'text-embedding-ada-002',
     name: 'Embedding-2',

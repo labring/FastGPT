@@ -1,6 +1,6 @@
-import { ChatItemType } from '@/types/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
-import { ChatRoleEnum } from '@/constants/chat';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { MessageItemType } from '@/types/core/chat/type';
 import type { ModuleItemType, FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { Edge, Node } from 'reactflow';

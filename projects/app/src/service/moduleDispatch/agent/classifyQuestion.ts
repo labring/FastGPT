@@ -1,9 +1,9 @@
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { moduleDispatchResType, ChatItemType } from '@/types/chat';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ClassifyQuestionAgentItemType } from '@/types/app';
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
 import { SystemInputEnum } from '@/constants/app';
 import { FlowNodeSpecialInputKeyEnum } from '@fastgpt/global/core/module/node/constant';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';

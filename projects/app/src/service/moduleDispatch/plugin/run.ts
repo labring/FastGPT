@@ -5,8 +5,8 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
 import { getOnePluginDetail } from '@fastgpt/service/core/plugin/controller';
-import { TaskResponseKeyEnum } from '@/constants/chat';
-import { moduleDispatchResType } from '@/types/chat';
+import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 
 type RunPluginProps = ModuleDispatchProps<{
   [FlowNodeSpecialInputKeyEnum.pluginId]: string;

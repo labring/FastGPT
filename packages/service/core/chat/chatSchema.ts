@@ -1,8 +1,13 @@
-import { connectionMongo, type Model } from '@fastgpt/service/common/mongo';
+import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { ChatSchema as ChatType } from '@/types/mongoSchema';
-import { ChatRoleMap, TaskResponseKeyEnum } from '@/constants/chat';
-import { ChatSourceMap } from '@/constants/chat';
+import { ChatSchema as ChatType } from '@fastgpt/global/core/chat/type.d';
+import {
+  ChatRoleMap,
+  ChatSourceMap,
+  TaskResponseKeyEnum
+} from '@fastgpt/global/core/chat/constants';
+
+export const chatCollectionName = 'chat';
 
 const ChatSchema = new Schema({
   chatId: {
@@ -80,4 +85,5 @@ try {
   console.log(error);
 }
 
-export const Chat: Model<ChatType> = models['chat'] || model('chat', ChatSchema);
+export const MongoChat: Model<ChatType> =
+  models[chatCollectionName] || model(chatCollectionName, ChatSchema);

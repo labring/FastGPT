@@ -1,5 +1,5 @@
-import type { ChatItemType } from '@/types/chat';
-import { ChatRoleEnum } from '@/constants/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import type { MessageItemType } from '@/types/core/chat/type';
 

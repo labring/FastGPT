@@ -1,10 +1,10 @@
-import { moduleDispatchResType, ChatItemType } from '@/types/chat';
+import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 

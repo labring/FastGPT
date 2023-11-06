@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { Chat, connectToDatabase } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import type { PagingData } from '@/types';
 import { AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     const [data, total] = await Promise.all([
-      Chat.aggregate([
+      MongoChat.aggregate([
         { $match: where },
         {
           $lookup: {
@@ -94,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
       ]),
-      Chat.countDocuments(where)
+      MongoChat.countDocuments(where)
     ]);
 
     jsonRes<PagingData<AppLogsListItemType>>(res, {

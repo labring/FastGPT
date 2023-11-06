@@ -72,6 +72,9 @@ importers:
       mongoose:
         specifier: ^7.0.2
         version: registry.npmmirror.com/mongoose@7.6.3
+      nanoid:
+        specifier: ^4.0.1
+        version: registry.npmmirror.com/nanoid@4.0.2
       next:
         specifier: 13.5.2
         version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.2)(react-dom@18.2.0)(react@18.2.0)(sass@1.69.4)

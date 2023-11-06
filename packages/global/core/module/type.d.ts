@@ -1,4 +1,4 @@
-import { FlowNodeTypeEnum } from './node/constant';
+import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from './node/constant';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
@@ -41,4 +41,15 @@ export type SelectAppItemType = {
   id: string;
   name: string;
   logo: string;
+};
+
+/* agent */
+export type ClassifyQuestionAgentItemType = {
+  value: string;
+  key: string;
+};
+export type ContextExtractAgentItemType = {
+  desc: string;
+  key: string;
+  required: boolean;
 };

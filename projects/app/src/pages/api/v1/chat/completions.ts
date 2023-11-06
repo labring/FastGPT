@@ -5,7 +5,11 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { ChatRoleEnum, ChatSourceEnum } from '@/constants/chat';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  TaskResponseKeyEnum
+} from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import {
   dispatchHistory,
@@ -27,14 +31,13 @@ import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { TaskResponseKeyEnum } from '@/constants/chat';
 import { initModuleType } from '@/constants/flow';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { RunningModuleItemType } from '@/types/app';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { ChatHistoryItemResType } from '@/types/chat';
+import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { SystemInputEnum, SystemOutputEnum } from '@/constants/app';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';

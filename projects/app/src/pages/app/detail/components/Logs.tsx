@@ -18,7 +18,7 @@ import { useTranslation } from 'next-i18next';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api';
 import dayjs from 'dayjs';
-import { ChatSourceMap, HUMAN_ICON } from '@/constants/chat';
+import { ChatSourceMap, HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
 import { AppLogsListItemType } from '@/types/app';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';

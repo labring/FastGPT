@@ -1,4 +1,4 @@
-import { PgDatasetTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { PgClient } from '@/service/pg';
 
 /**

@@ -2,9 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { ChatItem, connectToDatabase } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { ChatItemType } from '@/types/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 
 export type Props = {
   appId?: string;
@@ -44,7 +45,7 @@ export async function getChatHistory({
     return { history: [] };
   }
 
-  const history = await ChatItem.aggregate([
+  const history = await MongoChatItem.aggregate([
     {
       $match: {
         chatId,

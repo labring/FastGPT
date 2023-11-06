@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authUser } from '@fastgpt/service/support/user/auth';
 import { PgClient } from '@/service/pg';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { PgDatasetTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { connectToDatabase } from '@/service/mongo';
 import { authDatasetData } from '@/service/support/permission/auth/dataset';
 

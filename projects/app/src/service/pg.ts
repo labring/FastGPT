@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
-import { PgDatasetTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { DatasetSpecialIdEnum } from '@fastgpt/global/core/dataset/constant';
 
 export const connectPg = async (): Promise<Pool> => {

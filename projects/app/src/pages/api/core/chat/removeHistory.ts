@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase, Chat, ChatItem } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import { ChatSourceEnum } from '@/constants/chat';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 type Props = {
   chatId?: string;
@@ -18,18 +20,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (chatId) {
       await Promise.all([
-        Chat.findOneAndRemove({
+        MongoChat.findOneAndRemove({
           chatId,
           userId
         }),
-        ChatItem.deleteMany({
+        MongoChatItem.deleteMany({
           userId,
           chatId
         })
       ]);
     }
     if (appId) {
-      const chats = await Chat.find({
+      const chats = await MongoChat.find({
         appId,
         userId,
         source: ChatSourceEnum.online
@@ -37,10 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const chatIds = chats.map((chat) => chat._id);
 
       await Promise.all([
-        Chat.deleteMany({
+        MongoChat.deleteMany({
           _id: { $in: chatIds }
         }),
-        ChatItem.deleteMany({
+        MongoChatItem.deleteMany({
           chatId: { $in: chatIds }
         })
       ]);

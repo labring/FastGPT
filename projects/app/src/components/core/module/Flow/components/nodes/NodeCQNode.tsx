@@ -6,7 +6,7 @@ import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
-import type { ClassifyQuestionAgentItemType } from '@/types/app';
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';

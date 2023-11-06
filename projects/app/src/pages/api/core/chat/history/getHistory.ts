@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase, Chat } from '@/service/mongo';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authUser } from '@fastgpt/service/support/user/auth';
-import type { ChatHistoryItemType } from '@/types/chat';
-import { ChatSourceEnum } from '@/constants/chat';
+import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 /* 获取历史记录 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -12,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { appId } = req.body as { appId?: string };
     const { userId } = await authUser({ req, authToken: true });
 
-    const data = await Chat.find(
+    const data = await MongoChat.find(
       {
         userId,
         source: ChatSourceEnum.online,

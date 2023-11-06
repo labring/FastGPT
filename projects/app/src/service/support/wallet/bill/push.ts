@@ -1,6 +1,6 @@
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
-import { ChatHistoryItemResType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
