@@ -4,10 +4,10 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from office2txt import office_to_txt
+from services.office2txt import office_to_txt
 from typing import List
 from fastapi import HTTPException
-from fetch import get_summary
+from services.fetch import get_summary
 import aiofiles
 import queue
 import uuid
