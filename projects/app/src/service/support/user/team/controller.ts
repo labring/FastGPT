@@ -1,6 +1,4 @@
-import { GET } from '@fastgpt/service/common/api/plusRequest';
 import { TeamItemType } from '@fastgpt/global/support/user/team/type';
-import { createJWT } from '@fastgpt/service/support/permission/controller';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import {
   TeamMemberRoleEnum,
@@ -10,26 +8,54 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { Types } from 'mongoose';
 
-export async function getTeamInfoByUIdAndTmbId(userId: string, tmbId = '') {
-  if (global.systemEnv.pluginBaseUrl) {
-    return await GET<TeamItemType>(
-      '/support/user/team/getTokenTeam',
-      {},
-      {
-        headers: {
-          token: createJWT({ _id: userId, team: { tmbId } })
-        }
-      }
-    );
-  } else {
-    return getDefaultTeamMember(userId);
+export async function getTeamInfoByTmbId(tmbId?: string, userId?: string): Promise<TeamItemType> {
+  if (!tmbId && !userId) {
+    return Promise.reject('tmbId or userId is required');
   }
-}
-export async function getTeamRole(userId: string, tmbId = '') {
-  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+
+  const db = connectionMongo.connection.db;
+  const TeamMember = db.collection(TeamMemberCollectionName);
+
+  const results = await TeamMember.aggregate([
+    {
+      $match: tmbId
+        ? {
+            _id: new Types.ObjectId(tmbId)
+          }
+        : {
+            userId: new Types.ObjectId(userId),
+            defaultTeam: true
+          }
+    },
+    {
+      $lookup: {
+        from: TeamCollectionName, // 关联的集合名
+        localField: 'teamId', // TeamMember 集合中用于关联的字段
+        foreignField: '_id', // Team 集合中用于关联的字段
+        as: 'team' // 查询结果中的字段名，存放关联查询的结果
+      }
+    },
+    {
+      $unwind: '$team' // 将查询结果中的 team 字段展开，变成一个对象
+    }
+  ]).toArray();
+  const tmb = results[0];
+
+  if (!tmb) {
+    return Promise.reject('default team not exist');
+  }
+
   return {
-    role: team.role,
-    canWrite: team.canWrite
+    userId: String(tmb.userId),
+    teamId: String(tmb.teamId),
+    teamName: tmb.team.name,
+    avatar: tmb.team.avatar,
+    balance: tmb.team.balance,
+    tmbId: String(tmb._id),
+    role: tmb.role,
+    status: tmb.status,
+    defaultTeam: tmb.defaultTeam,
+    canWrite: tmb.role !== TeamMemberRoleEnum.visitor
   };
 }
 export async function createDefaultTeam({
@@ -74,45 +100,4 @@ export async function createDefaultTeam({
   } else {
     console.log('default team exist', userId);
   }
-}
-export async function getDefaultTeamMember(userId: string): Promise<TeamItemType> {
-  const db = connectionMongo.connection.db;
-  const TeamMember = db.collection(TeamMemberCollectionName);
-
-  const results = await TeamMember.aggregate([
-    {
-      $match: {
-        userId: new Types.ObjectId(userId),
-        defaultTeam: true
-      }
-    },
-    {
-      $lookup: {
-        from: TeamCollectionName, // 关联的集合名
-        localField: 'teamId', // TeamMember 集合中用于关联的字段
-        foreignField: '_id', // Team 集合中用于关联的字段
-        as: 'team' // 查询结果中的字段名，存放关联查询的结果
-      }
-    },
-    {
-      $unwind: '$team' // 将查询结果中的 team 字段展开，变成一个对象
-    }
-  ]).toArray();
-  const tmb = results[0];
-
-  if (!tmb) {
-    return Promise.reject('default team not exist');
-  }
-
-  return {
-    teamId: String(tmb.teamId),
-    teamName: tmb.team.name,
-    avatar: tmb.team.avatar,
-    balance: tmb.team.balance,
-    tmbId: String(tmb._id),
-    role: tmb.role,
-    status: tmb.status,
-    defaultTeam: tmb.defaultTeam,
-    canWrite: tmb.role !== TeamMemberRoleEnum.visitor
-  };
 }

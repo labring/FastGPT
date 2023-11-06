@@ -1,6 +1,6 @@
-import { parseHeaderAuth } from '@fastgpt/service/support/permission/controller';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
-import { getTeamInfoByUIdAndTmbId } from '../../user/team/controller';
+import { getTeamInfoByTmbId } from '../../user/team/controller';
 import {
   authDatasetFile as packageAuthDatasetFile,
   authDatasetCollection as packageAuthDatasetCollection,
@@ -15,10 +15,10 @@ export async function authDataset(
     datasetId: string;
   }
 ) {
-  const { userId, tmbId } = await parseHeaderAuth(props);
+  const { tmbId } = await parseHeaderCert(props);
 
   // get role
-  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+  const team = await getTeamInfoByTmbId(tmbId);
 
   return packageAuthDataset({
     ...props,
@@ -31,10 +31,10 @@ export async function authDatasetCollection(
     collectionId: string;
   }
 ) {
-  const { userId, tmbId } = await parseHeaderAuth(props);
+  const { tmbId } = await parseHeaderCert(props);
 
   // get role
-  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+  const team = await getTeamInfoByTmbId(tmbId);
 
   return packageAuthDatasetCollection({
     ...props,
@@ -53,7 +53,8 @@ export async function authDatasetData({
     datasetData: PgDataItemType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
+  const result = await parseHeaderCert(props);
+  const { tmbId } = result;
   // get pg data
   const datasetData = await getDatasetPgData({ id: dataId });
 
@@ -65,9 +66,7 @@ export async function authDatasetData({
   });
 
   return {
-    userId,
-    teamId,
-    tmbId,
+    ...result,
     datasetData,
     isOwner,
     canWrite
@@ -83,10 +82,10 @@ export async function authDatasetFile(
     file: DatasetFileSchema;
   }
 > {
-  const { userId, tmbId } = await parseHeaderAuth(props);
+  const { tmbId } = await parseHeaderCert(props);
 
   // get role
-  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+  const team = await getTeamInfoByTmbId(tmbId);
 
   return packageAuthDatasetFile({
     ...props,

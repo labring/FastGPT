@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId, tmbId } = await authCert({ req, authToken: true });
 
     jsonRes(res, {
-      data: await getUserDetail(userId, tmbId)
+      data: await getUserDetail(tmbId, userId)
     });
   } catch (err) {
     jsonRes(res, {

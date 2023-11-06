@@ -3,7 +3,7 @@ import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import { AuthModeType } from '../type';
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { parseHeaderAuth } from '../controller';
+import { parseHeaderCert } from '../controller';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
@@ -21,7 +21,7 @@ export async function authApp({
     app: AppDetailType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
+  const { userId, teamId, tmbId } = await parseHeaderCert(props);
 
   const { app, isOwner, canWrite } = await (async () => {
     // get app

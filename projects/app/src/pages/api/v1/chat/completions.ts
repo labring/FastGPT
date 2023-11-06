@@ -15,14 +15,16 @@ import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { authOutLinkChat } from '@fastgpt/service/support/outLink/auth';
+import { authOutLinkChat } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
 
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
-import { authBalance, authUser } from '@/service/support/permission/auth/user';
+import { authUser, getUserAndAuthBalance } from '@/service/support/permission/auth/user';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -80,68 +82,98 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     let startTime = Date.now();
 
-    /*  parse user cert */
-    let { responseDetail, user, authType, apikey } = await (async () => {
+    const chatMessages = gptMessage2ChatType(messages);
+    if (chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human) {
+      chatMessages.pop();
+    }
+    // user question
+    const question = chatMessages.pop();
+    if (!question) {
+      throw new Error('Question is empty');
+    }
+
+    /*  auth app permission */
+    const { user, app, responseDetail, authType, apikey, canWrite } = await (async () => {
       if (shareId) {
-        const { userId, tmbId, authType, responseDetail } = await authOutLinkChat({
+        const { user, app, authType, responseDetail } = await authOutLinkChat({
           shareId,
           ip: requestIp.getClientIp(req),
           authToken,
-          question:
-            (messages[messages.length - 2]?.role === 'user'
-              ? messages[messages.length - 2].content
-              : messages[messages.length - 1]?.content) || ''
+          question: question.value
         });
-        // auth balance
-        const user = await authBalance({ userId, tmbId, minBalance: 0 });
         return {
           user,
+          app,
           responseDetail,
           apikey: '',
-          authType
+          authType,
+          canWrite: false
         };
       }
-      const [{ user }, { apikey, authType }] = await Promise.all([
-        authUser({ req, authToken: true, authApiKey: true, minBalance: 0 }),
-        authCert({
-          req,
-          authToken: true,
-          authApiKey: true
-        })
-      ]);
+
+      const {
+        appId: apiKeyAppId,
+        tmbId,
+        authType,
+        apikey
+      } = await authCert({
+        req,
+        authToken: true,
+        authApiKey: true
+      });
+
+      const user = await getUserAndAuthBalance({
+        tmbId,
+        minBalance: 0
+      });
+
+      // openapi key
+      if (authType === AuthUserTypeEnum.apikey) {
+        const app = await MongoApp.findById(apiKeyAppId);
+
+        if (!app) {
+          return Promise.reject('app is empty');
+        }
+
+        return {
+          user,
+          app,
+          responseDetail: detail,
+          apikey,
+          authType,
+          canWrite: false
+        };
+      }
+
+      if (!appId) {
+        return Promise.reject('appId is empty');
+      }
+
+      // token
+      const { app, canWrite } = await authApp({
+        req,
+        authToken: true,
+        appId,
+        per: 'r'
+      });
+
       return {
         user,
+        app,
         responseDetail: detail,
         apikey,
-        authType
+        authType,
+        canWrite: canWrite || false
       };
     })();
 
     // auth app, get history
-    const [{ app, canWrite }, { history }] = await Promise.all([
-      authApp({
-        req,
-        authToken: true,
-        authApiKey: true,
-        appId: appId || '',
-        per: 'r'
-      }),
-      getChatHistory({ chatId, tmbId: user.team.tmbId })
-    ]);
+    const { history } = await getChatHistory({ chatId, tmbId: user.team.tmbId });
 
     const isOwner = !shareId && String(user.team.tmbId) === String(app.tmbId);
-    responseDetail = isOwner || responseDetail;
 
     /* format prompts */
     const prompts = history.concat(gptMessage2ChatType(messages));
-    if (prompts[prompts.length - 1]?.obj === 'AI') {
-      prompts.pop();
-    }
-    // user question
-    const prompt = prompts.pop();
-    if (!prompt) {
-      throw new Error('Question is empty');
-    }
 
     // set sse response headers
     if (stream) {
@@ -161,7 +193,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       variables,
       params: {
         history: prompts,
-        userChatInput: prompt.value
+        userChatInput: question.value
       },
       stream,
       detail
@@ -187,7 +219,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           return ChatSourceEnum.online;
         })(),
         content: [
-          prompt,
+          question,
           {
             dataId: messages[messages.length - 1].dataId,
             obj: ChatRoleEnum.AI,

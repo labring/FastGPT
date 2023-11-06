@@ -22,6 +22,7 @@ export type TeamMemberSchema = {
 };
 
 export type TeamItemType = {
+  userId: string;
   teamId: string;
   teamName: string;
   avatar: string;

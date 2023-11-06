@@ -8,7 +8,7 @@ import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 
 /* create token */
-export function createJWT(user: { _id: string; team?: { teamId?: string; tmbId: string } }) {
+export function createJWT(user: { _id?: string; team?: { teamId?: string; tmbId: string } }) {
   const key = process.env.TOKEN_KEY as string;
   const token = jwt.sign(
     {
@@ -46,7 +46,7 @@ export function authJWT(token: string) {
   });
 }
 
-export async function parseHeaderAuth({
+export async function parseHeaderCert({
   req,
   authToken = false,
   authRoot = false,
@@ -171,7 +171,7 @@ export async function parseHeaderAuth({
   })();
 
   // not rootUser and no uid, reject request
-  if (!rootkey && !uid) {
+  if (!rootkey && !uid && !teamId && !tmbId) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 

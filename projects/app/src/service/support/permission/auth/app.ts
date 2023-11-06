@@ -1,6 +1,6 @@
-import { parseHeaderAuth } from '@fastgpt/service/support/permission/controller';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
-import { getTeamInfoByUIdAndTmbId } from '@/service/support/user/team/controller';
+import { getTeamInfoByTmbId } from '@/service/support/user/team/controller';
 import { authApp as packageAuthApp } from '@fastgpt/service/support/permission/auth/app';
 
 export async function authApp(
@@ -8,8 +8,8 @@ export async function authApp(
     appId: string;
   }
 ) {
-  const { userId, tmbId, appId: authAppId } = await parseHeaderAuth(props);
-  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+  const { tmbId, appId: authAppId } = await parseHeaderCert(props);
+  const team = await getTeamInfoByTmbId(tmbId);
 
   return packageAuthApp({
     ...props,

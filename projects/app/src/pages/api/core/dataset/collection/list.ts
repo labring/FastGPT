@@ -11,7 +11,7 @@ import { countCollectionData } from '@/service/core/dataset/data/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
 import { authDataset } from '@/service/support/permission/auth/dataset';
-import { getTeamRole } from '@/service/support/user/team/controller';
+import { getTeamInfoByTmbId } from '@/service/support/user/team/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -29,8 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     searchText = searchText?.replace(/'/g, '');
 
     // auth dataset and get my role
-    const { tmbId, userId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
-    const { canWrite } = await getTeamRole(userId, tmbId);
+    const { tmbId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
+    const { canWrite } = await getTeamInfoByTmbId(tmbId);
 
     const match = {
       datasetId: new Types.ObjectId(datasetId),

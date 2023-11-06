@@ -1,12 +1,12 @@
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
-import { parseHeaderAuth } from '@fastgpt/service/support/permission/controller';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
-import { getTeamInfoByUIdAndTmbId, getTeamRole } from '../../user/team/controller';
+import { getTeamInfoByTmbId } from '../../user/team/controller';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { TeamItemType } from '@fastgpt/global/support/user/team/type';
-import { UserModelSchema, UserType } from '@fastgpt/global/support/user/type';
-import { getUserDetail } from '../../user/controller';
+import { UserType } from '@fastgpt/global/support/user/type';
+import { getUserDetail } from '@/service/support/user/controller';
 
 export async function authUserNotVisitor(props: AuthModeType): Promise<
   AuthResponseType & {
@@ -14,8 +14,8 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
     role: `${TeamMemberRoleEnum}`;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
-  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+  const { userId, teamId, tmbId } = await parseHeaderCert(props);
+  const team = await getTeamInfoByTmbId(tmbId);
 
   if (team.role === TeamMemberRoleEnum.visitor) {
     return Promise.reject(UserErrEnum.binVisitor);
@@ -31,28 +31,14 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
     canWrite: true
   };
 }
-/* uniform auth user */
-export async function authUserRole({
-  authBalance = false,
-  role,
-  ...props
-}: AuthModeType & {
-  role?: `${TeamMemberRoleEnum}`;
-  authBalance?: boolean;
-}): Promise<
+/* auth user role  */
+export async function authUserRole(props: AuthModeType): Promise<
   AuthResponseType & {
     role: `${TeamMemberRoleEnum}`;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
-  const { role: userRole, canWrite } = await getTeamRole(userId, tmbId);
-
-  if (role === 'admin' && !canWrite) {
-    return Promise.reject(UserErrEnum.unAuthRole);
-  }
-  if (role === 'owner' && !canWrite) {
-    return Promise.reject(UserErrEnum.unAuthRole);
-  }
+  const { userId, teamId, tmbId } = await parseHeaderCert(props);
+  const { role: userRole, canWrite } = await getTeamInfoByTmbId(tmbId);
 
   return {
     userId,
@@ -64,6 +50,26 @@ export async function authUserRole({
   };
 }
 
+export async function getUserAndAuthBalance({
+  tmbId,
+  minBalance
+}: {
+  tmbId: string;
+  minBalance?: number;
+}) {
+  const user = await getUserDetail(tmbId);
+
+  if (!user) {
+    return Promise.reject(UserErrEnum.unAuthUser);
+  }
+  if (minBalance !== undefined && user.team.balance < minBalance) {
+    return Promise.reject(UserErrEnum.balanceNotEnough);
+  }
+
+  return user;
+}
+
+/* get user */
 export async function authUser({
   minBalance,
   ...props
@@ -74,34 +80,14 @@ export async function authUser({
     user: UserType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
+  const { userId, teamId, tmbId } = await parseHeaderCert(props);
 
   return {
     userId,
     teamId,
     tmbId,
-    user: await authBalance({ userId, tmbId, minBalance }),
-    isOwner: true
+    user: await getUserAndAuthBalance({ tmbId, minBalance }),
+    isOwner: true,
+    canWrite: true
   };
-}
-
-export async function authBalance({
-  userId,
-  tmbId,
-  minBalance
-}: {
-  userId: string;
-  tmbId: string;
-  minBalance?: number;
-}) {
-  const user = await getUserDetail(userId, tmbId);
-
-  if (!user) {
-    return Promise.reject(UserErrEnum.unAuthUser);
-  }
-  if (minBalance !== undefined && user.team.balance < minBalance) {
-    return Promise.reject(UserErrEnum.balanceNotEnough);
-  }
-
-  return user;
 }

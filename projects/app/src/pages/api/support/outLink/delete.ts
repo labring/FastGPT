@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authOutLinkCrud } from '@/service/support/permission/auth/outLink';
 
 /* delete a shareChat by shareChatId */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,12 +13,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       id: string;
     };
 
-    const { userId } = await authCert({ req, authToken: true });
+    await authOutLinkCrud({ req, outLinkId: id, authToken: true, per: 'owner' });
 
-    await MongoOutLink.findOneAndRemove({
-      _id: id,
-      userId
-    });
+    await MongoOutLink.findByIdAndRemove(id);
 
     jsonRes(res);
   } catch (err) {

@@ -1,5 +1,5 @@
 import { AuthModeType } from '../type';
-import { parseHeaderAuth } from '../controller';
+import { parseHeaderCert } from '../controller';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDataset } from '../../../core/dataset/schema';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
@@ -28,7 +28,7 @@ export async function authDataset({
     dataset: DatasetSchemaType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth({
+  const { userId, teamId, tmbId } = await parseHeaderCert({
     req,
     authToken
   });
@@ -87,7 +87,7 @@ export async function authDatasetCollection({
     collection: CollectionWithDatasetType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth({
+  const { userId, teamId, tmbId } = await parseHeaderCert({
     req,
     authToken
   });
@@ -149,7 +149,7 @@ export async function authDatasetFile({
     file: DatasetFileSchema;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderAuth({
+  const { userId, teamId, tmbId } = await parseHeaderCert({
     req,
     authToken
   });
