@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    await authApp({ req, authToken: true, appId, per: 'owner' });
+    await authApp({ req, authToken: true, appId, per: permission ? 'owner' : 'w' });
 
     // 更新模型
     await MongoApp.updateOne(

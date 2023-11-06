@@ -30,7 +30,7 @@ export async function authApp({
       return Promise.reject('App is not exists');
     }
 
-    const isOwner = String(app.tmbId) === tmbId;
+    const isOwner = String(app.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
     const canWrite =
       isOwner ||
       (app.permission === PermissionTypeEnum.public && role !== TeamMemberRoleEnum.visitor);

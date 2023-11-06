@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    await authDataset({ req, authToken: true, datasetId: id, per: 'w' });
+    await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
 
     await MongoDataset.findOneAndUpdate(
       {

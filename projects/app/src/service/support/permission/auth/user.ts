@@ -45,7 +45,10 @@ export const authUserRole = async ({
   const { userId, teamId, tmbId } = await parseHeaderAuth(props);
   const { role: userRole, canWrite } = await getTeamRole(userId, tmbId);
 
-  if (role && userRole !== role) {
+  if (role === 'admin' && !canWrite) {
+    return Promise.reject(UserErrEnum.unAuthRole);
+  }
+  if (role === 'owner' && !canWrite) {
     return Promise.reject(UserErrEnum.unAuthRole);
   }
 

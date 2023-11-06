@@ -40,7 +40,7 @@ export async function authDataset({
       return Promise.reject(DatasetErrEnum.unAuthDataset);
     }
 
-    const isOwner = String(dataset.tmbId) === tmbId;
+    const isOwner = String(dataset.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
     const canWrite =
       isOwner ||
       (role !== TeamMemberRoleEnum.visitor && dataset.permission === PermissionTypeEnum.public);
@@ -99,7 +99,8 @@ export async function authDatasetCollection({
       return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
     }
 
-    const isOwner = String(collection.datasetId.tmbId) === tmbId;
+    const isOwner =
+      String(collection.datasetId.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
     const canWrite =
       isOwner ||
       (role !== TeamMemberRoleEnum.visitor &&
@@ -166,7 +167,7 @@ export async function authDatasetFile({
     role,
     per
   });
-  const isOwner = String(dataset.tmbId) === tmbId;
+  const isOwner = String(dataset.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
 
   const canWrite =
     isOwner ||

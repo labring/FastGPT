@@ -168,7 +168,8 @@ const Settings = ({ appId }: { appId: string }) => {
 
       await updateAppDetail(appDetail._id, {
         modules,
-        type: AppTypeEnum.basic
+        type: AppTypeEnum.basic,
+        permission: undefined
       });
     },
     successToast: t('common.Save Success'),

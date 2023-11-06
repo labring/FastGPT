@@ -57,7 +57,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
       return updateAppDetail(app._id, {
         modules,
-        type: AppTypeEnum.advanced
+        type: AppTypeEnum.advanced,
+        permission: undefined
       });
     },
     successToast: '保存配置成功',

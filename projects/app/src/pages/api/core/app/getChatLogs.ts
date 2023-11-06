@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 凭证校验
-    const { userId } = await authApp({ req, authToken: true, appId, per: 'r' });
+    const { userId } = await authApp({ req, authToken: true, appId, per: 'w' });
 
     const where = {
       appId: new Types.ObjectId(appId),
