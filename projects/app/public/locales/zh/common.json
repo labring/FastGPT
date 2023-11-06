@@ -72,7 +72,7 @@
     "Admin Mark Content": "纠正后的回复",
     "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
-    "Confirm to clear share chat histroy": "确认删除所有聊天记录？",
+    "Confirm to clear share chat history": "确认删除所有聊天记录？",
     "Exit Chat": "退出聊天",
     "Feedback Close": "关闭反馈",
     "Feedback Failed": "提交反馈异常",
@@ -184,8 +184,8 @@
     "Team": "团队",
     "Test": "测试",
     "Time": "时间",
-    "Unknow": "未知",
-    "Unknow Source": "未知来源",
+    "UnKnow": "未知",
+    "UnKnow Source": "未知来源",
     "Update Failed": "更新异常",
     "Update Success": "更新成功",
     "Update Successful": "更新成功",
@@ -382,13 +382,13 @@
     "key tips": "你可以使用 API 秘钥访问一些特定的接口(无法访问应用，访问应用需使用应用内的API Key)"
   },
   "outlink": {
-    "Copy Iframe": "嵌入网页",
+    "Copy IFrame": "嵌入网页",
     "Copy Link": "复制",
     "Create API Key": "创建新 Key",
     "Create Link": "创建链接",
     "Delete Link": "删除链接",
     "Edit API Key": "编辑 Key 信息",
-    "Edit Ifrme Link": "更新嵌入链接",
+    "Edit IFrame Link": "更新嵌入链接",
     "Edit Link": "编辑",
     "Edit Share Window": "更新分享窗口",
     "Link Name": "分享链接的名字",
@@ -466,7 +466,7 @@
     "Total Amount": "总金额",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
-    "Update password succseful": "修改密码成功",
+    "Update password successful": "修改密码成功",
     "Usage Record": "使用记录",
     "apikey": {
       "key": "API 秘钥"
@@ -484,10 +484,10 @@
       "Invite Member Result Tip": "邀请结果提示",
       "Invite Member Success Tip": "邀请成员完成\n成功: {{success}}人\n用户名无效: {{inValid}}\n已在团队中:{{inTeam}}",
       "Invite Member Tips": "对方可查阅或使用团队内的其他资源",
-      "Invite Role Member Alias": "邀请正式成员加入",
-      "Invite Role Member Tip": "成员\n可查看、使用和创建团队资源",
+      "Invite Role Admin Alias": "邀请管理员加入",
+      "Invite Role Admin Tip": "管理员\n可创建、编辑和使用团队资源",
       "Invite Role Visitor Alias": "邀请访客加入",
-      "Invite Role Visitor Tip": "访客\n可查看和使用团队资源，不能创建资源",
+      "Invite Role Visitor Tip": "访客\n可查看和使用团队资源，不能创建和编辑资源",
       "Leave Team": "离开团队",
       "Leave Team Failed": "离开团队异常",
       "Manage": "团队管理",
@@ -520,9 +520,10 @@
         "waiting": "待接受"
       },
       "role": {
+        "Admin": "管理员",
         "Member": "成员",
         "Owner": "创建者",
-        "Update to Vistor": "修改成访客",
+        "Update to Visitor": "修改成访客",
         "Visitor": "访客"
       }
     }

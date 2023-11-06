@@ -169,7 +169,7 @@ const Share = ({ appId }: { appId: string }) => {
                         py={[2, 3]}
                       >
                         <MyIcon name={'apiLight'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('outlink.Copy Iframe')}</Box>
+                        <Box ml={[1, 2]}>{t('outlink.Copy IFrame')}</Box>
                       </MenuItem>
                       <MenuItem
                         onClick={async () => {

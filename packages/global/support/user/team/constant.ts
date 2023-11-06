@@ -3,7 +3,7 @@ export const TeamMemberCollectionName = 'team.members';
 
 export enum TeamMemberRoleEnum {
   owner = 'owner',
-  member = 'member',
+  admin = 'admin',
   visitor = 'visitor'
 }
 export const TeamMemberRoleMap = {
@@ -11,9 +11,9 @@ export const TeamMemberRoleMap = {
     value: TeamMemberRoleEnum.owner,
     label: 'user.team.role.Owner'
   },
-  [TeamMemberRoleEnum.member]: {
-    value: TeamMemberRoleEnum.member,
-    label: 'user.team.role.Member'
+  [TeamMemberRoleEnum.admin]: {
+    value: TeamMemberRoleEnum.admin,
+    label: 'user.team.role.Admin'
   },
   [TeamMemberRoleEnum.visitor]: {
     value: TeamMemberRoleEnum.visitor,

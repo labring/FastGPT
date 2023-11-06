@@ -337,13 +337,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                     }
                                   },
                                   {
-                                    isActive: item.role === TeamMemberRoleEnum.member,
-                                    child: t('user.team.Invite Role Member Tip'),
+                                    isActive: item.role === TeamMemberRoleEnum.admin,
+                                    child: t('user.team.Invite Role Admin Tip'),
                                     onClick: () => {
                                       onUpdateMember({
                                         teamId: item.teamId,
                                         memberId: item.tmbId,
-                                        role: TeamMemberRoleEnum.member
+                                        role: TeamMemberRoleEnum.admin
                                       });
                                     }
                                   },

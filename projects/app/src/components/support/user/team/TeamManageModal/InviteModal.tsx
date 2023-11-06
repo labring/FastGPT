@@ -33,9 +33,9 @@ const InviteModal = ({
         value: TeamMemberRoleEnum.visitor
       },
       {
-        alias: t('user.team.Invite Role Member Alias'),
-        label: t('user.team.Invite Role Member Tip'),
-        value: TeamMemberRoleEnum.member
+        alias: t('user.team.Invite Role Admin Alias'),
+        label: t('user.team.Invite Role Admin Tip'),
+        value: TeamMemberRoleEnum.admin
       }
     ],
     [t]

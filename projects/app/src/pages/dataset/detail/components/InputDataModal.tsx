@@ -330,7 +330,7 @@ export function RawSourceText({
       >
         <Image src={icon} alt="" w={'14px'} mr={2} />
         <Box maxW={['200px', '300px']} className={'textEllipsis'}>
-          {sourceName || t('common.Unknow Source')}
+          {sourceName || t('common.UnKnow Source')}
         </Box>
       </Box>
     </MyTooltip>

@@ -78,7 +78,7 @@ const ChatHistorySlider = ({
   });
   const { openConfirm, ConfirmModal } = useConfirm({
     content: isShare
-      ? t('chat.Confirm to clear share chat histroy')
+      ? t('chat.Confirm to clear share chat history')
       : t('chat.Confirm to clear history')
   });
 
