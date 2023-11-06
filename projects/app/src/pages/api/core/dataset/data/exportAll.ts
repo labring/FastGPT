@@ -8,7 +8,7 @@ import QueryStream from 'pg-query-stream';
 import { PgClient } from '@/service/pg';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { responseWriteController } from '@fastgpt/service/common/response';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

@@ -22,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ...item.toJSON(),
       tags: item.tags.join(' '),
       vectorModel: getVectorModel(item.vectorModel),
+      canWrite: String(item.tmbId) === tmbId,
       isOwner: String(item.tmbId) === tmbId
     }));
 

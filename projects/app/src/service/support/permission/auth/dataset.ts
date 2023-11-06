@@ -4,25 +4,33 @@ import { getTeamInfoByUIdAndTmbId } from '../../user/team/controller';
 import {
   authDatasetFile as packageAuthDatasetFile,
   authDatasetCollection as packageAuthDatasetCollection,
-  authDataset
+  authDataset as packageAuthDataset
 } from '@fastgpt/service/support/permission/auth/dataset';
 import { getDatasetPgData } from '@/service/core/dataset/data/controller';
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
-import {
-  CollectionWithDatasetType,
-  DatasetFileSchema,
-  PgDataItemType
-} from '@fastgpt/global/core/dataset/type';
+import { DatasetFileSchema, PgDataItemType } from '@fastgpt/global/core/dataset/type';
+
+export async function authDataset(
+  props: AuthModeType & {
+    datasetId: string;
+  }
+) {
+  const { userId, tmbId } = await parseHeaderAuth(props);
+
+  // get role
+  const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
+
+  return packageAuthDataset({
+    ...props,
+    role: team.role
+  });
+}
 
 export async function authDatasetCollection(
   props: AuthModeType & {
     collectionId: string;
   }
-): Promise<
-  AuthResponseType & {
-    collection: CollectionWithDatasetType;
-  }
-> {
+) {
   const { userId, tmbId } = await parseHeaderAuth(props);
 
   // get role

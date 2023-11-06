@@ -10,7 +10,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { countCollectionData } from '@/service/core/dataset/data/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@/service/support/permission/auth/dataset';
+import { getTeamRole } from '@/service/support/user/team/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -27,8 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     } = req.body as GetDatasetCollectionsProps;
     searchText = searchText?.replace(/'/g, '');
 
-    // auth dataset
-    const { tmbId, canWrite } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
+    // auth dataset and get my role
+    const { tmbId, userId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
+    const { canWrite } = await getTeamRole(userId, tmbId);
 
     const match = {
       datasetId: new Types.ObjectId(datasetId),
@@ -57,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               ...item,
               dataAmount: 0,
               trainingAmount: 0,
-              canWrite: String(item.tmbId) === tmbId || canWrite
+              canWrite // admin or owner can write
             }))
           ),
           total: await MongoDatasetCollection.countDocuments(match)

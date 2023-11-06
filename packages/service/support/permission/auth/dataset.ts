@@ -18,9 +18,11 @@ export async function authDataset({
   req,
   authToken,
   datasetId,
+  role,
   per = 'owner'
 }: AuthModeType & {
   datasetId: string;
+  role: `${TeamMemberRoleEnum}`;
 }): Promise<
   AuthResponseType & {
     dataset: DatasetSchemaType;
@@ -39,8 +41,9 @@ export async function authDataset({
     }
 
     const isOwner = String(dataset.tmbId) === tmbId;
-    const canWrite = isOwner;
-
+    const canWrite =
+      isOwner ||
+      (role !== TeamMemberRoleEnum.visitor && dataset.permission === PermissionTypeEnum.public);
     if (per === 'r') {
       if (!isOwner && dataset.permission !== PermissionTypeEnum.public) {
         return Promise.reject(DatasetErrEnum.unAuthDataset);
@@ -160,6 +163,7 @@ export async function authDatasetFile({
     req,
     authToken,
     datasetId: file.metadata.datasetId,
+    role,
     per
   });
   const isOwner = String(dataset.tmbId) === tmbId;

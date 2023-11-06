@@ -51,7 +51,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   const tabList = [
     { label: '数据集', id: TabEnum.collectionCard, icon: 'overviewLight' },
     { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
-    ...(datasetDetail.isOwner ? [{ label: '配置', id: TabEnum.info, icon: 'settingLight' }] : [])
+    ...(datasetDetail.canWrite ? [{ label: '配置', id: TabEnum.info, icon: 'settingLight' }] : [])
   ];
 
   const setCurrentTab = useCallback(

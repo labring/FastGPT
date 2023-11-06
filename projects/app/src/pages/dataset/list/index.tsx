@@ -285,7 +285,7 @@ const Kb = () => {
               }
             }}
           >
-            {dataset.tmbId === userInfo?.team?.tmbId && (
+            {dataset.canWrite && (
               <MyMenu
                 offset={[-30, 10]}
                 width={120}
@@ -320,39 +320,45 @@ const Kb = () => {
                   </MenuButton>
                 }
                 menuList={[
-                  ...(dataset.permission === PermissionTypeEnum.private
-                    ? [
-                        {
-                          child: (
-                            <Flex alignItems={'center'}>
-                              <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
-                              {t('permission.Set Public')}
-                            </Flex>
-                          ),
-                          onClick: () => {
-                            updateDataset({
-                              id: dataset._id,
-                              permission: PermissionTypeEnum.public
-                            });
+                  ...(dataset.isOwner
+                    ? dataset.permission === PermissionTypeEnum.private
+                      ? [
+                          {
+                            child: (
+                              <Flex alignItems={'center'}>
+                                <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
+                                {t('permission.Set Public')}
+                              </Flex>
+                            ),
+                            onClick: () => {
+                              updateDataset({
+                                id: dataset._id,
+                                permission: PermissionTypeEnum.public
+                              });
+                            }
                           }
-                        }
-                      ]
-                    : [
-                        {
-                          child: (
-                            <Flex alignItems={'center'}>
-                              <MyIcon name={'support/permission/privateLight'} w={'14px'} mr={2} />
-                              {t('permission.Set Private')}
-                            </Flex>
-                          ),
-                          onClick: () => {
-                            updateDataset({
-                              id: dataset._id,
-                              permission: PermissionTypeEnum.private
-                            });
+                        ]
+                      : [
+                          {
+                            child: (
+                              <Flex alignItems={'center'}>
+                                <MyIcon
+                                  name={'support/permission/privateLight'}
+                                  w={'14px'}
+                                  mr={2}
+                                />
+                                {t('permission.Set Private')}
+                              </Flex>
+                            ),
+                            onClick: () => {
+                              updateDataset({
+                                id: dataset._id,
+                                permission: PermissionTypeEnum.private
+                              });
+                            }
                           }
-                        }
-                      ]),
+                        ]
+                    : []),
                   {
                     child: (
                       <Flex alignItems={'center'}>
@@ -387,21 +393,25 @@ const Kb = () => {
                     ),
                     onClick: () => onclickExport(dataset._id)
                   },
-                  {
-                    child: (
-                      <Flex alignItems={'center'}>
-                        <MyIcon name={'delete'} w={'14px'} mr={2} />
-                        {t('common.Delete')}
-                      </Flex>
-                    ),
-                    onClick: () => {
-                      openConfirm(
-                        () => onclickDelDataset(dataset._id),
-                        undefined,
-                        DeleteTipsMap.current[dataset.type]
-                      )();
-                    }
-                  }
+                  ...(dataset.isOwner
+                    ? [
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'delete'} w={'14px'} mr={2} />
+                              {t('common.Delete')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            openConfirm(
+                              () => onclickDelDataset(dataset._id),
+                              undefined,
+                              DeleteTipsMap.current[dataset.type]
+                            )();
+                          }
+                        }
+                      ]
+                    : [])
                 ]}
               />
             )}

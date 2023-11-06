@@ -223,20 +223,23 @@ const Info = (
             ))}
         </Flex>
       </Flex>
-      <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('user.Permission')}
-        </Box>
-        <Box>
-          <PermissionRadio
-            value={getValues('permission')}
-            onChange={(e) => {
-              setValue('permission', e);
-              setRefresh(!refresh);
-            }}
-          />
-        </Box>
-      </Flex>
+      {datasetDetail.isOwner && (
+        <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
+          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+            {t('user.Permission')}
+          </Box>
+          <Box>
+            <PermissionRadio
+              value={getValues('permission')}
+              onChange={(e) => {
+                setValue('permission', e);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
+        </Flex>
+      )}
+
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}></Box>
         <Button
@@ -247,18 +250,20 @@ const Info = (
         >
           保存
         </Button>
-        <IconButton
-          isLoading={btnLoading}
-          icon={<DeleteIcon />}
-          aria-label={''}
-          variant={'outline'}
-          size={'sm'}
-          _hover={{
-            color: 'red.600',
-            borderColor: 'red.600'
-          }}
-          onClick={openConfirm(onclickDelKb)}
-        />
+        {datasetDetail.isOwner && (
+          <IconButton
+            isLoading={btnLoading}
+            icon={<DeleteIcon />}
+            aria-label={''}
+            variant={'outline'}
+            size={'sm'}
+            _hover={{
+              color: 'red.600',
+              borderColor: 'red.600'
+            }}
+            onClick={openConfirm(onclickDelKb)}
+          />
+        )}
       </Flex>
       <File onSelect={onSelectFile} />
       <ConfirmModal />

@@ -487,7 +487,7 @@
       "Invite Role Admin Alias": "Invite an Administrator to join",
       "Invite Role Admin Tip": "Admin\nCan create, edit, and use team resources",
       "Invite Role Visitor Alias": "Invite visitors to Join",
-      "Invite Role Visitor Tip": "Visitors \n can view and use team resources, but cannot create resources",
+      "Invite Role Visitor Tip": "Visitors\nCan only use resources and have no permission to create and edit them",
       "Leave Team": "Leave",
       "Leave Team Failed": "Leave Team Failed",
       "Manage": "Team Manage",

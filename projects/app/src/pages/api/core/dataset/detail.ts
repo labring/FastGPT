@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { getVectorModel } from '@/service/core/ai/model';
 import { DatasetItemType } from '@/types/core/dataset';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -17,13 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { dataset, tmbId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
+    const { dataset, tmbId, canWrite } = await authDataset({
+      req,
+      authToken: true,
+      datasetId,
+      per: 'r'
+    });
 
     jsonRes<DatasetItemType>(res, {
       data: {
         ...dataset,
         tags: dataset.tags.join(' '),
         vectorModel: getVectorModel(dataset.vectorModel),
+        canWrite,
         isOwner: String(dataset.tmbId) === tmbId
       }
     });

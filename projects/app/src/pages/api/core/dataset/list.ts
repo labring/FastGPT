@@ -7,13 +7,14 @@ import type { DatasetItemType } from '@/types/core/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
+import { authUserRole } from '@/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const { parentId, type } = req.query as { parentId?: string; type?: `${DatasetTypeEnum}` };
     // 凭证校验
-    const { teamId, tmbId } = await authUser({ req, authToken: true, per: 'r' });
+    const { teamId, tmbId, canWrite } = await authUserRole({ req, authToken: true });
 
     const datasets = await MongoDataset.find({
       ...mongoRPermission({ teamId, tmbId }),
@@ -26,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...item.toJSON(),
         tags: item.tags.join(' '),
         vectorModel: getVectorModel(item.vectorModel),
+        canWrite,
         isOwner: String(item.tmbId) === tmbId
       }))
     );

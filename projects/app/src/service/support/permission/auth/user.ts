@@ -1,7 +1,7 @@
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { parseHeaderAuth } from '@fastgpt/service/support/permission/controller';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
-import { getTeamInfoByUIdAndTmbId } from '../../user/team/controller';
+import { getTeamInfoByUIdAndTmbId, getTeamRole } from '../../user/team/controller';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { TeamItemType } from '@fastgpt/global/support/user/team/type';
@@ -9,6 +9,7 @@ import { TeamItemType } from '@fastgpt/global/support/user/team/type';
 export async function authUserNotVisitor(props: AuthModeType): Promise<
   AuthResponseType & {
     team: TeamItemType;
+    role: `${TeamMemberRoleEnum}`;
   }
 > {
   const { userId, teamId, tmbId } = await parseHeaderAuth(props);
@@ -23,7 +24,37 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
     teamId,
     tmbId,
     team,
+    role: team.role,
     isOwner: String(team.tmbId) === tmbId,
     canWrite: true
   };
 }
+/* uniform auth user */
+export const authUserRole = async ({
+  authBalance = false,
+  role,
+  ...props
+}: AuthModeType & {
+  role?: `${TeamMemberRoleEnum}`;
+  authBalance?: boolean;
+}): Promise<
+  AuthResponseType & {
+    role: `${TeamMemberRoleEnum}`;
+  }
+> => {
+  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
+  const { role: userRole, canWrite } = await getTeamRole(userId, tmbId);
+
+  if (role && userRole !== role) {
+    return Promise.reject(UserErrEnum.unAuthRole);
+  }
+
+  return {
+    userId,
+    teamId,
+    tmbId,
+    isOwner: true,
+    role: userRole,
+    canWrite
+  };
+};

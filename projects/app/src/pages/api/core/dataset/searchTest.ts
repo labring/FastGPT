@@ -11,7 +11,7 @@ import type {
   SearchDataResultItemType
 } from '@fastgpt/global/core/dataset/type';
 import { getPgDataWithCollection } from '@/service/core/dataset/data/controller';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@/service/support/permission/auth/dataset';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 
