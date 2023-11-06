@@ -17,4 +17,4 @@ RUN python -m nltk.downloader punkt
 EXPOSE 6010
 
 # 运行app.py时的命令及其参数
-CMD ["python", "api.py"]
+CMD ["python", "main.py"]

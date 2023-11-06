@@ -26,18 +26,18 @@ pip install -r requirements.txt
 
 然后运行：
 ```shell
-python api.py
+python main.py
 ```
 启动！
 
 ### 2.2 Docker安装
 一把梭拉现成的镜像，直接拉下来用就行了。
 ```shell
-docker pull registry.cn-hangzhou.aliyuncs.com/ai-robot/fastgpt-python-api:latest
+docker pull registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/fastgpt_python_api:1.0
 ```
 然后运行,三个环境变量记得配置成自己的：
 ```shell
-docker run -d -p 6010:6010 -e APP_ID=<your_app_id> -e API_KEY=<your_api_key> -e SECRET_KEY=<your_secret_key> registry.cn-hangzhou.aliyuncs.com/ai-robot/fastgpt-python-api:latest
+docker run -d -p 6010:6010 -e APP_ID=<your_app_id> -e API_KEY=<your_api_key> -e SECRET_KEY=<your_secret_key> registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/fastgpt_python_api:1.0
 ```
 
 或者你也可以自己打镜像
