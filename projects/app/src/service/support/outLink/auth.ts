@@ -1,12 +1,8 @@
 import { POST } from '@fastgpt/service/common/api/plusRequest';
-import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
-
-export type AuthLinkChatProps = { ip?: string | null; authToken?: string; question: string };
-type AuthLinkLimitProps = AuthLinkChatProps & { outLink: OutLinkSchema };
-type AuthShareChatInitProps = {
-  authToken?: string;
-  tokenUrl?: string;
-};
+import type {
+  AuthLinkLimitProps,
+  AuthShareChatInitProps
+} from '@fastgpt/global/support/outLink/api.d';
 
 export function authOutLinkLimit(data: AuthLinkLimitProps) {
   return POST('/support/outLink/authLimit', data);
