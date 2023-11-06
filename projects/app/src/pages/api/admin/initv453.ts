@@ -22,6 +22,8 @@ import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -29,8 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // await initDefaultTeam(limit);
-    // await initMongoTeamId(limit);
-    await initDatasetAndApp();
+    await initMongoTeamId(limit);
+    // await initDatasetAndApp();
     // await initCollectionFileTeam(limit);
     // await initPgData();
 
@@ -80,9 +82,17 @@ async function initDefaultTeam(limit: number) {
 async function initMongoTeamId(limit: number) {
   const mongoSchema = [
     {
-      label: 'MongoApp',
-      schema: MongoApp
+      label: 'MongoChat',
+      schema: MongoChat
+    },
+    {
+      label: 'MongoChatItem',
+      schema: MongoChatItem
     }
+    // {
+    //   label: 'MongoApp',
+    //   schema: MongoApp
+    // },
     // {
     //   label: 'MongoDataset',
     //   schema: MongoDataset
@@ -157,14 +167,14 @@ async function initMongoTeamId(limit: number) {
   }
 }
 async function initDatasetAndApp() {
-  // await MongoDataset.updateMany(
-  //   {},
-  //   {
-  //     $set: {
-  //       permission: PermissionTypeEnum.private
-  //     }
-  //   }
-  // );
+  await MongoDataset.updateMany(
+    {},
+    {
+      $set: {
+        permission: PermissionTypeEnum.private
+      }
+    }
+  );
   await MongoApp.updateMany(
     {},
     {

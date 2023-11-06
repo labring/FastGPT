@@ -1,5 +1,5 @@
 import { MongoApp } from '../../../core/app/schema';
-import { AppDetailType, AppSchema } from '@fastgpt/global/core/app/type.d';
+import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import { AuthModeType } from '../type';
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';

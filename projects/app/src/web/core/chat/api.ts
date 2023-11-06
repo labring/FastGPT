@@ -14,31 +14,28 @@ export const getInitChatSiteInfo = (data: { appId: string; chatId?: string }) =>
 /**
  * 获取历史记录
  */
-export const getChatHistory = (data: RequestPaging & { appId?: string }) =>
-  POST<ChatHistoryItemType[]>('/core/chat/history/getHistory', data);
+export const getChatHistory = (data: RequestPaging & { appId: string }) =>
+  POST<ChatHistoryItemType[]>('/core/chat/list', data);
 
 /**
  * 删除一条历史记录
  */
-export const delChatHistoryById = (chatId: string) =>
-  DELETE(`/core/chat/removeHistory`, { chatId });
+export const delChatHistoryById = (chatId: string) => DELETE(`/core/chat/delete`, { chatId });
 /**
  * clear all history by appid
  */
-export const clearChatHistoryByAppId = (appId: string) =>
-  DELETE(`/core/chat/removeHistory`, { appId });
+export const clearChatHistoryByAppId = (appId: string) => DELETE(`/core/chat/delete`, { appId });
 
 /**
  * 删除一句对话
  */
 export const delChatRecordById = (data: { chatId: string; contentId: string }) =>
-  DELETE(`/core/chat/delChatRecordByContentId`, data);
+  DELETE(`/core/chat/item/delete`, data);
 
 /**
  * 修改历史记录: 标题/置顶
  */
-export const putChatHistory = (data: UpdateHistoryProps) =>
-  PUT('/core/chat/history/updateChatHistory', data);
+export const putChatHistory = (data: UpdateHistoryProps) => PUT('/core/chat/update', data);
 
 export const userUpdateChatFeedback = (data: { chatItemId: string; userFeedback?: string }) =>
   POST('/core/chat/feedback/userUpdate', data);

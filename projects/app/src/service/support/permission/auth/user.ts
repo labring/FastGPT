@@ -5,6 +5,8 @@ import { getTeamInfoByUIdAndTmbId, getTeamRole } from '../../user/team/controlle
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { TeamItemType } from '@fastgpt/global/support/user/team/type';
+import { UserModelSchema, UserType } from '@fastgpt/global/support/user/type';
+import { getUserDetail } from '../../user/controller';
 
 export async function authUserNotVisitor(props: AuthModeType): Promise<
   AuthResponseType & {
@@ -30,7 +32,7 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
   };
 }
 /* uniform auth user */
-export const authUserRole = async ({
+export async function authUserRole({
   authBalance = false,
   role,
   ...props
@@ -41,7 +43,7 @@ export const authUserRole = async ({
   AuthResponseType & {
     role: `${TeamMemberRoleEnum}`;
   }
-> => {
+> {
   const { userId, teamId, tmbId } = await parseHeaderAuth(props);
   const { role: userRole, canWrite } = await getTeamRole(userId, tmbId);
 
@@ -60,4 +62,46 @@ export const authUserRole = async ({
     role: userRole,
     canWrite
   };
-};
+}
+
+export async function authUser({
+  minBalance,
+  ...props
+}: AuthModeType & {
+  minBalance?: number;
+}): Promise<
+  AuthResponseType & {
+    user: UserType;
+  }
+> {
+  const { userId, teamId, tmbId } = await parseHeaderAuth(props);
+
+  return {
+    userId,
+    teamId,
+    tmbId,
+    user: await authBalance({ userId, tmbId, minBalance }),
+    isOwner: true
+  };
+}
+
+export async function authBalance({
+  userId,
+  tmbId,
+  minBalance
+}: {
+  userId: string;
+  tmbId: string;
+  minBalance?: number;
+}) {
+  const user = await getUserDetail(userId, tmbId);
+
+  if (!user) {
+    return Promise.reject(UserErrEnum.unAuthUser);
+  }
+  if (minBalance !== undefined && user.team.balance < minBalance) {
+    return Promise.reject(UserErrEnum.balanceNotEnough);
+  }
+
+  return user;
+}

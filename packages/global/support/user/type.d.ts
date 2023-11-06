@@ -40,5 +40,5 @@ export type UserType = {
   timezone: string;
   promotionRate: UserModelSchema['promotionRate'];
   openaiAccount: UserModelSchema['openaiAccount'];
-  team?: TeamItemType;
+  team: TeamItemType;
 };

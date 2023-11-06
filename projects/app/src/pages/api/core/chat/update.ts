@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import { UpdateHistoryProps } from '@fastgpt/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { authChat } from '@fastgpt/service/support/permission/auth/chat';
 
 /* 更新聊天标题 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,18 +11,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     const { chatId, customTitle, top } = req.body as UpdateHistoryProps;
 
-    const { userId } = await authUser({ req, authToken: true });
+    await authChat({ req, authToken: true, chatId });
 
-    await MongoChat.findOneAndUpdate(
-      {
-        chatId,
-        userId
-      },
-      {
-        ...(customTitle ? { customTitle } : {}),
-        ...(top ? { top } : { top: null })
-      }
-    );
+    await MongoChat.findByIdAndUpdate(chatId, {
+      ...(customTitle ? { customTitle } : {}),
+      ...(top ? { top } : { top: null })
+    });
     jsonRes(res);
   } catch (err) {
     jsonRes(res, {

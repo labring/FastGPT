@@ -8,7 +8,8 @@ import { addLog } from '@fastgpt/service/common/mongo/controller';
 type Props = {
   chatId: string;
   appId: string;
-  userId: string;
+  teamId: string;
+  tmbId: string;
   variables?: Record<string, any>;
   isOwner: boolean;
   source: `${ChatSourceEnum}`;
@@ -19,7 +20,8 @@ type Props = {
 export async function saveChat({
   chatId,
   appId,
-  userId,
+  teamId,
+  tmbId,
   variables,
   isOwner,
   source,
@@ -30,7 +32,8 @@ export async function saveChat({
     const chatHistory = await MongoChat.findOne(
       {
         chatId,
-        userId,
+        teamId,
+        tmbId,
         appId
       },
       '_id'
@@ -40,7 +43,8 @@ export async function saveChat({
       MongoChatItem.insertMany(
         content.map((item) => ({
           chatId,
-          userId,
+          teamId,
+          tmbId,
           appId,
           ...item
         }))
@@ -50,7 +54,7 @@ export async function saveChat({
     if (chatHistory) {
       promise.push(
         MongoChat.updateOne(
-          { chatId, userId, appId },
+          { chatId },
           {
             title: content[0].value.slice(0, 20),
             updateTime: new Date()
@@ -61,7 +65,8 @@ export async function saveChat({
       promise.push(
         MongoChat.create({
           chatId,
-          userId,
+          teamId,
+          tmbId,
           appId,
           variables,
           title: content[0].value.slice(0, 20),

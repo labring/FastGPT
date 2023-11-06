@@ -4,22 +4,22 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import type { InitChatResponse } from '@fastgpt/global/core/chat/api.d';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { authApp } from '@/service/support/permission/auth/app';
 import type { ChatSchema } from '@fastgpt/global/core/chat/type.d';
 import { getGuideModule } from '@/global/core/app/modules/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
 import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { authChat } from '@fastgpt/service/support/permission/auth/chat';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { userId } = await authUser({ req, authToken: true });
 
     let { appId, chatId } = req.query as {
-      appId: '' | string;
+      appId: string;
       chatId: '' | string;
     };
 
@@ -31,11 +31,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 校验使用权限
-    const { app } = await authApp({
-      req,
-      appId,
-      per: 'r'
-    });
+    const [{ app, tmbId }] = await Promise.all([
+      authApp({
+        req,
+        authToken: true,
+        appId,
+        per: 'r'
+      }),
+      chatId
+        ? authChat({
+            req,
+            authToken: true,
+            chatId
+          })
+        : undefined
+    ]);
 
     // get app and history
     const { chat, history = [] }: { chat?: ChatSchema; history?: ChatItemType[] } =
@@ -46,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             MongoChat.findOne(
               {
                 chatId,
-                userId,
+                tmbId,
                 appId
               },
               'title variables'
@@ -54,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             MongoChatItem.find(
               {
                 chatId,
-                userId,
+                tmbId,
                 appId
               },
               `dataId obj value adminFeedback userFeedback ${TaskResponseKeyEnum.responseData}`
@@ -66,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw new Error('聊天框不存在');
           }
           history.reverse();
-          return { app, history, chat };
+          return { history, chat };
         }
         return {};
       })();

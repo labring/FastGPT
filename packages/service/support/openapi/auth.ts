@@ -16,7 +16,6 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
     if (!openApi) {
       return Promise.reject(ERROR_ENUM.unAuthApiKey);
     }
-    const userId = String(openApi.userId);
 
     // auth limit
     if (global.feConfigs?.isPlus) {
@@ -25,7 +24,13 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
 
     updateApiKeyUsedTime(openApi._id);
 
-    return { apikey, userId, appId: openApi.appId };
+    return {
+      apikey,
+      userId: String(openApi.userId),
+      teamId: String(openApi.teamId),
+      tmbId: String(openApi.tmbId),
+      appId: openApi.appId || ''
+    };
   } catch (error) {
     return Promise.reject(error);
   }

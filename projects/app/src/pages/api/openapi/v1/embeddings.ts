@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { connectToDatabase } from '@/service/mongo';
@@ -15,7 +15,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   try {
     let { input, model, billId } = req.body as Props;
     await connectToDatabase();
-    const { teamId, tmbId } = await authUser({ req, authToken: true });
+    const { teamId, tmbId } = await authCert({ req, authToken: true });
 
     if (!Array.isArray(input) || typeof input !== 'string') {
       throw new Error('input is nor array or string');

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 /* get shareChat list by appId */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId: string;
     };
 
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authCert({ req, authToken: true });
 
     const data = await MongoOutLink.find({
       appId,

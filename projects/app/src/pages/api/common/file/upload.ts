@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { customAlphabet } from 'nanoid';
 import multer from 'multer';
 import path from 'path';
@@ -79,7 +79,7 @@ const upload = new UploadModel();
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { userId, teamId, tmbId } = await authUser({ req, authToken: true });
+    const { userId, teamId, tmbId } = await authCert({ req, authToken: true });
 
     const { files, bucketName, metadata } = await upload.doUpload(req, res);
 

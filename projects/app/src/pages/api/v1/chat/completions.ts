@@ -1,54 +1,28 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@/service/support/permission/auth/app';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import {
-  ChatRoleEnum,
-  ChatSourceEnum,
-  TaskResponseKeyEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import {
-  dispatchHistory,
-  dispatchChatInput,
-  dispatchChatCompletion,
-  dispatchDatasetSearch,
-  dispatchAnswer,
-  dispatchClassifyQuestion,
-  dispatchContentExtract,
-  dispatchHttpRequest,
-  dispatchAppRequest,
-  dispatchRunPlugin,
-  dispatchPluginInput,
-  dispatchPluginOutput
-} from '@/service/moduleDispatch';
+import { dispatchModules } from '@/service/moduleDispatch';
 import type { CreateChatCompletionRequest } from '@fastgpt/global/core/ai/type.d';
 import type { MessageItemType } from '@/types/core/chat/type';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { initModuleType } from '@/constants/flow';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { RunningModuleItemType } from '@/types/app';
-import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api';
-import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import { SystemInputEnum, SystemOutputEnum } from '@/constants/app';
-import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { authOutLinkChat } from '@fastgpt/service/support/outLink/auth';
 import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
-import { replaceVariable } from '@/global/common/string/tools';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
+import { authBalance, authUser } from '@/service/support/permission/auth/user';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -106,24 +80,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     let startTime = Date.now();
 
-    /* user auth */
-    const {
-      responseDetail: shareResponseDetail,
-      user,
-      userId,
-      appId: authAppid,
-      authType,
-      apikey
-    } = await (async (): Promise<{
-      user?: UserModelSchema;
-      responseDetail?: boolean;
-      userId: string;
-      appId: string;
-      authType: `${AuthUserTypeEnum}`;
-      apikey?: string;
-    }> => {
+    /*  parse user cert */
+    let { responseDetail, user, authType, apikey } = await (async () => {
       if (shareId) {
-        return authOutLinkChat({
+        const { userId, tmbId, authType, responseDetail } = await authOutLinkChat({
           shareId,
           ip: requestIp.getClientIp(req),
           authToken,
@@ -132,32 +92,45 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
               ? messages[messages.length - 2].content
               : messages[messages.length - 1]?.content) || ''
         });
+        // auth balance
+        const user = await authBalance({ userId, tmbId, minBalance: 0 });
+        return {
+          user,
+          responseDetail,
+          apikey: '',
+          authType
+        };
       }
-      return authUser({ req, authToken: true, authApiKey: true, authBalance: true });
+      const [{ user }, { apikey, authType }] = await Promise.all([
+        authUser({ req, authToken: true, authApiKey: true, minBalance: 0 }),
+        authCert({
+          req,
+          authToken: true,
+          authApiKey: true
+        })
+      ]);
+      return {
+        user,
+        responseDetail: detail,
+        apikey,
+        authType
+      };
     })();
 
-    if (!user) {
-      throw new Error('Account is error');
-    }
-
-    // must have a app
-    appId = appId ? appId : authAppid;
-    if (!appId) {
-      throw new Error('appId is empty');
-    }
-
     // auth app, get history
-    const [{ app }, { history }] = await Promise.all([
+    const [{ app, canWrite }, { history }] = await Promise.all([
       authApp({
         req,
-        appId,
+        authToken: true,
+        authApiKey: true,
+        appId: appId || '',
         per: 'r'
       }),
-      getChatHistory({ chatId, appId, userId })
+      getChatHistory({ chatId, tmbId: user.team.tmbId })
     ]);
 
-    const isOwner = !shareId && userId === String(app.userId);
-    const responseDetail = isOwner || shareResponseDetail;
+    const isOwner = !shareId && String(user.team.tmbId) === String(app.tmbId);
+    responseDetail = isOwner || responseDetail;
 
     /* format prompts */
     const prompts = history.concat(gptMessage2ChatType(messages));
@@ -183,6 +156,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res,
       modules: app.modules,
       user,
+      teamId: user.team.teamId,
+      tmbId: user.team.tmbId,
       variables,
       params: {
         history: prompts,
@@ -196,8 +171,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (chatId) {
       await saveChat({
         chatId,
-        appId,
-        userId,
+        appId: app._id,
+        teamId: user.team.teamId,
+        tmbId: user.team.tmbId,
         variables,
         isOwner, // owner update use time
         shareId,
@@ -225,7 +201,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = isOwner ? responseData : selectShareResponse({ responseData });
+    const feResponseData = canWrite ? responseData : selectShareResponse({ responseData });
 
     if (stream) {
       responseWrite({
@@ -270,8 +246,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // add record
     const { total } = pushChatBill({
       appName: app.name,
-      appId,
-      userId,
+      appId: app._id,
+      teamId: user.team.teamId,
+      tmbId: user.team.tmbId,
       source: (() => {
         if (authType === 'apikey') return BillSourceEnum.api;
         if (shareId) return BillSourceEnum.shareLink;
@@ -304,266 +281,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
   }
 });
-
-/* running */
-export async function dispatchModules({
-  res,
-  modules,
-  user,
-  params = {},
-  variables = {},
-  stream = false,
-  detail = false
-}: {
-  res: NextApiResponse;
-  modules: ModuleItemType[];
-  user: UserModelSchema;
-  params?: Record<string, any>;
-  variables?: Record<string, any>;
-  stream?: boolean;
-  detail?: boolean;
-}) {
-  variables = {
-    ...getSystemVariable({ timezone: user.timezone }),
-    ...variables
-  };
-  const runningModules = loadModules(modules, variables);
-
-  // let storeData: Record<string, any> = {}; // after module used
-  let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
-  let chatAnswerText = ''; // AI answer
-  let runningTime = Date.now();
-
-  function pushStore(
-    { inputs = [] }: RunningModuleItemType,
-    {
-      answerText = '',
-      responseData
-    }: {
-      answerText?: string;
-      responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
-    }
-  ) {
-    const time = Date.now();
-    if (responseData) {
-      if (Array.isArray(responseData)) {
-        chatResponse = chatResponse.concat(responseData);
-      } else {
-        chatResponse.push({
-          ...responseData,
-          runningTime: +((time - runningTime) / 1000).toFixed(2)
-        });
-      }
-    }
-    runningTime = time;
-
-    const isResponseAnswerText =
-      inputs.find((item) => item.key === SystemInputEnum.isResponseAnswerText)?.value ?? true;
-    if (isResponseAnswerText) {
-      chatAnswerText += answerText;
-    }
-  }
-  function moduleInput(
-    module: RunningModuleItemType,
-    data: Record<string, any> = {}
-  ): Promise<any> {
-    const checkInputFinish = () => {
-      return !module.inputs.find((item: any) => item.value === undefined);
-    };
-    const updateInputValue = (key: string, value: any) => {
-      const index = module.inputs.findIndex((item: any) => item.key === key);
-      if (index === -1) return;
-      module.inputs[index].value = value;
-    };
-
-    const set = new Set();
-
-    return Promise.all(
-      Object.entries(data).map(([key, val]: any) => {
-        updateInputValue(key, val);
-
-        if (!set.has(module.moduleId) && checkInputFinish()) {
-          set.add(module.moduleId);
-          // remove switch
-          updateInputValue(SystemInputEnum.switch, undefined);
-          return moduleRun(module);
-        }
-      })
-    );
-  }
-  function moduleOutput(
-    module: RunningModuleItemType,
-    result: Record<string, any> = {}
-  ): Promise<any> {
-    pushStore(module, result);
-    return Promise.all(
-      module.outputs.map((outputItem) => {
-        if (result[outputItem.key] === undefined) return;
-        /* update output value */
-        outputItem.value = result[outputItem.key];
-
-        /* update target */
-        return Promise.all(
-          outputItem.targets.map((target: any) => {
-            // find module
-            const targetModule = runningModules.find((item) => item.moduleId === target.moduleId);
-            if (!targetModule) return;
-
-            return moduleInput(targetModule, { [target.key]: outputItem.value });
-          })
-        );
-      })
-    );
-  }
-  async function moduleRun(module: RunningModuleItemType): Promise<any> {
-    if (res.closed) return Promise.resolve();
-
-    if (stream && detail && module.showStatus) {
-      responseStatus({
-        res,
-        name: module.name,
-        status: 'running'
-      });
-    }
-
-    // get fetch params
-    const params: Record<string, any> = {};
-    module.inputs.forEach((item: any) => {
-      params[item.key] = item.value;
-    });
-    const props: ModuleDispatchProps<Record<string, any>> = {
-      res,
-      stream,
-      detail,
-      variables,
-      outputs: module.outputs,
-      user,
-      inputs: params
-    };
-
-    const dispatchRes: Record<string, any> = await (async () => {
-      const callbackMap: Record<string, Function> = {
-        [FlowNodeTypeEnum.historyNode]: dispatchHistory,
-        [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
-        [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
-        [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
-        [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-        [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-        [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
-        [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
-        [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
-      };
-      if (callbackMap[module.flowType]) {
-        return callbackMap[module.flowType](props);
-      }
-      return {};
-    })();
-
-    const formatResponseData = (() => {
-      if (!dispatchRes[TaskResponseKeyEnum.responseData]) return undefined;
-      if (Array.isArray(dispatchRes[TaskResponseKeyEnum.responseData]))
-        return dispatchRes[TaskResponseKeyEnum.responseData];
-      return {
-        ...dispatchRes[TaskResponseKeyEnum.responseData],
-        moduleName: module.name,
-        moduleType: module.flowType
-      };
-    })();
-
-    return moduleOutput(module, {
-      [SystemOutputEnum.finish]: true,
-      ...dispatchRes,
-      [TaskResponseKeyEnum.responseData]: formatResponseData
-    });
-  }
-
-  // start process width initInput
-  const initModules = runningModules.filter((item) => initModuleType[item.flowType]);
-
-  await Promise.all(initModules.map((module) => moduleInput(module, params)));
-
-  return {
-    [TaskResponseKeyEnum.answerText]: chatAnswerText,
-    [TaskResponseKeyEnum.responseData]: chatResponse
-  };
-}
-
-/* init store modules to running modules */
-function loadModules(
-  modules: ModuleItemType[],
-  variables: Record<string, any>
-): RunningModuleItemType[] {
-  return modules.map((module) => {
-    return {
-      moduleId: module.moduleId,
-      name: module.name,
-      flowType: module.flowType,
-      showStatus: module.showStatus,
-      inputs: module.inputs
-        .filter((item) => item.connected) // filter unconnected target input
-        .map((item) => {
-          if (typeof item.value !== 'string') {
-            return {
-              key: item.key,
-              value: item.value
-            };
-          }
-
-          // variables replace
-          const replacedVal = replaceVariable(item.value, variables);
-
-          return {
-            key: item.key,
-            value: replacedVal
-          };
-        }),
-      outputs: module.outputs
-        .map((item) => ({
-          key: item.key,
-          answer: item.key === TaskResponseKeyEnum.answerText,
-          value: undefined,
-          targets: item.targets
-        }))
-        .sort((a, b) => {
-          // finish output always at last
-          if (a.key === SystemOutputEnum.finish) return 1;
-          if (b.key === SystemOutputEnum.finish) return -1;
-          return 0;
-        })
-    };
-  });
-}
-
-/* sse response modules staus */
-export function responseStatus({
-  res,
-  status,
-  name
-}: {
-  res: NextApiResponse;
-  status?: 'running' | 'finish';
-  name?: string;
-}) {
-  if (!name) return;
-  responseWrite({
-    res,
-    event: sseResponseEventEnum.moduleStatus,
-    data: JSON.stringify({
-      status: 'running',
-      name
-    })
-  });
-}
-
-/* get system variable */
-export function getSystemVariable({ timezone }: { timezone: string }) {
-  return {
-    cTime: getSystemTime(timezone)
-  };
-}
 
 export const config = {
   api: {

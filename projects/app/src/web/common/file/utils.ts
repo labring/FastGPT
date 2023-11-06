@@ -148,7 +148,7 @@ export const fileDownload = ({
   // 添加链接到页面并触发下载
   document.body.appendChild(downloadLink);
   downloadLink.click();
-  document.body.removeChild(downloadLink);
+  document.body?.removeChild(downloadLink);
 };
 
 export const fileToBase64 = (file: File) => {

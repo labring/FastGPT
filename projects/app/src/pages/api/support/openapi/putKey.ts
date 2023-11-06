@@ -2,14 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { EditApiKeyProps } from '@/global/support/api/openapiReq.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
     const { _id, name, limit } = req.body as EditApiKeyProps & { _id: string };
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authCert({ req, authToken: true });
 
     await MongoOpenApi.findOneAndUpdate(
       {

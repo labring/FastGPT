@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getVectorModel } from '@/service/core/ai/model';
 import type { DatasetItemType } from '@/types/core/dataset';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
     // 凭证校验
-    const { teamId, tmbId } = await authUser({ req, authToken: true, per: 'r' });
+    const { teamId, tmbId } = await authCert({ req, authToken: true, per: 'r' });
 
     const datasets = await MongoDataset.find({
       ...mongoRPermission({ teamId, tmbId }),

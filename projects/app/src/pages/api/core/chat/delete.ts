@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
@@ -16,36 +16,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
     const { chatId, appId } = req.query as Props;
-    const { userId } = await authUser({ req, authToken: true });
+
+    const { tmbId } = await authCert({ req, authToken: true });
 
     if (chatId) {
-      await Promise.all([
-        MongoChat.findOneAndRemove({
-          chatId,
-          userId
-        }),
-        MongoChatItem.deleteMany({
-          userId,
-          chatId
-        })
-      ]);
+      await MongoChatItem.deleteMany({
+        chatId,
+        tmbId
+      });
+      await MongoChat.findOneAndRemove({
+        chatId,
+        tmbId
+      });
     }
     if (appId) {
       const chats = await MongoChat.find({
         appId,
-        userId,
+        tmbId,
         source: ChatSourceEnum.online
       }).select('_id');
       const chatIds = chats.map((chat) => chat._id);
-
-      await Promise.all([
-        MongoChat.deleteMany({
-          _id: { $in: chatIds }
-        }),
-        MongoChatItem.deleteMany({
-          chatId: { $in: chatIds }
-        })
-      ]);
+      await MongoChatItem.deleteMany({
+        chatId: { $in: chatIds }
+      });
+      await MongoChat.deleteMany({
+        _id: { $in: chatIds }
+      });
     }
 
     jsonRes(res);

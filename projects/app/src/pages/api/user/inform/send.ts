@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { startSendInform } from '@/service/events/sendInform';
 import { MongoUserInform } from '@fastgpt/service/support/user/inform/schema';
 import { InformTypeEnum } from '@fastgpt/global/support/user/constant';
@@ -21,7 +21,7 @@ export type Props = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    await authUser({ req, authRoot: true });
+    await authCert({ req, authRoot: true });
 
     jsonRes(res, {
       data: await sendInform(req.body),

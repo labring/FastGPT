@@ -42,6 +42,10 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     async ({ username, password }: LoginFormType) => {
       setRequesting(true);
       try {
+        toast({
+          title: '登录成功',
+          status: 'success'
+        });
         loginSuccess(
           await postLogin({
             username,
@@ -49,10 +53,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             tmbId: lastTmbId
           })
         );
-        toast({
-          title: '登录成功',
-          status: 'success'
-        });
       } catch (error: any) {
         toast({
           title: error.message || '登录异常',

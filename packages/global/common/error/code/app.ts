@@ -14,7 +14,7 @@ export const appErrMap = appErrList.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {
-      code: 501000 + index,
+      code: 502000 + index,
       statusText: cur.statusText,
       message: cur.message,
       data: null

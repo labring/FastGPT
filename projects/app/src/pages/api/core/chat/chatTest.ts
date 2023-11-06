@@ -1,14 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { responseWrite } from '@fastgpt/service/common/response';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { dispatchModules } from '@/pages/api/v1/chat/completions';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { authApp } from '@/service/support/permission/auth/app';
+import { authUser } from '@/service/support/permission/auth/user';
+import { dispatchModules } from '@/service/moduleDispatch';
 
 export type Props = {
   history: ChatItemType[];
@@ -39,17 +40,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     /* user auth */
-    const { userId, user } = await authUser({ req, authToken: true, authBalance: true });
-
-    if (!user) {
-      throw new Error('user not found');
-    }
+    const [{ teamId, tmbId }, { user }] = await Promise.all([
+      authApp({ req, authToken: true, appId, per: 'r' }),
+      authUser({
+        req,
+        authToken: true,
+        minBalance: 0
+      })
+    ]);
 
     /* start process */
     const { responseData } = await dispatchModules({
       res,
       modules: modules,
       variables,
+      teamId,
+      tmbId,
       user,
       params: {
         history,
@@ -74,7 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     pushChatBill({
       appName,
       appId,
-      userId,
+      teamId,
+      tmbId,
       source: BillSourceEnum.fastgpt,
       response: responseData
     });

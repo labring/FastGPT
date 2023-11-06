@@ -6,6 +6,10 @@ import {
   ChatSourceMap,
   TaskResponseKeyEnum
 } from '@fastgpt/global/core/chat/constants';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 export const chatCollectionName = 'chat';
 
@@ -16,7 +20,16 @@ const ChatSchema = new Schema({
   },
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: 'user'
+  },
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
     required: true
   },
   appId: {

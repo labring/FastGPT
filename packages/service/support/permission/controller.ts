@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import { NextApiResponse } from 'next';
 import type { AuthModeType, ReqHeaderAuthType } from './type.d';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { authOutLinkId } from '../outLink/auth';
 import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 
@@ -51,8 +50,7 @@ export async function parseHeaderAuth({
   req,
   authToken = false,
   authRoot = false,
-  authApiKey = false,
-  authOutLink
+  authApiKey = false
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
@@ -96,10 +94,12 @@ export async function parseHeaderAuth({
     })();
 
     // auth apikey
-    const { userId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
+    const { userId, teamId, tmbId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
 
     return {
       uid: userId,
+      teamId,
+      tmbId,
       apikey,
       appId: apiKeyAppId || authorizationAppid
     };
@@ -114,44 +114,61 @@ export async function parseHeaderAuth({
 
   const { cookie, token, apikey, rootkey, userid, authorization } = (req.headers ||
     {}) as ReqHeaderAuthType;
-  const { shareId } = (req?.body || {}) as { shareId?: string };
 
-  let uid = '';
-  let teamId: string | undefined = undefined;
-  let tmbId: string | undefined = undefined;
-  let appId: string | undefined = undefined;
-  let openApiKey = apikey;
-  let authType: `${AuthUserTypeEnum}` = AuthUserTypeEnum.token;
-
-  if (authOutLink && shareId) {
-    const res = await authOutLinkId({ id: shareId });
-    uid = res.userId;
-    authType = AuthUserTypeEnum.outLink;
-  } else if (authToken && (cookie || token)) {
-    // user token(from fastgpt web)
-    const res = await authCookieToken(cookie, token);
-    uid = res.userId;
-    teamId = res.teamId;
-    tmbId = res.tmbId;
-    authType = AuthUserTypeEnum.token;
-  } else if (authRoot && rootkey) {
-    // root user
-    uid = await parseRootKey(rootkey, userid);
-    authType = AuthUserTypeEnum.root;
-  } else if (authApiKey && apikey) {
-    // apikey
-    const parseResult = await authOpenApiKey({ apikey });
-    uid = parseResult.userId;
-    authType = AuthUserTypeEnum.apikey;
-    openApiKey = parseResult.apikey;
-  } else if (authApiKey && authorization) {
-    // apikey from authorization
-    const authResponse = await parseAuthorization(authorization);
-    uid = authResponse.uid;
-    appId = authResponse.appId;
-    openApiKey = authResponse.apikey;
-    authType = AuthUserTypeEnum.apikey;
-  }
+  const { uid, teamId, tmbId, appId, openApiKey, authType } = await (async () => {
+    if (authToken && (cookie || token)) {
+      // user token(from fastgpt web)
+      const res = await authCookieToken(cookie, token);
+      return {
+        uid: res.userId,
+        teamId: res.teamId,
+        tmbId: res.tmbId,
+        appId: '',
+        openApiKey: '',
+        authType: AuthUserTypeEnum.token
+      };
+    } else if (authRoot && rootkey) {
+      // root user
+      return {
+        uid: await parseRootKey(rootkey, userid),
+        teamId: '',
+        tmbId: '',
+        appId: '',
+        openApiKey: '',
+        authType: AuthUserTypeEnum.root
+      };
+    } else if (authApiKey && apikey) {
+      // apikey
+      const parseResult = await authOpenApiKey({ apikey });
+      return {
+        uid: parseResult.userId,
+        teamId: parseResult.teamId,
+        tmbId: parseResult.tmbId,
+        appId: parseResult.appId,
+        openApiKey: parseResult.apikey,
+        authType: AuthUserTypeEnum.apikey
+      };
+    } else if (authApiKey && authorization) {
+      // apikey from authorization
+      const authResponse = await parseAuthorization(authorization);
+      return {
+        uid: authResponse.uid,
+        teamId: authResponse.teamId,
+        tmbId: authResponse.tmbId,
+        appId: authResponse.appId,
+        openApiKey: authResponse.apikey,
+        authType: AuthUserTypeEnum.apikey
+      };
+    }
+    return {
+      uid: '',
+      teamId: '',
+      tmbId: '',
+      appId: '',
+      openApiKey: '',
+      authType: AuthUserTypeEnum.token
+    };
+  })();
 
   // not rootUser and no uid, reject request
   if (!rootkey && !uid) {

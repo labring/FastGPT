@@ -8,11 +8,12 @@ export async function authApp(
     appId: string;
   }
 ) {
-  const { userId, tmbId } = await parseHeaderAuth(props);
+  const { userId, tmbId, appId: authAppId } = await parseHeaderAuth(props);
   const team = await getTeamInfoByUIdAndTmbId(userId, tmbId);
 
   return packageAuthApp({
     ...props,
+    appId: props.appId || authAppId,
     role: team.role
   });
 }

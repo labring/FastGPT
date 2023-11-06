@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoUserInform } from '@fastgpt/service/support/user/inform/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: 0
       });
     }
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authCert({ req, authToken: true });
 
     const data = await MongoUserInform.countDocuments({
       userId,

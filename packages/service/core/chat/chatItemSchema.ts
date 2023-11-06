@@ -15,6 +15,11 @@ const ChatItemSchema = new Schema({
     require: true,
     default: () => nanoid()
   },
+  appId: {
+    type: Schema.Types.ObjectId,
+    ref: 'model',
+    required: true
+  },
   chatId: {
     type: String,
     require: true
@@ -31,11 +36,6 @@ const ChatItemSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
-  },
-  appId: {
-    type: Schema.Types.ObjectId,
-    ref: 'model',
     required: true
   },
   time: {

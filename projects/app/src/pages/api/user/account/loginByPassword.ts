@@ -17,10 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 检测用户是否存在
-    const authUser = await MongoUser.findOne({
+    const authCert = await MongoUser.findOne({
       username
     });
-    if (!authUser) {
+    if (!authCert) {
       throw new Error('用户未注册');
     }
 

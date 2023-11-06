@@ -1,8 +1,8 @@
-import { authBalanceByUid } from '../user/auth';
 import { MongoOutLink } from './schema';
 import { POST } from '../../common/api/plusRequest';
 import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { OutLinkErrEnum } from '../../../global/common/error/code/outLink';
 
 export type AuthLinkProps = { ip?: string | null; authToken?: string; question: string };
 export type AuthLinkLimitProps = AuthLinkProps & { outLink: OutLinkSchema };
@@ -21,19 +21,17 @@ export async function authOutLinkChat({
   });
 
   if (!outLink) {
-    return Promise.reject('分享链接无效');
+    return Promise.reject(OutLinkErrEnum.unAuthLink);
   }
 
-  const uid = String(outLink.userId);
-
-  const [user] = await Promise.all([
-    authBalanceByUid(uid), // authBalance
-    ...(global.feConfigs?.isPlus ? [authOutLinkLimit({ outLink, ip, authToken, question })] : []) // limit auth
-  ]);
+  if (global.feConfigs?.isPlus) {
+    await authOutLinkLimit({ outLink, ip, authToken, question });
+  }
 
   return {
-    user,
     userId: String(outLink.userId),
+    teamId: String(outLink.teamId),
+    tmbId: String(outLink.tmbId),
     appId: String(outLink.appId),
     authType: AuthUserTypeEnum.token,
     responseDetail: outLink.responseDetail

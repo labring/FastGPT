@@ -30,7 +30,6 @@ export async function dispatchDatasetSearch(props: Record<string, any>): Promise
   const {
     teamId,
     tmbId,
-    user,
     inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
   } = props as DatasetSearchProps;
 
@@ -56,9 +55,7 @@ export async function dispatchDatasetSearch(props: Record<string, any>): Promise
     SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
     select id, q, a, dataset_id, collection_id, (vector <#> '[${
       vectors[0]
-    }]') * -1 AS score from ${PgDatasetTableName} where user_id='${
-      user._id
-    }' AND dataset_id IN (${datasets
+    }]') * -1 AS score from ${PgDatasetTableName} where dataset_id IN (${datasets
       .map((item) => `'${item.datasetId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]

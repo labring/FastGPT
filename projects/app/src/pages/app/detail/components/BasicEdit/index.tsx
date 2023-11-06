@@ -617,7 +617,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
-        url: '/api/chat/chatTest',
+        url: '/api/core/chat/chatTest',
         data: {
           history,
           prompt: chatList[chatList.length - 2].value,

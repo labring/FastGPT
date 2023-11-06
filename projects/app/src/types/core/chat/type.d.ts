@@ -1,7 +1,7 @@
 import type { ChatCompletionRequestMessage } from '@fastgpt/global/core/ai/type.d';
 import type { NextApiResponse } from 'next';
 import { RunningModuleItemType } from '@/types/app';
-import type { UserModelSchema } from '@fastgpt/global/support/user/type';
+import type { UserType } from '@fastgpt/global/support/user/type';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string; content: string };
 
@@ -12,8 +12,8 @@ export type ModuleDispatchProps<T> = {
   detail: boolean;
   variables: Record<string, any>;
   outputs: RunningModuleItemType['outputs'];
+  user: UserType;
   teamId: string;
   tmbId: string;
-  user: UserModelSchema;
   inputs: T;
 };

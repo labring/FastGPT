@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import { getVectorModel } from '@/service/core/ai/model';
 import type { DatasetItemType } from '@/types/core/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';

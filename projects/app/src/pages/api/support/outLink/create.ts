@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@/service/support/permission/auth/app';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { customAlphabet } from 'nanoid';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       type: `${OutLinkTypeEnum}`;
     };
 
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authCert({ req, authToken: true });
     await authApp({
       req,
       appId,
