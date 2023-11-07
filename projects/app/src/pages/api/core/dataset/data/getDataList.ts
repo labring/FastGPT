@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { PgClient } from '@/service/pg';
+import { PgClient } from '@fastgpt/service/common/pg';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type { DatasetDataListItemType } from '@/global/core/dataset/response.d';
 import type { GetDatasetDataListProps } from '@/global/core/api/datasetReq';

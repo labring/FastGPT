@@ -274,6 +274,7 @@
       "Select One Collection To Store": "Select the collection to store"
     },
     "data": {
+      "Can not delete tip": "No modification permission",
       "Delete Tip": "Confirm to delete the data?",
       "File import": "File Import",
       "Input Data": "Import Data",

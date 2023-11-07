@@ -1,4 +1,3 @@
-import type { Pool } from 'pg';
 import type { Tiktoken } from 'js-tiktoken';
 import {
   ChatModelItemType,
@@ -18,7 +17,6 @@ export type PagingData<T> = {
 export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 
 declare global {
-  var pgClient: Pool | null;
   var qaQueueLen: number;
   var vectorQueueLen: number;
   var TikToken: Tiktoken;

@@ -274,6 +274,7 @@
       "Select One Collection To Store": "选择一个文件进行存储"
     },
     "data": {
+      "Can not delete tip": "无修改权限",
       "Delete Tip": "确认删除该条数据？",
       "File import": "文件导入",
       "Input Data": "导入新数据",

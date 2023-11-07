@@ -27,6 +27,7 @@ export type CreateDatasetParams = {
 export type SearchTestProps = {
   datasetId: string;
   text: string;
+  limit?: number;
 };
 
 /* ======= collections =========== */

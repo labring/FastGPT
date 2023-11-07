@@ -17,13 +17,9 @@ import type {
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import type { GSFileInfoType } from '@/types/common/file';
 import { getToken } from '@/web/support/user/auth';
 import download from 'downloadjs';
-import type {
-  CollectionWithDatasetType,
-  DatasetDataItemType
-} from '@fastgpt/global/core/dataset/type';
+import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
 import { PagingData } from '@/types';

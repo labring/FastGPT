@@ -1,6 +1,6 @@
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { getVectorsByText } from '@/service/core/ai/vector';
-import { PgClient } from '@/service/pg';
+import { PgClient } from '@fastgpt/service/common/pg';
 import { delay } from '@/utils/tools';
 import {
   DatasetDataItemType,

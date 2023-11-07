@@ -1,5 +1,11 @@
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
-import { PgClient } from '@/service/pg';
+import {
+  SearchDataResponseItemType,
+  SearchDataResultItemType
+} from '@fastgpt/global/core/dataset/type';
+import { PgClient } from '@fastgpt/service/common/pg';
+import { getVectorsByText } from '../../ai/vector';
+import { getPgDataWithCollection } from './controller';
 
 /**
  * Same value judgment
@@ -51,4 +57,48 @@ export async function countCollectionData({
   const values = Object.values(rows[0]).map((item) => Number(item));
 
   return values;
+}
+
+export async function searchDatasetData({
+  text,
+  model,
+  similarity = 0,
+  limit,
+  datasetIds = []
+}: {
+  text: string;
+  model: string;
+  similarity?: number;
+  limit: number;
+  datasetIds: string[];
+}) {
+  const { vectors, tokenLen } = await getVectorsByText({
+    model,
+    input: [text]
+  });
+
+  const results: any = await PgClient.query(
+    `BEGIN;
+    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
+    select id, q, a, collection_id, (vector <#> '[${
+      vectors[0]
+    }]') * -1 AS score from ${PgDatasetTableName} where dataset_id IN (${datasetIds
+      .map((id) => `'${String(id)}'`)
+      .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
+      vectors[0]
+    }]' limit ${limit};
+    COMMIT;`
+  );
+
+  const rows = results?.[2]?.rows as SearchDataResultItemType[];
+  const collectionsData = await getPgDataWithCollection({ pgDataList: rows });
+  const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
+    ...item,
+    score: rows[index].score
+  }));
+
+  return {
+    searchRes,
+    tokenLen
+  };
 }

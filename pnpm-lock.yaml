@@ -84,6 +84,9 @@ importers:
       openai:
         specifier: ^4.12.4
         version: registry.npmmirror.com/openai@4.12.4(encoding@0.1.13)
+      pg:
+        specifier: ^8.10.0
+        version: registry.npmmirror.com/pg@8.11.3
       tunnel:
         specifier: ^0.0.6
         version: registry.npmmirror.com/tunnel@0.0.6
@@ -103,6 +106,9 @@ importers:
       '@types/node':
         specifier: ^20.8.5
         version: registry.npmmirror.com/@types/node@20.8.7
+      '@types/pg':
+        specifier: ^8.6.6
+        version: registry.npmmirror.com/@types/pg@8.10.7
       '@types/tunnel':
         specifier: ^0.0.4
         version: registry.npmmirror.com/@types/tunnel@0.0.4
@@ -229,9 +235,6 @@ importers:
       papaparse:
         specifier: ^5.4.1
         version: registry.npmmirror.com/papaparse@5.4.1
-      pg:
-        specifier: ^8.10.0
-        version: registry.npmmirror.com/pg@8.11.3
       pg-query-stream:
         specifier: ^4.5.3
         version: registry.npmmirror.com/pg-query-stream@4.5.3(pg@8.11.3)
@@ -311,9 +314,6 @@ importers:
       '@types/papaparse':
         specifier: ^5.3.7
         version: registry.npmmirror.com/@types/papaparse@5.3.10
-      '@types/pg':
-        specifier: ^8.6.6
-        version: registry.npmmirror.com/@types/pg@8.10.7
       '@types/react':
         specifier: 18.0.28
         version: registry.npmmirror.com/@types/react@18.0.28

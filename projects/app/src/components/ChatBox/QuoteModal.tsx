@@ -16,6 +16,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import MyTooltip from '../MyTooltip';
 import NextLink from 'next/link';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const QuoteModal = ({
   rawSearch = [],
@@ -28,14 +29,15 @@ const QuoteModal = ({
   const { isPc } = useSystemStore();
   const theme = useTheme();
   const router = useRouter();
+  const { userInfo } = useUserStore();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
-  const [editInputData, setEditInputData] = useState<InputDataType>();
+  const [editInputData, setEditInputData] = useState<InputDataType & { datasetId: string }>();
 
   const isShare = useMemo(() => router.pathname === '/chat/share', [router.pathname]);
 
   /**
-   * click edit, get new kbDataItem
+   * click edit, get new DataItem
    */
   const onclickEdit = useCallback(
     async (item: InputDataType) => {
@@ -181,6 +183,7 @@ const QuoteModal = ({
       </MyModal>
       {editInputData && editInputData.id && (
         <InputDataModal
+          canWrite={userInfo?.team?.canWrite || false}
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => {
             console.log('更新引用成功');

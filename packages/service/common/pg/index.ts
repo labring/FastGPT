@@ -54,7 +54,7 @@ type InsertProps = {
   values: ValuesProps[];
 };
 
-class Pg {
+class PgClass {
   private getWhereStr(where?: WhereProps) {
     return where
       ? `WHERE ${where
@@ -159,8 +159,6 @@ class Pg {
   }
 }
 
-export const PgClient = new Pg();
-
 export async function initPg() {
   try {
     await connectPg();
@@ -184,3 +182,6 @@ export async function initPg() {
     console.log('init pg error', error);
   }
 }
+
+export const PgClient = new PgClass();
+export const Pg = global.pgClient;

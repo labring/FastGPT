@@ -20,7 +20,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { Types } from 'mongoose';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { PgClient } from '@/service/pg';
+import { PgClient } from '@fastgpt/service/common/pg';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';

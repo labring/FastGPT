@@ -298,9 +298,9 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                             {item.memberUsername}
                           </Box>
                         </Td>
-                        <Td>{t(TeamMemberRoleMap[item.role].label)}</Td>
+                        <Td>{t(TeamMemberRoleMap[item.role]?.label || '')}</Td>
                         <Td color={TeamMemberStatusMap[item.status].color}>
-                          {t(TeamMemberStatusMap[item.status].label)}
+                          {t(TeamMemberStatusMap[item.status]?.label || '')}
                         </Td>
                         <Td>
                           {userInfo?.team?.role === TeamMemberRoleEnum.owner &&

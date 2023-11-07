@@ -1,24 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { PgClient } from '@/service/pg';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { getVectorsByText } from '@/service/core/ai/vector';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type { SearchTestProps } from '@/global/core/api/datasetReq.d';
 import { connectToDatabase } from '@/service/mongo';
-import type {
-  SearchDataResponseItemType,
-  SearchDataResultItemType
-} from '@fastgpt/global/core/dataset/type';
-import { getPgDataWithCollection } from '@/service/core/dataset/data/controller';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { searchDatasetData } from '@/service/core/dataset/data/utils';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { datasetId, text } = req.body as SearchTestProps;
+    const { datasetId, text, limit = 20 } = req.body as SearchTestProps;
 
     if (!datasetId || !text) {
       throw new Error('缺少参数');
@@ -36,25 +30,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // auth balance
     await authTeamBalance(teamId);
 
-    const { vectors, tokenLen } = await getVectorsByText({
+    const { searchRes, tokenLen } = await searchDatasetData({
+      text,
       model: dataset.vectorModel,
-      input: [text]
+      limit: Math.min(limit, 50),
+      datasetIds: [datasetId]
     });
-
-    const results: any = await PgClient.query(
-      `BEGIN;
-        SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
-        select id, q, a, dataset_id, collection_id, (vector <#> '[${
-          vectors[0]
-        }]') * -1 AS score from ${PgDatasetTableName} where dataset_id='${datasetId}' ORDER BY vector <#> '[${
-          vectors[0]
-        }]' limit 12;
-        COMMIT;`
-    );
-
-    const rows = results?.[2]?.rows as SearchDataResultItemType[];
-
-    const collectionsData = await getPgDataWithCollection({ pgDataList: rows });
 
     // push bill
     pushGenerateVectorBill({
@@ -65,10 +46,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     jsonRes<SearchDataResponseItemType[]>(res, {
-      data: collectionsData.map((item, index) => ({
-        ...item,
-        score: rows[index].score
-      }))
+      data: searchRes
     });
   } catch (err) {
     jsonRes(res, {

@@ -190,7 +190,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId, toast]
   );
   // 初始化聊天框
-  useQuery(['init', appId, chatId], () => {
+  useQuery(['init', { appId, chatId }], () => {
     // pc: redirect to latest model chat
     if (!appId && lastChatAppId) {
       return router.replace({

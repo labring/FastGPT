@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { PgClient } from '@/service/pg';
+import { PgClient } from '@fastgpt/service/common/pg';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { connectToDatabase } from '@/service/mongo';
