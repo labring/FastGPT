@@ -34,9 +34,9 @@ export async function authDataset({
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { dataset, isOwner, canWrite } = await (async () => {
-    const dataset = (await MongoDataset.findById(datasetId))?.toJSON();
+    const dataset = (await MongoDataset.findOne({ _id: datasetId, teamId }))?.toJSON();
 
-    if (!dataset || String(dataset?.teamId) !== teamId) {
+    if (!dataset) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);
     }
 

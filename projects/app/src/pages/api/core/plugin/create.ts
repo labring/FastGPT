@@ -1,19 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { createOnePlugin } from '@fastgpt/service/core/plugin/controller';
 import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
-import { defaultModules } from '@fastgpt/global/core/plugin/constants';
+import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { userId } = await authCert({ req, authToken: true });
+    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
     const body = req.body as CreateOnePluginParams;
 
+    const { _id } = await MongoPlugin.create({
+      ...body,
+      teamId,
+      tmbId
+    });
+
     jsonRes(res, {
-      data: await createOnePlugin({ userId, modules: defaultModules, ...body })
+      data: _id
     });
   } catch (err) {
     jsonRes(res, {

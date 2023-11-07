@@ -7,10 +7,10 @@ import { getUserPlugins2Templates } from '@fastgpt/service/core/plugin/controlle
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { userId } = await authCert({ req, authToken: true });
+    const { teamId } = await authCert({ req, authToken: true });
 
     jsonRes(res, {
-      data: await getUserPlugins2Templates({ userId })
+      data: await getUserPlugins2Templates({ teamId })
     });
   } catch (err) {
     jsonRes(res, {

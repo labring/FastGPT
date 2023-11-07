@@ -27,6 +27,7 @@ import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -85,13 +86,17 @@ async function initDefaultTeam(limit: number) {
 async function initMongoTeamId(limit: number) {
   const mongoSchema = [
     {
-      label: 'MongoChat',
-      schema: MongoChat
-    },
-    {
-      label: 'MongoChatItem',
-      schema: MongoChatItem
+      label: 'MongoPlugin',
+      schema: MongoPlugin
     }
+    // {
+    //   label: 'MongoChat',
+    //   schema: MongoChat
+    // },
+    // {
+    //   label: 'MongoChatItem',
+    //   schema: MongoChatItem
+    // },
     // {
     //   label: 'MongoApp',
     //   schema: MongoApp

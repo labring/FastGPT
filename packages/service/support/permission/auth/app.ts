@@ -27,9 +27,9 @@ export async function authApp({
 
   const { app, isOwner, canWrite } = await (async () => {
     // get app
-    const app = (await MongoApp.findById(appId))?.toJSON();
+    const app = (await MongoApp.findOne({ _id: appId, teamId }))?.toJSON();
     if (!app) {
-      return Promise.reject('App is not exists');
+      return Promise.reject(AppErrEnum.unAuthApp);
     }
 
     const isOwner = String(app.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;

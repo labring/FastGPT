@@ -20,12 +20,12 @@ export async function authOpenApiKeyCrud({
   }
 > {
   const result = await parseHeaderCert(props);
-  const { tmbId } = result;
+  const { tmbId, teamId } = result;
 
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { openapi, isOwner, canWrite } = await (async () => {
-    const openapi = await MongoOpenApi.findById(id);
+    const openapi = await MongoOpenApi.findOne({ _id: id, teamId });
 
     if (!openapi) {
       throw new Error(OpenApiErrEnum.unExist);

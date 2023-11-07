@@ -2,6 +2,7 @@ import appErr from './code/app';
 import chatErr from './code/chat';
 import datasetErr from './code/dataset';
 import openapiErr from './code/openapi';
+import pluginErr from './code/plugin';
 import outLinkErr from './code/outLink';
 import teamErr from './code/team';
 import userErr from './code/user';
@@ -94,5 +95,6 @@ export const ERROR_RESPONSE: Record<
   ...openapiErr,
   ...outLinkErr,
   ...teamErr,
-  ...userErr
+  ...userErr,
+  ...pluginErr
 };

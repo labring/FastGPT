@@ -25,12 +25,12 @@ export async function authOutLinkCrud({
   }
 > {
   const result = await parseHeaderCert(props);
-  const { tmbId } = result;
+  const { tmbId, teamId } = result;
 
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { app, outLink, isOwner, canWrite } = await (async () => {
-    const outLink = await MongoOutLink.findById(outLinkId);
+    const outLink = await MongoOutLink.findOne({ _id: outLinkId, teamId });
 
     if (!outLink) {
       throw new Error(OutLinkErrEnum.unExist);
