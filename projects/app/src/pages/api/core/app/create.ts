@@ -5,7 +5,7 @@ import { connectToDatabase } from '@/service/mongo';
 import type { CreateAppParams } from '@fastgpt/global/core/app/api.d';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { authUserNotVisitor } from '@/service/support/permission/auth/user';
+import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

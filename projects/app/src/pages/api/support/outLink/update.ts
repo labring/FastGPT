@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
-import { authOutLinkCrud } from '@/service/support/permission/auth/outLink';
+import { authOutLinkCrud } from '@fastgpt/service/support/permission/auth/outLink';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

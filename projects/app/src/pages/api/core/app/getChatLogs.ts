@@ -7,7 +7,7 @@ import { AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
 import { addDays } from 'date-fns';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
-import { authApp } from '@/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/auth/app';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

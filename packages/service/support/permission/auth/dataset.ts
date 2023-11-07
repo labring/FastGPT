@@ -13,16 +13,15 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { getTeamInfoByTmbId } from '../../user/team/controller';
 
 export async function authDataset({
   req,
   authToken,
   datasetId,
-  role,
   per = 'owner'
 }: AuthModeType & {
   datasetId: string;
-  role: `${TeamMemberRoleEnum}`;
 }): Promise<
   AuthResponseType & {
     dataset: DatasetSchemaType;
@@ -32,6 +31,7 @@ export async function authDataset({
     req,
     authToken
   });
+  const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { dataset, isOwner, canWrite } = await (async () => {
     const dataset = (await MongoDataset.findById(datasetId))?.toJSON();
@@ -77,11 +77,9 @@ export async function authDatasetCollection({
   req,
   authToken,
   collectionId,
-  role,
   per = 'owner'
 }: AuthModeType & {
   collectionId: string;
-  role: `${TeamMemberRoleEnum}`;
 }): Promise<
   AuthResponseType & {
     collection: CollectionWithDatasetType;
@@ -91,6 +89,7 @@ export async function authDatasetCollection({
     req,
     authToken
   });
+  const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { collection, isOwner, canWrite } = await (async () => {
     const collection = await getCollectionWithDataset(collectionId);
@@ -139,11 +138,9 @@ export async function authDatasetFile({
   req,
   authToken,
   fileId,
-  role,
   per = 'owner'
 }: AuthModeType & {
   fileId: string;
-  role: `${TeamMemberRoleEnum}`;
 }): Promise<
   AuthResponseType & {
     file: DatasetFileSchema;
@@ -153,6 +150,7 @@ export async function authDatasetFile({
     req,
     authToken
   });
+  const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
 
@@ -164,7 +162,6 @@ export async function authDatasetFile({
     req,
     authToken,
     datasetId: file.metadata.datasetId,
-    role,
     per
   });
   const isOwner = String(dataset.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
@@ -173,10 +170,8 @@ export async function authDatasetFile({
     isOwner ||
     (role !== TeamMemberRoleEnum.visitor && dataset.permission === PermissionTypeEnum.public);
 
-  if (per === 'r') {
-    if (!isOwner && dataset.permission !== PermissionTypeEnum.public) {
-      return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
-    }
+  if (per === 'r' && !isOwner && dataset.permission !== PermissionTypeEnum.public) {
+    return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
   }
   if (per === 'w' && !canWrite) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);

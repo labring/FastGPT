@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import type { DatasetPathItemType } from '@/types/core/dataset';
 import { getDatasetCollectionPaths } from '@fastgpt/service/core/dataset/collection/utils';
-import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

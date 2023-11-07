@@ -7,7 +7,7 @@ import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { authApp } from '@/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { authUser } from '@/service/support/permission/auth/user';
 import { dispatchModules } from '@/service/moduleDispatch';
 

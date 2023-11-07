@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
-import { createDefaultTeam, getDefaultTeamMember } from '@/service/support/user/team/controller';
+import {
+  createDefaultTeam,
+  getTeamInfoByTmbId
+} from '@fastgpt/service/support/user/team/controller';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { delay } from '@/utils/tools';
@@ -144,7 +147,7 @@ async function initMongoTeamId(limit: number) {
     async function init(user: UserModelSchema) {
       const userId = user._id;
       try {
-        const tmb = await getDefaultTeamMember(userId);
+        const tmb = await getTeamInfoByTmbId({ userId });
 
         await schema.updateMany(
           {
@@ -215,7 +218,9 @@ async function initCollectionFileTeam(limit: number) {
 
   async function init(item: any) {
     try {
-      const tmb = await getDefaultTeamMember(item.metadata.userId);
+      const tmb = await getTeamInfoByTmbId({
+        userId: item.metadata.userId
+      });
 
       await DatasetFile.findOneAndUpdate(
         {
@@ -264,7 +269,7 @@ async function initPgData() {
     const userId = rows[index].user_id;
     if (!userId) return;
     try {
-      const tmb = await getDefaultTeamMember(userId);
+      const tmb = await getTeamInfoByTmbId({ userId });
       // update pg
       await PgClient.query(
         `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}'`

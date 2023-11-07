@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
-import { authApp } from '@/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { SystemOutputEnum } from '@/constants/app';
 
 /* 获取我的模型 */

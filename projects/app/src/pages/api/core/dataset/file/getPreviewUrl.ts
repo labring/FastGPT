@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authDatasetFile } from '@/service/support/permission/auth/dataset';
+import { authDatasetFile } from '@fastgpt/service/support/permission/auth/dataset';
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
 import { BucketNameEnum, FileBaseUrl } from '@fastgpt/global/common/file/constants';
 

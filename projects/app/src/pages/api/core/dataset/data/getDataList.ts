@@ -5,7 +5,7 @@ import { PgClient } from '@/service/pg';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type { DatasetDataListItemType } from '@/global/core/dataset/response.d';
 import type { GetDatasetDataListProps } from '@/global/core/api/datasetReq';
-import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

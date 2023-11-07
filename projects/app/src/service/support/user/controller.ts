@@ -1,10 +1,16 @@
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserType } from '@fastgpt/global/support/user/type';
-import { getTeamInfoByTmbId } from './team/controller';
+import { getTeamInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 
-export async function getUserDetail(tmbId?: string, userId?: string): Promise<UserType> {
-  const team = await getTeamInfoByTmbId(tmbId, userId);
+export async function getUserDetail({
+  tmbId,
+  userId
+}: {
+  tmbId?: string;
+  userId?: string;
+}): Promise<UserType> {
+  const team = await getTeamInfoByTmbId({ tmbId, userId });
   const user = await MongoUser.findById(team.userId);
 
   if (!user) {

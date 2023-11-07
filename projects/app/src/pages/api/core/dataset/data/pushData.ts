@@ -11,7 +11,7 @@ import { countPromptTokens } from '@/global/common/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDataProps } from '@/global/core/api/datasetReq.d';
 import { getVectorModel } from '@/service/core/ai/model';
-import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 
 const modeMap = {

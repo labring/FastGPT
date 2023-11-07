@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import type { UpdateDatasetCollectionParams } from '@/global/core/api/datasetReq.d';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collection/utils';
-import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

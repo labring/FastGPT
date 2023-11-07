@@ -1,14 +1,19 @@
 import { TeamItemType } from '@fastgpt/global/support/user/team/type';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
+import { connectionMongo, Types } from '../../../common/mongo';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum,
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { Types } from 'mongoose';
 
-export async function getTeamInfoByTmbId(tmbId?: string, userId?: string): Promise<TeamItemType> {
+export async function getTeamInfoByTmbId({
+  tmbId,
+  userId
+}: {
+  tmbId?: string;
+  userId?: string;
+}): Promise<TeamItemType> {
   if (!tmbId && !userId) {
     return Promise.reject('tmbId or userId is required');
   }
@@ -61,10 +66,12 @@ export async function getTeamInfoByTmbId(tmbId?: string, userId?: string): Promi
 export async function createDefaultTeam({
   userId,
   teamName = 'My Team',
+  avatar = '/icon/logo.svg',
   balance = 0
 }: {
   userId: string;
   teamName?: string;
+  avatar?: string;
   balance?: number;
 }) {
   const db = connectionMongo.connection.db;
@@ -84,7 +91,7 @@ export async function createDefaultTeam({
     const { insertedId } = await Team.insertOne({
       ownerId: userId,
       name: teamName,
-      avatar: '/icon/logo.svg',
+      avatar,
       balance,
       maxSize: 1,
       createTime: new Date()

@@ -8,8 +8,8 @@ import type { CreateDatasetCollectionParams } from '@/global/core/api/datasetReq
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collection/utils';
-import { authUserNotVisitor } from '@/service/support/permission/auth/user';
-import { authDataset } from '@/service/support/permission/auth/dataset';
+import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

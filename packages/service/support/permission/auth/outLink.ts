@@ -9,16 +9,15 @@ import { MongoApp } from '../../../core/app/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { getTeamInfoByTmbId } from '../../user/team/controller';
 
 /* crud outlink permission */
 export async function authOutLinkCrud({
   outLinkId,
-  role,
   per = 'owner',
   ...props
 }: AuthModeType & {
   outLinkId: string;
-  role: `${TeamMemberRoleEnum}`;
 }): Promise<
   AuthResponseType & {
     app: AppDetailType;
@@ -27,6 +26,8 @@ export async function authOutLinkCrud({
 > {
   const result = await parseHeaderCert(props);
   const { tmbId } = result;
+
+  const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { app, outLink, isOwner, canWrite } = await (async () => {
     const outLink = await MongoOutLink.findById(outLinkId);
@@ -74,5 +75,24 @@ export async function authOutLinkCrud({
     outLink,
     isOwner,
     canWrite
+  };
+}
+
+export async function authOutLinkValid({ shareId }: { shareId?: string }) {
+  const shareChat = await MongoOutLink.findOne({ shareId });
+
+  if (!shareChat) {
+    return Promise.reject(OutLinkErrEnum.linkUnInvalid);
+  }
+
+  const app = await MongoApp.findById(shareChat.appId);
+
+  if (!app) {
+    return Promise.reject(AppErrEnum.unExist);
+  }
+
+  return {
+    app,
+    shareChat
   };
 }

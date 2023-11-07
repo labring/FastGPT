@@ -6,7 +6,7 @@ import type { DatasetItemType } from '@/types/core/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
-import { authUserRole } from '@/service/support/permission/auth/user';
+import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

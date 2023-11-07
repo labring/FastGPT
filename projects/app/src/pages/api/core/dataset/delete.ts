@@ -8,7 +8,7 @@ import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { delDatasetFiles } from '@fastgpt/service/core/dataset/file/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { authDataset } from '@/service/support/permission/auth/dataset';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

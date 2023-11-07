@@ -11,7 +11,7 @@ import { countPromptTokens } from '@/global/common/tiktoken';
 import { getVectorModel } from '@/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
-import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authApp } from '@/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { customAlphabet } from 'nanoid';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';

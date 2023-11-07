@@ -7,7 +7,7 @@ import { HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
 import { getGuideModule } from '@/global/core/app/modules/utils';
 import { authShareChatInit } from '@/service/support/outLink/auth';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
-import { authOutLinkValid } from '@/service/support/permission/auth/outLink';
+import { authOutLinkValid } from '@fastgpt/service/support/permission/auth/outLink';
 
 /* init share chat window */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

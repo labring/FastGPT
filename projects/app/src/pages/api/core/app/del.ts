@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authApp } from '@/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/auth/app';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

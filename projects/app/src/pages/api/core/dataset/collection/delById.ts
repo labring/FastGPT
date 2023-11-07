@@ -5,7 +5,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delDataByCollectionId } from '@/service/core/dataset/data/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { authDatasetCollection } from '@/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { delFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
