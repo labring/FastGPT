@@ -21,7 +21,7 @@ const errList = [
     message: '分享链接无效'
   }
 ];
-export const appErrMap = errList.reduce((acc, cur, index) => {
+export default errList.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {

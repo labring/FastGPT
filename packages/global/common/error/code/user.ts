@@ -7,13 +7,13 @@ export enum UserErrEnum {
   binVisitor = 'binVisitor',
   balanceNotEnough = 'balanceNotEnough'
 }
-const teamErr = [
+const errList = [
   { statusText: UserErrEnum.unAuthUser, message: '找不到该用户' },
   { statusText: UserErrEnum.binVisitor, message: '您的身份校验未通过' },
   { statusText: UserErrEnum.binVisitor, message: '您当前身份为游客，无权操作' },
   { statusText: UserErrEnum.balanceNotEnough, message: '账号余额不足~' }
 ];
-export const TeamErrorMap = teamErr.reduce((acc, cur, index) => {
+export default errList.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {

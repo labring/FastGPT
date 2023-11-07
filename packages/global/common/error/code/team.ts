@@ -9,7 +9,7 @@ const teamErr = [
   { statusText: TeamErrEnum.teamOverSize, message: 'error.team.overSize' },
   { statusText: TeamErrEnum.unAuthTeam, message: '无权操作该团队' }
 ];
-export const TeamErrorMap = teamErr.reduce((acc, cur, index) => {
+export default teamErr.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {

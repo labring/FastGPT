@@ -10,7 +10,7 @@ const errList = [
     message: '无权操作该对话记录'
   }
 ];
-export const appErrMap = errList.reduce((acc, cur, index) => {
+export default errList.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {

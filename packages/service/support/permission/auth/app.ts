@@ -17,6 +17,7 @@ export async function authApp({
   appId: string;
 }): Promise<
   AuthResponseType & {
+    teamOwner: boolean;
     app: AppDetailType;
   }
 > {
@@ -65,6 +66,7 @@ export async function authApp({
     tmbId,
     app,
     isOwner,
-    canWrite
+    canWrite,
+    teamOwner: role === TeamMemberRoleEnum.owner
   };
 }

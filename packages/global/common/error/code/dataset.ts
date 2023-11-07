@@ -30,7 +30,7 @@ const datasetErr = [
     message: '无权创建数据集'
   }
 ];
-export const datasetErrMap = datasetErr.reduce((acc, cur, index) => {
+export default datasetErr.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {

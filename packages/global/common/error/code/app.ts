@@ -15,7 +15,7 @@ const appErrList = [
     message: '无权操作该应用'
   }
 ];
-export const appErrMap = appErrList.reduce((acc, cur, index) => {
+export default appErrList.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {

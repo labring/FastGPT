@@ -25,7 +25,7 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
     tmbId,
     team,
     role: team.role,
-    isOwner: String(team.tmbId) === tmbId,
+    isOwner: team.role === TeamMemberRoleEnum.owner, // teamOwner
     canWrite: true
   };
 }

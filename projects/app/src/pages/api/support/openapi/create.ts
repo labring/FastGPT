@@ -5,15 +5,16 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { customAlphabet } from 'nanoid';
-import type { EditApiKeyProps } from '@/global/support/api/openapiReq.d';
+import type { EditApiKeyProps } from '@/global/support/openapi/api';
+import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
     const { appId, name, limit } = req.body as EditApiKeyProps;
-    const { userId } = await authCert({ req, authToken: true });
+    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
 
-    const count = await MongoOpenApi.find({ userId, appId }).countDocuments();
+    const count = await MongoOpenApi.find({ tmbId, appId }).countDocuments();
 
     if (count >= 10) {
       throw new Error('最多 10 组 API 秘钥');
@@ -26,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid()}`;
 
     await MongoOpenApi.create({
-      userId,
+      teamId,
+      tmbId,
       apiKey,
       appId,
       name,

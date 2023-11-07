@@ -1,26 +1,22 @@
+// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type { EditApiKeyProps } from '@/global/support/api/openapiReq.d';
+import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { _id, name, limit } = req.body as EditApiKeyProps & { _id: string };
-    const { userId } = await authCert({ req, authToken: true });
+    const { id } = req.query as { id: string };
 
-    await MongoOpenApi.findOneAndUpdate(
-      {
-        _id,
-        userId
-      },
-      {
-        ...(name && { name }),
-        ...(limit && { limit })
-      }
-    );
+    if (!id) {
+      throw new Error('缺少参数');
+    }
+
+    await authOpenApiKeyCrud({ req, authToken: true, id, per: 'owner' });
+
+    await MongoOpenApi.findOneAndRemove({ _id: id });
 
     jsonRes(res);
   } catch (err) {

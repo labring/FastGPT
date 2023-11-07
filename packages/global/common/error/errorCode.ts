@@ -1,6 +1,10 @@
-import { appErrMap } from './code/app';
-import { TeamErrorMap } from './code/team';
-import { datasetErrMap } from './code/dataset';
+import appErr from './code/app';
+import chatErr from './code/chat';
+import datasetErr from './code/dataset';
+import openapiErr from './code/openapi';
+import outLinkErr from './code/outLink';
+import teamErr from './code/team';
+import userErr from './code/user';
 
 export const ERROR_CODE: { [key: number]: string } = {
   400: '请求失败',
@@ -84,7 +88,11 @@ export const ERROR_RESPONSE: Record<
     message: 'Api Key 不合法',
     data: null
   },
-  ...datasetErrMap,
-  ...TeamErrorMap,
-  ...appErrMap
+  ...appErr,
+  ...chatErr,
+  ...datasetErr,
+  ...openapiErr,
+  ...outLinkErr,
+  ...teamErr,
+  ...userErr
 };
