@@ -35,16 +35,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { limit = 50 } = req.body as { limit: number };
     await connectToDatabase();
 
-    await initDefaultTeam(limit);
-    await initMongoTeamId(limit);
-    await initDatasetAndApp();
-    await initCollectionFileTeam(limit);
+    // await initDefaultTeam(limit);
+    // await initMongoTeamId(limit);
+    // await initDatasetAndApp();
+    // await initCollectionFileTeam(limit);
 
-    if (global.systemEnv.pluginBaseUrl) {
-      POST('/admin/init46');
-    }
+    // if (global.systemEnv.pluginBaseUrl) {
+    //   POST('/admin/init46');
+    // }
 
-    // await initPgData();
+    await initPgData();
 
     jsonRes(res, {
       data: {}

@@ -7,6 +7,7 @@ import { throttle } from 'lodash';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
+import { feConfigs } from '@/web/common/system/staticData';
 import dynamic from 'next/dynamic';
 
 import Auth from './auth';
@@ -66,7 +67,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   }, [loadGitStar, setScreenWidth]);
 
   const { data: unread = 0 } = useQuery(['getUnreadCount'], getUnreadCount, {
-    enabled: !!userInfo,
+    enabled: !!userInfo && feConfigs.isPlus,
     refetchInterval: 10000
   });
 

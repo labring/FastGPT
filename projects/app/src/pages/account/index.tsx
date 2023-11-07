@@ -78,12 +78,16 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             }
           ]
         : []),
+      ...(feConfigs.isPlus
+        ? [
+            {
+              icon: 'informLight',
+              label: t('user.Notice'),
+              id: TabEnum.inform
+            }
+          ]
+        : []),
 
-      {
-        icon: 'informLight',
-        label: t('user.Notice'),
-        id: TabEnum.inform
-      },
       {
         icon: 'loginoutLight',
         label: t('user.Sign Out'),

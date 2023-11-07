@@ -17,7 +17,7 @@ export async function getUserAndAuthBalance({
   if (!user) {
     return Promise.reject(UserErrEnum.unAuthUser);
   }
-  if (minBalance !== undefined && user.team.balance < minBalance) {
+  if (minBalance !== undefined && global.feConfigs.isPlus && user.team.balance < minBalance) {
     return Promise.reject(UserErrEnum.balanceNotEnough);
   }
 
