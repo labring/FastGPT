@@ -91,13 +91,15 @@ export const pushGenerateVectorBill = async ({
   teamId,
   tmbId,
   tokenLen,
-  model
+  model,
+  source = BillSourceEnum.fastgpt
 }: {
   billId?: string;
   teamId: string;
   tmbId: string;
   tokenLen: number;
   model: string;
+  source?: `${BillSourceEnum}`;
 }) => {
   // 计算价格. 至少为1
   const vectorModel =
@@ -122,7 +124,7 @@ export const pushGenerateVectorBill = async ({
       tmbId,
       appName: '索引生成',
       total,
-      source: BillSourceEnum.fastgpt,
+      source,
       list: [
         {
           moduleName: '索引生成',

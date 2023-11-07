@@ -127,7 +127,8 @@ export async function parseHeaderCert({
         openApiKey: '',
         authType: AuthUserTypeEnum.token
       };
-    } else if (authRoot && rootkey) {
+    }
+    if (authRoot && rootkey) {
       // root user
       return {
         uid: await parseRootKey(rootkey, userid),
@@ -137,7 +138,8 @@ export async function parseHeaderCert({
         openApiKey: '',
         authType: AuthUserTypeEnum.root
       };
-    } else if (authApiKey && apikey) {
+    }
+    if (authApiKey && apikey) {
       // apikey
       const parseResult = await authOpenApiKey({ apikey });
       return {
@@ -148,7 +150,9 @@ export async function parseHeaderCert({
         openApiKey: parseResult.apikey,
         authType: AuthUserTypeEnum.apikey
       };
-    } else if (authApiKey && authorization) {
+    }
+
+    if (authApiKey && authorization) {
       // apikey from authorization
       const authResponse = await parseAuthorization(authorization);
       return {

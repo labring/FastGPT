@@ -29,7 +29,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
   const { toast } = useToast();
   const { setLoginStore } = useSystemStore();
-  const { lastTmbId } = useUserStore();
   const {
     register,
     handleSubmit,
@@ -45,8 +44,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         loginSuccess(
           await postLogin({
             username,
-            password,
-            tmbId: lastTmbId
+            password
           })
         );
         toast({
@@ -61,7 +59,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       }
       setRequesting(false);
     },
-    [lastTmbId, loginSuccess, toast]
+    [loginSuccess, toast]
   );
 
   const redirectUri = `${location.origin}/login/provider`;

@@ -296,11 +296,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         total
       });
     }
-    !!apikey &&
+    if (apikey) {
       updateApiKeyUsage({
         apikey,
         usage: total
       });
+    }
   } catch (err: any) {
     if (stream) {
       sseErrRes(res, err);

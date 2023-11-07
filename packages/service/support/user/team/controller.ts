@@ -48,7 +48,7 @@ export async function getTeamInfoByTmbId({
   const tmb = results[0];
 
   if (!tmb) {
-    return Promise.reject('default team not exist');
+    return Promise.reject('team not exist');
   }
 
   return {

@@ -16,10 +16,9 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getTeamInfoByTmbId } from '../../user/team/controller';
 
 export async function authDataset({
-  req,
-  authToken,
   datasetId,
-  per = 'owner'
+  per = 'owner',
+  ...props
 }: AuthModeType & {
   datasetId: string;
 }): Promise<
@@ -27,10 +26,8 @@ export async function authDataset({
     dataset: DatasetSchemaType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert({
-    req,
-    authToken
-  });
+  const result = await parseHeaderCert(props);
+  const { userId, teamId, tmbId } = result;
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { dataset, isOwner, canWrite } = await (async () => {
@@ -62,9 +59,7 @@ export async function authDataset({
   })();
 
   return {
-    userId,
-    teamId,
-    tmbId,
+    ...result,
     dataset,
     isOwner,
     canWrite
@@ -76,10 +71,9 @@ export async function authDataset({
    Write: in team, not visitor and dataset permission is public
 */
 export async function authDatasetCollection({
-  req,
-  authToken,
   collectionId,
-  per = 'owner'
+  per = 'owner',
+  ...props
 }: AuthModeType & {
   collectionId: string;
 }): Promise<
@@ -87,10 +81,7 @@ export async function authDatasetCollection({
     collection: CollectionWithDatasetType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert({
-    req,
-    authToken
-  });
+  const { userId, teamId, tmbId } = await parseHeaderCert(props);
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { collection, isOwner, canWrite } = await (async () => {
@@ -137,10 +128,9 @@ export async function authDatasetCollection({
 }
 
 export async function authDatasetFile({
-  req,
-  authToken,
   fileId,
-  per = 'owner'
+  per = 'owner',
+  ...props
 }: AuthModeType & {
   fileId: string;
 }): Promise<
@@ -148,10 +138,7 @@ export async function authDatasetFile({
     file: DatasetFileSchema;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert({
-    req,
-    authToken
-  });
+  const { userId, teamId, tmbId } = await parseHeaderCert(props);
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
@@ -161,8 +148,7 @@ export async function authDatasetFile({
   }
 
   const { dataset } = await authDataset({
-    req,
-    authToken,
+    ...props,
     datasetId: file.metadata.datasetId,
     per
   });

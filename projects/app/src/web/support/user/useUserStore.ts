@@ -7,8 +7,6 @@ import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 
 type State = {
-  lastTmbId: string;
-  setLastTmbId: (tmbId?: string) => void;
   userInfo: UserType | null;
   initUserInfo: () => Promise<UserType>;
   setUserInfo: (user: UserType | null) => void;
@@ -19,24 +17,14 @@ export const useUserStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
-        lastTmbId: '',
-        setLastTmbId(tmbId) {
-          if (tmbId) {
-            set((state) => {
-              state.lastTmbId = tmbId;
-            });
-          }
-        },
         userInfo: null,
         async initUserInfo() {
           const res = await getTokenLogin();
           get().setUserInfo(res);
-          get().setLastTmbId(res.team?.tmbId);
 
           return res;
         },
         setUserInfo(user: UserType | null) {
-          get().setLastTmbId(user?.team?.tmbId);
           set((state) => {
             state.userInfo = user
               ? {
@@ -67,9 +55,7 @@ export const useUserStore = create<State>()(
       })),
       {
         name: 'userStore',
-        partialize: (state) => ({
-          lastTmbId: state.lastTmbId
-        })
+        partialize: (state) => ({})
       }
     )
   )

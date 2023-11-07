@@ -10,7 +10,6 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
   if (!apikey) {
     return Promise.reject(ERROR_ENUM.unAuthApiKey);
   }
-
   try {
     const openApi = await MongoOpenApi.findOne({ apiKey: apikey });
     if (!openApi) {
