@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { customAlphabet } from 'nanoid';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';

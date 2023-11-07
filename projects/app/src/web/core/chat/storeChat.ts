@@ -7,7 +7,7 @@ import { delChatHistoryById, getChatHistory, clearChatHistoryByAppId } from '@/w
 
 type State = {
   history: ChatHistoryItemType[];
-  loadHistory: (data: { appId?: string }) => Promise<null>;
+  loadHistory: (data: { appId: string }) => Promise<null>;
   delHistory(history: string): Promise<void>;
   clearHistory(appId: string): Promise<void>;
   updateHistory: (history: ChatHistoryItemType) => void;

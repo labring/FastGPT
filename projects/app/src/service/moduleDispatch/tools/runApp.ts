@@ -1,7 +1,7 @@
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
-import { dispatchModules } from '@/pages/api/v1/chat/completions';
+import { dispatchModules } from '../index';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
@@ -19,15 +19,14 @@ type Response = {
   [TaskResponseKeyEnum.history]: ChatItemType[];
 };
 
-export const dispatchAppRequest = async (props: Record<string, any>): Promise<Response> => {
+export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     res,
-    variables,
     user,
     stream,
     detail,
     inputs: { userChatInput, history = [], app }
-  } = props as Props;
+  } = props;
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
@@ -53,16 +52,12 @@ export const dispatchAppRequest = async (props: Record<string, any>): Promise<Re
   }
 
   const { responseData, answerText } = await dispatchModules({
-    res,
+    ...props,
     modules: appData.modules,
-    user,
-    variables,
     params: {
       history,
       userChatInput
-    },
-    stream,
-    detail
+    }
   });
 
   const completeMessages = history.concat([

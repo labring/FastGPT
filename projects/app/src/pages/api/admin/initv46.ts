@@ -74,7 +74,7 @@ async function initDefaultTeam(limit: number) {
     console.log(success);
   }
 
-  async function init(user: UserModelSchema) {
+  async function init(user: UserModelSchema): Promise<any> {
     try {
       await createDefaultTeam({
         userId: user._id,
@@ -154,7 +154,7 @@ async function initMongoTeamId(limit: number) {
       console.log(success);
     }
 
-    async function init(user: UserModelSchema) {
+    async function init(user: UserModelSchema): Promise<any> {
       const userId = user._id;
       try {
         const tmb = await getTeamInfoByTmbId({ userId });
@@ -226,7 +226,7 @@ async function initCollectionFileTeam(limit: number) {
     console.log(success);
   }
 
-  async function init(item: any) {
+  async function init(item: any): Promise<any> {
     try {
       const tmb = await getTeamInfoByTmbId({
         userId: item.metadata.userId
@@ -275,7 +275,7 @@ async function initPgData() {
   for (let i = 0; i < limit; i++) {
     await init(i);
   }
-  async function init(index: number) {
+  async function init(index: number): Promise<any> {
     const userId = rows[index].user_id;
     if (!userId) return;
     try {

@@ -66,7 +66,6 @@ export function initGlobal() {
   initHttpAgent();
   global.qaQueueLen = 0;
   global.vectorQueueLen = 0;
-  global.sendInformQueue = [];
 }
 
 export function getInitConfig() {
