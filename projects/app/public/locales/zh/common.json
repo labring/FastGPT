@@ -275,6 +275,7 @@
     },
     "data": {
       "Can not delete tip": "无修改权限",
+      "Can not edit": "无编辑权限",
       "Delete Tip": "确认删除该条数据？",
       "File import": "文件导入",
       "Input Data": "导入新数据",
@@ -528,6 +529,11 @@
         "Update to Visitor": "修改成访客",
         "Visitor": "访客"
       }
+    }
+  },
+  "wallet": {
+    "bill": {
+      "bill username": "用户"
     }
   }
 }

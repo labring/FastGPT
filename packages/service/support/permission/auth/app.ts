@@ -21,8 +21,8 @@ export async function authApp({
     app: AppDetailType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert(props);
-
+  const result = await parseHeaderCert(props);
+  const { userId, teamId, tmbId } = result;
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { app, isOwner, canWrite } = await (async () => {
@@ -63,9 +63,7 @@ export async function authApp({
   })();
 
   return {
-    userId,
-    teamId,
-    tmbId,
+    ...result,
     app,
     isOwner,
     canWrite,

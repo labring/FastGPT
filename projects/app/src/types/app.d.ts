@@ -66,6 +66,7 @@ export type RunningModuleItemType = {
 };
 
 export type AppLogsListItemType = {
+  _id: string;
   id: string;
   source: ChatSchema['source'];
   time: Date;

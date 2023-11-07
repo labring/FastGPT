@@ -275,6 +275,7 @@
     },
     "data": {
       "Can not delete tip": "No modification permission",
+      "Can not edit": "No edit permission",
       "Delete Tip": "Confirm to delete the data?",
       "File import": "File Import",
       "Input Data": "Import Data",
@@ -528,6 +529,11 @@
         "Update to Visitor": "Set to visitor",
         "Visitor": "Visitor"
       }
+    }
+  },
+  "wallet": {
+    "bill": {
+      "bill username": "User"
     }
   }
 }

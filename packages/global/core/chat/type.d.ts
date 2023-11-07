@@ -2,6 +2,7 @@ import { ClassifyQuestionAgentItemType } from '../module/type';
 import { SearchDataResponseItemType } from '../dataset/type';
 import { ChatRoleEnum, ChatSourceEnum, TaskResponseKeyEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
+import { AppSchema } from 'core/app/type';
 
 export type ChatSchema = {
   _id: string;
@@ -19,6 +20,10 @@ export type ChatSchema = {
   shareId?: string;
   isInit: boolean;
   content: ChatItemType[];
+};
+
+export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
+  appId: AppSchema;
 };
 
 export type ChatItemSchema = {

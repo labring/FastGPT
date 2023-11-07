@@ -29,6 +29,10 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
     <MyModal isOpen={true} onClose={onClose} title={t('user.Bill Detail')}>
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
+          <Box flex={'0 0 80px'}>用户:</Box>
+          <Box>{bill.username}</Box>
+        </Flex>
+        <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>订单号:</Box>
           <Box>{bill.id}</Box>
         </Flex>

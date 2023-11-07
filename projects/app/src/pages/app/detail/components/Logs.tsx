@@ -101,7 +101,7 @@ const Logs = ({ appId }: { appId: string }) => {
           <Tbody>
             {logs.map((item) => (
               <Tr
-                key={item.id}
+                key={item._id}
                 _hover={{ bg: 'myWhite.600' }}
                 cursor={'pointer'}
                 title={'点击查看对话详情'}

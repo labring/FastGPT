@@ -1,9 +1,12 @@
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { AuthModeType } from '../type';
-import type { ChatSchema } from '@fastgpt/global/core/chat/type';
+import type { ChatSchema, ChatWithAppSchema } from '@fastgpt/global/core/chat/type';
 import { parseHeaderCert } from '../controller';
 import { MongoChat } from '../../../core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { getTeamInfoByTmbId } from '../../user/team/controller';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 export async function authChat({
   chatId,
@@ -17,22 +20,23 @@ export async function authChat({
   }
 > {
   const { userId, teamId, tmbId } = await parseHeaderCert(props);
+  const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { chat, isOwner, canWrite } = await (async () => {
     // get chat
-    const chat = (await MongoChat.findOne({ chatId, teamId }))?.toJSON();
+    const chat = (
+      await MongoChat.findOne({ chatId, teamId }).populate('appId')
+    )?.toJSON() as ChatWithAppSchema;
 
     if (!chat) {
       return Promise.reject('Chat is not exists');
     }
 
-    const isOwner = String(chat.tmbId) === tmbId;
+    const isOwner = role === TeamMemberRoleEnum.owner || String(chat.tmbId) === tmbId;
     const canWrite = isOwner;
 
-    if (per === 'r') {
-      if (!isOwner) {
-        return Promise.reject(ChatErrEnum.unAuthChat);
-      }
+    if (per === 'r' && chat.appId.permission !== PermissionTypeEnum.public) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
     }
     if (per === 'w' && !canWrite) {
       return Promise.reject(ChatErrEnum.unAuthChat);

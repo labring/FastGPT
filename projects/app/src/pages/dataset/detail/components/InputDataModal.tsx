@@ -182,7 +182,6 @@ const InputDataModal = ({
               </MyTooltip>
             </Flex>
             <Textarea
-              isDisabled={!canWrite}
               placeholder={`被向量化的部分，该部分的质量决定了对话时，能否高效的查找到合适的知识点。\n该内容通常是问题，或是一段陈述描述介绍，最多 ${maxToken} 字。`}
               maxLength={maxToken}
               resize={'none'}
@@ -204,7 +203,6 @@ const InputDataModal = ({
               </MyTooltip>
             </Flex>
             <Textarea
-              isDisabled={!canWrite}
               placeholder={
                 '该部分内容不影响搜索质量。当“被搜索的内容”被搜索到后，“补充内容”可以选择性被填入提示词，从而实现更加丰富的提示词组合。可以是问题的答案、代码、图片、表格等。'
               }
@@ -262,15 +260,16 @@ const InputDataModal = ({
             <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
               {t('common.Close')}
             </Button>
-            {canWrite && (
+            <MyTooltip label={canWrite ? '' : t('dataset.data.Can not edit')}>
               <Button
+                isDisabled={!canWrite}
                 isLoading={loading}
                 // @ts-ignore
                 onClick={handleSubmit(defaultValues.id ? onUpdateData : sureImportData)}
               >
                 {defaultValues.id ? '确认变更' : '确认导入'}
               </Button>
-            )}
+            </MyTooltip>
           </Box>
         </Flex>
       </Flex>

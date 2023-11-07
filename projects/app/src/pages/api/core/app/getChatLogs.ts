@@ -25,11 +25,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 凭证校验
-    const { userId } = await authApp({ req, authToken: true, appId, per: 'w' });
+    const { teamId } = await authApp({ req, authToken: true, appId, per: 'w' });
 
     const where = {
       appId: new Types.ObjectId(appId),
-      userId: new Types.ObjectId(userId),
+      teamId: new Types.ObjectId(teamId),
       updateTime: {
         $gte: new Date(dateStart),
         $lte: new Date(dateEnd)
@@ -85,6 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         { $limit: pageSize },
         {
           $project: {
+            _id: 1,
             id: '$chatId',
             title: 1,
             source: 1,

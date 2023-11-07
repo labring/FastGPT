@@ -7,6 +7,8 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
+export const appCollectionName = 'apps';
+
 const AppSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
@@ -64,4 +66,5 @@ try {
   console.log(error);
 }
 
-export const MongoApp: Model<AppType> = models['app'] || model('app', AppSchema);
+export const MongoApp: Model<AppType> =
+  models[appCollectionName] || model(appCollectionName, AppSchema);

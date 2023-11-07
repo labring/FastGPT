@@ -8,14 +8,3 @@ import { BillItemType, BillSchema } from './type';
 export const formatPrice = (val = 0, multiple = 1) => {
   return Number(((val / PRICE_SCALE) * multiple).toFixed(10));
 };
-
-export const adaptBill = (bill: BillSchema): BillItemType => {
-  return {
-    id: bill._id,
-    source: bill.source,
-    time: bill.time,
-    total: formatPrice(bill.total),
-    appName: bill.appName,
-    list: bill.list
-  };
-};

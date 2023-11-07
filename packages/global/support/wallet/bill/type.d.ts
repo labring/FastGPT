@@ -15,6 +15,7 @@ export type BillSchema = CreateBillProps & {
 
 export type BillItemType = {
   id: string;
+  username: string;
   time: Date;
   appName: string;
   source: BillSchema['source'];

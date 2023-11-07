@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 校验使用权限
-    const [{ app, tmbId }] = await Promise.all([
+    const [{ app }, autChatResult] = await Promise.all([
       authApp({
         req,
         authToken: true,
@@ -41,44 +41,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? authChat({
             req,
             authToken: true,
-            chatId
+            chatId,
+            per: 'r'
           })
         : undefined
     ]);
 
     // get app and history
-    const { chat, history = [] }: { chat?: ChatSchema; history?: ChatItemType[] } =
-      await (async () => {
-        if (chatId) {
-          // auth chatId
-          const [chat, history] = await Promise.all([
-            MongoChat.findOne(
-              {
-                chatId,
-                tmbId,
-                appId
-              },
-              'title variables'
-            ),
-            MongoChatItem.find(
-              {
-                chatId,
-                tmbId,
-                appId
-              },
-              `dataId obj value adminFeedback userFeedback ${TaskResponseKeyEnum.responseData}`
-            )
-              .sort({ _id: -1 })
-              .limit(30)
-          ]);
-          if (!chat) {
-            throw new Error('聊天框不存在');
-          }
-          history.reverse();
-          return { history, chat };
-        }
-        return {};
-      })();
+    const { history = [] }: { history?: ChatItemType[] } = await (async () => {
+      if (chatId) {
+        // auth chatId
+        const history = await MongoChatItem.find(
+          {
+            chatId
+          },
+          `dataId obj value adminFeedback userFeedback ${TaskResponseKeyEnum.responseData}`
+        )
+          .sort({ _id: -1 })
+          .limit(30);
+
+        history.reverse();
+        return { history };
+      }
+      return {};
+    })();
 
     jsonRes<InitChatResponse>(res, {
       data: {
@@ -91,8 +77,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           avatar: app.avatar,
           intro: app.intro
         },
-        title: chat?.title || '新对话',
-        variables: chat?.variables || {},
+        title: autChatResult?.chat?.title || '新对话',
+        variables: autChatResult?.chat?.variables || {},
         history
       }
     });
