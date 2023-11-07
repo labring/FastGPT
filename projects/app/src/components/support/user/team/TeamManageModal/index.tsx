@@ -260,7 +260,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   ml={3}
                   leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'myBlue.600'} />}
                   onClick={() => {
-                    if (userInfo.team.maxSize > members.length) {
+                    if (userInfo.team.maxSize >= members.length) {
                       toast({
                         status: 'warning',
                         title: t('user.team.Over Max Member Tip', { max: userInfo.team.maxSize })

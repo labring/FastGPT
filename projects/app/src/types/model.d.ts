@@ -3,7 +3,8 @@ import { LLMModelUsageEnum } from '@/constants/model';
 export type LLMModelItemType = {
   model: string;
   name: string;
-  maxToken: number;
+  maxContext: number;
+  maxResponse: number;
   price: number;
 };
 export type ChatModelItemType = LLMModelItemType & {

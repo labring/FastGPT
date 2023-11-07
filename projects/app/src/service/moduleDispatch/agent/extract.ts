@@ -98,7 +98,7 @@ async function functionCall({
   ];
   const filterMessages = ChatContextFilter({
     messages,
-    maxTokens: extractModel.maxToken
+    maxTokens: extractModel.maxContext
   });
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 

@@ -45,7 +45,7 @@ const ImportData = ({
         mode: TrainingModeEnum.index
       },
       [ImportTypeEnum.qa]: {
-        defaultChunkLen: qaModel?.maxToken * 0.5 || 8000,
+        defaultChunkLen: qaModel?.maxContext * 0.5 || 8000,
         unitPrice: qaModel?.price || 3,
         mode: TrainingModeEnum.qa
       },

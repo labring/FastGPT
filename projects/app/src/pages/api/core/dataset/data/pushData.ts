@@ -82,7 +82,7 @@ export async function pushDataToDatasetCollection({
       model: vectorModelData.model
     },
     [TrainingModeEnum.qa]: {
-      maxToken: global.qaModels[0].maxToken * 0.8,
+      maxToken: global.qaModels[0].maxContext * 0.8,
       model: global.qaModels[0].model
     }
   };

@@ -10,6 +10,7 @@ import {
 export const getChatModel = (model?: string) => {
   return (
     (global.chatModels || defaultChatModels).find((item) => item.model === model) ||
+    global.chatModels?.[0] ||
     defaultChatModels[0]
   );
 };

@@ -1,4 +1,4 @@
-import { AppDetailType, AppSchema } from '@fastgpt/global/core/app/type.d';
+import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import type {
   LLMModelItemType,
@@ -9,10 +9,11 @@ import type {
 
 export const defaultChatModels: ChatModelItemType[] = [
   {
-    model: 'gpt-3.5-turbo',
-    name: 'GPT35-4k',
+    model: 'gpt-3.5-turbo-1106',
+    name: 'GPT35-1106',
     price: 0,
-    maxToken: 4000,
+    maxContext: 16000,
+    maxResponse: 4000,
     quoteMaxToken: 2000,
     maxTemperature: 1.2,
     censor: false,
@@ -21,7 +22,8 @@ export const defaultChatModels: ChatModelItemType[] = [
   {
     model: 'gpt-3.5-turbo-16k',
     name: 'GPT35-16k',
-    maxToken: 16000,
+    maxContext: 16000,
+    maxResponse: 16000,
     price: 0,
     quoteMaxToken: 8000,
     maxTemperature: 1.2,
@@ -31,7 +33,8 @@ export const defaultChatModels: ChatModelItemType[] = [
   {
     model: 'gpt-4',
     name: 'GPT4-8k',
-    maxToken: 8000,
+    maxContext: 8000,
+    maxResponse: 8000,
     price: 0,
     quoteMaxToken: 4000,
     maxTemperature: 1.2,
@@ -43,15 +46,17 @@ export const defaultQAModels: LLMModelItemType[] = [
   {
     model: 'gpt-3.5-turbo-16k',
     name: 'GPT35-16k',
-    maxToken: 16000,
+    maxContext: 16000,
+    maxResponse: 16000,
     price: 0
   }
 ];
 export const defaultCQModels: FunctionModelItemType[] = [
   {
-    model: 'gpt-3.5-turbo-16k',
-    name: 'GPT35-16k',
-    maxToken: 16000,
+    model: 'gpt-3.5-turbo-1106',
+    name: 'GPT35-1106',
+    maxContext: 16000,
+    maxResponse: 4000,
     price: 0,
     functionCall: true,
     functionPrompt: ''
@@ -59,7 +64,8 @@ export const defaultCQModels: FunctionModelItemType[] = [
   {
     model: 'gpt-4',
     name: 'GPT4-8k',
-    maxToken: 8000,
+    maxContext: 8000,
+    maxResponse: 8000,
     price: 0,
     functionCall: true,
     functionPrompt: ''
@@ -67,9 +73,10 @@ export const defaultCQModels: FunctionModelItemType[] = [
 ];
 export const defaultExtractModels: FunctionModelItemType[] = [
   {
-    model: 'gpt-3.5-turbo-16k',
-    name: 'GPT35-16k',
-    maxToken: 16000,
+    model: 'gpt-3.5-turbo-1106',
+    name: 'GPT35-1106',
+    maxContext: 16000,
+    maxResponse: 4000,
     price: 0,
     functionCall: true,
     functionPrompt: ''
@@ -77,9 +84,10 @@ export const defaultExtractModels: FunctionModelItemType[] = [
 ];
 export const defaultQGModels: LLMModelItemType[] = [
   {
-    model: 'gpt-3.5-turbo',
-    name: 'GPT35-4K',
-    maxToken: 4000,
+    model: 'gpt-3.5-turbo-1106',
+    name: 'GPT35-1106',
+    maxContext: 1600,
+    maxResponse: 4000,
     price: 0
   }
 ];

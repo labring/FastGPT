@@ -88,7 +88,7 @@ ${systemPrompt}
 
   const filterMessages = ChatContextFilter({
     messages,
-    maxTokens: cqModel.maxToken
+    maxTokens: cqModel.maxContext
   });
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 

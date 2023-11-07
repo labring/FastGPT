@@ -163,15 +163,15 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'maxToken',
       type: FlowNodeInputTypeEnum.hidden,
       label: '回复上限',
-      value: chatModelList?.[0] ? chatModelList[0].maxToken / 2 : 2000,
+      value: chatModelList?.[0] ? chatModelList[0].maxResponse / 2 : 2000,
       min: 100,
-      max: chatModelList?.[0]?.maxToken || 4000,
+      max: chatModelList?.[0]?.maxResponse || 4000,
       step: 50,
       markList: [
         { label: '100', value: 100 },
         {
-          label: `${chatModelList?.[0]?.maxToken || 4000}`,
-          value: chatModelList?.[0]?.maxToken || 4000
+          label: `${chatModelList?.[0]?.maxResponse || 4000}`,
+          value: chatModelList?.[0]?.maxResponse || 4000
         }
       ]
     },
