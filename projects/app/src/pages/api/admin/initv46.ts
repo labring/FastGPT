@@ -32,10 +32,10 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { limit = 50 } = req.body as { limit: number };
+    const { limit = 50, maxSize = 3 } = req.body as { limit: number; maxSize: number };
     await connectToDatabase();
 
-    await initDefaultTeam(limit);
+    await initDefaultTeam(limit, maxSize);
     await initMongoTeamId(limit);
     await initDatasetAndApp();
     await initCollectionFileTeam(limit);
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function initDefaultTeam(limit: number) {
+async function initDefaultTeam(limit: number, maxSize: number) {
   /* init user default Team */
   const users = await MongoUser.find({}, '_id balance');
   console.log('init user default team', users.length);
@@ -79,7 +79,8 @@ async function initDefaultTeam(limit: number) {
     try {
       await createDefaultTeam({
         userId: user._id,
-        balance: user.balance
+        balance: user.balance,
+        maxSize
       });
     } catch (error) {
       console.log(error);

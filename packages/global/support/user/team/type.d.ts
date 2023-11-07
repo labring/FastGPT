@@ -32,6 +32,7 @@ export type TeamItemType = {
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   canWrite: boolean;
+  maxSize: number;
 };
 
 export type TeamMemberItemType = {

@@ -53,7 +53,7 @@ async function initRootUser() {
       rootId = _id;
     }
     // init root team
-    await createDefaultTeam({ userId: rootId });
+    await createDefaultTeam({ userId: rootId, maxSize: 1 });
 
     console.log(`root user init:`, {
       username: 'root',

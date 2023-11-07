@@ -61,19 +61,22 @@ export async function getTeamInfoByTmbId({
     role: tmb.role,
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
-    canWrite: tmb.role !== TeamMemberRoleEnum.visitor
+    canWrite: tmb.role !== TeamMemberRoleEnum.visitor,
+    maxSize: tmb.team.maxSize
   };
 }
 export async function createDefaultTeam({
   userId,
   teamName = 'My Team',
   avatar = '/icon/logo.svg',
-  balance = 0
+  balance = 0,
+  maxSize = 5
 }: {
   userId: string;
   teamName?: string;
   avatar?: string;
   balance?: number;
+  maxSize?: number;
 }) {
   const db = connectionMongo.connection.db;
   const Team = db.collection(TeamCollectionName);
@@ -94,7 +97,7 @@ export async function createDefaultTeam({
       name: teamName,
       avatar,
       balance,
-      maxSize: 1,
+      maxSize,
       createTime: new Date()
     });
     await TeamMember.insertOne({

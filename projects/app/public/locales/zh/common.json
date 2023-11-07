@@ -495,6 +495,7 @@
       "Leave Team Failed": "离开团队异常",
       "Manage": "团队管理",
       "Member": "成员",
+      "Over Max Member Tip": "团队最多{{max}}人",
       "Personal Team": "个人团队",
       "Processing invitations": "处理邀请",
       "Processing invitations Tips": "你有{{amount}}个需要处理的团队邀请",

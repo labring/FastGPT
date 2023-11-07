@@ -42,6 +42,7 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import { FormDataType, defaultForm } from './EditModal';
 import MyMenu from '@/components/MyMenu';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useToast } from '@/web/common/hooks/useToast';
 
 const EditModal = dynamic(() => import('./EditModal'));
 const InviteModal = dynamic(() => import('./InviteModal'));
@@ -50,6 +51,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { Loading } = useLoading();
+  const { toast } = useToast();
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm();
   const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
@@ -257,7 +259,16 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   borderRadius={'md'}
                   ml={3}
                   leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'myBlue.600'} />}
-                  onClick={onOpenInvite}
+                  onClick={() => {
+                    if (userInfo.team.maxSize > members.length) {
+                      toast({
+                        status: 'warning',
+                        title: t('user.team.Over Max Member Tip', { max: userInfo.team.maxSize })
+                      });
+                    } else {
+                      onOpenInvite();
+                    }
+                  }}
                 >
                   {t('user.team.Invite Member')}
                 </Button>
