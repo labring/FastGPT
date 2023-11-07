@@ -15,9 +15,9 @@ export async function connectMongo({
   if (global.mongodb) {
     return;
   }
-  global.mongodb = mongoose;
 
   beforeHook && (await beforeHook());
+  global.mongodb = mongoose;
 
   // logger
   initLogger();
