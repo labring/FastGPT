@@ -2,19 +2,19 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getVectorModel } from '@/service/core/ai/model';
 import type { DatasetItemType } from '@/types/core/dataset';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
+import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     // 凭证校验
-    const { teamId, tmbId } = await authCert({ req, authToken: true, per: 'r' });
+    const { teamId, tmbId, teamOwner } = await authUserRole({ req, authToken: true });
 
     const datasets = await MongoDataset.find({
-      ...mongoRPermission({ teamId, tmbId }),
+      ...mongoRPermission({ teamId, tmbId, teamOwner }),
       type: 'dataset'
     });
 
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       tags: item.tags.join(' '),
       vectorModel: getVectorModel(item.vectorModel),
       canWrite: String(item.tmbId) === tmbId,
-      isOwner: String(item.tmbId) === tmbId
+      isOwner: teamOwner || String(item.tmbId) === tmbId
     }));
 
     jsonRes<DatasetItemType[]>(res, {

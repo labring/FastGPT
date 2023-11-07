@@ -10,11 +10,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
     // 凭证校验
-    const { teamId, tmbId, canWrite } = await authUserRole({ req, authToken: true });
+    const { teamId, tmbId, canWrite, teamOwner } = await authUserRole({ req, authToken: true });
 
     // 根据 userId 获取模型信息
     const myApps = await MongoApp.find(
-      { ...mongoRPermission({ teamId, tmbId }) },
+      { ...mongoRPermission({ teamId, tmbId, teamOwner }) },
       '_id avatar name intro tmbId permission'
     ).sort({
       updateTime: -1
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         avatar: app.avatar,
         name: app.name,
         intro: app.intro,
-        isOwner: String(app.tmbId) === tmbId,
+        isOwner: teamOwner || String(app.tmbId) === tmbId,
         canWrite,
         permission: app.permission
       }))

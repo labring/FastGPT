@@ -34,6 +34,7 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
 export async function authUserRole(props: AuthModeType): Promise<
   AuthResponseType & {
     role: `${TeamMemberRoleEnum}`;
+    teamOwner: boolean;
   }
 > {
   const { userId, teamId, tmbId } = await parseHeaderCert(props);
@@ -45,6 +46,7 @@ export async function authUserRole(props: AuthModeType): Promise<
     tmbId,
     isOwner: true,
     role: userRole,
+    teamOwner: userRole === TeamMemberRoleEnum.owner,
     canWrite
   };
 }

@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { teamId, team, tmbId } = await authUserNotVisitor({ req, authToken: true });
+    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
 
     // 上限校验
     const authCount = await MongoApp.countDocuments({
@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const response = await MongoApp.create({
       avatar,
       name,
-      team,
+      teamId,
       tmbId,
       modules,
       type
