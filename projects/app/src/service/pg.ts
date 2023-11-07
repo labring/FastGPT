@@ -1,7 +1,6 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
-import { DatasetSpecialIdEnum } from '@fastgpt/global/core/dataset/constant';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -161,25 +160,6 @@ class Pg {
 }
 
 export const PgClient = new Pg();
-
-/**
- * Update data file_id
- */
-export const updateDataFileId = async ({
-  oldFileId,
-  userId,
-  newFileId = DatasetSpecialIdEnum.manual
-}: {
-  oldFileId: string;
-  userId: string;
-  newFileId?: string;
-}) => {
-  await PgClient.update(PgDatasetTableName, {
-    where: [['file_id', oldFileId], 'AND', ['user_id', userId]],
-    values: [{ key: 'file_id', value: newFileId }]
-  });
-  return newFileId;
-};
 
 export async function initPg() {
   try {
