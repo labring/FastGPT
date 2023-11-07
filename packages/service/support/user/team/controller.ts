@@ -110,5 +110,16 @@ export async function createDefaultTeam({
     });
   } else {
     console.log('default team exist', userId);
+    await Team.updateOne(
+      {
+        _id: new Types.ObjectId(tmb.teamId)
+      },
+      {
+        $set: {
+          balance,
+          maxSize
+        }
+      }
+    );
   }
 }

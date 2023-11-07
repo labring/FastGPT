@@ -29,10 +29,12 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { limit = 50, maxSize = 3 } = req.body as { limit: number; maxSize: number };
+    await authCert({ req, authRoot: true });
     await connectToDatabase();
 
     await initDefaultTeam(limit, maxSize);
@@ -134,13 +136,6 @@ async function initMongoTeamId(limit: number) {
     }
   ];
   /* init user default Team */
-  const users = await MongoUser.find({}, '_id');
-  console.log('user total', users.length);
-  // limit 组一次
-  const userArr: UserModelSchema[][] = [];
-  for (let i = 0; i < users.length; i += limit) {
-    userArr.push(users.slice(i, i + limit));
-  }
 
   for await (const item of mongoSchema) {
     console.log('start init', item.label);
@@ -149,21 +144,50 @@ async function initMongoTeamId(limit: number) {
   }
 
   async function initTeamTmbId(schema: any) {
+    const emptyWhere = {
+      $or: [{ teamId: { $exists: false } }, { teamId: null }]
+    };
+    const uniqueUsersWithNoTeamId = await schema.aggregate([
+      {
+        $match: emptyWhere
+      },
+      {
+        $group: {
+          _id: '$userId', // 按 userId 分组以去重
+          userId: { $first: '$userId' } // 保留第一个出现的 userId
+        }
+      },
+      {
+        $project: {
+          _id: 0, // 不显示 _id 字段
+          userId: 1 // 只显示 userId 字段
+        }
+      }
+    ]);
+    const users = uniqueUsersWithNoTeamId;
+
+    console.log('un init total', users.length);
+    // limit 组一次
+    const userArr: any[][] = [];
+    for (let i = 0; i < users.length; i += limit) {
+      userArr.push(users.slice(i, i + limit));
+    }
+
     let success = 0;
     for await (const users of userArr) {
-      await Promise.all(users.map(init));
+      await Promise.all(users.map((item) => init(item.userId)));
       success += limit;
       console.log(success);
     }
 
-    async function init(user: UserModelSchema): Promise<any> {
-      const userId = user._id;
+    async function init(userId: string): Promise<any> {
       try {
         const tmb = await getTeamInfoByTmbId({ userId });
 
         await schema.updateMany(
           {
-            userId
+            userId,
+            ...emptyWhere
           },
           {
             teamId: tmb.teamId,
@@ -171,12 +195,12 @@ async function initMongoTeamId(limit: number) {
           }
         );
       } catch (error) {
-        if (error === 'default team not exist') {
+        if (error === 'team not exist' || error === 'tmbId or userId is required') {
           return;
         }
         console.log(error);
         await delay(1000);
-        return init(user);
+        return init(userId);
       }
     }
   }
@@ -202,41 +226,52 @@ async function initDatasetAndApp() {
 async function initCollectionFileTeam(limit: number) {
   /* init user default Team */
   const DatasetFile = connectionMongo.connection.db.collection(`dataset.files`);
-  const files: any[] = await DatasetFile.find(
-    {},
+  const matchWhere = {
+    $or: [{ 'metadata.teamId': { $exists: false } }, { 'metadata.teamId': null }]
+  };
+  const uniqueUsersWithNoTeamId = await DatasetFile.aggregate([
     {
-      projection: {
-        _id: 1,
-        metadata: 1
+      $match: matchWhere
+    },
+    {
+      $group: {
+        _id: '$metadata.userId', // 按 metadata.userId 分组以去重
+        userId: { $first: '$metadata.userId' } // 保留第一个出现的 userId
+      }
+    },
+    {
+      $project: {
+        _id: 0, // 不显示 _id 字段
+        userId: 1 // 只显示 userId 字段
       }
     }
-  ).toArray();
-  console.log('init dataset default team', files.length);
+  ]).toArray();
+  const users = uniqueUsersWithNoTeamId;
 
-  const dataArr: {
-    _id: string;
-    metadata: { userId: string };
-  }[][] = [];
-  for (let i = 0; i < files.length; i += limit) {
-    dataArr.push(files.slice(i, i + limit));
+  console.log('un init total', users.length);
+  // limit 组一次
+  const userArr: any[][] = [];
+  for (let i = 0; i < users.length; i += limit) {
+    userArr.push(users.slice(i, i + limit));
   }
 
   let success = 0;
-  for await (const item of dataArr) {
-    await Promise.all(item.map(init));
+  for await (const item of userArr) {
+    await Promise.all(item.map((item) => init(item.userId)));
     success += limit;
     console.log(success);
   }
 
-  async function init(item: any): Promise<any> {
+  async function init(userId: string): Promise<any> {
     try {
       const tmb = await getTeamInfoByTmbId({
-        userId: item.metadata.userId
+        userId
       });
 
-      await DatasetFile.findOneAndUpdate(
+      await DatasetFile.updateMany(
         {
-          _id: item._id
+          userId,
+          ...matchWhere
         },
         {
           $set: {
@@ -246,12 +281,12 @@ async function initCollectionFileTeam(limit: number) {
         }
       );
     } catch (error) {
-      if (error === 'default team not exist') {
+      if (error === 'team not exist' || error === 'tmbId or userId is required') {
         return;
       }
       console.log(error);
       await delay(1000);
-      return init(item);
+      return init(userId);
     }
   }
 }

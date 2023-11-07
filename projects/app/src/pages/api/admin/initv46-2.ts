@@ -29,10 +29,12 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { limit = 50 } = req.body as { limit: number };
+    await authCert({ req, authRoot: true });
     await connectToDatabase();
 
     // await initDefaultTeam(limit);
@@ -274,7 +276,7 @@ async function initPgData() {
   console.log('init pg', rows.length);
   let success = 0;
   for (let i = 0; i < limit; i++) {
-    await init(i);
+    init(i);
   }
   async function init(index: number): Promise<any> {
     const userId = rows[index].user_id;
@@ -283,7 +285,7 @@ async function initPgData() {
       const tmb = await getTeamInfoByTmbId({ userId });
       // update pg
       await PgClient.query(
-        `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}'`
+        `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}' AND team_id IS NULL;`
       );
       console.log(++success);
       init(index + limit);
