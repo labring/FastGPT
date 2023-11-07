@@ -4,8 +4,6 @@ import type { ResLogin } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserUpdateParams } from '@/types/user';
 import { UserType } from '@fastgpt/global/support/user/type.d';
-import type { PagingData, RequestPaging } from '@/types';
-import type { UserInformSchema } from '@fastgpt/global/support/user/type';
 import type { OauthLoginProps, PostLoginProps } from '@fastgpt/global/support/user/api.d';
 
 export const sendAuthCode = (data: {
@@ -66,9 +64,3 @@ export const postLogin = ({ password, ...props }: PostLoginProps) =>
 export const loginOut = () => GET('/user/account/loginout');
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/user/account/update', data);
-
-export const getInforms = (data: RequestPaging) =>
-  POST<PagingData<UserInformSchema>>(`/user/inform/list`, data);
-
-export const getUnreadCount = () => GET<number>(`/user/inform/countUnread`);
-export const readInform = (id: string) => GET(`/user/inform/read`, { id });

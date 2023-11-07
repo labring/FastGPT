@@ -1,7 +1,7 @@
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { sendInform } from '@/pages/api/user/inform/send';
+import { sendOneInform } from '../support/user/inform/api';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
@@ -84,12 +84,12 @@ export async function generateVector(): Promise<any> {
   } catch (error) {
     // send inform and lock data
     try {
-      sendInform({
+      sendOneInform({
         type: 'system',
         title: '索引生成任务中止',
         content:
           '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-        userId: data.userId
+        tmbId: data.tmbId
       });
       console.log('余额不足，暂停向量生成任务');
       await MongoDatasetTraining.findById(data._id, {

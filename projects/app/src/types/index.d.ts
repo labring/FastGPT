@@ -23,9 +23,6 @@ declare global {
   var vectorQueueLen: number;
   var TikToken: Tiktoken;
 
-  var sendInformQueue: (() => Promise<void>)[];
-  var sendInformQueueLen: number;
-
   var vectorModels: VectorModelItemType[];
   var chatModels: ChatModelItemType[];
   var qaModels: LLMModelItemType[];

@@ -67,7 +67,6 @@ export function initGlobal() {
   global.qaQueueLen = 0;
   global.vectorQueueLen = 0;
   global.sendInformQueue = [];
-  global.sendInformQueueLen = 0;
 }
 
 export function getInitConfig() {

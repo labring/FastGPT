@@ -22,16 +22,6 @@ export type UserModelSchema = {
   };
 };
 
-export type UserInformSchema = {
-  _id: string;
-  userId: string;
-  time: Date;
-  type: `${InformTypeEnum}`;
-  title: string;
-  content: string;
-  read: boolean;
-};
-
 export type UserType = {
   _id: string;
   username: string;

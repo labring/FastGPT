@@ -37,6 +37,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       collectionId,
       per: 'w'
     });
+
     await authTeamBalance(teamId);
 
     // auth collection and get dataset
