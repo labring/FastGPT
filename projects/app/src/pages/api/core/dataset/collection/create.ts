@@ -94,7 +94,7 @@ export function createDefaultCollection({
     datasetId,
     parentId,
     type: DatasetCollectionTypeEnum.virtual,
-    updateTime: new Date('2000'),
+    updateTime: new Date('2099'),
     metadata: {}
   });
 }

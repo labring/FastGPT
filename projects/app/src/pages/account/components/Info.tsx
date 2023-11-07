@@ -207,11 +207,13 @@ const UserInfo = () => {
         </Flex>
         <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
+            <Box flex={'0 0 80px'} fontSize={'md'}>
+              {t('user.team.Balance')}:&nbsp;
+            </Box>
             <Box flex={1}>
               <strong>{formatPrice(userInfo?.team?.balance).toFixed(3)}</strong> 元
             </Box>
-            {feConfigs?.show_pay && (
+            {feConfigs?.show_pay && userInfo?.team?.canWrite && (
               <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
                 {t('user.Pay')}
               </Button>

@@ -11,10 +11,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
     // 凭证校验
-    const { teamId, tmbId, teamOwner } = await authUserRole({ req, authToken: true });
+    const { teamId, tmbId, teamOwner, role } = await authUserRole({ req, authToken: true });
 
     const datasets = await MongoDataset.find({
-      ...mongoRPermission({ teamId, tmbId, teamOwner }),
+      ...mongoRPermission({ teamId, tmbId, role }),
       type: 'dataset'
     });
 

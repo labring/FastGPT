@@ -13,10 +13,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
     const { parentId, type } = req.query as { parentId?: string; type?: `${DatasetTypeEnum}` };
     // 凭证校验
-    const { teamId, tmbId, canWrite, teamOwner } = await authUserRole({ req, authToken: true });
+    const { teamId, tmbId, teamOwner, role } = await authUserRole({ req, authToken: true });
 
     const datasets = await MongoDataset.find({
-      ...mongoRPermission({ teamId, tmbId, teamOwner }),
+      ...mongoRPermission({ teamId, tmbId, role }),
       ...(parentId !== undefined && { parentId: parentId || null }),
       ...(type && { type })
     }).sort({ updateTime: -1 });
@@ -26,7 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...item.toJSON(),
         tags: item.tags.join(' '),
         vectorModel: getVectorModel(item.vectorModel),
-        canWrite,
         isOwner: teamOwner || String(item.tmbId) === tmbId
       }))
     );

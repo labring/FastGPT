@@ -18,7 +18,8 @@ export async function getTeamInfoByTmbId({
     return Promise.reject('tmbId or userId is required');
   }
 
-  const db = connectionMongo.connection.db;
+  const db = connectionMongo?.connection?.db;
+
   const TeamMember = db.collection(TeamMemberCollectionName);
 
   const results = await TeamMember.aggregate([

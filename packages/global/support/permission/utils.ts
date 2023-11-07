@@ -1,18 +1,22 @@
+import { TeamMemberRoleEnum } from '../user/team/constant';
 import { PermissionTypeEnum } from './constant';
 
 /* team public source, or owner source in team */
 export function mongoRPermission({
   teamId,
   tmbId,
-  teamOwner
+  role
 }: {
   teamId: string;
   tmbId: string;
-  teamOwner?: boolean;
+  role: `${TeamMemberRoleEnum}`;
 }) {
   return {
     teamId,
-    ...(!teamOwner && { $or: [{ permission: PermissionTypeEnum.public }, { tmbId }] })
+    ...(role === TeamMemberRoleEnum.visitor && { permission: PermissionTypeEnum.public }),
+    ...(role === TeamMemberRoleEnum.admin && {
+      $or: [{ permission: PermissionTypeEnum.public }, { tmbId }]
+    })
   };
 }
 export function mongoOwnerPermission({ teamId, tmbId }: { teamId: string; tmbId: string }) {

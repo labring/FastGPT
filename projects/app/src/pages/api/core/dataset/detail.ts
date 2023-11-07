@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    const { dataset, tmbId, canWrite } = await authDataset({
+    const { dataset, tmbId } = await authDataset({
       req,
       authToken: true,
       datasetId,
@@ -29,7 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...dataset,
         tags: dataset.tags.join(' '),
         vectorModel: getVectorModel(dataset.vectorModel),
-        canWrite,
         isOwner: String(dataset.tmbId) === tmbId
       }
     });

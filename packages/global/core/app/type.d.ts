@@ -22,7 +22,6 @@ export type AppListItemType = {
   avatar: string;
   intro: string;
   isOwner: boolean;
-  canWrite: boolean;
   permission: `${PermissionTypeEnum}`;
 };
 

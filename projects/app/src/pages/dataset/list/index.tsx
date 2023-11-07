@@ -285,7 +285,7 @@ const Kb = () => {
               }
             }}
           >
-            {dataset.isOwner && (
+            {userInfo?.team.canWrite && dataset.isOwner && (
               <MyMenu
                 offset={[-30, 10]}
                 width={120}

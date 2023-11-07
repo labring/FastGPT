@@ -26,12 +26,14 @@ import MyTooltip from '@/components/MyTooltip';
 import CreateModal from './component/CreateModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const MyApps = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
+  const { userInfo } = useUserStore();
   const { myApps, loadMyApps } = useAppStore();
   const { openConfirm, ConfirmModal } = useConfirm({
     title: '删除提示',
@@ -87,7 +89,10 @@ const MyApps = () => {
         gridGap={5}
       >
         {myApps.map((app) => (
-          <MyTooltip key={app._id} label={app.canWrite ? t('app.To Settings') : t('app.To Chat')}>
+          <MyTooltip
+            key={app._id}
+            label={userInfo?.team.canWrite ? t('app.To Settings') : t('app.To Chat')}
+          >
             <Card
               h={'100%'}
               py={3}
@@ -110,7 +115,7 @@ const MyApps = () => {
                 }
               }}
               onClick={() => {
-                if (app.canWrite) {
+                if (userInfo?.team.canWrite) {
                   router.push(`/app/detail?appId=${app._id}`);
                 } else {
                   router.push(`/chat?appId=${app._id}`);
@@ -120,7 +125,7 @@ const MyApps = () => {
               <Flex alignItems={'center'} h={'38px'}>
                 <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
                 <Box ml={3}>{app.name}</Box>
-                {app.isOwner && (
+                {app.isOwner && userInfo?.team.canWrite && (
                   <IconButton
                     className="delete"
                     position={'absolute'}
@@ -156,7 +161,7 @@ const MyApps = () => {
                 <Box flex={1}>
                   <PermissionIconText permission={app.permission} color={'myGray.600'} />
                 </Box>
-                {app.canWrite && (
+                {userInfo?.team.canWrite && (
                   <IconButton
                     className="chat"
                     size={'sm'}

@@ -11,17 +11,17 @@ import { exit } from 'process';
 /**
  * connect MongoDB and init data
  */
-export async function connectToDatabase(): Promise<void> {
-  await connectMongo({
+export function connectToDatabase(): Promise<void> {
+  return connectMongo({
     beforeHook: () => {
       initGlobal();
       getInitConfig();
     },
-    afterHook: async () => {
-      await initRootUser();
+    afterHook: () => {
       initPg();
       // start queue
       startQueue();
+      return initRootUser();
     }
   });
 }

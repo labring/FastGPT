@@ -28,6 +28,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -35,10 +36,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
 
     // await initDefaultTeam(limit);
-    await initMongoTeamId(limit);
+    // await initMongoTeamId(limit);
     // await initDatasetAndApp();
     // await initCollectionFileTeam(limit);
     // await initPgData();
+
+    if (global.systemEnv.pluginBaseUrl) {
+      POST('/admin/init46');
+    }
 
     jsonRes(res, {
       data: {}

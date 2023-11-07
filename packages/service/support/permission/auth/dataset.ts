@@ -164,7 +164,9 @@ export async function authDatasetFile({
     datasetId: file.metadata.datasetId,
     per
   });
-  const isOwner = String(dataset.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
+  const isOwner =
+    role !== TeamMemberRoleEnum.visitor &&
+    (String(dataset.tmbId) === tmbId || role === TeamMemberRoleEnum.owner);
 
   const canWrite =
     isOwner ||

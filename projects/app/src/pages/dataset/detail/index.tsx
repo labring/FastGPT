@@ -24,6 +24,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import Script from 'next/script';
 import CollectionCard from './components/CollectionCard';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false
@@ -47,11 +48,12 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   const router = useRouter();
   const { isPc } = useSystemStore();
   const { datasetDetail, loadDatasetDetail } = useDatasetStore();
+  const { userInfo } = useUserStore();
 
   const tabList = [
     { label: '数据集', id: TabEnum.collectionCard, icon: 'overviewLight' },
     { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
-    ...(datasetDetail.isOwner ? [{ label: '配置', id: TabEnum.info, icon: 'settingLight' }] : [])
+    ...(userInfo?.team.canWrite ? [{ label: '配置', id: TabEnum.info, icon: 'settingLight' }] : [])
   ];
 
   const setCurrentTab = useCallback(
