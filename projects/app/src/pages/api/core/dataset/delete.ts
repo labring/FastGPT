@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { delDatasetFiles } from '@fastgpt/service/core/dataset/file/controller';
-import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { delDataByDatasetId } from '@/service/core/dataset/data/controller';

@@ -24,7 +24,6 @@ export const defaultDatasetDetail: DatasetItemType = {
 
 export const defaultCollectionDetail: DatasetCollectionItemType = {
   _id: '',
-  userId: '',
   teamId: '',
   tmbId: '',
   datasetId: {
@@ -46,8 +45,10 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   name: '',
   type: 'file',
   updateTime: new Date(),
-  metadata: {},
   canWrite: false,
   sourceName: '',
-  sourceId: ''
+  sourceId: '',
+  createTime: new Date(),
+  trainingType: 'chunk',
+  chunkSize: 0
 };

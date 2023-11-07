@@ -27,19 +27,18 @@ export type DatasetSchemaType = {
 
 export type DatasetCollectionSchemaType = {
   _id: string;
-  userId: string;
   teamId: string;
   tmbId: string;
   datasetId: string;
   parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
+  createTime: Date;
   updateTime: Date;
-  metadata: {
-    fileId?: string;
-    rawLink?: string;
-    pgCollectionId?: string;
-  };
+  trainingType: `${TrainingModeEnum}`;
+  chunkSize: number;
+  fileId?: string;
+  rawLink?: string;
 };
 
 export type DatasetDataIndexItemType = {
@@ -57,6 +56,8 @@ export type DatasetDataSchemaType = {
   collectionId: string;
   datasetId: string;
   collectionId: string;
+  chunkIndex: number;
+  updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
   fullTextToken: string;
@@ -78,6 +79,7 @@ export type DatasetTrainingSchemaType = {
   prompt: string;
   q: string;
   a: string;
+  chunkIndex: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 
@@ -101,6 +103,7 @@ export type DatasetCollectionItemType = CollectionWithDatasetType & {
   canWrite: boolean;
   sourceName: string;
   sourceId?: string;
+  file?: DatasetFileSchema;
 };
 
 /* ================= data ===================== */
