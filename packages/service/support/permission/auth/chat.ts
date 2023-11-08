@@ -35,7 +35,11 @@ export async function authChat({
     const isOwner = role === TeamMemberRoleEnum.owner || String(chat.tmbId) === tmbId;
     const canWrite = isOwner;
 
-    if (per === 'r' && chat.appId.permission !== PermissionTypeEnum.public) {
+    if (
+      per === 'r' &&
+      role !== TeamMemberRoleEnum.owner &&
+      chat.appId.permission !== PermissionTypeEnum.public
+    ) {
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
     if (per === 'w' && !canWrite) {

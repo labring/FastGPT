@@ -205,8 +205,8 @@ export const theme = extendTheme({
         fontSize: 'md',
         fontWeight: 400,
         height: '100%',
-        overflow: 'hidden',
-        lineHeight: 'unset'
+        overflow: 'hidden'
+        // lineHeight: 'unset'
       },
       a: {
         color: 'myBlue.700'
