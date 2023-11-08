@@ -53,7 +53,7 @@ export type AdminFbkType = {
 export type ChatItemType = {
   dataId?: string;
   obj: ChatItemSchema['obj'];
-  value: string;
+  value: any;
   userFeedback?: string;
   adminFeedback?: ChatItemSchema['feedback'];
   [TaskResponseKeyEnum.responseData]?: ChatItemSchema[TaskResponseKeyEnum.responseData];

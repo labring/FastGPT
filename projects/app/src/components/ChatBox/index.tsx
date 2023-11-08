@@ -33,9 +33,9 @@ import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { TTSTypeEnum, VariableInputEnum } from '@/constants/app';
+import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
-import type { MessageItemType } from '@/types/core/chat/type';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
@@ -71,7 +71,7 @@ type generatingMessageProps = { text?: string; name?: string; status?: 'running'
 
 export type StartChatFnProps = {
   chatList: ChatSiteItemType[];
-  messages: MessageItemType[];
+  messages: ChatMessageItemType[];
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;
@@ -204,32 +204,28 @@ const ChatBox = (
     []
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const generatingMessage = useCallback(
-    // concat text to end of message
-    ({ text = '', status, name }: generatingMessageProps) => {
-      setChatHistory((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
-          return {
-            ...item,
-            ...(text
-              ? {
-                  value: item.value + text
-                }
-              : {}),
-            ...(status && name
-              ? {
-                  status,
-                  moduleName: name
-                }
-              : {})
-          };
-        })
-      );
-      generatingScroll();
-    },
-    [generatingScroll, setChatHistory]
-  );
+  const generatingMessage = ({ text = '', status, name }: generatingMessageProps) => {
+    setChatHistory((state) =>
+      state.map((item, index) => {
+        if (index !== state.length - 1) return item;
+        return {
+          ...item,
+          ...(text
+            ? {
+                value: item.value + text
+              }
+            : {}),
+          ...(status && name
+            ? {
+                status,
+                moduleName: name
+              }
+            : {})
+        };
+      })
+    );
+    generatingScroll();
+  };
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {

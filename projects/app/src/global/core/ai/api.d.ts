@@ -1,6 +1,6 @@
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 
 export type CreateQuestionGuideParams = {
-  messages: ChatCompletionMessageParam[];
+  messages: ChatMessageItemType[];
   shareId?: string;
 };

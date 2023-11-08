@@ -9,7 +9,7 @@ import { FlowNodeSpecialInputKeyEnum } from '@fastgpt/global/core/module/node/co
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { replaceVariable } from '@/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
-import { FunctionModelItemType } from '@/types/model';
+import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getCQModel } from '@/service/core/ai/model';
 
 type Props = ModuleDispatchProps<{

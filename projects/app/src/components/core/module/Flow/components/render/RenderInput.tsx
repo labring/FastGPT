@@ -33,7 +33,7 @@ import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';
-import { LLMModelItemType } from '@/types/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));

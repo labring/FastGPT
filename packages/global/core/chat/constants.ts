@@ -2,7 +2,8 @@ export enum ChatRoleEnum {
   System = 'System',
   Human = 'Human',
   AI = 'AI',
-  Function = 'Function'
+  Function = 'Function',
+  Tool = 'Tool'
 }
 
 export enum TaskResponseKeyEnum {
@@ -23,6 +24,9 @@ export const ChatRoleMap = {
   },
   [ChatRoleEnum.Function]: {
     name: 'Function'
+  },
+  [ChatRoleEnum.Tool]: {
+    name: 'Tool'
   }
 };
 

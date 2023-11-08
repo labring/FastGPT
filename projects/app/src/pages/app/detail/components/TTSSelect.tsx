@@ -41,7 +41,7 @@ const TTSSelect = ({
           type: TTSTypeEnum.model,
           model: openaiTTSModel,
           voice: e as `${Text2SpeechVoiceEnum}`,
-          speed: 1.2
+          speed: 1
         });
       }
     },

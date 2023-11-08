@@ -8,7 +8,7 @@ import { ContextExtractEnum } from '@/constants/flow/flowField';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/global/common/string/tools';
-import { FunctionModelItemType } from '@/types/model';
+import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 type Props = ModuleDispatchProps<{
   history?: ChatItemType[];

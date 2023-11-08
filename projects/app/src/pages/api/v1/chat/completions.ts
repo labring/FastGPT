@@ -7,8 +7,8 @@ import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { dispatchModules } from '@/service/moduleDispatch';
-import type { CreateChatCompletionRequest } from '@fastgpt/global/core/ai/type.d';
-import type { MessageItemType } from '@/types/core/chat/type';
+import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
@@ -22,7 +22,7 @@ import requestIp from 'request-ip';
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, getUserAndAuthBalance } from '@/service/support/permission/auth/user';
+import { getUserAndAuthBalance } from '@/service/support/permission/auth/user';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 
@@ -34,10 +34,10 @@ type FastGptShareChatProps = {
   shareId?: string;
   authToken?: string;
 };
-export type Props = CreateChatCompletionRequest &
+export type Props = ChatCompletionCreateParams &
   FastGptWebChatProps &
   FastGptShareChatProps & {
-    messages: MessageItemType[];
+    messages: ChatMessageItemType[];
     stream?: boolean;
     detail?: boolean;
     variables: Record<string, any>;

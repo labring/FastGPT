@@ -3,7 +3,7 @@ import { pushQABill } from '@/service/support/wallet/bill/push';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { splitText2Chunks } from '@/global/common/string/tools';
 import { replaceVariable } from '@/global/common/string/tools';
@@ -105,7 +105,7 @@ export async function generateQA(): Promise<any> {
     const startTime = Date.now();
 
     // request LLM to get QA
-    const messages: ChatCompletionMessageParam[] = [
+    const messages: ChatMessageItemType[] = [
       {
         role: 'user',
         content: data.prompt

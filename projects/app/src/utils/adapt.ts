@@ -1,25 +1,17 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { MessageItemType } from '@/types/core/chat/type';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import type { ModuleItemType, FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
 import { EmptyModule, ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
+import { adaptRole_Message2Chat } from './common/adapt/message';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-export const gptMessage2ChatType = (messages: MessageItemType[]): ChatItemType[] => {
-  const roleMap = {
-    [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
-    [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
-    [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
-    [ChatCompletionRequestMessageRoleEnum.Function]: ChatRoleEnum.Human
-  };
-
+export const gptMessage2ChatType = (messages: ChatMessageItemType[]): ChatItemType[] => {
   return messages.map((item) => ({
     dataId: item.dataId,
-    obj: roleMap[item.role],
+    obj: adaptRole_Message2Chat(item.role),
     value: item.content || ''
   }));
 };

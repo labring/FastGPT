@@ -313,7 +313,7 @@ async function initPgData() {
     init(i);
   }
   async function init(index: number): Promise<any> {
-    const userId = rows[index].user_id;
+    const userId = rows[index]?.user_id;
     if (!userId) return;
     try {
       const tmb = await getTeamInfoByTmbId({ userId });
