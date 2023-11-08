@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       POST('/admin/init46');
     }
 
-    // await initPgData();
+    await initPgData();
 
     jsonRes(res, {
       data: {}
@@ -310,7 +310,7 @@ async function initPgData() {
   console.log('init pg', rows.length);
   let success = 0;
   for (let i = 0; i < limit; i++) {
-    await init(i);
+    init(i);
   }
   async function init(index: number): Promise<any> {
     const userId = rows[index].user_id;
@@ -319,7 +319,7 @@ async function initPgData() {
       const tmb = await getTeamInfoByTmbId({ userId });
       // update pg
       await PgClient.query(
-        `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}'`
+        `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}' AND team_id IS NULL;`
       );
       console.log(++success);
       init(index + limit);

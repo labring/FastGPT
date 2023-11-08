@@ -212,6 +212,14 @@ export async function dispatchModules({
 
   await Promise.all(initModules.map((module) => moduleInput(module, params)));
 
+  // focus running pluginOutput
+  const pluginOutputModule = runningModules.find(
+    (item) => item.flowType === FlowNodeTypeEnum.pluginOutput
+  );
+  if (pluginOutputModule) {
+    await moduleRun(pluginOutputModule);
+  }
+
   return {
     [TaskResponseKeyEnum.answerText]: chatAnswerText,
     [TaskResponseKeyEnum.responseData]: chatResponse
