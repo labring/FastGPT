@@ -14,13 +14,15 @@ export type HttpResponse = {
 
 export const dispatchHttpRequest = async (props: Record<string, any>): Promise<HttpResponse> => {
   const {
+    chatId,
     variables,
     inputs: { url, ...body }
   } = props as HttpRequestProps;
 
   const requestBody = {
-    variables,
-    ...body
+    ...body,
+    chatId,
+    variables
   };
 
   try {

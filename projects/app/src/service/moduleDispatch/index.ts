@@ -29,6 +29,7 @@ import { dispatchPluginOutput } from './plugin/runOutput';
 /* running */
 export async function dispatchModules({
   res,
+  chatId,
   modules,
   user,
   teamId,
@@ -39,6 +40,7 @@ export async function dispatchModules({
   detail = false
 }: {
   res: NextApiResponse;
+  chatId?: string;
   modules: ModuleItemType[];
   user: UserType;
   teamId: string;

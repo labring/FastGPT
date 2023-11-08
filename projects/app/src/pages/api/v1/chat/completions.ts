@@ -186,6 +186,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     /* start flow controller */
     const { responseData, answerText } = await dispatchModules({
       res,
+      chatId,
       modules: app.modules,
       user,
       teamId: user.team.teamId,
