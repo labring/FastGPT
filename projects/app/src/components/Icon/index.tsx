@@ -104,7 +104,8 @@ const iconPaths = {
   'support/team/memberLight': () => import('./icons/support/team/memberLight.svg'),
   'support/permission/privateLight': () => import('./icons/support/permission/privateLight.svg'),
   'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg'),
-  'core/app/ttsFill': () => import('./icons/core/app/ttsFill.svg')
+  'core/app/ttsFill': () => import('./icons/core/app/ttsFill.svg'),
+  'common/playLight': () => import('./icons/common/playLight.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

@@ -16,7 +16,7 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
 
   // Check whether the voice is supported
   const hasAudio = useMemo(() => {
-    if (ttsConfig?.type !== TTSTypeEnum.none) return true;
+    if (ttsConfig?.type === TTSTypeEnum.none) return false;
     const voices = window.speechSynthesis?.getVoices?.() || []; // 获取语言包
     const voice = voices.find((item) => {
       return item.lang === 'zh-CN';
@@ -24,65 +24,62 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
     return !!voice;
   }, [ttsConfig]);
 
-  const playAudio = useCallback(
-    async ({
-      text,
-      chatItemId,
-      buffer
-    }: {
-      text: string;
-      chatItemId?: string;
-      buffer?: Buffer;
-    }) => {
-      text = text.replace(/\\n/g, '\n');
-      try {
-        // tts play
-        if (audio && ttsConfig && ttsConfig?.type === TTSTypeEnum.model) {
-          setAudioLoading(true);
-          const { data } = buffer
-            ? { data: buffer }
-            : await getChatItemSpeech({ chatItemId, ttsConfig, input: text });
+  const playAudio = async ({
+    text,
+    chatItemId,
+    buffer
+  }: {
+    text: string;
+    chatItemId?: string;
+    buffer?: Buffer;
+  }) => {
+    text = text.replace(/\\n/g, '\n');
+    try {
+      // tts play
+      if (audio && ttsConfig && ttsConfig?.type === TTSTypeEnum.model) {
+        setAudioLoading(true);
+        const { data } = buffer
+          ? { data: buffer }
+          : await getChatItemSpeech({ chatItemId, ttsConfig, input: text });
 
-          const arrayBuffer = new Uint8Array(data).buffer;
+        const arrayBuffer = new Uint8Array(data).buffer;
 
-          const audioUrl = URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/mp3' }));
+        const audioUrl = URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/mp3' }));
 
-          audio.src = audioUrl;
-          audio.play();
-          setAudioLoading(false);
+        audio.src = audioUrl;
+        audio.play();
+        setAudioLoading(false);
 
-          return data;
-        } else {
-          // window speech
-          window.speechSynthesis?.cancel();
-          const msg = new SpeechSynthesisUtterance(text);
-          const voices = window.speechSynthesis?.getVoices?.() || []; // 获取语言包
-          const voice = voices.find((item) => {
-            return item.lang === 'zh-CN';
-          });
-          if (voice) {
-            msg.onstart = () => {
-              setAudioPlaying(true);
-            };
-            msg.onend = () => {
-              setAudioPlaying(false);
-              msg.onstart = null;
-              msg.onend = null;
-            };
-            msg.voice = voice;
-            window.speechSynthesis?.speak(msg);
-          }
-        }
-      } catch (error) {
-        toast({
-          status: 'error',
-          title: getErrText(error, t('core.chat.Audio Speech Error'))
+        return data;
+      } else {
+        // window speech
+        window.speechSynthesis?.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis?.getVoices?.() || []; // 获取语言包
+        const voice = voices.find((item) => {
+          return item.lang === 'zh-CN';
         });
+        if (voice) {
+          msg.onstart = () => {
+            setAudioPlaying(true);
+          };
+          msg.onend = () => {
+            setAudioPlaying(false);
+            msg.onstart = null;
+            msg.onend = null;
+          };
+          msg.voice = voice;
+          window.speechSynthesis?.speak(msg);
+        }
       }
-      setAudioLoading(false);
-    },
-    [audio, t, toast, ttsConfig]
-  );
+    } catch (error) {
+      toast({
+        status: 'error',
+        title: getErrText(error, t('core.chat.Audio Speech Error'))
+      });
+    }
+    setAudioLoading(false);
+  };
 
   const cancelAudio = useCallback(() => {
     if (audio) {

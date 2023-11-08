@@ -35,7 +35,7 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
   return (
     <>
       <NodeCard minW={'300px'} {...data}>
-        <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
+        <Container className="nodrag" borderTop={'2px solid'} borderTopColor={'myGray.200'}>
           <WelcomeText data={data} />
           <Box pt={4} pb={2}>
             <ChatStartVariable data={data} />

@@ -219,6 +219,8 @@
         "Close": "NoUse",
         "Model alloy": "Female - Alloy",
         "Model echo": "Male - Echo",
+        "Test Listen": "Test",
+        "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
         "Web": "Browser (free)"
       }
     },
@@ -544,8 +546,8 @@
   },
   "wallet": {
     "bill": {
-      "bill username": "User",
-      "Audio Speech": "Audio Speech"
+      "Audio Speech": "Audio Speech",
+      "bill username": "User"
     }
   }
 }
