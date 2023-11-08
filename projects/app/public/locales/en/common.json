@@ -211,9 +211,19 @@
       "Prompt": "Prompt"
     },
     "app": {
-      "Next Step Guide": "Next step guide"
+      "Next Step Guide": "Next step guide",
+      "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
+      "TTS": "Audio Speech",
+      "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "tts": {
+        "Close": "NoUse",
+        "Model alloy": "Female - Alloy",
+        "Model echo": "Male - Echo",
+        "Web": "Browser (free)"
+      }
     },
     "chat": {
+      "Audio Speech Error": "Audio Speech Error",
       "Restart": "Restart"
     },
     "dataset": {
@@ -534,7 +544,8 @@
   },
   "wallet": {
     "bill": {
-      "bill username": "User"
+      "bill username": "User",
+      "Audio Speech": "Audio Speech"
     }
   }
 }

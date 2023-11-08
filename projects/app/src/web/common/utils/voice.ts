@@ -1,42 +1,57 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getChatItemSpeech } from '@/web/core/chat/api';
+import { AppTTSConfigType } from '@/types/app';
+import { TTSTypeEnum } from '@/constants/app';
+import { useTranslation } from 'next-i18next';
 
-export const useAudioPlay = (props?: { ttsUrl?: string }) => {
-  const { ttsUrl } = props || {};
+export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
+  const { t } = useTranslation();
+  const { ttsConfig } = props || {};
   const { toast } = useToast();
   const [audio, setAudio] = useState<HTMLAudioElement>();
   const [audioLoading, setAudioLoading] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
 
+  // Check whether the voice is supported
   const hasAudio = useMemo(() => {
-    if (ttsUrl) return true;
+    if (ttsConfig?.type !== TTSTypeEnum.none) return true;
     const voices = window.speechSynthesis?.getVoices?.() || []; // 获取语言包
     const voice = voices.find((item) => {
       return item.lang === 'zh-CN';
     });
     return !!voice;
-  }, [ttsUrl]);
+  }, [ttsConfig]);
 
   const playAudio = useCallback(
-    async (text: string) => {
+    async ({
+      text,
+      chatItemId,
+      buffer
+    }: {
+      text: string;
+      chatItemId?: string;
+      buffer?: Buffer;
+    }) => {
       text = text.replace(/\\n/g, '\n');
       try {
-        if (audio && ttsUrl) {
+        // tts play
+        if (audio && ttsConfig && ttsConfig?.type === TTSTypeEnum.model) {
           setAudioLoading(true);
-          const response = await fetch(ttsUrl, {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-              text
-            })
-          }).then((res) => res.blob());
+          const { data } = buffer
+            ? { data: buffer }
+            : await getChatItemSpeech({ chatItemId, ttsConfig, input: text });
 
-          const audioUrl = URL.createObjectURL(response);
+          const arrayBuffer = new Uint8Array(data).buffer;
+
+          const audioUrl = URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/mp3' }));
+
           audio.src = audioUrl;
           audio.play();
+          setAudioLoading(false);
+
+          return data;
         } else {
           // window speech
           window.speechSynthesis?.cancel();
@@ -61,12 +76,12 @@ export const useAudioPlay = (props?: { ttsUrl?: string }) => {
       } catch (error) {
         toast({
           status: 'error',
-          title: getErrText(error, '语音播报异常')
+          title: getErrText(error, t('core.chat.Audio Speech Error'))
         });
       }
       setAudioLoading(false);
     },
-    [audio, toast, ttsUrl]
+    [audio, t, toast, ttsConfig]
   );
 
   const cancelAudio = useCallback(() => {
@@ -78,14 +93,12 @@ export const useAudioPlay = (props?: { ttsUrl?: string }) => {
     setAudioPlaying(false);
   }, [audio]);
 
+  // listen ttsUrl update
   useEffect(() => {
-    if (ttsUrl) {
-      setAudio(new Audio());
-    } else {
-      setAudio(undefined);
-    }
-  }, [ttsUrl]);
+    setAudio(new Audio());
+  }, []);
 
+  // listen audio status
   useEffect(() => {
     if (audio) {
       audio.onplay = () => {

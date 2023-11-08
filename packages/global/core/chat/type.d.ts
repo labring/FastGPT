@@ -39,6 +39,7 @@ export type ChatItemSchema = {
   userFeedback?: string;
   adminFeedback?: AdminFbkType;
   [TaskResponseKeyEnum.responseData]?: ChatHistoryItemResType[];
+  tts?: Buffer;
 };
 
 export type AdminFbkType = {
@@ -61,6 +62,7 @@ export type ChatItemType = {
 export type ChatSiteItemType = {
   status: 'loading' | 'running' | 'finish';
   moduleName?: string;
+  ttsBuffer?: Buffer;
 } & ChatItemType;
 
 export type HistoryItemType = {

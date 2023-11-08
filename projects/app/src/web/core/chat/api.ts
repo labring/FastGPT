@@ -4,6 +4,7 @@ import type { InitChatResponse } from '@fastgpt/global/core/chat/api.d';
 import type { RequestPaging } from '@/types';
 import { UpdateHistoryProps } from '@fastgpt/global/core/chat/api.d';
 import type { AdminUpdateFeedbackParams } from '@fastgpt/global/core/chat/api.d';
+import { GetChatSpeechProps } from '@/global/core/chat/api.d';
 
 /**
  * 获取初始化聊天内容
@@ -42,3 +43,7 @@ export const userUpdateChatFeedback = (data: { chatItemId: string; userFeedback?
 
 export const adminUpdateChatFeedback = (data: AdminUpdateFeedbackParams) =>
   POST('/core/chat/feedback/adminUpdate', data);
+
+/* ------------- function ------------- */
+export const getChatItemSpeech = (data: GetChatSpeechProps) =>
+  POST<{ data: Buffer }>('/core/chat/item/getSpeech', data);

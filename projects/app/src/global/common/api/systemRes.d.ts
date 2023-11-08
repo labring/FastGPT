@@ -3,7 +3,8 @@ import type {
   FunctionModelItemType,
   LLMModelItemType,
   VectorModelItemType
-} from '@/types/model';
+} from '@fastgpt/global/core/ai/model.d';
+
 import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 
 export type InitDateResponse = {

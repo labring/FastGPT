@@ -1,11 +1,10 @@
-import { AppDetailType } from '@fastgpt/global/core/app/type.d';
-import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import type {
   LLMModelItemType,
   ChatModelItemType,
   FunctionModelItemType,
-  VectorModelItemType
-} from '@/types/model';
+  VectorModelItemType,
+  AudioSpeechModelType
+} from './model.d';
 
 export const defaultChatModels: ChatModelItemType[] = [
   {
@@ -102,27 +101,15 @@ export const defaultVectorModels: VectorModelItemType[] = [
   }
 ];
 
-export const defaultApp: AppDetailType = {
-  _id: '',
-  userId: 'userId',
-  name: '模型加载中',
-  type: 'basic',
-  avatar: '/icon/logo.svg',
-  intro: '',
-  updateTime: Date.now(),
-  modules: [],
-  teamId: '',
-  tmbId: '',
-  permission: 'private',
-  isOwner: false,
-  canWrite: false
-};
-
-export const defaultOutLinkForm: OutLinkEditType = {
-  name: '',
-  responseDetail: false,
-  limit: {
-    QPM: 100,
-    credit: -1
+export const defaultAudioSpeechModels: AudioSpeechModelType[] = [
+  {
+    model: 'tts-1',
+    name: 'OpenAI TTS1',
+    price: 0
+  },
+  {
+    model: 'tts-1-hd',
+    name: 'OpenAI TTS1',
+    price: 0
   }
-};
+];

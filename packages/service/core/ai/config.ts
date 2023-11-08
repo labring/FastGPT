@@ -1,5 +1,5 @@
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import OpenAI from 'openai';
+import OpenAI from '@fastgpt/global/core/ai';
 
 export const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 export const baseUrl = process.env.ONEAPI_URL || openaiBaseUrl;

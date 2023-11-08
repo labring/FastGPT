@@ -1,5 +1,3 @@
-import { LLMModelUsageEnum } from '@/constants/model';
-
 export type LLMModelItemType = {
   model: string;
   name: string;
@@ -25,4 +23,10 @@ export type VectorModelItemType = {
   defaultToken: number;
   price: number;
   maxToken: number;
+};
+
+export type AudioSpeechModelType = {
+  model: string;
+  name: string;
+  price: number;
 };

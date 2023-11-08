@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      openai:
+        specifier: 4.16.1
+        version: registry.npmmirror.com/openai@4.16.1(encoding@0.1.13)
     devDependencies:
       husky:
         specifier: ^8.0.3
@@ -42,8 +46,8 @@ importers:
         specifier: ^0.1.13
         version: registry.npmmirror.com/encoding@0.1.13
       openai:
-        specifier: ^4.12.1
-        version: registry.npmmirror.com/openai@4.12.4(encoding@0.1.13)
+        specifier: ^4.16.1
+        version: registry.npmmirror.com/openai@4.16.1(encoding@0.1.13)
       timezones-list:
         specifier: ^3.0.2
         version: registry.npmmirror.com/timezones-list@3.0.2
@@ -81,9 +85,6 @@ importers:
       nextjs-cors:
         specifier: ^2.1.2
         version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
-      openai:
-        specifier: ^4.12.4
-        version: registry.npmmirror.com/openai@4.12.4(encoding@0.1.13)
       pg:
         specifier: ^8.10.0
         version: registry.npmmirror.com/pg@8.11.3
@@ -10391,11 +10392,11 @@ packages:
       mimic-fn: registry.npmmirror.com/mimic-fn@4.0.0
     dev: true
 
-  registry.npmmirror.com/openai@4.12.4(encoding@0.1.13):
-    resolution: {integrity: sha512-oPNVJkpgxDUKF6WGGdHEZh5m/kjmYxS2Y1q7YVFCkvKUGthb8OGYRGCFBRPq5CQJezifzABTZRlVYnXLd6L4vQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-4.12.4.tgz}
-    id: registry.npmmirror.com/openai/4.12.4
+  registry.npmmirror.com/openai@4.16.1(encoding@0.1.13):
+    resolution: {integrity: sha512-Gr+uqUN1ICSk6VhrX64E+zL7skjI1TgPr/XUN+ZQuNLLOvx15+XZulx/lSW4wFEAQzgjBDlMBbBeikguGIjiMg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/openai/-/openai-4.16.1.tgz}
+    id: registry.npmmirror.com/openai/4.16.1
     name: openai
-    version: 4.12.4
+    version: 4.16.1
     hasBin: true
     dependencies:
       '@types/node': registry.npmmirror.com/@types/node@18.18.6

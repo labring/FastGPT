@@ -69,7 +69,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
               <Tbody>
                 {filterBillList.map((item, i) => (
                   <Tr key={i}>
-                    <Td>{item.moduleName}</Td>
+                    <Td>{t(item.moduleName)}</Td>
                     <Td>{item.model}</Td>
                     <Td>{item.tokenLen}</Td>
                     <Td>{formatPrice(item.amount)}</Td>

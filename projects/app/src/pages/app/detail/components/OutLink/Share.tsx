@@ -33,7 +33,7 @@ import {
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
-import { defaultOutLinkForm } from '@/constants/model';
+import { defaultOutLinkForm } from '@/constants/app';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';

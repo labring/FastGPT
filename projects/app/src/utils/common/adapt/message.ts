@@ -6,7 +6,8 @@ import type { MessageItemType } from '@/types/core/chat/type';
 const chat2Message = {
   [ChatRoleEnum.AI]: ChatCompletionRequestMessageRoleEnum.Assistant,
   [ChatRoleEnum.Human]: ChatCompletionRequestMessageRoleEnum.User,
-  [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System
+  [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System,
+  [ChatRoleEnum.Function]: ChatCompletionRequestMessageRoleEnum.Function
 };
 const message2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,

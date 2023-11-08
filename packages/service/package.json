@@ -13,7 +13,6 @@
     "winston-mongodb": "^5.1.1",
     "tunnel": "^0.0.6",
     "encoding": "^0.1.13",
-    "openai": "^4.12.4",
     "pg": "^8.10.0",
     "nanoid": "^4.0.1"
   },

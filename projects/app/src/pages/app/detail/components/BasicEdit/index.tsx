@@ -15,9 +15,7 @@ import {
   TableContainer,
   useDisclosure,
   Button,
-  IconButton,
-  Text,
-  Switch
+  IconButton
 } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
@@ -32,11 +30,7 @@ import {
 } from '@/web/core/app/basicSettings';
 import { chatModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
-import {
-  ChatModelSystemTip,
-  welcomeTextTip,
-  questionGuideTip
-} from '@/constants/flow/ModuleTemplate';
+import { ChatModelSystemTip, welcomeTextTip } from '@/constants/flow/ModuleTemplate';
 import { VariableItemType } from '@/types/app';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -63,6 +57,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
+import QGSwitch from '../QGSwitch';
+import TTSSelect from '../TTSSelect';
 
 const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -105,7 +101,7 @@ const Settings = ({ appId }: { appId: string }) => {
   });
   const { fields: datasets, replace: replaceKbList } = useFieldArray({
     control,
-    name: 'kb.list'
+    name: 'dataset.list'
   });
 
   const {
@@ -132,7 +128,7 @@ const Settings = ({ appId }: { appId: string }) => {
   }, [refresh]);
 
   const selectDatasets = useMemo(
-    () => allDatasets.filter((item) => datasets.find((kb) => kb.datasetId === item._id)),
+    () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
     [allDatasets, datasets]
   );
 
@@ -211,6 +207,7 @@ const Settings = ({ appId }: { appId: string }) => {
       borderColor={'myGray.200'}
       p={4}
       pt={[0, 4]}
+      pb={10}
       overflow={'overlay'}
     >
       <Flex alignItems={'flex-end'}>
@@ -455,7 +452,7 @@ const Settings = ({ appId }: { appId: string }) => {
         </Flex>
       </Box>
 
-      {/* kb */}
+      {/* dataset */}
       <Box mt={5} {...BoxStyles}>
         <Flex alignItems={'center'}>
           <Flex alignItems={'center'} flex={1}>
@@ -472,9 +469,11 @@ const Settings = ({ appId }: { appId: string }) => {
           </Flex>
         </Flex>
         <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-          {t('core.dataset.Similarity')}: {getValues('kb.searchSimilarity')},{' '}
-          {t('core.dataset.Search Top K')}: {getValues('kb.searchLimit')}
-          {getValues('kb.searchEmptyText') === '' ? '' : t('core.dataset.Set Empty Result Tip')}
+          {t('core.dataset.Similarity')}: {getValues('dataset.searchSimilarity')},{' '}
+          {t('core.dataset.Search Top K')}: {getValues('dataset.searchLimit')}
+          {getValues('dataset.searchEmptyText') === ''
+            ? ''
+            : t('core.dataset.Set Empty Result Tip')}
         </Flex>
         <Grid
           gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
@@ -511,23 +510,25 @@ const Settings = ({ appId }: { appId: string }) => {
       </Box>
 
       <Box mt={5} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
-          <Box>{t('core.app.Next Step Guide')}</Box>
-          <MyTooltip label={questionGuideTip} forceShow>
-            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-          </MyTooltip>
-          <Box flex={1} />
-          <Switch
-            isChecked={getValues('questionGuide')}
-            size={'lg'}
-            onChange={(e) => {
-              const value = e.target.checked;
-              setValue('questionGuide', value);
-              setRefresh((state) => !state);
-            }}
-          />
-        </Flex>
+        <TTSSelect
+          value={getValues('tts')}
+          onChange={(e) => {
+            setValue('tts', e);
+            setRefresh((state) => !state);
+          }}
+        />
+      </Box>
+
+      <Box mt={5} {...BoxStyles}>
+        <QGSwitch
+          isChecked={getValues('questionGuide')}
+          size={'lg'}
+          onChange={(e) => {
+            const value = e.target.checked;
+            setValue('questionGuide', value);
+            setRefresh((state) => !state);
+          }}
+        />
       </Box>
 
       <ConfirmSaveModal />
@@ -584,14 +585,14 @@ const Settings = ({ appId }: { appId: string }) => {
 
       {isOpenKbParams && (
         <KbParamsModal
-          searchEmptyText={getValues('kb.searchEmptyText')}
-          searchLimit={getValues('kb.searchLimit')}
-          searchSimilarity={getValues('kb.searchSimilarity')}
+          searchEmptyText={getValues('dataset.searchEmptyText')}
+          searchLimit={getValues('dataset.searchLimit')}
+          searchSimilarity={getValues('dataset.searchSimilarity')}
           onClose={onCloseKbParams}
           onChange={({ searchEmptyText, searchLimit, searchSimilarity }) => {
-            setValue('kb.searchEmptyText', searchEmptyText);
-            setValue('kb.searchLimit', searchLimit);
-            setValue('kb.searchSimilarity', searchSimilarity);
+            setValue('dataset.searchEmptyText', searchEmptyText);
+            setValue('dataset.searchLimit', searchLimit);
+            setValue('dataset.searchSimilarity', searchSimilarity);
             setRefresh((state) => !state);
           }}
         />

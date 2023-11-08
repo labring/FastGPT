@@ -1,6 +1,6 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
-import { countModelPrice } from '@/service/support/wallet/bill/push';
+import { countModelPrice } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@/types/core/dataset';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';

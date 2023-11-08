@@ -96,5 +96,17 @@
       "defaultToken": 700,
       "maxToken": 3000
     }
+  ],
+  "AudioSpeechModels": [
+    {
+      "model": "tts-1",
+      "name": "OpenAI TTS1",
+      "price": 0
+    },
+    {
+      "model": "tts-1-hd",
+      "name": "OpenAI TTS1HD",
+      "price": 0
+    }
   ]
 }

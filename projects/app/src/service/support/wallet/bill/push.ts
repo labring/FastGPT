@@ -1,17 +1,17 @@
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
+import { getAudioSpeechModel, getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
-import { defaultQGModels } from '@/constants/model';
+import { defaultQGModels } from '@fastgpt/global/core/ai/model';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 
-function createBill(data: CreateBillProps) {
+export function createBill(data: CreateBillProps) {
   if (!global.systemEnv.pluginBaseUrl) return;
   POST('/support/wallet/bill/createBill', data);
 }
-async function concatBill(data: ConcatBillProps) {
+export function concatBill(data: ConcatBillProps) {
   if (!global.systemEnv.pluginBaseUrl) return;
   POST('/support/wallet/bill/concatBill', data);
 }
@@ -138,20 +138,6 @@ export const pushGenerateVectorBill = async ({
   return { total };
 };
 
-export const countModelPrice = ({
-  model,
-  tokens,
-  type
-}: {
-  model: string;
-  tokens: number;
-  type: `${ModelTypeEnum}`;
-}) => {
-  const modelData = getModelMap?.[type]?.(model);
-  if (!modelData) return 0;
-  return modelData.price * tokens;
-};
-
 export const pushQuestionGuideBill = ({
   tokens,
   teamId,
@@ -179,3 +165,37 @@ export const pushQuestionGuideBill = ({
     ]
   });
 };
+
+export function pushAudioSpeechBill({
+  appName = 'wallet.bill.Audio Speech',
+  model,
+  textLength,
+  teamId,
+  tmbId,
+  source = BillSourceEnum.fastgpt
+}: {
+  appName?: string;
+  model: string;
+  textLength: number;
+  teamId: string;
+  tmbId: string;
+  source: `${BillSourceEnum}`;
+}) {
+  const modelData = getAudioSpeechModel(model);
+  const total = modelData.price * textLength;
+  createBill({
+    teamId,
+    tmbId,
+    appName,
+    total,
+    source,
+    list: [
+      {
+        moduleName: appName,
+        amount: total,
+        model: modelData.name,
+        tokenLen: textLength
+      }
+    ]
+  });
+}

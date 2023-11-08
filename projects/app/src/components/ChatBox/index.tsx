@@ -33,7 +33,7 @@ import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { VariableInputEnum } from '@/constants/app';
+import { TTSTypeEnum, VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
 import type { MessageItemType } from '@/types/core/chat/type';
 import { fileDownload } from '@/web/common/file/utils';
@@ -61,6 +61,7 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from '@/global/core/app/modules/utils';
+import { AppTTSConfigType } from '@/types/app';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -155,7 +156,7 @@ const ChatBox = (
     [chatHistory]
   );
 
-  const { welcomeText, variableModules, questionGuide } = useMemo(
+  const { welcomeText, variableModules, questionGuide, ttsConfig } = useMemo(
     () => splitGuideModule(userGuideModule),
     [userGuideModule]
   );
@@ -651,8 +652,10 @@ const ChatBox = (
                       <ChatController
                         ml={2}
                         chat={item}
+                        setChatHistory={setChatHistory}
                         display={index === chatHistory.length - 1 && isChatting ? 'none' : 'flex'}
                         showVoiceIcon={showVoiceIcon}
+                        ttsConfig={ttsConfig}
                         onDelete={
                           onDelMessage
                             ? () => {
@@ -1103,8 +1106,10 @@ function Empty() {
 
 function ChatController({
   chat,
+  setChatHistory,
   display,
   showVoiceIcon,
+  ttsConfig,
   onReadFeedback,
   onMark,
   onRetry,
@@ -1114,7 +1119,9 @@ function ChatController({
   mr
 }: {
   chat: ChatSiteItemType;
+  setChatHistory?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   showVoiceIcon?: boolean;
+  ttsConfig?: AppTTSConfigType;
   onRetry?: () => void;
   onDelete?: () => void;
   onMark?: () => void;
@@ -1124,7 +1131,9 @@ function ChatController({
   const theme = useTheme();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({});
+  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({
+    ttsConfig
+  });
   const controlIconStyle = {
     w: '14px',
     cursor: 'pointer',
@@ -1195,7 +1204,24 @@ function ChatController({
               {...controlIconStyle}
               name={'voice'}
               _hover={{ color: '#E74694' }}
-              onClick={() => playAudio(chat.value)}
+              onClick={async () => {
+                const buffer = await playAudio({
+                  buffer: chat.ttsBuffer,
+                  chatItemId: chat.dataId,
+                  text: chat.value
+                });
+                if (!setChatHistory) return;
+                setChatHistory((state) =>
+                  state.map((item) =>
+                    item.dataId === chat.dataId
+                      ? {
+                          ...item,
+                          ttsBuffer: buffer
+                        }
+                      : item
+                  )
+                );
+              }}
             />
           </MyTooltip>
         ))}

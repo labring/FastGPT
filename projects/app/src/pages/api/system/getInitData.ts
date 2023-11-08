@@ -12,14 +12,16 @@ import {
   defaultCQModels,
   defaultExtractModels,
   defaultQGModels,
-  defaultVectorModels
-} from '@/constants/model';
+  defaultVectorModels,
+  defaultAudioSpeechModels
+} from '@fastgpt/global/core/ai/model';
 import {
+  AudioSpeechModelType,
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
   VectorModelItemType
-} from '@/types/model';
+} from '@fastgpt/global/core/ai/model.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   getInitConfig();
@@ -85,6 +87,7 @@ export function getInitConfig() {
       ExtractModels: FunctionModelItemType[];
       QGModels: LLMModelItemType[];
       VectorModels: VectorModelItemType[];
+      AudioSpeechModels: AudioSpeechModelType[];
     };
 
     console.log(`System Version: ${global.systemVersion}`);
@@ -103,6 +106,8 @@ export function getInitConfig() {
     global.qgModels = res.QGModels || defaultQGModels;
 
     global.vectorModels = res.VectorModels || defaultVectorModels;
+
+    global.audioSpeechModels = res.AudioSpeechModels || defaultAudioSpeechModels;
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);
@@ -120,19 +125,12 @@ export function setDefaultData() {
   global.qgModels = defaultQGModels;
 
   global.vectorModels = defaultVectorModels;
+  global.audioSpeechModels = defaultAudioSpeechModels;
+
   global.priceMd = '';
 
   console.log('use default config');
-  console.log({
-    feConfigs: defaultFeConfigs,
-    systemEnv: defaultSystemEnv,
-    chatModels: defaultChatModels,
-    qaModels: defaultQAModels,
-    cqModels: defaultCQModels,
-    extractModels: defaultExtractModels,
-    qgModels: defaultQGModels,
-    vectorModels: defaultVectorModels
-  });
+  console.log(global);
 }
 
 export function getSystemVersion() {

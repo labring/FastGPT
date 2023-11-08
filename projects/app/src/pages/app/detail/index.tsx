@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
-import { defaultApp } from '@/constants/model';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { feConfigs } from '@/web/common/system/staticData';
@@ -36,7 +35,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const theme = useTheme();
   const { toast } = useToast();
   const { appId } = router.query as { appId: string };
-  const { appDetail = defaultApp, loadAppDetail, clearAppModules } = useAppStore();
+  const { appDetail, loadAppDetail, clearAppModules } = useAppStore();
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {

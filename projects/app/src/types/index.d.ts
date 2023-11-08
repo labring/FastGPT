@@ -1,10 +1,11 @@
 import type { Tiktoken } from 'js-tiktoken';
 import {
+  AudioSpeechModelType,
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
   VectorModelItemType
-} from './model';
+} from '@fastgpt/global/core/ai/model.d';
 import { TrackEventName } from '@/constants/common';
 
 export type PagingData<T> = {
@@ -27,6 +28,7 @@ declare global {
   var cqModels: FunctionModelItemType[];
   var extractModels: FunctionModelItemType[];
   var qgModels: LLMModelItemType[];
+  var audioSpeechModels: AudioSpeechModelType[];
 
   var priceMd: string;
   var systemVersion: string;

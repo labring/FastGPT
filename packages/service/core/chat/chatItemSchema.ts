@@ -8,6 +8,8 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { appCollectionName } from '../app/schema';
+import { userCollectionName } from '../../support/user/schema';
 
 const ChatItemSchema = new Schema({
   dataId: {
@@ -17,7 +19,7 @@ const ChatItemSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: 'model',
+    ref: appCollectionName,
     required: true
   },
   chatId: {
@@ -26,7 +28,7 @@ const ChatItemSchema = new Schema({
   },
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'user'
+    ref: userCollectionName
   },
   teamId: {
     type: Schema.Types.ObjectId,
@@ -66,6 +68,9 @@ const ChatItemSchema = new Schema({
   [TaskResponseKeyEnum.responseData]: {
     type: Array,
     default: []
+  },
+  tts: {
+    type: Buffer
   }
 });
 
