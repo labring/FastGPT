@@ -1,0 +1,23 @@
+import MyIcon from '@/components/Icon';
+import MyTooltip from '@/components/MyTooltip';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { Box, Flex, Switch, type SwitchProps } from '@chakra-ui/react';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+
+const QGSwitch = (props: SwitchProps) => {
+  const { t } = useTranslation();
+  return (
+    <Flex alignItems={'center'}>
+      <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
+      <Box>{t('core.app.Next Step Guide')}</Box>
+      <MyTooltip label={t('core.app.Question Guide Tip')} forceShow>
+        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+      </MyTooltip>
+      <Box flex={1} />
+      <Switch {...props} />
+    </Flex>
+  );
+};
+
+export default QGSwitch;

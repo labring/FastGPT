@@ -1,23 +1,31 @@
 {
   "name": "fastgpt",
-  "version": "3.7",
+  "version": "4.0",
   "private": true,
   "scripts": {
     "prepare": "husky install",
-    "format": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\""
+    "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
+    "format-doc": "zhlint --dir ./docSite *.md --fix"
   },
   "devDependencies": {
+    "@types/multer": "^1.4.10",
     "husky": "^8.0.3",
-    "i18next": "^23.2.11",
+    "i18next": "^22.5.1",
     "lint-staged": "^13.2.1",
-    "next-i18next": "^14.0.0",
-    "prettier": "^2.8.7",
-    "react-i18next": "^13.0.2"
+    "next-i18next": "^13.3.0",
+    "prettier": "^3.0.3",
+    "react-i18next": "^12.3.1",
+    "zhlint": "^0.7.1"
   },
   "lint-staged": {
-    "./**/**/*.{ts,tsx,scss}": "npm run format"
+    "./**/**/*.{ts,tsx,scss}": "npm run format-code",
+    "./**/**/*.md": "npm run format-doc"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "multer": "1.4.5-lts.1",
+    "openai": "4.16.1"
   }
 }

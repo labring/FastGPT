@@ -30,3 +30,9 @@ platform.json
 testApi/
 local/
 dist/
+
+# hugo
+**/.hugo_build.lock
+docSite/public/
+docSite/resources/_gen/
+docSite/.vercel

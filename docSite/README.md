@@ -1,41 +1,9 @@
-# Website
+# 文档
 
-This website is built using [Docusaurus 2](https://docusaurus.io/), a modern static website generator.
+## 本地运行
 
-### Installation
-
-```
-$ yarn
-```
-
-### Local Development
-
-```
-$ yarn start
-```
-
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
-
-### Build
-
-```
-$ yarn build
-```
-
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-### Deployment
-
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+1. 安装 go 语言环境。
+2. 安装 hugo。[二进制下载](https://github.com/gohugoio/hugo/releases/tag/v0.117.0)，注意需要安装 extended 版本。
+3. cd docSite
+4. hugo serve
+5. 访问 http://localhost:1313

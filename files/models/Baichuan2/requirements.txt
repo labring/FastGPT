@@ -1,0 +1,14 @@
+protobuf
+transformers==4.30.2
+cpm_kernels
+torch>=2.0
+gradio
+mdtex2html
+sentencepiece
+accelerate
+sse-starlette
+fastapi==0.99.1
+pydantic==1.10.7
+uvicorn==0.21.1
+xformers
+bitsandbytes
