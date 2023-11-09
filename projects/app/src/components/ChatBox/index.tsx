@@ -797,13 +797,20 @@ const ChatBox = (
       </Box>
       {/* message input */}
       {onStartChat && variableIsFinish && active ? (
-        <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
+        <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
           <Box
             py={'18px'}
             position={'relative'}
             boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
-            borderTop={['1px solid', 0]}
-            borderTopColor={'myGray.200'}
+            {...(isPc
+              ? {
+                  border: '1px solid',
+                  borderColor: 'rgba(0,0,0,0.12)'
+                }
+              : {
+                  borderTop: '1px solid',
+                  borderTopColor: 'rgba(0,0,0,0.15)'
+                })}
             borderRadius={['none', 'md']}
             backgroundColor={'white'}
           >
@@ -832,6 +839,7 @@ const ChatBox = (
                 const textarea = e.target;
                 textarea.style.height = textareaMinH;
                 textarea.style.height = `${textarea.scrollHeight}px`;
+                setRefresh((state) => !state);
               }}
               onKeyDown={(e) => {
                 // enter send.(pc or iframe && enter and unPress shift)
@@ -848,11 +856,14 @@ const ChatBox = (
             <Flex
               alignItems={'center'}
               justifyContent={'center'}
-              h={'25px'}
-              w={'25px'}
+              h={['26px', '32px']}
+              w={['26px', '32px']}
               position={'absolute'}
-              right={['12px', '20px']}
-              bottom={'15px'}
+              right={['12px', '14px']}
+              bottom={['15px', '13px']}
+              borderRadius={'md'}
+              bg={TextareaDom.current?.value ? 'myBlue.600' : ''}
+              lineHeight={1}
             >
               {isChatting ? (
                 <MyIcon
@@ -865,16 +876,18 @@ const ChatBox = (
                   onClick={() => chatController.current?.abort('stop')}
                 />
               ) : (
-                <MyIcon
-                  name={'chatSend'}
-                  width={['18px', '20px']}
-                  height={['18px', '20px']}
-                  cursor={'pointer'}
-                  color={'gray.500'}
-                  onClick={() => {
-                    handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
-                  }}
-                />
+                <MyTooltip label={t('core.chat.Send Message')}>
+                  <MyIcon
+                    name={'core/chat/sendFill'}
+                    width={'16px'}
+                    height={'16px'}
+                    cursor={'pointer'}
+                    color={TextareaDom.current?.value ? 'white' : 'myBlue.600'}
+                    onClick={() => {
+                      handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
+                    }}
+                  />
+                </MyTooltip>
               )}
             </Flex>
           </Box>

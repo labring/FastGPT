@@ -226,7 +226,8 @@
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
-      "Restart": "Restart"
+      "Restart": "Restart",
+      "Send Message": "Send Message"
     },
     "dataset": {
       "Choose Dataset": "Choose Dataset",

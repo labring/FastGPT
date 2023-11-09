@@ -226,7 +226,8 @@
     },
     "chat": {
       "Audio Speech Error": "语音播报异常",
-      "Restart": "重开对话"
+      "Restart": "重开对话",
+      "Send Message": "发送"
     },
     "dataset": {
       "Choose Dataset": "关联知识库",
