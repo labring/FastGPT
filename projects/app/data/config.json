@@ -1,5 +1,6 @@
 {
   "SystemParams": {
+    "pluginBaseUrl": "",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgHNSWEfSearch": 100

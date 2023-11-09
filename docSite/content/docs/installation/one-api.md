@@ -99,9 +99,9 @@ CHAT_API_KEY=sk-xxxxxx
     {
       "model": "ERNIE-Bot", // 这里的模型需要对应 One API 的模型
       "name": "文心一言", // 对外展示的名称
-      "maxToken": 4000, // 最大长下文 token，无论什么模型都按 GPT35 的计算。GPT 外的模型需要自行大致计算下这个值。可以调用官方接口去比对 Token 的倍率，然后在这里粗略计算。
+      "maxContext": 8000, // 最大长下文 token，无论什么模型都按 GPT35 的计算。GPT 外的模型需要自行大致计算下这个值。可以调用官方接口去比对 Token 的倍率，然后在这里粗略计算。
+      "maxResponse": 4000, // 最大回复 token
       // 例如：文心一言的中英文 token 基本是 1:1，而 GPT 的中文 Token 是 2:1，如果文心一言官方最大 Token 是 4000，那么这里就可以填 8000，保险点就填 7000.
-      "price": 0, // 1个token 价格 => 1.5 / 100000 * 1000 = 0.015元/1k token
       "quoteMaxToken": 2000, // 引用知识库的最大 Token
       "maxTemperature": 1, // 最大温度
       "defaultSystemChatPrompt": "" // 默认的系统提示词
