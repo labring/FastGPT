@@ -5,7 +5,7 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { findAllChildrenIds } from '../delete';
 import QueryStream from 'pg-query-stream';
-import { PgClient, Pg } from '@fastgpt/service/common/pg';
+import { PgClient } from '@fastgpt/service/common/pg';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       datasetId: string;
     };
 
-    if (!datasetId || !Pg) {
+    if (!datasetId || !global.pgClient) {
       throw new Error('缺少参数');
     }
 
@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // connect pg
-    Pg.connect((err, client, done) => {
+    global.pgClient.connect((err, client, done) => {
       if (err) {
         console.error(err);
         res.end('Error connecting to database');
