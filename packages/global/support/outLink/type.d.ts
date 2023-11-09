@@ -4,6 +4,8 @@ export type OutLinkSchema = {
   _id: string;
   shareId: string;
   userId: string;
+  teamId: string;
+  tmbId: string;
   appId: string;
   name: string;
   total: number;

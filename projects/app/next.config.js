@@ -25,7 +25,8 @@ const nextConfig = {
       'mongodb-client-encryption': false,
       kerberos: false,
       'supports-color': false,
-      'bson-ext': false
+      'bson-ext': false,
+      'pg-native': false
     });
     config.module = {
       ...config.module,
@@ -44,7 +45,7 @@ const nextConfig = {
   },
   transpilePackages: ['@fastgpt/*'],
   experimental: {
-    serverComponentsExternalPackages: ['mongoose'],
+    serverComponentsExternalPackages: ['mongoose', 'winston', 'winston-mongodb', 'pg'],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };

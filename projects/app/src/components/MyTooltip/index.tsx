@@ -10,6 +10,7 @@ const MyTooltip = ({ children, forceShow = false, shouldWrapChildren = true, ...
   const { isPc } = useSystemStore();
   return isPc || forceShow ? (
     <Tooltip
+      className="tooltip"
       bg={'white'}
       arrowShadowColor={' rgba(0,0,0,0.05)'}
       hasArrow

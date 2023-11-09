@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
 import { createDefaultCollection } from './collection/create';
+import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -12,11 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { name, tags, avatar, vectorModel, parentId, type } = req.body as CreateDatasetParams;
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
 
     const { _id } = await MongoDataset.create({
       name,
-      userId,
+      teamId,
+      tmbId,
       tags,
       vectorModel,
       avatar,
@@ -26,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await createDefaultCollection({
       datasetId: _id,
-      userId
+      teamId,
+      tmbId
     });
 
     jsonRes(res, { data: _id });

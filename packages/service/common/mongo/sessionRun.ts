@@ -1,39 +1,21 @@
-import mongoose from './index';
+import mongoose, { connectionMongo } from './index';
 
-export class MongoSession {
-  tasks: (() => Promise<any>)[] = [];
-  session: mongoose.mongo.ClientSession | null = null;
-  opts: {
-    session: mongoose.mongo.ClientSession;
-    new: boolean;
-  } | null = null;
+export async function mongoSessionTask(
+  fn: (session: mongoose.mongo.ClientSession) => Promise<any>
+) {
+  const session = await connectionMongo.startSession();
 
-  constructor() {}
-  async init() {
-    this.session = await mongoose.startSession();
-    this.opts = { session: this.session, new: true };
-  }
-  push(
-    tasks: ((opts: {
-      session: mongoose.mongo.ClientSession;
-      new: boolean;
-    }) => () => Promise<any>)[] = []
-  ) {
-    if (!this.opts) return;
-    // this.tasks = this.tasks.concat(tasks.map((item) => item(this.opts)));
-  }
-  async run() {
-    if (!this.session || !this.opts) return;
-    try {
-      this.session.startTransaction();
+  try {
+    session.startTransaction();
 
-      const opts = { session: this.session, new: true };
+    await fn(session);
 
-      await this.session.commitTransaction();
-    } catch (error) {
-      await this.session.abortTransaction();
-      console.error(error);
-    }
-    this.session.endSession();
+    await session.commitTransaction();
+    await session.endSession();
+  } catch (error) {
+    await session.abortTransaction();
+    await session.endSession();
+    console.error(error);
+    return Promise.reject(error);
   }
 }

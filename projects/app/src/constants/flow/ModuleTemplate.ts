@@ -1,5 +1,6 @@
-import { AppTypeEnum, SystemInputEnum } from '../app';
-import { TaskResponseKeyEnum } from '../chat';
+import { SystemInputEnum } from '../app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -27,7 +28,6 @@ export const welcomeTextTip =
   '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
 export const variableTip =
   '可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等';
-export const questionGuideTip = `对话结束后，会为生成 3 个引导性问题。`;
 
 export const VariableModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.variable,
@@ -69,6 +69,11 @@ export const UserGuideModule: FlowModuleTemplateType = {
       key: SystemInputEnum.questionGuide,
       type: FlowNodeInputTypeEnum.switch,
       label: '问题引导'
+    },
+    {
+      key: SystemInputEnum.tts,
+      type: FlowNodeInputTypeEnum.hidden,
+      label: '语音播报'
     }
   ],
   outputs: []
@@ -162,15 +167,15 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'maxToken',
       type: FlowNodeInputTypeEnum.hidden,
       label: '回复上限',
-      value: chatModelList?.[0] ? chatModelList[0].maxToken / 2 : 2000,
+      value: chatModelList?.[0] ? chatModelList[0].maxResponse / 2 : 2000,
       min: 100,
-      max: chatModelList?.[0]?.maxToken || 4000,
+      max: chatModelList?.[0]?.maxResponse || 4000,
       step: 50,
       markList: [
         { label: '100', value: 100 },
         {
-          label: `${chatModelList?.[0]?.maxToken || 4000}`,
-          value: chatModelList?.[0]?.maxToken || 4000
+          label: `${chatModelList?.[0]?.maxResponse || 4000}`,
+          value: chatModelList?.[0]?.maxResponse || 4000
         }
       ]
     },

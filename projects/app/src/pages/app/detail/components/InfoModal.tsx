@@ -10,15 +10,17 @@ import {
   ModalBody
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@/components/MyModal';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import PermissionRadio from '@/components/support/permission/Radio';
+import { useTranslation } from 'react-i18next';
 
 const InfoModal = ({
   defaultApp,
@@ -29,8 +31,9 @@ const InfoModal = ({
   onClose: () => void;
   onSuccess?: () => void;
 }) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
-  const { updateAppDetail } = useUserStore();
+  const { updateAppDetail } = useAppStore();
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -55,7 +58,7 @@ const InfoModal = ({
         name: data.name,
         avatar: data.avatar,
         intro: data.intro,
-        share: data.share
+        permission: data.permission
       });
     },
     onSuccess() {
@@ -97,7 +100,7 @@ const InfoModal = ({
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgAndUpload({
           file,
           maxW: 100,
           maxH: 100
@@ -139,7 +142,7 @@ const InfoModal = ({
             ></Input>
           </FormControl>
         </Flex>
-        <Box mt={7} mb={1}>
+        <Box mt={4} mb={1}>
           应用介绍
         </Box>
         {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
@@ -152,6 +155,16 @@ const InfoModal = ({
           bg={'myWhite.600'}
           {...register('intro')}
         />
+        <Box mt={4}>
+          <Box mb={1}>{t('user.Permission')}</Box>
+          <PermissionRadio
+            value={getValues('permission')}
+            onChange={(e) => {
+              setValue('permission', e);
+              setRefresh(!refresh);
+            }}
+          />
+        </Box>
       </ModalBody>
 
       <ModalFooter>

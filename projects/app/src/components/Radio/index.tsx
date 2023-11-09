@@ -69,7 +69,7 @@ const MyRadio = ({
           onClick={() => onChange(item.value)}
         >
           {!!item.icon && <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />}
-          <Box>
+          <Box pr={2}>
             <Box>{item.title}</Box>
             {!!item.desc && (
               <Box fontSize={'sm'} color={'myGray.500'}>

@@ -17,13 +17,14 @@ import Avatar from '@/components/Avatar';
 import Info from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'react-i18next';
-import { getTrainingQueueLen, delDatasetEmptyFiles } from '@/web/core/dataset/api';
+import { getTrainingQueueLen } from '@/web/core/dataset/api';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { feConfigs } from '@/web/common/system/staticData';
 import Script from 'next/script';
 import CollectionCard from './components/CollectionCard';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false
@@ -47,12 +48,15 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   const router = useRouter();
   const { isPc } = useSystemStore();
   const { datasetDetail, loadDatasetDetail } = useDatasetStore();
+  const { userInfo } = useUserStore();
 
-  const tabList = useRef([
+  const tabList = [
     { label: '数据集', id: TabEnum.collectionCard, icon: 'overviewLight' },
     { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
-    { label: '配置', id: TabEnum.info, icon: 'settingLight' }
-  ]);
+    ...(userInfo?.team.canWrite && datasetDetail.isOwner
+      ? [{ label: '配置', id: TabEnum.info, icon: 'settingLight' }]
+      : [])
+  ];
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -88,14 +92,6 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
     refetchInterval: 10000
   });
 
-  useEffect(() => {
-    return () => {
-      try {
-        delDatasetEmptyFiles(datasetId);
-      } catch (error) {}
-    };
-  }, [datasetId]);
-
   return (
     <>
       <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
@@ -120,7 +116,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                 mx={'auto'}
                 mt={2}
                 w={'100%'}
-                list={tabList.current}
+                list={tabList}
                 activeId={currentTab}
                 onChange={(e: any) => {
                   setCurrentTab(e);
@@ -169,7 +165,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                 m={'auto'}
                 w={'260px'}
                 size={isPc ? 'md' : 'sm'}
-                list={tabList.current.map((item) => ({
+                list={tabList.map((item) => ({
                   id: item.id,
                   label: item.label
                 }))}

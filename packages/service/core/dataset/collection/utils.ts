@@ -31,18 +31,16 @@ export async function findCollectionAndChild(id: string, fields = '_id parentId 
 }
 
 export async function getDatasetCollectionPaths({
-  parentId = '',
-  userId
+  parentId = ''
 }: {
   parentId?: string;
-  userId: string;
 }): Promise<ParentTreePathItemType[]> {
   async function find(parentId?: string): Promise<ParentTreePathItemType[]> {
     if (!parentId) {
       return [];
     }
 
-    const parent = await MongoDatasetCollection.findOne({ _id: parentId, userId }, 'name parentId');
+    const parent = await MongoDatasetCollection.findOne({ _id: parentId }, 'name parentId');
 
     if (!parent) return [];
 

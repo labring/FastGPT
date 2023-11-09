@@ -1,16 +1,16 @@
 import React from 'react';
 import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const SliderApps = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { myApps, loadMyApps } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
 
   useQuery(['loadModels'], () => loadMyApps(false));
 

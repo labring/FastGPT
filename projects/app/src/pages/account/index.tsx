@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -33,52 +33,69 @@ enum TabEnum {
 
 const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
-  const tabList = [
-    {
-      icon: 'meLight',
-      label: t('user.Personal Information'),
-      id: TabEnum.info
-    },
+  const { userInfo, setUserInfo } = useUserStore();
 
-    {
-      icon: 'billRecordLight',
-      label: t('user.Usage Record'),
-      id: TabEnum.bill
-    },
-    ...(feConfigs?.show_promotion
-      ? [
-          {
-            icon: 'promotionLight',
-            label: t('user.Promotion Record'),
-            id: TabEnum.promotion
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_pay
-      ? [
-          {
-            icon: 'payRecordLight',
-            label: t('user.Recharge Record'),
-            id: TabEnum.pay
-          }
-        ]
-      : []),
-    {
-      icon: 'apikey',
-      label: t('user.apikey.key'),
-      id: TabEnum.apikey
-    },
-    {
-      icon: 'informLight',
-      label: t('user.Notice'),
-      id: TabEnum.inform
-    },
-    {
-      icon: 'loginoutLight',
-      label: t('user.Sign Out'),
-      id: TabEnum.loginout
-    }
-  ];
+  const tabList = useMemo(
+    () => [
+      {
+        icon: 'meLight',
+        label: t('user.Personal Information'),
+        id: TabEnum.info
+      },
+      ...(feConfigs?.isPlus
+        ? [
+            {
+              icon: 'billRecordLight',
+              label: t('user.Usage Record'),
+              id: TabEnum.bill
+            }
+          ]
+        : []),
+      ...(feConfigs?.show_promotion
+        ? [
+            {
+              icon: 'promotionLight',
+              label: t('user.Promotion Record'),
+              id: TabEnum.promotion
+            }
+          ]
+        : []),
+      ...(feConfigs?.show_pay && userInfo?.team.canWrite
+        ? [
+            {
+              icon: 'payRecordLight',
+              label: t('user.Recharge Record'),
+              id: TabEnum.pay
+            }
+          ]
+        : []),
+      ...(userInfo?.team.canWrite
+        ? [
+            {
+              icon: 'apikey',
+              label: t('user.apikey.key'),
+              id: TabEnum.apikey
+            }
+          ]
+        : []),
+      ...(feConfigs.isPlus
+        ? [
+            {
+              icon: 'informLight',
+              label: t('user.Notice'),
+              id: TabEnum.inform
+            }
+          ]
+        : []),
+
+      {
+        icon: 'loginoutLight',
+        label: t('user.Sign Out'),
+        id: TabEnum.loginout
+      }
+    ],
+    [t, userInfo?.team.canWrite]
+  );
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认退出登录？'
@@ -87,7 +104,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const router = useRouter();
   const theme = useTheme();
   const { isPc } = useSystemStore();
-  const { setUserInfo } = useUserStore();
 
   const setCurrentTab = useCallback(
     (tab: string) => {

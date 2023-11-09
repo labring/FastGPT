@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
-import type { ChatHistoryItemResType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { useTranslation } from 'react-i18next';
 import { ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
 import Tabs from '../Tabs';
@@ -8,7 +8,7 @@ import Tabs from '../Tabs';
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 
 function Row({ label, value }: { label: string; value?: string | number | React.ReactNode }) {
   const theme = useTheme();

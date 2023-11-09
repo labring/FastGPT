@@ -1,7 +1,11 @@
-import { PgDatasetTableName } from '@/constants/plugin';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { PgClient } from '@/service/pg';
-import { delay } from '@/utils/tools';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
+import {
+  SearchDataResponseItemType,
+  SearchDataResultItemType
+} from '@fastgpt/global/core/dataset/type';
+import { PgClient } from '@fastgpt/service/common/pg';
+import { getVectorsByText } from '../../ai/vector';
+import { getPgDataWithCollection } from './controller';
 
 /**
  * Same value judgment
@@ -25,99 +29,6 @@ export async function hasSameValue({
   if (exists) {
     return Promise.reject('已经存在完全一致的数据');
   }
-}
-
-type Props = {
-  userId: string;
-  q: string;
-  a?: string;
-  model: string;
-};
-
-export async function insertData2Dataset({
-  userId,
-  datasetId,
-  collectionId,
-  q,
-  a = '',
-  model,
-  billId
-}: Props & {
-  datasetId: string;
-  collectionId: string;
-  billId?: string;
-}) {
-  if (!q || !datasetId || !collectionId || !model) {
-    return Promise.reject('q, datasetId, collectionId, model is required');
-  }
-  const { vectors } = await getVector({
-    model,
-    input: [q],
-    userId,
-    billId
-  });
-
-  let retry = 2;
-  async function insertPg(): Promise<string> {
-    try {
-      const { rows } = await PgClient.insert(PgDatasetTableName, {
-        values: [
-          [
-            { key: 'vector', value: `[${vectors[0]}]` },
-            { key: 'user_id', value: userId },
-            { key: 'q', value: q },
-            { key: 'a', value: a },
-            { key: 'dataset_id', value: datasetId },
-            { key: 'collection_id', value: collectionId }
-          ]
-        ]
-      });
-      return rows[0].id;
-    } catch (error) {
-      if (--retry < 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return insertPg();
-    }
-  }
-
-  return insertPg();
-}
-
-/**
- * update a or a
- */
-export async function updateData2Dataset({
-  dataId,
-  userId,
-  q,
-  a = '',
-  model
-}: Props & { dataId: string }) {
-  const { vectors = [] } = await (async () => {
-    if (q) {
-      return getVector({
-        userId,
-        input: [q],
-        model
-      });
-    }
-    return { vectors: [[]] };
-  })();
-
-  await PgClient.update(PgDatasetTableName, {
-    where: [['id', dataId], 'AND', ['user_id', userId]],
-    values: [
-      { key: 'a', value: a.replace(/'/g, '"') },
-      ...(q
-        ? [
-            { key: 'q', value: q.replace(/'/g, '"') },
-            { key: 'vector', value: `[${vectors[0]}]` }
-          ]
-        : [])
-    ]
-  });
 }
 
 /**
@@ -148,18 +59,46 @@ export async function countCollectionData({
   return values;
 }
 
-/**
- * delete data by collectionIds
- */
-export async function delDataByCollectionId({
-  userId,
-  collectionIds
+export async function searchDatasetData({
+  text,
+  model,
+  similarity = 0,
+  limit,
+  datasetIds = []
 }: {
-  userId: string;
-  collectionIds: string[];
+  text: string;
+  model: string;
+  similarity?: number;
+  limit: number;
+  datasetIds: string[];
 }) {
-  const ids = collectionIds.map((item) => String(item));
-  return PgClient.delete(PgDatasetTableName, {
-    where: [['user_id', userId], 'AND', `collection_id IN ('${ids.join("','")}')`]
+  const { vectors, tokenLen } = await getVectorsByText({
+    model,
+    input: [text]
   });
+
+  const results: any = await PgClient.query(
+    `BEGIN;
+    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
+    select id, q, a, collection_id, (vector <#> '[${
+      vectors[0]
+    }]') * -1 AS score from ${PgDatasetTableName} where dataset_id IN (${datasetIds
+      .map((id) => `'${String(id)}'`)
+      .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
+      vectors[0]
+    }]' limit ${limit};
+    COMMIT;`
+  );
+
+  const rows = results?.[2]?.rows as SearchDataResultItemType[];
+  const collectionsData = await getPgDataWithCollection({ pgDataList: rows });
+  const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
+    ...item,
+    score: rows[index].score
+  }));
+
+  return {
+    searchRes,
+    tokenLen
+  };
 }

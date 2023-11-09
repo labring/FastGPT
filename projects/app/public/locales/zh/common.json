@@ -45,6 +45,8 @@
     "Open AI Advanced Settings": "高级配置",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置",
+    "To Chat": "前去对话",
+    "To Settings": "查看详情",
     "Variable Key Repeat Tip": "变量 key 重复",
     "module": {
       "Combine Modules": "组合模块",
@@ -70,7 +72,7 @@
     "Admin Mark Content": "纠正后的回复",
     "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
-    "Confirm to clear share chat histroy": "确认删除所有聊天记录？",
+    "Confirm to clear share chat history": "确认删除所有聊天记录？",
     "Exit Chat": "退出聊天",
     "Feedback Close": "关闭反馈",
     "Feedback Failed": "提交反馈异常",
@@ -128,6 +130,7 @@
     "Add": "添加",
     "Back": "返回",
     "Beta": "实验版",
+    "Business edition features": "这是商业版功能~",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
@@ -146,6 +149,7 @@
     "Delete Success": "删除成功",
     "Delete Tip": "删除提示",
     "Delete Warning": "删除警告",
+    "Done": "完成",
     "Edit": "编辑",
     "Expired Time": "过期时间",
     "File": "文件",
@@ -164,24 +168,29 @@
     "Output": "输出",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
+    "Please Input Name": "请输入名称",
     "Rename": "重命名",
     "Rename Failed": "重命名失败",
     "Rename Success": "重命名成功",
     "Request Error": "请求异常",
+    "Save Failed": "保存失败",
+    "Save Success": "保存成功",
     "Search": "搜索",
     "Select File Failed": "选择文件异常",
     "Select One Folder": "选择一个目录",
     "Set Avatar": "点击设置头像",
     "Set Name": "取个响亮的名字",
     "Status": "状态",
+    "Team": "团队",
     "Test": "测试",
     "Time": "时间",
-    "Unknow": "未知",
-    "Unknow Source": "未知来源",
+    "UnKnow": "未知",
+    "UnKnow Source": "未知来源",
     "Update Failed": "更新异常",
     "Update Success": "更新成功",
     "Update Successful": "更新成功",
     "Update Time": "更新时间",
+    "Username": "用户名",
     "error": {
       "unKnow": "出现了点意外~"
     },
@@ -191,6 +200,9 @@
       "Move Success": "移动成功",
       "No Folder": "没有子目录了，就放这里吧",
       "Root Path": "根目录"
+    },
+    "input": {
+      "Repeat Value": "有重复的值"
     }
   },
   "core": {
@@ -199,10 +211,23 @@
       "Prompt": "提示词"
     },
     "app": {
-      "Next Step Guide": "下一步指引"
+      "Next Step Guide": "下一步指引",
+      "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
+      "TTS": "语音播报",
+      "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
+      "tts": {
+        "Close": "不使用",
+        "Model alloy": "女声 - Alloy",
+        "Model echo": "男声 - Echo",
+        "Test Listen": "试听",
+        "Test Listen Text": "你好，我是 FastGPT，有什么可以帮助你么？",
+        "Web": "浏览器自带(免费)"
+      }
     },
     "chat": {
-      "Restart": "重开对话"
+      "Audio Speech Error": "语音播报异常",
+      "Restart": "重开对话",
+      "Send Message": "发送"
     },
     "dataset": {
       "Choose Dataset": "关联知识库",
@@ -262,6 +287,8 @@
       "Select One Collection To Store": "选择一个文件进行存储"
     },
     "data": {
+      "Can not delete tip": "无修改权限",
+      "Can not edit": "无编辑权限",
       "Delete Tip": "确认删除该条数据？",
       "File import": "文件导入",
       "Input Data": "导入新数据",
@@ -271,6 +298,11 @@
     },
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
+  },
+  "error": {
+    "team": {
+      "overSize": "团队成员超出上限"
+    }
   },
   "file": {
     "Click to download file template": "点击下载模板：{{name}}",
@@ -365,13 +397,13 @@
     "key tips": "你可以使用 API 秘钥访问一些特定的接口(无法访问应用，访问应用需使用应用内的API Key)"
   },
   "outlink": {
-    "Copy Iframe": "嵌入网页",
+    "Copy IFrame": "嵌入网页",
     "Copy Link": "复制",
     "Create API Key": "创建新 Key",
     "Create Link": "创建链接",
     "Delete Link": "删除链接",
     "Edit API Key": "编辑 Key 信息",
-    "Edit Ifrme Link": "更新嵌入链接",
+    "Edit IFrame Link": "更新嵌入链接",
     "Edit Link": "编辑",
     "Edit Share Window": "更新分享窗口",
     "Link Name": "分享链接的名字",
@@ -384,6 +416,14 @@
     "token auth": "身份验证",
     "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会想指定服务器发送一个请求，进行身份校验",
     "token auth use cases": "查看身份验证使用说明"
+  },
+  "permission": {
+    "Private": "私有",
+    "Private Tip": "仅自己可用",
+    "Public": "团队",
+    "Public Tip": "团队所有成员可使用",
+    "Set Private": "设为私有",
+    "Set Public": "设为团队可用"
   },
   "plugin": {
     "Confirm Delete": "确认删除该插件？",
@@ -417,13 +457,14 @@
     "Change": "变更",
     "Copy invite url": "复制邀请链接",
     "Invite Url": "邀请链接",
-    "Invite url tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n此外，好友使用手机号注册时，你将立即获得 5 元奖励。",
+    "Invite url tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n此外，好友使用手机号注册时，你将立即获得 5 元奖励。\n奖励会发送到您的默认团队中。",
     "Language": "语言",
     "Notice": "通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
     "Password": "密码",
     "Pay": "充值",
+    "Permission": "使用权限",
     "Personal Information": "个人信息",
     "Promotion": "",
     "Promotion Rate": "返现比例",
@@ -434,12 +475,13 @@
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Sign Out": "登出",
     "Source": "来源",
+    "Team": "团队",
     "Time": "时间",
     "Timezone": "时区",
     "Total Amount": "总金额",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",
-    "Update password succseful": "修改密码成功",
+    "Update password successful": "修改密码成功",
     "Usage Record": "使用记录",
     "apikey": {
       "key": "API 秘钥"
@@ -447,6 +489,66 @@
     "promotion": {
       "pay": "好友充值",
       "register": "好友注册"
+    },
+    "team": {
+      "Balance": "团队余额",
+      "Check Team": "切换",
+      "Confirm Invite": "确认邀请",
+      "Create Team": "创建新团队",
+      "Invite Member": "邀请成员",
+      "Invite Member Failed Tip": "邀请成员出现异常",
+      "Invite Member Result Tip": "邀请结果提示",
+      "Invite Member Success Tip": "邀请成员完成\n成功: {{success}}人\n用户名无效: {{inValid}}\n已在团队中:{{inTeam}}",
+      "Invite Member Tips": "对方可查阅或使用团队内的其他资源",
+      "Invite Role Admin Alias": "邀请管理员加入",
+      "Invite Role Admin Tip": "管理员\n可创建、编辑和使用团队资源",
+      "Invite Role Visitor Alias": "邀请访客加入",
+      "Invite Role Visitor Tip": "访客\n仅可使用资源，无创建编辑权限",
+      "Leave Team": "离开团队",
+      "Leave Team Failed": "离开团队异常",
+      "Manage": "团队管理",
+      "Member": "成员",
+      "Over Max Member Tip": "团队最多{{max}}人",
+      "Personal Team": "个人团队",
+      "Processing invitations": "处理邀请",
+      "Processing invitations Tips": "你有{{amount}}个需要处理的团队邀请",
+      "Reinvite": "重新邀请",
+      "Remove Member Confirm Tip": "确认将 {{username}} 移出团队？",
+      "Remove Member Tip": "移出团队",
+      "Role": "身份",
+      "Select Team": "团队选择",
+      "Set Name": "给团队取个名字",
+      "Switch Team Failed": "切换团队异常",
+      "Team Name": "团队名",
+      "Update Team": "更新团队信息",
+      "invite": {
+        "Accept Confirm": "确认加入该团队？",
+        "Accepted": "已加入团队",
+        "Deal Width Footer Tip": "处理完会自动关闭噢~",
+        "Reject": "已拒绝邀请",
+        "Reject Confirm": "确认拒绝该邀请？",
+        "accept": "接受",
+        "reject": "拒绝"
+      },
+      "member": {
+        "Confirm Leave": "确认离开该团队？",
+        "active": "已加入",
+        "reject": "拒绝",
+        "waiting": "待接受"
+      },
+      "role": {
+        "Admin": "管理员",
+        "Member": "成员",
+        "Owner": "创建者",
+        "Update to Visitor": "修改成访客",
+        "Visitor": "访客"
+      }
+    }
+  },
+  "wallet": {
+    "bill": {
+      "Audio Speech": "语音播报",
+      "bill username": "用户"
     }
   }
 }

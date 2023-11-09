@@ -1,14 +1,27 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
-import { PRICE_SCALE } from '@fastgpt/global/common/bill/constants';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 const OpenApiSchema = new Schema(
   {
     userId: {
       type: Schema.Types.ObjectId,
-      ref: 'user',
+      ref: 'user'
+    },
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamCollectionName,
+      required: true
+    },
+    tmbId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamMemberCollectionName,
       required: true
     },
     apiKey: {

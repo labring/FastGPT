@@ -1,15 +1,17 @@
 import {
+  defaultAudioSpeechModels,
   defaultChatModels,
   defaultCQModels,
   defaultExtractModels,
   defaultQAModels,
   defaultQGModels,
   defaultVectorModels
-} from '@/constants/model';
+} from '@fastgpt/global/core/ai/model';
 
 export const getChatModel = (model?: string) => {
   return (
     (global.chatModels || defaultChatModels).find((item) => item.model === model) ||
+    global.chatModels?.[0] ||
     defaultChatModels[0]
   );
 };
@@ -49,6 +51,14 @@ export const getVectorModel = (model?: string) => {
     defaultVectorModels[0]
   );
 };
+
+export function getAudioSpeechModel(model?: string) {
+  return (
+    global.audioSpeechModels.find((item) => item.model === model) ||
+    global.audioSpeechModels?.[0] ||
+    defaultAudioSpeechModels[0]
+  );
+}
 
 export enum ModelTypeEnum {
   chat = 'chat',

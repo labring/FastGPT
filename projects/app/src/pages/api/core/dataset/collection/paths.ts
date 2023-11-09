@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import type { DatasetPathItemType } from '@/types/core/dataset';
 import { getDatasetCollectionPaths } from '@fastgpt/service/core/dataset/collection/utils';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -11,10 +11,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { parentId } = req.query as { parentId: string };
 
-    const { userId } = await authUser({ req, authToken: true });
+    if (!parentId) {
+      return jsonRes(res, {
+        data: []
+      });
+    }
+
+    await authDatasetCollection({ req, authToken: true, collectionId: parentId, per: 'r' });
     const paths = await getDatasetCollectionPaths({
-      parentId,
-      userId
+      parentId
     });
 
     jsonRes<DatasetPathItemType[]>(res, {

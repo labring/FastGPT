@@ -6,7 +6,7 @@
     "timezones-list": "^3.0.2",
     "dayjs": "^1.11.7",
     "encoding": "^0.1.13",
-    "openai": "^4.12.1"
+    "openai": "^4.16.1"
   },
   "devDependencies": {
     "@types/node": "^20.8.5"

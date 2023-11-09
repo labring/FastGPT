@@ -206,7 +206,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
                       setEditInputData({
                         id: data.id,
-                        datasetId: data.datasetId,
                         collectionId: data.collectionId,
                         q: data.q,
                         a: data.a,
@@ -256,7 +255,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
       {!!editInputData && (
         <InputDataModal
-          datasetId={editInputData.datasetId}
+          datasetId={datasetDetail._id}
+          canWrite={datasetDetail.canWrite}
           defaultValues={editInputData}
           onClose={() => setEditInputData(undefined)}
           onSuccess={(data) => {

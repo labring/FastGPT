@@ -8,7 +8,7 @@ import Container from '../modules/Container';
 import { AddIcon } from '@chakra-ui/icons';
 import RenderInput from '../render/RenderInput';
 import Divider from '../modules/Divider';
-import { ContextExtractAgentItemType } from '@/types/app';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import RenderOutput from '../render/RenderOutput';
 import MyIcon from '@/components/Icon';
 import ExtractFieldModal from '../modules/ExtractFieldModal';

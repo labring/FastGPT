@@ -45,6 +45,8 @@
     "Open AI Advanced Settings": "Advanced Settings",
     "Output Field Settings": "Output Field Settings",
     "Paste Config": "Paste Config",
+    "To Chat": "To Chat Page",
+    "To Settings": "To Settings Page",
     "Variable Key Repeat Tip": "Variable Key Repeat",
     "module": {
       "Combine Modules": "Combine Modules",
@@ -70,7 +72,7 @@
     "Admin Mark Content": "Corrected response",
     "Complete Response": "Complete Response",
     "Confirm to clear history": "Confirm to clear history?",
-    "Confirm to clear share chat histroy": " Are you sure to delete all chats?",
+    "Confirm to clear share chat history": " Are you sure to delete all chats?",
     "Exit Chat": "Exit",
     "Feedback Close": "Close Feedback",
     "Feedback Failed": "Feedback Failed",
@@ -128,8 +130,9 @@
     "Add": "Add",
     "Back": "Back",
     "Beta": "Beta",
+    "Business edition features": "This is the commercial version function ~",
     "Choose": "Choose",
-    "Close": "Clow",
+    "Close": "Close",
     "Collect": "Collect",
     "Confirm Create": "Create",
     "Confirm Move": "Move here",
@@ -146,6 +149,7 @@
     "Delete Success": "Delete Successful",
     "Delete Tip": "Delete Confirm",
     "Delete Warning": "Warning",
+    "Done": "Done",
     "Edit": "Edit",
     "Expired Time": "Expired",
     "File": "File",
@@ -164,24 +168,29 @@
     "Output": "Output",
     "Params": "Params",
     "Password inconsistency": "Password inconsistency",
+    "Please Input Name": "Please Input Name",
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
     "Request Error": "Request Error",
+    "Save Failed": "Save Failed",
+    "Save Success": "Save Success",
     "Search": "Search",
     "Select File Failed": "Select File Failed",
     "Select One Folder": "Select a folder",
     "Set Avatar": "Set Avatar",
     "Set Name": "Make a nice name",
     "Status": "Status",
+    "Team": "Team",
     "Test": "Test",
     "Time": "Time",
-    "Unknow": "Unknow",
-    "Unknow Source": "UnKnow Source",
+    "UnKnow": "UnKnow",
+    "UnKnow Source": "UnKnow Source",
     "Update Failed": "Update Failed",
     "Update Success": "Update Success",
     "Update Successful": "Update Successful",
     "Update Time": "Update Time",
+    "Username": "UserName",
     "error": {
       "unKnow": "There was an accident"
     },
@@ -191,6 +200,9 @@
       "Move Success": "Move Success",
       "No Folder": "There's no subdirectory. Just put it here",
       "Root Path": "Root Folder"
+    },
+    "input": {
+      "Repeat Value": "Repeat Value"
     }
   },
   "core": {
@@ -199,13 +211,26 @@
       "Prompt": "Prompt"
     },
     "app": {
-      "Next Step Guide": "Next step guide"
+      "Next Step Guide": "Next step guide",
+      "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
+      "TTS": "Audio Speech",
+      "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "tts": {
+        "Close": "NoUse",
+        "Model alloy": "Female - Alloy",
+        "Model echo": "Male - Echo",
+        "Test Listen": "Test",
+        "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
+        "Web": "Browser (free)"
+      }
     },
     "chat": {
-      "Restart": "Restart"
+      "Audio Speech Error": "Audio Speech Error",
+      "Restart": "Restart",
+      "Send Message": "Send Message"
     },
     "dataset": {
-      "Choose Dataset": "Chookse Dataset",
+      "Choose Dataset": "Choose Dataset",
       "Dataset": "Dataset",
       "Go Dataset": "To Dataset",
       "Quote Length": "Quote Length",
@@ -262,6 +287,8 @@
       "Select One Collection To Store": "Select the collection to store"
     },
     "data": {
+      "Can not delete tip": "No modification permission",
+      "Can not edit": "No edit permission",
       "Delete Tip": "Confirm to delete the data?",
       "File import": "File Import",
       "Input Data": "Import Data",
@@ -271,6 +298,11 @@
     },
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
+  },
+  "error": {
+    "team": {
+      "overSize": "Team member exceeds limit"
+    }
   },
   "file": {
     "Click to download file template": "Download Template: {{name}}",
@@ -306,7 +338,7 @@
     "Choice Models Desc": "Supports multiple models such as GPT, Claude, Spark, and ChatGLM",
     "Choice Open": "Open",
     "Choice Open Desc": "{{title}} follows the Apache License 2.0 open source protocol",
-    "Choice QA": "QA Struceture",
+    "Choice QA": "QA Structure",
     "Choice QA Desc": "The index is constructed with the structure of QA pairs, and ADAPTS to various scenarios such as Q&A and reading",
     "Choice Visual": "Visual workflow",
     "Choice Visual Desc": "Visualize modular operations, easily implement complex workflows, and make your AI no longer monolithic",
@@ -316,7 +348,7 @@
     "Dateset Desc": "",
     "Docs": "Docs",
     "FastGPT Ability": "{{title}} Ability",
-    "FastGPT Desc": "{{title}} is a knowledgebase question answering system based on LLM large language model, which provides out-of-the-box data processing, model invocation and other capabilities. At the same time, workflow orchestration can be performed through Flow visualization to achieve complex Q&A scenarios!",
+    "FastGPT Desc": "{{title}} is a dataset question answering system based on LLM large language model, which provides out-of-the-box data processing, model invocation and other capabilities. At the same time, workflow orchestration can be performed through Flow visualization to achieve complex Q&A scenarios!",
     "Features": "Features",
     "Footer Developer": "Developer",
     "Footer Docs": "Docs",
@@ -365,13 +397,13 @@
     "key tips": "You can use the API Key to access certain interfaces (you can't access the application, you need to use the API key within the application to access the application)."
   },
   "outlink": {
-    "Copy Iframe": "Copy Iframe",
+    "Copy IFrame": "Copy IFrame",
     "Copy Link": "Copy",
     "Create API Key": "Create Key",
     "Create Link": "Create Link",
     "Delete Link": "Delete",
     "Edit API Key": "Edit Key",
-    "Edit Ifrme Link": "Edit Iframe Link",
+    "Edit IFrame Link": "Edit IFrame Link",
     "Edit Link": "Edit",
     "Edit Share Window": "Edit Share Window",
     "Link Name": "Link Name",
@@ -384,6 +416,14 @@
     "token auth": "Token Auth",
     "token auth Tips": "Identity verification server address. If this value is set, the server will be specified to send a request for identity verification before each session",
     "token auth use cases": "Review the authentication instructions"
+  },
+  "permission": {
+    "Private": "Private",
+    "Private Tip": "Be used only to oneself",
+    "Public": "Public",
+    "Public Tip": "Available to all team members",
+    "Set Private": "Set Private",
+    "Set Public": "Set to public"
   },
   "plugin": {
     "Confirm Delete": "Confirm to delete the plugin?",
@@ -424,6 +464,7 @@
     "OpenAI Account Setting": "OpenAI Account Setting",
     "Password": "Password",
     "Pay": "Pay",
+    "Permission": "Permission",
     "Personal Information": "Personal",
     "Promotion": "Promotion",
     "Promotion Rate": "Promotion Rate",
@@ -434,12 +475,13 @@
     "Set OpenAI Account Failed": "Set OpenAI account failed",
     "Sign Out": "Sign Out",
     "Source": "Source",
+    "Team": "Team",
     "Time": "Time",
     "Timezone": "Timezone",
     "Total Amount": "Total Amount",
     "Update Password": "Update Password",
     "Update password failed": "Update password failed",
-    "Update password succseful": "Update password succseful",
+    "Update password successful": "Update password successful",
     "Usage Record": "Usage",
     "apikey": {
       "key": "API Keys"
@@ -447,6 +489,66 @@
     "promotion": {
       "pay": "",
       "register": ""
+    },
+    "team": {
+      "Balance": "Team Balance",
+      "Check Team": "Switch",
+      "Confirm Invite": "Confirm Invite",
+      "Create Team": "Create Team",
+      "Invite Member": "Invite",
+      "Invite Member Failed Tip": "Invite Member Failed",
+      "Invite Member Result Tip": "Invite Member Result",
+      "Invite Member Success Tip": "Invite member completed \n successful :{{success}} Person \n username invalid :{{inValid}}\n Already on team :{{inTeam}}",
+      "Invite Member Tips": "They can access or use other resources within your team",
+      "Invite Role Admin Alias": "Invite an Administrator to join",
+      "Invite Role Admin Tip": "Admin\nCan create, edit, and use team resources",
+      "Invite Role Visitor Alias": "Invite visitors to Join",
+      "Invite Role Visitor Tip": "Visitors\nCan only use resources and have no permission to create and edit them",
+      "Leave Team": "Leave",
+      "Leave Team Failed": "Leave Team Failed",
+      "Manage": "Team Manage",
+      "Member": "Member",
+      "Over Max Member Tip": "Team max {{max}} people",
+      "Personal Team": "Personal",
+      "Processing invitations": "Processing invitations",
+      "Processing invitations Tips": "You have {{amount}} of team invitations that need to be processed",
+      "Reinvite": "Reinvite",
+      "Remove Member Confirm Tip": "Confirm to move {{username}} off the team",
+      "Remove Member Tip": "Move out team",
+      "Role": "Role",
+      "Select Team": "Select Team",
+      "Set Name": "Team Name",
+      "Switch Team Failed": "Switch Team Failed",
+      "Team Name": "Team Name",
+      "Update Team": "Update Team",
+      "invite": {
+        "Accept Confirm": "Want to join the team?",
+        "Accepted": "Accepted",
+        "Deal Width Footer Tip": "It will automatically shut down after processing~",
+        "Reject": "Rejected",
+        "Reject Confirm": "Confirm to decline the invitation?",
+        "accept": "Accept",
+        "reject": "Reject"
+      },
+      "member": {
+        "Confirm Leave": "Confirm leave the team?",
+        "active": "Accept",
+        "reject": "Rejected",
+        "waiting": "Waiting"
+      },
+      "role": {
+        "Admin": "Admin",
+        "Member": "Member",
+        "Owner": "Owner",
+        "Update to Visitor": "Set to visitor",
+        "Visitor": "Visitor"
+      }
+    }
+  },
+  "wallet": {
+    "bill": {
+      "Audio Speech": "Audio Speech",
+      "bill username": "User"
     }
   }
 }

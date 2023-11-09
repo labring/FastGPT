@@ -1,41 +1,36 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import { getVectorModel } from '@/service/core/ai/model';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { DatasetItemType } from '@/types/core/dataset';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { id } = req.query as {
+    const { id: datasetId } = req.query as {
       id: string;
     };
 
-    if (!id) {
+    if (!datasetId) {
       throw new Error('缺少参数');
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
-
-    const data = await MongoDataset.findOne({
-      _id: id,
-      userId
+    const { dataset, canWrite, isOwner } = await authDataset({
+      req,
+      authToken: true,
+      datasetId,
+      per: 'r'
     });
 
-    if (!data) {
-      throw new Error('kb is not exist');
-    }
-
-    jsonRes(res, {
+    jsonRes<DatasetItemType>(res, {
       data: {
-        _id: data._id,
-        avatar: data.avatar,
-        name: data.name,
-        userId: data.userId,
-        vectorModel: getVectorModel(data.vectorModel),
-        tags: data.tags.join(' ')
+        ...dataset,
+        tags: dataset.tags.join(' '),
+        vectorModel: getVectorModel(dataset.vectorModel),
+        canWrite,
+        isOwner
       }
     });
   } catch (err) {

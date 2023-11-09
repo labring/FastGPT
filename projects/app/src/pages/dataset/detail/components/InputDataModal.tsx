@@ -15,7 +15,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { getFileAndOpen } from '@/web/common/file/utils';
+import { getFileAndOpen } from '@/web/core/dataset/utils';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SetOneDatasetDataProps } from '@/global/core/api/datasetReq';
@@ -39,17 +39,18 @@ const InputDataModal = ({
   onDelete,
   datasetId,
   defaultValues = {
-    datasetId: '',
     collectionId: '',
     sourceId: '',
     sourceName: ''
-  }
+  },
+  canWrite
 }: {
   onClose: () => void;
   onSuccess: (data: SetOneDatasetDataProps) => void;
   onDelete?: () => void;
   datasetId: string;
   defaultValues: InputDataType;
+  canWrite: boolean;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -223,7 +224,7 @@ const InputDataModal = ({
           />
 
           <Box flex={1}>
-            {defaultValues.id && onDelete && (
+            {defaultValues.id && onDelete && canWrite && (
               <IconButton
                 variant={'outline'}
                 icon={<MyIcon name={'delete'} w={'16px'} h={'16px'} />}
@@ -259,13 +260,16 @@ const InputDataModal = ({
             <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
               {t('common.Close')}
             </Button>
-            <Button
-              isLoading={loading}
-              // @ts-ignore
-              onClick={handleSubmit(defaultValues.id ? onUpdateData : sureImportData)}
-            >
-              {defaultValues.id ? '确认变更' : '确认导入'}
-            </Button>
+            <MyTooltip label={canWrite ? '' : t('dataset.data.Can not edit')}>
+              <Button
+                isDisabled={!canWrite}
+                isLoading={loading}
+                // @ts-ignore
+                onClick={handleSubmit(defaultValues.id ? onUpdateData : sureImportData)}
+              >
+                {defaultValues.id ? '确认变更' : '确认导入'}
+              </Button>
+            </MyTooltip>
           </Box>
         </Flex>
       </Flex>
@@ -325,7 +329,7 @@ export function RawSourceText({
       >
         <Image src={icon} alt="" w={'14px'} mr={2} />
         <Box maxW={['200px', '300px']} className={'textEllipsis'}>
-          {sourceName || t('common.Unknow Source')}
+          {sourceName || t('common.UnKnow Source')}
         </Box>
       </Box>
     </MyTooltip>

@@ -91,7 +91,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
       a.download = 'mermaid.jpg';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      document.body?.removeChild(a);
     };
     img.onerror = (e) => {
       console.log(e);

@@ -1,6 +1,6 @@
-import { TaskResponseKeyEnum } from '@/constants/chat';
 import { HttpPropsEnum } from '@/constants/flow/flowField';
-import { moduleDispatchResType } from '@/types/chat';
+import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type HttpRequestProps = ModuleDispatchProps<{
   [HttpPropsEnum.url]: string;
@@ -14,13 +14,15 @@ export type HttpResponse = {
 
 export const dispatchHttpRequest = async (props: Record<string, any>): Promise<HttpResponse> => {
   const {
+    chatId,
     variables,
     inputs: { url, ...body }
   } = props as HttpRequestProps;
 
   const requestBody = {
-    variables,
-    ...body
+    ...body,
+    chatId,
+    variables
   };
 
   try {

@@ -4,6 +4,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { SearchTestItemType } from '@/types/core/dataset';
 import { DatasetChunkItemType, UploadChunkItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 /* ===== dataset ===== */
 export type DatasetUpdateParams = {
@@ -12,11 +13,12 @@ export type DatasetUpdateParams = {
   tags?: string;
   name?: string;
   avatar?: string;
+  permission?: `${PermissionTypeEnum}`;
 };
 export type CreateDatasetParams = {
   parentId?: string;
   name: string;
-  tags: string[];
+  tags: string;
   avatar: string;
   vectorModel?: string;
   type: `${DatasetTypeEnum}`;
@@ -25,6 +27,7 @@ export type CreateDatasetParams = {
 export type SearchTestProps = {
   datasetId: string;
   text: string;
+  limit?: number;
 };
 
 /* ======= collections =========== */
@@ -53,7 +56,6 @@ export type UpdateDatasetCollectionParams = {
 /* ==== data ===== */
 export type SetOneDatasetDataProps = {
   id?: string;
-  datasetId: string;
   collectionId: string;
   q?: string; // embedding content
   a?: string; // bonus content

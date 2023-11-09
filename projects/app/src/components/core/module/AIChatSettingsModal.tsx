@@ -49,7 +49,7 @@ const AIChatSettingsModal = ({
   }>();
 
   const tokenLimit = useMemo(() => {
-    return chatModelList.find((item) => item.model === getValues('model'))?.maxToken || 4000;
+    return chatModelList.find((item) => item.model === getValues('model'))?.maxResponse || 4000;
   }, [getValues, refresh]);
 
   const LabelStyles: BoxProps = {

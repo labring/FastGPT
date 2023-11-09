@@ -1,64 +1,67 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { PgClient } from '@/service/pg';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { getVector } from '../../openapi/plugin/vector';
-import { PgDatasetTableName } from '@/constants/plugin';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { SearchTestProps } from '@/global/core/api/datasetReq.d';
 import { connectToDatabase } from '@/service/mongo';
-import type {
-  SearchDataResponseItemType,
-  SearchDataResultItemType
-} from '@fastgpt/global/core/dataset/type';
-import { getDatasetDataItemInfo } from './data/getDataById';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authTeamBalance } from '@/service/support/permission/auth/bill';
+import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { countModelPrice } from '@/service/support/wallet/bill/utils';
+import { searchDatasetData } from '@/service/core/dataset/data/utils';
+import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
+import { ModelTypeEnum } from '@/service/core/ai/model';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { datasetId, text } = req.body as SearchTestProps;
+    const { datasetId, text, limit = 20 } = req.body as SearchTestProps;
 
     if (!datasetId || !text) {
       throw new Error('缺少参数');
     }
 
-    // 凭证校验
-    const [{ userId }, dataset] = await Promise.all([
-      authUser({ req, authToken: true, authApiKey: true }),
-      MongoDataset.findById(datasetId, 'vectorModel')
-    ]);
-
-    if (!userId || !dataset) {
-      throw new Error('缺少用户ID');
-    }
-
-    const { vectors } = await getVector({
-      model: dataset.vectorModel,
-      userId,
-      input: [text]
+    // auth dataset role
+    const { dataset, teamId, tmbId, apikey } = await authDataset({
+      req,
+      authToken: true,
+      authApiKey: true,
+      datasetId,
+      per: 'r'
     });
 
-    const results: any = await PgClient.query(
-      `BEGIN;
-        SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
-        select id, q, a, dataset_id, collection_id, (vector <#> '[${
-          vectors[0]
-        }]') * -1 AS score from ${PgDatasetTableName} where dataset_id='${datasetId}' AND user_id='${userId}' ORDER BY vector <#> '[${
-          vectors[0]
-        }]' limit 12;
-        COMMIT;`
-    );
+    // auth balance
+    await authTeamBalance(teamId);
 
-    const rows = results?.[2]?.rows as SearchDataResultItemType[];
+    const { searchRes, tokenLen } = await searchDatasetData({
+      text,
+      model: dataset.vectorModel,
+      limit: Math.min(limit, 50),
+      datasetIds: [datasetId]
+    });
 
-    const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
+    // push bill
+    pushGenerateVectorBill({
+      teamId,
+      tmbId,
+      tokenLen: tokenLen,
+      model: dataset.vectorModel,
+      source: apikey ? BillSourceEnum.api : BillSourceEnum.fastgpt
+    });
+    if (apikey) {
+      updateApiKeyUsage({
+        apikey,
+        usage: countModelPrice({
+          model: dataset.vectorModel,
+          tokens: tokenLen,
+          type: ModelTypeEnum.vector
+        })
+      });
+    }
 
     jsonRes<SearchDataResponseItemType[]>(res, {
-      data: collectionsData.map((item, index) => ({
-        ...item,
-        score: rows[index].score
-      }))
+      data: searchRes
     });
   } catch (err) {
     jsonRes(res, {

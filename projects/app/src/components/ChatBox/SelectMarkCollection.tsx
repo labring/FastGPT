@@ -6,7 +6,7 @@ import MyIcon from '@/components/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import dynamic from 'next/dynamic';
-import { MarkDataType } from '@/global/core/dataset/type';
+import { AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
@@ -28,7 +28,7 @@ const SelectMarkCollection = ({
   adminMarkData: AdminMarkType;
   setAdminMarkData: (e: AdminMarkType) => void;
   onClose: () => void;
-  onSuccess: (adminFeedback: MarkDataType) => void;
+  onSuccess: (adminFeedback: AdminFbkType) => void;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -166,12 +166,12 @@ const SelectMarkCollection = ({
           datasetId={adminMarkData.datasetId}
           defaultValues={{
             id: adminMarkData.dataId,
-            datasetId: adminMarkData.datasetId,
             collectionId: adminMarkData.collectionId,
             sourceName: '手动标注',
             q: adminMarkData.q,
             a: adminMarkData.a
           }}
+          canWrite
           onSuccess={(data) => {
             if (!data.q || !adminMarkData.datasetId || !adminMarkData.collectionId || !data.id) {
               return onClose();

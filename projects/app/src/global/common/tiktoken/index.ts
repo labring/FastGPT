@@ -1,5 +1,5 @@
 /* Only the token of gpt-3.5-turbo is used */
-import { ChatItemType } from '@/types/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { Tiktoken } from 'js-tiktoken/lite';
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';

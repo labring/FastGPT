@@ -393,7 +393,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
 **请求示例**
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/common/bill/createTrainingBill' \
+curl --location --request POST 'https://fastgpt.run/api/support/wallet/bill/createTrainingBill' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw ''

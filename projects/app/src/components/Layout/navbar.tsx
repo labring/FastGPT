@@ -3,7 +3,7 @@ import { Box, Flex, Link } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import { HUMAN_ICON } from '@/constants/chat';
+import { HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
 import { feConfigs } from '@/web/common/system/staticData';
 import NextLink from 'next/link';
 import Badge from '../Badge';

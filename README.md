@@ -17,10 +17,10 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
   <a href="https://fastgpt.run/">
     <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.run/docs/intro">
+  <a href="https://doc.fastgpt.in/docs/intro">
     <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.run/docs/development">
+  <a href="https://doc.fastgpt.in/docs/development">
     <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
@@ -119,7 +119,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🤝 第三方生态
 
-- [OnWeChat 个人微信/企微机器人](https://doc.fastgpt.run/docs/use-cases/onwechat/)
+- [OnWeChat 个人微信/企微机器人](https://doc.fastgpt.in/docs/use-cases/onwechat/)
 
 ## 🌟 Star History
 
@@ -132,4 +132,4 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 1. 允许作为后台服务直接商用，但不允许提供 SaaS 服务。
 2. 未经商业授权，任何形式的商用服务均需保留相关版权信息。
 3. 完整请查看 [FastGPT Open Source License](./LICENSE)
-4. 联系方式：yujinlong@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.run/docs/commercial)
+4. 联系方式：yujinlong@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.in/docs/commercial)

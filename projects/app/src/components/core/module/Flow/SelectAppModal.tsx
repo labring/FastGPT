@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar';
 import { useTranslation } from 'react-i18next';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const SelectAppModal = ({
   defaultApps = [],
@@ -26,7 +27,7 @@ const SelectAppModal = ({
   const theme = useTheme();
   const [selectedApps, setSelectedApps] = React.useState<string[]>(defaultApps);
   /* 加载模型 */
-  const { myApps, loadMyApps } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
   const { isLoading } = useQuery(['loadMyApos'], () => loadMyApps());
 
   const apps = useMemo(

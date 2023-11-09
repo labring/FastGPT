@@ -36,6 +36,10 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { feConfigs } from '@/web/common/system/staticData';
 import EditFolderModal, { useEditFolder } from '../component/EditFolderModal';
 import { useDrag } from '@/web/common/hooks/useDrag';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import PermissionIconText from '@/components/support/permission/IconText';
+import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -46,6 +50,7 @@ const Kb = () => {
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
   const { setLoading } = useSystemStore();
+  const { userInfo } = useUserStore();
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('dataset.deleteFolderTips'),
@@ -162,50 +167,51 @@ const Kb = () => {
             </Box>
           </Flex>
         )}
-
-        <MyMenu
-          offset={[-30, 10]}
-          width={120}
-          Button={
-            <MenuButton
-              _hover={{
-                color: 'myBlue.600'
-              }}
-            >
-              <Flex
-                alignItems={'center'}
-                border={theme.borders.base}
-                px={5}
-                py={2}
-                borderRadius={'md'}
-                cursor={'pointer'}
+        {userInfo?.team?.canWrite && (
+          <MyMenu
+            offset={[-30, 10]}
+            width={120}
+            Button={
+              <MenuButton
+                _hover={{
+                  color: 'myBlue.600'
+                }}
               >
-                <AddIcon mr={2} />
-                <Box>{t('Create New')}</Box>
-              </Flex>
-            </MenuButton>
-          }
-          menuList={[
-            {
-              child: (
-                <Flex>
-                  <Image src={FolderAvatarSrc} alt={''} w={'20px'} mr={1} />
-                  {t('Folder')}
+                <Flex
+                  alignItems={'center'}
+                  border={theme.borders.base}
+                  px={5}
+                  py={2}
+                  borderRadius={'md'}
+                  cursor={'pointer'}
+                >
+                  <AddIcon mr={2} />
+                  <Box>{t('Create New')}</Box>
                 </Flex>
-              ),
-              onClick: () => setEditFolderData({})
-            },
-            {
-              child: (
-                <Flex>
-                  <Image src={'/imgs/module/db.png'} alt={''} w={'20px'} mr={1} />
-                  {t('Dataset')}
-                </Flex>
-              ),
-              onClick: onOpenCreateModal
+              </MenuButton>
             }
-          ]}
-        />
+            menuList={[
+              {
+                child: (
+                  <Flex>
+                    <Image src={FolderAvatarSrc} alt={''} w={'20px'} mr={1} />
+                    {t('Folder')}
+                  </Flex>
+                ),
+                onClick: () => setEditFolderData({})
+              },
+              {
+                child: (
+                  <Flex>
+                    <Image src={'/imgs/module/db.png'} alt={''} w={'20px'} mr={1} />
+                    {t('Dataset')}
+                  </Flex>
+                ),
+                onClick: onOpenCreateModal
+              }
+            ]}
+          />
+        )}
       </Flex>
       <Grid
         p={5}
@@ -279,91 +285,126 @@ const Kb = () => {
               }
             }}
           >
-            <MyMenu
-              offset={[-30, 10]}
-              width={120}
-              Button={
-                <MenuButton
-                  position={'absolute'}
-                  top={3}
-                  right={3}
-                  w={'22px'}
-                  h={'22px'}
-                  borderRadius={'md'}
-                  _hover={{
-                    color: 'myBlue.600',
-                    '& .icon': {
-                      bg: 'myGray.100'
-                    }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <MyIcon
-                    className="icon"
-                    name={'more'}
-                    h={'16px'}
-                    w={'16px'}
-                    px={1}
-                    py={1}
+            {userInfo?.team.canWrite && dataset.isOwner && (
+              <MyMenu
+                offset={[-30, 10]}
+                width={120}
+                Button={
+                  <MenuButton
+                    position={'absolute'}
+                    top={3}
+                    right={3}
+                    w={'22px'}
+                    h={'22px'}
                     borderRadius={'md'}
-                    cursor={'pointer'}
-                  />
-                </MenuButton>
-              }
-              menuList={[
-                {
-                  child: (
-                    <Flex alignItems={'center'}>
-                      <MyIcon name={'edit'} w={'14px'} mr={2} />
-                      {t('Rename')}
-                    </Flex>
-                  ),
-                  onClick: () =>
-                    onOpenTitleModal({
-                      defaultVal: dataset.name,
-                      onSuccess: (val) => {
-                        if (val === dataset.name || !val) return;
-                        updateDataset({ id: dataset._id, name: val });
+                    _hover={{
+                      color: 'myBlue.600',
+                      '& .icon': {
+                        bg: 'myGray.100'
                       }
-                    })
-                },
-                {
-                  child: (
-                    <Flex alignItems={'center'}>
-                      <MyIcon name={'moveLight'} w={'14px'} mr={2} />
-                      {t('Move')}
-                    </Flex>
-                  ),
-                  onClick: () => setMoveDataId(dataset._id)
-                },
-                {
-                  child: (
-                    <Flex alignItems={'center'}>
-                      <MyIcon name={'export'} w={'14px'} mr={2} />
-                      {t('Export')}
-                    </Flex>
-                  ),
-                  onClick: () => onclickExport(dataset._id)
-                },
-                {
-                  child: (
-                    <Flex alignItems={'center'}>
-                      <MyIcon name={'delete'} w={'14px'} mr={2} />
-                      {t('common.Delete')}
-                    </Flex>
-                  ),
-                  onClick: () => {
-                    openConfirm(
-                      () => onclickDelDataset(dataset._id),
-                      undefined,
-                      DeleteTipsMap.current[dataset.type]
-                    )();
-                  }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <MyIcon
+                      className="icon"
+                      name={'more'}
+                      h={'16px'}
+                      w={'16px'}
+                      px={1}
+                      py={1}
+                      borderRadius={'md'}
+                      cursor={'pointer'}
+                    />
+                  </MenuButton>
                 }
-              ]}
-            />
+                menuList={[
+                  ...(dataset.permission === PermissionTypeEnum.private
+                    ? [
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
+                              {t('permission.Set Public')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            updateDataset({
+                              id: dataset._id,
+                              permission: PermissionTypeEnum.public
+                            });
+                          }
+                        }
+                      ]
+                    : [
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'support/permission/privateLight'} w={'14px'} mr={2} />
+                              {t('permission.Set Private')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            updateDataset({
+                              id: dataset._id,
+                              permission: PermissionTypeEnum.private
+                            });
+                          }
+                        }
+                      ]),
+                  {
+                    child: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'edit'} w={'14px'} mr={2} />
+                        {t('Rename')}
+                      </Flex>
+                    ),
+                    onClick: () =>
+                      onOpenTitleModal({
+                        defaultVal: dataset.name,
+                        onSuccess: (val) => {
+                          if (val === dataset.name || !val) return;
+                          updateDataset({ id: dataset._id, name: val });
+                        }
+                      })
+                  },
+                  {
+                    child: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'moveLight'} w={'14px'} mr={2} />
+                        {t('Move')}
+                      </Flex>
+                    ),
+                    onClick: () => setMoveDataId(dataset._id)
+                  },
+                  {
+                    child: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'export'} w={'14px'} mr={2} />
+                        {t('Export')}
+                      </Flex>
+                    ),
+                    onClick: () => onclickExport(dataset._id)
+                  },
+                  {
+                    child: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'delete'} w={'14px'} mr={2} />
+                        {t('common.Delete')}
+                      </Flex>
+                    ),
+                    onClick: () => {
+                      openConfirm(
+                        () => onclickDelDataset(dataset._id),
+                        undefined,
+                        DeleteTipsMap.current[dataset.type]
+                      )();
+                    }
+                  }
+                ]}
+              />
+            )}
             <Flex alignItems={'center'} h={'38px'}>
               <Avatar src={dataset.avatar} borderRadius={'lg'} w={'28px'} />
               <Box mx={3} className="textEllipsis3">
@@ -372,14 +413,20 @@ const Kb = () => {
             </Flex>
             <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
               <Flex>
-                {dataset.tags.map((tag, i) => (
-                  <Tag key={i} mr={2} mb={2}>
-                    {tag}
-                  </Tag>
-                ))}
+                {dataset.tags
+                  .split(' ')
+                  .filter((item) => item)
+                  .map((tag, i) => (
+                    <Tag key={i} mr={2} mb={2}>
+                      {tag}
+                    </Tag>
+                  ))}
               </Flex>
             </Box>
-            <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+            <Flex alignItems={'center'} fontSize={'sm'}>
+              <Box flex={1}>
+                <PermissionIconText permission={dataset.permission} color={'myGray.600'} />
+              </Box>
               {dataset.type === DatasetTypeEnum.folder ? (
                 <Box color={'myGray.500'}>{t('Folder')}</Box>
               ) : (
@@ -419,7 +466,7 @@ const Kb = () => {
                   name,
                   type: DatasetTypeEnum.folder,
                   avatar: FolderAvatarSrc,
-                  tags: []
+                  tags: ''
                 });
               }
               refetch();

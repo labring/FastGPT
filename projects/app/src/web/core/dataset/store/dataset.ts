@@ -1,17 +1,17 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { DatasetItemType, DatasetsItemType } from '@/types/core/dataset';
+import type { DatasetItemType } from '@/types/core/dataset';
 import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
-import { defaultKbDetail } from '@/constants/dataset';
+import { defaultDatasetDetail } from '@/constants/dataset';
 import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
 
 type State = {
-  allDatasets: DatasetsItemType[];
-  loadAllDatasets: () => Promise<DatasetsItemType[]>;
-  myDatasets: DatasetsItemType[];
+  allDatasets: DatasetItemType[];
+  loadAllDatasets: () => Promise<DatasetItemType[]>;
+  myDatasets: DatasetItemType[];
   loadDatasets: (parentId?: string) => Promise<any>;
-  setDatasets(val: DatasetsItemType[]): void;
+  setDatasets(val: DatasetItemType[]): void;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
   updateDataset: (data: DatasetUpdateParams) => Promise<any>;
@@ -42,7 +42,7 @@ export const useDatasetStore = create<State>()(
             state.myDatasets = val;
           });
         },
-        datasetDetail: defaultKbDetail,
+        datasetDetail: defaultDatasetDetail,
         async loadDatasetDetail(id: string, init = false) {
           if (!id || (id === get().datasetDetail._id && !init)) return get().datasetDetail;
 
@@ -69,7 +69,7 @@ export const useDatasetStore = create<State>()(
                 ? {
                     ...item,
                     ...data,
-                    tags: data.tags?.split(' ') || []
+                    tags: data.tags || ''
                   }
                 : item
             );

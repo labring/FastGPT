@@ -1,17 +1,11 @@
-import { PgClient } from '@/service/pg';
-import type { moduleDispatchResType } from '@/types/chat';
-import { TaskResponseKeyEnum } from '@/constants/chat';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { countModelPrice } from '@/service/common/bill/push';
+import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { countModelPrice } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@/types/core/dataset';
-import type {
-  SearchDataResponseItemType,
-  SearchDataResultItemType
-} from '@fastgpt/global/core/dataset/type';
-import { PgDatasetTableName } from '@/constants/plugin';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-import { getDatasetDataItemInfo } from '@/pages/api/core/dataset/data/getDataById';
+import { searchDatasetData } from '@/service/core/dataset/data/utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   datasets: SelectedDatasetType;
@@ -28,7 +22,8 @@ export type KBSearchResponse = {
 
 export async function dispatchDatasetSearch(props: Record<string, any>): Promise<KBSearchResponse> {
   const {
-    user,
+    teamId,
+    tmbId,
     inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
   } = props as DatasetSearchProps;
 
@@ -42,33 +37,14 @@ export async function dispatchDatasetSearch(props: Record<string, any>): Promise
 
   // get vector
   const vectorModel = datasets[0]?.vectorModel || global.vectorModels[0];
-  const { vectors, tokenLen } = await getVector({
+
+  const { searchRes, tokenLen } = await searchDatasetData({
+    text: userChatInput,
     model: vectorModel.model,
-    input: [userChatInput]
+    similarity,
+    limit,
+    datasetIds: datasets.map((item) => item.datasetId)
   });
-
-  // search kb
-  const results: any = await PgClient.query(
-    `BEGIN;
-    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
-    select id, q, a, dataset_id, collection_id, (vector <#> '[${
-      vectors[0]
-    }]') * -1 AS score from ${PgDatasetTableName} where user_id='${
-      user._id
-    }' AND dataset_id IN (${datasets
-      .map((item) => `'${item.datasetId}'`)
-      .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
-      vectors[0]
-    }]' limit ${limit};
-    COMMIT;`
-  );
-
-  const rows = results?.[2]?.rows as SearchDataResultItemType[];
-  const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
-  const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
-    ...item,
-    score: rows[index].score
-  }));
 
   return {
     isEmpty: searchRes.length === 0 ? true : undefined,

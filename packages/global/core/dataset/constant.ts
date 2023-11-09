@@ -1,3 +1,5 @@
+export const PgDatasetTableName = 'modeldata';
+
 export enum DatasetTypeEnum {
   folder = 'folder',
   dataset = 'dataset'

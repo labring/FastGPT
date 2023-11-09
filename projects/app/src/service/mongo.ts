@@ -1,25 +1,27 @@
 import { startQueue } from './utils/tools';
-import { PRICE_SCALE } from '@fastgpt/global/common/bill/constants';
-import { initPg } from './pg';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
+import { initPg } from '@fastgpt/service/common/pg';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getInitConfig, initGlobal } from '@/pages/api/system/getInitData';
+import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
+import { exit } from 'process';
 
 /**
  * connect MongoDB and init data
  */
-export async function connectToDatabase(): Promise<void> {
-  await connectMongo({
+export function connectToDatabase(): Promise<void> {
+  return connectMongo({
     beforeHook: () => {
       initGlobal();
       getInitConfig();
     },
-    afterHook: async () => {
-      await initRootUser();
+    afterHook: () => {
       initPg();
       // start queue
       startQueue();
+      return initRootUser();
     }
   });
 }
@@ -31,6 +33,9 @@ async function initRootUser() {
     });
     const psw = process.env.DEFAULT_ROOT_PSW || '123456';
 
+    let rootId = rootUser?._id || '';
+
+    // init root user
     if (rootUser) {
       await MongoUser.findOneAndUpdate(
         { username: 'root' },
@@ -40,12 +45,15 @@ async function initRootUser() {
         }
       );
     } else {
-      await MongoUser.create({
+      const { _id } = await MongoUser.create({
         username: 'root',
         password: hashStr(psw),
         balance: 999999 * PRICE_SCALE
       });
+      rootId = _id;
     }
+    // init root team
+    await createDefaultTeam({ userId: rootId, maxSize: 1 });
 
     console.log(`root user init:`, {
       username: 'root',
@@ -53,10 +61,6 @@ async function initRootUser() {
     });
   } catch (error) {
     console.log('init root user error', error);
+    exit(1);
   }
 }
-
-export * from './models/chat';
-export * from './models/chatItem';
-export * from './models/app';
-export * from './common/bill/schema';

@@ -9,11 +9,12 @@
   },
   "devDependencies": {
     "husky": "^8.0.3",
-    "lint-staged": "^13.2.1",
-    "prettier": "^3.0.3",
     "i18next": "^22.5.1",
+    "lint-staged": "^13.2.1",
+    "next-i18next": "^13.3.0",
+    "prettier": "^3.0.3",
     "react-i18next": "^12.3.1",
-    "next-i18next": "^13.3.0"
+    "zhlint": "^0.7.1"
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format-code",
@@ -21,5 +22,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "openai": "4.16.1"
   }
 }

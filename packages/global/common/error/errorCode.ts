@@ -1,3 +1,12 @@
+import appErr from './code/app';
+import chatErr from './code/chat';
+import datasetErr from './code/dataset';
+import openapiErr from './code/openapi';
+import pluginErr from './code/plugin';
+import outLinkErr from './code/outLink';
+import teamErr from './code/team';
+import userErr from './code/user';
+
 export const ERROR_CODE: { [key: number]: string } = {
   400: '请求失败',
   401: '无权访问',
@@ -27,10 +36,19 @@ export enum ERROR_ENUM {
   insufficientQuota = 'insufficientQuota',
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
-  unAuthDataset = 'unAuthDataset',
-  unAuthDatasetCollection = 'unAuthDatasetCollection',
   unAuthFile = 'unAuthFile'
 }
+
+export type ErrType<T> = Record<
+  string,
+  {
+    code: number;
+    statusText: T;
+    message: string;
+    data: null;
+  }
+>;
+
 export const ERROR_RESPONSE: Record<
   any,
   {
@@ -55,15 +73,10 @@ export const ERROR_RESPONSE: Record<
   [ERROR_ENUM.unAuthModel]: {
     code: 511,
     statusText: ERROR_ENUM.unAuthModel,
-    message: '无权使用该模型',
+    message: '无权操作该模型',
     data: null
   },
-  [ERROR_ENUM.unAuthDataset]: {
-    code: 512,
-    statusText: ERROR_ENUM.unAuthDataset,
-    message: '无权使用该知识库',
-    data: null
-  },
+
   [ERROR_ENUM.unAuthFile]: {
     code: 513,
     statusText: ERROR_ENUM.unAuthFile,
@@ -76,10 +89,12 @@ export const ERROR_RESPONSE: Record<
     message: 'Api Key 不合法',
     data: null
   },
-  [ERROR_ENUM.unAuthDatasetCollection]: {
-    code: 515,
-    statusText: ERROR_ENUM.unAuthDatasetCollection,
-    message: '无权使用该知识库文件',
-    data: null
-  }
+  ...appErr,
+  ...chatErr,
+  ...datasetErr,
+  ...openapiErr,
+  ...outLinkErr,
+  ...teamErr,
+  ...userErr,
+  ...pluginErr
 };

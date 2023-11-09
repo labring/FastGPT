@@ -11,7 +11,7 @@ import { useShareChatStore, defaultHistory } from '@/web/core/chat/storeShareCha
 import SideBar from '@/components/SideBar';
 import { gptMessage2ChatType } from '@/utils/adapt';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatSiteItemType } from '@/types/chat';
+import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 

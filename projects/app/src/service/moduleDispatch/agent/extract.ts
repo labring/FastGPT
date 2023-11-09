@@ -1,14 +1,14 @@
 import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { moduleDispatchResType, ChatItemType } from '@/types/chat';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ContextExtractAgentItemType } from '@/types/app';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@/global/common/string/tools';
-import { FunctionModelItemType } from '@/types/model';
+import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 type Props = ModuleDispatchProps<{
   history?: ChatItemType[];
@@ -98,7 +98,7 @@ async function functionCall({
   ];
   const filterMessages = ChatContextFilter({
     messages,
-    maxTokens: extractModel.maxToken
+    maxTokens: extractModel.maxContext
   });
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 

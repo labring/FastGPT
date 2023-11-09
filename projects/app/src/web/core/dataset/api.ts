@@ -1,5 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import type { DatasetItemType, DatasetsItemType, DatasetPathItemType } from '@/types/core/dataset';
+import type { DatasetItemType, DatasetPathItemType } from '@/types/core/dataset';
 import type {
   DatasetUpdateParams,
   CreateDatasetParams,
@@ -12,27 +12,26 @@ import type {
   SetOneDatasetDataProps
 } from '@/global/core/api/datasetReq.d';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  DatasetCollectionItemType,
+  SearchDataResponseItemType
+} from '@fastgpt/global/core/dataset/type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import type { GSFileInfoType } from '@/types/common/file';
 import { getToken } from '@/web/support/user/auth';
 import download from 'downloadjs';
-import type {
-  DatasetCollectionSchemaType,
-  DatasetDataItemType
-} from '@fastgpt/global/core/dataset/type';
+import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
 import { PagingData } from '@/types';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: { parentId?: string; type?: `${DatasetTypeEnum}` }) =>
-  GET<DatasetsItemType[]>(`/core/dataset/list`, data);
+  GET<DatasetItemType[]>(`/core/dataset/list`, data);
 
 /**
  * get type=dataset list
  */
-export const getAllDataset = () => GET<DatasetsItemType[]>(`/core/dataset/allDataset`);
+export const getAllDataset = () => GET<DatasetItemType[]>(`/core/dataset/allDataset`);
 
 export const getDatasetPaths = (parentId?: string) =>
   GET<DatasetPathItemType[]>('/core/dataset/paths', { parentId });
@@ -56,7 +55,7 @@ export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
 export const getDatasetCollectionPathById = (parentId: string) =>
   GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
 export const getDatasetCollectionById = (id: string) =>
-  GET<DatasetCollectionSchemaType>(`/core/dataset/collection/detail`, { id });
+  GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
@@ -119,7 +118,5 @@ export const delOneDatasetDataById = (dataId: string) =>
   DELETE(`/core/dataset/data/delDataById?dataId=${dataId}`);
 
 /* ================== file ======================== */
-export const getFileInfoById = (fileId: string) =>
-  GET<GSFileInfoType>(`/core/dataset/file/detail`, { fileId });
-export const delDatasetEmptyFiles = (datasetId: string) =>
-  DELETE(`/core/dataset/file/delEmptyFiles`, { datasetId });
+export const getFileViewUrl = (fileId: string) =>
+  GET<string>('/core/dataset/file/getPreviewUrl', { fileId });

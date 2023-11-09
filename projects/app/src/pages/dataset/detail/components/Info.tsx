@@ -15,11 +15,13 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgAndUpload } from '@/web/common/file/controller';
 import type { DatasetItemType } from '@/types/core/dataset';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
+import { useTranslation } from 'react-i18next';
+import PermissionRadio from '@/components/support/permission/Radio';
 
 export interface ComponentRef {
   initInput: (tags: string) => void;
@@ -29,6 +31,7 @@ const Info = (
   { datasetId, form }: { datasetId: string; form: UseFormReturn<DatasetItemType, any> },
   ref: ForwardedRef<ComponentRef>
 ) => {
+  const { t } = useTranslation();
   const { getValues, formState, setValue, register, handleSubmit } = form;
   const InputRef = useRef<HTMLInputElement>(null);
 
@@ -115,7 +118,7 @@ const Info = (
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgAndUpload({
           file,
           maxW: 100,
           maxH: 100
@@ -220,6 +223,23 @@ const Info = (
             ))}
         </Flex>
       </Flex>
+      {datasetDetail.isOwner && (
+        <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
+          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+            {t('user.Permission')}
+          </Box>
+          <Box>
+            <PermissionRadio
+              value={getValues('permission')}
+              onChange={(e) => {
+                setValue('permission', e);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
+        </Flex>
+      )}
+
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}></Box>
         <Button
@@ -230,18 +250,20 @@ const Info = (
         >
           保存
         </Button>
-        <IconButton
-          isLoading={btnLoading}
-          icon={<DeleteIcon />}
-          aria-label={''}
-          variant={'outline'}
-          size={'sm'}
-          _hover={{
-            color: 'red.600',
-            borderColor: 'red.600'
-          }}
-          onClick={openConfirm(onclickDelKb)}
-        />
+        {datasetDetail.isOwner && (
+          <IconButton
+            isLoading={btnLoading}
+            icon={<DeleteIcon />}
+            aria-label={''}
+            variant={'outline'}
+            size={'sm'}
+            _hover={{
+              color: 'red.600',
+              borderColor: 'red.600'
+            }}
+            onClick={openConfirm(onclickDelKb)}
+          />
+        )}
       </Flex>
       <File onSelect={onSelectFile} />
       <ConfirmModal />

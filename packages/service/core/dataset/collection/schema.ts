@@ -3,6 +3,10 @@ const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constant';
 import { DatasetCollectionName } from '../schema';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 export const DatasetColCollectionName = 'dataset.collections';
 
@@ -13,8 +17,18 @@ const DatasetCollectionSchema = new Schema({
     default: null
   },
   userId: {
+    // abandoned
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: 'user'
+  },
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
     required: true
   },
   datasetId: {

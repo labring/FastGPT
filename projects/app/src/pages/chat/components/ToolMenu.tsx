@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useChatBox } from '@/components/ChatBox';
-import { ChatItemType } from '@/types/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { Menu, MenuButton, MenuList, MenuItem, Box } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';

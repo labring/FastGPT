@@ -5,13 +5,13 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { splitText2Chunks } from '@/global/common/string/tools';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import {
-  uploadFiles,
   fileDownload,
   readCsvContent,
   readTxtContent,
   readPdfContent,
   readDocContent
 } from '@/web/common/file/utils';
+import { uploadFiles } from '@/web/common/file/controller';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import React, { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -108,13 +108,18 @@ const FileSelect = ({
           if (!icon) continue;
 
           // upload file
-          const filesId = await uploadFiles([file], { datasetId: datasetDetail._id }, (percent) => {
-            if (percent < 100) {
-              setSelectingText(
-                t('file.Uploading', { name: file.name.slice(0, 30), percent }) || ''
-              );
-            } else {
-              setSelectingText(t('file.Parse', { name: file.name.slice(0, 30) }) || '');
+          const filesId = await uploadFiles({
+            files: [file],
+            bucketName: 'dataset',
+            metadata: { datasetId: datasetDetail._id },
+            percentListen: (percent) => {
+              if (percent < 100) {
+                setSelectingText(
+                  t('file.Uploading', { name: file.name.slice(0, 30), percent }) || ''
+                );
+              } else {
+                setSelectingText(t('file.Parse', { name: file.name.slice(0, 30) }) || '');
+              }
             }
           });
           const fileId = filesId[0];
@@ -243,7 +248,11 @@ const FileSelect = ({
         type: txtBlob.type,
         lastModified: new Date().getTime()
       });
-      const fileIds = await uploadFiles([txtFile], { datasetId: datasetDetail._id });
+      const fileIds = await uploadFiles({
+        files: [txtFile],
+        bucketName: 'dataset',
+        metadata: { datasetId: datasetDetail._id }
+      });
 
       const splitRes = splitText2Chunks({
         text: content,

@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { authApp } from '@/service/utils/auth';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { customAlphabet } from 'nanoid';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
@@ -18,17 +17,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       type: `${OutLinkTypeEnum}`;
     };
 
-    const { userId } = await authUser({ req, authToken: true });
-    await authApp({
-      appId,
-      userId,
-      authOwner: false
-    });
+    const { teamId, tmbId } = await authApp({ req, authToken: true, appId, per: 'w' });
 
     const shareId = nanoid();
     await MongoOutLink.create({
       shareId,
-      userId,
+      teamId,
+      tmbId,
       appId,
       ...props
     });

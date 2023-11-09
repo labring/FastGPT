@@ -1,9 +1,19 @@
-import OpenAI from 'openai';
-export type ChatCompletionRequestMessage = OpenAI.Chat.CreateChatCompletionRequestMessage;
-export type ChatCompletion = OpenAI.Chat.ChatCompletion;
-export type CreateChatCompletionRequest = OpenAI.Chat.ChatCompletionCreateParams;
+import type {
+  ChatCompletion,
+  ChatCompletionCreateParams,
+  ChatCompletionChunk,
+  ChatCompletionMessageParam,
+  ChatCompletionContentPart
+} from 'openai/resources';
+export type ChatCompletionContentPart = ChatCompletionContentPart;
+export type ChatCompletionCreateParams = ChatCompletionCreateParams;
+export type ChatMessageItemType = Omit<ChatCompletionMessageParam> & {
+  dataId?: string;
+  content: any;
+};
 
-export type StreamChatType = Stream<OpenAI.Chat.ChatCompletionChunk>;
+export type ChatCompletion = ChatCompletion;
+export type StreamChatType = Stream<ChatCompletionChunk>;
 
 export type PromptTemplateItem = {
   title: string;

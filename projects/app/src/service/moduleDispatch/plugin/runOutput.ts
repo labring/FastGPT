@@ -1,5 +1,5 @@
-import { TaskResponseKeyEnum } from '@/constants/chat';
-import { moduleDispatchResType } from '@/types/chat';
+import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 
 export type PluginOutputProps = ModuleDispatchProps<{
