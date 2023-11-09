@@ -1,0 +1,14 @@
+aiofiles==23.2.1
+baidu_aip==4.16.12
+beautifulsoup4==4.11.1
+fastapi==0.104.1
+nltk==3.8.1
+pdf2image==1.16.3
+pydantic==1.10.7
+PyPDF2==3.0.1
+python_docx==0.8.11
+python_pptx==0.6.21
+Requests==2.31.0
+uvicorn==0.24.0
+chardet==5.2.0
+python-multipart==0.0.6
