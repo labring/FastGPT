@@ -9,7 +9,7 @@ import {
   defaultExtractModels,
   defaultQGModels,
   defaultVectorModels
-} from '@/constants/model';
+} from '@fastgpt/global/core/ai/model';
 
 export let feConfigs: FeConfigsType = {};
 export let priceMd = '';

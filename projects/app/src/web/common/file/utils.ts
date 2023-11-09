@@ -1,27 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { postUploadImg, postUploadFiles, getFileViewUrl } from '@/web/common/system/api';
-
-/**
- * upload file to mongo gridfs
- */
-export const uploadFiles = (
-  files: File[],
-  metadata: Record<string, any> = {},
-  percentListen?: (percent: number) => void
-) => {
-  const form = new FormData();
-  form.append('metadata', JSON.stringify(metadata));
-  files.forEach((file) => {
-    form.append('file', file, encodeURIComponent(file.name));
-  });
-  return postUploadFiles(form, (e) => {
-    if (!e.total) return;
-
-    const percent = Math.round((e.loaded / e.total) * 100);
-    percentListen && percentListen(percent);
-  });
-};
+import { postUploadImg } from '@/web/common/file/api';
 
 /**
  * 读取 txt 文件内容
@@ -147,7 +126,7 @@ export const readCsvContent = async (file: File) => {
 };
 
 /**
- * file download
+ * file download by text
  */
 export const fileDownload = ({
   text,
@@ -169,14 +148,8 @@ export const fileDownload = ({
   // 添加链接到页面并触发下载
   document.body.appendChild(downloadLink);
   downloadLink.click();
-  document.body.removeChild(downloadLink);
+  document.body?.removeChild(downloadLink);
 };
-
-export async function getFileAndOpen(fileId: string) {
-  const url = await getFileViewUrl(fileId);
-  const asPath = `${location.origin}${url}`;
-  window.open(asPath, '_blank');
-}
 
 export const fileToBase64 = (file: File) => {
   return new Promise((resolve, reject) => {
@@ -186,77 +159,3 @@ export const fileToBase64 = (file: File) => {
     reader.onerror = (error) => reject(error);
   });
 };
-
-/**
- * compress image. response base64
- * @param maxSize The max size of the compressed image
- */
-export const compressImg = ({
-  file,
-  maxW = 200,
-  maxH = 200,
-  maxSize = 1024 * 100
-}: {
-  file: File;
-  maxW?: number;
-  maxH?: number;
-  maxSize?: number;
-}) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      const img = new Image();
-      // @ts-ignore
-      img.src = reader.result;
-      img.onload = async () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxW) {
-            height *= maxW / width;
-            width = maxW;
-          }
-        } else {
-          if (height > maxH) {
-            width *= maxH / height;
-            height = maxH;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) {
-          return reject('压缩图片异常');
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressedDataUrl = canvas.toDataURL(file.type, 0.8);
-        // 移除 canvas 元素
-        canvas.remove();
-
-        if (compressedDataUrl.length > maxSize) {
-          return reject('图片太大了');
-        }
-
-        const src = await (async () => {
-          try {
-            const src = await postUploadImg(compressedDataUrl);
-            return src;
-          } catch (error) {
-            return compressedDataUrl;
-          }
-        })();
-
-        resolve(src);
-      };
-    };
-    reader.onerror = (err) => {
-      console.log(err);
-      reject('压缩图片异常');
-    };
-  });

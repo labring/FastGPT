@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/service/support/user/auth';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectToDatabase } from '@/service/mongo';
 
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('Params is missing');
     }
 
-    const { userId } = await authUser({ req, authToken: true });
+    const { userId } = await authCert({ req, authToken: true });
 
     // auth old password
     const user = await MongoUser.findOne({

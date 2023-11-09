@@ -1,13 +1,14 @@
 import 'i18next';
-import common from '../../public/locales/en/common.json';
+// import common from '../../public/locales/en/common.json';
+
+interface I18nNamespaces {
+  common: any;
+}
 
 declare module 'i18next' {
   interface CustomTypeOptions {
     returnNull: false;
-  }
-  interface Resources {
-    [key: string]: {
-      [key: string]: string;
-    };
+    defaultNs: 'common';
+    // resources: I18nNamespaces;
   }
 }

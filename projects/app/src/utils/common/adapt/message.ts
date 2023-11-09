@@ -1,18 +1,21 @@
-import type { ChatItemType } from '@/types/chat';
-import { ChatRoleEnum } from '@/constants/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
-import type { MessageItemType } from '@/types/core/chat/type';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 
 const chat2Message = {
   [ChatRoleEnum.AI]: ChatCompletionRequestMessageRoleEnum.Assistant,
   [ChatRoleEnum.Human]: ChatCompletionRequestMessageRoleEnum.User,
-  [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System
+  [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System,
+  [ChatRoleEnum.Function]: ChatCompletionRequestMessageRoleEnum.Function,
+  [ChatRoleEnum.Tool]: ChatCompletionRequestMessageRoleEnum.Tool
 };
 const message2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
   [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
-  [ChatCompletionRequestMessageRoleEnum.Function]: 'function'
+  [ChatCompletionRequestMessageRoleEnum.Function]: ChatRoleEnum.Function,
+  [ChatCompletionRequestMessageRoleEnum.Tool]: ChatRoleEnum.Tool
 };
 
 export function adaptRole_Chat2Message(role: `${ChatRoleEnum}`) {
@@ -28,10 +31,10 @@ export const adaptChat2GptMessages = ({
 }: {
   messages: ChatItemType[];
   reserveId: boolean;
-}): MessageItemType[] => {
+}): ChatMessageItemType[] => {
   return messages.map((item) => ({
     ...(reserveId && { dataId: item.dataId }),
-    role: chat2Message[item.obj] || ChatCompletionRequestMessageRoleEnum.System,
+    role: chat2Message[item.obj],
     content: item.value || ''
   }));
 };

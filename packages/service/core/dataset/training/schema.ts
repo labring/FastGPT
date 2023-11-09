@@ -5,13 +5,27 @@ import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetCollectionName } from '../schema';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 export const DatasetTrainingCollectionName = 'dataset.trainings';
 
 const TrainingDataSchema = new Schema({
   userId: {
+    // abandon
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: 'user'
+  },
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
     required: true
   },
   datasetId: {

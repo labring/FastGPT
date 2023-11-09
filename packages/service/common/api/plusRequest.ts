@@ -18,7 +18,6 @@ function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestC
   if (config.headers) {
     config.headers.rootkey = process.env.ROOT_KEY;
   }
-
   return config;
 }
 
@@ -62,7 +61,8 @@ function responseError(err: any) {
 const instance = axios.create({
   timeout: 60000, // 超时时间
   headers: {
-    'content-type': 'application/json'
+    'content-type': 'application/json',
+    'Cache-Control': 'no-cache'
   }
 });
 
@@ -73,7 +73,7 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
   if (!global.systemEnv?.pluginBaseUrl) {
-    return Promise.reject('商业版插件加载中...');
+    return Promise.reject('该功能为商业版特有...');
   }
 
   /* 去空 */

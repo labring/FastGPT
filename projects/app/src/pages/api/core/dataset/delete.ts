@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { PgClient } from '@/service/pg';
-import { PgDatasetTableName } from '@/constants/plugin';
-import { GridFSStorage } from '@/service/lib/gridfs';
+import { PgClient } from '@fastgpt/service/common/pg';
+import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
+import { delDatasetFiles } from '@fastgpt/service/core/dataset/file/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,29 +21,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('缺少参数');
     }
 
-    // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    // auth owner
+    await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
 
     const deletedIds = [id, ...(await findAllChildrenIds(id))];
 
     // delete training data
     await MongoDatasetTraining.deleteMany({
-      userId,
       datasetId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
     });
 
     // delete all pg data
     await PgClient.delete(PgDatasetTableName, {
-      where: [
-        ['user_id', userId],
-        'AND',
-        `dataset_id IN (${deletedIds.map((id) => `'${id}'`).join(',')})`
-      ]
+      where: [`dataset_id IN (${deletedIds.map((id) => `'${id}'`).join(',')})`]
     });
 
     // delete related files
-    const gridFs = new GridFSStorage('dataset', userId);
-    await Promise.all(deletedIds.map((id) => gridFs.deleteFilesByDatasetId(id)));
+    await delDatasetFiles({ datasetId: id });
 
     // delete collections
     await MongoDatasetCollection.deleteMany({
@@ -52,8 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // delete dataset data
     await MongoDataset.deleteMany({
-      _id: { $in: deletedIds },
-      userId
+      _id: { $in: deletedIds }
     });
 
     jsonRes(res);

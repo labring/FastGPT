@@ -1,5 +1,5 @@
-import { ChatItemType } from '@/types/chat';
-import { ChatRoleEnum } from '@/constants/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { NextApiResponse } from 'next';
 import { countMessagesTokens, countPromptTokens } from '@/global/common/tiktoken';
 import { adaptRole_Chat2Message } from '@/utils/common/adapt/message';

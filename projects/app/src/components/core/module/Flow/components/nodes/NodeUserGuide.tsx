@@ -15,9 +15,9 @@ import {
   Switch
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { FlowModuleItemType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { SystemInputEnum } from '@/constants/app';
-import { welcomeTextTip, variableTip, questionGuideTip } from '@/constants/flow/ModuleTemplate';
+import { welcomeTextTip, variableTip } from '@/constants/flow/ModuleTemplate';
 import { onChangeNode } from '../../FlowProvider';
 
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
@@ -26,18 +26,24 @@ import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
 import NodeCard from '../modules/NodeCard';
 import { VariableItemType } from '@/types/app';
+import QGSwitch from '@/pages/app/detail/components/QGSwitch';
+import TTSSelect from '@/pages/app/detail/components/TTSSelect';
+import { splitGuideModule } from '@/global/core/app/modules/utils';
 
 const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
   const theme = useTheme();
   return (
     <>
       <NodeCard minW={'300px'} {...data}>
-        <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
+        <Container className="nodrag" borderTop={'2px solid'} borderTopColor={'myGray.200'}>
           <WelcomeText data={data} />
           <Box pt={4} pb={2}>
             <ChatStartVariable data={data} />
           </Box>
           <Box pt={3} borderTop={theme.borders.base}>
+            <TTSGuide data={data} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={theme.borders.base}>
             <QuestionGuide data={data} />
           </Box>
         </Container>
@@ -215,29 +221,43 @@ function QuestionGuide({ data }: { data: FlowModuleItemType }) {
   );
 
   return (
-    <Flex alignItems={'center'}>
-      <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
-      <Box>下一步指引</Box>
-      <MyTooltip label={questionGuideTip} forceShow>
-        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-      </MyTooltip>
-      <Box flex={1} />
-      <Switch
-        isChecked={questionGuide}
-        size={'lg'}
-        onChange={(e) => {
-          const value = e.target.checked;
-          onChangeNode({
-            moduleId,
-            key: SystemInputEnum.questionGuide,
-            type: 'updateInput',
-            value: {
-              ...inputs.find((item) => item.key === SystemInputEnum.questionGuide),
-              value
-            }
-          });
-        }}
-      />
-    </Flex>
+    <QGSwitch
+      isChecked={questionGuide}
+      size={'lg'}
+      onChange={(e) => {
+        const value = e.target.checked;
+        onChangeNode({
+          moduleId,
+          key: SystemInputEnum.questionGuide,
+          type: 'updateInput',
+          value: {
+            ...inputs.find((item) => item.key === SystemInputEnum.questionGuide),
+            value
+          }
+        });
+      }}
+    />
+  );
+}
+
+function TTSGuide({ data }: { data: FlowModuleItemType }) {
+  const { inputs, moduleId } = data;
+  const { ttsConfig } = splitGuideModule({ inputs } as ModuleItemType);
+
+  return (
+    <TTSSelect
+      value={ttsConfig}
+      onChange={(e) => {
+        onChangeNode({
+          moduleId,
+          key: SystemInputEnum.tts,
+          type: 'updateInput',
+          value: {
+            ...inputs.find((item) => item.key === SystemInputEnum.tts),
+            value: e
+          }
+        });
+      }}
+    />
   );
 }

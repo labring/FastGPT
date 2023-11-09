@@ -1,5 +1,5 @@
 import { GET, POST, DELETE } from '@/web/common/api/request';
-import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
+import type { InitShareChatResponse } from '@fastgpt/global/support/outLink/api.d';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
 
 /**

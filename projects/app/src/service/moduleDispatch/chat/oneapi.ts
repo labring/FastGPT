@@ -1,14 +1,15 @@
 import type { NextApiResponse } from 'next';
 import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { ChatItemType, moduleDispatchResType } from '@/types/chat';
-import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
+import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
-import { TaskResponseKeyEnum } from '@/constants/chat';
-import { countModelPrice } from '@/service/common/bill/push';
-import { ChatModelItemType } from '@/types/model';
-import { postTextCensor } from '@/web/common/plusApi/censor';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { countModelPrice } from '@/service/support/wallet/bill/utils';
+import type { ChatModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { countMessagesTokens, sliceMessagesTB } from '@/global/common/tiktoken';
@@ -99,7 +100,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     maxToken,
     filterMessages
   });
-  // console.log(messages);
 
   // FastGPT temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
@@ -281,7 +281,7 @@ function getChatMessages({
 
   const filterMessages = ChatContextFilter({
     messages,
-    maxTokens: Math.ceil(model.maxToken - 300) // filter token. not response maxToken
+    maxTokens: Math.ceil(model.maxContext - 300) // filter token. not response maxToken
   });
 
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
@@ -300,13 +300,13 @@ function getMaxTokens({
   model: ChatModelItemType;
   filterMessages: ChatProps['inputs']['history'];
 }) {
-  const tokensLimit = model.maxToken;
-  /* count response max token */
+  const tokensLimit = model.maxContext;
 
+  /* count response max token */
   const promptsToken = countMessagesTokens({
     messages: filterMessages
   });
-  maxToken = maxToken + promptsToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
+  maxToken = promptsToken + model.maxResponse > tokensLimit ? tokensLimit - promptsToken : maxToken;
 
   return {
     max_tokens: maxToken

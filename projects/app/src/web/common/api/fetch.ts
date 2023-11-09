@@ -1,7 +1,8 @@
-import { sseResponseEventEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseStreamChunk, SSEParseData } from '@/utils/sse';
-import type { ChatHistoryItemResType } from '@/types/chat';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { StartChatFnProps } from '@/components/ChatBox';
 import { getToken } from '@/web/support/user/auth';
 

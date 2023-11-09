@@ -1,14 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import type { InitShareChatResponse } from '@/global/support/api/outLinkRes.d';
-import { authApp } from '@/service/utils/auth';
-import { HUMAN_ICON } from '@/constants/chat';
+import type { InitShareChatResponse } from '@fastgpt/global/support/outLink/api.d';
+import { HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
 import { getGuideModule } from '@/global/core/app/modules/utils';
-import { authShareChatInit } from '@fastgpt/service/support/outLink/auth';
+import { authShareChatInit } from '@/service/support/outLink/auth';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
+import { authOutLinkValid } from '@fastgpt/service/support/permission/auth/outLink';
 
 /* init share chat window */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -19,27 +18,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       authToken?: string;
     };
 
-    if (!shareId) {
-      throw new Error('params is error');
-    }
-
     // get shareChat
-    const shareChat = await MongoOutLink.findOne({ shareId });
-
-    if (!shareChat) {
-      return jsonRes(res, {
-        code: 501,
-        error: '分享链接已失效'
-      });
-    }
+    const { app, shareChat } = await authOutLinkValid({ shareId });
 
     // 校验使用权限
-    const [{ app }, user] = await Promise.all([
-      authApp({
-        appId: shareChat.appId,
-        userId: String(shareChat.userId),
-        authOwner: false
-      }),
+    const [user] = await Promise.all([
       MongoUser.findById(shareChat.userId, 'avatar'),
       authShareChatInit({
         authToken,

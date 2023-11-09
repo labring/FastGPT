@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useRef, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Grid, Image, Button } from '@chakra-ui/react';
+import { Box, Card, IconButton, Flex, Grid, Button } from '@chakra-ui/react';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import {
   getDatasetDataList,
@@ -17,21 +17,22 @@ import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import InputDataModal, { RawSourceText, type InputDataType } from '../components/InputDataModal';
 import type { DatasetDataListItemType } from '@/global/core/dataset/response.d';
 import { TabEnum } from '..';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
   const router = useRouter();
+  const { userInfo } = useUserStore();
   const { collectionId = '' } = router.query as { collectionId: string };
   const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('dataset.Confirm to delete the data')
   });
@@ -74,6 +75,11 @@ const DataCard = () => {
     getDatasetCollectionById(collectionId)
   );
 
+  const canWrite = useMemo(
+    () => userInfo?.team?.role !== TeamMemberRoleEnum.visitor && !!collection?.canWrite,
+    [collection?.canWrite, userInfo?.team?.role]
+  );
+
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex alignItems={'center'}>
@@ -112,24 +118,25 @@ const DataCard = () => {
             </Box>
           </Box>
         </Flex>
-        <Box>
-          <Button
-            ml={2}
-            variant={'base'}
-            size={['sm', 'md']}
-            onClick={() => {
-              if (!collection) return;
-              setEditInputData({
-                datasetId: collection.datasetId,
-                collectionId: collection._id,
-                sourceId: collection.metadata?.fileId || collection.metadata?.rawLink,
-                sourceName: collection.name
-              });
-            }}
-          >
-            {t('dataset.Insert Data')}
-          </Button>
-        </Box>
+        {canWrite && (
+          <Box>
+            <Button
+              ml={2}
+              variant={'base'}
+              size={['sm', 'md']}
+              onClick={() => {
+                if (!collection) return;
+                setEditInputData({
+                  collectionId: collection._id,
+                  sourceId: collection.metadata?.fileId || collection.metadata?.rawLink,
+                  sourceName: collection.name
+                });
+              }}
+            >
+              {t('dataset.Insert Data')}
+            </Button>
+          </Box>
+        )}
       </Flex>
       <Flex my={3} alignItems={'center'}>
         <Box>
@@ -180,7 +187,6 @@ const DataCard = () => {
               if (!collection) return;
               setEditInputData({
                 id: item.id,
-                datasetId: collection.datasetId,
                 collectionId: collection._id,
                 q: item.q,
                 a: item.a,
@@ -206,34 +212,35 @@ const DataCard = () => {
               <Box className={'textEllipsis'} flex={1} color={'myGray.500'}>
                 ID:{item.id}
               </Box>
-              <IconButton
-                className="delete"
-                display={['flex', 'none']}
-                icon={<DeleteIcon />}
-                variant={'base'}
-                colorScheme={'gray'}
-                aria-label={'delete'}
-                size={'xs'}
-                borderRadius={'md'}
-                _hover={{ color: 'red.600' }}
-                isLoading={isDeleting}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openConfirm(async () => {
-                    try {
-                      setIsDeleting(true);
-                      await delOneDatasetDataById(item.id);
-                      getData(pageNum);
-                    } catch (error) {
-                      toast({
-                        title: getErrText(error),
-                        status: 'error'
-                      });
-                    }
-                    setIsDeleting(false);
-                  })();
-                }}
-              />
+              {canWrite && (
+                <IconButton
+                  className="delete"
+                  display={['flex', 'none']}
+                  icon={<DeleteIcon />}
+                  variant={'base'}
+                  colorScheme={'gray'}
+                  aria-label={'delete'}
+                  size={'xs'}
+                  borderRadius={'md'}
+                  _hover={{ color: 'red.600' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openConfirm(async () => {
+                      try {
+                        setIsLoading(true);
+                        await delOneDatasetDataById(item.id);
+                        getData(pageNum);
+                      } catch (error) {
+                        toast({
+                          title: getErrText(error),
+                          status: 'error'
+                        });
+                      }
+                      setIsLoading(false);
+                    })();
+                  }}
+                />
+              )}
             </Flex>
           </Card>
         ))}
@@ -248,17 +255,18 @@ const DataCard = () => {
         <Flex flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            知识库空空如也
+            内容空空的，快创建一个吧！
           </Box>
         </Flex>
       )}
 
       {editInputData !== undefined && collection && (
         <InputDataModal
-          datasetId={collection.datasetId}
+          datasetId={collection?.datasetId}
           defaultValues={editInputData}
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => getData(pageNum)}
+          canWrite={canWrite}
         />
       )}
       <ConfirmModal />

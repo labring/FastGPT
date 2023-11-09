@@ -5,17 +5,18 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant
 import { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/module/node/type';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import type { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { AppTypeEnum } from '@/constants/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
 import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
@@ -36,7 +37,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { updateAppDetail } = useUserStore();
+  const { updateAppDetail } = useAppStore();
 
   const { nodes, edges, onFixView } = useFlowProviderStore();
 
@@ -56,7 +57,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
       return updateAppDetail(app._id, {
         modules,
-        type: AppTypeEnum.advanced
+        type: AppTypeEnum.advanced,
+        permission: undefined
       });
     },
     successToast: '保存配置成功',

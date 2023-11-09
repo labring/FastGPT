@@ -1,6 +1,6 @@
 import React from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
-import { ChatItemType } from '@/types/chat';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import MyModal from '../MyModal';
 
 const ContextModal = ({

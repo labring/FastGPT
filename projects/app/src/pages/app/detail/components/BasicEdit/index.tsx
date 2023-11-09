@@ -15,9 +15,7 @@ import {
   TableContainer,
   useDisclosure,
   Button,
-  IconButton,
-  Text,
-  Switch
+  IconButton
 } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
@@ -31,12 +29,8 @@ import {
   type EditFormType
 } from '@/web/core/app/basicSettings';
 import { chatModelList } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
-import {
-  ChatModelSystemTip,
-  welcomeTextTip,
-  questionGuideTip
-} from '@/constants/flow/ModuleTemplate';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { ChatModelSystemTip, welcomeTextTip } from '@/constants/flow/ModuleTemplate';
 import { VariableItemType } from '@/types/app';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -45,7 +39,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
 import { useToast } from '@/web/common/hooks/useToast';
-import { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'react-i18next';
 import { getGuideModule } from '@/global/core/app/modules/utils';
@@ -59,8 +53,12 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 
 import { addVariable } from '@/components/core/module/VariableEditModal';
 import { KbParamsModal } from '@/components/core/module/DatasetSelectModal';
-import { AppTypeEnum } from '@/constants/app';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import PermissionIconText from '@/components/support/permission/IconText';
+import QGSwitch from '../QGSwitch';
+import TTSSelect from '../TTSSelect';
 
 const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -72,7 +70,7 @@ const Settings = ({ appId }: { appId: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { appDetail, updateAppDetail } = useUserStore();
+  const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useSystemStore();
 
@@ -103,7 +101,7 @@ const Settings = ({ appId }: { appId: string }) => {
   });
   const { fields: datasets, replace: replaceKbList } = useFieldArray({
     control,
-    name: 'kb.list'
+    name: 'dataset.list'
   });
 
   const {
@@ -130,7 +128,7 @@ const Settings = ({ appId }: { appId: string }) => {
   }, [refresh]);
 
   const selectDatasets = useMemo(
-    () => allDatasets.filter((item) => datasets.find((kb) => kb.datasetId === item._id)),
+    () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
     [allDatasets, datasets]
   );
 
@@ -144,12 +142,12 @@ const Settings = ({ appId }: { appId: string }) => {
     onSuccess(res) {
       if (!res) return;
       toast({
-        title: '删除成功',
+        title: t('common.Delete Success'),
         status: 'success'
       });
       router.replace(`/app/list`);
     },
-    errorToast: '删除失败'
+    errorToast: t('common.Delete Failed')
   });
 
   const appModule2Form = useCallback(() => {
@@ -166,11 +164,12 @@ const Settings = ({ appId }: { appId: string }) => {
 
       await updateAppDetail(appDetail._id, {
         modules,
-        type: AppTypeEnum.basic
+        type: AppTypeEnum.basic,
+        permission: undefined
       });
     },
-    successToast: '保存成功',
-    errorToast: '保存出现异常'
+    successToast: t('common.Save Success'),
+    errorToast: t('common.Save Failed')
   });
 
   useEffect(() => {
@@ -208,14 +207,15 @@ const Settings = ({ appId }: { appId: string }) => {
       borderColor={'myGray.200'}
       p={4}
       pt={[0, 4]}
+      pb={10}
       overflow={'overlay'}
     >
       <Flex alignItems={'flex-end'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-          {t('app.Basic Settings')}
+          <PermissionIconText permission={appDetail.permission} />
         </Box>
         <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
-          (
+          (AppId:{' '}
           <Box as={'span'} userSelect={'all'}>
             {appId}
           </Box>
@@ -237,23 +237,25 @@ const Settings = ({ appId }: { appId: string }) => {
           <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
             {appDetail.name}
           </Box>
-          <IconButton
-            className="delete"
-            position={'absolute'}
-            top={4}
-            right={4}
-            size={'sm'}
-            icon={<MyIcon name={'delete'} w={'14px'} />}
-            variant={'base'}
-            borderRadius={'md'}
-            aria-label={'delete'}
-            _hover={{
-              bg: 'myGray.100',
-              color: 'red.600'
-            }}
-            isLoading={isLoading}
-            onClick={openConfirmDel(handleDelModel)}
-          />
+          {appDetail.isOwner && (
+            <IconButton
+              className="delete"
+              position={'absolute'}
+              top={4}
+              right={4}
+              size={'sm'}
+              icon={<MyIcon name={'delete'} w={'14px'} />}
+              variant={'base'}
+              borderRadius={'md'}
+              aria-label={'delete'}
+              _hover={{
+                bg: 'myGray.100',
+                color: 'red.600'
+              }}
+              isLoading={isLoading}
+              onClick={openConfirmDel(handleDelModel)}
+            />
+          )}
         </Flex>
         <Box
           flex={1}
@@ -289,14 +291,16 @@ const Settings = ({ appId }: { appId: string }) => {
           >
             外接
           </Button>
-          <Button
-            size={['sm', 'md']}
-            variant={'base'}
-            leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
-            onClick={() => setSettingAppInfo(appDetail)}
-          >
-            设置
-          </Button>
+          {appDetail.isOwner && (
+            <Button
+              size={['sm', 'md']}
+              variant={'base'}
+              leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
+              onClick={() => setSettingAppInfo(appDetail)}
+            >
+              设置
+            </Button>
+          )}
         </Flex>
       </Box>
 
@@ -424,7 +428,7 @@ const Settings = ({ appId }: { appId: string }) => {
                 setValue('chatModel.model', val);
                 const maxToken =
                   chatModelList.find((item) => item.model === getValues('chatModel.model'))
-                    ?.maxToken || 4000;
+                    ?.maxResponse || 4000;
                 const token = maxToken / 2;
                 setValue('chatModel.maxToken', token);
                 setRefresh(!refresh);
@@ -448,7 +452,7 @@ const Settings = ({ appId }: { appId: string }) => {
         </Flex>
       </Box>
 
-      {/* kb */}
+      {/* dataset */}
       <Box mt={5} {...BoxStyles}>
         <Flex alignItems={'center'}>
           <Flex alignItems={'center'} flex={1}>
@@ -465,9 +469,11 @@ const Settings = ({ appId }: { appId: string }) => {
           </Flex>
         </Flex>
         <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-          {t('core.dataset.Similarity')}: {getValues('kb.searchSimilarity')},{' '}
-          {t('core.dataset.Search Top K')}: {getValues('kb.searchLimit')}
-          {getValues('kb.searchEmptyText') === '' ? '' : t('core.dataset.Set Empty Result Tip')}
+          {t('core.dataset.Similarity')}: {getValues('dataset.searchSimilarity')},{' '}
+          {t('core.dataset.Search Top K')}: {getValues('dataset.searchLimit')}
+          {getValues('dataset.searchEmptyText') === ''
+            ? ''
+            : t('core.dataset.Set Empty Result Tip')}
         </Flex>
         <Grid
           gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
@@ -504,23 +510,25 @@ const Settings = ({ appId }: { appId: string }) => {
       </Box>
 
       <Box mt={5} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
-          <Box>{t('core.app.Next Step Guide')}</Box>
-          <MyTooltip label={questionGuideTip} forceShow>
-            <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-          </MyTooltip>
-          <Box flex={1} />
-          <Switch
-            isChecked={getValues('questionGuide')}
-            size={'lg'}
-            onChange={(e) => {
-              const value = e.target.checked;
-              setValue('questionGuide', value);
-              setRefresh((state) => !state);
-            }}
-          />
-        </Flex>
+        <TTSSelect
+          value={getValues('tts')}
+          onChange={(e) => {
+            setValue('tts', e);
+            setRefresh((state) => !state);
+          }}
+        />
+      </Box>
+
+      <Box mt={5} {...BoxStyles}>
+        <QGSwitch
+          isChecked={getValues('questionGuide')}
+          size={'lg'}
+          onChange={(e) => {
+            const value = e.target.checked;
+            setValue('questionGuide', value);
+            setRefresh((state) => !state);
+          }}
+        />
       </Box>
 
       <ConfirmSaveModal />
@@ -577,14 +585,14 @@ const Settings = ({ appId }: { appId: string }) => {
 
       {isOpenKbParams && (
         <KbParamsModal
-          searchEmptyText={getValues('kb.searchEmptyText')}
-          searchLimit={getValues('kb.searchLimit')}
-          searchSimilarity={getValues('kb.searchSimilarity')}
+          searchEmptyText={getValues('dataset.searchEmptyText')}
+          searchLimit={getValues('dataset.searchLimit')}
+          searchSimilarity={getValues('dataset.searchSimilarity')}
           onClose={onCloseKbParams}
           onChange={({ searchEmptyText, searchLimit, searchSimilarity }) => {
-            setValue('kb.searchEmptyText', searchEmptyText);
-            setValue('kb.searchLimit', searchLimit);
-            setValue('kb.searchSimilarity', searchSimilarity);
+            setValue('dataset.searchEmptyText', searchEmptyText);
+            setValue('dataset.searchLimit', searchLimit);
+            setValue('dataset.searchSimilarity', searchSimilarity);
             setRefresh((state) => !state);
           }}
         />
@@ -595,7 +603,8 @@ const Settings = ({ appId }: { appId: string }) => {
 
 const ChatTest = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
-  const { appDetail, userInfo } = useUserStore();
+  const { userInfo } = useUserStore();
+  const { appDetail } = useAppStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const [modules, setModules] = useState<ModuleItemType[]>([]);
 
@@ -609,7 +618,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
-        url: '/api/chat/chatTest',
+        url: '/api/core/chat/chatTest',
         data: {
           history,
           prompt: chatList[chatList.length - 2].value,

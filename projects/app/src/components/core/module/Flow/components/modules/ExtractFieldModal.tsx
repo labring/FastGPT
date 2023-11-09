@@ -9,7 +9,7 @@ import {
   Switch,
   Input
 } from '@chakra-ui/react';
-import type { ContextExtractAgentItemType } from '@/types/app';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import { useForm } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);

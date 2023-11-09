@@ -1,4 +1,5 @@
-import { InformTypeEnum, TeamMemberRoleEnum } from './constant';
+import { InformTypeEnum } from './constant';
+import { TeamItemType } from './team/type';
 
 export type UserModelSchema = {
   _id: string;
@@ -21,28 +22,13 @@ export type UserModelSchema = {
   };
 };
 
-export type UserInformSchema = {
+export type UserType = {
   _id: string;
-  userId: string;
-  time: Date;
-  type: `${InformTypeEnum}`;
-  title: string;
-  content: string;
-  read: boolean;
-};
-
-export type TeamSchema = {
-  _id: string;
-  name: string;
-  ownerId: string;
+  username: string;
   avatar: string;
-  createTime: Date;
-};
-
-export type TeamMemberSchema = {
-  _id: string;
-  name: string;
-  teamId: string;
-  userId: string;
-  role: `${TeamMemberRoleEnum}`;
+  balance: number;
+  timezone: string;
+  promotionRate: UserModelSchema['promotionRate'];
+  openaiAccount: UserModelSchema['openaiAccount'];
+  team: TeamItemType;
 };

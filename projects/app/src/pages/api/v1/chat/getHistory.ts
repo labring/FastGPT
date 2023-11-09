@@ -1,10 +1,11 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { ChatItem, connectToDatabase } from '@/service/mongo';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { connectToDatabase } from '@/service/mongo';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { ChatItemType } from '@/types/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 
 export type Props = {
   appId?: string;
@@ -16,13 +17,13 @@ export type Response = { history: ChatItemType[] };
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { userId } = await authUser({ req, authToken: true });
+    const { tmbId } = await authCert({ req, authToken: true });
     const { chatId, limit } = req.body as Props;
 
     jsonRes<Response>(res, {
       data: await getChatHistory({
         chatId,
-        userId,
+        tmbId,
         limit
       })
     });
@@ -36,20 +37,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export async function getChatHistory({
   chatId,
-  userId,
-  appId,
+  tmbId,
   limit = 30
-}: Props & { userId: string }): Promise<Response> {
-  if (!chatId || !appId) {
+}: Props & { tmbId: string }): Promise<Response> {
+  if (!chatId) {
     return { history: [] };
   }
 
-  const history = await ChatItem.aggregate([
+  const history = await MongoChatItem.aggregate([
     {
       $match: {
         chatId,
-        appId: new Types.ObjectId(appId),
-        userId: new Types.ObjectId(userId)
+        tmbId: new Types.ObjectId(tmbId)
       }
     },
     {

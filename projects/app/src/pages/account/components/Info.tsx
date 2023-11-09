@@ -1,26 +1,14 @@
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  useDisclosure,
-  useTheme,
-  Divider,
-  Select,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem
-} from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, useTheme, Divider, Select } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { UserType } from '@/types/user';
+import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgAndUpload } from '@/web/common/file/controller';
 import { feConfigs, systemVersion } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@fastgpt/global/common/time/timezone';
@@ -30,9 +18,10 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { getLangStore, LangEnum, langMap, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
-import MyMenu from '@/components/MyMenu';
 import MySelect from '@/components/Select';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 
+const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'), {
   loading: () => <Loading fixed={false} />,
   ssr: false
@@ -97,7 +86,7 @@ const UserInfo = () => {
       const file = e[0];
       if (!file || !userInfo) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgAndUpload({
           file,
           maxW: 100,
           maxH: 100
@@ -169,6 +158,12 @@ const UserInfo = () => {
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
+          <Box flex={'0 0 80px'}>{t('user.Team')}:&nbsp;</Box>
+          <Box flex={1}>
+            <TeamMenu />
+          </Box>
+        </Flex>
+        <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Language')}:&nbsp;</Box>
           <Box flex={'1 0 0'}>
             <MySelect
@@ -212,11 +207,13 @@ const UserInfo = () => {
         </Flex>
         <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
           <Flex alignItems={'center'}>
-            <Box flex={'0 0 80px'}>{t('user.Balance')}:&nbsp;</Box>
-            <Box flex={1}>
-              <strong>{userInfo?.balance.toFixed(3)}</strong> 元
+            <Box flex={'0 0 80px'} fontSize={'md'}>
+              {t('user.team.Balance')}:&nbsp;
             </Box>
-            {feConfigs?.show_pay && (
+            <Box flex={1}>
+              <strong>{formatPrice(userInfo?.team?.balance).toFixed(3)}</strong> 元
+            </Box>
+            {feConfigs?.show_pay && userInfo?.team?.canWrite && (
               <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
                 {t('user.Pay')}
               </Button>

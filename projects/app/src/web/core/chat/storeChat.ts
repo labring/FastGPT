@@ -1,14 +1,13 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-
-import { ChatHistoryItemType } from '@/types/chat';
-import type { InitChatResponse } from '@/global/core/api/chatRes.d';
+import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
+import type { InitChatResponse } from '@fastgpt/global/core/chat/api';
 import { delChatHistoryById, getChatHistory, clearChatHistoryByAppId } from '@/web/core/chat/api';
 
 type State = {
   history: ChatHistoryItemType[];
-  loadHistory: (data: { appId?: string }) => Promise<null>;
+  loadHistory: (data: { appId: string }) => Promise<null>;
   delHistory(history: string): Promise<void>;
   clearHistory(appId: string): Promise<void>;
   updateHistory: (history: ChatHistoryItemType) => void;

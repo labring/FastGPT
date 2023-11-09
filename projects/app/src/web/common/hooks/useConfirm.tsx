@@ -11,13 +11,14 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
-export const useConfirm = (props: {
+export const useConfirm = (props?: {
   title?: string | null;
   content?: string | null;
   bg?: string;
+  showCancel?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { title = t('Warning'), content, bg } = props;
+  const { title = t('Warning'), content, bg, showCancel = true } = props || {};
   const [customContent, setCustomContent] = useState(content);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -52,18 +53,23 @@ export const useConfirm = (props: {
                 {title}
               </AlertDialogHeader>
 
-              <AlertDialogBody>{customContent}</AlertDialogBody>
+              <AlertDialogBody whiteSpace={'pre-wrap'} py={0}>
+                {customContent}
+              </AlertDialogBody>
 
               <AlertDialogFooter>
-                <Button
-                  variant={'base'}
-                  onClick={() => {
-                    onClose();
-                    typeof cancelCb.current === 'function' && cancelCb.current();
-                  }}
-                >
-                  {t('Cancel')}
-                </Button>
+                {showCancel && (
+                  <Button
+                    variant={'base'}
+                    onClick={() => {
+                      onClose();
+                      typeof cancelCb.current === 'function' && cancelCb.current();
+                    }}
+                  >
+                    {t('Cancel')}
+                  </Button>
+                )}
+
                 <Button
                   {...(bg && { bg: `${bg} !important` })}
                   ml={4}

@@ -4,7 +4,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getAppTotalUsage } from '@/web/core/app/api';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import Loading from '@/components/Loading';
 import { Box } from '@chakra-ui/react';
 

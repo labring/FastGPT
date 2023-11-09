@@ -19,7 +19,7 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-import type { ChatHistoryItemType } from '@/types/chat';
+import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'react-i18next';
 
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
@@ -31,6 +31,7 @@ import ChatHeader from './components/ChatHeader';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -54,7 +55,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     chatData,
     setChatData
   } = useChatStore();
-  const { myApps, loadMyApps, userInfo } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
+  const { userInfo } = useUserStore();
 
   const { isPc } = useSystemStore();
   const { Loading, setIsLoading } = useLoading();
@@ -188,7 +190,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId, toast]
   );
   // 初始化聊天框
-  useQuery(['init', appId, chatId], () => {
+  useQuery(['init', { appId, chatId }], () => {
     // pc: redirect to latest model chat
     if (!appId && lastChatAppId) {
       return router.replace({

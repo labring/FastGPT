@@ -29,11 +29,11 @@ import MyIcon from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { AIChatProps } from '@/types/core/aiChat';
 import { chatModelList } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { SelectedDatasetType } from '@/types/core/dataset';
 import { useQuery } from '@tanstack/react-query';
-import { LLMModelItemType } from '@/types/model';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
@@ -406,7 +406,7 @@ var MaxTokenRender = React.memo(function MaxTokenRender({
 }: RenderProps) {
   const model = inputs.find((item) => item.key === 'model')?.value;
   const modelData = chatModelList.find((item) => item.model === model);
-  const maxToken = modelData ? modelData.maxToken : 4000;
+  const maxToken = modelData ? modelData.maxResponse : 4000;
   const markList = [
     { label: '100', value: 100 },
     { label: `${maxToken}`, value: maxToken }
@@ -468,10 +468,10 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
           ...inputs.find((input) => input.key === 'maxToken'),
           markList: [
             { label: '100', value: 100 },
-            { label: `${model.maxToken}`, value: model.maxToken }
+            { label: `${model.maxResponse}`, value: model.maxResponse }
           ],
-          max: model.maxToken,
-          value: model.maxToken / 2
+          max: model.maxResponse,
+          value: model.maxResponse / 2
         }
       });
     }

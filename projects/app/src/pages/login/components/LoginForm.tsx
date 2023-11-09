@@ -2,7 +2,8 @@ import React, { useState, Dispatch, useCallback, useRef } from 'react';
 import { FormControl, Flex, Input, Button, FormErrorMessage, Box, Link } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
-import { OAuthEnum, PageTypeEnum } from '@/constants/user';
+import { PageTypeEnum } from '@/constants/user';
+import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { postLogin } from '@/web/support/user/api';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -10,6 +11,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
+import { useUserStore } from '@/web/support/user/useUserStore';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {

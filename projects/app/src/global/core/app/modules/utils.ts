@@ -1,6 +1,6 @@
 import { SystemInputEnum } from '@/constants/app';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { VariableItemType } from '@/types/app';
+import { AppTTSConfigType, VariableItemType } from '@/types/app';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 
 export const getGuideModule = (modules: ModuleItemType[]) =>
@@ -17,9 +17,14 @@ export const splitGuideModule = (guideModules?: ModuleItemType) => {
     guideModules?.inputs?.find((item) => item.key === SystemInputEnum.questionGuide)?.value ||
     false;
 
+  const ttsConfig: AppTTSConfigType = guideModules?.inputs?.find(
+    (item) => item.key === SystemInputEnum.tts
+  )?.value || { type: 'web' };
+
   return {
     welcomeText,
     variableModules,
-    questionGuide
+    questionGuide,
+    ttsConfig
   };
 };

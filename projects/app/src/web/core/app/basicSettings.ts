@@ -1,4 +1,4 @@
-import type { VariableItemType } from '@/types/app';
+import type { AppTTSConfigType, VariableItemType } from '@/types/app';
 import { chatModelList } from '@/web/common/system/staticData';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import {
@@ -15,7 +15,7 @@ import { getGuideModule, splitGuideModule } from '@/global/core/app/modules/util
 
 export type EditFormType = {
   chatModel: AIChatProps;
-  kb: {
+  dataset: {
     list: SelectedDatasetType;
     searchSimilarity: number;
     searchLimit: number;
@@ -28,6 +28,7 @@ export type EditFormType = {
   };
   variables: VariableItemType[];
   questionGuide: boolean;
+  tts: AppTTSConfigType;
 };
 export const getDefaultAppForm = (): EditFormType => {
   const defaultChatModel = chatModelList[0];
@@ -40,11 +41,11 @@ export const getDefaultAppForm = (): EditFormType => {
       [SystemInputEnum.isResponseAnswerText]: true,
       quotePrompt: '',
       quoteTemplate: '',
-      maxToken: defaultChatModel ? defaultChatModel.maxToken / 2 : 4000,
+      maxToken: defaultChatModel ? defaultChatModel.maxResponse / 2 : 4000,
       frequency: 0.5,
       presence: -0.5
     },
-    kb: {
+    dataset: {
       list: [],
       searchSimilarity: 0.4,
       searchLimit: 5,
@@ -56,7 +57,10 @@ export const getDefaultAppForm = (): EditFormType => {
       }
     },
     variables: [],
-    questionGuide: false
+    questionGuide: false,
+    tts: {
+      type: 'web'
+    }
   };
 };
 
@@ -118,17 +122,17 @@ export const appModules2Form = (modules: ModuleItemType[]) => {
       });
     } else if (module.flowType === FlowNodeTypeEnum.datasetSearchNode) {
       updateVal({
-        formKey: 'kb.list',
+        formKey: 'dataset.list',
         inputs: module.inputs,
         key: 'datasets'
       });
       updateVal({
-        formKey: 'kb.searchSimilarity',
+        formKey: 'dataset.searchSimilarity',
         inputs: module.inputs,
         key: 'similarity'
       });
       updateVal({
-        formKey: 'kb.searchLimit',
+        formKey: 'dataset.searchLimit',
         inputs: module.inputs,
         key: 'limit'
       });
@@ -137,12 +141,12 @@ export const appModules2Form = (modules: ModuleItemType[]) => {
       const emptyOutput = emptyOutputs[0];
       if (emptyOutput) {
         const target = modules.find((item) => item.moduleId === emptyOutput.moduleId);
-        defaultAppForm.kb.searchEmptyText =
+        defaultAppForm.dataset.searchEmptyText =
           target?.inputs?.find((item) => item.key === FlowNodeSpecialInputKeyEnum.answerText)
             ?.value || '';
       }
     } else if (module.flowType === FlowNodeTypeEnum.userGuide) {
-      const { welcomeText, variableModules, questionGuide } = splitGuideModule(
+      const { welcomeText, variableModules, questionGuide, ttsConfig } = splitGuideModule(
         getGuideModule(modules)
       );
       if (welcomeText) {
@@ -153,6 +157,7 @@ export const appModules2Form = (modules: ModuleItemType[]) => {
 
       defaultAppForm.variables = variableModules;
       defaultAppForm.questionGuide = !!questionGuide;
+      defaultAppForm.tts = ttsConfig;
     }
   });
 
@@ -213,13 +218,13 @@ const chatModelInput = (formData: EditFormType): FlowNodeInputItemType[] => [
     key: 'switch',
     type: 'target',
     label: '触发器',
-    connected: formData.kb.list.length > 0 && !!formData.kb.searchEmptyText
+    connected: formData.dataset.list.length > 0 && !!formData.dataset.searchEmptyText
   },
   {
     key: 'quoteQA',
     type: 'target',
     label: '引用内容',
-    connected: formData.kb.list.length > 0
+    connected: formData.dataset.list.length > 0
   },
   {
     key: 'history',
@@ -256,6 +261,12 @@ const userGuideTemplate = (formData: EditFormType): ModuleItemType[] => [
         type: FlowNodeInputTypeEnum.hidden,
         label: '问题引导',
         value: formData.questionGuide
+      },
+      {
+        key: SystemInputEnum.tts,
+        type: FlowNodeInputTypeEnum.hidden,
+        label: '语音播报',
+        value: formData.tts
       }
     ],
     outputs: [],
@@ -434,21 +445,21 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
     inputs: [
       {
         key: 'datasets',
-        value: formData.kb.list,
+        value: formData.dataset.list,
         type: FlowNodeInputTypeEnum.custom,
         label: '关联的知识库',
         connected: true
       },
       {
         key: 'similarity',
-        value: formData.kb.searchSimilarity,
+        value: formData.dataset.searchSimilarity,
         type: FlowNodeInputTypeEnum.slider,
         label: '相似度',
         connected: true
       },
       {
         key: 'limit',
-        value: formData.kb.searchLimit,
+        value: formData.dataset.searchLimit,
         type: FlowNodeInputTypeEnum.slider,
         label: '单次搜索上限',
         connected: true
@@ -469,7 +480,7 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
     outputs: [
       {
         key: 'isEmpty',
-        targets: formData.kb.searchEmptyText
+        targets: formData.dataset.searchEmptyText
           ? [
               {
                 moduleId: 'emptyText',
@@ -480,7 +491,7 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
       },
       {
         key: 'unEmpty',
-        targets: formData.kb.searchEmptyText
+        targets: formData.dataset.searchEmptyText
           ? [
               {
                 moduleId: 'chatModule',
@@ -505,7 +516,7 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
     },
     moduleId: 'datasetSearch'
   },
-  ...(formData.kb.searchEmptyText
+  ...(formData.dataset.searchEmptyText
     ? [
         {
           name: '指定回复',
@@ -519,7 +530,7 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
             },
             {
               key: FlowNodeSpecialInputKeyEnum.answerText,
-              value: formData.kb.searchEmptyText,
+              value: formData.dataset.searchEmptyText,
               type: FlowNodeInputTypeEnum.textarea,
               valueType: FlowNodeValTypeEnum.string,
               label: '回复的内容',
@@ -568,7 +579,7 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
 export const appForm2Modules = (formData: EditFormType) => {
   const modules = [
     ...userGuideTemplate(formData),
-    ...(formData.kb.list.length > 0 ? kbTemplate(formData) : simpleChatTemplate(formData))
+    ...(formData.dataset.list.length > 0 ? kbTemplate(formData) : simpleChatTemplate(formData))
   ];
 
   return modules as ModuleItemType[];

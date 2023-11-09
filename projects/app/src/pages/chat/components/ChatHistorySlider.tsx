@@ -21,6 +21,8 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 type HistoryItemType = {
   id: string;
@@ -63,7 +65,8 @@ const ChatHistorySlider = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystemStore();
-  const { myApps, loadMyApps, userInfo } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
+  const { userInfo } = useUserStore();
 
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
 
@@ -76,7 +79,7 @@ const ChatHistorySlider = ({
   });
   const { openConfirm, ConfirmModal } = useConfirm({
     content: isShare
-      ? t('chat.Confirm to clear share chat histroy')
+      ? t('chat.Confirm to clear share chat history')
       : t('chat.Confirm to clear history')
   });
 
@@ -94,6 +97,11 @@ const ChatHistorySlider = ({
     return loadMyApps(false);
   });
 
+  const canRouteToDetail = useMemo(
+    () => appId && userInfo?.team.role !== TeamMemberRoleEnum.visitor,
+    [appId, userInfo?.team.role]
+  );
+
   return (
     <Flex
       position={'relative'}
@@ -105,15 +113,15 @@ const ChatHistorySlider = ({
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <MyTooltip label={appId ? t('app.App Detail') : ''} offset={[0, 0]}>
+        <MyTooltip label={canRouteToDetail ? t('app.App Detail') : ''} offset={[0, 0]}>
           <Flex
             pt={5}
             pb={2}
             px={[2, 5]}
             alignItems={'center'}
-            cursor={appId ? 'pointer' : 'default'}
+            cursor={canRouteToDetail ? 'pointer' : 'default'}
             onClick={() =>
-              appId &&
+              canRouteToDetail &&
               router.replace({
                 pathname: '/app/detail',
                 query: { appId }

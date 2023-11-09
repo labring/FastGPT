@@ -33,10 +33,10 @@ import {
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
-import { defaultOutLinkForm } from '@/constants/model';
+import { defaultOutLinkForm } from '@/constants/app';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -169,7 +169,7 @@ const Share = ({ appId }: { appId: string }) => {
                         py={[2, 3]}
                       >
                         <MyIcon name={'apiLight'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('outlink.Copy Iframe')}</Box>
+                        <Box ml={[1, 2]}>{t('outlink.Copy IFrame')}</Box>
                       </MenuItem>
                       <MenuItem
                         onClick={async () => {

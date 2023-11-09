@@ -4,7 +4,7 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { UserType } from '@/types/user';
+import type { UserType } from '@fastgpt/global/support/user/type.d';
 
 const OpenAIAccountModal = ({
   defaultData,

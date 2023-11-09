@@ -1,6 +1,6 @@
 import mongoose from './index';
-import 'winston-mongodb';
 import { createLogger, format, transports } from 'winston';
+import 'winston-mongodb';
 
 /**
  * connect MongoDB and init data
@@ -19,9 +19,6 @@ export async function connectMongo({
 
   beforeHook && (await beforeHook());
 
-  // logger
-  initLogger();
-
   console.log('mongo start connect');
   try {
     mongoose.set('strictQuery', true);
@@ -35,9 +32,11 @@ export async function connectMongo({
     });
 
     console.log('mongo connected');
+    initLogger();
 
     afterHook && (await afterHook());
   } catch (error) {
+    global.mongodb.disconnect();
     console.log('error->', 'mongo connect error', error);
     global.mongodb = undefined;
   }

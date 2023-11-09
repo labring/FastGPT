@@ -10,12 +10,9 @@ import React, {
 } from 'react';
 import Script from 'next/script';
 import { throttle } from 'lodash';
-import {
-  ChatHistoryItemResType,
-  ChatItemType,
-  ChatSiteItemType,
-  ExportChatType
-} from '@/types/chat';
+import type { ExportChatType } from '@/types/chat.d';
+import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -38,12 +35,12 @@ import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { VariableInputEnum } from '@/constants/app';
 import { useForm } from 'react-hook-form';
-import type { MessageItemType } from '@/types/core/chat/type';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { useTranslation } from 'react-i18next';
 import { customAlphabet } from 'nanoid';
 import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';
@@ -64,6 +61,7 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from '@/global/core/app/modules/utils';
+import { AppTTSConfigType } from '@/types/app';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -73,7 +71,7 @@ type generatingMessageProps = { text?: string; name?: string; status?: 'running'
 
 export type StartChatFnProps = {
   chatList: ChatSiteItemType[];
-  messages: MessageItemType[];
+  messages: ChatMessageItemType[];
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;
@@ -158,7 +156,7 @@ const ChatBox = (
     [chatHistory]
   );
 
-  const { welcomeText, variableModules, questionGuide } = useMemo(
+  const { welcomeText, variableModules, questionGuide, ttsConfig } = useMemo(
     () => splitGuideModule(userGuideModule),
     [userGuideModule]
   );
@@ -206,32 +204,28 @@ const ChatBox = (
     []
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const generatingMessage = useCallback(
-    // concat text to end of message
-    ({ text = '', status, name }: generatingMessageProps) => {
-      setChatHistory((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
-          return {
-            ...item,
-            ...(text
-              ? {
-                  value: item.value + text
-                }
-              : {}),
-            ...(status && name
-              ? {
-                  status,
-                  moduleName: name
-                }
-              : {})
-          };
-        })
-      );
-      generatingScroll();
-    },
-    [generatingScroll, setChatHistory]
-  );
+  const generatingMessage = ({ text = '', status, name }: generatingMessageProps) => {
+    setChatHistory((state) =>
+      state.map((item, index) => {
+        if (index !== state.length - 1) return item;
+        return {
+          ...item,
+          ...(text
+            ? {
+                value: item.value + text
+              }
+            : {}),
+          ...(status && name
+            ? {
+                status,
+                moduleName: name
+              }
+            : {})
+        };
+      })
+    );
+    generatingScroll();
+  };
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {
@@ -489,7 +483,7 @@ const ChatBox = (
 
     return {
       bg: colorMap[chatContent.status] || colorMap.loading,
-      name: t(chatContent.moduleName || 'common.Loading')
+      name: chatContent.moduleName || t('common.Loading')
     };
   }, [chatHistory, isChatting, t]);
   /* style end */
@@ -654,8 +648,10 @@ const ChatBox = (
                       <ChatController
                         ml={2}
                         chat={item}
+                        setChatHistory={setChatHistory}
                         display={index === chatHistory.length - 1 && isChatting ? 'none' : 'flex'}
                         showVoiceIcon={showVoiceIcon}
+                        ttsConfig={ttsConfig}
                         onDelete={
                           onDelMessage
                             ? () => {
@@ -801,13 +797,20 @@ const ChatBox = (
       </Box>
       {/* message input */}
       {onStartChat && variableIsFinish && active ? (
-        <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
+        <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
           <Box
             py={'18px'}
             position={'relative'}
             boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
-            borderTop={['1px solid', 0]}
-            borderTopColor={'myGray.200'}
+            {...(isPc
+              ? {
+                  border: '1px solid',
+                  borderColor: 'rgba(0,0,0,0.12)'
+                }
+              : {
+                  borderTop: '1px solid',
+                  borderTopColor: 'rgba(0,0,0,0.15)'
+                })}
             borderRadius={['none', 'md']}
             backgroundColor={'white'}
           >
@@ -836,6 +839,7 @@ const ChatBox = (
                 const textarea = e.target;
                 textarea.style.height = textareaMinH;
                 textarea.style.height = `${textarea.scrollHeight}px`;
+                setRefresh((state) => !state);
               }}
               onKeyDown={(e) => {
                 // enter send.(pc or iframe && enter and unPress shift)
@@ -852,11 +856,14 @@ const ChatBox = (
             <Flex
               alignItems={'center'}
               justifyContent={'center'}
-              h={'25px'}
-              w={'25px'}
+              h={['26px', '32px']}
+              w={['26px', '32px']}
               position={'absolute'}
-              right={['12px', '20px']}
-              bottom={'15px'}
+              right={['12px', '14px']}
+              bottom={['15px', '13px']}
+              borderRadius={'md'}
+              bg={TextareaDom.current?.value ? 'myBlue.600' : ''}
+              lineHeight={1}
             >
               {isChatting ? (
                 <MyIcon
@@ -869,16 +876,18 @@ const ChatBox = (
                   onClick={() => chatController.current?.abort('stop')}
                 />
               ) : (
-                <MyIcon
-                  name={'chatSend'}
-                  width={['18px', '20px']}
-                  height={['18px', '20px']}
-                  cursor={'pointer'}
-                  color={'gray.500'}
-                  onClick={() => {
-                    handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
-                  }}
-                />
+                <MyTooltip label={t('core.chat.Send Message')}>
+                  <MyIcon
+                    name={'core/chat/sendFill'}
+                    width={'16px'}
+                    height={'16px'}
+                    cursor={'pointer'}
+                    color={TextareaDom.current?.value ? 'white' : 'myBlue.600'}
+                    onClick={() => {
+                      handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
+                    }}
+                  />
+                </MyTooltip>
               )}
             </Flex>
           </Box>
@@ -1106,8 +1115,10 @@ function Empty() {
 
 function ChatController({
   chat,
+  setChatHistory,
   display,
   showVoiceIcon,
+  ttsConfig,
   onReadFeedback,
   onMark,
   onRetry,
@@ -1117,7 +1128,9 @@ function ChatController({
   mr
 }: {
   chat: ChatSiteItemType;
+  setChatHistory?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   showVoiceIcon?: boolean;
+  ttsConfig?: AppTTSConfigType;
   onRetry?: () => void;
   onDelete?: () => void;
   onMark?: () => void;
@@ -1127,7 +1140,9 @@ function ChatController({
   const theme = useTheme();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({});
+  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({
+    ttsConfig
+  });
   const controlIconStyle = {
     w: '14px',
     cursor: 'pointer',
@@ -1198,7 +1213,24 @@ function ChatController({
               {...controlIconStyle}
               name={'voice'}
               _hover={{ color: '#E74694' }}
-              onClick={() => playAudio(chat.value)}
+              onClick={async () => {
+                const buffer = await playAudio({
+                  buffer: chat.ttsBuffer,
+                  chatItemId: chat.dataId,
+                  text: chat.value
+                });
+                if (!setChatHistory) return;
+                setChatHistory((state) =>
+                  state.map((item) =>
+                    item.dataId === chat.dataId
+                      ? {
+                          ...item,
+                          ttsBuffer: buffer
+                        }
+                      : item
+                  )
+                );
+              }}
             />
           </MyTooltip>
         ))}

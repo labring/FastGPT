@@ -21,62 +21,61 @@ weight: 520
 ```json
 {
   "SystemParams": {
+    "pluginBaseUrl": "", // 商业版接口地址
     "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
     "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
     "pgHNSWEfSearch": 100  // pg vector 索引参数，越大精度高但速度慢
   },
   "ChatModels": [
     {
-      "model": "gpt-3.5-turbo", // 实际调用的模型
-      "name": "GPT35-4k", // 展示的名字
-      "maxToken": 4000, // 最大token，均按 gpt35 计算
-      "quoteMaxToken": 2000, // 引用内容最大 token
-      "maxTemperature": 1.2, // 最大温度
-      "price": 0,
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "price": 0, // 除以 100000 后等于1个token的价格
+      "maxContext": 16000, // 最大上下文长度
+      "maxResponse": 4000, // 最大回复长度
+      "quoteMaxToken": 2000, // 最大引用内容长度
+      "maxTemperature": 1.2, // 最大温度值
+      "censor": false, // 是否开启敏感词过滤(商业版)
       "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
-      "maxToken": 16000,
+      "maxContext": 16000,
+      "maxResponse": 16000,
+      "price": 0,
       "quoteMaxToken": 8000,
       "maxTemperature": 1.2,
-      "price": 0,
+      "censor": false,
       "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-4",
       "name": "GPT4-8k",
-      "maxToken": 8000,
+      "maxContext": 8000,
+      "maxResponse": 8000,
+      "price": 0,
       "quoteMaxToken": 4000,
       "maxTemperature": 1.2,
-      "price": 0,
+      "censor": false,
       "defaultSystemChatPrompt": ""
     }
   ],
-  "QAModels": [ // QA 拆分模型
-    { 
+  "QAModels": [
+    {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
-      "maxToken": 16000,
+      "maxContext": 16000,
+      "maxResponse": 16000,
       "price": 0
     }
   ],
-  "ExtractModels": [ // 内容提取模型
-    { 
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
-      "maxToken": 16000, 
-      "price": 0,
-      "functionCall": true, // 是否支持 function call
-      "functionPrompt": "" // 自定义非 function call 提示词
-    }
-  ],
-  "CQModels": [ // Classify Question: 问题分类模型
+  "CQModels": [
     {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
-      "maxToken": 16000,
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "maxContext": 16000,
+      "maxResponse": 4000,
       "price": 0,
       "functionCall": true,
       "functionPrompt": ""
@@ -84,17 +83,30 @@ weight: 520
     {
       "model": "gpt-4",
       "name": "GPT4-8k",
-      "maxToken": 8000,
+      "maxContext": 8000,
+      "maxResponse": 8000,
       "price": 0,
       "functionCall": true,
       "functionPrompt": ""
     }
   ],
-  "QGModels": [ // Question Generation: 生成下一步指引模型
-    { 
-      "model": "gpt-3.5-turbo",
-      "name": "GPT35-4k",
-      "maxToken": 4000,
+  "ExtractModels": [
+    {
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "price": 0,
+      "functionCall": true,
+      "functionPrompt": ""
+    }
+  ],
+  "QGModels": [
+    {
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "maxContext": 1600,
+      "maxResponse": 4000,
       "price": 0
     }
   ],
@@ -102,9 +114,21 @@ weight: 520
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "price": 0,
-      "defaultToken": 500,
+      "price": 0.2,
+      "defaultToken": 700,
       "maxToken": 3000
+    }
+  ],
+  "AudioSpeechModels": [
+    {
+      "model": "tts-1",
+      "name": "OpenAI TTS1",
+      "price": 0
+    },
+    {
+      "model": "tts-1-hd",
+      "name": "OpenAI TTS1HD",
+      "price": 0
     }
   ]
 }

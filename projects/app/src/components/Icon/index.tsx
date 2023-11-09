@@ -98,7 +98,15 @@ const iconPaths = {
   'common/refreshLight': () => import('./icons/common/refreshLight.svg'),
   'core/module/previewLight': () => import('./icons/core/module/previewLight.svg'),
   'core/chat/quoteFill': () => import('./icons/core/chat/quoteFill.svg'),
-  'core/chat/QGFill': () => import('./icons/core/chat/QGFill.svg')
+  'core/chat/QGFill': () => import('./icons/core/chat/QGFill.svg'),
+  'common/tickFill': () => import('./icons/common/tickFill.svg'),
+  'common/inviteLight': () => import('./icons/common/inviteLight.svg'),
+  'support/team/memberLight': () => import('./icons/support/team/memberLight.svg'),
+  'support/permission/privateLight': () => import('./icons/support/permission/privateLight.svg'),
+  'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg'),
+  'core/app/ttsFill': () => import('./icons/core/app/ttsFill.svg'),
+  'common/playLight': () => import('./icons/common/playLight.svg'),
+  'core/chat/sendFill': () => import('./icons/core/chat/sendFill.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

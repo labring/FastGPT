@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
-import { delDataByCollectionId } from '@/service/core/dataset/data/utils';
+import { delDataByCollectionId } from '@/service/core/dataset/data/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { GridFSStorage } from '@/service/lib/gridfs';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { delFileById } from '@fastgpt/service/common/file/gridfs/controller';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -18,37 +19,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('CollectionIdId is required');
     }
 
-    // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { teamId } = await authDatasetCollection({
+      req,
+      authToken: true,
+      collectionId,
+      per: 'w'
+    });
 
     // find all delete id
     const collections = await findCollectionAndChild(collectionId, '_id metadata');
     const delIdList = collections.map((item) => item._id);
 
     // delete pg data
-    await delDataByCollectionId({ userId, collectionIds: delIdList });
+    await delDataByCollectionId({ collectionIds: delIdList });
 
     // delete training data
     await MongoDatasetTraining.deleteMany({
       datasetCollectionId: { $in: delIdList },
-      userId
+      teamId
     });
 
     // delete file
-    const gridFs = new GridFSStorage('dataset', userId);
-    const fileCollection = gridFs.Collection();
     await Promise.all(
-      collections.map(
-        (item) =>
-          //@ts-ignore
-          item.metadata?.fileId && fileCollection.findOneAndDelete({ _id: item.metadata.fileId })
-      )
+      collections.map((collection) => {
+        if (!collection.metadata?.fileId) return;
+        return delFileById({
+          bucketName: BucketNameEnum.dataset,
+          fileId: collection.metadata.fileId
+        });
+      })
     );
 
     // delete collection
     await MongoDatasetCollection.deleteMany({
-      _id: { $in: delIdList },
-      userId
+      _id: { $in: delIdList }
     });
 
     jsonRes(res);

@@ -1,4 +1,4 @@
-import { postChunks2Dataset } from '@/web/core/dataset/api';
+import { getFileViewUrl, postChunks2Dataset } from '@/web/core/dataset/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { DatasetChunkItemType } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@/utils/tools';
@@ -48,4 +48,10 @@ export async function chunksUpload({
   }
 
   return { insertLen: successInsert };
+}
+
+export async function getFileAndOpen(fileId: string) {
+  const url = await getFileViewUrl(fileId);
+  const asPath = `${location.origin}${url}`;
+  window.open(asPath, '_blank');
 }

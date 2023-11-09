@@ -32,7 +32,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
     onSuccess() {
       onClose();
     },
-    successToast: t('user.Update password succseful'),
+    successToast: t('user.Update password successful'),
     errorToast: t('user.Update password failed')
   });
 

@@ -11,14 +11,14 @@ import {
   Td,
   TableContainer
 } from '@chakra-ui/react';
-import { UserBillType } from '@/types/user';
+import { BillItemType } from '@fastgpt/global/support/wallet/bill/type.d';
 import dayjs from 'dayjs';
-import { BillSourceMap } from '@/constants/user';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
+import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'react-i18next';
 
-const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void }) => {
+const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void }) => {
   const { t } = useTranslation();
   const filterBillList = useMemo(
     () => bill.list.filter((item) => item && item.moduleName),
@@ -28,6 +28,10 @@ const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('user.Bill Detail')}>
       <ModalBody>
+        <Flex alignItems={'center'} pb={4}>
+          <Box flex={'0 0 80px'}>用户:</Box>
+          <Box>{bill.username}</Box>
+        </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>订单号:</Box>
           <Box>{bill.id}</Box>
@@ -65,7 +69,7 @@ const BillDetail = ({ bill, onClose }: { bill: UserBillType; onClose: () => void
               <Tbody>
                 {filterBillList.map((item, i) => (
                   <Tr key={i}>
-                    <Td>{item.moduleName}</Td>
+                    <Td>{t(item.moduleName)}</Td>
                     <Td>{item.model}</Td>
                     <Td>{item.tokenLen}</Td>
                     <Td>{formatPrice(item.amount)}</Td>

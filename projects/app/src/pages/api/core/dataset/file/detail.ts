@@ -1,14 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { GridFSStorage } from '@/service/lib/gridfs';
-import { datasetSpecialIdMap } from '@fastgpt/global/core/dataset/constant';
-import { datasetSpecialIds } from '@fastgpt/global/core/dataset/constant';
-import type { GSFileInfoType } from '@/types/common/file';
-import { strIsLink } from '@fastgpt/global/common/string/tools';
-import { PgClient } from '@/service/pg';
-import { PgDatasetTableName } from '@/constants/plugin';
+import { authDatasetFile } from '@fastgpt/service/support/permission/auth/dataset';
+import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -16,46 +10,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { fileId } = req.query as { fileId: string };
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { file } = await authDatasetFile({ req, authToken: true, fileId, per: 'r' });
 
-    // manual, mark
-    if (datasetSpecialIds.includes(fileId)) {
-      return jsonRes<GSFileInfoType>(res, {
-        data: {
-          id: fileId,
-          size: 0,
-          // @ts-ignore
-          filename: datasetSpecialIdMap[fileId]?.name || fileId,
-          uploadDate: new Date(),
-          encoding: '',
-          contentType: ''
-        }
-      });
-    }
-    // link file
-    if (strIsLink(fileId)) {
-      const { rows } = await PgClient.select(PgDatasetTableName, {
-        where: [['user_id', userId], 'AND', ['file_id', fileId]],
-        limit: 1,
-        fields: ['source']
-      });
-      return jsonRes<GSFileInfoType>(res, {
-        data: {
-          id: fileId,
-          size: 0,
-          filename: rows[0]?.source || fileId,
-          uploadDate: new Date(),
-          encoding: '',
-          contentType: ''
-        }
-      });
-    }
-
-    const gridFs = new GridFSStorage('dataset', userId);
-
-    const file = await gridFs.findAndAuthFile(fileId);
-
-    jsonRes<GSFileInfoType>(res, {
+    jsonRes<DatasetFileSchema>(res, {
       data: file
     });
   } catch (err) {

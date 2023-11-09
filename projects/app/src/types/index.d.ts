@@ -1,11 +1,11 @@
-import type { Pool } from 'pg';
 import type { Tiktoken } from 'js-tiktoken';
 import {
+  AudioSpeechModelType,
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
   VectorModelItemType
-} from './model';
+} from '@fastgpt/global/core/ai/model.d';
 import { TrackEventName } from '@/constants/common';
 
 export type PagingData<T> = {
@@ -18,13 +18,9 @@ export type PagingData<T> = {
 export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 
 declare global {
-  var pgClient: Pool | null;
   var qaQueueLen: number;
   var vectorQueueLen: number;
   var TikToken: Tiktoken;
-
-  var sendInformQueue: (() => Promise<void>)[];
-  var sendInformQueueLen: number;
 
   var vectorModels: VectorModelItemType[];
   var chatModels: ChatModelItemType[];
@@ -32,6 +28,7 @@ declare global {
   var cqModels: FunctionModelItemType[];
   var extractModels: FunctionModelItemType[];
   var qgModels: LLMModelItemType[];
+  var audioSpeechModels: AudioSpeechModelType[];
 
   var priceMd: string;
   var systemVersion: string;

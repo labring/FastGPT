@@ -1,6 +1,8 @@
 export type OpenApiSchema = {
   _id: string;
   userId: string;
+  teamId: string;
+  tmbId: string;
   createTime: Date;
   lastUsedTime?: Date;
   apiKey: string;
