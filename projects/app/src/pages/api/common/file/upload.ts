@@ -51,13 +51,13 @@ class UploadModel {
         }
 
         resolve({
+          ...req.body,
           files:
             // @ts-ignore
             req.files?.map((file) => ({
               ...file,
               originalname: decodeURIComponent(file.originalname)
             })) || [],
-          bucketName: req.body.bucketName,
           metadata: (() => {
             if (!req.body?.metadata) return {};
             try {
@@ -80,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
     const { userId, teamId, tmbId } = await authCert({ req, authToken: true });
+    console.log(req.body);
 
     const { files, bucketName, metadata } = await upload.doUpload(req, res);
 

@@ -62,6 +62,7 @@ import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from '@/global/core/app/modules/utils';
 import { AppTTSConfigType } from '@/types/app';
+import { useSpeech } from '@/web/common/hooks/useSpeech';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -148,6 +149,8 @@ const ChatBox = (
   }>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
+
+  const { isSpeaking, startSpeak, stopSpeak } = useSpeech();
 
   const isChatting = useMemo(
     () =>
@@ -858,7 +861,21 @@ const ChatBox = (
               bottom={['15px', '13px']}
               borderRadius={'md'}
               bg={TextareaDom.current?.value ? 'myBlue.600' : ''}
+              cursor={'pointer'}
               lineHeight={1}
+              onClick={() => {
+                if (isChatting) {
+                  return chatController.current?.abort('stop');
+                }
+                if (TextareaDom.current?.value) {
+                  return handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
+                }
+                // speech
+                if (isSpeaking) {
+                  return stopSpeak();
+                }
+                startSpeak();
+              }}
             >
               {isChatting ? (
                 <MyIcon
@@ -868,19 +885,23 @@ const ChatBox = (
                   cursor={'pointer'}
                   name={'stop'}
                   color={'gray.500'}
-                  onClick={() => chatController.current?.abort('stop')}
                 />
-              ) : (
+              ) : TextareaDom.current?.value ? (
                 <MyTooltip label={t('core.chat.Send Message')}>
                   <MyIcon
                     name={'core/chat/sendFill'}
                     width={'16px'}
                     height={'16px'}
-                    cursor={'pointer'}
-                    color={TextareaDom.current?.value ? 'white' : 'myBlue.600'}
-                    onClick={() => {
-                      handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
-                    }}
+                    color={'white'}
+                  />
+                </MyTooltip>
+              ) : (
+                <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>
+                  <MyIcon
+                    name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
+                    width={['16px', '22px']}
+                    height={['16px', '22px']}
+                    color={'myBlue.600'}
                   />
                 </MyTooltip>
               )}
