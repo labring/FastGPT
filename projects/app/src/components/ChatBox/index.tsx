@@ -99,7 +99,7 @@ type Props = {
   appAvatar?: string;
   userAvatar?: string;
   userGuideModule?: ModuleItemType;
-  active?: boolean;
+  active?: boolean; // can use
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
     responseText: string;
@@ -602,12 +602,7 @@ const ChatBox = (
           {/* chat history */}
           <Box id={'history'}>
             {chatHistory.map((item, index) => (
-              <Box
-                key={item.dataId}
-                flexDirection={'column'}
-                alignItems={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
-                py={5}
-              >
+              <Box key={item.dataId} py={5}>
                 {item.obj === 'Human' && (
                   <>
                     {/* control icon */}
