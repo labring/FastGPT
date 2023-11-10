@@ -88,11 +88,11 @@ function App({ Component, pageProps }: AppProps) {
       setLastRoute(router.asPath);
     };
   }, [router.asPath]);
-  ``;
+
   return (
     <>
       <Head>
-        <title>{feConfigs?.systemTitle || 'AI'}</title>
+        <title>{feConfigs?.systemTitle || 'FastGPT'}</title>
         <meta
           name="description"
           content="FastGPT is a knowledge-based question answering system built on the LLM. It offers out-of-the-box data processing and model invocation capabilities. Moreover, it allows for workflow orchestration through Flow visualization, thereby enabling complex question and answer scenarios!"

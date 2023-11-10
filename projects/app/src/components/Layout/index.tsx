@@ -67,7 +67,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   }, [loadGitStar, setScreenWidth]);
 
   const { data: unread = 0 } = useQuery(['getUnreadCount'], getUnreadCount, {
-    enabled: !!userInfo && feConfigs.isPlus,
+    enabled: !!userInfo && !!feConfigs.isPlus,
     refetchInterval: 10000
   });
 

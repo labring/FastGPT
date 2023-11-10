@@ -8,10 +8,16 @@ importers:
 
   .:
     dependencies:
+      multer:
+        specifier: 1.4.5-lts.1
+        version: registry.npmmirror.com/multer@1.4.5-lts.1
       openai:
         specifier: 4.16.1
         version: registry.npmmirror.com/openai@4.16.1(encoding@0.1.13)
     devDependencies:
+      '@types/multer':
+        specifier: ^1.4.10
+        version: registry.npmmirror.com/@types/multer@1.4.10
       husky:
         specifier: ^8.0.3
         version: registry.npmmirror.com/husky@8.0.3
@@ -307,8 +313,8 @@ importers:
         specifier: ^4.14.191
         version: registry.npmmirror.com/@types/lodash@4.14.200
       '@types/multer':
-        specifier: ^1.4.7
-        version: registry.npmmirror.com/@types/multer@1.4.9
+        specifier: ^1.4.10
+        version: registry.npmmirror.com/@types/multer@1.4.10
       '@types/node':
         specifier: ^20.8.5
         version: registry.npmmirror.com/@types/node@20.8.7
@@ -4522,10 +4528,10 @@ packages:
     version: 0.7.33
     dev: false
 
-  registry.npmmirror.com/@types/multer@1.4.9:
-    resolution: {integrity: sha512-9NSvPJ2E8bNTc8XtJq1Cimx2Wrn2Ah48F15B2Du/hM8a8CHLhVbJMlF3ZCqhvMdht7Sa+YdP0aKP7N4fxDcrrg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/multer/-/multer-1.4.9.tgz}
+  registry.npmmirror.com/@types/multer@1.4.10:
+    resolution: {integrity: sha512-6l9mYMhUe8wbnz/67YIjc7ZJyQNZoKq7fRXVf7nMdgWgalD0KyzJ2ywI7hoATUSXSbTu9q2HBiEwzy0tNN1v2w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/multer/-/multer-1.4.10.tgz}
     name: '@types/multer'
-    version: 1.4.9
+    version: 1.4.10
     dependencies:
       '@types/express': registry.npmmirror.com/@types/express@4.17.20
     dev: true
