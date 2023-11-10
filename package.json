@@ -8,6 +8,7 @@
     "format-doc": "zhlint --dir ./docSite *.md --fix"
   },
   "devDependencies": {
+    "@types/multer": "^1.4.10",
     "husky": "^8.0.3",
     "i18next": "^22.5.1",
     "lint-staged": "^13.2.1",
@@ -24,6 +25,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "multer": "1.4.5-lts.1",
     "openai": "4.16.1"
   }
 }

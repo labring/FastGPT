@@ -106,7 +106,9 @@ const iconPaths = {
   'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg'),
   'core/app/ttsFill': () => import('./icons/core/app/ttsFill.svg'),
   'common/playLight': () => import('./icons/common/playLight.svg'),
-  'core/chat/sendFill': () => import('./icons/core/chat/sendFill.svg')
+  'core/chat/sendFill': () => import('./icons/core/chat/sendFill.svg'),
+  'core/chat/recordFill': () => import('./icons/core/chat/recordFill.svg'),
+  'core/chat/stopSpeechFill': () => import('./icons/core/chat/stopSpeechFill.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

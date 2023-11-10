@@ -203,6 +203,9 @@
     },
     "input": {
       "Repeat Value": "有重复的值"
+    },
+    "speech": {
+      "error tip": "语音转文字失败"
     }
   },
   "core": {
@@ -226,8 +229,10 @@
     },
     "chat": {
       "Audio Speech Error": "语音播报异常",
+      "Record": "语音输入",
       "Restart": "重开对话",
-      "Send Message": "发送"
+      "Send Message": "发送",
+      "Stop Speak": "停止录音"
     },
     "dataset": {
       "Choose Dataset": "关联知识库",

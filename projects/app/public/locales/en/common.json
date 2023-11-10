@@ -203,6 +203,9 @@
     },
     "input": {
       "Repeat Value": "Repeat Value"
+    },
+    "speech": {
+      "error tip": "Speech Failed"
     }
   },
   "core": {
@@ -226,8 +229,10 @@
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
+      "Record": "Speech",
       "Restart": "Restart",
-      "Send Message": "Send Message"
+      "Send Message": "Send Message",
+      "Stop Speak": "Stop Speak"
     },
     "dataset": {
       "Choose Dataset": "Choose Dataset",
