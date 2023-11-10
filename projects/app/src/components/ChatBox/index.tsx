@@ -860,7 +860,7 @@ const ChatBox = (
               right={['12px', '14px']}
               bottom={['15px', '13px']}
               borderRadius={'md'}
-              bg={TextareaDom.current?.value ? 'myBlue.600' : ''}
+              // bg={TextareaDom.current?.value ? 'myBlue.600' : ''}
               cursor={'pointer'}
               lineHeight={1}
               onClick={() => {
@@ -871,10 +871,10 @@ const ChatBox = (
                   return handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
                 }
                 // speech
-                if (isSpeaking) {
-                  return stopSpeak();
-                }
-                startSpeak();
+                // if (isSpeaking) {
+                //   return stopSpeak();
+                // }
+                // startSpeak();
               }}
             >
               {isChatting ? (
@@ -886,22 +886,13 @@ const ChatBox = (
                   name={'stop'}
                   color={'gray.500'}
                 />
-              ) : TextareaDom.current?.value ? (
+              ) : (
                 <MyTooltip label={t('core.chat.Send Message')}>
                   <MyIcon
                     name={'core/chat/sendFill'}
-                    width={'16px'}
-                    height={'16px'}
-                    color={'white'}
-                  />
-                </MyTooltip>
-              ) : (
-                <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>
-                  <MyIcon
-                    name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
                     width={['16px', '22px']}
                     height={['16px', '22px']}
-                    color={'myBlue.600'}
+                    color={TextareaDom.current?.value ? 'myBlue.600' : 'myGray.400'}
                   />
                 </MyTooltip>
               )}
