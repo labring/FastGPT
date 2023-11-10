@@ -81,7 +81,10 @@ const QAImport = () => {
               重新生成预览
             </Button>
           )}
-          <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
+          <Button
+            isDisabled={uploading}
+            onClick={openConfirm(() => onclickUpload({ prompt: previewQAPrompt }))}
+          >
             {uploading ? <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box> : '确认导入'}
           </Button>
         </Flex>

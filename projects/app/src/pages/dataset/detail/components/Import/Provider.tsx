@@ -39,7 +39,7 @@ type useImportStoreType = {
   setSuccessChunks: Dispatch<SetStateAction<number>>;
   isUnselectedFile: boolean;
   totalChunks: number;
-  onclickUpload: (e: { files: FileItemType[] }) => void;
+  onclickUpload: (e: { prompt?: string }) => void;
   onReSplitChunks: () => void;
   price: number;
   uploading: boolean;
@@ -49,7 +49,7 @@ type useImportStoreType = {
   setReShowRePreview: Dispatch<SetStateAction<boolean>>;
 };
 const StateContext = createContext<useImportStoreType>({
-  onclickUpload: function (e: { files: FileItemType[] }): void {
+  onclickUpload: function (e: { prompt?: string }): void {
     throw new Error('Function not implemented.');
   },
   uploading: false,
@@ -125,7 +125,7 @@ const Provider = ({
 
   /* start upload data */
   const { mutate: onclickUpload, isLoading: uploading } = useRequest({
-    mutationFn: async () => {
+    mutationFn: async ({ prompt }: { prompt?: string }) => {
       let totalInsertion = 0;
       for await (const file of files) {
         const chunks = file.chunks;
@@ -150,7 +150,8 @@ const Provider = ({
           mode,
           onUploading: (insertLen) => {
             setSuccessChunks((state) => state + insertLen);
-          }
+          },
+          prompt
         });
         totalInsertion += insertLen;
       }
