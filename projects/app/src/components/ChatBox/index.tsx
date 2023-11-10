@@ -30,7 +30,7 @@ import {
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { VariableInputEnum } from '@/constants/app';

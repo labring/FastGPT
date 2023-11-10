@@ -1,8 +1,8 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { NextApiResponse } from 'next';
-import { countMessagesTokens, countPromptTokens } from '@/global/common/tiktoken';
-import { adaptRole_Chat2Message } from '@/utils/common/adapt/message';
+import { countMessagesTokens, countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
+import { adaptRole_Chat2Message } from '@fastgpt/global/core/chat/adapt';
 
 export type ChatCompletionResponseType = {
   streamResponse: any;

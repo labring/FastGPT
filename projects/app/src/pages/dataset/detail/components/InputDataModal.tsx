@@ -20,7 +20,7 @@ import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SetOneDatasetDataProps } from '@/global/core/api/datasetReq';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { countPromptTokens } from '@/global/common/tiktoken';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { feConfigs } from '@/web/common/system/staticData';

@@ -7,7 +7,7 @@ import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
 import { DatasetChunkItemType } from '@fastgpt/global/core/dataset/type';
-import { countPromptTokens } from '@/global/common/tiktoken';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDataProps } from '@/global/core/api/datasetReq.d';
 import { getVectorModel } from '@/service/core/ai/model';

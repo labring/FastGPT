@@ -5,7 +5,7 @@ import type { Edge, Node } from 'reactflow';
 import { connectionLineStyle } from '@/constants/flow';
 import { customAlphabet } from 'nanoid';
 import { EmptyModule, ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
-import { adaptRole_Message2Chat } from './common/adapt/message';
+import { adaptRole_Message2Chat } from '@fastgpt/global/core/chat/adapt';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const gptMessage2ChatType = (messages: ChatMessageItemType[]): ChatItemType[] => {

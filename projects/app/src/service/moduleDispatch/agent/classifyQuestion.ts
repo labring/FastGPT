@@ -1,4 +1,4 @@
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
@@ -7,7 +7,7 @@ import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/
 import { SystemInputEnum } from '@/constants/app';
 import { FlowNodeSpecialInputKeyEnum } from '@fastgpt/global/core/module/node/constant';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
-import { replaceVariable } from '@/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getCQModel } from '@/service/core/ai/model';

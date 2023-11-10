@@ -1,7 +1,7 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
-import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
+import type { ChatItemType } from '../../core/chat/type.d';
+import { ChatRoleEnum } from '../../core/chat/constants';
+import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constant';
+import type { ChatMessageItemType } from '../../core/ai/type.d';
 
 const chat2Message = {
   [ChatRoleEnum.AI]: ChatCompletionRequestMessageRoleEnum.Assistant,

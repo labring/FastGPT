@@ -2,7 +2,7 @@ import MyIcon from '@/components/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
-import { splitText2Chunks } from '@/global/common/string/tools';
+import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import {
   fileDownload,
@@ -26,7 +26,7 @@ import type {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { countPromptTokens } from '@/global/common/tiktoken';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
@@ -152,7 +152,6 @@ const FileSelect = ({
                 fileId
               }
             };
-            console.log(fileItem);
 
             onPushFiles([fileItem]);
             continue;

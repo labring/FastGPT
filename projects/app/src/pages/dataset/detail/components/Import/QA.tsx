@@ -5,7 +5,7 @@ import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
-import { replaceVariable } from '@/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 

@@ -4,7 +4,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { readFileSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
-import { getTikTokenEnc } from '@/global/common/tiktoken';
+import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import {
   defaultChatModels,

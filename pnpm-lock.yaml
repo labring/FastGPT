@@ -51,6 +51,9 @@ importers:
       encoding:
         specifier: ^0.1.13
         version: registry.npmmirror.com/encoding@0.1.13
+      js-tiktoken:
+        specifier: ^1.0.7
+        version: registry.npmmirror.com/js-tiktoken@1.0.7
       openai:
         specifier: ^4.16.1
         version: registry.npmmirror.com/openai@4.16.1(encoding@0.1.13)
@@ -203,9 +206,6 @@ importers:
       js-cookie:
         specifier: ^3.0.5
         version: registry.npmmirror.com/js-cookie@3.0.5
-      js-tiktoken:
-        specifier: ^1.0.7
-        version: registry.npmmirror.com/js-tiktoken@1.0.7
       jschardet:
         specifier: ^3.0.0
         version: registry.npmmirror.com/jschardet@3.0.0

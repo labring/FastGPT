@@ -1,4 +1,3 @@
-import type { Tiktoken } from 'js-tiktoken';
 import {
   AudioSpeechModelType,
   ChatModelItemType,
@@ -20,7 +19,6 @@ export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
-  var TikToken: Tiktoken;
 
   var vectorModels: VectorModelItemType[];
   var chatModels: ChatModelItemType[];
