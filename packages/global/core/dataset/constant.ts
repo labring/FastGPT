@@ -36,6 +36,31 @@ export const DatasetCollectionTypeMap = {
   }
 };
 
+export enum DatasetDataIndexTypeEnum {
+  chunk = 'chunk',
+  summary = 'summary',
+  hypothetical = 'hypothetical',
+  qa = 'qa',
+  custom = 'custom'
+}
+export const DatasetDataIndexTypeMap = {
+  [DatasetDataIndexTypeEnum.chunk]: {
+    name: 'dataset.data.indexes.chunk'
+  },
+  [DatasetDataIndexTypeEnum.summary]: {
+    name: 'dataset.data.indexes.summary'
+  },
+  [DatasetDataIndexTypeEnum.hypothetical]: {
+    name: 'dataset.data.indexes.hypothetical'
+  },
+  [DatasetDataIndexTypeEnum.qa]: {
+    name: 'dataset.data.indexes.qa'
+  },
+  [DatasetDataIndexTypeEnum.custom]: {
+    name: 'dataset.data.indexes.custom'
+  }
+};
+
 export enum TrainingModeEnum {
   'qa' = 'qa',
   'index' = 'index'
@@ -44,21 +69,5 @@ export const TrainingTypeMap = {
   [TrainingModeEnum.qa]: 'qa',
   [TrainingModeEnum.index]: 'index'
 };
-
-export enum DatasetSpecialIdEnum {
-  manual = 'manual',
-  mark = 'mark'
-}
-export const datasetSpecialIdMap = {
-  [DatasetSpecialIdEnum.manual]: {
-    name: 'kb.Manual Data',
-    sourceName: 'kb.Manual Input'
-  },
-  [DatasetSpecialIdEnum.mark]: {
-    name: 'kb.Mark Data',
-    sourceName: 'kb.Manual Mark'
-  }
-};
-export const datasetSpecialIds: string[] = [DatasetSpecialIdEnum.manual, DatasetSpecialIdEnum.mark];
 
 export const FolderAvatarSrc = '/imgs/files/folder.svg';

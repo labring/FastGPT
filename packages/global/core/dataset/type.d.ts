@@ -1,5 +1,10 @@
 import { PermissionTypeEnum } from '../../support/permission/constant';
-import { DatasetCollectionTypeEnum, DatasetTypeEnum, TrainingModeEnum } from './constant';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetDataIndexTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from './constant';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -50,6 +55,24 @@ export type DatasetTrainingSchemaType = {
   a: string;
 };
 
+export type DatasetDataSchemaType = {
+  _id: string;
+  userId: string;
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+  datasetId: string;
+  collectionId: string;
+  q: string; // large chunks or question
+  a: string; // answer or custom content
+  indexes: {
+    type: `${DatasetDataIndexTypeEnum}`;
+    dataId: string; // pg data id
+    text: string;
+  }[];
+};
+
 export type CollectionWithDatasetType = Omit<DatasetCollectionSchemaType, 'datasetId'> & {
   datasetId: DatasetSchemaType;
 };
@@ -64,12 +87,8 @@ export type DatasetCollectionItemType = DatasetCollectionSchemaType & {
 /* ================= data ===================== */
 export type PgRawDataItemType = {
   id: string;
-  q: string;
-  a: string;
+  data_id: string;
   team_id: string;
-  tmb_id: string;
-  dataset_id: string;
-  collection_id: string;
 };
 export type PgDataItemType = {
   id: string;
