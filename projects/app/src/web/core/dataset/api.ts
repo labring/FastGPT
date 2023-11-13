@@ -75,7 +75,7 @@ export const getDatasetDataList = (data: GetDatasetDataListProps) =>
  * export and download data
  */
 export const exportDatasetData = (data: { datasetId: string }) =>
-  fetch(`/api/core/dataset/data/exportAll?datasetId=${data.datasetId}`, {
+  fetch(`/api/core/dataset/exportAll?datasetId=${data.datasetId}`, {
     method: 'GET',
     headers: {
       token: getToken()
@@ -88,7 +88,7 @@ export const exportDatasetData = (data: { datasetId: string }) =>
       }
       return res.blob();
     })
-    .then((blob) => download(blob, 'dataset.csv', 'text/csv'));
+    .then((blob) => download(blob, 'dataset.csv', 'text/csv;charset=utf-8;'));
 
 export const getDatasetDataItemById = (dataId: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { dataId });

@@ -2,11 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
-import QueryStream from 'pg-query-stream';
-import { PgClient } from '@fastgpt/service/common/pg';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
-import { responseWriteController } from '@fastgpt/service/common/response';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetIdTreeByTopDatasetId } from '@fastgpt/service/core/dataset/controller';
@@ -59,61 +55,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('数据量超出 10 万，无法导出');
     }
 
-    // global.pgClient.connect((err, client, done) => {
-    //   if (err) {
-    //     console.error(err);
-    //     res.end('Error connecting to database');
-    //     return;
-    //   }
-    //   if (!client) return;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
+    res.setHeader('Content-Disposition', 'attachment; filename=dataset.csv; ');
 
-    //   // create pg select stream
-    //   const query = new QueryStream(
-    //     `SELECT q, a FROM ${PgDatasetTableName} where dataset_id IN (${exportIds
-    //       .map((id) => `'${id}'`)
-    //       .join(',')})`
-    //   );
-    //   const stream = client.query(query);
+    const cursor = MongoDatasetData.find<{
+      _id: string;
+      collectionId: { name: string };
+      q: string;
+      a: string;
+    }>(
+      {
+        datasetId: { $in: exportIds }
+      },
+      'q a'
+    ).cursor();
 
-    //   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    //   res.setHeader('Content-Disposition', 'attachment; filename=dataset.csv; ');
+    res.write('\uFEFFindex,content');
 
-    //   const write = responseWriteController({
-    //     res,
-    //     readStream: stream
-    //   });
+    for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
+      if (!res.writable) break;
+      const q = doc.q.replace(/"/g, '""') || '';
+      const a = doc.a.replace(/"/g, '""') || '';
+      res.write(`\n"${q}","${a}"`);
+    }
 
-    //   write('index,content');
+    try {
+      cursor.close();
+      await MongoUser.findByIdAndUpdate(userId, {
+        'limit.exportKbTime': new Date()
+      });
+    } catch (error) {}
 
-    //   // parse data every row
-    //   stream.on('data', ({ q, a }: { q: string; a: string }) => {
-    //     if (res.closed) {
-    //       return stream.destroy();
-    //     }
-    //     q = q.replace(/"/g, '""');
-    //     a = a.replace(/"/g, '""');
-    //     // source = source?.replace(/"/g, '""');
-
-    //     write(`\n"${q}","${a || ''}"`);
-    //   });
-    //   // finish
-    //   stream.on('end', async () => {
-    //     try {
-    //       // update export time
-    //       await MongoUser.findByIdAndUpdate(userId, {
-    //         'limit.exportKbTime': new Date()
-    //       });
-    //     } catch (error) {}
-
-    //     // close response
-    //     done();
-    //     res.end();
-    //   });
-    //   stream.on('error', (err) => {
-    //     done(err);
-    //     res.end('Error exporting data');
-    //   });
-    // });
+    res.end();
   } catch (err) {
     res.status(500);
     jsonRes(res, {
