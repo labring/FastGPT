@@ -12,7 +12,7 @@ import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
-import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
+import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import MySelect from '@/components/Select';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { vectorModelList } from '@/web/common/system/staticData';

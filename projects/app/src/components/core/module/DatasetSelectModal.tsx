@@ -14,7 +14,7 @@ import {
 import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import type { SelectedDatasetType } from '@/types/core/dataset';
+import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';

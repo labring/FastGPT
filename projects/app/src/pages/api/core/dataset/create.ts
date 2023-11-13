@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
+import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { createDefaultCollection } from './collection/create';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 

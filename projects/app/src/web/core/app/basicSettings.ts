@@ -8,7 +8,7 @@ import {
   FlowNodeSpecialInputKeyEnum
 } from '@fastgpt/global/core/module/node/constant';
 import { SystemInputEnum } from '@/constants/app';
-import type { SelectedDatasetType } from '@/types/core/dataset';
+import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type.d';
 import type { AIChatProps } from '@/types/core/aiChat';
 import { getGuideModule, splitGuideModule } from '@/global/core/app/modules/utils';

@@ -414,7 +414,6 @@ const Kb = () => {
             <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
               <Flex>
                 {dataset.tags
-                  .split(' ')
                   .filter((item) => item)
                   .map((tag, i) => (
                     <Tag key={i} mr={2} mb={2}>

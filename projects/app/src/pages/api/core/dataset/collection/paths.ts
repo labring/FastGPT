@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import type { DatasetPathItemType } from '@/types/core/dataset';
+import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
 import { getDatasetCollectionPaths } from '@fastgpt/service/core/dataset/collection/utils';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       parentId
     });
 
-    jsonRes<DatasetPathItemType[]>(res, {
+    jsonRes<ParentTreePathItemType[]>(res, {
       data: paths
     });
   } catch (err) {

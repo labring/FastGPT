@@ -292,17 +292,32 @@
       "Select One Collection To Store": "选择一个文件进行存储"
     },
     "data": {
+      "Add Index": "新增自定义索引",
       "Can not delete tip": "无修改权限",
       "Can not edit": "无编辑权限",
+      "Custom Index Number": "自定义索引{{number}}",
+      "Default Index": "默认索引",
+      "Delete Success Tip": "删除成功",
       "Delete Tip": "确认删除该条数据？",
       "File import": "文件导入",
+      "Index Edit": "数据索引",
+      "Index Placeholder": "输入索引文本内容",
       "Input Data": "导入新数据",
       "Input Success Tip": "导入数据成功",
       "Update Data": "更新数据",
-      "Update Success Tip": "更新数据成功"
+      "Update Success Tip": "更新数据成功",
+      "edit": {
+        "Content": "数据内容",
+        "Course": "说明文档",
+        "Delete": "删除数据",
+        "Index": "数据索引({{amount}})"
+      }
     },
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
-    "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
+    "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
+    "test": {
+      "noResult": "搜索结果为空"
+    }
   },
   "error": {
     "team": {

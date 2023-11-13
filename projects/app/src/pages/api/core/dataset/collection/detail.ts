@@ -27,8 +27,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     jsonRes<DatasetCollectionItemType>(res, {
       data: {
         ...collection,
-        datasetId: collection.datasetId._id,
-        canWrite
+        canWrite,
+        sourceName: collection?.name,
+        sourceId: collection?.metadata?.fileId || collection?.metadata?.rawLink
       }
     });
   } catch (err) {

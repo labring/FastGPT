@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { DatasetItemType } from '@/types/core/dataset';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
 import { defaultDatasetDetail } from '@/constants/dataset';
 import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
@@ -69,7 +69,7 @@ export const useDatasetStore = create<State>()(
                 ? {
                     ...item,
                     ...data,
-                    tags: data.tags || ''
+                    tags: data.tags || []
                   }
                 : item
             );

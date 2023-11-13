@@ -8,7 +8,7 @@ import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { countModelPrice } from '@/service/support/wallet/bill/utils';
-import { searchDatasetData } from '@/service/core/dataset/data/utils';
+import { searchDatasetData } from '@/service/core/dataset/data/pg';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';

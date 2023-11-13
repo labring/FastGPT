@@ -31,7 +31,7 @@ import { AIChatProps } from '@/types/core/aiChat';
 import { chatModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { SelectedDatasetType } from '@/types/core/dataset';
+import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useQuery } from '@tanstack/react-query';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';

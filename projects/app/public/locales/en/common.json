@@ -292,17 +292,32 @@
       "Select One Collection To Store": "Select the collection to store"
     },
     "data": {
+      "Add Index": "Add Index",
       "Can not delete tip": "No modification permission",
       "Can not edit": "No edit permission",
+      "Custom Index Number": "Custom index{{number}}",
+      "Default Index": "Default Index",
+      "Delete Success Tip": "",
       "Delete Tip": "Confirm to delete the data?",
       "File import": "File Import",
+      "Index Edit": "Data Index",
+      "Index Placeholder": "Enter the index text content",
       "Input Data": "Import Data",
       "Input Success Tip": "Succeeded in importing data",
       "Update Data": "Update Data",
-      "Update Success Tip": "Update data successfully"
+      "Update Success Tip": "Update data successfully",
+      "edit": {
+        "Content": "Content",
+        "Course": "Document",
+        "Delete": "Delete",
+        "Index": "Index({{amount}})"
+      }
     },
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
-    "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
+    "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
+    "test": {
+      "noResult": "Search results are empty"
+    }
   },
   "error": {
     "team": {

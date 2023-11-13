@@ -481,8 +481,9 @@ const Settings = ({ appId }: { appId: string }) => {
           gridGap={[2, 4]}
         >
           {selectDatasets.map((item) => (
-            <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')} overflow={'hidden'}>
+            <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
               <Flex
+                overflow={'hidden'}
                 alignItems={'center'}
                 p={2}
                 bg={'white'}

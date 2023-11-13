@@ -19,15 +19,13 @@ import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
 import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
-import type {
-  DatasetChunkItemType,
-  DatasetCollectionSchemaType
-} from '@fastgpt/global/core/dataset/type';
+import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -37,7 +35,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 export type FileItemType = {
   id: string; // fileId / raw Link
   filename: string;
-  chunks: DatasetChunkItemType[];
+  chunks: PushDatasetDataChunkProps[];
   text: string; // raw text
   icon: string;
   tokens: number; // total tokens

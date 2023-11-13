@@ -2,7 +2,7 @@ import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core
 import type { RequestPaging } from '@/types';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { SearchTestItemType } from '@/types/core/dataset';
-import { DatasetChunkItemType, UploadChunkItemType } from '@fastgpt/global/core/dataset/type';
+import { UploadChunkItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 
@@ -10,18 +10,10 @@ import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant'
 export type DatasetUpdateParams = {
   id: string;
   parentId?: string;
-  tags?: string;
+  tags?: string[];
   name?: string;
   avatar?: string;
   permission?: `${PermissionTypeEnum}`;
-};
-export type CreateDatasetParams = {
-  parentId?: string;
-  name: string;
-  tags: string;
-  avatar: string;
-  vectorModel?: string;
-  type: `${DatasetTypeEnum}`;
 };
 
 export type SearchTestProps = {
@@ -54,20 +46,6 @@ export type UpdateDatasetCollectionParams = {
 };
 
 /* ==== data ===== */
-export type SetOneDatasetDataProps = {
-  id?: string;
-  collectionId: string;
-  q?: string; // embedding content
-  a?: string; // bonus content
-};
-export type PushDataProps = {
-  collectionId: string;
-  data: DatasetChunkItemType[];
-  mode: `${TrainingModeEnum}`;
-  prompt?: string;
-  billId?: string;
-};
-
 export type GetDatasetDataListProps = RequestPaging & {
   searchText?: string;
   collectionId: string;

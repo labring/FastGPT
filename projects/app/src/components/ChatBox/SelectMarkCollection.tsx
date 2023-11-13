@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ModalBody, useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../Avatar';
@@ -8,6 +8,7 @@ import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/
 import dynamic from 'next/dynamic';
 import { AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
+import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
@@ -163,15 +164,13 @@ const SelectMarkCollection = ({
       {adminMarkData.datasetId && adminMarkData.collectionId && (
         <InputDataModal
           onClose={onClose}
-          datasetId={adminMarkData.datasetId}
-          defaultValues={{
+          collectionId={adminMarkData.collectionId}
+          defaultValue={{
             id: adminMarkData.dataId,
-            collectionId: adminMarkData.collectionId,
-            sourceName: '手动标注',
             q: adminMarkData.q,
-            a: adminMarkData.a
+            a: adminMarkData.a,
+            indexes: [getDefaultIndex({ dataId: `${Date.now()}` })]
           }}
-          canWrite
           onSuccess={(data) => {
             if (!data.q || !adminMarkData.datasetId || !adminMarkData.collectionId || !data.id) {
               return onClose();

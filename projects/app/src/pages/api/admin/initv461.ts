@@ -19,23 +19,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authCert({ req, authRoot: true });
     await connectToDatabase();
     success = 0;
-    try {
-      PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN dataset_id DROP NOT NULL;`);
-      PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN collection_id DROP NOT NULL;`);
-      await PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN data_id CHAR(50);`);
-    } catch (error) {
-      console.log(error);
-      console.log('column exits');
-    }
 
     try {
-      await PgClient.query(`ALTER TABLE ${PgDatasetTableName} DROP COLUMN inited;`);
+      await Promise.allSettled([
+        await PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN data_id VARCHAR(50);`),
+        PgClient.query(`ALTER TABLE ${PgDatasetTableName} DROP COLUMN inited;`),
+        PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN q DROP NOT NULL;`), // q can null
+        PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN a DROP NOT NULL;`), // a can null
+        PgClient.query(
+          `ALTER TABLE ${PgDatasetTableName} ALTER COLUMN team_id TYPE VARCHAR(50) USING team_id::VARCHAR(50);`
+        ), // team_id varchar
+        PgClient.query(
+          `ALTER TABLE ${PgDatasetTableName} ALTER COLUMN tmb_id TYPE VARCHAR(50) USING tmb_id::VARCHAR(50);`
+        ), // tmb_id varchar
+        PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN team_id SET NOT NULL;`), // team_id not null
+        PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN tmb_id SET NOT NULL;`), // tmb_id not null
+        PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN dataset_id SET NOT NULL;`), // dataset_id not null
+        PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN collection_id SET NOT NULL;`) // collection_id not null
+      ]);
     } catch (error) {}
 
     const { rows } = await PgClient.query(
       `SELECT count(id) FROM ${PgDatasetTableName} WHERE data_id IS NULL`
     );
-    console.log('totalCount', rows);
+    console.log('totalCount', rows[0]);
 
     jsonRes(res, {
       data: await init(limit)
@@ -65,10 +72,12 @@ async function init(limit: number) {
   const { rows } = await PgClient.query<PgItemType>(
     `SELECT id,q,a,dataset_id,collection_id,team_id,tmb_id FROM ${PgDatasetTableName} WHERE data_id IS NULL LIMIT ${limit};`
   );
+  if (rows.length === 0) return;
 
   await Promise.all(rows.map(initData));
 
   async function initData(item: PgItemType) {
+    let id = '';
     try {
       // create mongo data and update data_id
       const { _id } = await MongoDatasetData.create({
@@ -80,18 +89,25 @@ async function init(limit: number) {
         a: item.a,
         indexes: [
           {
+            defaultIndex: !item.a,
             type: item.a ? DatasetDataIndexTypeEnum.qa : DatasetDataIndexTypeEnum.chunk,
             dataId: item.id,
             text: item.q
           }
         ]
       });
+      id = _id;
       await PgClient.query(
-        `UPDATE ${PgDatasetTableName} SET data_id='${_id}' WHERE id='${String(item.id)}';`
+        `UPDATE ${PgDatasetTableName} SET data_id='${String(_id)}' WHERE id='${item.id}';`
       );
     } catch (error) {
+      try {
+        if (id) {
+          await MongoDatasetData.findByIdAndDelete(id);
+        }
+      } catch (error) {}
       console.log(error);
-      await delay(1000);
+      await delay(500);
       return initData(item);
     }
   }

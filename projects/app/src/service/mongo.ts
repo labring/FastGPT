@@ -48,7 +48,7 @@ async function initRootUser() {
       const { _id } = await MongoUser.create({
         username: 'root',
         password: hashStr(psw),
-        balance: 999999 * PRICE_SCALE
+        balance: 9999 * PRICE_SCALE
       });
       rootId = _id;
     }

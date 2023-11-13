@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { DatasetItemType } from '@/types/core/dataset';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ComponentRef } from './components/Info';
@@ -77,7 +77,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   useQuery([datasetId], () => loadDatasetDetail(datasetId), {
     onSuccess(res) {
       form.reset(res);
-      InfoRef.current?.initInput(res.tags);
+      InfoRef.current?.initInput(res.tags?.join(' '));
     },
     onError(err: any) {
       router.replace(`/dataset/list`);

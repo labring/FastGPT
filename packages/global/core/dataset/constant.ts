@@ -38,9 +38,9 @@ export const DatasetCollectionTypeMap = {
 
 export enum DatasetDataIndexTypeEnum {
   chunk = 'chunk',
+  qa = 'qa',
   summary = 'summary',
   hypothetical = 'hypothetical',
-  qa = 'qa',
   custom = 'custom'
 }
 export const DatasetDataIndexTypeMap = {
@@ -62,12 +62,28 @@ export const DatasetDataIndexTypeMap = {
 };
 
 export enum TrainingModeEnum {
-  'qa' = 'qa',
-  'index' = 'index'
+  'chunk' = 'chunk',
+  'qa' = 'qa'
+  // 'hypothetical' = 'hypothetical',
+  // 'summary' = 'summary',
+  // 'multipleIndex' = 'multipleIndex'
 }
 export const TrainingTypeMap = {
-  [TrainingModeEnum.qa]: 'qa',
-  [TrainingModeEnum.index]: 'index'
+  [TrainingModeEnum.chunk]: {
+    name: 'chunk'
+  },
+  [TrainingModeEnum.qa]: {
+    name: 'qa'
+  }
+  // [TrainingModeEnum.hypothetical]: {
+  //   name: 'hypothetical'
+  // },
+  // [TrainingModeEnum.summary]: {
+  //   name: 'summary'
+  // },
+  // [TrainingModeEnum.multipleIndex]: {
+  //   name: 'multipleIndex'
+  // }
 };
 
 export const FolderAvatarSrc = '/imgs/files/folder.svg';

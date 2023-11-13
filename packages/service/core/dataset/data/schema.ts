@@ -43,6 +43,10 @@ const DatasetDataSchema = new Schema({
   indexes: {
     type: [
       {
+        defaultIndex: {
+          type: Boolean,
+          default: false
+        },
         type: {
           type: String,
           enum: Object.keys(DatasetDataIndexTypeMap),
