@@ -67,7 +67,7 @@ type PgItemType = {
   tmb_id: string;
 };
 
-async function init(limit: number) {
+async function init(limit: number): Promise<any> {
   // get limit data where data_id is null
   const { rows } = await PgClient.query<PgItemType>(
     `SELECT id,q,a,dataset_id,collection_id,team_id,tmb_id FROM ${PgDatasetTableName} WHERE data_id IS NULL LIMIT ${limit};`
@@ -76,7 +76,7 @@ async function init(limit: number) {
 
   await Promise.all(rows.map(initData));
 
-  async function initData(item: PgItemType) {
+  async function initData(item: PgItemType): Promise<any> {
     let id = '';
     try {
       // create mongo data and update data_id

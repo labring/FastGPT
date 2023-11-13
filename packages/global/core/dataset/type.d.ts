@@ -93,7 +93,7 @@ export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel'> & {
 /* ================= collection ===================== */
 export type DatasetCollectionItemType = CollectionWithDatasetType & {
   canWrite: boolean;
-  sourceName?: string;
+  sourceName: string;
   sourceId?: string;
 };
 
@@ -102,7 +102,7 @@ export type DatasetDataItemType = {
   id: string;
   datasetId: string;
   collectionId: string;
-  sourceName?: string;
+  sourceName: string;
   sourceId?: string;
   q: string;
   a: string;

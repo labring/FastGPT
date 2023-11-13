@@ -50,5 +50,7 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   type: 'file',
   updateTime: new Date(),
   metadata: {},
-  canWrite: false
+  canWrite: false,
+  sourceName: '',
+  sourceId: ''
 };

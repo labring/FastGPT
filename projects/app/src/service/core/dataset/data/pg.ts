@@ -102,7 +102,7 @@ export async function deletePgDataById(
   where: ['id' | 'dataset_id' | 'collection_id' | 'data_id', string] | string
 ) {
   let retry = 2;
-  async function deleteData() {
+  async function deleteData(): Promise<any> {
     try {
       await PgClient.delete(PgDatasetTableName, {
         where: [where]
