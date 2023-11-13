@@ -59,7 +59,8 @@ const defaultFeConfigs: FeConfigsType = {
   limit: {
     exportLimitMinutes: 0
   },
-  scripts: []
+  scripts: [],
+  favicon: '/favicon.ico'
 };
 
 export function initGlobal() {
