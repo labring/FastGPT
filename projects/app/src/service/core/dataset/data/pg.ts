@@ -6,6 +6,8 @@ import { delay } from '@/utils/tools';
 import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { PostReRankResponse } from '@fastgpt/global/core/ai/api';
 
 export async function insertData2Pg({
   mongoDataId,
@@ -142,6 +144,8 @@ export async function searchDatasetData({
     input: [text]
   });
 
+  const minLimit = global.systemEnv.pluginBaseUrl ? 100 : limit * 3;
+
   const results: any = await PgClient.query(
     `BEGIN;
     SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
@@ -151,7 +155,7 @@ export async function searchDatasetData({
       .map((id) => `'${String(id)}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]
-    }]' limit ${limit * 2};
+    }]' limit ${minLimit};
     COMMIT;`
   );
 
@@ -205,8 +209,52 @@ export async function searchDatasetData({
     })
     .filter((item) => item !== null) as SearchDataResponseItemType[];
 
+  // ReRank result
+  const reRankResult = await reRankSearchResult({
+    query: text,
+    data: formatResult
+  });
+
+  const filterReRankResult = reRankResult.filter((item) => item.score > similarity).slice(0, limit);
+
   return {
-    searchRes: formatResult.slice(0, limit),
+    searchRes: filterReRankResult,
     tokenLen
   };
+}
+
+// plus reRank search result
+export async function reRankSearchResult({
+  data,
+  query
+}: {
+  data: SearchDataResponseItemType[];
+  query: string;
+}): Promise<SearchDataResponseItemType[]> {
+  if (!global.systemEnv.pluginBaseUrl) return data;
+  try {
+    const result = await POST<PostReRankResponse>('/core/ai/retrival/rerank', {
+      query,
+      inputs: data.map((item) => ({
+        id: item.id,
+        text: `${item.q}\n${item.a}`.trim()
+      }))
+    });
+
+    // merge
+    return result
+      .map((item) => {
+        const target = data.find((dataItem) => dataItem.id === item.id);
+        if (!target) return null;
+        return {
+          ...target,
+          score: item.score ?? target.score
+        };
+      })
+      .filter((item) => item) as SearchDataResponseItemType[];
+  } catch (error) {
+    console.log(error);
+
+    return data;
+  }
 }

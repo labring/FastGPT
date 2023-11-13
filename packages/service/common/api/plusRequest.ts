@@ -15,9 +15,6 @@ interface ResponseDataType {
  * 请求开始
  */
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
-  if (config.headers) {
-    config.headers.rootkey = process.env.ROOT_KEY;
-  }
   return config;
 }
 
@@ -62,7 +59,8 @@ const instance = axios.create({
   timeout: 60000, // 超时时间
   headers: {
     'content-type': 'application/json',
-    'Cache-Control': 'no-cache'
+    'Cache-Control': 'no-cache',
+    rootkey: process.env.ROOT_KEY
   }
 });
 

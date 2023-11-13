@@ -27,8 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       url,
       data,
       {
-        // @ts-ignore
-        headers: req.headers
+        headers: {
+          ...req.headers,
+          // @ts-ignore
+          rootkey: undefined
+        }
       },
       method
     );

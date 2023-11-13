@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import { ChatContextFilter } from '@/service/common/tiktoken';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
