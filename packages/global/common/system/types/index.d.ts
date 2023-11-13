@@ -23,6 +23,7 @@ export type FeConfigsType = {
     exportLimitMinutes?: number;
   };
   scripts?: { [key: string]: string }[];
+  favicon?: string;
 };
 
 export type SystemEnvType = {
