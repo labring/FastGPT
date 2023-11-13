@@ -69,7 +69,7 @@ export async function createDefaultTeam({
   userId,
   teamName = 'My Team',
   avatar = '/icon/logo.svg',
-  balance = 0,
+  balance,
   maxSize = 5
 }: {
   userId: string;
@@ -116,7 +116,7 @@ export async function createDefaultTeam({
       },
       {
         $set: {
-          balance,
+          ...(balance !== undefined && { balance }),
           maxSize
         }
       }

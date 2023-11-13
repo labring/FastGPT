@@ -23,6 +23,7 @@ const PromotionRecordSchema = new Schema({
     enum: ['pay', 'register']
   },
   amount: {
+    // 1 * PRICE_SCALE
     type: Number,
     required: true
   }
