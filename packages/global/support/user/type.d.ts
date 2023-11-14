@@ -24,6 +24,7 @@ export type UserModelSchema = {
 
 export type UserType = {
   _id: string;
+  memberName: string; // in team alias
   username: string;
   avatar: string;
   balance: number;

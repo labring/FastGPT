@@ -1,5 +1,14 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Box, Flex, Button, useDisclosure, useTheme, Divider, Select } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Button,
+  useDisclosure,
+  useTheme,
+  Divider,
+  Select,
+  Input
+} from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -20,6 +29,7 @@ import { getLangStore, LangEnum, langMap, setLangStore } from '@/web/common/util
 import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { putUpdateMemberName } from '@/web/support/user/team/api';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'), {
@@ -153,6 +163,26 @@ const UserInfo = () => {
         ml={[0, 10]}
         mt={[6, 0]}
       >
+        {feConfigs.isPlus && (
+          <Flex mb={4} alignItems={'center'} w={['85%', '300px']}>
+            <Box flex={'0 0 80px'}>{t('user.Member Name')}:&nbsp;</Box>
+            <Input
+              flex={1}
+              defaultValue={userInfo?.memberName || 'Member'}
+              title={t('user.Edit name')}
+              borderColor={'transparent'}
+              pl={'10px'}
+              transform={'translateX(-11px)'}
+              onBlur={(e) => {
+                const val = e.target.value;
+                if (val === userInfo?.memberName) return;
+                try {
+                  putUpdateMemberName(val);
+                } catch (error) {}
+              }}
+            />
+          </Flex>
+        )}
         <Flex alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>

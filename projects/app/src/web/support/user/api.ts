@@ -12,7 +12,8 @@ export const sendAuthCode = (data: {
   googleToken: string;
 }) => POST(`/plusApi/support/user/inform/sendAuthCode`, data);
 
-export const getTokenLogin = () => GET<UserType>('/user/account/tokenLogin');
+export const getTokenLogin = () =>
+  GET<UserType>('/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginProps) =>
   POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
 

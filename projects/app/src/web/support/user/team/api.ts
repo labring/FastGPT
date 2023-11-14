@@ -32,6 +32,8 @@ export const postInviteTeamMember = (data: InviteMemberProps) =>
   POST<InviteMemberResponse>(`/plusApi/support/user/team/member/invite`, data);
 export const putUpdateMember = (data: UpdateTeamMemberProps) =>
   PUT(`/plusApi/support/user/team/member/update`, data);
+export const putUpdateMemberName = (name: string) =>
+  PUT(`/plusApi/support/user/team/member/updateName`, { name });
 export const delRemoveMember = (props: DelMemberProps) =>
   DELETE(`/plusApi/support/user/team/member/delete`, props);
 export const updateInviteResult = (data: UpdateInviteProps) =>

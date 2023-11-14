@@ -55,6 +55,7 @@ export async function getTeamInfoByTmbId({
     userId: String(tmb.userId),
     teamId: String(tmb.teamId),
     teamName: tmb.team.name,
+    memberName: tmb.name,
     avatar: tmb.team.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),
@@ -103,6 +104,7 @@ export async function createDefaultTeam({
     await TeamMember.insertOne({
       teamId: insertedId,
       userId,
+      name: 'Owner',
       role: TeamMemberRoleEnum.owner,
       status: TeamMemberStatusEnum.active,
       createTime: new Date(),

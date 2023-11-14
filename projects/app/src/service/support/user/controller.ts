@@ -19,6 +19,7 @@ export async function getUserDetail({
 
   return {
     _id: user._id,
+    memberName: team.memberName,
     username: user.username,
     avatar: user.avatar,
     balance: user.balance,

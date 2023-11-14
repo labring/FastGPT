@@ -306,7 +306,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                         <Td display={'flex'} alignItems={'center'}>
                           <Avatar src={item.avatar} w={['18px', '22px']} />
                           <Box flex={'1 0 0'} w={0} ml={1} className={'textEllipsis'}>
-                            {item.memberUsername}
+                            {item.memberName}
                           </Box>
                         </Td>
                         <Td>{t(TeamMemberRoleMap[item.role]?.label || '')}</Td>
@@ -383,7 +383,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                           }),
                                         undefined,
                                         t('user.team.Remove Member Confirm Tip', {
-                                          username: item.memberUsername
+                                          username: item.memberName
                                         })
                                       )()
                                   }
