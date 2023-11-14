@@ -24,6 +24,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getGFSCollection } from '@fastgpt/service/common/file/gridfs/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -219,7 +220,7 @@ async function initDatasetAndApp() {
 }
 async function initCollectionFileTeam(limit: number) {
   /* init user default Team */
-  const DatasetFile = connectionMongo.connection.db.collection(`dataset.files`);
+  const DatasetFile = getGFSCollection('dataset');
   const matchWhere = {
     $or: [{ 'metadata.teamId': { $exists: false } }, { 'metadata.teamId': null }]
   };

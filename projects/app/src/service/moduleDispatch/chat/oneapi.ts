@@ -112,6 +112,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature,
       max_tokens,
       stream,
+      seed: temperature < 0.3 ? 1 : undefined,
       messages: [
         ...(modelConstantsData.defaultSystemChatPrompt
           ? [

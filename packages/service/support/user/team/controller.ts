@@ -17,7 +17,6 @@ export async function getTeamInfoByTmbId({
   if (!tmbId && !userId) {
     return Promise.reject('tmbId or userId is required');
   }
-
   const db = connectionMongo?.connection?.db;
 
   const TeamMember = db.collection(TeamMemberCollectionName);
@@ -48,7 +47,7 @@ export async function getTeamInfoByTmbId({
   const tmb = results[0];
 
   if (!tmb) {
-    return Promise.reject('team not exist');
+    return Promise.reject('member not exist');
   }
 
   return {

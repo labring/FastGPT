@@ -100,7 +100,9 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     mutationFn: delRemoveMember,
     onSuccess() {
       refetchMembers();
-    }
+    },
+    successToast: t('user.team.Remove Member Success'),
+    errorToast: t('user.team.Remove Member Failed')
   });
   const { mutate: onLeaveTeam, isLoading: isLoadingLeaveTeam } = useRequest({
     mutationFn: async (teamId?: string) => {
