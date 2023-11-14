@@ -38,7 +38,7 @@ import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/system/staticData';
 import MyTooltip from '@/components/MyTooltip';

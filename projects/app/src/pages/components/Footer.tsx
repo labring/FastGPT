@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
 import { useRouter } from 'next/router';
 import CommunityModal from '@/components/CommunityModal';

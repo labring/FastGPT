@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -25,7 +25,7 @@ import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { getLangStore, LangEnum, langMap, setLangStore } from '@/web/common/utils/i18n';
+import { langMap, setLngStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
@@ -72,8 +72,6 @@ const UserInfo = () => {
     fileType: '.jpg,.png',
     multiple: false
   });
-
-  const [language, setLanguage] = useState<`${LangEnum}`>(getLangStore());
 
   const onclickSave = useCallback(
     async (data: UserType) => {
@@ -198,17 +196,15 @@ const UserInfo = () => {
           <Box flex={'0 0 80px'}>{t('user.Language')}:&nbsp;</Box>
           <Box flex={'1 0 0'}>
             <MySelect
-              value={language}
+              value={i18n.language}
               list={Object.entries(langMap).map(([key, lang]) => ({
                 label: lang.label,
                 value: key
               }))}
               onchange={(val: any) => {
                 const lang = val;
-                setLangStore(lang);
-                setLanguage(lang);
-                i18n?.changeLanguage?.(lang);
-                router.reload();
+                setLngStore(lang);
+                router.replace(router.basePath, router.asPath, { locale: lang });
               }}
             />
           </Box>

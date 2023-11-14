@@ -3,7 +3,7 @@ import { Box, type BoxProps, Flex, useTheme, ModalCloseButton } from '@chakra-ui
 import MyRadio from '@/components/Radio/index';
 import dynamic from 'next/dynamic';
 import ChunkImport from './Chunk';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const QAImport = dynamic(() => import('./QA'), {});
 const CsvImport = dynamic(() => import('./Csv'), {});

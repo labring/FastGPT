@@ -20,7 +20,7 @@ import Avatar from '@/components/Avatar';
 import MyModal from '@/components/MyModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionRadio from '@/components/support/permission/Radio';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const InfoModal = ({
   defaultApp,

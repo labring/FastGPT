@@ -3,7 +3,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Box, Flex } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
 import { TTSTypeEnum } from '@/constants/app';
 import { Text2SpeechVoiceEnum, openaiTTSModel } from '@fastgpt/global/core/ai/speech/constant';

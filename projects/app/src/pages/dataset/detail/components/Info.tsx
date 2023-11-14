@@ -20,7 +20,7 @@ import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
 
 export interface ComponentRef {

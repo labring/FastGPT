@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ApiKeyTable from '@/components/support/apikey/Table';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 
 const API = ({ appId }: { appId: string }) => {

@@ -203,9 +203,6 @@ importers:
       immer:
         specifier: ^9.0.19
         version: registry.npmmirror.com/immer@9.0.21
-      js-cookie:
-        specifier: ^3.0.5
-        version: registry.npmmirror.com/js-cookie@3.0.5
       jschardet:
         specifier: ^3.0.0
         version: registry.npmmirror.com/jschardet@3.0.0
@@ -8717,13 +8714,6 @@ packages:
       reflect.getprototypeof: registry.npmmirror.com/reflect.getprototypeof@1.0.4
       set-function-name: registry.npmmirror.com/set-function-name@2.0.1
     dev: true
-
-  registry.npmmirror.com/js-cookie@3.0.5:
-    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-cookie/-/js-cookie-3.0.5.tgz}
-    name: js-cookie
-    version: 3.0.5
-    engines: {node: '>=14'}
-    dev: false
 
   registry.npmmirror.com/js-sdsl@4.4.2:
     resolution: {integrity: sha512-dwXFwByc/ajSV6m5bcKAPwe4yDDF6D614pxmIi5odytzxRlwqF6nwoiCek80Ixc7Cvma5awClxrzFtxCQvcM8w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-sdsl/-/js-sdsl-4.4.2.tgz}

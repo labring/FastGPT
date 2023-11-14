@@ -12,7 +12,7 @@ import { getOnePlugin, getUserPlugs2ModuleTemplates } from '@/web/core/plugin/ap
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';
 
 type Props = { pluginId: string };

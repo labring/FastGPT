@@ -16,7 +16,7 @@ import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import Info from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { getTrainingQueueLen } from '@/web/core/dataset/api';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';

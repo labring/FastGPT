@@ -23,7 +23,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';

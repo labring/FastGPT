@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyIcon from '@/components/Icon';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
 import { useUserStore } from '@/web/support/user/useUserStore';

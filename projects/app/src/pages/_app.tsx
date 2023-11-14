@@ -10,10 +10,10 @@ import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import { clientInitData, feConfigs } from '@/web/common/system/staticData';
 import { appWithTranslation, useTranslation } from 'next-i18next';
-import { getLangStore, setLangStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
+import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
 
 import 'nprogress/nprogress.css';
 import '@/web/styles/reset.scss';
@@ -57,6 +57,7 @@ function App({ Component, pageProps }: AppProps) {
         );
       setScripts(scripts || []);
     })();
+
     // add window error track
     window.onerror = function (msg, url) {
       window.umami?.track('windowError', {
@@ -76,18 +77,17 @@ function App({ Component, pageProps }: AppProps) {
   }, []);
 
   useEffect(() => {
-    hiId && localStorage.setItem('inviterId', hiId);
-  }, [hiId]);
+    // get default language
+    const targetLng = change2DefaultLng(i18n.language);
+    if (targetLng) {
+      setLngStore(targetLng);
+      router.replace(router.asPath, undefined, { locale: targetLng });
+    }
+  }, []);
 
   useEffect(() => {
-    const lang = getLangStore() || 'zh';
-    i18n?.changeLanguage?.(lang);
-    setLangStore(lang);
-
-    return () => {
-      setLastRoute(router.asPath);
-    };
-  }, [router.asPath]);
+    hiId && localStorage.setItem('inviterId', hiId);
+  }, [hiId]);
 
   return (
     <>

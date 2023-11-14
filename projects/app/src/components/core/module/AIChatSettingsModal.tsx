@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { EditFormType } from '@/web/core/app/basicSettings';
 import { useForm } from 'react-hook-form';
 import {

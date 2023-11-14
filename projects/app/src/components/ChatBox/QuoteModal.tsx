@@ -10,7 +10,7 @@ import InputDataModal, {
   type InputDataType
 } from '@/pages/dataset/detail/components/InputDataModal';
 import MyModal from '../MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import MyTooltip from '../MyTooltip';

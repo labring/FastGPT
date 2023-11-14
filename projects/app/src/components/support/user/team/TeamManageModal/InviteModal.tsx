@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { ModalCloseButton, ModalBody, Box, ModalFooter, Button } from '@chakra-ui/react';
 import TagTextarea from '@/components/common/Textarea/TagTextarea';
 import MySelect from '@/components/Select';

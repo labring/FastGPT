@@ -15,7 +15,7 @@ import {
   FlowNodeValTypeEnum,
   FlowNodeSpecialInputKeyEnum
 } from '@fastgpt/global/core/module/node/constant';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import SourceHandle from '../render/SourceHandle';
 import MyTooltip from '@/components/MyTooltip';
 import { onChangeNode } from '../../FlowProvider';

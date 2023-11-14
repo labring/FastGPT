@@ -12,7 +12,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { debounce } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';

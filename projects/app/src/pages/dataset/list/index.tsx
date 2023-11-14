@@ -22,7 +22,7 @@ import {
   putDatasetById,
   postCreateDataset
 } from '@/web/core/dataset/api';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';

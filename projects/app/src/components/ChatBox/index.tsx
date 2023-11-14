@@ -41,7 +41,7 @@ import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
 import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';

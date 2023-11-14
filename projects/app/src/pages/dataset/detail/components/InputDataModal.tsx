@@ -14,7 +14,7 @@ import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';

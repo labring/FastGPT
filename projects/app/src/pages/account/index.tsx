@@ -12,7 +12,7 @@ import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { feConfigs } from '@/web/common/system/staticData';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 
 const Promotion = dynamic(() => import('./components/Promotion'));

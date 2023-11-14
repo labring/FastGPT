@@ -5,7 +5,7 @@ import Avatar from '@/components/Avatar';
 import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';

@@ -3,7 +3,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Box, Flex, Switch, type SwitchProps } from '@chakra-ui/react';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const QGSwitch = (props: SwitchProps) => {
   const { t } = useTranslation();

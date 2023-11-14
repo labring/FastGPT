@@ -26,7 +26,7 @@ import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { AIChatProps } from '@/types/core/aiChat';
 import { chatModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';

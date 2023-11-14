@@ -22,7 +22,7 @@ import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import MyIcon from '@/components/Icon';
 import { chunksUpload } from '@/web/core/dataset/utils';
 import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { ImportTypeEnum } from './ImportModal';
 
 const filenameStyles = {

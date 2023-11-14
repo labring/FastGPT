@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { formatPluginIOModules } from '@fastgpt/global/core/module/utils';
 import MyModal from '@/components/MyModal';
 import { Box } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';
 import { appModule2FlowNode } from '@/utils/adapt';
 

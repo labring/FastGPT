@@ -14,7 +14,7 @@ import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = ({ datasetId }: { datasetId: string }) => {
