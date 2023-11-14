@@ -144,7 +144,7 @@ export async function searchDatasetData({
     input: [text]
   });
 
-  const minLimit = global.systemEnv.pluginBaseUrl ? 100 : limit * 3;
+  const minLimit = global.systemEnv.pluginBaseUrl ? Math.max(50, limit * 4) : limit * 2;
 
   const results: any = await PgClient.query(
     `BEGIN;
@@ -161,15 +161,17 @@ export async function searchDatasetData({
 
   const rows = results?.[2]?.rows as PgSearchRawType[];
 
+  // concat same data_id
   const filterRows: PgSearchRawType[] = [];
-  const data_id_set = new Set<string>();
+  let set = new Set<string>();
   for (const row of rows) {
-    if (!data_id_set.has(row.data_id)) {
+    if (!set.has(row.data_id)) {
       filterRows.push(row);
-      data_id_set.add(row.data_id);
+      set.add(row.data_id);
     }
   }
 
+  // get q and a
   const [collections, dataList] = await Promise.all([
     MongoDatasetCollection.find(
       {
@@ -179,12 +181,11 @@ export async function searchDatasetData({
     ).lean(),
     MongoDatasetData.find(
       {
-        _id: { $in: filterRows.map((item) => item.data_id.trim()) }
+        _id: { $in: filterRows.map((item) => item.data_id?.trim()) }
       },
       'datasetId collectionId q a indexes'
     ).lean()
   ]);
-
   const formatResult = filterRows
     .map((item) => {
       const collection = collections.find(
@@ -210,11 +211,11 @@ export async function searchDatasetData({
     .filter((item) => item !== null) as SearchDataResponseItemType[];
 
   // remove same q and a data
-  const dataIdSet = new Set<string>();
+  set = new Set<string>();
   const filterData = formatResult.filter((item) => {
     const str = `${item.q}${item.a}`.trim();
-    if (dataIdSet.has(str)) return false;
-    dataIdSet.add(str);
+    if (set.has(str)) return false;
+    set.add(str);
     return true;
   });
 
@@ -224,10 +225,21 @@ export async function searchDatasetData({
     data: filterData
   });
 
-  const filterReRankResult = reRankResult.filter((item) => item.score > similarity).slice(0, limit);
+  // similarity filter
+  const filterReRankResult = reRankResult.filter((item) => item.score > similarity);
+
+  // concat rerank and embedding data
+  set = new Set<string>(filterReRankResult.map((item) => item.id));
+  const concatResult = filterReRankResult.concat(
+    filterData.filter((item) => {
+      if (set.has(item.id)) return false;
+      set.add(item.id);
+      return true;
+    })
+  );
 
   return {
-    searchRes: filterReRankResult,
+    searchRes: concatResult.slice(0, limit),
     tokenLen
   };
 }

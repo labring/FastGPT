@@ -234,7 +234,7 @@ const InputDataModal = ({
               <>
                 <Box>
                   <Flex alignItems={'center'}>
-                    <Box h={'25px'}>
+                    <Box>
                       <Box as="span" color={'red.600'}>
                         *
                       </Box>
@@ -247,6 +247,7 @@ const InputDataModal = ({
                     </MyTooltip>
                   </Flex>
                   <Textarea
+                    mt={1}
                     placeholder={`该输入框是必填项，该内容通常是对于知识点的描述，也可以是用户的问题，最多 ${maxToken} 字。`}
                     maxLength={maxToken}
                     rows={10}
@@ -258,7 +259,7 @@ const InputDataModal = ({
                 </Box>
                 <Box mt={5}>
                   <Flex>
-                    <Box h={'25px'}>{'辅助数据'}</Box>
+                    <Box>{'辅助数据'}</Box>
                     <MyTooltip
                       label={
                         '该部分为可选填项\n该内容通常是为了与前面的数据内容配合，构建结构化提示词，用于特殊场景'
@@ -268,6 +269,7 @@ const InputDataModal = ({
                     </MyTooltip>
                   </Flex>
                   <Textarea
+                    mt={1}
                     placeholder={`该部分为可选填项, 通常是为了与前面的【数据内容】配合，构建结构化提示词，用于特殊场景，最多 ${
                       maxToken * 1.5
                     } 字。`}

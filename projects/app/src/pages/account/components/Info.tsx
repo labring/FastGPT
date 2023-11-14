@@ -168,14 +168,15 @@ const UserInfo = () => {
             <Box flex={'0 0 80px'}>{t('user.Member Name')}:&nbsp;</Box>
             <Input
               flex={1}
-              defaultValue={userInfo?.memberName || 'Member'}
+              defaultValue={userInfo?.team?.memberName || 'Member'}
               title={t('user.Edit name')}
               borderColor={'transparent'}
               pl={'10px'}
               transform={'translateX(-11px)'}
+              maxLength={20}
               onBlur={(e) => {
                 const val = e.target.value;
-                if (val === userInfo?.memberName) return;
+                if (val === userInfo?.team?.memberName) return;
                 try {
                   putUpdateMemberName(val);
                 } catch (error) {}
