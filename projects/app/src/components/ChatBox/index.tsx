@@ -26,7 +26,8 @@ import {
   Button,
   useTheme,
   BoxProps,
-  FlexProps
+  FlexProps,
+  Spinner
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
@@ -150,7 +151,24 @@ const ChatBox = (
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
-  const { isSpeaking, startSpeak, stopSpeak } = useSpeech();
+  const { isSpeaking, isTransCription, startSpeak, stopSpeak, stream, renderAudioGraph } =
+    useSpeech();
+  const canvasRef = useRef<HTMLCanvasElement>();
+
+  useEffect(() => {
+    if (!stream) {
+      return;
+    }
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    const renderCurve = () => {
+      renderAudioGraph(analyser, canvasRef.current as HTMLCanvasElement);
+      window.requestAnimationFrame(renderCurve);
+    };
+    renderCurve();
+  }, [renderAudioGraph, stream]);
 
   const isChatting = useMemo(
     () =>
@@ -799,7 +817,7 @@ const ChatBox = (
           <Box
             py={'18px'}
             position={'relative'}
-            boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
+            boxShadow={isSpeaking ? `0 0 10px rgba(54,111,255,0.4)` : `0 0 10px rgba(0,0,0,0.2)`}
             {...(isPc
               ? {
                   border: '1px solid',
@@ -812,6 +830,36 @@ const ChatBox = (
             borderRadius={['none', 'md']}
             backgroundColor={'white'}
           >
+            <canvas
+              ref={canvasRef as any}
+              style={{
+                height: '100%',
+                width: '90%',
+                position: 'absolute',
+                top: 0,
+                left: 4,
+                zIndex: 10,
+                visibility: isSpeaking && !isTransCription ? 'visible' : 'hidden',
+                background: 'white'
+              }}
+            />
+            <Box
+              position={'absolute'}
+              top={0}
+              bottom={0}
+              left={4}
+              right={4}
+              zIndex={10}
+              display={'flex'}
+              alignItems={'center'}
+              bg={'white'}
+              pl={['5px', '10px']}
+              color="rgba(54,111,255,0.6)"
+              visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
+            >
+              <Spinner size={'sm'} mr={4} />
+              {t('chat.Converting to text')}
+            </Box>
             {/* 输入框 */}
             <Textarea
               ref={TextareaDom}
@@ -874,7 +922,7 @@ const ChatBox = (
                 if (isSpeaking) {
                   return stopSpeak();
                 }
-                startSpeak();
+                startSpeak(TextareaDom);
               }}
             >
               {isChatting ? (
