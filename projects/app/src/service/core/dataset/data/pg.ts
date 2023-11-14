@@ -209,10 +209,19 @@ export async function searchDatasetData({
     })
     .filter((item) => item !== null) as SearchDataResponseItemType[];
 
+  // remove same q and a data
+  const dataIdSet = new Set<string>();
+  const filterData = formatResult.filter((item) => {
+    const str = `${item.q}${item.a}`.trim();
+    if (dataIdSet.has(str)) return false;
+    dataIdSet.add(str);
+    return true;
+  });
+
   // ReRank result
   const reRankResult = await reRankSearchResult({
     query: text,
-    data: formatResult
+    data: filterData
   });
 
   const filterReRankResult = reRankResult.filter((item) => item.score > similarity).slice(0, limit);
@@ -240,9 +249,7 @@ export async function reRankSearchResult({
         text: `${item.q}\n${item.a}`.trim()
       }))
     });
-
-    // merge
-    return result
+    const mergeResult = result
       .map((item) => {
         const target = data.find((dataItem) => dataItem.id === item.id);
         if (!target) return null;
@@ -252,6 +259,8 @@ export async function reRankSearchResult({
         };
       })
       .filter((item) => item) as SearchDataResponseItemType[];
+
+    return mergeResult;
   } catch (error) {
     console.log(error);
 

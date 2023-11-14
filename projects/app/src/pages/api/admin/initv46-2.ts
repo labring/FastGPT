@@ -38,13 +38,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ]);
     } catch (error) {}
 
-    const { rows } = await PgClient.query(
-      `SELECT count(id) FROM ${PgDatasetTableName} WHERE data_id IS NULL`
-    );
-    console.log('totalCount', rows[0]);
-
     jsonRes(res, {
-      data: await init(limit)
+      data: await init(limit),
+      message:
+        '初始化任务已开始，请注意日志进度。可通过 select count(id) from modeldata where data_id is null; 检查是否完全初始化，如果结果为 0 ，则完全初始化。'
     });
   } catch (error) {
     console.log(error);
@@ -67,52 +64,65 @@ type PgItemType = {
 };
 
 async function init(limit: number): Promise<any> {
-  // get limit data where data_id is null
-  const { rows } = await PgClient.query<PgItemType>(
-    `SELECT id,q,a,dataset_id,collection_id,team_id,tmb_id FROM ${PgDatasetTableName} WHERE data_id IS NULL LIMIT ${limit};`
+  const { rows: idList } = await PgClient.query<{ id: string }>(
+    `SELECT id FROM ${PgDatasetTableName} WHERE data_id IS NULL`
   );
-  if (rows.length === 0) return;
 
-  await Promise.all(rows.map(initData));
+  console.log('totalCount', idList.length);
+  if (idList.length === 0) return;
 
-  async function initData(item: PgItemType): Promise<any> {
+  for (let i = 0; i < limit; i++) {
+    initData(i);
+  }
+
+  async function initData(index: number): Promise<any> {
+    const dataId = idList[index]?.id;
+    if (!dataId) return;
+    // get limit data where data_id is null
+    const { rows } = await PgClient.query<PgItemType>(
+      `SELECT id,q,a,dataset_id,collection_id,team_id,tmb_id FROM ${PgDatasetTableName} WHERE id=${dataId};`
+    );
+    const data = rows[0];
+    if (!data) return;
+
     let id = '';
     try {
       // create mongo data and update data_id
       const { _id } = await MongoDatasetData.create({
-        teamId: item.team_id.trim(),
-        tmbId: item.tmb_id.trim(),
-        datasetId: item.dataset_id,
-        collectionId: item.collection_id,
-        q: item.q,
-        a: item.a,
+        teamId: data.team_id.trim(),
+        tmbId: data.tmb_id.trim(),
+        datasetId: data.dataset_id,
+        collectionId: data.collection_id,
+        q: data.q,
+        a: data.a,
         indexes: [
           {
-            defaultIndex: !item.a,
-            type: item.a ? DatasetDataIndexTypeEnum.qa : DatasetDataIndexTypeEnum.chunk,
-            dataId: item.id,
-            text: item.q
+            defaultIndex: !data.a,
+            type: data.a ? DatasetDataIndexTypeEnum.qa : DatasetDataIndexTypeEnum.chunk,
+            dataId: data.id,
+            text: data.q
           }
         ]
       });
       id = _id;
+      // update pg data_id
       await PgClient.query(
-        `UPDATE ${PgDatasetTableName} SET data_id='${String(_id)}' WHERE id='${item.id}';`
+        `UPDATE ${PgDatasetTableName} SET data_id='${String(_id)}' WHERE id=${dataId};`
       );
     } catch (error) {
+      console.log(error);
       try {
         if (id) {
           await MongoDatasetData.findByIdAndDelete(id);
         }
       } catch (error) {}
-      console.log(error);
       await delay(500);
-      return initData(item);
+      return initData(index);
     }
+    success++;
+    if (success % 100 === 0) {
+      console.log(success);
+    }
+    return initData(index + limit);
   }
-
-  success += limit;
-  console.log(success);
-
-  return init(limit);
 }
