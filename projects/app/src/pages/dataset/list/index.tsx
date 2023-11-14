@@ -365,18 +365,19 @@ const Kb = () => {
                   },
                   {
                     child: (
-                      <Link
-                        w={'100%'}
-                        href={`/api/core/dataset/exportAll?datasetId=${dataset._id}`}
-                        download="dataset.csv"
-                        display={'flex'}
-                        alignItems={'center'}
-                      >
+                      <Flex alignItems={'center'}>
                         <MyIcon name={'export'} w={'14px'} mr={2} />
                         {t('Export')}
-                      </Link>
+                      </Flex>
                     ),
-                    onClick: () => {}
+                    onClick: () => {
+                      const a = document.createElement('a');
+                      a.href = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
+                      a.download = `${dataset.name}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                    }
                   },
                   {
                     child: (
