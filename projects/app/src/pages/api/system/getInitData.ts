@@ -98,7 +98,9 @@ export function getInitConfig() {
     global.systemEnv = res.SystemParams
       ? { ...defaultSystemEnv, ...res.SystemParams }
       : defaultSystemEnv;
-    global.feConfigs = res.FeConfig ? { ...defaultFeConfigs, ...res.FeConfig } : defaultFeConfigs;
+    global.feConfigs = res.FeConfig
+      ? { ...defaultFeConfigs, ...res.FeConfig, isPlus: !!res.SystemParams?.pluginBaseUrl }
+      : defaultFeConfigs;
 
     global.chatModels = res.ChatModels || defaultChatModels;
     global.qaModels = res.QAModels || defaultQAModels;

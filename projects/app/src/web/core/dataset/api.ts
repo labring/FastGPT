@@ -71,25 +71,6 @@ export const delDatasetCollectionById = (params: { collectionId: string }) =>
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
   POST(`/core/dataset/data/list`, data);
 
-/**
- * export and download data
- */
-export const exportDatasetData = (data: { datasetId: string }) =>
-  fetch(`/api/core/dataset/exportAll?datasetId=${data.datasetId}`, {
-    method: 'GET',
-    headers: {
-      token: getToken()
-    }
-  })
-    .then(async (res) => {
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data?.message || 'Export failed');
-      }
-      return res.blob();
-    })
-    .then((blob) => download(blob, 'dataset.csv', 'text/csv;charset=utf-8;'));
-
 export const getDatasetDataItemById = (dataId: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { dataId });
 

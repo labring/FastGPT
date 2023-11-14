@@ -6,6 +6,8 @@ import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetIdTreeByTopDatasetId } from '@fastgpt/service/core/dataset/controller';
+import { Readable } from 'stream';
+import type { Cursor } from '@fastgpt/service/common/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -49,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       datasetId: { $in: exportIds }
     });
 
-    addLog.info(`export datasets: ${userId}`, { total });
+    addLog.info(`export datasets: ${datasetId}`, { total });
 
     if (total > 100000) {
       throw new Error('数据量超出 10 万，无法导出');
@@ -70,23 +72,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       'q a'
     ).cursor();
 
-    res.write('\uFEFFindex,content');
+    function cursorToReadableStream(cursor: Cursor) {
+      const readable = new Readable({
+        objectMode: true,
+        read() {}
+      });
 
-    for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-      if (!res.writable) break;
-      const q = doc.q.replace(/"/g, '""') || '';
-      const a = doc.a.replace(/"/g, '""') || '';
-      res.write(`\n"${q}","${a}"`);
+      readable.push(`\uFEFFindex,content`);
+
+      cursor.on('data', (doc) => {
+        const q = doc.q.replace(/"/g, '""') || '';
+        const a = doc.a.replace(/"/g, '""') || '';
+
+        readable.push(`\n"${q}","${a}"`);
+      });
+
+      cursor.on('end', async () => {
+        readable.push(null);
+        cursor.close();
+        await MongoUser.findByIdAndUpdate(userId, {
+          'limit.exportKbTime': new Date()
+        });
+      });
+
+      return readable;
     }
 
-    try {
-      cursor.close();
-      await MongoUser.findByIdAndUpdate(userId, {
-        'limit.exportKbTime': new Date()
-      });
-    } catch (error) {}
-
-    res.end();
+    // @ts-ignore
+    const stream = cursorToReadableStream(cursor);
+    stream.pipe(res);
   } catch (err) {
     res.status(500);
     jsonRes(res, {
