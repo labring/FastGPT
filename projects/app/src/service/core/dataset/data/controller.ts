@@ -36,6 +36,7 @@ export async function insertData2Dataset({
   const id = new Types.ObjectId();
   const qaStr = `${q}\n${a}`.trim();
 
+  // empty indexes check, if empty, create default index
   indexes =
     Array.isArray(indexes) && indexes.length > 0
       ? indexes.map((index) => ({

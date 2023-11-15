@@ -42,9 +42,9 @@ export async function generateVector(): Promise<any> {
           collectionId: 1,
           q: 1,
           a: 1,
+          indexes: 1,
           model: 1,
-          billId: 1,
-          indexes: 1
+          billId: 1
         })
       )?.toJSON();
 
@@ -88,12 +88,12 @@ export async function generateVector(): Promise<any> {
     try {
       sendOneInform({
         type: 'system',
-        title: '索引生成任务中止',
+        title: '文本训练任务中止',
         content:
-          '该团队账号余额不足，向量生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+          '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
         tmbId: data.tmbId
       });
-      console.log('余额不足，暂停 向量 生成任务');
+      console.log('余额不足，暂停【向量】生成任务');
       await MongoDatasetTraining.updateMany(
         {
           teamId: data.teamId
