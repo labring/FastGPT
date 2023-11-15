@@ -16,7 +16,7 @@ import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { datasetId, text, limit = 20 } = req.body as SearchTestProps;
+    const { datasetId, text, limit = 20, rerank } = req.body as SearchTestProps;
 
     if (!datasetId || !text) {
       throw new Error('缺少参数');
@@ -38,7 +38,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       text,
       model: dataset.vectorModel,
       limit: Math.min(limit, 50),
-      datasetIds: [datasetId]
+      datasetIds: [datasetId],
+      rerank
     });
 
     // push bill

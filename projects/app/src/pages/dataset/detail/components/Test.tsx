@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Textarea, Button, Flex, useTheme, Grid, Progress } from '@chakra-ui/react';
+import { Box, Textarea, Button, Flex, useTheme, Grid, Progress, Switch } from '@chakra-ui/react';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
 import { getDatasetDataItemById, postSearchText } from '@/web/core/dataset/api';
@@ -15,6 +15,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { useTranslation } from 'next-i18next';
+import { feConfigs } from '@/web/common/system/staticData';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = ({ datasetId }: { datasetId: string }) => {
@@ -28,6 +29,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const [inputText, setInputText] = useState('');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
   const [editInputData, setEditInputData] = useState<InputDataType & { collectionId: string }>();
+  const [rerank, setRerank] = useState(false);
 
   const kbTestHistory = useMemo(
     () => datasetTestList.filter((item) => item.datasetId === datasetId),
@@ -35,7 +37,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => postSearchText({ datasetId, text: inputText.trim() }),
+    mutationFn: () => postSearchText({ datasetId, text: inputText.trim(), rerank, limit: 20 }),
     onSuccess(res: SearchDataResponseItemType[]) {
       if (!res || res.length === 0) {
         return toast({
@@ -91,7 +93,13 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             onChange={(e) => setInputText(e.target.value)}
           />
           <Flex alignItems={'center'} justifyContent={'flex-end'}>
-            <Box mr={3} color={'myGray.500'}>
+            {feConfigs?.isPlus && (
+              <Flex alignItems={'center'}>
+                {t('dataset.recall.rerank')}
+                <Switch ml={1} isChecked={rerank} onChange={(e) => setRerank(e.target.checked)} />
+              </Flex>
+            )}
+            <Box mx={3} color={'myGray.500'}>
               {inputText.length}
             </Box>
             <Button isDisabled={inputText === ''} isLoading={isLoading} onClick={mutate}>

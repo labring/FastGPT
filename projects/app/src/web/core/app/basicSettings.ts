@@ -20,6 +20,7 @@ export type EditFormType = {
     searchSimilarity: number;
     searchLimit: number;
     searchEmptyText: string;
+    rerank: boolean;
   };
   guide: {
     welcome: {
@@ -49,7 +50,8 @@ export const getDefaultAppForm = (): EditFormType => {
       list: [],
       searchSimilarity: 0.4,
       searchLimit: 5,
-      searchEmptyText: ''
+      searchEmptyText: '',
+      rerank: false
     },
     guide: {
       welcome: {
@@ -135,6 +137,11 @@ export const appModules2Form = (modules: ModuleItemType[]) => {
         formKey: 'dataset.searchLimit',
         inputs: module.inputs,
         key: 'limit'
+      });
+      updateVal({
+        formKey: 'dataset.rerank',
+        inputs: module.inputs,
+        key: 'rerank'
       });
       // empty text
       const emptyOutputs = module.outputs.find((item) => item.key === 'isEmpty')?.targets || [];
@@ -475,6 +482,15 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
         type: FlowNodeInputTypeEnum.target,
         label: '用户问题',
         connected: true
+      },
+      {
+        key: 'rerank',
+        type: FlowNodeInputTypeEnum.switch,
+        label: '结果重排',
+        description: '将召回的结果进行进一步重排，可增加召回率',
+        plusField: true,
+        connected: true,
+        value: formData.dataset.rerank
       }
     ],
     outputs: [

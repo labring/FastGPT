@@ -14,7 +14,8 @@ import {
   useDisclosure,
   Button,
   useTheme,
-  Grid
+  Grid,
+  Switch
 } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -35,6 +36,7 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useQuery } from '@tanstack/react-query';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
+import { feConfigs } from '@/web/common/system/staticData';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 const SelectAppModal = dynamic(() => import('../../SelectAppModal'));
@@ -163,7 +165,10 @@ const RenderInput = ({
   editFiledType?: EditFieldModeType;
 }) => {
   const sortInputs = useMemo(
-    () => flowInputList.sort((a, b) => (a.key === FlowNodeInputTypeEnum.switch ? -1 : 1)),
+    () =>
+      flowInputList
+        .filter((item) => !item.plusField || feConfigs.isPlus)
+        .sort((a, b) => (a.key === FlowNodeInputTypeEnum.switch ? -1 : 1)),
     [flowInputList]
   );
   return (
@@ -186,6 +191,9 @@ const RenderInput = ({
                 )}
                 {item.type === FlowNodeInputTypeEnum.input && (
                   <TextInputRender item={item} moduleId={moduleId} />
+                )}
+                {item.type === FlowNodeInputTypeEnum.switch && (
+                  <SwitchRender item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowNodeInputTypeEnum.textarea && (
                   <TextareaRender item={item} moduleId={moduleId} />
@@ -270,6 +278,26 @@ var TextInputRender = React.memo(function TextInputRender({ item, moduleId }: Re
           value: {
             ...item,
             value: e.target.value
+          }
+        });
+      }}
+    />
+  );
+});
+
+var SwitchRender = React.memo(function SwitchRender({ item, moduleId }: RenderProps) {
+  return (
+    <Switch
+      size={'lg'}
+      isChecked={item.value}
+      onChange={(e) => {
+        onChangeNode({
+          moduleId,
+          type: 'updateInput',
+          key: item.key,
+          value: {
+            ...item,
+            value: e.target.checked
           }
         });
       }}
