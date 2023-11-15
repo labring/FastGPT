@@ -10,6 +10,7 @@ import {
 
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { getUserDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 
 let success = 0;
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
@@ -38,6 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ]);
     } catch (error) {}
 
+    await initPgData();
+
     jsonRes(res, {
       data: await init(limit),
       message:
@@ -63,6 +66,38 @@ type PgItemType = {
   tmb_id: string;
 };
 
+async function initPgData() {
+  const limit = 10;
+  const { rows } = await PgClient.query<{ user_id: string }>(`
+  SELECT DISTINCT user_id FROM ${PgDatasetTableName} WHERE team_id='null';
+`);
+  console.log('init pg', rows.length);
+  let success = 0;
+  for (let i = 0; i < limit; i++) {
+    init(i);
+  }
+  async function init(index: number): Promise<any> {
+    const userId = rows[index]?.user_id;
+    if (!userId) return;
+    try {
+      const tmb = await getUserDefaultTeam({ userId });
+      // update pg
+      await PgClient.query(
+        `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}' AND team_id='null';`
+      );
+      console.log(++success);
+      init(index + limit);
+    } catch (error) {
+      if (error === 'default team not exist') {
+        return;
+      }
+      console.log(error);
+      await delay(1000);
+      return init(index);
+    }
+  }
+}
+
 async function init(limit: number): Promise<any> {
   const { rows: idList } = await PgClient.query<{ id: string }>(
     `SELECT id FROM ${PgDatasetTableName} WHERE data_id IS NULL`
@@ -77,13 +112,19 @@ async function init(limit: number): Promise<any> {
 
   async function initData(index: number): Promise<any> {
     const dataId = idList[index]?.id;
-    if (!dataId) return;
+    if (!dataId) {
+      console.log('done');
+      return;
+    }
     // get limit data where data_id is null
     const { rows } = await PgClient.query<PgItemType>(
       `SELECT id,q,a,dataset_id,collection_id,team_id,tmb_id FROM ${PgDatasetTableName} WHERE id=${dataId};`
     );
     const data = rows[0];
-    if (!data) return;
+    if (!data) {
+      console.log('done');
+      return;
+    }
 
     let id = '';
     try {
@@ -109,8 +150,13 @@ async function init(limit: number): Promise<any> {
       await PgClient.query(
         `UPDATE ${PgDatasetTableName} SET data_id='${String(_id)}' WHERE id=${dataId};`
       );
+
+      console.log(++success);
+      return initData(index + limit);
     } catch (error) {
       console.log(error);
+      console.log(data);
+
       try {
         if (id) {
           await MongoDatasetData.findByIdAndDelete(id);
@@ -119,10 +165,5 @@ async function init(limit: number): Promise<any> {
       await delay(500);
       return initData(index);
     }
-    success++;
-    if (success % 100 === 0) {
-      console.log(success);
-    }
-    return initData(index + limit);
   }
 }

@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
 import {
   createDefaultTeam,
-  getTeamInfoByTmbId
+  getUserDefaultTeam
 } from '@fastgpt/service/support/user/team/controller';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
@@ -12,7 +12,6 @@ import { delay } from '@/utils/tools';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { PgClient } from '@fastgpt/service/common/pg';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
@@ -177,7 +176,7 @@ async function initMongoTeamId(limit: number) {
 
     async function init(userId: string): Promise<any> {
       try {
-        const tmb = await getTeamInfoByTmbId({ userId });
+        const tmb = await getUserDefaultTeam({ userId });
 
         await schema.updateMany(
           {
@@ -259,7 +258,7 @@ async function initCollectionFileTeam(limit: number) {
 
   async function init(userId: string): Promise<any> {
     try {
-      const tmb = await getTeamInfoByTmbId({
+      const tmb = await getUserDefaultTeam({
         userId
       });
 
@@ -311,7 +310,7 @@ async function initPgData() {
     const userId = rows[index]?.user_id;
     if (!userId) return;
     try {
-      const tmb = await getTeamInfoByTmbId({ userId });
+      const tmb = await getUserDefaultTeam({ userId });
       // update pg
       await PgClient.query(
         `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}' AND team_id IS NULL;`

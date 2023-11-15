@@ -4,44 +4,29 @@ import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum,
   TeamCollectionName,
-  TeamMemberCollectionName
+  TeamMemberCollectionName,
+  leaveStatus
 } from '@fastgpt/global/support/user/team/constant';
 
-export async function getTeamInfoByTmbId({
-  tmbId,
-  userId
-}: {
-  tmbId?: string;
-  userId?: string;
-}): Promise<TeamItemType> {
-  if (!tmbId && !userId) {
-    return Promise.reject('tmbId or userId is required');
-  }
+async function getTeam(match: Record<string, any>): Promise<TeamItemType> {
   const db = connectionMongo?.connection?.db;
 
   const TeamMember = db.collection(TeamMemberCollectionName);
 
   const results = await TeamMember.aggregate([
     {
-      $match: tmbId
-        ? {
-            _id: new Types.ObjectId(tmbId)
-          }
-        : {
-            userId: new Types.ObjectId(userId),
-            defaultTeam: true
-          }
+      $match: match
     },
     {
       $lookup: {
-        from: TeamCollectionName, // 关联的集合名
-        localField: 'teamId', // TeamMember 集合中用于关联的字段
-        foreignField: '_id', // Team 集合中用于关联的字段
-        as: 'team' // 查询结果中的字段名，存放关联查询的结果
+        from: TeamCollectionName,
+        localField: 'teamId',
+        foreignField: '_id',
+        as: 'team'
       }
     },
     {
-      $unwind: '$team' // 将查询结果中的 team 字段展开，变成一个对象
+      $unwind: '$team'
     }
   ]).toArray();
   const tmb = results[0];
@@ -64,6 +49,26 @@ export async function getTeamInfoByTmbId({
     canWrite: tmb.role !== TeamMemberRoleEnum.visitor,
     maxSize: tmb.team.maxSize
   };
+}
+
+export async function getTeamInfoByTmbId({ tmbId }: { tmbId: string }) {
+  if (!tmbId) {
+    return Promise.reject('tmbId or userId is required');
+  }
+  return getTeam({
+    _id: new Types.ObjectId(tmbId),
+    status: leaveStatus
+  });
+}
+
+export async function getUserDefaultTeam({ userId }: { userId: string }) {
+  if (!userId) {
+    return Promise.reject('tmbId or userId is required');
+  }
+  return getTeam({
+    userId: new Types.ObjectId(userId),
+    defaultTeam: true
+  });
 }
 export async function createDefaultTeam({
   userId,

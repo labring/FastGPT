@@ -10,8 +10,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
-import { getTeamInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
+import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // auth dataset and get my role
     const { tmbId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
-    const { canWrite } = await getTeamInfoByTmbId({ tmbId });
+    const { canWrite } = await authUserRole({ req, authToken: true });
 
     const match = {
       datasetId: new Types.ObjectId(datasetId),
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               ...item,
               dataAmount: 0,
               trainingAmount: 0,
-              canWrite // admin or owner can write
+              canWrite // admin or team owner can write
             }))
           ),
           total: await MongoDatasetCollection.countDocuments(match)
