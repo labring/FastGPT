@@ -61,7 +61,6 @@ const AppSchema = new Schema({
 
 try {
   AppSchema.index({ updateTime: -1 });
-  AppSchema.index({ 'share.collection': -1 });
 } catch (error) {
   console.log(error);
 }
