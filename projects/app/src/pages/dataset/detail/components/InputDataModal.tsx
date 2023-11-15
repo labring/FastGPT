@@ -196,7 +196,7 @@ const InputDataModal = ({
   const loading = useMemo(() => isImporting || isUpdating, [isImporting, isUpdating]);
 
   return (
-    <MyModal isOpen={true} isCentered w={'90vw'} maxW={'90vw'} h={'90vh'}>
+    <MyModal isOpen={true} isCentered w={'90vw'} maxW={'1440px'} h={'90vh'}>
       <Flex h={'100%'}>
         <Box p={5} borderRight={theme.borders.base}>
           <RawSourceText
@@ -250,7 +250,7 @@ const InputDataModal = ({
                     mt={1}
                     placeholder={`该输入框是必填项，该内容通常是对于知识点的描述，也可以是用户的问题，最多 ${maxToken} 字。`}
                     maxLength={maxToken}
-                    rows={10}
+                    rows={12}
                     bg={'myWhite.400'}
                     {...register(`q`, {
                       required: true
@@ -274,7 +274,7 @@ const InputDataModal = ({
                       maxToken * 1.5
                     } 字。`}
                     bg={'myWhite.400'}
-                    rows={10}
+                    rows={12}
                     maxLength={maxToken * 1.5}
                     {...register('a')}
                   />
