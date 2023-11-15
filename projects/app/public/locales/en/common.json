@@ -250,6 +250,7 @@
     }
   },
   "dataset": {
+    "Agent Model": "Learning Model",
     "Chunk Length": "Chunk Length",
     "Confirm move the folder": "Confirm Move",
     "Confirm to delete the data": "Confirm to delete the data?",

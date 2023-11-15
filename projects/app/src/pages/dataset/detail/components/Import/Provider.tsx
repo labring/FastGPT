@@ -90,6 +90,8 @@ const Provider = ({
   parentId,
   unitPrice,
   mode,
+  vectorModel,
+  agentModel,
   defaultChunkLen = 500,
   importType,
   onUploadSuccess,
@@ -99,6 +101,8 @@ const Provider = ({
   parentId: string;
   unitPrice: number;
   mode: `${TrainingModeEnum}`;
+  vectorModel: string;
+  agentModel: string;
   defaultChunkLen: number;
   importType: `${ImportTypeEnum}`;
   onUploadSuccess: () => void;
@@ -132,7 +136,9 @@ const Provider = ({
         const chunks = file.chunks;
         // create training bill
         const billId = await postCreateTrainingBill({
-          name: t('dataset.collections.Create Training Data', { filename: file.filename })
+          name: t('dataset.collections.Create Training Data', { filename: file.filename }),
+          vectorModel,
+          agentModel
         });
         // create a file collection and training bill
         const collectionId = await postDatasetCollection({

@@ -1,5 +1,5 @@
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getAudioSpeechModel } from '@/service/core/ai/model';
+import { getAudioSpeechModel, getQAModel } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
@@ -9,10 +9,16 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 
 export function createBill(data: CreateBillProps) {
   if (!global.systemEnv.pluginBaseUrl) return;
+  if (data.total === 0) {
+    addLog.info('0 Bill', data);
+  }
   POST('/support/wallet/bill/createBill', data);
 }
 export function concatBill(data: ConcatBillProps) {
   if (!global.systemEnv.pluginBaseUrl) return;
+  if (data.total === 0) {
+    addLog.info('0 Bill', data);
+  }
   POST('/support/wallet/bill/concatBill', data);
 }
 
@@ -59,18 +65,18 @@ export const pushChatBill = ({
 export const pushQABill = async ({
   teamId,
   tmbId,
+  model,
   totalTokens,
   billId
 }: {
   teamId: string;
   tmbId: string;
+  model: string;
   totalTokens: number;
   billId: string;
 }) => {
-  addLog.info('splitData generate success', { totalTokens });
-
   // 获取模型单价格
-  const unitPrice = global.qaModels?.[0]?.price || 3;
+  const unitPrice = getQAModel(model).price;
   // 计算价格
   const total = unitPrice * totalTokens;
 

@@ -250,6 +250,7 @@
     }
   },
   "dataset": {
+    "Agent Model": "文件处理模型",
     "Chunk Length": "数据总量",
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",

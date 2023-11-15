@@ -8,7 +8,8 @@ import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { id, parentId, name, avatar, tags, permission } = req.body as DatasetUpdateParams;
+    const { id, parentId, name, avatar, tags, permission, agentModel } =
+      req.body as DatasetUpdateParams;
 
     if (!id) {
       throw new Error('缺少参数');
@@ -26,7 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...(name && { name }),
         ...(avatar && { avatar }),
         ...(tags && { tags }),
-        ...(permission && { permission })
+        ...(permission && { permission }),
+        ...(agentModel && { agentModel: agentModel.model })
       }
     );
 
