@@ -3,6 +3,8 @@ import { BillListItemType } from './type';
 
 export type CreateTrainingBillProps = {
   name: string;
+  vectorModel?: string;
+  agentModel?: string;
 };
 
 export type ConcatBillProps = {

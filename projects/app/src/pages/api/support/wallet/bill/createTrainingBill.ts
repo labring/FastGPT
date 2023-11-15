@@ -5,15 +5,17 @@ import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { CreateTrainingBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { name } = req.body as CreateTrainingBillProps;
+    const { name, vectorModel, agentModel } = req.body as CreateTrainingBillProps;
 
     const { teamId, tmbId } = await authCert({ req, authToken: true, authApiKey: true });
 
-    const qaModel = global.qaModels[0];
+    const vectorModelData = getVectorModel(vectorModel);
+    const agentModelData = getQAModel(agentModel);
 
     const { _id } = await MongoBill.create({
       teamId,
@@ -23,13 +25,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       list: [
         {
           moduleName: '索引生成',
-          model: 'embedding',
+          model: vectorModelData.name,
           amount: 0,
           tokenLen: 0
         },
         {
           moduleName: 'QA 拆分',
-          model: qaModel?.name,
+          model: agentModelData.name,
           amount: 0,
           tokenLen: 0
         }

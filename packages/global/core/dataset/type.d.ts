@@ -1,4 +1,4 @@
-import type { VectorModelItemType } from '../../core/ai/model.d';
+import type { LLMModelItemType, VectorModelItemType } from '../../core/ai/model.d';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
 import {
@@ -19,6 +19,7 @@ export type DatasetSchemaType = {
   avatar: string;
   name: string;
   vectorModel: string;
+  agentModel: string;
   tags: string[];
   type: `${DatasetTypeEnum}`;
   permission: `${PermissionTypeEnum}`;
@@ -84,8 +85,9 @@ export type CollectionWithDatasetType = Omit<DatasetCollectionSchemaType, 'datas
 };
 
 /* ================= dataset ===================== */
-export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel'> & {
+export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;
+  agentModel: LLMModelItemType;
   isOwner: boolean;
   canWrite: boolean;
 };

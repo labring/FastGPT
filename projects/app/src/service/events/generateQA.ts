@@ -109,6 +109,7 @@ export async function generateQA(): Promise<any> {
 
   try {
     const startTime = Date.now();
+    const model = data.model ?? global.qaModels[0].model;
 
     // request LLM to get QA
     const messages: ChatMessageItemType[] = [
@@ -122,9 +123,10 @@ export async function generateQA(): Promise<any> {
             })
       }
     ];
-    const ai = getAIApi(undefined, 480000);
+
+    const ai = getAIApi(undefined, 600000);
     const chatResponse = await ai.chat.completions.create({
-      model: global.qaModels[0].model,
+      model,
       temperature: 0.01,
       messages,
       stream: false
@@ -147,8 +149,11 @@ export async function generateQA(): Promise<any> {
     // delete data from training
     await MongoDatasetTraining.findByIdAndDelete(data._id);
 
-    console.log(`split result length: `, qaArr.length);
-    console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
+    addLog.info(`QA Training Finish`, {
+      time: `${(Date.now() - startTime) / 1000}s`,
+      splitLength: qaArr.length,
+      usage: chatResponse.usage
+    });
 
     // add bill
     if (qaArr.length > 0) {
@@ -156,7 +161,8 @@ export async function generateQA(): Promise<any> {
         teamId: data.teamId,
         tmbId: data.tmbId,
         totalTokens,
-        billId: data.billId
+        billId: data.billId,
+        model
       });
     } else {
       addLog.info(`QA result 0:`, { answer });

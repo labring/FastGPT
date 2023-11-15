@@ -10,7 +10,7 @@ import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDatasetDataProps } from '@/global/core/dataset/api.d';
 import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
-import { getVectorModel } from '@/service/core/ai/model';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 
@@ -63,24 +63,14 @@ export async function pushDataToDatasetCollection({
   mode,
   prompt,
   billId
-}: { teamId: string; tmbId: string } & PushDatasetDataProps): Promise<PushDataResponse> {
-  // get dataset vector model
-  const {
-    datasetId: { _id: datasetId, vectorModel }
-  } = await getCollectionWithDataset(collectionId);
-
-  const vectorModelData = getVectorModel(vectorModel);
-
-  const modeMap = {
-    [TrainingModeEnum.chunk]: {
-      maxToken: vectorModelData.maxToken * 1.5,
-      model: vectorModelData.model
-    },
-    [TrainingModeEnum.qa]: {
-      maxToken: global.qaModels[0].maxContext * 0.8,
-      model: global.qaModels[0].model
-    }
-  };
+}: {
+  teamId: string;
+  tmbId: string;
+} & PushDatasetDataProps): Promise<PushDataResponse> {
+  const { datasetId, model, maxToken } = await checkModelValid({
+    mode,
+    collectionId
+  });
 
   // filter repeat or equal content
   const set = new Set();
@@ -102,12 +92,13 @@ export async function pushDataToDatasetCollection({
       // count q token
       const token = countPromptTokens(item.q);
 
-      if (token > modeMap[mode].maxToken) {
+      if (token > maxToken) {
         filterResult.overToken.push(item);
         return;
       }
 
       if (set.has(text)) {
+        console.log('repeat', item);
         filterResult.repeat.push(item);
       } else {
         filterResult.success.push(item);
@@ -126,7 +117,7 @@ export async function pushDataToDatasetCollection({
       billId,
       mode,
       prompt,
-      model: modeMap[mode].model,
+      model,
       q: item.q,
       a: item.a,
       indexes: item.indexes
@@ -140,6 +131,44 @@ export async function pushDataToDatasetCollection({
     insertLen: insertRes.length,
     ...filterResult
   };
+}
+
+export async function checkModelValid({
+  mode,
+  collectionId
+}: {
+  mode: `${TrainingModeEnum}`;
+  collectionId: string;
+}) {
+  const {
+    datasetId: { _id: datasetId, vectorModel, agentModel }
+  } = await getCollectionWithDataset(collectionId);
+
+  if (mode === TrainingModeEnum.chunk) {
+    if (!collectionId) return Promise.reject(`CollectionId is empty`);
+    const vectorModelData = getVectorModel(vectorModel);
+    if (!vectorModelData) {
+      return Promise.reject(`Model ${vectorModel} is inValid`);
+    }
+    return {
+      datasetId,
+      maxToken: vectorModelData.maxToken * 1.5,
+      model: vectorModelData.model
+    };
+  }
+
+  if (mode === TrainingModeEnum.qa) {
+    const qaModelData = getQAModel(agentModel);
+    if (!qaModelData) {
+      return Promise.reject(`Model ${agentModel} is inValid`);
+    }
+    return {
+      datasetId,
+      maxToken: qaModelData.maxContext * 0.8,
+      model: qaModelData.model
+    };
+  }
+  return Promise.reject(`Mode ${mode} is inValid`);
 }
 
 export const config = {

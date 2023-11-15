@@ -170,7 +170,7 @@ const DataCard = () => {
       </Flex>
       <Grid
         minH={'100px'}
-        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)']}
+        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
         gridGap={4}
       >
         {datasetDataList.map((item) => (

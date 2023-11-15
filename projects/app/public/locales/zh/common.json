@@ -250,6 +250,7 @@
     }
   },
   "dataset": {
+    "Agent Model": "文件处理模型",
     "Chunk Length": "数据总量",
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",
@@ -259,6 +260,7 @@
     "Delete Dataset Error": "删除知识库异常",
     "Edit Folder": "编辑文件夹",
     "Export": "导出",
+    "Export Dataset Limit Error": "导出数据失败",
     "File Input": "文件导入",
     "File Size": "文件大小",
     "Filename": "文件名",

@@ -48,6 +48,11 @@ const DatasetSchema = new Schema({
     required: true,
     default: 'text-embedding-ada-002'
   },
+  agentModel: {
+    type: String,
+    required: true,
+    default: 'gpt-3.5-turbo-16k'
+  },
   type: {
     type: String,
     enum: Object.keys(DatasetTypeMap),

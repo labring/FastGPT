@@ -15,10 +15,12 @@ import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import MySelect from '@/components/Select';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { vectorModelList } from '@/web/common/system/staticData';
+import { vectorModelList, qaModelList } from '@/web/common/system/staticData';
 import Tag from '@/components/Tag';
+import { useTranslation } from 'next-i18next';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
+  const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -29,6 +31,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       name: '',
       tags: '',
       vectorModel: vectorModelList[0].model,
+      agentModel: qaModelList[0].model,
       type: 'dataset',
       parentId
     }
@@ -76,7 +79,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
   });
 
   return (
-    <MyModal isOpen onClose={onClose} isCentered={!isPc} w={'400px'}>
+    <MyModal isOpen onClose={onClose} isCentered={!isPc} w={'450px'}>
       <ModalHeader fontSize={'2xl'}>创建一个知识库</ModalHeader>
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
@@ -106,7 +109,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
           />
         </Flex>
         <Flex mt={6} alignItems={'center'}>
-          <Box flex={'0 0 80px'}>索引模型</Box>
+          <Box flex={'0 0 100px'}>索引模型</Box>
           <Box flex={1}>
             <MySelect
               w={'100%'}
@@ -122,8 +125,25 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             />
           </Box>
         </Flex>
+        <Flex mt={6} alignItems={'center'}>
+          <Box flex={'0 0 100px'}>{t('dataset.Agent Model')}</Box>
+          <Box flex={1}>
+            <MySelect
+              w={'100%'}
+              value={getValues('agentModel')}
+              list={qaModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              onchange={(e) => {
+                setValue('agentModel', e);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
+        </Flex>
         <Flex mt={6} alignItems={'center'} w={'100%'}>
-          <Box flex={'0 0 80px'}>
+          <Box flex={'0 0 100px'}>
             标签
             <MyTooltip label={'用空格隔开多个标签，便于搜索'} forceShow>
               <QuestionOutlineIcon ml={1} />
