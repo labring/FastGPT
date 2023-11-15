@@ -11,7 +11,7 @@ type Props = {
   teamId: string;
   tmbId: string;
   variables?: Record<string, any>;
-  isOwner: boolean;
+  updateUseTime: boolean;
   source: `${ChatSourceEnum}`;
   shareId?: string;
   content: [ChatItemType, ChatItemType];
@@ -23,7 +23,7 @@ export async function saveChat({
   teamId,
   tmbId,
   variables,
-  isOwner,
+  updateUseTime,
   source,
   shareId,
   content
@@ -76,7 +76,7 @@ export async function saveChat({
       );
     }
 
-    if (isOwner && source === ChatSourceEnum.online) {
+    if (updateUseTime && source === ChatSourceEnum.online) {
       promise.push(
         MongoApp.findByIdAndUpdate(appId, {
           updateTime: new Date()

@@ -10,7 +10,7 @@ import {
   useTheme
 } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 type Props = BoxProps & { defaultValues: string[]; onUpdate: (e: string[]) => void };
 

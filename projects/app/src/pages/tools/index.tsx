@@ -5,7 +5,7 @@ import MyIcon from '@/components/Icon';
 import { useRouter } from 'next/router';
 import { feConfigs } from '@/web/common/system/staticData';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const Tools = () => {
   const { t } = useTranslation();

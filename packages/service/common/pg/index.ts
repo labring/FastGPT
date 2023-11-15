@@ -171,8 +171,7 @@ export async function initPg() {
           tmb_id VARCHAR(50) NOT NULL,
           dataset_id VARCHAR(50) NOT NULL,
           collection_id VARCHAR(50) NOT NULL,
-          q TEXT NOT NULL,
-          a TEXT
+          data_id VARCHAR(50) NOT NULL
       );
       CREATE INDEX IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 24, ef_construction = 64);
     `);

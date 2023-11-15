@@ -6,8 +6,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { SetOneDatasetDataProps } from '@/global/core/api/datasetReq';
-import { countPromptTokens } from '@/global/common/tiktoken';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { getVectorModel } from '@/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
@@ -15,11 +14,12 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { collectionId, q, a } = req.body as SetOneDatasetDataProps;
+    const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
 
     if (!q) {
       return Promise.reject('q is required');
@@ -37,8 +37,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       collectionId,
       per: 'w'
     });
-
-    await authTeamBalance(teamId);
 
     // auth collection and get dataset
     const [
@@ -68,11 +66,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { insertId, tokenLen } = await insertData2Dataset({
       teamId,
       tmbId,
+      datasetId,
+      collectionId,
       q: formatQ,
       a: formatA,
-      collectionId,
-      datasetId,
-      model: vectorModel
+      model: vectorModel,
+      indexes
     });
 
     pushGenerateVectorBill({

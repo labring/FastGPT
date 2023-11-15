@@ -36,6 +36,7 @@ const BillSchema = new Schema({
     default: () => new Date()
   },
   total: {
+    // 1 * PRICE_SCALE
     type: Number,
     required: true
   },

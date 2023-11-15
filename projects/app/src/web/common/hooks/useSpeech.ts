@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { POST } from '../api/request';
 import { useToast } from './useToast';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const useSpeech = () => {

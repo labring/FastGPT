@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Flex, Box } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '../Icon';
 

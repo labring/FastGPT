@@ -94,6 +94,7 @@ const MyApps = () => {
             label={userInfo?.team.canWrite ? t('app.To Settings') : t('app.To Chat')}
           >
             <Card
+              lineHeight={1.5}
               h={'100%'}
               py={3}
               px={5}

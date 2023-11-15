@@ -36,29 +36,54 @@ export const DatasetCollectionTypeMap = {
   }
 };
 
-export enum TrainingModeEnum {
-  'qa' = 'qa',
-  'index' = 'index'
+export enum DatasetDataIndexTypeEnum {
+  chunk = 'chunk',
+  qa = 'qa',
+  summary = 'summary',
+  hypothetical = 'hypothetical',
+  custom = 'custom'
 }
-export const TrainingTypeMap = {
-  [TrainingModeEnum.qa]: 'qa',
-  [TrainingModeEnum.index]: 'index'
-};
-
-export enum DatasetSpecialIdEnum {
-  manual = 'manual',
-  mark = 'mark'
-}
-export const datasetSpecialIdMap = {
-  [DatasetSpecialIdEnum.manual]: {
-    name: 'kb.Manual Data',
-    sourceName: 'kb.Manual Input'
+export const DatasetDataIndexTypeMap = {
+  [DatasetDataIndexTypeEnum.chunk]: {
+    name: 'dataset.data.indexes.chunk'
   },
-  [DatasetSpecialIdEnum.mark]: {
-    name: 'kb.Mark Data',
-    sourceName: 'kb.Manual Mark'
+  [DatasetDataIndexTypeEnum.summary]: {
+    name: 'dataset.data.indexes.summary'
+  },
+  [DatasetDataIndexTypeEnum.hypothetical]: {
+    name: 'dataset.data.indexes.hypothetical'
+  },
+  [DatasetDataIndexTypeEnum.qa]: {
+    name: 'dataset.data.indexes.qa'
+  },
+  [DatasetDataIndexTypeEnum.custom]: {
+    name: 'dataset.data.indexes.custom'
   }
 };
-export const datasetSpecialIds: string[] = [DatasetSpecialIdEnum.manual, DatasetSpecialIdEnum.mark];
+
+export enum TrainingModeEnum {
+  'chunk' = 'chunk',
+  'qa' = 'qa'
+  // 'hypothetical' = 'hypothetical',
+  // 'summary' = 'summary',
+  // 'multipleIndex' = 'multipleIndex'
+}
+export const TrainingTypeMap = {
+  [TrainingModeEnum.chunk]: {
+    name: 'chunk'
+  },
+  [TrainingModeEnum.qa]: {
+    name: 'qa'
+  }
+  // [TrainingModeEnum.hypothetical]: {
+  //   name: 'hypothetical'
+  // },
+  // [TrainingModeEnum.summary]: {
+  //   name: 'summary'
+  // },
+  // [TrainingModeEnum.multipleIndex]: {
+  //   name: 'multipleIndex'
+  // }
+};
 
 export const FolderAvatarSrc = '/imgs/files/folder.svg';

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { ModalCloseButton, ModalBody, Box, ModalFooter, Button } from '@chakra-ui/react';
 import TagTextarea from '@/components/common/Textarea/TagTextarea';
 import MySelect from '@/components/Select';
@@ -57,8 +57,8 @@ const InviteModal = ({
         undefined,
         t('user.team.Invite Member Success Tip', {
           success: res.invite.length,
-          inValid: res.inValid.join(', '),
-          inTeam: res.inTeam.join(', ')
+          inValid: res.inValid.map((item) => item.username).join(', '),
+          inTeam: res.inTeam.map((item) => item.username).join(', ')
         })
       )();
     },

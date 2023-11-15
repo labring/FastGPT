@@ -34,7 +34,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const appData = await MongoApp.findOne({
     _id: app.id,
-    userId: user._id
+    teamId: user.team.teamId
   });
 
   if (!appData) {

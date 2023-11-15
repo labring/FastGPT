@@ -1,8 +1,8 @@
 /* Only the token of gpt-3.5-turbo is used */
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemType } from '../../../core/chat/type';
 import { Tiktoken } from 'js-tiktoken/lite';
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
+import { adaptChat2GptMessages } from '../../../core/chat/adapt';
+import { ChatCompletionRequestMessageRoleEnum } from '../../../core/ai/constant';
 import encodingJson from './cl100k_base.json';
 
 /* init tikToken obj */
@@ -53,17 +53,6 @@ export function countMessagesTokens({ messages }: { messages: ChatItemType[] }) 
   }
 
   return totalTokens;
-}
-
-export function sliceTextByTokens({ text, length }: { text: string; length: number }) {
-  const enc = getTikTokenEnc();
-
-  try {
-    const encodeText = enc.encode(text);
-    return enc.decode(encodeText.slice(0, length));
-  } catch (error) {
-    return text.slice(0, length);
-  }
 }
 
 /* slice messages from top to bottom by maxTokens */

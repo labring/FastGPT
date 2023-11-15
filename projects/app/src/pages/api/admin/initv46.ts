@@ -4,21 +4,14 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
 import {
   createDefaultTeam,
-  getTeamInfoByTmbId
+  getUserDefaultTeam
 } from '@fastgpt/service/support/user/team/controller';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { delay } from '@/utils/tools';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import {
-  DatasetCollectionSchemaType,
-  DatasetSchemaType,
-  DatasetTrainingSchemaType
-} from '@fastgpt/global/core/dataset/type';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { Types } from 'mongoose';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { PgClient } from '@fastgpt/service/common/pg';
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
@@ -30,6 +23,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getGFSCollection } from '@fastgpt/service/common/file/gridfs/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -182,7 +176,7 @@ async function initMongoTeamId(limit: number) {
 
     async function init(userId: string): Promise<any> {
       try {
-        const tmb = await getTeamInfoByTmbId({ userId });
+        const tmb = await getUserDefaultTeam({ userId });
 
         await schema.updateMany(
           {
@@ -225,7 +219,7 @@ async function initDatasetAndApp() {
 }
 async function initCollectionFileTeam(limit: number) {
   /* init user default Team */
-  const DatasetFile = connectionMongo.connection.db.collection(`dataset.files`);
+  const DatasetFile = getGFSCollection('dataset');
   const matchWhere = {
     $or: [{ 'metadata.teamId': { $exists: false } }, { 'metadata.teamId': null }]
   };
@@ -264,7 +258,7 @@ async function initCollectionFileTeam(limit: number) {
 
   async function init(userId: string): Promise<any> {
     try {
-      const tmb = await getTeamInfoByTmbId({
+      const tmb = await getUserDefaultTeam({
         userId
       });
 
@@ -295,8 +289,8 @@ async function initPgData() {
   // add column
   try {
     await Promise.all([
-      PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN team_id CHAR(50);`),
-      PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN tmb_id CHAR(50);`),
+      PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN team_id VARCHAR(50);`),
+      PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN tmb_id VARCHAR(50);`),
       PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN user_id DROP NOT NULL;`)
     ]);
   } catch (error) {
@@ -316,7 +310,7 @@ async function initPgData() {
     const userId = rows[index]?.user_id;
     if (!userId) return;
     try {
-      const tmb = await getTeamInfoByTmbId({ userId });
+      const tmb = await getUserDefaultTeam({ userId });
       // update pg
       await PgClient.query(
         `Update ${PgDatasetTableName} set team_id = '${tmb.teamId}', tmb_id = '${tmb.tmbId}' where user_id = '${userId}' AND team_id IS NULL;`

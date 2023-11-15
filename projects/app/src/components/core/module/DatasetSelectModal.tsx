@@ -14,14 +14,14 @@ import {
 import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import type { SelectedDatasetType } from '@/types/core/dataset';
+import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { feConfigs } from '@/web/common/system/staticData';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';

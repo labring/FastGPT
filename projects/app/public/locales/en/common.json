@@ -292,17 +292,32 @@
       "Select One Collection To Store": "Select the collection to store"
     },
     "data": {
+      "Add Index": "Add Index",
       "Can not delete tip": "No modification permission",
       "Can not edit": "No edit permission",
+      "Custom Index Number": "Custom index{{number}}",
+      "Default Index": "Default Index",
+      "Delete Success Tip": "",
       "Delete Tip": "Confirm to delete the data?",
       "File import": "File Import",
+      "Index Edit": "Data Index",
+      "Index Placeholder": "Enter the index text content",
       "Input Data": "Import Data",
       "Input Success Tip": "Succeeded in importing data",
       "Update Data": "Update Data",
-      "Update Success Tip": "Update data successfully"
+      "Update Success Tip": "Update data successfully",
+      "edit": {
+        "Content": "Content",
+        "Course": "Document",
+        "Delete": "Delete",
+        "Index": "Index({{amount}})"
+      }
     },
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
-    "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!"
+    "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
+    "test": {
+      "noResult": "Search results are empty"
+    }
   },
   "error": {
     "team": {
@@ -461,9 +476,11 @@
     "Bill Detail": "Bill Detail",
     "Change": "Change",
     "Copy invite url": "Copy invitation link",
+    "Edit name": "Click to modify nickname",
     "Invite Url": "Invite Url",
     "Invite url tip": "Friends who register through this link will be permanently bound to you, and you will get a certain balance reward when they recharge. In addition, when friends register with their mobile phone number, you will get 5 yuan reward immediately.",
     "Language": "Language",
+    "Member Name": "Name",
     "Notice": "Notice",
     "Old password is error": "Old password is error",
     "OpenAI Account Setting": "OpenAI Account Setting",
@@ -513,12 +530,15 @@
       "Leave Team Failed": "Leave Team Failed",
       "Manage": "Team Manage",
       "Member": "Member",
+      "Member Name": "Member",
       "Over Max Member Tip": "Team max {{max}} people",
       "Personal Team": "Personal",
       "Processing invitations": "Processing invitations",
       "Processing invitations Tips": "You have {{amount}} of team invitations that need to be processed",
       "Reinvite": "Reinvite",
-      "Remove Member Confirm Tip": "Confirm to move {{username}} off the team",
+      "Remove Member Confirm Tip": "Are you sure you want to move {{username}} off the team? All its resources are transferred to the team creator's account.",
+      "Remove Member Failed": "Removing a team member failed",
+      "Remove Member Success": "Removing a team member succeeded",
       "Remove Member Tip": "Move out team",
       "Role": "Role",
       "Select Team": "Select Team",

@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import { ChatContextFilter } from '@/service/common/tiktoken';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
@@ -12,11 +12,11 @@ import type { ChatModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { countMessagesTokens, sliceMessagesTB } from '@/global/common/tiktoken';
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { countMessagesTokens, sliceMessagesTB } from '@fastgpt/global/common/string/tiktoken';
+import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import type { AIChatProps } from '@/types/core/aiChat';
-import { replaceVariable } from '@/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
@@ -112,6 +112,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature,
       max_tokens,
       stream,
+      seed: temperature < 0.3 ? 1 : undefined,
       messages: [
         ...(modelConstantsData.defaultSystemChatPrompt
           ? [

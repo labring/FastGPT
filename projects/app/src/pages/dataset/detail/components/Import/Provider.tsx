@@ -12,7 +12,7 @@ import FileSelect, { FileItemType, Props as FileSelectProps } from './FileSelect
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
-import { splitText2Chunks } from '@/global/common/string/tools';
+import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
@@ -22,7 +22,7 @@ import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import MyIcon from '@/components/Icon';
 import { chunksUpload } from '@/web/core/dataset/utils';
 import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { ImportTypeEnum } from './ImportModal';
 
 const filenameStyles = {
@@ -39,7 +39,7 @@ type useImportStoreType = {
   setSuccessChunks: Dispatch<SetStateAction<number>>;
   isUnselectedFile: boolean;
   totalChunks: number;
-  onclickUpload: (e: { files: FileItemType[] }) => void;
+  onclickUpload: (e: { prompt?: string }) => void;
   onReSplitChunks: () => void;
   price: number;
   uploading: boolean;
@@ -49,7 +49,7 @@ type useImportStoreType = {
   setReShowRePreview: Dispatch<SetStateAction<boolean>>;
 };
 const StateContext = createContext<useImportStoreType>({
-  onclickUpload: function (e: { files: FileItemType[] }): void {
+  onclickUpload: function (e: { prompt?: string }): void {
     throw new Error('Function not implemented.');
   },
   uploading: false,
@@ -125,7 +125,8 @@ const Provider = ({
 
   /* start upload data */
   const { mutate: onclickUpload, isLoading: uploading } = useRequest({
-    mutationFn: async () => {
+    mutationFn: async (props?: { prompt?: string }) => {
+      const { prompt } = props || {};
       let totalInsertion = 0;
       for await (const file of files) {
         const chunks = file.chunks;
@@ -150,7 +151,8 @@ const Provider = ({
           mode,
           onUploading: (insertLen) => {
             setSuccessChunks((state) => state + insertLen);
-          }
+          },
+          prompt
         });
         totalInsertion += insertLen;
       }

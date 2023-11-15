@@ -16,11 +16,11 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { UseFormReturn } from 'react-hook-form';
 import { compressImgAndUpload } from '@/web/common/file/controller';
-import type { DatasetItemType } from '@/types/core/dataset';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@/components/Avatar';
 import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
 
 export interface ComponentRef {
@@ -208,13 +208,15 @@ const Info = (
           placeholder={'标签,使用空格分割。'}
           maxLength={30}
           onChange={(e) => {
-            setValue('tags', e.target.value);
+            setValue(
+              'tags',
+              e.target.value.split(' ').filter((item) => item)
+            );
             setRefresh(!refresh);
           }}
         />
         <Flex w={'100%'} pl={['90px', '160px']} mt={2}>
           {getValues('tags')
-            .split(' ')
             .filter((item) => item)
             .map((item, i) => (
               <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>

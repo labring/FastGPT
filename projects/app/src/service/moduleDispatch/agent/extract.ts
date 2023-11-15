@@ -1,5 +1,5 @@
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
-import { ChatContextFilter } from '@/service/common/tiktoken';
+import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -7,7 +7,7 @@ import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/ty
 import { ContextExtractEnum } from '@/constants/flow/flowField';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
-import { replaceVariable } from '@/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 type Props = ModuleDispatchProps<{

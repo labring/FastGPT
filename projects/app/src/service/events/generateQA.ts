@@ -1,16 +1,17 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushQABill } from '@/service/support/wallet/bill/push';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
-import { splitText2Chunks } from '@/global/common/string/tools';
-import { replaceVariable } from '@/global/common/string/tools';
+import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { pushDataToDatasetCollection } from '@/pages/api/core/dataset/data/pushData';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '../support/permission/auth/bill';
+import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -43,7 +44,7 @@ export async function generateQA(): Promise<any> {
           teamId: 1,
           tmbId: 1,
           datasetId: 1,
-          datasetCollectionId: 1,
+          collectionId: 1,
           q: 1,
           model: 1,
           billId: 1,
@@ -71,7 +72,7 @@ export async function generateQA(): Promise<any> {
 
   if (done) {
     reduceQueue();
-    global.vectorQueueLen <= 0 && console.log(`【索引】任务完成`);
+    global.vectorQueueLen <= 0 && console.log(`【QA】Task Done`);
     return;
   }
   if (error || !data) {
@@ -87,15 +88,20 @@ export async function generateQA(): Promise<any> {
     try {
       sendOneInform({
         type: 'system',
-        title: '索引生成任务中止',
+        title: '文本训练任务中止',
         content:
-          '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+          '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
         tmbId: data.tmbId
       });
-      console.log('余额不足，暂停向量生成任务');
-      await MongoDatasetTraining.findById(data._id, {
-        lockTime: new Date('2999/5/5')
-      });
+      console.log('余额不足，暂停【QA】生成任务');
+      await MongoDatasetTraining.updateMany(
+        {
+          teamId: data.teamId
+        },
+        {
+          lockTime: new Date('2999/5/5')
+        }
+      );
     } catch (error) {}
     reduceQueue();
     return generateQA();
@@ -123,18 +129,18 @@ export async function generateQA(): Promise<any> {
       messages,
       stream: false
     });
-    const answer = chatResponse.choices?.[0].message?.content;
+    const answer = chatResponse.choices?.[0].message?.content || '';
     const totalTokens = chatResponse.usage?.total_tokens || 0;
 
-    const qaArr = formatSplitText(answer || ''); // 格式化后的QA对
+    const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 
     // get vector and insert
     await pushDataToDatasetCollection({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      collectionId: data.datasetCollectionId,
+      collectionId: data.collectionId,
       data: qaArr,
-      mode: TrainingModeEnum.index,
+      mode: TrainingModeEnum.chunk,
       billId: data.billId
     });
 
@@ -198,31 +204,44 @@ export async function generateQA(): Promise<any> {
 /**
  * 检查文本是否按格式返回
  */
-function formatSplitText(text: string) {
+function formatSplitText(text: string, rawText: string) {
   text = text.replace(/\\n/g, '\n'); // 将换行符替换为空格
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q|$)/g; // 匹配Q和A的正则表达式
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
-  const result = []; // 存储最终的结果
+  const result: PushDatasetDataChunkProps[] = []; // 存储最终的结果
   for (const match of matches) {
-    const q = match[2];
-    const a = match[5];
-    if (q && a) {
-      // 如果Q和A都存在，就将其添加到结果中
+    const q = match[2] || '';
+    const a = match[5] || '';
+    if (q) {
       result.push({
-        q: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`,
-        a: ''
+        q,
+        a,
+        indexes: [
+          {
+            defaultIndex: true,
+            type: DatasetDataIndexTypeEnum.qa,
+            text: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`
+          }
+        ]
       });
     }
   }
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const splitRes = splitText2Chunks({ text: text, maxLen: 500 });
-    splitRes.chunks.forEach((item) => {
+    const splitRes = splitText2Chunks({ text: rawText, maxLen: 500 });
+    splitRes.chunks.forEach((chunk) => {
       result.push({
-        q: item,
-        a: ''
+        q: chunk,
+        a: '',
+        indexes: [
+          {
+            defaultIndex: true,
+            type: DatasetDataIndexTypeEnum.chunk,
+            text: chunk
+          }
+        ]
       });
     });
   }

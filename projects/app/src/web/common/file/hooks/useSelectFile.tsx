@@ -1,7 +1,7 @@
 import React, { useRef, useCallback } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 export const useSelectFile = (props?: { fileType?: string; multiple?: boolean }) => {
   const { t } = useTranslation();

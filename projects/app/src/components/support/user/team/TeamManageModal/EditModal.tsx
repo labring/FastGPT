@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgAndUpload } from '@/web/common/file/controller';
 import { useToast } from '@/web/common/hooks/useToast';

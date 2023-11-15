@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { getVectorModel } from '@/service/core/ai/model';
-import { DatasetItemType } from '@/types/core/dataset';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -27,7 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     jsonRes<DatasetItemType>(res, {
       data: {
         ...dataset,
-        tags: dataset.tags.join(' '),
         vectorModel: getVectorModel(dataset.vectorModel),
         canWrite,
         isOwner

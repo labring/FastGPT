@@ -4,7 +4,7 @@ import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useAppStore } from '@/web/core/app/store/useAppStore';

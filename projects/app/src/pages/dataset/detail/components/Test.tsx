@@ -13,9 +13,12 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { useTranslation } from 'next-i18next';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = ({ datasetId }: { datasetId: string }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
@@ -24,7 +27,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     useSearchTestStore();
   const [inputText, setInputText] = useState('');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
-  const [editInputData, setEditInputData] = useState<InputDataType>();
+  const [editInputData, setEditInputData] = useState<InputDataType & { collectionId: string }>();
 
   const kbTestHistory = useMemo(
     () => datasetTestList.filter((item) => item.datasetId === datasetId),
@@ -33,7 +36,13 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
   const { mutate, isLoading } = useRequest({
     mutationFn: () => postSearchText({ datasetId, text: inputText.trim() }),
-    onSuccess(res) {
+    onSuccess(res: SearchDataResponseItemType[]) {
+      if (!res || res.length === 0) {
+        return toast({
+          status: 'warning',
+          title: t('dataset.test.noResult')
+        });
+      }
       const testItem = {
         id: nanoid(),
         datasetId,
@@ -209,8 +218,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                         collectionId: data.collectionId,
                         q: data.q,
                         a: data.a,
-                        sourceName: data.sourceName,
-                        sourceId: data.sourceId
+                        indexes: data.indexes
                       });
                     } catch (err) {
                       toast({
@@ -255,9 +263,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
       {!!editInputData && (
         <InputDataModal
-          datasetId={datasetDetail._id}
-          canWrite={datasetDetail.canWrite}
-          defaultValues={editInputData}
+          collectionId={editInputData.collectionId}
+          defaultValue={editInputData}
           onClose={() => setEditInputData(undefined)}
           onSuccess={(data) => {
             if (datasetTestItem && editInputData.id) {

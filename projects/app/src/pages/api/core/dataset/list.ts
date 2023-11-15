@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { getVectorModel } from '@/service/core/ai/model';
-import type { DatasetItemType } from '@/types/core/dataset';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
@@ -27,7 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const data = await Promise.all(
       datasets.map(async (item) => ({
         ...item.toJSON(),
-        tags: item.tags.join(' '),
         vectorModel: getVectorModel(item.vectorModel),
         canWrite,
         isOwner: teamOwner || String(item.tmbId) === tmbId

@@ -16,7 +16,7 @@ import dayjs from 'dayjs';
 import { BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void }) => {
   const { t } = useTranslation();
@@ -30,7 +30,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>用户:</Box>
-          <Box>{bill.username}</Box>
+          <Box>{bill.memberName}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>订单号:</Box>

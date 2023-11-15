@@ -9,10 +9,10 @@ import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 
 interface ConfigType {
   headers?: { [key: string]: string };
-  hold?: boolean;
   timeout?: number;
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
   cancelToken?: AbortController;
+  maxQuantity?: number;
 }
 interface ResponseDataType {
   code: number;
@@ -20,10 +20,44 @@ interface ResponseDataType {
   data: any;
 }
 
+const maxQuantityMap: Record<
+  string,
+  {
+    amount: number;
+    sign: AbortController;
+  }
+> = {};
+
+function requestStart({ url, maxQuantity }: { url: string; maxQuantity?: number }) {
+  if (!maxQuantity) return;
+  const item = maxQuantityMap[url];
+
+  if (item) {
+    if (item.amount >= maxQuantity && item.sign) {
+      item.sign.abort();
+      delete maxQuantityMap[url];
+    }
+  } else {
+    maxQuantityMap[url] = {
+      amount: 1,
+      sign: new AbortController()
+    };
+  }
+}
+function requestFinish({ url }: { url: string }) {
+  const item = maxQuantityMap[url];
+  if (item) {
+    item.amount--;
+    if (item.amount <= 0) {
+      delete maxQuantityMap[url];
+    }
+  }
+}
+
 /**
  * 请求开始
  */
-function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
+function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
     config.headers.token = getToken();
   }
@@ -85,14 +119,14 @@ const instance = axios.create({
 });
 
 /* 请求拦截 */
-instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
+instance.interceptors.request.use(startInterceptors, (err) => Promise.reject(err));
 /* 响应拦截 */
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 function request(
   url: string,
   data: any,
-  { cancelToken, ...config }: ConfigType,
+  { cancelToken, maxQuantity, ...config }: ConfigType,
   method: Method
 ): any {
   /* 去空 */
@@ -101,6 +135,8 @@ function request(
       delete data[key];
     }
   }
+
+  requestStart({ url, maxQuantity });
 
   return instance
     .request({
@@ -113,7 +149,8 @@ function request(
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))
-    .catch((err) => responseError(err));
+    .catch((err) => responseError(err))
+    .finally(() => requestFinish({ url }));
 }
 
 /**

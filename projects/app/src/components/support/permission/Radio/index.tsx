@@ -1,7 +1,7 @@
 import React from 'react';
 import MyRadio from '@/components/Radio';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const PermissionRadio = ({
   value,

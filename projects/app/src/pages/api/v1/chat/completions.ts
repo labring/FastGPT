@@ -170,7 +170,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // auth app, get history
     const { history } = await getChatHistory({ chatId, tmbId: user.team.tmbId });
 
-    const isOwner = !shareId && String(user.team.tmbId) === String(app.tmbId);
+    const isAppOwner = !shareId && String(user.team.tmbId) === String(app.tmbId);
 
     /* format prompts */
     const prompts = history.concat(gptMessage2ChatType(messages));
@@ -208,7 +208,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         teamId: user.team.teamId,
         tmbId: user.team.tmbId,
         variables,
-        isOwner, // owner update use time
+        updateUseTime: isAppOwner, // owner update use time
         shareId,
         source: (() => {
           if (shareId) {

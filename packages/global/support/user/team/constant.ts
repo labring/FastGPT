@@ -24,7 +24,8 @@ export const TeamMemberRoleMap = {
 export enum TeamMemberStatusEnum {
   waiting = 'waiting',
   active = 'active',
-  reject = 'reject'
+  reject = 'reject',
+  leave = 'leave'
 }
 export const TeamMemberStatusMap = {
   [TeamMemberStatusEnum.waiting]: {
@@ -38,5 +39,10 @@ export const TeamMemberStatusMap = {
   [TeamMemberStatusEnum.reject]: {
     label: 'user.team.member.reject',
     color: 'red.600'
+  },
+  [TeamMemberStatusEnum.leave]: {
+    label: 'user.team.member.leave',
+    color: 'red.600'
   }
 };
+export const leaveStatus = { $ne: TeamMemberStatusEnum.leave };

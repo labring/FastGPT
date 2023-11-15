@@ -1,22 +1,7 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { NextApiResponse } from 'next';
-import { countMessagesTokens, countPromptTokens } from '@/global/common/tiktoken';
-import { adaptRole_Chat2Message } from '@/utils/common/adapt/message';
-
-export type ChatCompletionResponseType = {
-  streamResponse: any;
-  responseMessages: ChatItemType[];
-  responseText: string;
-  totalTokens: number;
-};
-export type StreamResponseType = {
-  chatResponse: any;
-  messages: ChatItemType[];
-  res: NextApiResponse;
-  model: string;
-  [key: string]: any;
-};
+import { countMessagesTokens, countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
+import { adaptRole_Chat2Message } from '@fastgpt/global/core/chat/adapt';
 
 /* slice chat context by tokens */
 export function ChatContextFilter({

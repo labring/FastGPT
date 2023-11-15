@@ -30,14 +30,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const collections = await findCollectionAndChild(collectionId, '_id metadata');
     const delIdList = collections.map((item) => item._id);
 
-    // delete pg data
-    await delDataByCollectionId({ collectionIds: delIdList });
-
     // delete training data
     await MongoDatasetTraining.deleteMany({
-      datasetCollectionId: { $in: delIdList },
+      collectionId: { $in: delIdList },
       teamId
     });
+
+    // delete pg data
+    await delDataByCollectionId({ collectionIds: delIdList });
 
     // delete file
     await Promise.all(

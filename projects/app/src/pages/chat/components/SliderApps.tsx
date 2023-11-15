@@ -2,7 +2,7 @@ import React from 'react';
 import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
