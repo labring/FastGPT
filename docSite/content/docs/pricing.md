@@ -1,10 +1,10 @@
 ---
-title: '定价'
-description: 'FastGPT 的定价'
+title: '线上版定价'
+description: 'FastGPT 线上版定价'
 icon: 'currency_yen'
 draft: false
 toc: true
-weight: 10
+weight: 11
 ---
 
 ## Tokens 说明
@@ -15,7 +15,7 @@ weight: 10
 
 ## FastGPT 线上计费
 
-目前，FastGPT 线上计费也仅按 Tokens 使用数量为准。以下是详细的计费表（最新定价以线上表格为准，可在点击充值后实时获取）：
+使用: [https://fastgpt.run](https://fastgpt.run) 或  [https://ai.fastgpt.in](https://ai.fastgpt.in) 只需仅按 Tokens 使用数量扣费即可。可在 账号-使用记录 中查看具体使用情况，以下是详细的计费表（最新定价以线上表格为准，可在点击充值后实时获取）：
 
 {{< table "table-hover table-striped-columns" >}}
 | 计费项                 | 价格: 元/ 1K tokens（包含上下文） |
