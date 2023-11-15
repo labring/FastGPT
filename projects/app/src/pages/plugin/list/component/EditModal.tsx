@@ -21,7 +21,7 @@ import { delOnePlugin, postCreatePlugin, putUpdatePlugin } from '@/web/core/plug
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import MyIcon from '@/components/Icon';
 

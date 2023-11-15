@@ -3,15 +3,15 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { PagingData } from '@/types';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { countCollectionData } from '@/service/core/dataset/data/utils';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
-import { getTeamInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
+import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
+import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // auth dataset and get my role
     const { tmbId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
-    const { canWrite } = await getTeamInfoByTmbId({ tmbId });
+    const { canWrite } = await authUserRole({ req, authToken: true });
 
     const match = {
       datasetId: new Types.ObjectId(datasetId),
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               ...item,
               dataAmount: 0,
               trainingAmount: 0,
-              canWrite // admin or owner can write
+              canWrite // admin or team owner can write
             }))
           ),
           total: await MongoDatasetCollection.countDocuments(match)
@@ -67,51 +67,75 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
     }
 
-    const collections: DatasetCollectionsListItemType[] = await MongoDatasetCollection.aggregate([
-      {
-        $match: match
-      },
-      {
-        $lookup: {
-          from: DatasetTrainingCollectionName,
-          localField: '_id',
-          foreignField: 'datasetCollectionId',
-          as: 'trainings_amount'
+    const [collections, total]: [DatasetCollectionsListItemType[], number] = await Promise.all([
+      MongoDatasetCollection.aggregate([
+        {
+          $match: match
+        },
+        {
+          $lookup: {
+            from: DatasetTrainingCollectionName,
+            let: { id: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ['$collectionId', '$$id']
+                  }
+                }
+              },
+              { $project: { _id: 1 } }
+            ],
+            as: 'trainings'
+          }
+        },
+        {
+          $lookup: {
+            from: DatasetDataCollectionName,
+            let: { id: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ['$collectionId', '$$id']
+                  }
+                }
+              },
+              { $project: { _id: 1 } }
+            ],
+            as: 'datas'
+          }
+        },
+        // 统计子集合的数量和子训练的数量
+        {
+          $project: {
+            _id: 1,
+            parentId: 1,
+            tmbId: 1,
+            name: 1,
+            type: 1,
+            updateTime: 1,
+            trainingAmount: { $size: '$trainings' },
+            dataAmount: { $size: '$datas' },
+            metadata: 1
+          }
+        },
+        {
+          $sort: { updateTime: -1 }
+        },
+        {
+          $skip: (pageNum - 1) * pageSize
+        },
+        {
+          $limit: pageSize
         }
-      },
-      // 统计子集合的数量和子训练的数量
-      {
-        $project: {
-          _id: 1,
-          parentId: 1,
-          tmbId: 1,
-          name: 1,
-          type: 1,
-          updateTime: 1,
-          trainingAmount: { $size: '$trainings_amount' },
-          metadata: 1
-        }
-      },
-      {
-        $sort: { updateTime: -1 }
-      },
-      {
-        $skip: (pageNum - 1) * pageSize
-      },
-      {
-        $limit: pageSize
-      }
+      ]),
+      MongoDatasetCollection.countDocuments(match)
     ]);
-
-    const counts = await countCollectionData({
-      collectionIds: collections.map((item) => item._id),
-      datasetId
-    });
 
     const data = await Promise.all(
       collections.map(async (item, i) => ({
         ...item,
-        dataAmount: item.type === DatasetCollectionTypeEnum.folder ? undefined : counts[i],
         canWrite: String(item.tmbId) === tmbId || canWrite
       }))
     );
@@ -126,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         pageNum,
         pageSize,
         data,
-        total: await MongoDatasetCollection.countDocuments(match)
+        total
       }
     });
   } catch (err) {

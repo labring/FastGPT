@@ -55,7 +55,7 @@ const BillTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>{t('wallet.bill.bill username')}</Th>
+              <Th>{t('user.team.Member Name')}</Th>
               <Th>{t('user.Time')}</Th>
               <Th>{t('user.Source')}</Th>
               <Th>{t('user.Application Name')}</Th>
@@ -66,7 +66,7 @@ const BillTable = () => {
           <Tbody fontSize={'sm'}>
             {bills.map((item) => (
               <Tr key={item.id}>
-                <Td>{item.username}</Td>
+                <Td>{item.memberName}</Td>
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
                 <Td>{BillSourceMap[item.source]}</Td>
                 <Td>{t(item.appName) || '-'}</Td>

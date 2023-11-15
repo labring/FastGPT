@@ -30,7 +30,7 @@ export const pushResult2Remote = async ({
   shareId?: string;
   responseData?: any[];
 }) => {
-  if (!shareId || !authToken) return;
+  if (!shareId || !authToken || !global.systemEnv.pluginBaseUrl) return;
   try {
     const outLink = await MongoOutLink.findOne({
       shareId

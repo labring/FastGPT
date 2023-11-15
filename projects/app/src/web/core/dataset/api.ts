@@ -1,16 +1,20 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import type { DatasetItemType, DatasetPathItemType } from '@/types/core/dataset';
+import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import type {
   DatasetUpdateParams,
-  CreateDatasetParams,
   SearchTestProps,
   GetDatasetCollectionsProps,
-  PushDataProps,
   GetDatasetDataListProps,
   CreateDatasetCollectionParams,
-  UpdateDatasetCollectionParams,
-  SetOneDatasetDataProps
+  UpdateDatasetCollectionParams
 } from '@/global/core/api/datasetReq.d';
+import type {
+  PushDatasetDataProps,
+  UpdateDatasetDataProps,
+  CreateDatasetParams,
+  InsertOneDatasetDataProps
+} from '@/global/core/dataset/api.d';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type {
   DatasetCollectionItemType,
@@ -20,8 +24,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { getToken } from '@/web/support/user/auth';
 import download from 'downloadjs';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
 
 /* ======================== dataset ======================= */
@@ -34,7 +37,7 @@ export const getDatasets = (data: { parentId?: string; type?: `${DatasetTypeEnum
 export const getAllDataset = () => GET<DatasetItemType[]>(`/core/dataset/allDataset`);
 
 export const getDatasetPaths = (parentId?: string) =>
-  GET<DatasetPathItemType[]>('/core/dataset/paths', { parentId });
+  GET<ParentTreePathItemType[]>('/core/dataset/paths', { parentId });
 
 export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/dataset/detail?id=${id}`);
 
@@ -64,58 +67,39 @@ export const delDatasetCollectionById = (params: { collectionId: string }) =>
   DELETE(`/core/dataset/collection/delById`, params);
 
 /* =============================== data ==================================== */
-
 /* get dataset list */
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
-  POST(`/core/dataset/data/getDataList`, data);
-
-/**
- * export and download data
- */
-export const exportDatasetData = (data: { datasetId: string }) =>
-  fetch(`/api/core/dataset/data/exportAll?datasetId=${data.datasetId}`, {
-    method: 'GET',
-    headers: {
-      token: getToken()
-    }
-  })
-    .then(async (res) => {
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data?.message || 'Export failed');
-      }
-      return res.blob();
-    })
-    .then((blob) => download(blob, 'dataset.csv', 'text/csv'));
-
-/* get length of system training queue */
-export const getTrainingQueueLen = () => GET<number>(`/core/dataset/data/getQueueLen`);
+  POST(`/core/dataset/data/list`, data);
 
 export const getDatasetDataItemById = (dataId: string) =>
-  GET<DatasetDataItemType>(`/core/dataset/data/getDataById`, { dataId });
+  GET<DatasetDataItemType>(`/core/dataset/data/detail`, { dataId });
 
 /**
  * push data to training queue
  */
-export const postChunks2Dataset = (data: PushDataProps) =>
+export const postChunks2Dataset = (data: PushDatasetDataProps) =>
   POST<PushDataResponse>(`/core/dataset/data/pushData`, data);
 
 /**
  * insert one data to dataset (immediately insert)
  */
-export const postData2Dataset = (data: SetOneDatasetDataProps) =>
+export const postInsertData2Dataset = (data: InsertOneDatasetDataProps) =>
   POST<string>(`/core/dataset/data/insertData`, data);
 
 /**
- * 更新一条数据
+ * update one datasetData by id
  */
-export const putDatasetDataById = (data: SetOneDatasetDataProps) =>
-  PUT('/core/dataset/data/updateData', data);
+export const putDatasetDataById = (data: UpdateDatasetDataProps) =>
+  PUT('/core/dataset/data/update', data);
 /**
  * 删除一条知识库数据
  */
 export const delOneDatasetDataById = (dataId: string) =>
-  DELETE(`/core/dataset/data/delDataById?dataId=${dataId}`);
+  DELETE<string>(`/core/dataset/data/delete`, { dataId });
+
+/* ================ training ==================== */
+/* get length of system training queue */
+export const getTrainingQueueLen = () => GET<number>(`/core/dataset/training/getQueueLen`);
 
 /* ================== file ======================== */
 export const getFileViewUrl = (fileId: string) =>

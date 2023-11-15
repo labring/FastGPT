@@ -2,7 +2,7 @@ import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
 import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, ModalHeader } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';

@@ -56,8 +56,7 @@ const DatasetCollectionSchema = new Schema({
         ref: 'dataset.files'
       },
       rawLink: {
-        type: String,
-        default: ''
+        type: String
       },
       // 451 初始化
       pgCollectionId: {

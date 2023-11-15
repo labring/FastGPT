@@ -1,7 +1,8 @@
 import { getFileViewUrl, postChunks2Dataset } from '@/web/core/dataset/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { DatasetChunkItemType } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@/utils/tools';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
+import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 
 export async function chunksUpload({
   collectionId,
@@ -15,12 +16,12 @@ export async function chunksUpload({
   collectionId: string;
   billId: string;
   mode: `${TrainingModeEnum}`;
-  chunks: DatasetChunkItemType[];
+  chunks: PushDatasetDataChunkProps[];
   prompt?: string;
   rate?: number;
   onUploading?: (insertLen: number, total: number) => void;
 }) {
-  async function upload(data: DatasetChunkItemType[]) {
+  async function upload(data: PushDatasetDataChunkProps[]) {
     return postChunks2Dataset({
       collectionId,
       data,
@@ -51,6 +52,9 @@ export async function chunksUpload({
 }
 
 export async function getFileAndOpen(fileId: string) {
+  if (strIsLink(fileId)) {
+    return window.open(fileId, '_blank');
+  }
   const url = await getFileViewUrl(fileId);
   const asPath = `${location.origin}${url}`;
   window.open(asPath, '_blank');

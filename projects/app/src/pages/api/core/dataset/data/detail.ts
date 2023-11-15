@@ -13,12 +13,9 @@ export type Response = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    let { dataId } = req.query as {
+    const { dataId } = req.query as {
       dataId: string;
     };
-    if (!dataId) {
-      throw new Error('缺少参数');
-    }
 
     // 凭证校验
     const { datasetData } = await authDatasetData({ req, authToken: true, dataId, per: 'r' });

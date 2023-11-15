@@ -33,7 +33,7 @@ import dayjs from 'dayjs';
 import { AddIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { feConfigs } from '@/web/common/system/staticData';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';
 import { useForm } from 'react-hook-form';

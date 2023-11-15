@@ -2,7 +2,7 @@
 import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
+import { DatasetDataIndexTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetCollectionName } from '../schema';
 import {
@@ -33,12 +33,13 @@ const TrainingDataSchema = new Schema({
     ref: DatasetCollectionName,
     required: true
   },
-  datasetCollectionId: {
+  collectionId: {
     type: Schema.Types.ObjectId,
     ref: DatasetColCollectionName,
     required: true
   },
   billId: {
+    // concat bill
     type: String,
     default: ''
   },
@@ -48,6 +49,7 @@ const TrainingDataSchema = new Schema({
     required: true
   },
   expireAt: {
+    // It will be deleted after 7 days
     type: Date,
     default: () => new Date()
   },
@@ -56,6 +58,7 @@ const TrainingDataSchema = new Schema({
     default: () => new Date('2000/1/1')
   },
   model: {
+    // ai model
     type: String,
     required: true
   },
@@ -71,13 +74,29 @@ const TrainingDataSchema = new Schema({
   a: {
     type: String,
     default: ''
+  },
+  indexes: {
+    type: [
+      {
+        type: {
+          type: String,
+          enum: Object.keys(DatasetDataIndexTypeMap),
+          required: true
+        },
+        text: {
+          type: String,
+          required: true
+        }
+      }
+    ],
+    default: []
   }
 });
 
 try {
   TrainingDataSchema.index({ lockTime: 1 });
   TrainingDataSchema.index({ userId: 1 });
-  TrainingDataSchema.index({ datasetCollectionId: 1 });
+  TrainingDataSchema.index({ collectionId: 1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 });
 } catch (error) {
   console.log(error);

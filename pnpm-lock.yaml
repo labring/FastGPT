@@ -51,6 +51,9 @@ importers:
       encoding:
         specifier: ^0.1.13
         version: registry.npmmirror.com/encoding@0.1.13
+      js-tiktoken:
+        specifier: ^1.0.7
+        version: registry.npmmirror.com/js-tiktoken@1.0.7
       openai:
         specifier: ^4.16.1
         version: registry.npmmirror.com/openai@4.16.1(encoding@0.1.13)
@@ -200,12 +203,6 @@ importers:
       immer:
         specifier: ^9.0.19
         version: registry.npmmirror.com/immer@9.0.21
-      js-cookie:
-        specifier: ^3.0.5
-        version: registry.npmmirror.com/js-cookie@3.0.5
-      js-tiktoken:
-        specifier: ^1.0.7
-        version: registry.npmmirror.com/js-tiktoken@1.0.7
       jschardet:
         specifier: ^3.0.0
         version: registry.npmmirror.com/jschardet@3.0.0
@@ -242,9 +239,6 @@ importers:
       papaparse:
         specifier: ^5.4.1
         version: registry.npmmirror.com/papaparse@5.4.1
-      pg-query-stream:
-        specifier: ^4.5.3
-        version: registry.npmmirror.com/pg-query-stream@4.5.3(pg@8.11.3)
       react:
         specifier: 18.2.0
         version: registry.npmmirror.com/react@18.2.0
@@ -8721,13 +8715,6 @@ packages:
       set-function-name: registry.npmmirror.com/set-function-name@2.0.1
     dev: true
 
-  registry.npmmirror.com/js-cookie@3.0.5:
-    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-cookie/-/js-cookie-3.0.5.tgz}
-    name: js-cookie
-    version: 3.0.5
-    engines: {node: '>=14'}
-    dev: false
-
   registry.npmmirror.com/js-sdsl@4.4.2:
     resolution: {integrity: sha512-dwXFwByc/ajSV6m5bcKAPwe4yDDF6D614pxmIi5odytzxRlwqF6nwoiCek80Ixc7Cvma5awClxrzFtxCQvcM8w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/js-sdsl/-/js-sdsl-4.4.2.tgz}
     name: js-sdsl
@@ -10629,17 +10616,6 @@ packages:
     version: 2.6.2
     dev: false
 
-  registry.npmmirror.com/pg-cursor@2.10.3(pg@8.11.3):
-    resolution: {integrity: sha512-rDyBVoqPVnx/PTmnwQAYgusSeAKlTL++gmpf5klVK+mYMFEqsOc6VHHZnPKc/4lOvr4r6fiMuoxSFuBF1dx4FQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pg-cursor/-/pg-cursor-2.10.3.tgz}
-    id: registry.npmmirror.com/pg-cursor/2.10.3
-    name: pg-cursor
-    version: 2.10.3
-    peerDependencies:
-      pg: ^8
-    dependencies:
-      pg: registry.npmmirror.com/pg@8.11.3
-    dev: false
-
   registry.npmmirror.com/pg-int8@1.0.1:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pg-int8/-/pg-int8-1.0.1.tgz}
     name: pg-int8
@@ -10668,18 +10644,6 @@ packages:
     resolution: {integrity: sha512-M+PDm637OY5WM307051+bsDia5Xej6d9IR4GwJse1qA1DIhiKlksvrneZOYQq42OM+spubpcNYEo2FcKQrDk+Q==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pg-protocol/-/pg-protocol-1.6.0.tgz}
     name: pg-protocol
     version: 1.6.0
-
-  registry.npmmirror.com/pg-query-stream@4.5.3(pg@8.11.3):
-    resolution: {integrity: sha512-ufa94r/lHJdjAm3+zPZEO0gXAmCb4tZPaOt7O76mjcxdL/HxwTuryy76km+u0odBBgtfdKFYq/9XGfiYeQF0yA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pg-query-stream/-/pg-query-stream-4.5.3.tgz}
-    id: registry.npmmirror.com/pg-query-stream/4.5.3
-    name: pg-query-stream
-    version: 4.5.3
-    peerDependencies:
-      pg: ^8
-    dependencies:
-      pg: registry.npmmirror.com/pg@8.11.3
-      pg-cursor: registry.npmmirror.com/pg-cursor@2.10.3(pg@8.11.3)
-    dev: false
 
   registry.npmmirror.com/pg-types@2.2.0:
     resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pg-types/-/pg-types-2.2.0.tgz}

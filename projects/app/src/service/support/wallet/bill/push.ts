@@ -1,5 +1,5 @@
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getAudioSpeechModel, getModelMap, ModelTypeEnum } from '@/service/core/ai/model';
+import { getAudioSpeechModel } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/mongo/controller';

@@ -30,7 +30,7 @@ import {
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { VariableInputEnum } from '@/constants/app';
@@ -41,7 +41,7 @@ import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
 import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';

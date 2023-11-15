@@ -12,7 +12,7 @@ import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { feConfigs } from '@/web/common/system/staticData';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
@@ -35,67 +35,64 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
 
-  const tabList = useMemo(
-    () => [
-      {
-        icon: 'meLight',
-        label: t('user.Personal Information'),
-        id: TabEnum.info
-      },
-      ...(feConfigs?.isPlus
-        ? [
-            {
-              icon: 'billRecordLight',
-              label: t('user.Usage Record'),
-              id: TabEnum.bill
-            }
-          ]
-        : []),
-      ...(feConfigs?.show_promotion
-        ? [
-            {
-              icon: 'promotionLight',
-              label: t('user.Promotion Record'),
-              id: TabEnum.promotion
-            }
-          ]
-        : []),
-      ...(feConfigs?.show_pay && userInfo?.team.canWrite
-        ? [
-            {
-              icon: 'payRecordLight',
-              label: t('user.Recharge Record'),
-              id: TabEnum.pay
-            }
-          ]
-        : []),
-      ...(userInfo?.team.canWrite
-        ? [
-            {
-              icon: 'apikey',
-              label: t('user.apikey.key'),
-              id: TabEnum.apikey
-            }
-          ]
-        : []),
-      ...(feConfigs.isPlus
-        ? [
-            {
-              icon: 'informLight',
-              label: t('user.Notice'),
-              id: TabEnum.inform
-            }
-          ]
-        : []),
+  const tabList = [
+    {
+      icon: 'meLight',
+      label: t('user.Personal Information'),
+      id: TabEnum.info
+    },
+    ...(feConfigs?.isPlus
+      ? [
+          {
+            icon: 'billRecordLight',
+            label: t('user.Usage Record'),
+            id: TabEnum.bill
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_promotion
+      ? [
+          {
+            icon: 'promotionLight',
+            label: t('user.Promotion Record'),
+            id: TabEnum.promotion
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_pay && userInfo?.team.canWrite
+      ? [
+          {
+            icon: 'payRecordLight',
+            label: t('user.Recharge Record'),
+            id: TabEnum.pay
+          }
+        ]
+      : []),
+    ...(userInfo?.team.canWrite
+      ? [
+          {
+            icon: 'apikey',
+            label: t('user.apikey.key'),
+            id: TabEnum.apikey
+          }
+        ]
+      : []),
+    ...(feConfigs.isPlus
+      ? [
+          {
+            icon: 'informLight',
+            label: t('user.Notice'),
+            id: TabEnum.inform
+          }
+        ]
+      : []),
 
-      {
-        icon: 'loginoutLight',
-        label: t('user.Sign Out'),
-        id: TabEnum.loginout
-      }
-    ],
-    [t, userInfo?.team.canWrite]
-  );
+    {
+      icon: 'loginoutLight',
+      label: t('user.Sign Out'),
+      id: TabEnum.loginout
+    }
+  ];
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认退出登录？'

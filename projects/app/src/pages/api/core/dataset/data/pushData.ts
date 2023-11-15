@@ -4,32 +4,27 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum, TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
-import { DatasetChunkItemType } from '@fastgpt/global/core/dataset/type';
-import { countPromptTokens } from '@/global/common/tiktoken';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
-import type { PushDataProps } from '@/global/core/api/datasetReq.d';
+import type { PushDatasetDataProps } from '@/global/core/dataset/api.d';
+import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
 import { getVectorModel } from '@/service/core/ai/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 
-const modeMap = {
-  [TrainingModeEnum.index]: true,
-  [TrainingModeEnum.qa]: true
-};
-
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { collectionId, data, mode = TrainingModeEnum.index } = req.body as PushDataProps;
+    const { collectionId, data, mode = TrainingModeEnum.chunk } = req.body as PushDatasetDataProps;
 
     if (!collectionId || !Array.isArray(data)) {
       throw new Error('collectionId or data is empty');
     }
 
-    if (modeMap[mode] === undefined) {
-      throw new Error('Mode is not index or qa');
+    if (!TrainingTypeMap[mode]) {
+      throw new Error(`Mode is not ${Object.keys(TrainingTypeMap).join(', ')}`);
     }
 
     if (data.length > 200) {
@@ -68,8 +63,8 @@ export async function pushDataToDatasetCollection({
   mode,
   prompt,
   billId
-}: { teamId: string; tmbId: string } & PushDataProps): Promise<PushDataResponse> {
-  // get vector model
+}: { teamId: string; tmbId: string } & PushDatasetDataProps): Promise<PushDataResponse> {
+  // get dataset vector model
   const {
     datasetId: { _id: datasetId, vectorModel }
   } = await getCollectionWithDataset(collectionId);
@@ -77,7 +72,7 @@ export async function pushDataToDatasetCollection({
   const vectorModelData = getVectorModel(vectorModel);
 
   const modeMap = {
-    [TrainingModeEnum.index]: {
+    [TrainingModeEnum.chunk]: {
       maxToken: vectorModelData.maxToken * 1.5,
       model: vectorModelData.model
     },
@@ -89,13 +84,12 @@ export async function pushDataToDatasetCollection({
 
   // filter repeat or equal content
   const set = new Set();
-  const filterResult: Record<string, DatasetChunkItemType[]> = {
+  const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
     success: [],
     overToken: [],
     repeat: [],
     error: []
   };
-
   await Promise.all(
     data.map(async (item) => {
       if (!item.q) {
@@ -128,13 +122,14 @@ export async function pushDataToDatasetCollection({
       teamId,
       tmbId,
       datasetId,
-      datasetCollectionId: collectionId,
+      collectionId,
       billId,
       mode,
       prompt,
       model: modeMap[mode].model,
       q: item.q,
-      a: item.a
+      a: item.a,
+      indexes: item.indexes
     }))
   );
 

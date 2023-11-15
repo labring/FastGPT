@@ -5,7 +5,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
 import { priceMd } from '@/web/common/system/staticData';

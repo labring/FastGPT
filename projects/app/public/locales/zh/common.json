@@ -292,17 +292,32 @@
       "Select One Collection To Store": "选择一个文件进行存储"
     },
     "data": {
+      "Add Index": "新增自定义索引",
       "Can not delete tip": "无修改权限",
       "Can not edit": "无编辑权限",
+      "Custom Index Number": "自定义索引{{number}}",
+      "Default Index": "默认索引",
+      "Delete Success Tip": "删除成功",
       "Delete Tip": "确认删除该条数据？",
       "File import": "文件导入",
+      "Index Edit": "数据索引",
+      "Index Placeholder": "输入索引文本内容",
       "Input Data": "导入新数据",
       "Input Success Tip": "导入数据成功",
       "Update Data": "更新数据",
-      "Update Success Tip": "更新数据成功"
+      "Update Success Tip": "更新数据成功",
+      "edit": {
+        "Content": "数据内容",
+        "Course": "说明文档",
+        "Delete": "删除数据",
+        "Index": "数据索引({{amount}})"
+      }
     },
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
-    "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
+    "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
+    "test": {
+      "noResult": "搜索结果为空"
+    }
   },
   "error": {
     "team": {
@@ -461,9 +476,11 @@
     "Bill Detail": "账单详情",
     "Change": "变更",
     "Copy invite url": "复制邀请链接",
+    "Edit name": "点击修改昵称",
     "Invite Url": "邀请链接",
     "Invite url tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n此外，好友使用手机号注册时，你将立即获得 5 元奖励。\n奖励会发送到您的默认团队中。",
     "Language": "语言",
+    "Member Name": "昵称",
     "Notice": "通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
@@ -513,12 +530,15 @@
       "Leave Team Failed": "离开团队异常",
       "Manage": "团队管理",
       "Member": "成员",
+      "Member Name": "成员名",
       "Over Max Member Tip": "团队最多{{max}}人",
       "Personal Team": "个人团队",
       "Processing invitations": "处理邀请",
       "Processing invitations Tips": "你有{{amount}}个需要处理的团队邀请",
       "Reinvite": "重新邀请",
-      "Remove Member Confirm Tip": "确认将 {{username}} 移出团队？",
+      "Remove Member Confirm Tip": "确认将 {{username}} 移出团队？其所有资源将转让到团队创建者的账户内。",
+      "Remove Member Failed": "移除团队成员异常",
+      "Remove Member Success": "移除团队成员成功",
       "Remove Member Tip": "移出团队",
       "Role": "身份",
       "Select Team": "团队选择",

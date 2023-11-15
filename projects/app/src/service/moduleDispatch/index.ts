@@ -7,7 +7,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { UserType } from '@fastgpt/global/support/user/type';
 import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
-import { replaceVariable } from '@/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';

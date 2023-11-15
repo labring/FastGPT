@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   getTeamList,
@@ -100,7 +100,9 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     mutationFn: delRemoveMember,
     onSuccess() {
       refetchMembers();
-    }
+    },
+    successToast: t('user.team.Remove Member Success'),
+    errorToast: t('user.team.Remove Member Failed')
   });
   const { mutate: onLeaveTeam, isLoading: isLoadingLeaveTeam } = useRequest({
     mutationFn: async (teamId?: string) => {
@@ -306,7 +308,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                         <Td display={'flex'} alignItems={'center'}>
                           <Avatar src={item.avatar} w={['18px', '22px']} />
                           <Box flex={'1 0 0'} w={0} ml={1} className={'textEllipsis'}>
-                            {item.memberUsername}
+                            {item.memberName}
                           </Box>
                         </Td>
                         <Td>{t(TeamMemberRoleMap[item.role]?.label || '')}</Td>
@@ -383,7 +385,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                           }),
                                         undefined,
                                         t('user.team.Remove Member Confirm Tip', {
-                                          username: item.memberUsername
+                                          username: item.memberName
                                         })
                                       )()
                                   }

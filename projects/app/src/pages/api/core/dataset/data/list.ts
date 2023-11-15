@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { PgClient } from '@fastgpt/service/common/pg';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
-import type { DatasetDataListItemType } from '@/global/core/dataset/response.d';
+import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
 import type { GetDatasetDataListProps } from '@/global/core/api/datasetReq';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { PagingData } from '@/types';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -22,30 +22,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     searchText = searchText.replace(/'/g, '');
 
-    const where: any = [
-      ['collection_id', collectionId],
-      searchText ? `AND (q ILIKE '%${searchText}%' OR a ILIKE '%${searchText}%')` : ''
-    ];
+    const match = {
+      collectionId,
+      ...(searchText
+        ? {
+            $or: [{ q: new RegExp(searchText, 'i') }, { a: new RegExp(searchText, 'i') }]
+          }
+        : {})
+    };
 
-    const [searchRes, total] = await Promise.all([
-      PgClient.select<DatasetDataListItemType>(PgDatasetTableName, {
-        fields: ['id', 'q', 'a'],
-        where,
-        order: [{ field: 'id', mode: 'DESC' }],
-        limit: pageSize,
-        offset: pageSize * (pageNum - 1)
-      }),
-      PgClient.count(PgDatasetTableName, {
-        fields: ['id'],
-        where
-      })
+    const [data, total] = await Promise.all([
+      MongoDatasetData.find(match, '_id datasetId collectionId q a  indexes')
+        .sort({ _id: -1 })
+        .skip((pageNum - 1) * pageSize)
+        .limit(pageSize)
+        .lean(),
+      MongoDatasetData.countDocuments(match)
     ]);
 
-    jsonRes(res, {
+    jsonRes<PagingData<DatasetDataListItemType>>(res, {
       data: {
         pageNum,
         pageSize,
-        data: searchRes.rows,
+        data,
         total
       }
     });

@@ -27,7 +27,7 @@ export async function generateVector(): Promise<any> {
       const data = (
         await MongoDatasetTraining.findOneAndUpdate(
           {
-            mode: TrainingModeEnum.index,
+            mode: TrainingModeEnum.chunk,
             lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
           },
           {
@@ -39,9 +39,10 @@ export async function generateVector(): Promise<any> {
           teamId: 1,
           tmbId: 1,
           datasetId: 1,
-          datasetCollectionId: 1,
+          collectionId: 1,
           q: 1,
           a: 1,
+          indexes: 1,
           model: 1,
           billId: 1
         })
@@ -57,7 +58,8 @@ export async function generateVector(): Promise<any> {
         data,
         dataItem: {
           q: data.q.replace(/[\x00-\x08]/g, ' '),
-          a: data.a?.replace(/[\x00-\x08]/g, ' ') || ''
+          a: data.a?.replace(/[\x00-\x08]/g, ' ') || '',
+          indexes: data.indexes
         }
       };
     } catch (error) {
@@ -70,7 +72,7 @@ export async function generateVector(): Promise<any> {
 
   if (done) {
     reduceQueue();
-    global.vectorQueueLen <= 0 && console.log(`【索引】任务完成`);
+    global.vectorQueueLen <= 0 && console.log(`【index】Task done`);
     return;
   }
   if (error || !data) {
@@ -86,15 +88,20 @@ export async function generateVector(): Promise<any> {
     try {
       sendOneInform({
         type: 'system',
-        title: '索引生成任务中止',
+        title: '文本训练任务中止',
         content:
-          '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+          '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
         tmbId: data.tmbId
       });
-      console.log('余额不足，暂停向量生成任务');
-      await MongoDatasetTraining.findById(data._id, {
-        lockTime: new Date('2999/5/5')
-      });
+      console.log('余额不足，暂停【向量】生成任务');
+      await MongoDatasetTraining.updateMany(
+        {
+          teamId: data.teamId
+        },
+        {
+          lockTime: new Date('2999/5/5')
+        }
+      );
     } catch (error) {}
     reduceQueue();
     return generateVector();
@@ -108,9 +115,10 @@ export async function generateVector(): Promise<any> {
       teamId: data.teamId,
       tmbId: data.teamId,
       datasetId: data.datasetId,
-      collectionId: data.datasetCollectionId,
+      collectionId: data.collectionId,
       q: dataItem.q,
       a: dataItem.a,
+      indexes: dataItem.indexes,
       model: data.model
     });
     // push bill

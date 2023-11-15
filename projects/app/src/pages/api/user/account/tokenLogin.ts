@@ -8,10 +8,10 @@ import { getUserDetail } from '@/service/support/user/controller';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { userId, tmbId } = await authCert({ req, authToken: true });
+    const { tmbId } = await authCert({ req, authToken: true });
 
     jsonRes(res, {
-      data: await getUserDetail({ tmbId, userId })
+      data: await getUserDetail({ tmbId })
     });
   } catch (err) {
     jsonRes(res, {

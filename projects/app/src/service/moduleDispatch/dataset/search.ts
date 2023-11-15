@@ -1,11 +1,11 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { countModelPrice } from '@/service/support/wallet/bill/utils';
-import type { SelectedDatasetType } from '@/types/core/dataset';
+import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-import { searchDatasetData } from '@/service/core/dataset/data/utils';
+import { searchDatasetData } from '@/service/core/dataset/data/pg';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   datasets: SelectedDatasetType;
@@ -22,8 +22,6 @@ export type KBSearchResponse = {
 
 export async function dispatchDatasetSearch(props: Record<string, any>): Promise<KBSearchResponse> {
   const {
-    teamId,
-    tmbId,
     inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
   } = props as DatasetSearchProps;
 

@@ -80,8 +80,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
     const { userId, teamId, tmbId } = await authCert({ req, authToken: true });
-    console.log(req.body);
-
     const { files, bucketName, metadata } = await upload.doUpload(req, res);
 
     const upLoadResults = await Promise.all(

@@ -10,7 +10,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const SelectCollections = ({
   datasetId,

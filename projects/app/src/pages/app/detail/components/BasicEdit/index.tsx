@@ -41,7 +41,7 @@ import { useRouter } from 'next/router';
 import { useToast } from '@/web/common/hooks/useToast';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { getGuideModule } from '@/global/core/app/modules/utils';
 
 import dynamic from 'next/dynamic';
@@ -481,8 +481,9 @@ const Settings = ({ appId }: { appId: string }) => {
           gridGap={[2, 4]}
         >
           {selectDatasets.map((item) => (
-            <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')} overflow={'hidden'}>
+            <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
               <Flex
+                overflow={'hidden'}
                 alignItems={'center'}
                 p={2}
                 bg={'white'}

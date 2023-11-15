@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Button, Flex, Image, useDisclosure, useTheme } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import dynamic from 'next/dynamic';
 import { feConfigs } from '@/web/common/system/staticData';

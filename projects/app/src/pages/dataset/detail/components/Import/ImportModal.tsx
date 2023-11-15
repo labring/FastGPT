@@ -3,7 +3,7 @@ import { Box, type BoxProps, Flex, useTheme, ModalCloseButton } from '@chakra-ui
 import MyRadio from '@/components/Radio/index';
 import dynamic from 'next/dynamic';
 import ChunkImport from './Chunk';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const QAImport = dynamic(() => import('./QA'), {});
 const CsvImport = dynamic(() => import('./Csv'), {});
@@ -14,7 +14,7 @@ import { qaModelList } from '@/web/common/system/staticData';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 export enum ImportTypeEnum {
-  index = 'index',
+  chunk = 'chunk',
   qa = 'qa',
   csv = 'csv'
 }
@@ -33,16 +33,16 @@ const ImportData = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const { datasetDetail } = useDatasetStore();
-  const [importType, setImportType] = useState<`${ImportTypeEnum}`>(ImportTypeEnum.index);
+  const [importType, setImportType] = useState<`${ImportTypeEnum}`>(ImportTypeEnum.chunk);
 
   const typeMap = useMemo(() => {
     const vectorModel = datasetDetail.vectorModel;
     const qaModel = qaModelList[0];
     const map = {
-      [ImportTypeEnum.index]: {
+      [ImportTypeEnum.chunk]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
         unitPrice: vectorModel?.price || 0.2,
-        mode: TrainingModeEnum.index
+        mode: TrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
         defaultChunkLen: qaModel?.maxContext * 0.5 || 8000,
@@ -52,7 +52,7 @@ const ImportData = ({
       [ImportTypeEnum.csv]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
         unitPrice: vectorModel?.price || 0.2,
-        mode: TrainingModeEnum.index
+        mode: TrainingModeEnum.chunk
       }
     };
     return map[importType];
@@ -82,7 +82,7 @@ const ImportData = ({
                 icon: 'indexImport',
                 title: '直接分段',
                 desc: '选择文本文件，直接将其按分段进行处理',
-                value: ImportTypeEnum.index
+                value: ImportTypeEnum.chunk
               },
               {
                 icon: 'qaImport',
@@ -110,7 +110,7 @@ const ImportData = ({
           onUploadSuccess={uploadSuccess}
         >
           <Box flex={'1 0 0'} h={0}>
-            {importType === ImportTypeEnum.index && <ChunkImport />}
+            {importType === ImportTypeEnum.chunk && <ChunkImport />}
             {importType === ImportTypeEnum.qa && <QAImport />}
             {importType === ImportTypeEnum.csv && <CsvImport />}
           </Box>

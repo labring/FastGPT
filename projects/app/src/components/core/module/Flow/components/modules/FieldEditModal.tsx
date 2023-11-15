@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
 import { FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
 
 const typeSelectList = [

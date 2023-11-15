@@ -1,5 +1,4 @@
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import Cookies from 'js-cookie';
 
 export const LANG_KEY = 'NEXT_LOCALE_LANG';
 export enum LangEnum {
@@ -17,21 +16,27 @@ export const langMap = {
   }
 };
 
-export const setLangStore = (value: `${LangEnum}`) => {
-  return Cookies.set(LANG_KEY, value, { expires: 7, sameSite: 'None', secure: true });
-};
-
-export const getLangStore = () => {
-  return (Cookies.get(LANG_KEY) as `${LangEnum}`) || LangEnum.zh;
-};
-
 export const serviceSideProps = (content: any) => {
-  const acceptLanguage = (content.req.headers['accept-language'] as string) || '';
-  const acceptLanguageList = acceptLanguage.split(/,|;/g);
-  // @ts-ignore
-  const firstLang = acceptLanguageList.find((lang) => langMap[lang]);
+  return serverSideTranslations(content.locale, undefined, null, content.locales);
+};
 
-  const language = content.req.cookies[LANG_KEY] || firstLang || 'zh';
+export const getLng = (lng: string) => {
+  return lng.split('-')[0];
+};
+export const change2DefaultLng = (currentLng: string) => {
+  if (!navigator || !localStorage) return;
+  if (localStorage.getItem(LANG_KEY)) return;
+  const userLang = navigator.language;
 
-  return serverSideTranslations(language, undefined, null, content.locales);
+  if (userLang.includes(currentLng)) {
+    return;
+  }
+
+  // currentLng not in userLang
+  return getLng(userLang);
+};
+
+export const setLngStore = (lng: string) => {
+  if (!localStorage) return;
+  localStorage.setItem(LANG_KEY, lng);
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -7,7 +7,8 @@ import {
   useDisclosure,
   Card,
   MenuButton,
-  Image
+  Image,
+  Link
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -19,10 +20,9 @@ import {
   delDatasetById,
   getDatasetPaths,
   putDatasetById,
-  exportDatasetData,
   postCreateDataset
 } from '@/web/core/dataset/api';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -33,11 +33,9 @@ import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
-import { feConfigs } from '@/web/common/system/staticData';
 import EditFolderModal, { useEditFolder } from '../component/EditFolderModal';
 import { useDrag } from '@/web/common/hooks/useDrag';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 
@@ -90,19 +88,6 @@ const Kb = () => {
     },
     successToast: t('common.Delete Success'),
     errorToast: t('dataset.Delete Dataset Error')
-  });
-
-  // export dataset to csv
-  const { mutate: onclickExport } = useRequest({
-    mutationFn: (datasetId: string) => {
-      setLoading(true);
-      return exportDatasetData({ datasetId });
-    },
-    onSettled() {
-      setLoading(false);
-    },
-    successToast: `导出成功，下次导出需要 ${feConfigs?.limit?.exportLimitMinutes} 分钟后`,
-    errorToast: '导出异常'
   });
 
   const { data, refetch } = useQuery(['loadDataset', parentId], () => {
@@ -385,7 +370,14 @@ const Kb = () => {
                         {t('Export')}
                       </Flex>
                     ),
-                    onClick: () => onclickExport(dataset._id)
+                    onClick: () => {
+                      const a = document.createElement('a');
+                      a.href = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
+                      a.download = `${dataset.name}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                    }
                   },
                   {
                     child: (
@@ -414,7 +406,6 @@ const Kb = () => {
             <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
               <Flex>
                 {dataset.tags
-                  .split(' ')
                   .filter((item) => item)
                   .map((tag, i) => (
                     <Tag key={i} mr={2} mb={2}>

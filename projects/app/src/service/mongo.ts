@@ -40,20 +40,18 @@ async function initRootUser() {
       await MongoUser.findOneAndUpdate(
         { username: 'root' },
         {
-          password: hashStr(psw),
-          balance: 999999 * PRICE_SCALE
+          password: hashStr(psw)
         }
       );
     } else {
       const { _id } = await MongoUser.create({
         username: 'root',
-        password: hashStr(psw),
-        balance: 999999 * PRICE_SCALE
+        password: hashStr(psw)
       });
       rootId = _id;
     }
     // init root team
-    await createDefaultTeam({ userId: rootId, maxSize: 1 });
+    await createDefaultTeam({ userId: rootId, maxSize: 1, balance: 9999 * PRICE_SCALE });
 
     console.log(`root user init:`, {
       username: 'root',

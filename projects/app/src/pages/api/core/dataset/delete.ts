@@ -3,12 +3,12 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { PgClient } from '@fastgpt/service/common/pg';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import { delDatasetFiles } from '@fastgpt/service/core/dataset/file/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { delDataByDatasetId } from '@/service/core/dataset/data/controller';
+import { findDatasetIdTreeByTopDatasetId } from '@fastgpt/service/core/dataset/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -24,17 +24,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // auth owner
     await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
 
-    const deletedIds = [id, ...(await findAllChildrenIds(id))];
+    const deletedIds = await findDatasetIdTreeByTopDatasetId(id);
 
-    // delete training data
+    // delete training data(There could be a training mission)
     await MongoDatasetTraining.deleteMany({
-      datasetId: { $in: deletedIds.map((id) => new Types.ObjectId(id)) }
+      datasetId: { $in: deletedIds }
     });
 
-    // delete all pg data
-    await PgClient.delete(PgDatasetTableName, {
-      where: [`dataset_id IN (${deletedIds.map((id) => `'${id}'`).join(',')})`]
-    });
+    // delete all dataset.data and pg data
+    await delDataByDatasetId({ datasetIds: deletedIds });
 
     // delete related files
     await delDatasetFiles({ datasetId: id });
@@ -56,18 +54,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
-
-export async function findAllChildrenIds(id: string) {
-  // find children
-  const children = await MongoDataset.find({ parentId: id });
-
-  let allChildrenIds = children.map((child) => String(child._id));
-
-  for (const child of children) {
-    const grandChildrenIds = await findAllChildrenIds(child._id);
-    allChildrenIds = allChildrenIds.concat(grandChildrenIds);
-  }
-
-  return allChildrenIds;
 }

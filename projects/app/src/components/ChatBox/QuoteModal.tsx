@@ -10,13 +10,12 @@ import InputDataModal, {
   type InputDataType
 } from '@/pages/dataset/detail/components/InputDataModal';
 import MyModal from '../MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import MyTooltip from '../MyTooltip';
 import NextLink from 'next/link';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
 
 const QuoteModal = ({
   rawSearch = [],
@@ -29,10 +28,9 @@ const QuoteModal = ({
   const { isPc } = useSystemStore();
   const theme = useTheme();
   const router = useRouter();
-  const { userInfo } = useUserStore();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
-  const [editInputData, setEditInputData] = useState<InputDataType & { datasetId: string }>();
+  const [editInputData, setEditInputData] = useState<InputDataType & { collectionId: string }>();
 
   const isShare = useMemo(() => router.pathname === '/chat/share', [router.pathname]);
 
@@ -99,7 +97,7 @@ const QuoteModal = ({
                   color={'black'}
                   sourceName={item.sourceName}
                   sourceId={item.sourceId}
-                  addr={!isShare}
+                  canView={!isShare}
                 />
                 <Box flex={1} />
                 {!isShare && (
@@ -131,7 +129,7 @@ const QuoteModal = ({
                   <MyTooltip label={t('core.dataset.Quote Length')}>
                     <Flex alignItems={'center'}>
                       <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
-                      {item.q.length + item.a.length}
+                      {item.q.length + (item.a?.length || 0)}
                     </Flex>
                   </MyTooltip>
                   {!isShare && item.score && (
@@ -183,7 +181,6 @@ const QuoteModal = ({
       </MyModal>
       {editInputData && editInputData.id && (
         <InputDataModal
-          canWrite={userInfo?.team?.canWrite || false}
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => {
             console.log('更新引用成功');
@@ -191,8 +188,8 @@ const QuoteModal = ({
           onDelete={() => {
             console.log('删除引用成功');
           }}
-          datasetId={editInputData.datasetId}
-          defaultValues={editInputData}
+          defaultValue={editInputData}
+          collectionId={editInputData.collectionId}
         />
       )}
     </>

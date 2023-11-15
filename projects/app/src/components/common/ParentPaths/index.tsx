@@ -2,7 +2,7 @@ import MyIcon from '@/components/Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const ParentPaths = (props: {
   paths?: ParentTreePathItemType[];

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, ModalFooter, ModalBody } from '@chakra-ui/react';
 import MyModal from '../MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Markdown from '../Markdown';
 
 const md = `

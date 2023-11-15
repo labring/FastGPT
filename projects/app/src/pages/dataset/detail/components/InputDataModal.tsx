@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
-import { Box, Flex, Button, Textarea, IconButton, BoxProps, Image, Link } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
+import React, { useMemo, useState } from 'react';
+import { Box, Flex, Button, Textarea, BoxProps, Image, useTheme, Grid } from '@chakra-ui/react';
+import { useFieldArray, useForm } from 'react-hook-form';
 import {
-  postData2Dataset,
+  postInsertData2Dataset,
   putDatasetDataById,
-  delOneDatasetDataById
+  delOneDatasetDataById,
+  getDatasetCollectionById
 } from '@/web/core/dataset/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -13,62 +14,106 @@ import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useTranslation } from 'next-i18next';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
-import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { SetOneDatasetDataProps } from '@/global/core/api/datasetReq';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { countPromptTokens } from '@/global/common/tiktoken';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import { feConfigs } from '@/web/common/system/staticData';
+import { getDefaultIndex, getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import { feConfigs, vectorModelList } from '@/web/common/system/staticData';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import SideTabs from '@/components/SideTabs';
+import { useLoading } from '@/web/common/hooks/useLoading';
+import DeleteIcon from '@/components/Icon/delete';
+import { defaultCollectionDetail } from '@/constants/dataset';
 
-export type RawSourceType = {
+export type RawSourceTextProps = BoxProps & {
   sourceName?: string;
   sourceId?: string;
-  addr?: boolean;
+  canView?: boolean;
 };
-export type RawSourceTextProps = BoxProps & RawSourceType;
-export type InputDataType = SetOneDatasetDataProps & RawSourceType;
+export type InputDataType = {
+  id?: string;
+  q: string;
+  a?: string;
+  indexes: (Omit<DatasetDataIndexItemType, 'dataId'> & {
+    dataId?: string; // pg data id
+  })[];
+};
+
+enum TabEnum {
+  content = 'content',
+  index = 'index',
+  delete = 'delete',
+  doc = 'doc'
+}
 
 const InputDataModal = ({
+  collectionId,
+  defaultValue,
   onClose,
   onSuccess,
-  onDelete,
-  datasetId,
-  defaultValues = {
-    collectionId: '',
-    sourceId: '',
-    sourceName: ''
-  },
-  canWrite
+  onDelete
 }: {
+  collectionId: string;
+  defaultValue: InputDataType;
   onClose: () => void;
-  onSuccess: (data: SetOneDatasetDataProps) => void;
+  onSuccess: (data: InputDataType) => void;
   onDelete?: () => void;
-  datasetId: string;
-  defaultValues: InputDataType;
-  canWrite: boolean;
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const { toast } = useToast();
-  const { datasetDetail, loadDatasetDetail } = useDatasetStore();
+  const { Loading } = useLoading();
+  const [currentTab, setCurrentTab] = useState(TabEnum.content);
 
-  const { register, handleSubmit, reset } = useForm<InputDataType>({
-    defaultValues
+  const { register, handleSubmit, reset, control } = useForm<InputDataType>({
+    defaultValues: defaultValue
   });
+  const {
+    fields: indexes,
+    append: appendIndexes,
+    remove: removeIndexes
+  } = useFieldArray({
+    control,
+    name: 'indexes'
+  });
+
+  const tabList = [
+    { label: t('dataset.data.edit.Content'), id: TabEnum.content, icon: 'overviewLight' },
+    {
+      label: t('dataset.data.edit.Index', { amount: indexes.length }),
+      id: TabEnum.index,
+      icon: 'kbTest'
+    },
+    ...(defaultValue.id
+      ? [{ label: t('dataset.data.edit.Delete'), id: TabEnum.delete, icon: 'delete' }]
+      : []),
+    { label: t('dataset.data.edit.Course'), id: TabEnum.doc, icon: 'courseLight' }
+  ];
 
   const { ConfirmModal, openConfirm } = useConfirm({
     content: t('dataset.data.Delete Tip')
   });
 
-  const maxToken = datasetDetail.vectorModel?.maxToken || 2000;
+  const { data: collection = defaultCollectionDetail } = useQuery(
+    ['loadCollectionId', collectionId],
+    () => {
+      return getDatasetCollectionById(collectionId);
+    }
+  );
 
-  /**
-   * 确认导入新数据
-   */
+  const maxToken = useMemo(() => {
+    const vectorModel =
+      vectorModelList.find((item) => item.model === collection.datasetId.vectorModel) ||
+      vectorModelList[0];
+
+    return vectorModel?.maxToken || 3000;
+  }, [collection.datasetId.vectorModel]);
+
+  // import new data
   const { mutate: sureImportData, isLoading: isImporting } = useRequest({
     mutationFn: async (e: InputDataType) => {
       if (!e.q) {
@@ -85,10 +130,16 @@ const InputDataModal = ({
       }
 
       const data = { ...e };
-      delete data.sourceName;
-      delete data.sourceId;
 
-      data.id = await postData2Dataset(data);
+      data.id = await postInsertData2Dataset({
+        collectionId: collection._id,
+        q: e.q,
+        a: e.a,
+        // remove dataId
+        indexes: e.indexes.map((index) =>
+          index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a }) : index
+        )
+      });
 
       return data;
     },
@@ -97,26 +148,26 @@ const InputDataModal = ({
       reset({
         ...e,
         q: '',
-        a: ''
+        a: '',
+        indexes: [getDefaultIndex({ q: e.q, a: e.a, dataId: `${Date.now()}` })]
       });
 
       onSuccess(e);
     },
     errorToast: t('common.error.unKnow')
   });
-
+  // update
   const { mutate: onUpdateData, isLoading: isUpdating } = useRequest({
-    mutationFn: async (e: SetOneDatasetDataProps) => {
+    mutationFn: async (e: InputDataType) => {
       if (!e.id) return e;
 
       // not exactly same
-      if (e.q !== defaultValues.q || e.a !== defaultValues.a) {
-        await putDatasetDataById({
-          ...e,
-          q: e.q === defaultValues.q ? '' : e.q
-        });
-        return e;
-      }
+      await putDatasetDataById({
+        id: e.id,
+        q: e.q,
+        a: e.a,
+        indexes: e.indexes
+      });
 
       return e;
     },
@@ -127,153 +178,207 @@ const InputDataModal = ({
       onClose();
     }
   });
+  // delete
+  const { mutate: onDeleteData, isLoading: isDeleting } = useRequest({
+    mutationFn: () => {
+      if (!onDelete || !defaultValue.id) return Promise.resolve(null);
+      return delOneDatasetDataById(defaultValue.id);
+    },
+    onSuccess() {
+      if (!onDelete) return;
+      onDelete();
+      onClose();
+    },
+    successToast: t('common.Delete Success'),
+    errorToast: t('common.error.unKnow')
+  });
 
   const loading = useMemo(() => isImporting || isUpdating, [isImporting, isUpdating]);
 
-  useQuery(['loadDatasetDetail'], () => {
-    if (datasetDetail._id === datasetId) return null;
-    return loadDatasetDetail(datasetId);
-  });
-
   return (
-    <MyModal
-      isOpen={true}
-      isCentered
-      title={
-        <Flex alignItems={'flex-end'}>
-          <Box>
-            {defaultValues.id ? t('dataset.data.Update Data') : t('dataset.data.Input Data')}
-          </Box>
-          <Link
-            href={`${feConfigs.docUrl}/docs/use-cases/datasetengine`}
-            target={'_blank'}
-            fontSize={'sm'}
-            color={'myGray.600'}
-            textDecor={'underline'}
-            ml={2}
-          >
-            结构详解
-          </Link>
-        </Flex>
-      }
-      w={'90vw'}
-      maxW={'90vw'}
-      h={'90vh'}
-    >
-      <Flex flexDirection={'column'} h={'100%'}>
-        <Box
-          display={'flex'}
-          flexDirection={['column', 'row']}
-          flex={'1 0 0'}
-          h={['100%', 0]}
-          overflow={'overlay'}
-          px={6}
-          pb={2}
-        >
-          <Box flex={1} mr={[0, 4]} mb={[4, 0]} h={['50%', '100%']}>
-            <Flex>
-              <Box h={'25px'}>{'被搜索的内容'}</Box>
-              <MyTooltip
-                label={
-                  '被向量化的部分，该部分的质量决定了对话时，能否高效的查找到合适的知识点。\n该内容通常是问题，或是一段陈述描述介绍'
-                }
-              >
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
-            </Flex>
-            <Textarea
-              placeholder={`被向量化的部分，该部分的质量决定了对话时，能否高效的查找到合适的知识点。\n该内容通常是问题，或是一段陈述描述介绍，最多 ${maxToken} 字。`}
-              maxLength={maxToken}
-              resize={'none'}
-              h={'calc(100% - 30px)'}
-              {...register(`q`, {
-                required: true
-              })}
-            />
-          </Box>
-          <Box flex={1} h={['50%', '100%']}>
-            <Flex>
-              <Box h={'25px'}>{'补充内容(可选)'}</Box>
-              <MyTooltip
-                label={
-                  '该部分内容不影响搜索质量。当“被搜索的内容”被搜索到后，“补充内容”可以选择性被填入提示词，从而实现更加丰富的提示词组合。'
-                }
-              >
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
-            </Flex>
-            <Textarea
-              placeholder={
-                '该部分内容不影响搜索质量。当“被搜索的内容”被搜索到后，“补充内容”可以选择性被填入提示词，从而实现更加丰富的提示词组合。可以是问题的答案、代码、图片、表格等。'
-              }
-              resize={'none'}
-              h={'calc(100% - 30px)'}
-              {...register('a')}
-            />
-          </Box>
-        </Box>
-
-        <Flex px={6} pt={['34px', 2]} pb={4} alignItems={'center'} position={'relative'}>
+    <MyModal isOpen={true} isCentered w={'90vw'} maxW={'90vw'} h={'90vh'}>
+      <Flex h={'100%'}>
+        <Box p={5} borderRight={theme.borders.base}>
           <RawSourceText
-            sourceName={defaultValues.sourceName}
-            sourceId={defaultValues.sourceId}
-            position={'absolute'}
-            left={'50%'}
-            top={['16px', '50%']}
-            transform={'translate(-50%,-50%)'}
+            w={'200px'}
+            className=""
+            whiteSpace={'pre-wrap'}
+            sourceName={collection.sourceName}
+            sourceId={collection.sourceId}
+            mb={6}
+            fontSize={['14px', '16px']}
           />
-
-          <Box flex={1}>
-            {defaultValues.id && onDelete && canWrite && (
-              <IconButton
-                variant={'outline'}
-                icon={<MyIcon name={'delete'} w={'16px'} h={'16px'} />}
-                aria-label={''}
-                isLoading={loading}
-                size={'sm'}
-                _hover={{
-                  color: 'red.600',
-                  borderColor: 'red.600'
-                }}
-                onClick={openConfirm(async () => {
-                  if (!onDelete || !defaultValues.id) return;
-                  try {
-                    await delOneDatasetDataById(defaultValues.id);
-                    onDelete();
-                    onClose();
-                    toast({
-                      status: 'success',
-                      title: '记录已删除'
-                    });
-                  } catch (error) {
-                    toast({
-                      status: 'warning',
-                      title: getErrText(error)
-                    });
-                    console.log(error);
+          <SideTabs
+            list={tabList}
+            activeId={currentTab}
+            onChange={async (e: any) => {
+              if (e === TabEnum.delete) {
+                return openConfirm(onDeleteData)();
+              }
+              if (e === TabEnum.doc) {
+                return window.open(`${feConfigs.docUrl}/docs/use-cases/datasetengine`, '_blank');
+              }
+              setCurrentTab(e);
+            }}
+          />
+        </Box>
+        <Flex flexDirection={'column'} px={5} py={3} flex={1} h={'100%'}>
+          <Box fontSize={'lg'} fontWeight={'bold'} mb={4}>
+            {currentTab === TabEnum.content && (
+              <>{defaultValue.id ? t('dataset.data.Update Data') : t('dataset.data.Input Data')}</>
+            )}
+            {currentTab === TabEnum.index && <> {t('dataset.data.Index Edit')}</>}
+          </Box>
+          <Box flex={1} overflow={'auto'}>
+            {currentTab === TabEnum.content && (
+              <>
+                <Box>
+                  <Flex alignItems={'center'}>
+                    <Box>
+                      <Box as="span" color={'red.600'}>
+                        *
+                      </Box>
+                      {'相关数据内容'}
+                    </Box>
+                    <MyTooltip
+                      label={'该输入框是必填项\n该内容通常是对于知识点的描述，也可以是用户的问题。'}
+                    >
+                      <QuestionOutlineIcon ml={1} />
+                    </MyTooltip>
+                  </Flex>
+                  <Textarea
+                    mt={1}
+                    placeholder={`该输入框是必填项，该内容通常是对于知识点的描述，也可以是用户的问题，最多 ${maxToken} 字。`}
+                    maxLength={maxToken}
+                    rows={10}
+                    bg={'myWhite.400'}
+                    {...register(`q`, {
+                      required: true
+                    })}
+                  />
+                </Box>
+                <Box mt={5}>
+                  <Flex>
+                    <Box>{'辅助数据'}</Box>
+                    <MyTooltip
+                      label={
+                        '该部分为可选填项\n该内容通常是为了与前面的数据内容配合，构建结构化提示词，用于特殊场景'
+                      }
+                    >
+                      <QuestionOutlineIcon ml={1} />
+                    </MyTooltip>
+                  </Flex>
+                  <Textarea
+                    mt={1}
+                    placeholder={`该部分为可选填项, 通常是为了与前面的【数据内容】配合，构建结构化提示词，用于特殊场景，最多 ${
+                      maxToken * 1.5
+                    } 字。`}
+                    bg={'myWhite.400'}
+                    rows={10}
+                    maxLength={maxToken * 1.5}
+                    {...register('a')}
+                  />
+                </Box>
+              </>
+            )}
+            {currentTab === TabEnum.index && (
+              <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={4}>
+                {indexes.map((index, i) => (
+                  <Box
+                    key={index.dataId || i}
+                    p={3}
+                    borderRadius={'md'}
+                    border={theme.borders.base}
+                    bg={i % 2 !== 0 ? 'myWhite.400' : ''}
+                    _hover={{
+                      '& .delete': {
+                        display: index.defaultIndex && indexes.length === 1 ? 'none' : 'block'
+                      }
+                    }}
+                  >
+                    <Flex mb={1}>
+                      <Box flex={1}>
+                        {index.defaultIndex
+                          ? t('dataset.data.Default Index')
+                          : t('dataset.data.Custom Index Number', { number: i })}
+                      </Box>
+                      <DeleteIcon
+                        onClick={() => {
+                          if (indexes.length <= 1) {
+                            appendIndexes(getDefaultIndex({ dataId: `${Date.now()}` }));
+                          }
+                          removeIndexes(i);
+                        }}
+                      />
+                    </Flex>
+                    {index.defaultIndex ? (
+                      <Box>
+                        无法编辑，默认索引会使用【相关数据内容】与【辅助数据】的文本直接生成索引，如不需要默认索引，可删除。
+                        每条数据必须保证有一个以上索引，所有索引被删除后，会自动生成默认索引。
+                      </Box>
+                    ) : (
+                      <Textarea
+                        maxLength={maxToken}
+                        rows={10}
+                        borderColor={'transparent'}
+                        px={0}
+                        _focus={{
+                          borderColor: 'myBlue.400',
+                          px: 3
+                        }}
+                        placeholder={t('dataset.data.Index Placeholder')}
+                        {...register(`indexes.${i}.text`, {
+                          required: true
+                        })}
+                      />
+                    )}
+                  </Box>
+                ))}
+                <Flex
+                  flexDirection={'column'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  borderRadius={'md'}
+                  border={theme.borders.base}
+                  cursor={'pointer'}
+                  _hover={{
+                    bg: 'myBlue.100'
+                  }}
+                  minH={'100px'}
+                  onClick={() =>
+                    appendIndexes({
+                      defaultIndex: false,
+                      type: DatasetDataIndexTypeEnum.chunk,
+                      text: '',
+                      dataId: `${Date.now()}`
+                    })
                   }
-                })}
-              />
+                >
+                  <MyIcon name={'addCircle'} w={'16px'} />
+                  <Box>{t('dataset.data.Add Index')}</Box>
+                </Flex>
+              </Grid>
             )}
           </Box>
-          <Box>
+          <Flex justifyContent={'flex-end'} mt={4}>
             <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
               {t('common.Close')}
             </Button>
-            <MyTooltip label={canWrite ? '' : t('dataset.data.Can not edit')}>
+            <MyTooltip label={collection.canWrite ? '' : t('dataset.data.Can not edit')}>
               <Button
-                isDisabled={!canWrite}
+                isDisabled={!collection.canWrite}
                 isLoading={loading}
                 // @ts-ignore
-                onClick={handleSubmit(defaultValues.id ? onUpdateData : sureImportData)}
+                onClick={handleSubmit(defaultValue.id ? onUpdateData : sureImportData)}
               >
-                {defaultValues.id ? '确认变更' : '确认导入'}
+                {defaultValue.id ? '确认变更' : '确认导入'}
               </Button>
             </MyTooltip>
-          </Box>
+          </Flex>
         </Flex>
       </Flex>
       <ConfirmModal />
+      <Loading fixed={false} loading={isDeleting} />
     </MyModal>
   );
 };
@@ -283,14 +388,14 @@ export default InputDataModal;
 export function RawSourceText({
   sourceId,
   sourceName = '',
-  addr = true,
+  canView = true,
   ...props
 }: RawSourceTextProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
 
-  const canPreview = useMemo(() => !!sourceId && addr, [addr, sourceId]);
+  const canPreview = useMemo(() => !!sourceId && canView, [canView, sourceId]);
 
   const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
 
@@ -302,16 +407,12 @@ export function RawSourceText({
       <Box
         color={'myGray.600'}
         display={'inline-flex'}
-        alignItems={'center'}
         whiteSpace={'nowrap'}
         {...(canPreview
           ? {
               cursor: 'pointer',
               textDecoration: 'underline',
               onClick: async () => {
-                if (strIsLink(sourceId)) {
-                  return window.open(sourceId, '_blank');
-                }
                 setLoading(true);
                 try {
                   await getFileAndOpen(sourceId as string);
@@ -327,8 +428,8 @@ export function RawSourceText({
           : {})}
         {...props}
       >
-        <Image src={icon} alt="" w={'14px'} mr={2} />
-        <Box maxW={['200px', '300px']} className={'textEllipsis'}>
+        <Image src={icon} alt="" w={['14px', '16px']} mr={2} />
+        <Box maxW={['200px', '300px']} className={props.className ?? 'textEllipsis'}>
           {sourceName || t('common.UnKnow Source')}
         </Box>
       </Box>

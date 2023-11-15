@@ -6,7 +6,6 @@ import { getTeamInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 export async function authOpenApiKeyCrud({
   id,

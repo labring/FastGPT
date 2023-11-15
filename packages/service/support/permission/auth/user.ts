@@ -37,13 +37,11 @@ export async function authUserRole(props: AuthModeType): Promise<
     teamOwner: boolean;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert(props);
-  const { role: userRole, canWrite } = await getTeamInfoByTmbId({ tmbId });
+  const result = await parseHeaderCert(props);
+  const { role: userRole, canWrite } = await getTeamInfoByTmbId({ tmbId: result.tmbId });
 
   return {
-    userId,
-    teamId,
-    tmbId,
+    ...result,
     isOwner: true,
     role: userRole,
     teamOwner: userRole === TeamMemberRoleEnum.owner,

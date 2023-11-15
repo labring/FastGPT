@@ -12,16 +12,17 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { debounce } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import InputDataModal, { RawSourceText, type InputDataType } from '../components/InputDataModal';
-import type { DatasetDataListItemType } from '@/global/core/dataset/response.d';
+import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
 import { TabEnum } from '..';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -127,9 +128,8 @@ const DataCard = () => {
               onClick={() => {
                 if (!collection) return;
                 setEditInputData({
-                  collectionId: collection._id,
-                  sourceId: collection.metadata?.fileId || collection.metadata?.rawLink,
-                  sourceName: collection.name
+                  q: '',
+                  indexes: [getDefaultIndex({ dataId: `${Date.now()}` })]
                 });
               }}
             >
@@ -175,7 +175,7 @@ const DataCard = () => {
       >
         {datasetDataList.map((item) => (
           <Card
-            key={item.id}
+            key={item._id}
             cursor={'pointer'}
             pt={3}
             userSelect={'none'}
@@ -186,12 +186,10 @@ const DataCard = () => {
             onClick={() => {
               if (!collection) return;
               setEditInputData({
-                id: item.id,
-                collectionId: collection._id,
+                id: item._id,
                 q: item.q,
                 a: item.a,
-                sourceId: collection.metadata?.fileId || collection.metadata?.rawLink,
-                sourceName: collection.name
+                indexes: item.indexes
               });
             }}
           >
@@ -210,7 +208,7 @@ const DataCard = () => {
             </Box>
             <Flex py={2} px={4} h={'36px'} alignItems={'flex-end'} fontSize={'sm'}>
               <Box className={'textEllipsis'} flex={1} color={'myGray.500'}>
-                ID:{item.id}
+                ID:{item._id}
               </Box>
               {canWrite && (
                 <IconButton
@@ -228,7 +226,7 @@ const DataCard = () => {
                     openConfirm(async () => {
                       try {
                         setIsLoading(true);
-                        await delOneDatasetDataById(item.id);
+                        await delOneDatasetDataById(item._id);
                         getData(pageNum);
                       } catch (error) {
                         toast({
@@ -262,11 +260,11 @@ const DataCard = () => {
 
       {editInputData !== undefined && collection && (
         <InputDataModal
-          datasetId={collection?.datasetId}
-          defaultValues={editInputData}
+          collectionId={collection._id}
+          defaultValue={editInputData}
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => getData(pageNum)}
-          canWrite={canWrite}
+          onDelete={() => getData(pageNum)}
         />
       )}
       <ConfirmModal />

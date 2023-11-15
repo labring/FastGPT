@@ -11,7 +11,6 @@ import {
   Tbody,
   Image,
   MenuButton,
-  useTheme,
   useDisclosure
 } from '@chakra-ui/react';
 import {
@@ -24,7 +23,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@/components/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';
@@ -35,13 +34,10 @@ import { usePagination } from '@/web/common/hooks/usePagination';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import EmptyTip from '@/components/EmptyTip';
-import { AddIcon } from '@chakra-ui/icons';
 import { FolderAvatarSrc, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
-
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
-
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
 import { TabEnum } from '..';
 import ParentPath from '@/components/common/ParentPaths';
@@ -423,7 +419,11 @@ const CollectionCard = () => {
                     </MyTooltip>
                   </Flex>
                 </Td>
-                <Td fontSize={'md'}>{collection.dataAmount ?? '-'}</Td>
+                <Td fontSize={'md'}>
+                  {collection.type === DatasetCollectionTypeEnum.folder
+                    ? '-'
+                    : collection.dataAmount}
+                </Td>
                 <Td>{dayjs(collection.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
                 <Td>
                   <Flex
