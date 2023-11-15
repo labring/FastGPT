@@ -9,7 +9,7 @@ import React, {
 import { useRouter } from 'next/router';
 import { Box, Flex, Button, FormControl, IconButton, Input } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
-import { delDatasetById, putDatasetById } from '@/web/core/dataset/api';
+import { delDatasetById } from '@/web/core/dataset/api';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -22,6 +22,8 @@ import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
+import MySelect from '@/components/Select';
+import { qaModelList } from '@/web/common/system/staticData';
 
 export interface ComponentRef {
   initInput: (tags: string) => void;
@@ -50,7 +52,7 @@ const Info = (
     multiple: false
   });
 
-  const { datasetDetail, loadDatasetDetail, loadDatasets } = useDatasetStore();
+  const { datasetDetail, loadDatasetDetail, loadDatasets, updateDataset } = useDatasetStore();
 
   /* 点击删除 */
   const onclickDelKb = useCallback(async () => {
@@ -76,11 +78,10 @@ const Info = (
     async (data: DatasetItemType) => {
       setBtnLoading(true);
       try {
-        await putDatasetById({
+        await updateDataset({
           id: datasetId,
           ...data
         });
-        await loadDatasetDetail(datasetId, true);
         toast({
           title: '更新成功',
           status: 'success'
@@ -94,7 +95,7 @@ const Info = (
       }
       setBtnLoading(false);
     },
-    [loadDatasetDetail, datasetId, loadDatasets, toast]
+    [updateDataset, datasetId, loadDatasetDetail, toast, loadDatasets]
   );
   const saveSubmitError = useCallback(() => {
     // deep search message
@@ -194,6 +195,27 @@ const Info = (
           })}
         />
       </FormControl>
+      <Flex mt={6} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('dataset.Agent Model')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>
+          <MySelect
+            w={'100%'}
+            value={getValues('agentModel').model}
+            list={qaModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onchange={(e) => {
+              const agentModel = qaModelList.find((item) => item.model === e);
+              if (!agentModel) return;
+              setValue('agentModel', agentModel);
+              setRefresh((state) => !state);
+            }}
+          />
+        </Box>
+      </Flex>
       <Flex mt={8} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           标签

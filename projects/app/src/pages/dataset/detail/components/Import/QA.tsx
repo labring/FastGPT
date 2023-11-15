@@ -13,8 +13,8 @@ const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const QAImport = () => {
   const { datasetDetail } = useDatasetStore();
-  const vectorModel = datasetDetail.vectorModel;
-  const unitPrice = vectorModel?.price || 0.2;
+  const agentModel = datasetDetail.agentModel;
+  const unitPrice = agentModel?.price || 3;
 
   const {
     successChunks,

@@ -1,3 +1,4 @@
+import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/model';
 import type {
   DatasetCollectionItemType,
   DatasetItemType
@@ -17,13 +18,8 @@ export const defaultDatasetDetail: DatasetItemType = {
   permission: 'private',
   isOwner: false,
   canWrite: false,
-  vectorModel: {
-    model: 'text-embedding-ada-002',
-    name: 'Embedding-2',
-    price: 0.2,
-    defaultToken: 500,
-    maxToken: 3000
-  }
+  vectorModel: defaultVectorModels[0],
+  agentModel: defaultQAModels[0]
 };
 
 export const defaultCollectionDetail: DatasetCollectionItemType = {
@@ -43,7 +39,8 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     name: '',
     tags: [],
     permission: 'private',
-    vectorModel: 'text-embedding-ada-002'
+    vectorModel: defaultVectorModels[0].model,
+    agentModel: defaultQAModels[0].model
   },
   parentId: '',
   name: '',

@@ -20,7 +20,8 @@ import {
   delDatasetById,
   getDatasetPaths,
   putDatasetById,
-  postCreateDataset
+  postCreateDataset,
+  getCheckExportLimit
 } from '@/web/core/dataset/api';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
@@ -38,6 +39,7 @@ import { useDrag } from '@/web/common/hooks/useDrag';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -88,6 +90,23 @@ const Kb = () => {
     },
     successToast: t('common.Delete Success'),
     errorToast: t('dataset.Delete Dataset Error')
+  });
+  // check export limit
+  const { mutate: exportDataset } = useRequest({
+    mutationFn: async (dataset: DatasetItemType) => {
+      setLoading(true);
+      await getCheckExportLimit(dataset._id);
+      const a = document.createElement('a');
+      a.href = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
+      a.download = `${dataset.name}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    },
+    onSettled() {
+      setLoading(false);
+    },
+    errorToast: t('dataset.Export Dataset Limit Error')
   });
 
   const { data, refetch } = useQuery(['loadDataset', parentId], () => {
@@ -371,12 +390,7 @@ const Kb = () => {
                       </Flex>
                     ),
                     onClick: () => {
-                      const a = document.createElement('a');
-                      a.href = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
-                      a.download = `${dataset.name}.csv`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
+                      exportDataset(dataset);
                     }
                   },
                   {

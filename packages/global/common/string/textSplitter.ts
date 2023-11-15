@@ -63,8 +63,8 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     let chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {
       let text = splitTexts[i];
-      let chunkToken = countPromptTokens(lastChunk, '');
-      const textToken = countPromptTokens(text, '');
+      let chunkToken = lastChunk.length;
+      const textToken = text.length;
 
       // next chunk is too large / new chunk is too large(The current chunk must be smaller than maxLen)
       if (textToken >= maxLen || chunkToken + textToken > maxLen * 1.4) {

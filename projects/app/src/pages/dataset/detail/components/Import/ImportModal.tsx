@@ -34,10 +34,10 @@ const ImportData = ({
   const theme = useTheme();
   const { datasetDetail } = useDatasetStore();
   const [importType, setImportType] = useState<`${ImportTypeEnum}`>(ImportTypeEnum.chunk);
+  const vectorModel = datasetDetail.vectorModel;
+  const agentModel = datasetDetail.agentModel;
 
   const typeMap = useMemo(() => {
-    const vectorModel = datasetDetail.vectorModel;
-    const qaModel = qaModelList[0];
     const map = {
       [ImportTypeEnum.chunk]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
@@ -45,8 +45,8 @@ const ImportData = ({
         mode: TrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
-        defaultChunkLen: qaModel?.maxContext * 0.5 || 8000,
-        unitPrice: qaModel?.price || 3,
+        defaultChunkLen: agentModel?.maxContext * 0.6 || 9000,
+        unitPrice: agentModel?.price || 3,
         mode: TrainingModeEnum.qa
       },
       [ImportTypeEnum.csv]: {
@@ -56,7 +56,13 @@ const ImportData = ({
       }
     };
     return map[importType];
-  }, [datasetDetail.vectorModel, importType]);
+  }, [
+    agentModel?.maxContext,
+    agentModel?.price,
+    importType,
+    vectorModel?.defaultToken,
+    vectorModel?.price
+  ]);
 
   const TitleStyle: BoxProps = {
     fontWeight: 'bold',
@@ -104,8 +110,10 @@ const ImportData = ({
 
         <Provider
           {...typeMap}
+          vectorModel={vectorModel.model}
+          agentModel={agentModel.model}
+          datasetId={datasetDetail._id}
           importType={importType}
-          datasetId={datasetId}
           parentId={parentId}
           onUploadSuccess={uploadSuccess}
         >

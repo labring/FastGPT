@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { getVectorModel } from '@/service/core/ai/model';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -28,6 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       datasets.map(async (item) => ({
         ...item.toJSON(),
         vectorModel: getVectorModel(item.vectorModel),
+        agentModel: getQAModel(item.agentModel),
         canWrite,
         isOwner: teamOwner || String(item.tmbId) === tmbId
       }))
