@@ -48,6 +48,9 @@ export const putDatasetById = (data: DatasetUpdateParams) => PUT(`/core/dataset/
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
+export const getCheckExportLimit = (datasetId: string) =>
+  GET(`/core/dataset/checkExportLimit`, { datasetId });
+
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
   POST<SearchDataResponseItemType[]>(`/core/dataset/searchTest`, data);
