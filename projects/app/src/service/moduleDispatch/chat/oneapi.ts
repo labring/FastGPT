@@ -208,7 +208,7 @@ function filterQuote({
       source: item.sourceName,
       sourceId: String(item.sourceId || 'UnKnow'),
       index: index + 1,
-      score: item.score.toFixed(4)
+      score: item.score?.toFixed(4)
     });
   }
   const sliceResult = sliceMessagesTB({

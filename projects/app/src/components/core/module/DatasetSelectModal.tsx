@@ -9,7 +9,8 @@ import {
   useTheme,
   Textarea,
   Grid,
-  Divider
+  Divider,
+  Switch
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
@@ -30,6 +31,7 @@ export type KbParamsType = {
   searchSimilarity: number;
   searchLimit: number;
   searchEmptyText: string;
+  rerank: boolean;
 };
 
 export const DatasetSelectModal = ({
@@ -225,10 +227,11 @@ export const DatasetSelectModal = ({
   );
 };
 
-export const KbParamsModal = ({
+export const DatasetParamsModal = ({
   searchEmptyText,
   searchLimit,
   searchSimilarity,
+  rerank,
   onClose,
   onChange
 }: KbParamsType & { onClose: () => void; onChange: (e: KbParamsType) => void }) => {
@@ -237,7 +240,8 @@ export const KbParamsModal = ({
     defaultValues: {
       searchEmptyText,
       searchLimit,
-      searchSimilarity
+      searchSimilarity,
+      rerank
     }
   });
 
@@ -245,6 +249,24 @@ export const KbParamsModal = ({
     <MyModal isOpen={true} onClose={onClose} title={'搜索参数调整'} minW={['90vw', '600px']}>
       <Flex flexDirection={'column'}>
         <ModalBody>
+          {feConfigs?.isPlus && (
+            <Box display={['block', 'flex']} py={5} pt={[0, 5]}>
+              <Box flex={'0 0 100px'} mb={[8, 0]}>
+                结果重排
+                <MyTooltip label={'将召回的结果进行进一步重排，可增加召回率'} forceShow>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Box>
+              <Switch
+                size={'lg'}
+                isChecked={getValues('rerank')}
+                onChange={(e) => {
+                  setValue('rerank', e.target.checked);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          )}
           <Box display={['block', 'flex']} py={5} pt={[0, 5]}>
             <Box flex={'0 0 100px'} mb={[8, 0]}>
               相似度

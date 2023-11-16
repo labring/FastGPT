@@ -317,6 +317,9 @@
     },
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
+    "recall": {
+      "rerank": "结果重排"
+    },
     "test": {
       "noResult": "搜索结果为空"
     }

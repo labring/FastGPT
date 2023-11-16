@@ -292,6 +292,14 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
         { label: '20', value: 20 }
       ]
     },
+    {
+      key: 'rerank',
+      type: FlowNodeInputTypeEnum.switch,
+      label: '结果重排',
+      description: '将召回的结果进行进一步重排，可增加召回率',
+      plusField: true,
+      value: false
+    },
     Input_Template_UserChatInput
   ],
   outputs: [

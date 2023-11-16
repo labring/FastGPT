@@ -131,13 +131,15 @@ export async function searchDatasetData({
   model,
   similarity = 0,
   limit,
-  datasetIds = []
+  datasetIds = [],
+  rerank = false
 }: {
   text: string;
   model: string;
   similarity?: number; // min distance
   limit: number;
   datasetIds: string[];
+  rerank?: boolean;
 }) {
   const { vectors, tokenLen } = await getVectorsByText({
     model,
@@ -218,6 +220,13 @@ export async function searchDatasetData({
     set.add(str);
     return true;
   });
+
+  if (!rerank) {
+    return {
+      searchRes: filterData.slice(0, limit),
+      tokenLen
+    };
+  }
 
   // ReRank result
   const reRankResult = await reRankSearchResult({

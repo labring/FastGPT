@@ -95,12 +95,13 @@ export const streamFetch = ({
           });
           read();
         } catch (err: any) {
-          if (err?.message === 'The user aborted a request.') {
+          if (abortSignal.signal.aborted) {
             return resolve({
               responseText,
               responseData
             });
           }
+
           reject({
             responseText,
             message: getErrText(err, '请求异常')
