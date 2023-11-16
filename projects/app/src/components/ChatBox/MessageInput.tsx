@@ -55,7 +55,6 @@ const MessageInput = ({
     };
     renderCurve();
   }, [renderAudioGraph, stream]);
-  console.log(!havInput && !isChatting);
 
   return (
     <>
