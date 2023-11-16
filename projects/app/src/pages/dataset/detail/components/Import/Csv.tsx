@@ -2,11 +2,13 @@ import React from 'react';
 import { Box, Flex, Button } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
+import { useTranslation } from 'next-i18next';
 
 const fileExtension = '.csv';
 const csvTemplate = `index,content\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
 
 const CsvImport = () => {
+  const { t } = useTranslation();
   const { successChunks, totalChunks, isUnselectedFile, onclickUpload, uploading } =
     useImportStore();
 
@@ -24,6 +26,7 @@ const CsvImport = () => {
           value: csvTemplate,
           type: 'text/csv'
         }}
+        tip={t('dataset.import csv tip')}
       >
         <Flex mt={3}>
           <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
