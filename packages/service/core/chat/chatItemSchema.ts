@@ -68,9 +68,6 @@ const ChatItemSchema = new Schema({
   [TaskResponseKeyEnum.responseData]: {
     type: Array,
     default: []
-  },
-  tts: {
-    type: Buffer
   }
 });
 

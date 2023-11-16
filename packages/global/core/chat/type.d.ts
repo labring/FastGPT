@@ -39,7 +39,6 @@ export type ChatItemSchema = {
   userFeedback?: string;
   adminFeedback?: AdminFbkType;
   [TaskResponseKeyEnum.responseData]?: ChatHistoryItemResType[];
-  tts?: Buffer;
 };
 
 export type AdminFbkType = {

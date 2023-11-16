@@ -60,16 +60,13 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
           });
           setAudioLoading(false);
 
-          if (response.headers.get('Content-Type') === 'application/json') {
-            const { data } = (await response.json()) as { data: Buffer };
-            console.log(data);
-
-            playAudioBuffer({ audio, buffer: data });
-            return resolve({ buffer: data });
-          }
-
           if (!response.body || !response.ok) {
-            throw new Error('Speech error');
+            const data = await response.json();
+            toast({
+              status: 'error',
+              title: getErrText(data, t('core.chat.Audio Speech Error'))
+            });
+            return reject(data);
           }
 
           const audioBuffer = await readAudioStream({
@@ -77,6 +74,7 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
             stream: response.body,
             contentType: 'audio/mpeg'
           });
+
           resolve({
             buffer: audioBuffer
           });
