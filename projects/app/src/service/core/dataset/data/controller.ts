@@ -29,6 +29,9 @@ export async function insertData2Dataset({
   if (!q || !datasetId || !collectionId || !model) {
     return Promise.reject('q, datasetId, collectionId, model is required');
   }
+  if (String(teamId) === String(tmbId)) {
+    return Promise.reject("teamId and tmbId can't be the same");
+  }
 
   q = q.trim();
   a = a.trim();

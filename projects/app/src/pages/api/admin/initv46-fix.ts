@@ -10,6 +10,8 @@ import {
 
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { Types, connectionMongo } from '@fastgpt/service/common/mongo';
+import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 
 let success = 0;
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
@@ -43,57 +45,59 @@ type PgItemType = {
 };
 
 async function init(limit: number): Promise<any> {
-  const { rows: idList } = await PgClient.query<{ id: string }>(
-    `SELECT id FROM ${PgDatasetTableName} WHERE inited=1`
+  const { rows } = await PgClient.query<{ id: string; data_id: string }>(
+    `SELECT id,data_id FROM ${PgDatasetTableName} WHERE team_id = tmb_id`
   );
 
-  console.log('totalCount', idList.length);
+  console.log('totalCount', rows.length);
 
   await delay(2000);
 
-  if (idList.length === 0) return;
+  if (rows.length === 0) return;
 
   for (let i = 0; i < limit; i++) {
     initData(i);
   }
 
   async function initData(index: number): Promise<any> {
-    const dataId = idList[index]?.id;
-    if (!dataId) {
+    const item = rows[index];
+    if (!item) {
       console.log('done');
       return;
     }
-    // get limit data where data_id is null
-    const { rows } = await PgClient.query<PgItemType>(
-      `SELECT id,q,a,dataset_id,collection_id,data_id FROM ${PgDatasetTableName} WHERE id=${dataId};`
-    );
-    const data = rows[0];
-    if (!data) {
-      console.log('done');
-      return;
+    // get mongo
+    const mongoData = await MongoDatasetData.findById(item.data_id, '_id teamId tmbId');
+    if (!mongoData) {
+      return initData(index + limit);
     }
 
     try {
-      // update mongo data and update inited
-      await MongoDatasetData.findByIdAndUpdate(data.data_id, {
-        q: data.q,
-        a: data.a,
-        indexes: [
-          {
-            defaultIndex: !data.a,
-            type: data.a ? DatasetDataIndexTypeEnum.qa : DatasetDataIndexTypeEnum.chunk,
-            dataId: data.id,
-            text: data.q
-          }
-        ]
+      // find team owner
+      const db = connectionMongo?.connection?.db;
+      const TeamMember = db.collection(TeamMemberCollectionName);
+
+      const tmb = await TeamMember.findOne({
+        teamId: new Types.ObjectId(mongoData.teamId),
+        role: 'owner'
       });
-      // update pg data_id
-      await PgClient.query(`UPDATE ${PgDatasetTableName} SET inited=0 WHERE id=${dataId};`);
+
+      if (!tmb) {
+        return initData(index + limit);
+      }
+
+      // update mongo and pg tmb_id
+      await MongoDatasetData.findByIdAndUpdate(item.data_id, {
+        tmbId: tmb._id
+      });
+      await PgClient.query(
+        `UPDATE ${PgDatasetTableName} SET tmb_id = '${String(tmb._id)}' WHERE id = '${item.id}'`
+      );
+
+      console.log(++success);
 
       return initData(index + limit);
     } catch (error) {
       console.log(error);
-      console.log(data);
       await delay(500);
       return initData(index);
     }
