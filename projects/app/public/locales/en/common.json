@@ -589,7 +589,8 @@
   "wallet": {
     "bill": {
       "Audio Speech": "Audio Speech",
-      "bill username": "User"
+      "bill username": "User",
+      "Whisper": "Whisper"
     }
   }
 }

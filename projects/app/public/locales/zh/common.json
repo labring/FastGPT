@@ -589,7 +589,8 @@
   "wallet": {
     "bill": {
       "Audio Speech": "语音播报",
-      "bill username": "用户"
+      "bill username": "用户",
+      "Whisper": "语音输入"
     }
   }
 }
