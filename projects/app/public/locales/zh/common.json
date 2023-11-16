@@ -236,7 +236,9 @@
       "Record": "语音输入",
       "Restart": "重开对话",
       "Send Message": "发送",
+      "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
+      "Type a message": "输入问题",
       "tts": {
         "Stop Speech": "停止"
       }

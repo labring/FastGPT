@@ -20,7 +20,7 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t } = useTranslation();
-  const { playAudio, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({ ttsConfig: value });
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const list = useMemo(
     () => [
@@ -45,7 +45,7 @@ const TTSSelect = ({
     [formatValue, list, t]
   );
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { playAudio, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({ ttsConfig: value });
 
   const onclickChange = useCallback(
     (e: string) => {

@@ -1,11 +1,12 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import MyTooltip from '../MyTooltip';
 import MyIcon from '../Icon';
 import styles from './index.module.scss';
+import { useRouter } from 'next/router';
 
 const MessageInput = ({
   onChange,
@@ -22,6 +23,7 @@ const MessageInput = ({
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: string) => void;
 }) => {
+  const { shareId } = useRouter().query as { shareId?: string };
   const {
     isSpeaking,
     isTransCription,
@@ -30,7 +32,7 @@ const MessageInput = ({
     speakingTimeString,
     renderAudioGraph,
     stream
-  } = useSpeech();
+  } = useSpeech({ shareId });
   const { isPc } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>();
   const { t } = useTranslation();
@@ -53,6 +55,7 @@ const MessageInput = ({
     };
     renderCurve();
   }, [renderAudioGraph, stream]);
+  console.log(!havInput && !isChatting);
 
   return (
     <>
@@ -100,7 +103,7 @@ const MessageInput = ({
             _focusVisible={{
               border: 'none'
             }}
-            placeholder="提问"
+            placeholder={isSpeaking ? t('core.chat.Speaking') : t('core.chat.Type a message')}
             resize={'none'}
             rows={1}
             height={'22px'}
@@ -137,7 +140,7 @@ const MessageInput = ({
             bottom={['15px', '13px']}
           >
             {/* voice-input */}
-            {!havInput && !isChatting && (
+            {!shareId && !havInput && !isChatting && (
               <>
                 <canvas
                   ref={canvasRef as any}

@@ -4,7 +4,8 @@ import { useToast } from './useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
-export const useSpeech = () => {
+export const useSpeech = (props?: { shareId?: string }) => {
+  const { shareId } = props || {};
   const { t } = useTranslation();
   const mediaRecorder = useRef<MediaRecorder>();
   const mediaStream = useRef<MediaStream>();
@@ -56,6 +57,7 @@ export const useSpeech = () => {
       const chunks: Blob[] = [];
 
       mediaRecorder.current.onstart = () => {
+        setIsSpeaking(true);
         startTimestamp.current = Date.now();
         setAudioSecone(0);
         intervalRef.current = setInterval(() => {
@@ -76,8 +78,9 @@ export const useSpeech = () => {
         const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
 
         formData.append('files', blob, 'recording.webm');
-        formData.append('metadata', JSON.stringify({ duration }));
+        formData.append('metadata', JSON.stringify({ duration, shareId }));
 
+        setIsTransCription(true);
         try {
           const result = await POST<string>('/v1/audio/transcriptions', formData, {
             timeout: 60000,
@@ -85,7 +88,6 @@ export const useSpeech = () => {
               'Content-Type': 'multipart/form-data; charset=utf-8'
             }
           });
-          setIsTransCription(false);
           onFinish(result);
         } catch (error) {
           toast({
@@ -93,23 +95,22 @@ export const useSpeech = () => {
             title: getErrText(error, t('common.speech.error tip'))
           });
         }
+        setIsTransCription(false);
         setIsSpeaking(false);
       };
 
       mediaRecorder.current.onerror = (e) => {
         console.log('error', e);
+        setIsSpeaking(false);
       };
 
       mediaRecorder.current.start();
-
-      setIsSpeaking(true);
     } catch (error) {}
   };
 
   const stopSpeak = () => {
     if (mediaRecorder.current) {
       mediaRecorder.current?.stop();
-      setIsTransCription(true);
       clearInterval(intervalRef.current);
     }
   };

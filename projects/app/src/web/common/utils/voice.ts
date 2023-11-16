@@ -4,9 +4,11 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AppTTSConfigType } from '@/types/app';
 import { TTSTypeEnum } from '@/constants/app';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 
 export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
   const { t } = useTranslation();
+  const { shareId } = useRouter().query as { shareId?: string };
   const { ttsConfig } = props || {};
   const { toast } = useToast();
   const [audio, setAudio] = useState<HTMLAudioElement>();
@@ -56,7 +58,8 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
             body: JSON.stringify({
               chatItemId,
               ttsConfig,
-              input: text
+              input: text,
+              shareId
             })
           });
           setAudioLoading(false);

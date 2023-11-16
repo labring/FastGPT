@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authCertAndShareId } from '@fastgpt/service/support/permission/auth/common';
+import { authCert, authCertAndShareId } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { getUploadModel } from '@fastgpt/service/common/file/upload/multer';
 import fs from 'fs';
@@ -15,10 +15,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   try {
     const {
       files,
-      metadata: { duration }
-    } = await upload.doUpload<{ duration: number }>(req, res);
+      metadata: { duration, shareId }
+    } = await upload.doUpload<{ duration: number; shareId?: string }>(req, res);
 
-    const { teamId, tmbId } = await authCertAndShareId({ req, authToken: true });
+    const { teamId, tmbId } = await authCert({ req, authToken: true });
 
     if (!global.whisperModel) {
       throw new Error('whisper model not found');

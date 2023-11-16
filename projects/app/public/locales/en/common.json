@@ -233,10 +233,12 @@
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
+      "Speaking": "I'm listening...",
       "Record": "Speech",
       "Restart": "Restart",
       "Send Message": "Send Message",
       "Stop Speak": "Stop Speak",
+      "Type a message": "Input problem",
       "tts": {
         "Stop Speech": "Stop"
       }
