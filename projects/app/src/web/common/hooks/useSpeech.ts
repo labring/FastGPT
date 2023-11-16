@@ -55,9 +55,9 @@ export const useSpeech = (props?: { shareId?: string }) => {
       mediaStream.current = stream;
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
+      setIsSpeaking(true);
 
       mediaRecorder.current.onstart = () => {
-        setIsSpeaking(true);
         startTimestamp.current = Date.now();
         setAudioSecone(0);
         intervalRef.current = setInterval(() => {

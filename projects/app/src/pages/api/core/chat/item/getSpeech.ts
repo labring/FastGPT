@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           await MongoTTSBuffer.create({
             bufferId: voiceData.bufferId,
-            text: input,
+            text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
             buffer
           });
         } catch (error) {}

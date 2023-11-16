@@ -42,6 +42,7 @@ const MyModal = ({
         maxH={'90vh'}
         {...props}
       >
+        {!title && onClose && <ModalCloseButton zIndex={1} />}
         {!!title && (
           <ModalHeader
             display={'flex'}
@@ -57,7 +58,6 @@ const MyModal = ({
             {onClose && <ModalCloseButton position={'relative'} top={0} right={0} />}
           </ModalHeader>
         )}
-        {!title && onClose && <ModalCloseButton />}
 
         <Box
           overflow={props.overflow || 'overlay'}

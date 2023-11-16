@@ -69,7 +69,7 @@ const Button = defineStyleConfig({
     gray: {
       bg: '#F5F5F8',
       color: 'myBlue.700',
-      border: '1px solid #DAE0E2',
+      border: '1px solid #EFF0F1',
       _hover: {
         bg: '#3370FF1A'
       }

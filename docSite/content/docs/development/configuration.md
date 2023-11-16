@@ -123,13 +123,23 @@ weight: 520
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
-      "price": 0
-    },
-    {
-      "model": "tts-1-hd",
-      "name": "OpenAI TTS1HD",
-      "price": 0
+      "price": 0,
+      "baseUrl": "",
+      "key": "",
+      "voices": [
+        { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
+        { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
+        { "label": "Fable", "value": "fable", "bufferId": "openai-Fable" },
+        { "label": "Onyx", "value": "onyx", "bufferId": "openai-Onyx" },
+        { "label": "Nova", "value": "nova", "bufferId": "openai-Nova" },
+        { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
+      ]
     }
-  ]
+  ],
+  "WhisperModel": {
+    "model": "whisper-1",
+    "name": "Whisper1",
+    "price": 0
+  }
 }
 ```
