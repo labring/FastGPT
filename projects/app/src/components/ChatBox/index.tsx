@@ -1221,18 +1221,19 @@ function ChatController({
               name={'voice'}
               _hover={{ color: '#E74694' }}
               onClick={async () => {
-                const buffer = await playAudio({
+                const response = await playAudio({
                   buffer: chat.ttsBuffer,
                   chatItemId: chat.dataId,
                   text: chat.value
                 });
-                if (!setChatHistory) return;
+
+                if (!setChatHistory || !response.buffer) return;
                 setChatHistory((state) =>
                   state.map((item) =>
                     item.dataId === chat.dataId
                       ? {
                           ...item,
-                          ttsBuffer: buffer
+                          ttsBuffer: response.buffer
                         }
                       : item
                   )

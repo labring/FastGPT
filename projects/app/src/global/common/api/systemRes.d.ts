@@ -2,7 +2,8 @@ import type {
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
-  VectorModelItemType
+  VectorModelItemType,
+  AudioSpeechModels
 } from '@fastgpt/global/core/ai/model.d';
 
 import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
@@ -12,8 +13,8 @@ export type InitDateResponse = {
   qaModels: LLMModelItemType[];
   cqModels: FunctionModelItemType[];
   extractModels: FunctionModelItemType[];
-  qgModels: LLMModelItemType[];
   vectorModels: VectorModelItemType[];
+  audioSpeechModels: AudioSpeechModels[];
   feConfigs: FeConfigsType;
   priceMd: string;
   systemVersion: string;

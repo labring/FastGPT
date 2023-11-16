@@ -8,7 +8,8 @@ import {
   defaultCQModels,
   defaultExtractModels,
   defaultQGModels,
-  defaultVectorModels
+  defaultVectorModels,
+  defaultAudioSpeechModels
 } from '@fastgpt/global/core/ai/model';
 
 export let feConfigs: FeConfigsType = {};
@@ -21,6 +22,7 @@ export let qaModelList = defaultQAModels;
 export let cqModelList = defaultCQModels;
 export let extractModelList = defaultExtractModels;
 export let qgModelList = defaultQGModels;
+export let audioSpeechModels = defaultAudioSpeechModels;
 
 let retryTimes = 3;
 
@@ -32,9 +34,10 @@ export const clientInitData = async (): Promise<InitDateResponse> => {
     qaModelList = res.qaModels || [];
     cqModelList = res.cqModels || [];
     extractModelList = res.extractModels || [];
-    qgModelList = res.qgModels || [];
 
     vectorModelList = res.vectorModels || [];
+
+    audioSpeechModels = res.audioSpeechModels || [];
 
     feConfigs = res.feConfigs;
     priceMd = res.priceMd;

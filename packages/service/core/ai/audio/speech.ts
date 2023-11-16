@@ -1,26 +1,49 @@
-import { Text2SpeechProps } from '@fastgpt/global/core/ai/speech/api';
+import type { NextApiResponse } from 'next';
 import { getAIApi } from '../config';
 import { defaultAudioSpeechModels } from '../../../../global/core/ai/model';
-import { Text2SpeechVoiceEnum } from '@fastgpt/global/core/ai/speech/constant';
+import { UserModelSchema } from '@fastgpt/global/support/user/type';
 
 export async function text2Speech({
-  model = defaultAudioSpeechModels[0].model,
-  voice = Text2SpeechVoiceEnum.alloy,
+  res,
+  onSuccess,
+  onError,
   input,
-  speed = 1
-}: Text2SpeechProps) {
-  const ai = getAIApi();
-  const mp3 = await ai.audio.speech.create({
+  model = defaultAudioSpeechModels[0].model,
+  voice,
+  speed = 1,
+  props
+}: {
+  res: NextApiResponse;
+  onSuccess: (e: { model: string; buffer: Buffer }) => void;
+  onError: (e: any) => void;
+  input: string;
+  model: string;
+  voice: string;
+  speed?: number;
+  props?: UserModelSchema['openaiAccount'];
+}) {
+  const ai = getAIApi(props);
+  const response = await ai.audio.speech.create({
     model,
+    // @ts-ignore
     voice,
     input,
     response_format: 'mp3',
     speed
   });
-  const buffer = Buffer.from(await mp3.arrayBuffer());
-  return {
-    model,
-    voice,
-    tts: buffer
-  };
+
+  const readableStream = response.body as unknown as NodeJS.ReadableStream;
+  readableStream.pipe(res);
+
+  let bufferStore = Buffer.from([]);
+
+  readableStream.on('data', (chunk) => {
+    bufferStore = Buffer.concat([bufferStore, chunk]);
+  });
+  readableStream.on('end', () => {
+    onSuccess({ model, buffer: bufferStore });
+  });
+  readableStream.on('error', (e) => {
+    onError(e);
+  });
 }

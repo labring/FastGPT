@@ -86,6 +86,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human) {
       chatMessages.pop();
     }
+
     // user question
     const question = chatMessages.pop();
     if (!question) {
@@ -173,15 +174,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const isAppOwner = !shareId && String(user.team.tmbId) === String(app.tmbId);
 
     /* format prompts */
-    const prompts = history.concat(gptMessage2ChatType(messages));
-
-    // set sse response headers
-    if (stream) {
-      res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('X-Accel-Buffering', 'no');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-    }
+    const concatHistory = history.concat(chatMessages);
 
     /* start flow controller */
     const { responseData, answerText } = await dispatchModules({
@@ -193,7 +186,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       tmbId: user.team.tmbId,
       variables,
       params: {
-        history: prompts,
+        history: concatHistory,
         userChatInput: question.value
       },
       stream,

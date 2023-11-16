@@ -1,7 +1,6 @@
 import { ModuleItemType } from '../module/type';
 import { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
-import { Text2SpeechVoiceEnum } from '../ai/speech/constant';
 
 export interface AppSchema {
   _id: string;

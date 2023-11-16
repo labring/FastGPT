@@ -34,8 +34,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       qaModels: global.qaModels,
       cqModels: global.cqModels,
       extractModels: global.extractModels,
-      qgModels: global.qgModels,
       vectorModels: global.vectorModels,
+      audioSpeechModels: global.audioSpeechModels.map((item) => ({
+        ...item,
+        baseUrl: undefined,
+        key: undefined
+      })),
       priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0'
     }

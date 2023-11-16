@@ -55,6 +55,7 @@ export interface Props extends BoxProps {
   };
   showUrlFetch?: boolean;
   showCreateFile?: boolean;
+  tip?: string;
 }
 
 const FileSelect = ({
@@ -65,6 +66,7 @@ const FileSelect = ({
   fileTemplate,
   showUrlFetch = true,
   showCreateFile = true,
+  tip,
   ...props
 }: Props) => {
   const { datasetDetail } = useDatasetStore();
@@ -423,6 +425,7 @@ const FileSelect = ({
           {t('file.Click to download file template', { name: fileTemplate.filename })}
         </Box>
       )}
+      {!!tip && <Box color={'myGray.500'}>{tip}</Box>}
       {selectingText !== undefined && (
         <FileSelectLoading loading text={selectingText} fixed={false} />
       )}

@@ -37,7 +37,7 @@ export const streamFetch = ({
         })
       });
 
-      if (!response?.body) {
+      if (!response?.body || !response?.ok) {
         throw new Error('Request Error');
       }
 

@@ -15,7 +15,6 @@ import type { FlowModuleTemplateType, ModuleItemType } from '@fastgpt/global/cor
 import type { ChatSchema } from '@fastgpt/global/core/chat/type';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';
-import { Text2SpeechVoiceEnum } from '@fastgpt/global/core/ai/speech/constant';
 
 export interface ShareAppItem {
   _id: string;
@@ -40,7 +39,7 @@ export type VariableItemType = {
 export type AppTTSConfigType = {
   type: 'none' | 'web' | 'model';
   model?: string;
-  voice?: `${Text2SpeechVoiceEnum}`;
+  voice?: string;
   speed?: number;
 };
 

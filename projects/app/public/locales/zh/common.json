@@ -313,10 +313,12 @@
         "Course": "说明文档",
         "Delete": "删除数据",
         "Index": "数据索引({{amount}})"
-      }
+      },
+      "input is empty": "数据内容不能为空 "
     },
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
+    "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
     "recall": {
       "rerank": "结果重排"
     },
