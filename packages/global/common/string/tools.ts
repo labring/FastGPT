@@ -24,7 +24,7 @@ export const simpleText = (text: string) => {
 };
 
 /* 
-    replace {{variable}} to value
+  replace {{variable}} to value
 */
 export function replaceVariable(text: string, obj: Record<string, string | number>) {
   for (const key in obj) {

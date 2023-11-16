@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AppTTSConfigType } from '@/types/app';
@@ -14,6 +14,7 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
   const [audio, setAudio] = useState<HTMLAudioElement>();
   const [audioLoading, setAudioLoading] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const audioController = useRef(new AbortController());
 
   // Check whether the voice is supported
   const hasAudio = useMemo(() => {
@@ -49,12 +50,15 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
             return resolve({ buffer });
           }
 
+          audioController.current = new AbortController();
+
           /* request tts */
           const response = await fetch('/api/core/chat/item/getSpeech', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
+            signal: audioController.current.signal,
             body: JSON.stringify({
               chatItemId,
               ttsConfig,
@@ -120,6 +124,7 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
       audio.src = '';
     }
     window.speechSynthesis?.cancel();
+    audioController.current?.abort();
     setAudioPlaying(false);
   }, [audio]);
 

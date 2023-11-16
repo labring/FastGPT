@@ -17,6 +17,7 @@ export const defaultChatModels: ChatModelItemType[] = [
     quoteMaxToken: 2000,
     maxTemperature: 1.2,
     censor: false,
+    vision: false,
     defaultSystemChatPrompt: ''
   },
   {
@@ -28,6 +29,7 @@ export const defaultChatModels: ChatModelItemType[] = [
     quoteMaxToken: 8000,
     maxTemperature: 1.2,
     censor: false,
+    vision: false,
     defaultSystemChatPrompt: ''
   },
   {
@@ -39,6 +41,7 @@ export const defaultChatModels: ChatModelItemType[] = [
     quoteMaxToken: 4000,
     maxTemperature: 1.2,
     censor: false,
+    vision: false,
     defaultSystemChatPrompt: ''
   }
 ];

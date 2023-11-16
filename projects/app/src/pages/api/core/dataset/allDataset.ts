@@ -17,10 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const datasets = await MongoDataset.find({
       ...mongoRPermission({ teamId, tmbId, role }),
       type: 'dataset'
-    });
+    }).lean();
 
     const data = datasets.map((item) => ({
-      ...item.toJSON(),
+      ...item,
       vectorModel: getVectorModel(item.vectorModel),
       agentModel: getQAModel(item.agentModel),
       canWrite: String(item.tmbId) === tmbId,

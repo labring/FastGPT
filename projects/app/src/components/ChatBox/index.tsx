@@ -17,7 +17,19 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { Box, Card, Flex, Input, Button, useTheme, BoxProps, FlexProps } from '@chakra-ui/react';
+import {
+  Box,
+  Card,
+  Flex,
+  Input,
+  Textarea,
+  Button,
+  useTheme,
+  BoxProps,
+  FlexProps,
+  Spinner,
+  Image
+} from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
@@ -1109,11 +1121,11 @@ function ChatController({
                 {...controlIconStyle}
                 mr={1}
                 name={'core/chat/stopSpeech'}
-                _hover={{ color: '#E74694' }}
+                color={'#E74694'}
                 onClick={() => cancelAudio()}
               />
             </MyTooltip>
-            {/* <MyIcon name={'loading'} w={'16px'} /> */}
+            <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
           </Flex>
         ) : (
           <MyTooltip label={t('core.app.TTS')}>

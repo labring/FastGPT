@@ -70,3 +70,4 @@ const OpenApiSchema = new Schema(
 
 export const MongoOpenApi: Model<OpenApiSchema> =
   models['openapi'] || model('openapi', OpenApiSchema);
+MongoOpenApi.syncIndexes();

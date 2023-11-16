@@ -22,11 +22,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ...mongoRPermission({ teamId, tmbId, role }),
       ...(parentId !== undefined && { parentId: parentId || null }),
       ...(type && { type })
-    }).sort({ updateTime: -1 });
+    })
+      .sort({ updateTime: -1 })
+      .lean();
 
     const data = await Promise.all(
       datasets.map(async (item) => ({
-        ...item.toJSON(),
+        ...item,
         vectorModel: getVectorModel(item.vectorModel),
         agentModel: getQAModel(item.agentModel),
         canWrite,
