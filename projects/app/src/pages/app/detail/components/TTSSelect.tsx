@@ -26,7 +26,7 @@ const TTSSelect = ({
     () => [
       { label: t('core.app.tts.Close'), value: TTSTypeEnum.none },
       { label: t('core.app.tts.Web'), value: TTSTypeEnum.web },
-      ...audioSpeechModels.map((item) => item.voices).flat()
+      ...audioSpeechModels.map((item) => item?.voices || []).flat()
     ],
     [t]
   );
@@ -41,8 +41,8 @@ const TTSSelect = ({
     return value.voice;
   }, [value]);
   const formLabel = useMemo(
-    () => list.find((item) => item.value === formatValue)?.label,
-    [formatValue, list]
+    () => list.find((item) => item.value === formatValue)?.label || t('common.UnKnow'),
+    [formatValue, list, t]
   );
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -52,8 +52,8 @@ const TTSSelect = ({
       if (e === TTSTypeEnum.none || e === TTSTypeEnum.web) {
         onChange({ type: e as `${TTSTypeEnum}` });
       } else {
-        const audioModel = audioSpeechModels.find((item) =>
-          item.voices.find((voice) => voice.value === e)
+        const audioModel = audioSpeechModels.find(
+          (item) => item.voices?.find((voice) => voice.value === e)
         );
         if (!audioModel) {
           return;
@@ -104,16 +104,7 @@ const TTSSelect = ({
         <ModalBody px={[5, 16]} py={[4, 8]}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             {t('core.app.tts.Speech model')}
-            <MySelect
-              w={'220px'}
-              value={formatValue}
-              list={[
-                { label: t('core.app.tts.Close'), value: TTSTypeEnum.none },
-                { label: t('core.app.tts.Web'), value: TTSTypeEnum.web },
-                ...audioSpeechModels.map((item) => item.voices).flat()
-              ]}
-              onchange={onclickChange}
-            />
+            <MySelect w={'220px'} value={formatValue} list={list} onchange={onclickChange} />
           </Flex>
           <Flex mt={8} justifyContent={'space-between'} alignItems={'center'}>
             {t('core.app.tts.Speech speed')}

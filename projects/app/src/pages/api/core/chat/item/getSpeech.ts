@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { teamId, tmbId, authType } = await authCert({ req, authToken: true });
 
     const ttsModel = getAudioSpeechModel(ttsConfig.model);
-    const voiceData = ttsModel.voices.find((item) => item.value === ttsConfig.voice);
+    const voiceData = ttsModel.voices?.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {
       throw new Error('voice not found');

@@ -114,5 +114,10 @@
         { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
       ]
     }
-  ]
+  ],
+  "WhisperModel": {
+    "model": "whisper-1",
+    "name": "Whisper1",
+    "price": 0
+  }
 }

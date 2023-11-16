@@ -11,9 +11,17 @@ export const useSpeech = () => {
   const { toast } = useToast();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTransCription, setIsTransCription] = useState(false);
-  const [audioLength, setAudioLength] = useState(0);
+  const [audioSecond, setAudioSecone] = useState(0);
   const intervalRef = useRef<any>();
   const startTimestamp = useRef(0);
+
+  const speakingTimeString = useMemo(() => {
+    const minutes: number = Math.floor(audioSecond / 60);
+    const remainingSeconds: number = Math.floor(audioSecond % 60);
+    const formattedMinutes: string = minutes.toString().padStart(2, '0');
+    const formattedSeconds: string = remainingSeconds.toString().padStart(2, '0');
+    return `${formattedMinutes}:${formattedSeconds}`;
+  }, [audioSecond]);
 
   const renderAudioGraph = (analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
     const bufferLength = analyser.frequencyBinCount;
@@ -40,7 +48,7 @@ export const useSpeech = () => {
     }
   };
 
-  const startSpeak = async (ref: any) => {
+  const startSpeak = async (onFinish: (text: string) => void) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStream.current = stream;
@@ -49,11 +57,11 @@ export const useSpeech = () => {
 
       mediaRecorder.current.onstart = () => {
         startTimestamp.current = Date.now();
-        setAudioLength(0);
+        setAudioSecone(0);
         intervalRef.current = setInterval(() => {
           const currentTimestamp = Date.now();
           const duration = (currentTimestamp - startTimestamp.current) / 1000;
-          setAudioLength(duration);
+          setAudioSecone(duration);
         }, 1000);
       };
 
@@ -64,17 +72,21 @@ export const useSpeech = () => {
       mediaRecorder.current.onstop = async () => {
         const formData = new FormData();
         const blob = new Blob(chunks, { type: 'audio/webm' });
+
+        const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
+
         formData.append('files', blob, 'recording.webm');
+        formData.append('metadata', JSON.stringify({ duration }));
 
         try {
-          const result = await POST<string[]>('/v1/audio/transcriptions', formData, {
+          const result = await POST<string>('/v1/audio/transcriptions', formData, {
             timeout: 60000,
             headers: {
               'Content-Type': 'multipart/form-data; charset=utf-8'
             }
           });
-          ref.current.value = result;
           setIsTransCription(false);
+          onFinish(result);
         } catch (error) {
           toast({
             status: 'warning',
@@ -82,6 +94,10 @@ export const useSpeech = () => {
           });
         }
         setIsSpeaking(false);
+      };
+
+      mediaRecorder.current.onerror = (e) => {
+        console.log('error', e);
       };
 
       mediaRecorder.current.start();
@@ -117,6 +133,6 @@ export const useSpeech = () => {
     isTransCription,
     renderAudioGraph,
     stream: mediaStream.current,
-    audioLength
+    speakingTimeString
   };
 };

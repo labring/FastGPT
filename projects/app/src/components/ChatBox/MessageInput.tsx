@@ -2,27 +2,32 @@ import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Spinner, Textarea } from '@chakra-ui/react';
 import React, { useMemo, useRef, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import MyTooltip from '../MyTooltip';
 import MyIcon from '../Icon';
 import styles from './index.module.scss';
 
-const MessageInput = (props: {
-  setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
-  variables: Record<string, any>;
-  sendPrompt: (data: Record<string, any>, value: string) => void;
+const MessageInput = ({
+  onChange,
+  onSendMessage,
+  onStop,
+  isChatting,
+  TextareaDom,
+  resetInputVal
+}: {
+  onChange: (e: string) => void;
+  onSendMessage: (e: string) => void;
+  onStop: () => void;
   isChatting: boolean;
-  chatController: React.MutableRefObject<AbortController | null>;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
+  resetInputVal: (val: string) => void;
 }) => {
-  const { setRefresh, variables, sendPrompt, isChatting, chatController, TextareaDom } = props;
   const {
     isSpeaking,
     isTransCription,
     stopSpeak,
     startSpeak,
-    audioLength,
+    speakingTimeString,
     renderAudioGraph,
     stream
   } = useSpeech();
@@ -30,16 +35,7 @@ const MessageInput = (props: {
   const canvasRef = useRef<HTMLCanvasElement>();
   const { t } = useTranslation();
   const textareaMinH = '22px';
-  const { handleSubmit } = useForm<Record<string, any>>({
-    defaultValues: variables
-  });
-  const audioTime = useMemo(() => {
-    const minutes: number = Math.floor(audioLength / 60);
-    const remainingSeconds: number = Math.floor(audioLength % 60);
-    const formattedMinutes: string = minutes.toString().padStart(2, '0');
-    const formattedSeconds: string = remainingSeconds.toString().padStart(2, '0');
-    return `${formattedMinutes}:${formattedSeconds}`;
-  }, [audioLength]);
+  const havInput = !!TextareaDom.current?.value;
 
   useEffect(() => {
     if (!stream) {
@@ -77,19 +73,7 @@ const MessageInput = (props: {
           borderRadius={['none', 'md']}
           backgroundColor={'white'}
         >
-          <canvas
-            ref={canvasRef as any}
-            style={{
-              height: '32px',
-              width: '32px',
-              position: 'absolute',
-              top: 4,
-              right: 108,
-              zIndex: 10,
-              visibility: isSpeaking && !isTransCription ? 'visible' : 'hidden',
-              background: 'white'
-            }}
-          />
+          {/* translate loading */}
           <Box
             position={'absolute'}
             top={0}
@@ -107,7 +91,7 @@ const MessageInput = (props: {
             <Spinner size={'sm'} mr={4} />
             {t('chat.Converting to text')}
           </Box>
-          {/* 输入框 */}
+          {/* input area */}
           <Textarea
             ref={TextareaDom}
             py={0}
@@ -133,12 +117,12 @@ const MessageInput = (props: {
               const textarea = e.target;
               textarea.style.height = textareaMinH;
               textarea.style.height = `${textarea.scrollHeight}px`;
-              setRefresh((state) => !state);
+              onChange(textarea.value);
             }}
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)
               if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-                handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value || ''))();
+                onSendMessage(TextareaDom.current?.value || '');
                 e.preventDefault();
               }
               // 全选内容
@@ -146,83 +130,93 @@ const MessageInput = (props: {
               e.key === 'a' && e.ctrlKey && e.target?.select();
             }}
           />
-          {/* voice-input */}
-          {!TextareaDom.current?.value && (
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              h={['26px', '32px']}
-              w={['26px', '32px']}
-              position={'absolute'}
-              right={['50px', '62px']}
-              bottom={['15px', '13px']}
-              borderRadius={'md'}
-              bg={isSpeaking ? '#F5F5F8' : ''}
-              cursor={'pointer'}
-              lineHeight={1}
-              _hover={{ bg: '#F5F5F8' }}
-              onClick={() => {
-                if (isSpeaking) {
-                  return stopSpeak();
-                }
-                startSpeak(TextareaDom);
-              }}
-            >
-              <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>
-                <MyIcon
-                  name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
-                  width={['20px', '22px']}
-                  height={['20px', '22px']}
-                  color={'myBlue.600'}
-                />
-              </MyTooltip>
-            </Flex>
-          )}
-
-          {/* 发送和等待按键 */}
           <Flex
-            alignItems={'center'}
-            justifyContent={'center'}
-            h={['26px', '32px']}
-            w={['26px', '32px']}
             position={'absolute'}
+            alignItems={'center'}
             right={['12px', '14px']}
             bottom={['15px', '13px']}
-            borderRadius={'md'}
-            bg={
-              isSpeaking ? '' : isChatting || !TextareaDom.current?.value ? '#E5E5E5' : 'myBlue.600'
-            }
-            cursor={TextareaDom.current?.value ? 'pointer' : 'not-allowed'}
-            lineHeight={1}
-            onClick={() => {
-              if (isChatting) {
-                return chatController.current?.abort('stop');
-              }
-              if (TextareaDom.current?.value) {
-                return handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value || ''))();
-              }
-            }}
           >
-            {isChatting ? (
-              <MyIcon
-                className={styles.stopIcon}
-                width={['22px', '25px']}
-                height={['22px', '25px']}
-                cursor={'pointer'}
-                name={'stop'}
-                color={'gray.500'}
-              />
-            ) : !isSpeaking ? (
-              <MyTooltip label={t('core.chat.Send Message')}>
-                <MyIcon
-                  name={'core/chat/sendFill'}
-                  width={'20px'}
-                  height={'20px'}
-                  color={'white'}
+            {/* voice-input */}
+            {!havInput && !isChatting && (
+              <>
+                <canvas
+                  ref={canvasRef as any}
+                  style={{
+                    height: '30px',
+                    width: isSpeaking && !isTransCription ? '100px' : 0,
+                    background: 'white',
+                    zIndex: 0
+                  }}
                 />
-              </MyTooltip>
+                <Flex
+                  mr={2}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  h={['26px', '32px']}
+                  w={['26px', '32px']}
+                  borderRadius={'md'}
+                  cursor={'pointer'}
+                  _hover={{ bg: '#F5F5F8' }}
+                  onClick={() => {
+                    if (isSpeaking) {
+                      return stopSpeak();
+                    }
+                    startSpeak(resetInputVal);
+                  }}
+                >
+                  <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>
+                    <MyIcon
+                      name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
+                      width={['20px', '22px']}
+                      height={['20px', '22px']}
+                      color={'myBlue.600'}
+                    />
+                  </MyTooltip>
+                </Flex>
+              </>
+            )}
+            {/* send and stop icon */}
+            {isSpeaking ? (
+              <Box color={'#5A646E'}>{speakingTimeString}</Box>
             ) : (
-              <Box color={'#5A646E'}>{audioTime}</Box>
+              <Flex
+                alignItems={'center'}
+                justifyContent={'center'}
+                h={['28px', '32px']}
+                w={['28px', '32px']}
+                borderRadius={'md'}
+                bg={isSpeaking || isChatting ? '' : !havInput ? '#E5E5E5' : 'myBlue.600'}
+                cursor={havInput ? 'pointer' : 'not-allowed'}
+                lineHeight={1}
+                onClick={() => {
+                  if (isChatting) {
+                    return onStop();
+                  }
+                  if (havInput) {
+                    onSendMessage(TextareaDom.current?.value || '');
+                  }
+                }}
+              >
+                {isChatting ? (
+                  <MyIcon
+                    className={styles.stopIcon}
+                    width={['22px', '25px']}
+                    height={['22px', '25px']}
+                    cursor={'pointer'}
+                    name={'stop'}
+                    color={'gray.500'}
+                  />
+                ) : (
+                  <MyTooltip label={t('core.chat.Send Message')}>
+                    <MyIcon
+                      name={'core/chat/sendFill'}
+                      width={['18px', '20px']}
+                      height={['18px', '20px']}
+                      color={'white'}
+                    />
+                  </MyTooltip>
+                )}
+              </Flex>
             )}
           </Flex>
         </Box>
@@ -231,4 +225,4 @@ const MessageInput = (props: {
   );
 };
 
-export default MessageInput;
+export default React.memo(MessageInput);

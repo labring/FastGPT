@@ -32,10 +32,10 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
       })
     }).any();
 
-    async doUpload(req: NextApiRequest, res: NextApiResponse) {
+    async doUpload<T = Record<string, any>>(req: NextApiRequest, res: NextApiResponse) {
       return new Promise<{
         files: FileType[];
-        metadata: Record<string, any>;
+        metadata: T;
         bucketName?: `${BucketNameEnum}`;
       }>((resolve, reject) => {
         // @ts-ignore

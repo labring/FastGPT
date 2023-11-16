@@ -240,6 +240,7 @@ const ChatBox = (
         TextareaDom.current.style.height =
           val === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
       }
+      setRefresh((state) => !state);
     }, 100);
   }, []);
 
@@ -795,12 +796,16 @@ const ChatBox = (
       {/* message input */}
       {onStartChat && variableIsFinish && active ? (
         <MessageInput
-          setRefresh={setRefresh}
-          variables={variables}
-          sendPrompt={sendPrompt}
+          onChange={(e) => {
+            setRefresh(!refresh);
+          }}
+          onSendMessage={(e) => {
+            handleSubmit((data) => sendPrompt(data, e))();
+          }}
+          onStop={() => chatController.current?.abort('stop')}
           isChatting={isChatting}
-          chatController={chatController}
           TextareaDom={TextareaDom}
+          resetInputVal={resetInputVal}
         />
       ) : null}
 
