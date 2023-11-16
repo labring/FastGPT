@@ -73,6 +73,7 @@
     "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
     "Confirm to clear share chat history": "确认删除所有聊天记录？",
+    "Converting to text": "正在转换为文本...",
     "Exit Chat": "退出聊天",
     "Feedback Close": "关闭反馈",
     "Feedback Failed": "提交反馈异常",
@@ -216,12 +217,15 @@
     "app": {
       "Next Step Guide": "下一步指引",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
+      "Select TTS": "选择语音播放模式",
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "tts": {
         "Close": "不使用",
         "Model alloy": "女声 - Alloy",
         "Model echo": "男声 - Echo",
+        "Speech model": "语音模型",
+        "Speech speed": "语速",
         "Test Listen": "试听",
         "Test Listen Text": "你好，我是 FastGPT，有什么可以帮助你么？",
         "Web": "浏览器自带(免费)"
@@ -232,7 +236,12 @@
       "Record": "语音输入",
       "Restart": "重开对话",
       "Send Message": "发送",
-      "Stop Speak": "停止录音"
+      "Speaking": "我在听，请说...",
+      "Stop Speak": "停止录音",
+      "Type a message": "输入问题",
+      "tts": {
+        "Stop Speech": "停止"
+      }
     },
     "dataset": {
       "Choose Dataset": "关联知识库",
@@ -580,7 +589,8 @@
   "wallet": {
     "bill": {
       "Audio Speech": "语音播报",
-      "bill username": "用户"
+      "bill username": "用户",
+      "Whisper": "语音输入"
     }
   }
 }

@@ -110,6 +110,12 @@ export const streamFetch = ({
       };
       read();
     } catch (err: any) {
+      if (abortSignal.signal.aborted) {
+        return resolve({
+          responseText: '',
+          responseData: []
+        });
+      }
       console.log(err, 'fetch error');
 
       reject(getErrText(err, '请求异常'));

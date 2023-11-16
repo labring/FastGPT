@@ -2,7 +2,7 @@ import type { FeConfigsType, SystemEnvType } from '@fastgpt/global/common/system
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { readFileSync } from 'fs';
-import type { InitDateResponse } from '@/global/common/api/systemRes';
+import type { ConfigFileType, InitDateResponse } from '@/global/common/api/systemRes';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
@@ -13,15 +13,9 @@ import {
   defaultExtractModels,
   defaultQGModels,
   defaultVectorModels,
-  defaultAudioSpeechModels
+  defaultAudioSpeechModels,
+  defaultWhisperModel
 } from '@fastgpt/global/core/ai/model';
-import {
-  AudioSpeechModelType,
-  ChatModelItemType,
-  FunctionModelItemType,
-  LLMModelItemType,
-  VectorModelItemType
-} from '@fastgpt/global/core/ai/model.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   getInitConfig();
@@ -83,60 +77,39 @@ export function getInitConfig() {
 
     const filename =
       process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
-    const res = JSON.parse(readFileSync(filename, 'utf-8')) as {
-      FeConfig: FeConfigsType;
-      SystemParams: SystemEnvType;
-      ChatModels: ChatModelItemType[];
-      QAModels: LLMModelItemType[];
-      CQModels: FunctionModelItemType[];
-      ExtractModels: FunctionModelItemType[];
-      QGModels: LLMModelItemType[];
-      VectorModels: VectorModelItemType[];
-      AudioSpeechModels: AudioSpeechModelType[];
-    };
+    const res = JSON.parse(readFileSync(filename, 'utf-8')) as ConfigFileType;
 
     console.log(`System Version: ${global.systemVersion}`);
 
-    console.log(res);
-
-    global.systemEnv = res.SystemParams
-      ? { ...defaultSystemEnv, ...res.SystemParams }
-      : defaultSystemEnv;
-    global.feConfigs = res.FeConfig
-      ? { ...defaultFeConfigs, ...res.FeConfig, isPlus: !!res.SystemParams?.pluginBaseUrl }
-      : defaultFeConfigs;
-
-    global.chatModels = res.ChatModels || defaultChatModels;
-    global.qaModels = res.QAModels || defaultQAModels;
-    global.cqModels = res.CQModels || defaultCQModels;
-    global.extractModels = res.ExtractModels || defaultExtractModels;
-    global.qgModels = res.QGModels || defaultQGModels;
-
-    global.vectorModels = res.VectorModels || defaultVectorModels;
-
-    global.audioSpeechModels = res.AudioSpeechModels || defaultAudioSpeechModels;
+    setDefaultData(res);
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);
   }
 }
 
-export function setDefaultData() {
-  global.systemEnv = defaultSystemEnv;
-  global.feConfigs = defaultFeConfigs;
+export function setDefaultData(res?: ConfigFileType) {
+  global.systemEnv = res?.SystemParams
+    ? { ...defaultSystemEnv, ...res.SystemParams }
+    : defaultSystemEnv;
+  global.feConfigs = res?.FeConfig
+    ? { ...defaultFeConfigs, ...res.FeConfig, isPlus: !!res.SystemParams?.pluginBaseUrl }
+    : defaultFeConfigs;
 
-  global.chatModels = defaultChatModels;
-  global.qaModels = defaultQAModels;
-  global.cqModels = defaultCQModels;
-  global.extractModels = defaultExtractModels;
-  global.qgModels = defaultQGModels;
+  global.chatModels = res?.ChatModels || defaultChatModels;
+  global.qaModels = res?.QAModels || defaultQAModels;
+  global.cqModels = res?.CQModels || defaultCQModels;
+  global.extractModels = res?.ExtractModels || defaultExtractModels;
+  global.qgModels = res?.QGModels || defaultQGModels;
 
-  global.vectorModels = defaultVectorModels;
-  global.audioSpeechModels = defaultAudioSpeechModels;
+  global.vectorModels = res?.VectorModels || defaultVectorModels;
+
+  global.audioSpeechModels = res?.AudioSpeechModels || defaultAudioSpeechModels;
+
+  global.whisperModel = res?.WhisperModel || defaultWhisperModel;
 
   global.priceMd = '';
 
-  console.log('use default config');
   console.log(global);
 }
 
@@ -178,6 +151,10 @@ ${global.extractModels
 ${global.qgModels
   ?.map((item) => `| 下一步指引-${item.name} | ${formatPrice(item.price, 1000)} |`)
   .join('\n')}
+${global.audioSpeechModels
+  ?.map((item) => `| 语音播放-${item.name} | ${formatPrice(item.price, 1000)} |`)
+  .join('\n')}
+${`| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`}
 `;
   console.log(global.priceMd);
 }

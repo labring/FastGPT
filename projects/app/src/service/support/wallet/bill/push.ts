@@ -1,4 +1,4 @@
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { BillSourceEnum, PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
 import { getAudioSpeechModel, getQAModel } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
@@ -201,6 +201,40 @@ export function pushAudioSpeechBill({
         amount: total,
         model: modelData.name,
         tokenLen: textLength
+      }
+    ]
+  });
+}
+
+export function pushWhisperBill({
+  teamId,
+  tmbId,
+  duration
+}: {
+  teamId: string;
+  tmbId: string;
+  duration: number;
+}) {
+  const modelData = global.whisperModel;
+
+  if (!modelData) return;
+
+  const total = ((modelData.price * duration) / 60) * PRICE_SCALE;
+
+  const name = 'wallet.bill.Whisper';
+
+  createBill({
+    teamId,
+    tmbId,
+    appName: name,
+    total,
+    source: BillSourceEnum.fastgpt,
+    list: [
+      {
+        moduleName: name,
+        amount: total,
+        model: modelData.name,
+        tokenLen: duration
       }
     ]
   });

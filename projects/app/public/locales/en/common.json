@@ -73,6 +73,7 @@
     "Complete Response": "Complete Response",
     "Confirm to clear history": "Confirm to clear history?",
     "Confirm to clear share chat history": " Are you sure to delete all chats?",
+    "Converting to text": "Converting to text...",
     "Exit Chat": "Exit",
     "Feedback Close": "Close Feedback",
     "Feedback Failed": "Feedback Failed",
@@ -216,12 +217,15 @@
     "app": {
       "Next Step Guide": "Next step guide",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
+      "Select TTS": "Select TTS",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "tts": {
         "Close": "NoUse",
         "Model alloy": "Female - Alloy",
         "Model echo": "Male - Echo",
+        "Speech model": "Speech model",
+        "Speech speed": "Speed",
         "Test Listen": "Test",
         "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
         "Web": "Browser (free)"
@@ -229,10 +233,15 @@
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
+      "Speaking": "I'm listening...",
       "Record": "Speech",
       "Restart": "Restart",
       "Send Message": "Send Message",
-      "Stop Speak": "Stop Speak"
+      "Stop Speak": "Stop Speak",
+      "Type a message": "Input problem",
+      "tts": {
+        "Stop Speech": "Stop"
+      }
     },
     "dataset": {
       "Choose Dataset": "Choose Dataset",
@@ -580,7 +589,8 @@
   "wallet": {
     "bill": {
       "Audio Speech": "Audio Speech",
-      "bill username": "User"
+      "bill username": "User",
+      "Whisper": "Whisper"
     }
   }
 }

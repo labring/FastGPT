@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authCert, authCertAndShareId } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { getUploadModel } from '@fastgpt/service/common/file/upload/multer';
 import fs from 'fs';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
+import { pushWhisperBill } from '@/service/support/wallet/bill/push';
 
 const upload = getUploadModel({
   maxSize: 2
@@ -12,9 +13,16 @@ const upload = getUploadModel({
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    const {
+      files,
+      metadata: { duration, shareId }
+    } = await upload.doUpload<{ duration: number; shareId?: string }>(req, res);
+
     const { teamId, tmbId } = await authCert({ req, authToken: true });
 
-    const { files } = await upload.doUpload(req, res);
+    if (!global.whisperModel) {
+      throw new Error('whisper model not found');
+    }
 
     const file = files[0];
 
@@ -26,7 +34,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const result = await ai.audio.transcriptions.create({
       file: fs.createReadStream(file.path),
-      model: 'whisper-1'
+      model: global.whisperModel.model
+    });
+
+    pushWhisperBill({
+      teamId,
+      tmbId,
+      duration
     });
 
     jsonRes(res, {

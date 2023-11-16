@@ -26,7 +26,8 @@ import {
   Button,
   useTheme,
   BoxProps,
-  FlexProps
+  FlexProps,
+  Spinner
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
@@ -62,7 +63,7 @@ import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from '@/global/core/app/modules/utils';
 import { AppTTSConfigType } from '@/types/app';
-import { useSpeech } from '@/web/common/hooks/useSpeech';
+import MessageInput from './MessageInput';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -149,8 +150,6 @@ const ChatBox = (
   }>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
-
-  const { isSpeaking, startSpeak, stopSpeak } = useSpeech();
 
   const isChatting = useMemo(
     () =>
@@ -241,6 +240,7 @@ const ChatBox = (
         TextareaDom.current.style.height =
           val === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
       }
+      setRefresh((state) => !state);
     }, 100);
   }, []);
 
@@ -795,110 +795,18 @@ const ChatBox = (
       </Box>
       {/* message input */}
       {onStartChat && variableIsFinish && active ? (
-        <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
-          <Box
-            py={'18px'}
-            position={'relative'}
-            boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
-            {...(isPc
-              ? {
-                  border: '1px solid',
-                  borderColor: 'rgba(0,0,0,0.12)'
-                }
-              : {
-                  borderTop: '1px solid',
-                  borderTopColor: 'rgba(0,0,0,0.15)'
-                })}
-            borderRadius={['none', 'md']}
-            backgroundColor={'white'}
-          >
-            {/* 输入框 */}
-            <Textarea
-              ref={TextareaDom}
-              py={0}
-              pr={['45px', '55px']}
-              border={'none'}
-              _focusVisible={{
-                border: 'none'
-              }}
-              placeholder="提问"
-              resize={'none'}
-              rows={1}
-              height={'22px'}
-              lineHeight={'22px'}
-              maxHeight={'150px'}
-              maxLength={-1}
-              overflowY={'auto'}
-              whiteSpace={'pre-wrap'}
-              wordBreak={'break-all'}
-              boxShadow={'none !important'}
-              color={'myGray.900'}
-              onChange={(e) => {
-                const textarea = e.target;
-                textarea.style.height = textareaMinH;
-                textarea.style.height = `${textarea.scrollHeight}px`;
-                setRefresh((state) => !state);
-              }}
-              onKeyDown={(e) => {
-                // enter send.(pc or iframe && enter and unPress shift)
-                if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-                  handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
-                  e.preventDefault();
-                }
-                // 全选内容
-                // @ts-ignore
-                e.key === 'a' && e.ctrlKey && e.target?.select();
-              }}
-            />
-            {/* 发送和等待按键 */}
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              h={['26px', '32px']}
-              w={['26px', '32px']}
-              position={'absolute'}
-              right={['12px', '14px']}
-              bottom={['15px', '13px']}
-              borderRadius={'md'}
-              // bg={TextareaDom.current?.value ? 'myBlue.600' : ''}
-              cursor={'pointer'}
-              lineHeight={1}
-              onClick={() => {
-                if (isChatting) {
-                  return chatController.current?.abort('stop');
-                }
-                if (TextareaDom.current?.value) {
-                  return handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
-                }
-                // speech
-                // if (isSpeaking) {
-                //   return stopSpeak();
-                // }
-                // startSpeak();
-              }}
-            >
-              {isChatting ? (
-                <MyIcon
-                  className={styles.stopIcon}
-                  width={['22px', '25px']}
-                  height={['22px', '25px']}
-                  cursor={'pointer'}
-                  name={'stop'}
-                  color={'gray.500'}
-                />
-              ) : (
-                <MyTooltip label={t('core.chat.Send Message')}>
-                  <MyIcon
-                    name={'core/chat/sendFill'}
-                    width={['16px', '22px']}
-                    height={['16px', '22px']}
-                    color={TextareaDom.current?.value ? 'myBlue.600' : 'myGray.400'}
-                  />
-                </MyTooltip>
-              )}
-            </Flex>
-          </Box>
-        </Box>
+        <MessageInput
+          onChange={(e) => {
+            setRefresh(!refresh);
+          }}
+          onSendMessage={(e) => {
+            handleSubmit((data) => sendPrompt(data, e))();
+          }}
+          onStop={() => chatController.current?.abort('stop')}
+          isChatting={isChatting}
+          TextareaDom={TextareaDom}
+          resetInputVal={resetInputVal}
+        />
       ) : null}
 
       {/* user feedback modal */}
@@ -1206,16 +1114,20 @@ function ChatController({
             <MyIcon {...controlIconStyle} name={'loading'} />
           </MyTooltip>
         ) : audioPlaying ? (
-          <MyTooltip label={'终止播放'}>
-            <MyIcon
-              {...controlIconStyle}
-              name={'pause'}
-              _hover={{ color: '#E74694' }}
-              onClick={() => cancelAudio()}
-            />
-          </MyTooltip>
+          <Flex alignItems={'center'} mr={2}>
+            <MyTooltip label={t('core.chat.tts.Stop Speech')}>
+              <MyIcon
+                {...controlIconStyle}
+                mr={1}
+                name={'core/chat/stopSpeech'}
+                _hover={{ color: '#E74694' }}
+                onClick={() => cancelAudio()}
+              />
+            </MyTooltip>
+            {/* <MyIcon name={'loading'} w={'16px'} /> */}
+          </Flex>
         ) : (
-          <MyTooltip label={'语音播报'}>
+          <MyTooltip label={t('core.app.TTS')}>
             <MyIcon
               {...controlIconStyle}
               name={'voice'}
