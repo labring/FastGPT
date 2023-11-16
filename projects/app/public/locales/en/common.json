@@ -313,10 +313,12 @@
         "Course": "Document",
         "Delete": "Delete",
         "Index": "Index({{amount}})"
-      }
+      },
+      "input is empty": "The data content cannot be empty"
     },
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
+    "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "recall": {
       "rerank": "Rerank"
     },

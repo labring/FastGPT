@@ -50,6 +50,14 @@ export async function dispatchModules({
   stream?: boolean;
   detail?: boolean;
 }) {
+  // set sse response headers
+  if (stream) {
+    res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+  }
+
   variables = {
     ...getSystemVariable({ timezone: user.timezone }),
     ...variables
@@ -167,6 +175,7 @@ export async function dispatchModules({
       user,
       teamId,
       tmbId,
+      chatId,
       inputs: params
     };
 

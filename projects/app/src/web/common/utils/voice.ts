@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getChatItemSpeech } from '@/web/core/chat/api';
 import { AppTTSConfigType } from '@/types/app';
 import { TTSTypeEnum } from '@/constants/app';
 import { useTranslation } from 'next-i18next';
@@ -31,55 +30,85 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
   }: {
     text: string;
     chatItemId?: string;
-    buffer?: Buffer;
-  }) => {
-    text = text.replace(/\\n/g, '\n');
-    try {
-      // tts play
-      if (audio && ttsConfig && ttsConfig?.type === TTSTypeEnum.model) {
-        setAudioLoading(true);
-        const { data } = buffer
-          ? { data: buffer }
-          : await getChatItemSpeech({ chatItemId, ttsConfig, input: text });
+    buffer?: Uint8Array;
+  }) =>
+    new Promise<{ buffer?: Uint8Array }>(async (resolve, reject) => {
+      text = text.replace(/\\n/g, '\n');
+      try {
+        // tts play
+        if (audio && ttsConfig && ttsConfig?.type === TTSTypeEnum.model) {
+          setAudioLoading(true);
 
-        const arrayBuffer = new Uint8Array(data).buffer;
+          /* buffer tts */
+          if (buffer) {
+            playAudioBuffer({ audio, buffer });
+            setAudioLoading(false);
+            return resolve({ buffer });
+          }
 
-        const audioUrl = URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/mp3' }));
+          /* request tts */
+          const response = await fetch('/api/core/chat/item/getSpeech', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              chatItemId,
+              ttsConfig,
+              input: text
+            })
+          });
+          setAudioLoading(false);
 
-        audio.src = audioUrl;
-        audio.play();
-        setAudioLoading(false);
+          if (!response.body || !response.ok) {
+            const data = await response.json();
+            toast({
+              status: 'error',
+              title: getErrText(data, t('core.chat.Audio Speech Error'))
+            });
+            return reject(data);
+          }
 
-        return data;
-      } else {
-        // window speech
-        window.speechSynthesis?.cancel();
-        const msg = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis?.getVoices?.() || []; // 获取语言包
-        const voice = voices.find((item) => {
-          return item.lang === 'zh-CN';
-        });
-        if (voice) {
-          msg.onstart = () => {
-            setAudioPlaying(true);
-          };
-          msg.onend = () => {
-            setAudioPlaying(false);
-            msg.onstart = null;
-            msg.onend = null;
-          };
-          msg.voice = voice;
-          window.speechSynthesis?.speak(msg);
+          const audioBuffer = await readAudioStream({
+            audio,
+            stream: response.body,
+            contentType: 'audio/mpeg'
+          });
+
+          resolve({
+            buffer: audioBuffer
+          });
+        } else {
+          // window speech
+          window.speechSynthesis?.cancel();
+          const msg = new SpeechSynthesisUtterance(text);
+          const voices = window.speechSynthesis?.getVoices?.() || []; // 获取语言包
+          const voice = voices.find((item) => {
+            return item.lang === 'zh-CN';
+          });
+          if (voice) {
+            msg.onstart = () => {
+              setAudioPlaying(true);
+            };
+            msg.onend = () => {
+              setAudioPlaying(false);
+              msg.onstart = null;
+              msg.onend = null;
+            };
+            msg.voice = voice;
+            window.speechSynthesis?.speak(msg);
+          }
+          resolve({});
         }
+      } catch (error) {
+        toast({
+          status: 'error',
+          title: getErrText(error, t('core.chat.Audio Speech Error'))
+        });
+        reject(error);
       }
-    } catch (error) {
-      toast({
-        status: 'error',
-        title: getErrText(error, t('core.chat.Audio Speech Error'))
-      });
-    }
-    setAudioLoading(false);
-  };
+      setAudioLoading(false);
+    });
 
   const cancelAudio = useCallback(() => {
     if (audio) {
@@ -105,6 +134,9 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
         setAudioPlaying(false);
       };
       audio.onerror = () => {
+        setAudioPlaying(false);
+      };
+      audio.oncancel = () => {
         setAudioPlaying(false);
       };
     }
@@ -137,3 +169,67 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
     cancelAudio
   };
 };
+
+export function readAudioStream({
+  audio,
+  stream,
+  contentType = 'audio/mpeg'
+}: {
+  audio: HTMLAudioElement;
+  stream: ReadableStream<Uint8Array>;
+  contentType?: string;
+}): Promise<Uint8Array> {
+  // Create media source and play audio
+  const ms = new MediaSource();
+  const url = URL.createObjectURL(ms);
+  audio.src = url;
+  audio.play();
+
+  let u8Arr: Uint8Array = new Uint8Array();
+  return new Promise<Uint8Array>(async (resolve, reject) => {
+    // Async to read data from ms
+    await new Promise((resolve) => {
+      ms.onsourceopen = resolve;
+    });
+
+    const sourceBuffer = ms.addSourceBuffer(contentType);
+
+    const reader = stream.getReader();
+
+    // read stream
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          resolve(u8Arr);
+          if (sourceBuffer.updating) {
+            await new Promise((resolve) => (sourceBuffer.onupdateend = resolve));
+          }
+          ms.endOfStream();
+          return;
+        }
+
+        u8Arr = new Uint8Array([...u8Arr, ...value]);
+
+        await new Promise((resolve) => {
+          sourceBuffer.onupdateend = resolve;
+          sourceBuffer.appendBuffer(value.buffer);
+        });
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+export function playAudioBuffer({
+  audio,
+  buffer
+}: {
+  audio: HTMLAudioElement;
+  buffer: Uint8Array;
+}) {
+  const audioUrl = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }));
+
+  audio.src = audioUrl;
+  audio.play();
+}

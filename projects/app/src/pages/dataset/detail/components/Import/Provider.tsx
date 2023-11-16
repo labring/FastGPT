@@ -403,12 +403,14 @@ export const SelectorContainer = ({
   showUrlFetch,
   showCreateFile,
   fileTemplate,
+  tip,
   children
 }: {
   fileExtension: string;
   showUrlFetch?: boolean;
   showCreateFile?: boolean;
   fileTemplate?: FileSelectProps['fileTemplate'];
+  tip?: string;
   children: React.ReactNode;
 }) => {
   const { files, setPreviewFile, isUnselectedFile, setFiles, chunkLen } = useImportStore();
@@ -433,6 +435,7 @@ export const SelectorContainer = ({
         showUrlFetch={showUrlFetch}
         showCreateFile={showCreateFile}
         fileTemplate={fileTemplate}
+        tip={tip}
         py={isUnselectedFile ? '100px' : 5}
       />
       {!isUnselectedFile && (

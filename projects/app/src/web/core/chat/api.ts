@@ -43,7 +43,3 @@ export const userUpdateChatFeedback = (data: { chatItemId: string; userFeedback?
 
 export const adminUpdateChatFeedback = (data: AdminUpdateFeedbackParams) =>
   POST('/core/chat/feedback/adminUpdate', data);
-
-/* ------------- function ------------- */
-export const getChatItemSpeech = (data: GetChatSpeechProps) =>
-  POST<{ data: Buffer }>('/core/chat/item/getSpeech', data);
