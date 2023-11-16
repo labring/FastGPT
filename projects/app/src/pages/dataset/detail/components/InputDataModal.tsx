@@ -117,10 +117,8 @@ const InputDataModal = ({
   const { mutate: sureImportData, isLoading: isImporting } = useRequest({
     mutationFn: async (e: InputDataType) => {
       if (!e.q) {
-        return toast({
-          title: '匹配的知识点不能为空',
-          status: 'warning'
-        });
+        setCurrentTab(TabEnum.content);
+        return Promise.reject(t('dataset.data.input is empty'));
       }
       if (countPromptTokens(e.q) >= maxToken) {
         return toast({
