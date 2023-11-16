@@ -38,30 +38,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const { tts, model } = await text2Speech({
+    await text2Speech({
       model: ttsConfig.model,
       voice: ttsConfig.voice,
-      input
-    });
+      input,
+      res,
+      onSuccess: async ({ model, buffer }) => {
+        try {
+          pushAudioSpeechBill({
+            model: model,
+            textLength: input.length,
+            tmbId,
+            teamId,
+            source: authType2BillSource({ authType })
+          });
 
-    (async () => {
-      if (!chatItem) return;
-      try {
-        chatItem.tts = tts;
-        await chatItem.save();
-      } catch (error) {}
-    })();
-
-    jsonRes(res, {
-      data: tts
-    });
-
-    pushAudioSpeechBill({
-      model: model,
-      textLength: input.length,
-      tmbId,
-      teamId,
-      source: authType2BillSource({ authType })
+          if (!chatItem) return;
+          chatItem.tts = buffer;
+          await chatItem.save();
+        } catch (error) {}
+      },
+      onError: (err) => {
+        jsonRes(res, {
+          code: 500,
+          error: err
+        });
+      }
     });
   } catch (err) {
     jsonRes(res, {

@@ -29,4 +29,5 @@ export type AudioSpeechModelType = {
   model: string;
   name: string;
   price: number;
+  voices: { label: string; value: string }[];
 };

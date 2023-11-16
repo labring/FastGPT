@@ -62,7 +62,7 @@ export type ChatItemType = {
 export type ChatSiteItemType = {
   status: 'loading' | 'running' | 'finish';
   moduleName?: string;
-  ttsBuffer?: Buffer;
+  ttsBuffer?: Uint8Array;
 } & ChatItemType;
 
 export type HistoryItemType = {

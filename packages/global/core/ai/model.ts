@@ -105,11 +105,14 @@ export const defaultAudioSpeechModels: AudioSpeechModelType[] = [
   {
     model: 'tts-1',
     name: 'OpenAI TTS1',
-    price: 0
-  },
-  {
-    model: 'tts-1-hd',
-    name: 'OpenAI TTS1',
-    price: 0
+    price: 0,
+    voices: [
+      { label: 'Alloy', value: 'Alloy' },
+      { label: 'Echo', value: 'Echo' },
+      { label: 'Fable', value: 'Fable' },
+      { label: 'Onyx', value: 'Onyx' },
+      { label: 'Nova', value: 'Nova' },
+      { label: 'Shimmer', value: 'Shimmer' }
+    ]
   }
 ];
