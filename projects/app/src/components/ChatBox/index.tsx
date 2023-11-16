@@ -1109,16 +1109,20 @@ function ChatController({
             <MyIcon {...controlIconStyle} name={'loading'} />
           </MyTooltip>
         ) : audioPlaying ? (
-          <MyTooltip label={'终止播放'}>
-            <MyIcon
-              {...controlIconStyle}
-              name={'pause'}
-              _hover={{ color: '#E74694' }}
-              onClick={() => cancelAudio()}
-            />
-          </MyTooltip>
+          <Flex alignItems={'center'} mr={2}>
+            <MyTooltip label={t('core.chat.tts.Stop Speech')}>
+              <MyIcon
+                {...controlIconStyle}
+                mr={1}
+                name={'core/chat/stopSpeech'}
+                _hover={{ color: '#E74694' }}
+                onClick={() => cancelAudio()}
+              />
+            </MyTooltip>
+            {/* <MyIcon name={'loading'} w={'16px'} /> */}
+          </Flex>
         ) : (
-          <MyTooltip label={'语音播报'}>
+          <MyTooltip label={t('core.app.TTS')}>
             <MyIcon
               {...controlIconStyle}
               name={'voice'}

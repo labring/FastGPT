@@ -217,6 +217,7 @@
     "app": {
       "Next Step Guide": "下一步指引",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
+      "Select TTS": "选择语音播放模式",
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "tts": {
@@ -224,6 +225,7 @@
         "Model alloy": "女声 - Alloy",
         "Model echo": "男声 - Echo",
         "Speech model": "语音模型",
+        "Speech speed": "语速",
         "Test Listen": "试听",
         "Test Listen Text": "你好，我是 FastGPT，有什么可以帮助你么？",
         "Web": "浏览器自带(免费)"
@@ -234,7 +236,10 @@
       "Record": "语音输入",
       "Restart": "重开对话",
       "Send Message": "发送",
-      "Stop Speak": "停止录音"
+      "Stop Speak": "停止录音",
+      "tts": {
+        "Stop Speech": "停止"
+      }
     },
     "dataset": {
       "Choose Dataset": "关联知识库",

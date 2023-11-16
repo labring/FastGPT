@@ -16,6 +16,7 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
   // Check whether the voice is supported
   const hasAudio = useMemo(() => {
     if (ttsConfig?.type === TTSTypeEnum.none) return false;
+    if (ttsConfig?.type === TTSTypeEnum.model) return true;
     const voices = window.speechSynthesis?.getVoices?.() || []; // 获取语言包
     const voice = voices.find((item) => {
       return item.lang === 'zh-CN';

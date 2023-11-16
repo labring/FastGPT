@@ -217,6 +217,7 @@
     "app": {
       "Next Step Guide": "Next step guide",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
+      "Select TTS": "Select TTS",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "tts": {
@@ -224,6 +225,7 @@
         "Model alloy": "Female - Alloy",
         "Model echo": "Male - Echo",
         "Speech model": "Speech model",
+        "Speech speed": "Speed",
         "Test Listen": "Test",
         "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
         "Web": "Browser (free)"
@@ -234,7 +236,10 @@
       "Record": "Speech",
       "Restart": "Restart",
       "Send Message": "Send Message",
-      "Stop Speak": "Stop Speak"
+      "Stop Speak": "Stop Speak",
+      "tts": {
+        "Stop Speech": "Stop"
+      }
     },
     "dataset": {
       "Choose Dataset": "Choose Dataset",

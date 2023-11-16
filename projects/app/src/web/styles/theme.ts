@@ -66,6 +66,14 @@ const Button = defineStyleConfig({
         bg: '#3370ff !important'
       }
     },
+    gray: {
+      bg: '#F5F5F8',
+      color: 'myBlue.700',
+      border: '1px solid #DAE0E2',
+      _hover: {
+        bg: '#3370FF1A'
+      }
+    },
     base: {
       color: 'myGray.900',
       border: '1px solid',

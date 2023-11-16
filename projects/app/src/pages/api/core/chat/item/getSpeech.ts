@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ttsBuffer = await MongoTTSBuffer.findOne(
       {
         bufferId: voiceData.bufferId,
-        text: input
+        text: JSON.stringify({ text: input, speed: ttsConfig.speed })
       },
       'buffer'
     );
@@ -51,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       input,
       model: ttsConfig.model,
       voice: ttsConfig.voice,
+      speed: ttsConfig.speed,
       props: {
         // temp code
         baseUrl: ttsModel.baseUrl || '',
