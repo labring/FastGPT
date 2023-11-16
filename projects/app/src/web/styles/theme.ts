@@ -81,6 +81,23 @@ const Button = defineStyleConfig({
         color: 'myBlue.700'
       },
       _disabled: { bg: 'myGray.100 !important', color: 'myGray.700 !important' }
+    },
+    boxBtn: {
+      px: 3,
+      py: '2px',
+      borderRadius: 'md',
+      _hover: {
+        bg: 'myGray.200'
+      }
+    },
+    blue: {
+      borderRadius: 'md',
+      bg: '#3370FF',
+      color: 'white',
+      fontSize: 'sm',
+      _hover: {
+        bg: '#145BFF'
+      }
     }
   },
   defaultProps: {

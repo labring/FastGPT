@@ -73,6 +73,7 @@
     "Complete Response": "Complete Response",
     "Confirm to clear history": "Confirm to clear history?",
     "Confirm to clear share chat history": " Are you sure to delete all chats?",
+    "Converting to text": "Converting to text...",
     "Exit Chat": "Exit",
     "Feedback Close": "Close Feedback",
     "Feedback Failed": "Feedback Failed",
@@ -222,6 +223,7 @@
         "Close": "NoUse",
         "Model alloy": "Female - Alloy",
         "Model echo": "Male - Echo",
+        "Speech model": "Speech model",
         "Test Listen": "Test",
         "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
         "Web": "Browser (free)"

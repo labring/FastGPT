@@ -73,6 +73,7 @@
     "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
     "Confirm to clear share chat history": "确认删除所有聊天记录？",
+    "Converting to text": "正在转换为文本...",
     "Exit Chat": "退出聊天",
     "Feedback Close": "关闭反馈",
     "Feedback Failed": "提交反馈异常",
@@ -222,6 +223,7 @@
         "Close": "不使用",
         "Model alloy": "女声 - Alloy",
         "Model echo": "男声 - Echo",
+        "Speech model": "语音模型",
         "Test Listen": "试听",
         "Test Listen Text": "你好，我是 FastGPT，有什么可以帮助你么？",
         "Web": "浏览器自带(免费)"
