@@ -10,7 +10,6 @@ import Ability from './components/Ability';
 import Choice from './components/Choice';
 import Footer from './components/Footer';
 import Loading from '@/components/Loading';
-import Head from 'next/head';
 
 const Home = ({ homeUrl = '/' }: { homeUrl: string }) => {
   const router = useRouter();
@@ -26,9 +25,6 @@ const Home = ({ homeUrl = '/' }: { homeUrl: string }) => {
 
   return (
     <>
-      <Head>
-        <title>{feConfigs?.systemTitle || 'FastGPT'}</title>
-      </Head>
       <Box id="home" bg={'myWhite.600'} h={'100vh'} overflowY={'auto'} overflowX={'hidden'}>
         <Box position={'fixed'} zIndex={10} top={0} left={0} right={0}>
           <Navbar />

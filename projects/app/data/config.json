@@ -103,7 +103,7 @@
       "model": "tts-1",
       "name": "OpenAI TTS1",
       "price": 0,
-      "baseUrl": "https://api.openai.com/v1",
+      "baseUrl": "",
       "key": "",
       "voices": [
         { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
@@ -114,5 +114,10 @@
         { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
       ]
     }
-  ]
+  ],
+  "WhisperModel": {
+    "model": "whisper-1",
+    "name": "Whisper1",
+    "price": 0
+  }
 }

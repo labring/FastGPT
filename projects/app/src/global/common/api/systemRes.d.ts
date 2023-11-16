@@ -3,11 +3,24 @@ import type {
   FunctionModelItemType,
   LLMModelItemType,
   VectorModelItemType,
-  AudioSpeechModels
+  AudioSpeechModels,
+  WhisperModelType
 } from '@fastgpt/global/core/ai/model.d';
 
 import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 
+export type ConfigFileType = {
+  FeConfig: FeConfigsType;
+  SystemParams: SystemEnvType;
+  ChatModels: ChatModelItemType[];
+  QAModels: LLMModelItemType[];
+  CQModels: FunctionModelItemType[];
+  ExtractModels: FunctionModelItemType[];
+  QGModels: LLMModelItemType[];
+  VectorModels: VectorModelItemType[];
+  AudioSpeechModels: AudioSpeechModelType[];
+  WhisperModel: WhisperModelType;
+};
 export type InitDateResponse = {
   chatModels: ChatModelItemType[];
   qaModels: LLMModelItemType[];

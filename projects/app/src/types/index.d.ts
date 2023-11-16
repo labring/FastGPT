@@ -3,7 +3,8 @@ import {
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
-  VectorModelItemType
+  VectorModelItemType,
+  WhisperModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { TrackEventName } from '@/constants/common';
 
@@ -27,6 +28,7 @@ declare global {
   var extractModels: FunctionModelItemType[];
   var qgModels: LLMModelItemType[];
   var audioSpeechModels: AudioSpeechModelType[];
+  var whisperModel: WhisperModelType;
 
   var priceMd: string;
   var systemVersion: string;

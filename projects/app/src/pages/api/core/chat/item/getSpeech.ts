@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { GetChatSpeechProps } from '@/global/core/chat/api.d';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechBill } from '@/service/support/wallet/bill/push';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authCertAndShareId } from '@fastgpt/service/support/permission/auth/common';
 import { authType2BillSource } from '@/service/support/wallet/bill/utils';
 import { getAudioSpeechModel } from '@/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
@@ -19,16 +19,16 @@ import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { ttsConfig, input } = req.body as GetChatSpeechProps;
+    const { ttsConfig, input, shareId } = req.body as GetChatSpeechProps;
 
     if (!ttsConfig.model || !ttsConfig.voice) {
       throw new Error('model or voice not found');
     }
 
-    const { teamId, tmbId, authType } = await authCert({ req, authToken: true });
+    const { teamId, tmbId, authType } = await authCertAndShareId({ req, authToken: true, shareId });
 
     const ttsModel = getAudioSpeechModel(ttsConfig.model);
-    const voiceData = ttsModel.voices.find((item) => item.value === ttsConfig.voice);
+    const voiceData = ttsModel.voices?.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {
       throw new Error('voice not found');
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ttsBuffer = await MongoTTSBuffer.findOne(
       {
         bufferId: voiceData.bufferId,
-        text: input
+        text: JSON.stringify({ text: input, speed: ttsConfig.speed })
       },
       'buffer'
     );
@@ -51,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       input,
       model: ttsConfig.model,
       voice: ttsConfig.voice,
+      speed: ttsConfig.speed,
       props: {
         // temp code
         baseUrl: ttsModel.baseUrl || '',
@@ -68,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           await MongoTTSBuffer.create({
             bufferId: voiceData.bufferId,
-            text: input,
+            text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
             buffer
           });
         } catch (error) {}

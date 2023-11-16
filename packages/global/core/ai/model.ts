@@ -3,7 +3,8 @@ import type {
   ChatModelItemType,
   FunctionModelItemType,
   VectorModelItemType,
-  AudioSpeechModelType
+  AudioSpeechModelType,
+  WhisperModelType
 } from './model.d';
 
 export const defaultChatModels: ChatModelItemType[] = [
@@ -116,3 +117,9 @@ export const defaultAudioSpeechModels: AudioSpeechModelType[] = [
     ]
   }
 ];
+
+export const defaultWhisperModel: WhisperModelType = {
+  model: 'whisper-1',
+  name: 'Whisper1',
+  price: 0
+};

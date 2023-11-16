@@ -33,3 +33,9 @@ export type AudioSpeechModelType = {
   key?: string;
   voices: { label: string; value: string; bufferId: string }[];
 };
+
+export type WhisperModelType = {
+  model: string;
+  name: string;
+  price: number;
+};

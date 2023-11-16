@@ -42,7 +42,23 @@ const MyModal = ({
         maxH={'90vh'}
         {...props}
       >
-        {!!title && <ModalHeader>{title}</ModalHeader>}
+        {!title && onClose && <ModalCloseButton zIndex={1} />}
+        {!!title && (
+          <ModalHeader
+            display={'flex'}
+            alignItems={'center'}
+            fontWeight={500}
+            background={'#FBFBFC'}
+            borderBottom={'1px solid #F4F6F8'}
+            roundedTop={'lg'}
+            py={3}
+          >
+            {title}
+            <Box flex={1} />
+            {onClose && <ModalCloseButton position={'relative'} top={0} right={0} />}
+          </ModalHeader>
+        )}
+
         <Box
           overflow={props.overflow || 'overlay'}
           h={'100%'}
@@ -51,7 +67,6 @@ const MyModal = ({
         >
           {children}
         </Box>
-        {onClose && <ModalCloseButton />}
       </ModalContent>
     </Modal>
   );

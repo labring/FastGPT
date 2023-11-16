@@ -6,7 +6,7 @@ export const baseUrl = process.env.ONEAPI_URL || openaiBaseUrl;
 
 export const systemAIChatKey = process.env.CHAT_API_KEY || '';
 
-export const getAIApi = (props?: UserModelSchema['openaiAccount'], timeout = 6000) => {
+export const getAIApi = (props?: UserModelSchema['openaiAccount'], timeout = 60000) => {
   return new OpenAI({
     apiKey: props?.key || systemAIChatKey,
     baseURL: props?.baseUrl || baseUrl,
