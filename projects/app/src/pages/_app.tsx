@@ -101,7 +101,7 @@ function App({ Component, pageProps }: AppProps) {
           name="viewport"
           content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no, viewport-fit=cover"
         />
-        <link rel="icon" href={feConfigs.favicon || '/favicon.ico'} />
+        <link rel="icon" href={feConfigs.favicon || process.env.SYSTEM_FAVICON} />
       </Head>
       {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
 
