@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { POST } from '../api/request';
 import { useToast } from './useToast';
 import { useTranslation } from 'react-i18next';
@@ -11,15 +11,18 @@ export const useSpeech = () => {
   const { toast } = useToast();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTransCription, setIsTransCription] = useState(false);
+  const [audioLength, setAudioLength] = useState(0);
+  const intervalRef = useRef<any>();
+  const startTimestamp = useRef(0);
 
   const renderAudioGraph = (analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
-    const width = 300;
-    const height = 200;
     const bufferLength = analyser.frequencyBinCount;
     const backgroundColor = 'white';
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteTimeDomainData(dataArray);
-    const canvasCtx = canvas.getContext('2d');
+    const canvasCtx = canvas?.getContext('2d');
+    const width = 300;
+    const height = 200;
     if (!canvasCtx) return;
     canvasCtx.clearRect(0, 0, width, height);
     canvasCtx.fillStyle = backgroundColor;
@@ -28,10 +31,11 @@ export const useSpeech = () => {
     let x = 0;
 
     canvasCtx.moveTo(x, height / 2);
-    for (let i = 0; i < bufferLength; i++) {
-      const barHeight = (dataArray[i] / 256) * height;
-      canvasCtx.fillStyle = 'rgb(214, 232, 255)';
-      canvasCtx.fillRect(x, height - barHeight, barWidth, barHeight);
+    for (let i = 0; i < bufferLength; i += 10) {
+      const barHeight = (dataArray[i] / 256) * height - height * 0.15;
+      canvasCtx.fillStyle = '#3370FF';
+      const adjustedBarHeight = Math.max(0, barHeight);
+      canvasCtx.fillRect(x, height - adjustedBarHeight, barWidth, adjustedBarHeight);
       x += barWidth + 1;
     }
   };
@@ -42,6 +46,16 @@ export const useSpeech = () => {
       mediaStream.current = stream;
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
+
+      mediaRecorder.current.onstart = () => {
+        startTimestamp.current = Date.now();
+        setAudioLength(0);
+        intervalRef.current = setInterval(() => {
+          const currentTimestamp = Date.now();
+          const duration = (currentTimestamp - startTimestamp.current) / 1000;
+          setAudioLength(duration);
+        }, 1000);
+      };
 
       mediaRecorder.current.ondataavailable = (e) => {
         chunks.push(e.data);
@@ -80,8 +94,21 @@ export const useSpeech = () => {
     if (mediaRecorder.current) {
       mediaRecorder.current?.stop();
       setIsTransCription(true);
+      clearInterval(intervalRef.current);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      clearInterval(intervalRef.current);
+      if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
+        mediaRecorder.current.stop();
+      }
+      if (mediaStream.current) {
+        mediaStream.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   return {
     startSpeak,
@@ -89,6 +116,7 @@ export const useSpeech = () => {
     isSpeaking,
     isTransCription,
     renderAudioGraph,
-    stream: mediaStream.current
+    stream: mediaStream.current,
+    audioLength
   };
 };

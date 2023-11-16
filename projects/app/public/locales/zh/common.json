@@ -223,6 +223,7 @@
         "Close": "不使用",
         "Model alloy": "女声 - Alloy",
         "Model echo": "男声 - Echo",
+        "Speech model": "语音模型",
         "Test Listen": "试听",
         "Test Listen Text": "你好，我是 FastGPT，有什么可以帮助你么？",
         "Web": "浏览器自带(免费)"

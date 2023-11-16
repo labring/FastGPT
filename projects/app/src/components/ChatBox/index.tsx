@@ -151,8 +151,23 @@ const ChatBox = (
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
-  const { isSpeaking, isTransCription, startSpeak, stopSpeak, stream, renderAudioGraph } =
-    useSpeech();
+  const {
+    isSpeaking,
+    isTransCription,
+    startSpeak,
+    stopSpeak,
+    stream,
+    renderAudioGraph,
+    audioLength
+  } = useSpeech();
+  const audioTime = useMemo(() => {
+    const minutes: number = Math.floor(audioLength / 60);
+    const remainingSeconds: number = Math.floor(audioLength % 60);
+    const formattedMinutes: string = minutes.toString().padStart(2, '0');
+    const formattedSeconds: string = remainingSeconds.toString().padStart(2, '0');
+    return `${formattedMinutes}:${formattedSeconds}`;
+  }, [audioLength]);
+
   const canvasRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -161,6 +176,8 @@ const ChatBox = (
     }
     const audioContext = new AudioContext();
     const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 4096;
+    analyser.smoothingTimeConstant = 1;
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(analyser);
     const renderCurve = () => {
@@ -833,11 +850,11 @@ const ChatBox = (
             <canvas
               ref={canvasRef as any}
               style={{
-                height: '100%',
-                width: '90%',
+                height: '32px',
+                width: '32px',
                 position: 'absolute',
-                top: 0,
-                left: 4,
+                top: 4,
+                right: 108,
                 zIndex: 10,
                 visibility: isSpeaking && !isTransCription ? 'visible' : 'hidden',
                 background: 'white'
@@ -848,7 +865,7 @@ const ChatBox = (
               top={0}
               bottom={0}
               left={4}
-              right={4}
+              right={['8px', '4px']}
               zIndex={10}
               display={'flex'}
               alignItems={'center'}
@@ -881,6 +898,7 @@ const ChatBox = (
               wordBreak={'break-all'}
               boxShadow={'none !important'}
               color={'myGray.900'}
+              isDisabled={isSpeaking}
               onChange={(e) => {
                 const textarea = e.target;
                 textarea.style.height = textareaMinH;
@@ -898,6 +916,39 @@ const ChatBox = (
                 e.key === 'a' && e.ctrlKey && e.target?.select();
               }}
             />
+            {/* voice-input */}
+            {!TextareaDom.current?.value && (
+              <Flex
+                alignItems={'center'}
+                justifyContent={'center'}
+                h={['26px', '32px']}
+                w={['26px', '32px']}
+                position={'absolute'}
+                right={['50px', '62px']}
+                bottom={['15px', '13px']}
+                borderRadius={'md'}
+                bg={isSpeaking ? '#F5F5F8' : ''}
+                cursor={'pointer'}
+                lineHeight={1}
+                _hover={{ bg: '#F5F5F8' }}
+                onClick={() => {
+                  if (isSpeaking) {
+                    return stopSpeak();
+                  }
+                  startSpeak(TextareaDom);
+                }}
+              >
+                <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>
+                  <MyIcon
+                    name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
+                    width={['20px', '22px']}
+                    height={['20px', '22px']}
+                    color={'myBlue.600'}
+                  />
+                </MyTooltip>
+              </Flex>
+            )}
+
             {/* 发送和等待按键 */}
             <Flex
               alignItems={'center'}
@@ -908,8 +959,15 @@ const ChatBox = (
               right={['12px', '14px']}
               bottom={['15px', '13px']}
               borderRadius={'md'}
-              bg={TextareaDom.current?.value ? 'myBlue.600' : ''}
-              cursor={'pointer'}
+              bg={
+                // isChatting ? '#E5E5E5' : !isSpeaking ? 'myBlue.600' : ''
+                isSpeaking
+                  ? ''
+                  : isChatting || !TextareaDom.current?.value
+                  ? '#E5E5E5'
+                  : 'myBlue.600'
+              }
+              cursor={TextareaDom.current?.value ? 'pointer' : 'not-allowed'}
               lineHeight={1}
               onClick={() => {
                 if (isChatting) {
@@ -918,11 +976,6 @@ const ChatBox = (
                 if (TextareaDom.current?.value) {
                   return handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
                 }
-                // speech
-                if (isSpeaking) {
-                  return stopSpeak();
-                }
-                startSpeak(TextareaDom);
               }}
             >
               {isChatting ? (
@@ -934,24 +987,17 @@ const ChatBox = (
                   name={'stop'}
                   color={'gray.500'}
                 />
-              ) : TextareaDom.current?.value ? (
+              ) : !isSpeaking ? (
                 <MyTooltip label={t('core.chat.Send Message')}>
                   <MyIcon
                     name={'core/chat/sendFill'}
-                    width={'16px'}
-                    height={'16px'}
+                    width={'20px'}
+                    height={'20px'}
                     color={'white'}
                   />
                 </MyTooltip>
               ) : (
-                <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>
-                  <MyIcon
-                    name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
-                    width={['16px', '22px']}
-                    height={['16px', '22px']}
-                    color={'myBlue.600'}
-                  />
-                </MyTooltip>
+                <Box color={'#5A646E'}>{audioTime}</Box>
               )}
             </Flex>
           </Box>
