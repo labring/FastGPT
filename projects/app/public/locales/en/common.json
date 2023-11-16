@@ -317,6 +317,9 @@
     },
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
+    "recall": {
+      "rerank": "Rerank"
+    },
     "test": {
       "noResult": "Search results are empty"
     }

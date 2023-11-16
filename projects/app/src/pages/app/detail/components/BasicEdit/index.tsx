@@ -52,7 +52,7 @@ import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 
 import { addVariable } from '@/components/core/module/VariableEditModal';
-import { KbParamsModal } from '@/components/core/module/DatasetSelectModal';
+import { DatasetParamsModal } from '@/components/core/module/DatasetSelectModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
@@ -585,15 +585,15 @@ const Settings = ({ appId }: { appId: string }) => {
       )}
 
       {isOpenKbParams && (
-        <KbParamsModal
-          searchEmptyText={getValues('dataset.searchEmptyText')}
-          searchLimit={getValues('dataset.searchLimit')}
-          searchSimilarity={getValues('dataset.searchSimilarity')}
+        <DatasetParamsModal
+          {...getValues('dataset')}
           onClose={onCloseKbParams}
-          onChange={({ searchEmptyText, searchLimit, searchSimilarity }) => {
-            setValue('dataset.searchEmptyText', searchEmptyText);
-            setValue('dataset.searchLimit', searchLimit);
-            setValue('dataset.searchSimilarity', searchSimilarity);
+          onChange={(e) => {
+            setValue('dataset', {
+              ...getValues('dataset'),
+              ...e
+            });
+
             setRefresh((state) => !state);
           }}
         />

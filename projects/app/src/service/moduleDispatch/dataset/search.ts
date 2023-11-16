@@ -11,6 +11,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   datasets: SelectedDatasetType;
   similarity: number;
   limit: number;
+  rerank: boolean;
   userChatInput: string;
 }>;
 export type KBSearchResponse = {
@@ -20,9 +21,9 @@ export type KBSearchResponse = {
   quoteQA: SearchDataResponseItemType[];
 };
 
-export async function dispatchDatasetSearch(props: Record<string, any>): Promise<KBSearchResponse> {
+export async function dispatchDatasetSearch(props: DatasetSearchProps): Promise<KBSearchResponse> {
   const {
-    inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
+    inputs: { datasets = [], similarity = 0.4, limit = 5, rerank, userChatInput }
   } = props as DatasetSearchProps;
 
   if (datasets.length === 0) {
@@ -41,7 +42,8 @@ export async function dispatchDatasetSearch(props: Record<string, any>): Promise
     model: vectorModel.model,
     similarity,
     limit,
-    datasetIds: datasets.map((item) => item.datasetId)
+    datasetIds: datasets.map((item) => item.datasetId),
+    rerank
   });
 
   return {

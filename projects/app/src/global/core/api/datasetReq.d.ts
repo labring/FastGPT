@@ -22,6 +22,7 @@ export type SearchTestProps = {
   datasetId: string;
   text: string;
   limit?: number;
+  rerank?: boolean;
 };
 
 /* ======= collections =========== */

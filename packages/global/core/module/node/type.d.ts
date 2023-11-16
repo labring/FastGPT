@@ -32,6 +32,7 @@ export type FlowNodeInputItemType = {
   connected?: boolean;
   description?: string;
   placeholder?: string;
+  plusField?: boolean;
   max?: number;
   min?: number;
   step?: number;
