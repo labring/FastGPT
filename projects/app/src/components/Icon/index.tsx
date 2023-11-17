@@ -112,7 +112,8 @@ const iconPaths = {
   'core/chat/recordFill': () => import('./icons/core/chat/recordFill.svg'),
   'core/chat/stopSpeechFill': () => import('./icons/core/chat/stopSpeechFill.svg'),
   'core/chat/stopSpeech': () => import('./icons/core/chat/stopSpeech.svg'),
-  'core/chat/speaking': () => import('./icons/core/chat/speaking.svg')
+  'core/chat/speaking': () => import('./icons/core/chat/speaking.svg'),
+  'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

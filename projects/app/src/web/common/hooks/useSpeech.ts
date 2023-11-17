@@ -12,7 +12,7 @@ export const useSpeech = (props?: { shareId?: string }) => {
   const { toast } = useToast();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTransCription, setIsTransCription] = useState(false);
-  const [audioSecond, setAudioSecone] = useState(0);
+  const [audioSecond, setAudioSecond] = useState(0);
   const intervalRef = useRef<any>();
   const startTimestamp = useRef(0);
 
@@ -59,11 +59,11 @@ export const useSpeech = (props?: { shareId?: string }) => {
 
       mediaRecorder.current.onstart = () => {
         startTimestamp.current = Date.now();
-        setAudioSecone(0);
+        setAudioSecond(0);
         intervalRef.current = setInterval(() => {
           const currentTimestamp = Date.now();
           const duration = (currentTimestamp - startTimestamp.current) / 1000;
-          setAudioSecone(duration);
+          setAudioSecond(duration);
         }, 1000);
       };
 
