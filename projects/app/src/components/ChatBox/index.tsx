@@ -27,7 +27,8 @@ import {
   useTheme,
   BoxProps,
   FlexProps,
-  Spinner
+  Spinner,
+  Image
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
@@ -1124,7 +1125,7 @@ function ChatController({
                 onClick={() => cancelAudio()}
               />
             </MyTooltip>
-            {/* <MyIcon name={'loading'} w={'16px'} /> */}
+            <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
           </Flex>
         ) : (
           <MyTooltip label={t('core.app.TTS')}>

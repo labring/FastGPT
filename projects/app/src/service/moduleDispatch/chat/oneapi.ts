@@ -125,7 +125,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           : []),
         ...messages.map((item) => ({
           ...item,
-          content: formatStr2ChatContent(item.content)
+          content: modelConstantsData.vision ? formatStr2ChatContent(item.content) : item.content
         }))
       ]
     },

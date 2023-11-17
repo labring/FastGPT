@@ -34,7 +34,7 @@ const MessageInput = ({
     stream
   } = useSpeech({ shareId });
   const { isPc } = useSystemStore();
-  const canvasRef = useRef<HTMLCanvasElement>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
   const textareaMinH = '22px';
   const havInput = !!TextareaDom.current?.value;
@@ -50,7 +50,8 @@ const MessageInput = ({
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(analyser);
     const renderCurve = () => {
-      renderAudioGraph(analyser, canvasRef.current as HTMLCanvasElement);
+      if (!canvasRef.current) return;
+      renderAudioGraph(analyser, canvasRef.current);
       window.requestAnimationFrame(renderCurve);
     };
     renderCurve();
@@ -87,7 +88,7 @@ const MessageInput = ({
             alignItems={'center'}
             bg={'white'}
             pl={['5px', '10px']}
-            color="rgba(54,111,255,0.6)"
+            color={'myBlue.600'}
             visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
           >
             <Spinner size={'sm'} mr={4} />
@@ -142,7 +143,7 @@ const MessageInput = ({
             {!shareId && !havInput && !isChatting && (
               <>
                 <canvas
-                  ref={canvasRef as any}
+                  ref={canvasRef}
                   style={{
                     height: '30px',
                     width: isSpeaking && !isTransCription ? '100px' : 0,
@@ -179,7 +180,9 @@ const MessageInput = ({
             )}
             {/* send and stop icon */}
             {isSpeaking ? (
-              <Box color={'#5A646E'}>{speakingTimeString}</Box>
+              <Box color={'#5A646E'} w={'36px'} textAlign={'right'}>
+                {speakingTimeString}
+              </Box>
             ) : (
               <Flex
                 alignItems={'center'}
