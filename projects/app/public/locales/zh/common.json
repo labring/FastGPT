@@ -235,6 +235,7 @@
       "Audio Speech Error": "语音播报异常",
       "Record": "语音输入",
       "Restart": "重开对话",
+      "Select File": "选择文件",
       "Send Message": "发送",
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
@@ -589,8 +590,8 @@
   "wallet": {
     "bill": {
       "Audio Speech": "语音播报",
-      "bill username": "用户",
-      "Whisper": "语音输入"
+      "Whisper": "语音输入",
+      "bill username": "用户"
     }
   }
 }

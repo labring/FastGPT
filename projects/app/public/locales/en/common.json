@@ -233,10 +233,11 @@
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
-      "Speaking": "I'm listening...",
       "Record": "Speech",
       "Restart": "Restart",
+      "Select File": "Select file",
       "Send Message": "Send Message",
+      "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "tts": {
@@ -589,8 +590,8 @@
   "wallet": {
     "bill": {
       "Audio Speech": "Audio Speech",
-      "bill username": "User",
-      "Whisper": "Whisper"
+      "Whisper": "Whisper",
+      "bill username": "User"
     }
   }
 }

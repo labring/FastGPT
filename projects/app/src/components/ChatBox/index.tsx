@@ -17,18 +17,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import {
-  Box,
-  Card,
-  Flex,
-  Input,
-  Textarea,
-  Button,
-  useTheme,
-  BoxProps,
-  FlexProps,
-  Spinner
-} from '@chakra-ui/react';
+import { Box, Card, Flex, Input, Button, useTheme, BoxProps, FlexProps } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
@@ -633,7 +622,7 @@ const ChatBox = (
                         borderRadius={'8px 0 8px 8px'}
                         textAlign={'left'}
                       >
-                        <Box as={'p'}>{item.value}</Box>
+                        <Markdown source={item.value} isChatting={false} />
                       </Card>
                     </Box>
                   </>
