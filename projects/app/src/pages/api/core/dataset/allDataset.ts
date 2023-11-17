@@ -18,7 +18,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ...mongoRPermission({ teamId, tmbId, role }),
       type: 'dataset'
     }).lean();
-    console.log(datasets);
 
     const data = datasets.map((item) => ({
       ...item,

@@ -21,6 +21,7 @@ import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { formatStr2ChatContent } from '@fastgpt/service/core/ai/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
@@ -122,7 +123,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
               }
             ]
           : []),
-        ...messages
+        ...messages.map((item) => ({
+          ...item,
+          content: formatStr2ChatContent(item.content)
+        }))
       ]
     },
     {
