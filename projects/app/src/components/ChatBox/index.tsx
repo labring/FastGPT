@@ -1121,7 +1121,7 @@ function ChatController({
                 {...controlIconStyle}
                 mr={1}
                 name={'core/chat/stopSpeech'}
-                _hover={{ color: '#E74694' }}
+                color={'#E74694'}
                 onClick={() => cancelAudio()}
               />
             </MyTooltip>
