@@ -16,12 +16,14 @@ const MdImage = dynamic(() => import('./img/Image'));
 const ChatGuide = dynamic(() => import('./chat/Guide'));
 const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'));
 const QuoteBlock = dynamic(() => import('./chat/Quote'));
+const ImageBlock = dynamic(() => import('./chat/Image'));
 
 export enum CodeClassName {
   guide = 'guide',
   mermaid = 'mermaid',
   echarts = 'echarts',
-  quote = 'quote'
+  quote = 'quote',
+  img = 'img'
 }
 
 function Code({ inline, className, children }: any) {
@@ -40,6 +42,9 @@ function Code({ inline, className, children }: any) {
   }
   if (codeType === CodeClassName.quote) {
     return <QuoteBlock code={String(children)} />;
+  }
+  if (codeType === CodeClassName.img) {
+    return <ImageBlock images={String(children)} />;
   }
   return (
     <CodeLight className={className} inline={inline} match={match}>
