@@ -76,3 +76,4 @@ try {
 
 export const MongoDatasetData: Model<DatasetDataSchemaType> =
   models[DatasetDataCollectionName] || model(DatasetDataCollectionName, DatasetDataSchema);
+MongoDatasetData.syncIndexes();

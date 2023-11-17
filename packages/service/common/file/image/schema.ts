@@ -14,3 +14,5 @@ const ImageSchema = new Schema({
 
 export const MongoImage: Model<{ userId: string; binary: Buffer }> =
   models['image'] || model('image', ImageSchema);
+
+MongoImage.syncIndexes();

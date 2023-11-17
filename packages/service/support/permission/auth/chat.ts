@@ -24,9 +24,9 @@ export async function authChat({
 
   const { chat, isOwner, canWrite } = await (async () => {
     // get chat
-    const chat = (
-      await MongoChat.findOne({ chatId, teamId }).populate('appId')
-    )?.toJSON() as ChatWithAppSchema;
+    const chat = (await MongoChat.findOne({ chatId, teamId })
+      .populate('appId')
+      .lean()) as ChatWithAppSchema;
 
     if (!chat) {
       return Promise.reject('Chat is not exists');

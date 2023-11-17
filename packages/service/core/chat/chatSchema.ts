@@ -92,7 +92,7 @@ const ChatSchema = new Schema({
 });
 
 try {
-  ChatSchema.index({ userId: 1 });
+  ChatSchema.index({ tmbId: 1 });
   ChatSchema.index({ updateTime: -1 });
   ChatSchema.index({ appId: 1 });
 } catch (error) {
@@ -101,3 +101,4 @@ try {
 
 export const MongoChat: Model<ChatType> =
   models[chatCollectionName] || model(chatCollectionName, ChatSchema);
+MongoChat.syncIndexes();

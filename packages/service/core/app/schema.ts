@@ -67,3 +67,5 @@ try {
 
 export const MongoApp: Model<AppType> =
   models[appCollectionName] || model(appCollectionName, AppSchema);
+
+MongoApp.syncIndexes();

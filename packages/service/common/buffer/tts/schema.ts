@@ -33,3 +33,4 @@ try {
 
 export const MongoTTSBuffer: Model<TTSBufferSchemaType> =
   models[collectionName] || model(collectionName, TTSBufferSchema);
+MongoTTSBuffer.syncIndexes();
