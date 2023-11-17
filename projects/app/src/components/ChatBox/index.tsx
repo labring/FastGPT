@@ -622,10 +622,7 @@ const ChatBox = (
                         borderRadius={'8px 0 8px 8px'}
                         textAlign={'left'}
                       >
-                        <Markdown
-                          source={item.value}
-                          isChatting={index === chatHistory.length - 1 && isChatting}
-                        />
+                        <Markdown source={item.value} isChatting={false} />
                       </Card>
                     </Box>
                   </>

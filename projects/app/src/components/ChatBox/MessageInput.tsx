@@ -90,9 +90,7 @@ const MessageInput = ({
     const inputMessage =
       imgSrcArray.length === 0
         ? textareaValue
-        : `\`\`\`img-block\n${imgSrcArray
-            .map((src) => `{src:"${src}"}`)
-            .join('\n')}\n\`\`\`\n${textareaValue}`;
+        : `\`\`\`img-block\n${JSON.stringify(imgSrcArray)}\n\`\`\`\n${textareaValue}`;
     onSendMessage(inputMessage);
     setImgBase64Array([]);
     setImgSrcArray([]);
@@ -187,7 +185,7 @@ const MessageInput = ({
                     name={'closeSolid'}
                     w={'16px'}
                     h={'16px'}
-                    color={'myBlue.400'}
+                    color={'myGray.700'}
                     cursor={'pointer'}
                     _hover={{ color: 'myBlue.600' }}
                     position={'absolute'}

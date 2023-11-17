@@ -44,7 +44,7 @@ function Code({ inline, className, children }: any) {
     return <QuoteBlock code={String(children)} />;
   }
   if (codeType === CodeClassName.img) {
-    return <ImageBlock srcArray={String(children)} />;
+    return <ImageBlock images={String(children)} />;
   }
   return (
     <CodeLight className={className} inline={inline} match={match}>
