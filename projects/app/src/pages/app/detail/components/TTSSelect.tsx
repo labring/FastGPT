@@ -1,7 +1,7 @@
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { Box, Button, Flex, ModalBody, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, ModalBody, useDisclosure, Image } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
@@ -130,9 +130,9 @@ const TTSSelect = ({
             <Flex mt={10} justifyContent={'end'}>
               {audioPlaying ? (
                 <Flex>
-                  <MyIcon name={'core/chat/speaking'} w={'16px'} />
+                  <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
                   <Button
-                    ml={3}
+                    ml={2}
                     variant={'gray'}
                     isLoading={audioLoading}
                     leftIcon={<MyIcon name={'core/chat/stopSpeech'} w={'16px'} />}

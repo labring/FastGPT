@@ -20,6 +20,7 @@ import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/utils/i18n';
+import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 
 const OutLink = ({
   shareId,
@@ -254,6 +255,9 @@ const OutLink = ({
               appAvatar={shareChatData.app.avatar}
               userAvatar={shareChatData.userAvatar}
               userGuideModule={shareChatData.app?.userGuideModule}
+              showFileSelector={checkChatSupportSelectFileByChatModels(
+                shareChatData.app.chatModels
+              )}
               feedbackType={'user'}
               onUpdateVariable={(e) => {
                 setShareChatData((state) => ({

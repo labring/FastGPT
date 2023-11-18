@@ -104,3 +104,5 @@ try {
 
 export const MongoDatasetTraining: Model<DatasetTrainingSchemaType> =
   models[DatasetTrainingCollectionName] || model(DatasetTrainingCollectionName, TrainingDataSchema);
+
+MongoDatasetTraining.syncIndexes();

@@ -5,12 +5,26 @@ export function getMongoImgUrl(id: string) {
   return `${imageBaseUrl}${id}`;
 }
 
-export async function uploadMongoImg({ base64Img, userId }: { base64Img: string; userId: string }) {
+export const maxImgSize = 1024 * 1024 * 12;
+export async function uploadMongoImg({
+  base64Img,
+  teamId,
+  expiredTime
+}: {
+  base64Img: string;
+  teamId: string;
+  expiredTime?: Date;
+}) {
+  if (base64Img.length > maxImgSize) {
+    return Promise.reject('Image too large');
+  }
+
   const base64Data = base64Img.split(',')[1];
 
   const { _id } = await MongoImage.create({
-    userId,
-    binary: Buffer.from(base64Data, 'base64')
+    teamId,
+    binary: Buffer.from(base64Data, 'base64'),
+    expiredTime
   });
 
   return getMongoImgUrl(String(_id));

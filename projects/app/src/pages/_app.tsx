@@ -95,7 +95,7 @@ function App({ Component, pageProps }: AppProps) {
         <title>{feConfigs?.systemTitle || process.env.SYSTEM_NAME || 'GPT'}</title>
         <meta
           name="description"
-          content="FastGPT is a knowledge-based question answering system built on the LLM. It offers out-of-the-box data processing and model invocation capabilities. Moreover, it allows for workflow orchestration through Flow visualization, thereby enabling complex question and answer scenarios!"
+          content="FastGPT 是一个大模型应用编排系统，提供开箱即用的数据处理、模型调用等能力，可以快速的构建知识库并通过 Flow 可视化进行工作流编排，实现复杂的知识库场景！"
         />
         <meta
           name="viewport"

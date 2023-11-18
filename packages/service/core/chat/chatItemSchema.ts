@@ -83,3 +83,5 @@ try {
 
 export const MongoChatItem: Model<ChatItemType> =
   models['chatItem'] || model('chatItem', ChatItemSchema);
+
+MongoChatItem.syncIndexes();

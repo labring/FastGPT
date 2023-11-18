@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar';
 import ToolMenu from './ToolMenu';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useRouter } from 'next/router';
+import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 
 const ChatHeader = ({
   history,
@@ -27,7 +28,10 @@ const ChatHeader = ({
   const theme = useTheme();
   const { isPc } = useSystemStore();
   const title = useMemo(
-    () => history[history.length - 2]?.value?.slice(0, 8) || appName || '新对话',
+    () =>
+      chatContentReplaceBlock(history[history.length - 2]?.value)?.slice(0, 8) ||
+      appName ||
+      '新对话',
     [appName, history]
   );
 

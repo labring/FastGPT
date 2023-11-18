@@ -71,3 +71,5 @@ const OutLinkSchema = new Schema({
 
 export const MongoOutLink: Model<SchemaType> =
   models['outlinks'] || model('outlinks', OutLinkSchema);
+
+MongoOutLink.syncIndexes();
