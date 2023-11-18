@@ -32,6 +32,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
+import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -78,7 +80,10 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         abortSignal: controller
       });
 
-      const newTitle = prompts[0].content?.slice(0, 20) || '新对话';
+      const newTitle =
+        chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
+        prompts[1]?.value?.slice(0, 20) ||
+        '新对话';
 
       // update history
       if (completionChatId !== chatId) {
@@ -363,6 +368,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
                 userGuideModule={chatData.app?.userGuideModule}
+                showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}

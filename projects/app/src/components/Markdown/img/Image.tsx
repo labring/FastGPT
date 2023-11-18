@@ -27,6 +27,7 @@ const MdImage = ({ src }: { src?: string }) => {
         borderRadius={'md'}
         src={src}
         alt={''}
+        maxH={'150px'}
         fallbackSrc={'/imgs/errImg.png'}
         fallbackStrategy={'onError'}
         cursor={succeed ? 'pointer' : 'default'}
@@ -45,7 +46,6 @@ const MdImage = ({ src }: { src?: string }) => {
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent m={'auto'}>
-          <ModalCloseButton />
           <Image
             src={src}
             alt={''}
@@ -55,6 +55,7 @@ const MdImage = ({ src }: { src?: string }) => {
             objectFit={'contain'}
           />
         </ModalContent>
+        <ModalCloseButton bg={'myWhite.500'} zIndex={999999} />
       </Modal>
     </Skeleton>
   );

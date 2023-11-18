@@ -64,3 +64,4 @@ const UserSchema = new Schema({
 
 export const MongoUser: Model<UserModelSchema> =
   models[userCollectionName] || model(userCollectionName, UserSchema);
+MongoUser.syncIndexes();

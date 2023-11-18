@@ -17,7 +17,17 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { Box, Card, Flex, Input, Button, useTheme, BoxProps, FlexProps } from '@chakra-ui/react';
+import {
+  Box,
+  Card,
+  Flex,
+  Input,
+  Button,
+  useTheme,
+  BoxProps,
+  FlexProps,
+  Image
+} from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
@@ -90,6 +100,7 @@ type Props = {
   appAvatar?: string;
   userAvatar?: string;
   userGuideModule?: ModuleItemType;
+  showFileSelector?: boolean;
   active?: boolean; // can use
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
@@ -109,6 +120,7 @@ const ChatBox = (
     appAvatar,
     userAvatar,
     userGuideModule,
+    showFileSelector,
     active = true,
     onUpdateVariable,
     onStartChat,
@@ -795,6 +807,7 @@ const ChatBox = (
           isChatting={isChatting}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
+          showFileSelector={showFileSelector}
         />
       ) : null}
 
@@ -1109,11 +1122,11 @@ function ChatController({
                 {...controlIconStyle}
                 mr={1}
                 name={'core/chat/stopSpeech'}
-                _hover={{ color: '#E74694' }}
+                color={'#E74694'}
                 onClick={() => cancelAudio()}
               />
             </MyTooltip>
-            {/* <MyIcon name={'loading'} w={'16px'} /> */}
+            <Image src="/icon/speaking.gif" w={'23px'} alt={''} />
           </Flex>
         ) : (
           <MyTooltip label={t('core.app.TTS')}>

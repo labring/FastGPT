@@ -3,9 +3,13 @@ import { Box } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
-export const useSelectFile = (props?: { fileType?: string; multiple?: boolean }) => {
+export const useSelectFile = (props?: {
+  fileType?: string;
+  multiple?: boolean;
+  maxCount?: number;
+}) => {
   const { t } = useTranslation();
-  const { fileType = '*', multiple = false } = props || {};
+  const { fileType = '*', multiple = false, maxCount = 10 } = props || {};
   const { toast } = useToast();
   const SelectFileDom = useRef<HTMLInputElement>(null);
 
@@ -19,7 +23,7 @@ export const useSelectFile = (props?: { fileType?: string; multiple?: boolean })
           multiple={multiple}
           onChange={(e) => {
             if (!e.target.files || e.target.files?.length === 0) return;
-            if (e.target.files.length > 10) {
+            if (e.target.files.length > maxCount) {
               return toast({
                 status: 'warning',
                 title: t('file.Select a maximum of 10 files')
@@ -30,7 +34,7 @@ export const useSelectFile = (props?: { fileType?: string; multiple?: boolean })
         />
       </Box>
     ),
-    [fileType, multiple, t, toast]
+    [fileType, maxCount, multiple, t, toast]
   );
 
   const onOpen = useCallback(() => {

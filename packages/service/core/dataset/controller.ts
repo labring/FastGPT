@@ -22,9 +22,9 @@ export async function findDatasetIdTreeByTopDatasetId(
 }
 
 export async function getCollectionWithDataset(collectionId: string) {
-  const data = (
-    await MongoDatasetCollection.findById(collectionId).populate('datasetId')
-  )?.toJSON() as CollectionWithDatasetType;
+  const data = (await MongoDatasetCollection.findById(collectionId)
+    .populate('datasetId')
+    .lean()) as CollectionWithDatasetType;
   if (!data) {
     return Promise.reject('Collection is not exist');
   }

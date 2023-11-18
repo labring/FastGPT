@@ -1,7 +1,7 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import MyTooltip from '../MyTooltip';
 import MyIcon from '../Icon';
@@ -10,6 +10,23 @@ import { useRouter } from 'next/router';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgAndUpload } from '@/web/common/file/controller';
 import { useToast } from '@/web/common/hooks/useToast';
+import { customAlphabet } from 'nanoid';
+import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
+import { addDays } from 'date-fns';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
+
+enum FileTypeEnum {
+  image = 'image',
+  file = 'file'
+}
+type FileItemType = {
+  id: string;
+  rawFile: File;
+  type: `${FileTypeEnum}`;
+  name: string;
+  icon: string; // img is base64
+  src?: string;
+};
 
 const MessageInput = ({
   onChange,
@@ -17,16 +34,19 @@ const MessageInput = ({
   onStop,
   isChatting,
   TextareaDom,
+  showFileSelector = false,
   resetInputVal
 }: {
   onChange: (e: string) => void;
   onSendMessage: (e: string) => void;
   onStop: () => void;
   isChatting: boolean;
+  showFileSelector?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: string) => void;
 }) => {
   const { shareId } = useRouter().query as { shareId?: string };
+  const { toast } = useToast();
   const {
     isSpeaking,
     isTransCription,
@@ -37,64 +57,106 @@ const MessageInput = ({
     stream
   } = useSpeech({ shareId });
   const { isPc } = useSystemStore();
-  const canvasRef = useRef<HTMLCanvasElement>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
   const textareaMinH = '22px';
-  const havInput = !!TextareaDom.current?.value;
-  const { toast } = useToast();
-  const [imgBase64Array, setImgBase64Array] = useState<string[]>([]);
-  const [fileList, setFileList] = useState<File[]>([]);
-  const [imgSrcArray, setImgSrcArray] = useState<string[]>([]);
+  const [fileList, setFileList] = useState<FileItemType[]>([]);
+  const havInput = !!TextareaDom.current?.value || fileList.length > 0;
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: true
+    fileType: 'image/*',
+    multiple: true,
+    maxCount: 10
   });
 
-  useEffect(() => {
-    fileList.forEach((file) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        setImgBase64Array((prev) => [...prev, reader.result as string]);
-      };
-    });
-  }, [fileList]);
-
-  const onSelectFile = useCallback((e: File[]) => {
-    if (!e || e.length === 0) {
+  const uploadFile = async (file: FileItemType) => {
+    if (file.type === FileTypeEnum.image) {
+      try {
+        const src = await compressImgAndUpload({
+          file: file.rawFile,
+          maxW: 1000,
+          maxH: 1000,
+          maxSize: 1024 * 1024 * 5,
+          // 30 day expired.
+          expiredTime: addDays(new Date(), 30)
+        });
+        setFileList((state) =>
+          state.map((item) =>
+            item.id === file.id
+              ? {
+                  ...item,
+                  src: `${location.origin}${src}`
+                }
+              : item
+          )
+        );
+      } catch (error) {
+        setFileList((state) => state.filter((item) => item.id !== file.id));
+        toast({
+          status: 'error',
+          title: t('common.Upload File Failed')
+        });
+      }
+    }
+  };
+  const onSelectFile = useCallback(async (files: File[]) => {
+    if (!files || files.length === 0) {
       return;
     }
-    setFileList(e);
+    const loadFiles = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise<FileItemType>((resolve, reject) => {
+            if (file.type.includes('image')) {
+              const reader = new FileReader();
+              reader.readAsDataURL(file);
+              reader.onload = () => {
+                const item = {
+                  id: nanoid(),
+                  rawFile: file,
+                  type: FileTypeEnum.image,
+                  name: file.name,
+                  icon: reader.result as string
+                };
+                uploadFile(item);
+                resolve(item);
+              };
+              reader.onerror = () => {
+                reject(reader.error);
+              };
+            } else {
+              resolve({
+                id: nanoid(),
+                rawFile: file,
+                type: FileTypeEnum.file,
+                name: file.name,
+                icon: 'pdf'
+              });
+            }
+          })
+      )
+    );
+
+    setFileList((state) => [...state, ...loadFiles]);
   }, []);
 
   const handleSend = useCallback(async () => {
-    try {
-      for (const file of fileList) {
-        const src = await compressImgAndUpload({
-          file,
-          maxW: 1000,
-          maxH: 1000,
-          maxSize: 1024 * 1024 * 2
-        });
-        imgSrcArray.push(src);
-      }
-    } catch (err: any) {
-      toast({
-        title: typeof err === 'string' ? err : '文件上传异常',
-        status: 'warning'
-      });
-    }
-
     const textareaValue = TextareaDom.current?.value || '';
-    const inputMessage =
-      imgSrcArray.length === 0
-        ? textareaValue
-        : `\`\`\`img-block\n${JSON.stringify(imgSrcArray)}\n\`\`\`\n${textareaValue}`;
+
+    const images = fileList.filter((item) => item.type === FileTypeEnum.image);
+    const imagesText =
+      images.length === 0
+        ? ''
+        : `\`\`\`${IMG_BLOCK_KEY}
+${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
+\`\`\`
+`;
+
+    const inputMessage = `${imagesText}${textareaValue}`;
+
     onSendMessage(inputMessage);
-    setImgBase64Array([]);
-    setImgSrcArray([]);
-  }, [TextareaDom, fileList, imgSrcArray, onSendMessage, toast]);
+    setFileList([]);
+  }, [TextareaDom, fileList, onSendMessage]);
 
   useEffect(() => {
     if (!stream) {
@@ -107,117 +169,139 @@ const MessageInput = ({
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(analyser);
     const renderCurve = () => {
-      renderAudioGraph(analyser, canvasRef.current as HTMLCanvasElement);
+      if (!canvasRef.current) return;
+      renderAudioGraph(analyser, canvasRef.current);
       window.requestAnimationFrame(renderCurve);
     };
     renderCurve();
   }, [renderAudioGraph, stream]);
 
   return (
-    <>
-      <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
-        <Box
-          py={imgBase64Array.length > 0 ? '8px' : '18px'}
-          position={'relative'}
-          boxShadow={isSpeaking ? `0 0 10px rgba(54,111,255,0.4)` : `0 0 10px rgba(0,0,0,0.2)`}
-          {...(isPc
-            ? {
-                border: '1px solid',
-                borderColor: 'rgba(0,0,0,0.12)'
-              }
-            : {
-                borderTop: '1px solid',
-                borderTopColor: 'rgba(0,0,0,0.15)'
-              })}
-          borderRadius={['none', 'md']}
-          backgroundColor={'white'}
+    <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
+      <Box
+        pt={fileList.length > 0 ? '10px' : ['14px', '18px']}
+        pb={['14px', '18px']}
+        position={'relative'}
+        boxShadow={isSpeaking ? `0 0 10px rgba(54,111,255,0.4)` : `0 0 10px rgba(0,0,0,0.2)`}
+        borderRadius={['none', 'md']}
+        bg={'white'}
+        {...(isPc
+          ? {
+              border: '1px solid',
+              borderColor: 'rgba(0,0,0,0.12)'
+            }
+          : {
+              borderTop: '1px solid',
+              borderTopColor: 'rgba(0,0,0,0.15)'
+            })}
+      >
+        {/* translate loading */}
+        <Flex
+          position={'absolute'}
+          top={0}
+          bottom={0}
+          left={0}
+          right={0}
+          zIndex={10}
+          pl={5}
+          alignItems={'center'}
+          bg={'white'}
+          color={'myBlue.600'}
+          visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
         >
-          {/* translate loading */}
-          <Box
-            position={'absolute'}
-            top={0}
-            bottom={0}
-            left={4}
-            right={['8px', '4px']}
-            zIndex={10}
-            display={'flex'}
-            alignItems={'center'}
-            bg={'white'}
-            pl={['5px', '10px']}
-            color="rgba(54,111,255,0.6)"
-            visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
-          >
-            <Spinner size={'sm'} mr={4} />
-            {t('chat.Converting to text')}
-          </Box>
-          {/* file uploader */}
-          <Flex
-            position={'absolute'}
-            alignItems={'center'}
-            left={['12px', '14px']}
-            bottom={['15px', '13px']}
-            h={['26px', '32px']}
-            zIndex={10}
-            cursor={'pointer'}
-            onClick={onOpenSelectFile}
-          >
-            <MyTooltip label={t('core.chat.Select File')}>
-              <MyIcon name={'core/chat/fileSelect'} />
-            </MyTooltip>
-            <File onSelect={onSelectFile} />
-          </Flex>
-          {/* file preview */}
-          <Flex w={'96%'} wrap={'wrap'} ml={4}>
-            {imgBase64Array.length > 0 &&
-              imgBase64Array.map((src, index) => (
-                <Box
-                  key={index}
-                  border={'1px solid rgba(0,0,0,0.12)'}
-                  mr={2}
-                  mb={2}
+          <Spinner size={'sm'} mr={4} />
+          {t('chat.Converting to text')}
+        </Flex>
+
+        {/* file preview */}
+        <Flex wrap={'wrap'} px={[2, 4]} userSelect={'none'}>
+          {fileList.map((item) => (
+            <Box
+              key={item.id}
+              border={'1px solid rgba(0,0,0,0.12)'}
+              mr={2}
+              mb={2}
+              rounded={'md'}
+              position={'relative'}
+              _hover={{
+                '.close-icon': { display: item.src ? 'block' : 'none' }
+              }}
+            >
+              {/* uploading */}
+              {!item.src && (
+                <Flex
+                  position={'absolute'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
                   rounded={'md'}
-                  position={'relative'}
-                  _hover={{
-                    '.close-icon': { display: 'block' }
-                  }}
+                  color={'myBlue.600'}
+                  top={0}
+                  left={0}
+                  bottom={0}
+                  right={0}
+                  bg={'rgba(255,255,255,0.8)'}
                 >
-                  <MyIcon
-                    name={'closeSolid'}
-                    w={'16px'}
-                    h={'16px'}
-                    color={'myGray.700'}
-                    cursor={'pointer'}
-                    _hover={{ color: 'myBlue.600' }}
-                    position={'absolute'}
-                    right={-2}
-                    top={-2}
-                    onClick={() => {
-                      setImgBase64Array((prev) => {
-                        prev.splice(index, 1);
-                        return [...prev];
-                      });
-                    }}
-                    className="close-icon"
-                    display={['', 'none']}
-                  />
-                  <Image
-                    alt={'img'}
-                    src={src}
-                    w={'80px'}
-                    h={'80px'}
-                    rounded={'md'}
-                    objectFit={'cover'}
-                  />
-                </Box>
-              ))}
-          </Flex>
+                  <Spinner />
+                </Flex>
+              )}
+              <MyIcon
+                name={'closeSolid'}
+                w={'16px'}
+                h={'16px'}
+                color={'myGray.700'}
+                cursor={'pointer'}
+                _hover={{ color: 'myBlue.600' }}
+                position={'absolute'}
+                bg={'white'}
+                right={'-8px'}
+                top={'-8px'}
+                onClick={() => {
+                  setFileList((state) => state.filter((file) => file.id !== item.id));
+                }}
+                className="close-icon"
+                display={['', 'none']}
+              />
+              {item.type === FileTypeEnum.image && (
+                <Image
+                  alt={'img'}
+                  src={item.icon}
+                  w={['50px', '70px']}
+                  h={['50px', '70px']}
+                  borderRadius={'md'}
+                  objectFit={'contain'}
+                />
+              )}
+            </Box>
+          ))}
+        </Flex>
+
+        <Flex alignItems={'flex-end'} mt={fileList.length > 0 ? 1 : 0} pl={[2, 4]}>
+          {/* file selector */}
+          {showFileSelector && (
+            <Flex
+              h={'22px'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              cursor={'pointer'}
+              transform={'translateY(1px)'}
+              onClick={() => {
+                if (isSpeaking) return;
+                onOpenSelectFile;
+              }}
+            >
+              <MyTooltip label={t('core.chat.Select File')}>
+                <MyIcon name={'core/chat/fileSelect'} />
+              </MyTooltip>
+              <File onSelect={onSelectFile} />
+            </Flex>
+          )}
+
           {/* input area */}
           <Textarea
             ref={TextareaDom}
             py={0}
-            pr={['45px', '55px']}
-            pl={['36px', '40px']}
-            mt={imgBase64Array.length > 0 ? 4 : 0}
+            pl={2}
+            pr={['30px', '48px']}
             border={'none'}
             _focusVisible={{
               border: 'none'
@@ -255,29 +339,24 @@ const MessageInput = ({
               const clipboardData = e.clipboardData;
               if (clipboardData) {
                 const items = clipboardData.items;
-                const files: File[] = [];
-                for (let i = 0; i < items.length; i++) {
-                  const item = items[i];
-                  if (item.kind === 'file') {
-                    const file = item.getAsFile();
-                    files.push(file as File);
-                  }
-                }
-                setFileList(files);
+                const files = Array.from(items)
+                  .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
+                  .filter((item) => item) as File[];
+                onSelectFile(files);
               }
             }}
           />
           <Flex
-            position={'absolute'}
             alignItems={'center'}
-            right={['12px', '14px']}
-            bottom={['15px', '13px']}
+            position={'absolute'}
+            right={[2, 4]}
+            bottom={['10px', '12px']}
           >
             {/* voice-input */}
             {!shareId && !havInput && !isChatting && (
               <>
                 <canvas
-                  ref={canvasRef as any}
+                  ref={canvasRef}
                   style={{
                     height: '30px',
                     width: isSpeaking && !isTransCription ? '100px' : 0,
@@ -289,6 +368,7 @@ const MessageInput = ({
                   mr={2}
                   alignItems={'center'}
                   justifyContent={'center'}
+                  flexShrink={0}
                   h={['26px', '32px']}
                   w={['26px', '32px']}
                   borderRadius={'md'}
@@ -314,11 +394,14 @@ const MessageInput = ({
             )}
             {/* send and stop icon */}
             {isSpeaking ? (
-              <Box color={'#5A646E'}>{speakingTimeString}</Box>
+              <Box color={'#5A646E'} w={'36px'} textAlign={'right'}>
+                {speakingTimeString}
+              </Box>
             ) : (
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
+                flexShrink={0}
                 h={['28px', '32px']}
                 w={['28px', '32px']}
                 borderRadius={'md'}
@@ -356,9 +439,9 @@ const MessageInput = ({
               </Flex>
             )}
           </Flex>
-        </Box>
+        </Flex>
       </Box>
-    </>
+    </Box>
   );
 };
 

@@ -29,16 +29,16 @@ export async function generateQA(): Promise<any> {
     error = false
   } = await (async () => {
     try {
-      const data = (
-        await MongoDatasetTraining.findOneAndUpdate(
-          {
-            mode: TrainingModeEnum.qa,
-            lockTime: { $lte: new Date(Date.now() - 10 * 60 * 1000) }
-          },
-          {
-            lockTime: new Date()
-          }
-        ).select({
+      const data = await MongoDatasetTraining.findOneAndUpdate(
+        {
+          mode: TrainingModeEnum.qa,
+          lockTime: { $lte: new Date(Date.now() - 10 * 60 * 1000) }
+        },
+        {
+          lockTime: new Date()
+        }
+      )
+        .select({
           _id: 1,
           userId: 1,
           teamId: 1,
@@ -50,7 +50,7 @@ export async function generateQA(): Promise<any> {
           billId: 1,
           prompt: 1
         })
-      )?.toJSON();
+        .lean();
 
       // task preemption
       if (!data) {

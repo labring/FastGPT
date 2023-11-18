@@ -1,16 +1,27 @@
+import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, type Model } from '../../mongo';
 const { Schema, model, models } = connectionMongo;
 
 const ImageSchema = new Schema({
-  userId: {
+  teamId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
-    required: true
+    ref: TeamCollectionName
   },
   binary: {
     type: Buffer
+  },
+  expiredTime: {
+    type: Date
   }
 });
 
-export const MongoImage: Model<{ userId: string; binary: Buffer }> =
+try {
+  ImageSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 60 });
+} catch (error) {
+  console.log(error);
+}
+
+export const MongoImage: Model<{ teamId: string; binary: Buffer }> =
   models['image'] || model('image', ImageSchema);
+
+MongoImage.syncIndexes();

@@ -59,3 +59,4 @@ try {
 }
 
 export const MongoBill: Model<BillType> = models['bill'] || model('bill', BillSchema);
+MongoBill.syncIndexes();

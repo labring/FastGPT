@@ -46,10 +46,11 @@ const PluginSchema = new Schema({
 });
 
 try {
-  PluginSchema.index({ userId: 1 });
+  PluginSchema.index({ tmbId: 1 });
 } catch (error) {
   console.log(error);
 }
 
 export const MongoPlugin: Model<PluginItemSchema> =
   models[ModuleCollectionName] || model(ModuleCollectionName, PluginSchema);
+MongoPlugin.syncIndexes();

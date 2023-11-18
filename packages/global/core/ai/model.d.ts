@@ -9,6 +9,7 @@ export type ChatModelItemType = LLMModelItemType & {
   quoteMaxToken: number;
   maxTemperature: number;
   censor?: boolean;
+  vision?: boolean;
   defaultSystemChatPrompt?: string;
 };
 

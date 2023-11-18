@@ -21,6 +21,7 @@ import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatProps & {
@@ -106,6 +107,21 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   temperature = Math.max(temperature, 0.01);
   const ai = getAIApi(user.openaiAccount, 480000);
 
+  const concatMessages = [
+    ...(modelConstantsData.defaultSystemChatPrompt
+      ? [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: modelConstantsData.defaultSystemChatPrompt
+          }
+        ]
+      : []),
+    ...messages.map((item) => ({
+      ...item,
+      content: modelConstantsData.vision ? formatStr2ChatContent(item.content) : item.content
+    }))
+  ];
+
   const response = await ai.chat.completions.create(
     {
       model,
@@ -113,17 +129,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       max_tokens,
       stream,
       seed: temperature < 0.3 ? 1 : undefined,
-      messages: [
-        ...(modelConstantsData.defaultSystemChatPrompt
-          ? [
-              {
-                role: ChatCompletionRequestMessageRoleEnum.System,
-                content: modelConstantsData.defaultSystemChatPrompt
-              }
-            ]
-          : []),
-        ...messages
-      ]
+      messages: concatMessages
     },
     {
       headers: {

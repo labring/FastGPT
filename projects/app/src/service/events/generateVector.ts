@@ -24,16 +24,16 @@ export async function generateVector(): Promise<any> {
     error = false
   } = await (async () => {
     try {
-      const data = (
-        await MongoDatasetTraining.findOneAndUpdate(
-          {
-            mode: TrainingModeEnum.chunk,
-            lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
-          },
-          {
-            lockTime: new Date()
-          }
-        ).select({
+      const data = await MongoDatasetTraining.findOneAndUpdate(
+        {
+          mode: TrainingModeEnum.chunk,
+          lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
+        },
+        {
+          lockTime: new Date()
+        }
+      )
+        .select({
           _id: 1,
           userId: 1,
           teamId: 1,
@@ -46,7 +46,7 @@ export async function generateVector(): Promise<any> {
           model: 1,
           billId: 1
         })
-      )?.toJSON();
+        .lean();
 
       // task preemption
       if (!data) {
