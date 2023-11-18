@@ -22,12 +22,10 @@ import {
   Card,
   Flex,
   Input,
-  Textarea,
   Button,
   useTheme,
   BoxProps,
   FlexProps,
-  Spinner,
   Image
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
@@ -102,6 +100,7 @@ type Props = {
   appAvatar?: string;
   userAvatar?: string;
   userGuideModule?: ModuleItemType;
+  showFileSelector?: boolean;
   active?: boolean; // can use
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
@@ -121,6 +120,7 @@ const ChatBox = (
     appAvatar,
     userAvatar,
     userGuideModule,
+    showFileSelector,
     active = true,
     onUpdateVariable,
     onStartChat,
@@ -807,6 +807,7 @@ const ChatBox = (
           isChatting={isChatting}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
+          showFileSelector={showFileSelector}
         />
       ) : null}
 
@@ -1125,7 +1126,7 @@ function ChatController({
                 onClick={() => cancelAudio()}
               />
             </MyTooltip>
-            <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
+            <Image src="/icon/speaking.gif" w={'23px'} alt={''} />
           </Flex>
         ) : (
           <MyTooltip label={t('core.app.TTS')}>

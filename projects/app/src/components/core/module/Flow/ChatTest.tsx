@@ -16,6 +16,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { getGuideModule } from '@/global/core/app/modules/utils';
+import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -115,6 +116,7 @@ const ChatTest = (
             userAvatar={userInfo?.avatar}
             showMarkIcon
             userGuideModule={getGuideModule(modules)}
+            showFileSelector={checkChatSupportSelectFileByModules(modules)}
             onStartChat={startChat}
             onDelMessage={() => {}}
           />

@@ -45,7 +45,6 @@ const MdImage = ({ src }: { src?: string }) => {
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent m={'auto'}>
-          <ModalCloseButton />
           <Image
             src={src}
             alt={''}
@@ -55,6 +54,7 @@ const MdImage = ({ src }: { src?: string }) => {
             objectFit={'contain'}
           />
         </ModalContent>
+        <ModalCloseButton bg={'white'} zIndex={999999} />
       </Modal>
     </Skeleton>
   );

@@ -107,6 +107,21 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   temperature = Math.max(temperature, 0.01);
   const ai = getAIApi(user.openaiAccount, 480000);
 
+  const concatMessages = [
+    ...(modelConstantsData.defaultSystemChatPrompt
+      ? [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: modelConstantsData.defaultSystemChatPrompt
+          }
+        ]
+      : []),
+    ...messages.map((item) => ({
+      ...item,
+      content: modelConstantsData.vision ? formatStr2ChatContent(item.content) : item.content
+    }))
+  ];
+
   const response = await ai.chat.completions.create(
     {
       model,
@@ -114,20 +129,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       max_tokens,
       stream,
       seed: temperature < 0.3 ? 1 : undefined,
-      messages: [
-        ...(modelConstantsData.defaultSystemChatPrompt
-          ? [
-              {
-                role: ChatCompletionRequestMessageRoleEnum.System,
-                content: modelConstantsData.defaultSystemChatPrompt
-              }
-            ]
-          : []),
-        ...messages.map((item) => ({
-          ...item,
-          content: modelConstantsData.vision ? formatStr2ChatContent(item.content) : item.content
-        }))
-      ]
+      messages: concatMessages
     },
     {
       headers: {

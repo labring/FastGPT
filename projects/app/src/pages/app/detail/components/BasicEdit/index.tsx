@@ -59,6 +59,7 @@ import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
 import QGSwitch from '../QGSwitch';
 import TTSSelect from '../TTSSelect';
+import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 
 const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -676,6 +677,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
           userAvatar={userInfo?.avatar}
           showMarkIcon
           userGuideModule={getGuideModule(modules)}
+          showFileSelector={checkChatSupportSelectFileByModules(modules)}
           onStartChat={startChat}
           onDelMessage={() => {}}
         />
