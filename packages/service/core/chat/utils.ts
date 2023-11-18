@@ -101,7 +101,18 @@ export function formatStr2ChatContent(str: string) {
 
     if (blockType === IMG_BLOCK_KEY) {
       const blockContentLines = match[2].trim().split('\n');
-      const jsonLines = blockContentLines.map((item) => JSON.parse(item) as { src: string });
+      const jsonLines = blockContentLines.map((item) => {
+        try {
+          return JSON.parse(item) as { src: string };
+        } catch (error) {
+          return { src: '' };
+        }
+      });
+
+      for (const item of jsonLines) {
+        if (!item.src) throw new Error("image block's content error");
+      }
+
       content.push(
         ...jsonLines.map((item) => ({
           type: 'image_url' as any,
