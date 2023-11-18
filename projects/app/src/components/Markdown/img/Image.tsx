@@ -55,7 +55,7 @@ const MdImage = ({ src }: { src?: string }) => {
             objectFit={'contain'}
           />
         </ModalContent>
-        <ModalCloseButton bg={'white'} zIndex={999999} />
+        <ModalCloseButton bg={'myWhite.500'} zIndex={999999} />
       </Modal>
     </Skeleton>
   );
