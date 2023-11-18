@@ -30,13 +30,13 @@ weight: 520
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
-      "price": 0,
-      "maxContext": 16000,
-      "maxResponse": 4000,
-      "quoteMaxToken": 2000,
-      "maxTemperature": 1.2,
-      "censor": false,
-      "vision": false,
+      "price": 0, // 除以 100000 后等于1个token的价格
+      "maxContext": 16000, // 最大上下文长度
+      "maxResponse": 4000, // 最大回复长度
+      "quoteMaxToken": 2000, // 最大引用内容长度
+      "maxTemperature": 1.2, // 最大温度值
+      "censor": false, // 是否开启敏感词过滤(商业版)
+      "vision": false, // 支持图片输入
       "defaultSystemChatPrompt": ""
     },
     {
