@@ -12,6 +12,7 @@ import { compressImgAndUpload } from '@/web/common/file/controller';
 import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
+import { addDays } from 'date-fns';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 enum FileTypeEnum {
@@ -75,7 +76,9 @@ const MessageInput = ({
           file: file.rawFile,
           maxW: 1000,
           maxH: 1000,
-          maxSize: 1024 * 1024 * 2
+          maxSize: 1024 * 1024 * 5,
+          // 30 day expired.
+          expiredTime: addDays(new Date(), 30)
         });
         setFileList((state) =>
           state.map((item) =>

@@ -7,6 +7,7 @@ import type {
 } from '@fastgpt/global/support/outLink/api.d';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import { HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
+import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 
 type State = {
   shareChatData: ShareChatType;
@@ -64,6 +65,10 @@ export const useShareChatStore = create<State>()(
         shareChatHistory: [],
         saveChatResponse({ chatId, prompts, variables, shareId }) {
           const chatHistory = get().shareChatHistory.find((item) => item.chatId === chatId);
+          const newTitle =
+            chatContentReplaceBlock(prompts[prompts.length - 2]?.value).slice(0, 20) ||
+            prompts[prompts.length - 1]?.value?.slice(0, 20) ||
+            'Chat';
 
           const historyList = (() => {
             if (chatHistory) {
@@ -71,7 +76,7 @@ export const useShareChatStore = create<State>()(
                 item.chatId === chatId
                   ? {
                       ...item,
-                      title: prompts[prompts.length - 2]?.value,
+                      title: newTitle,
                       updateTime: new Date(),
                       chats: chatHistory.chats.concat(prompts).slice(-30),
                       variables
@@ -82,7 +87,7 @@ export const useShareChatStore = create<State>()(
             return get().shareChatHistory.concat({
               chatId,
               shareId,
-              title: prompts[prompts.length - 2]?.value,
+              title: newTitle,
               updateTime: new Date(),
               chats: prompts,
               variables

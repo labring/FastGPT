@@ -16,10 +16,10 @@ const ImageBlock = ({ images }: { images: string }) => {
   );
 
   return (
-    <Flex alignItems={'center'} wrap={'wrap'}>
+    <Flex alignItems={'center'} wrap={'wrap'} gap={4}>
       {formatData.map(({ src }) => {
         return (
-          <Box key={src} mr={2} mb={2} rounded={'md'} flex={'0 0 auto'} w={'120px'} maxH={'150px'}>
+          <Box key={src} rounded={'md'} flex={'0 0 auto'} w={'120px'} maxH={'150px'}>
             <MdImage src={src} />
           </Box>
         );

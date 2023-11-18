@@ -37,12 +37,14 @@ export const compressImgAndUpload = ({
   file,
   maxW = 200,
   maxH = 200,
-  maxSize = 1024 * 100
+  maxSize = 1024 * 100, // 100kb
+  expiredTime
 }: {
   file: File;
   maxW?: number;
   maxH?: number;
   maxSize?: number;
+  expiredTime?: Date;
 }) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -87,7 +89,7 @@ export const compressImgAndUpload = ({
 
         const src = await (async () => {
           try {
-            const src = await postUploadImg(compressedDataUrl);
+            const src = await postUploadImg(compressedDataUrl, expiredTime);
             return src;
           } catch (error) {
             return compressedDataUrl;

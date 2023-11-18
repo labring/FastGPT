@@ -4,17 +4,18 @@ import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { uploadMongoImg } from '@fastgpt/service/common/file/image/controller';
 
-type Props = { base64Img: string };
+type Props = { base64Img: string; expiredTime?: Date };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { userId } = await authCert({ req, authToken: true });
-    const { base64Img } = req.body as Props;
+    const { teamId } = await authCert({ req, authToken: true });
+    const { base64Img, expiredTime } = req.body as Props;
 
     const data = await uploadMongoImg({
-      userId,
-      base64Img
+      teamId,
+      base64Img,
+      expiredTime
     });
 
     jsonRes(res, { data });
