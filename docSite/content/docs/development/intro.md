@@ -54,11 +54,11 @@ git clone git@github.com:<github_username>/FastGPT.git
 
 **环境变量**
 
-复制.env.template 文件，在同级目录下生成一个.env.local 文件，修改.env.local 里内容才是有效的变量。变量说明见 .env.template
+复制`.env.template`文件，在同级目录下生成一个`.env.local` 文件，修改`.env.local` 里内容才是有效的变量。变量说明见 .env.template
 
 **config 配置文件**
 
-复制 data/config.json 文件，生成一个 data/config.local.json 配置文件，具体配置参数说明，可参考 [config 配置说明](/docs/development/configuration)
+复制 `data/config.json` 文件，生成一个 `data/config.local.json` 配置文件，具体配置参数说明，可参考 [config 配置说明](/docs/development/configuration)
 
 **注意：json 配置文件不能包含注释，介绍中为了方便看才加入的注释**
 

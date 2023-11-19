@@ -7,7 +7,10 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
-import { DatasetDataIndexTypeMap } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetDataIndexTypeEnum,
+  DatasetDataIndexTypeMap
+} from '@fastgpt/global/core/dataset/constant';
 
 export const DatasetDataCollectionName = 'dataset.datas';
 
@@ -50,7 +53,7 @@ const DatasetDataSchema = new Schema({
         type: {
           type: String,
           enum: Object.keys(DatasetDataIndexTypeMap),
-          required: true
+          default: DatasetDataIndexTypeEnum.custom
         },
         dataId: {
           type: String,
