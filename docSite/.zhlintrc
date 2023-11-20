@@ -1,24 +1,6 @@
 {
     "preset": "default",
-    "halfWidthPunctuation": "()",
-    "fullWidthPunctuation": "，。：；？！“”‘’",
-    "adjustedFullWidthPunctuation": "“”‘’",
-    "unifiedPunctuation": "simplified",
-    "skipAbbrs": ["Mr.", "Mrs.", "Dr.", "Jr.", "Sr.", "vs.", "etc.", "i.e.", "e.g.", "a.k.a"],
-    "spaceBetweenHalfWidthLetters": true,
-    "noSpaceBetweenFullWidthLetters": true,
-    "spaceBetweenMixedWidthLetters": true,
-    "skipZhUnits": "年月日天号时分秒",
-    "noSpaceBeforePunctuation": true,
-    "spaceAfterHalfWidthPunctuation": true,
-    "noSpaceAfterFullWidthPunctuation": true,
-    "spaceOutsideHalfQuote": true,
-    "noSpaceOutsideFullQuote": true,
-    "noSpaceInsideQuote": true,
-    "spaceOutsideHalfBracket": true,
-    "noSpaceOutsideFullBracket": true,
-    "noSpaceInsideBracket": true,
-    "spaceOutsideCode": true,
-    "noSpaceInsideWrapper": true,
-    "trimSpace": true
-}
+    "rules": {
+      "adjustedFullWidthPunctuation": ""
+    }
+  }
