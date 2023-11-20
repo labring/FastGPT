@@ -69,12 +69,12 @@ const QuoteModal = ({
         isCentered
         minW={['90vw', '600px']}
         title={
-          <>
+          <Box>
             知识库引用({rawSearch.length}条)
             <Box fontSize={'10px'} color={'myGray.500'} fontWeight={'normal'}>
               注意: 修改知识库内容成功后，此处不会显示变更情况。点击编辑后，会显示知识库最新的内容。
             </Box>
-          </>
+          </Box>
         }
       >
         <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} wordBreak={'break-all'}>
