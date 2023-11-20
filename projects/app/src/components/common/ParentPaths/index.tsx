@@ -26,9 +26,9 @@ const ParentPaths = (props: {
   return paths.length === 0 && !!FirstPathDom ? (
     <>{FirstPathDom}</>
   ) : (
-    <Flex flex={1}>
+    <Flex flex={1} ml={-2}>
       {concatPaths.map((item, i) => (
-        <Flex key={item.parentId} alignItems={'center'}>
+        <Flex key={item.parentId || i} alignItems={'center'}>
           <Box
             fontSize={['sm', 'lg']}
             py={1}
@@ -51,7 +51,7 @@ const ParentPaths = (props: {
             {item.parentName}
           </Box>
           {i !== concatPaths.length - 1 && (
-            <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={['14px', '24px']} />
+            <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={'14px'} />
           )}
         </Flex>
       ))}

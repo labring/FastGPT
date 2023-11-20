@@ -26,6 +26,8 @@ import { useTranslation } from 'next-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { feConfigs } from '@/web/common/system/staticData';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
+import { useLoading } from '@/web/common/hooks/useLoading';
+import EmptyTip from '@/components/EmptyTip';
 
 export type KbParamsType = {
   searchSimilarity: number;
@@ -54,7 +56,8 @@ export const DatasetSelectModal = ({
     })
   );
   const { toast } = useToast();
-  const { paths, parentId, setParentId, datasets } = useDatasetSelect();
+  const { paths, setParentId, datasets, isLoading } = useDatasetSelect();
+  const { Loading } = useLoading();
 
   const filterKbList = useMemo(() => {
     return {
@@ -71,9 +74,8 @@ export const DatasetSelectModal = ({
     <DatasetSelectContainer
       isOpen={isOpen}
       paths={paths}
-      parentId={parentId}
       setParentId={setParentId}
-      tips={'仅能选择同一个索引模型的知识库'}
+      tips={t('dataset.Select Dataset Tips')}
       onClose={onClose}
     >
       <Flex h={'100%'} flexDirection={'column'} flex={'1 0 0'}>
@@ -158,7 +160,7 @@ export const DatasetSelectModal = ({
                           if (vectorModel && vectorModel !== item.vectorModel.model) {
                             return toast({
                               status: 'warning',
-                              title: '仅能选择同一个索引模型的知识库'
+                              title: t('dataset.Select Dataset Tips')
                             });
                           }
                           setSelectedKbList((state) => [
@@ -197,14 +199,7 @@ export const DatasetSelectModal = ({
               })()
             )}
           </Grid>
-          {filterKbList.unSelected.length === 0 && (
-            <Flex mt={5} flexDirection={'column'} alignItems={'center'}>
-              <MyIcon name="empty" w={'48px'} h={'48px'} mt={'20vh'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                这个目录已经没东西可选了~
-              </Box>
-            </Flex>
-          )}
+          {filterKbList.unSelected.length === 0 && <EmptyTip text={t('common.folder.empty')} />}
         </ModalBody>
 
         <ModalFooter>
@@ -219,9 +214,11 @@ export const DatasetSelectModal = ({
               onChange(filterKbList);
             }}
           >
-            完成
+            {t('common.Done')}
           </Button>
         </ModalFooter>
+
+        <Loading fixed={false} loading={isLoading} />
       </Flex>
     </DatasetSelectContainer>
   );

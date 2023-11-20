@@ -45,7 +45,6 @@ const SelectMarkCollection = ({
           isOpen
           paths={paths}
           onClose={onClose}
-          parentId={parentId}
           setParentId={setParentId}
           tips={t('chat.Select Mark Kb Desc')}
         >
