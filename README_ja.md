@@ -10,7 +10,7 @@
   <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT は、LLM 上に構築された知識ベースの Q&A システムで、すぐに使えるデータ処理とモデル呼び出し機能を提供し、Flow の可視化を通じてワークフローのオーケストレーションを可能にします！
+FastGPT は、LLM 上 に 構築 された 知識 ベースの Q&A システムで、すぐに 使 えるデータ 処理 とモデル 呼 び 出 し 機能 を 提供 し、Flow の 可視化 を 通 じてワークフローのオーケストレーションを 可能 にします！
 
 </div>
 
@@ -34,7 +34,7 @@ FastGPT は、LLM 上に構築された知識ベースの Q&A システムで、
 
 https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409bd33f6d4
 
-## 🛸 クラウドサービスの利用
+## 🛸 クラウドサービスの 利用
 
 [fastgpt.run](https://fastgpt.run/)
 | | |
@@ -44,64 +44,64 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 💡 機能
 
-1. パワフルなビジュアルワークフロー: AI アプリケーションを簡単に作成
+1. パワフルなビジュアルワークフロー：AI アプリケーションを 簡単 に 作成
 
-   - [x] デッキのシンプルモード - マニュアルアレンジ不要
-   - [x] ユーザ対話事前ガイダンス
-   - [x] グローバル変数
-   - [x] ナレッジベース検索
-   - [x] 複数の LLM モデルによる対話
-   - [x] テキストマジック - 構造化データへの変換
-   - [x] HTTP による拡張
-   - [ ] on-the-fly HTTP モジュールのための埋め込みLaf
-   - [x] 次の対話ステップへの指示
-   - [x] ソースファイル参照の追跡
+   - [x] デッキのシンプルモード - マニュアルアレンジ 不要
+   - [x] ユーザ 対話事前 ガイダンス
+   - [x] グローバル 変数
+   - [x] ナレッジベース 検索
+   - [x] 複数 の LLM モデルによる 対話
+   - [x] テキストマジック - 構造化 データへの 変換
+   - [x] HTTP による 拡張
+   - [ ] on-the-fly HTTP モジュールのための 埋 め 込 みLaf
+   - [x] 次 の 対話 ステップへの 指示
+   - [x] ソースファイル 参照 の 追跡
    - [ ] カスタムファイルリーダー
-   - [ ] モジュールをプラグインにパッケージして再利用する
+   - [ ] モジュールをプラグインにパッケージして 再利用 する
 
-2. 広範なナレッジベースの前処理
+2. 広範 なナレッジベースの 前処理
 
-   - [x] 複数のナレッジベースの再利用と混合
-   - [x] チャンクの変更と削除を追跡
-   - [x] 手動入力、直接分割、QA 分割インポートをサポート
+   - [x] 複数 のナレッジベースの 再利用 と 混合
+   - [x] チャンクの 変更 と 削除 を 追跡
+   - [x] 手動入力、直接分割、QA 分割 インポートをサポート
    - [x] URL フェッチとバッチ CSV インポートをサポート
-   - [x] ナレッジベースにユニークなベクトルモデルを設定可能
-   - [x] オリジナルファイルの保存
-   - [ ] ファイル学習エージェント
+   - [x] ナレッジベースにユニークなベクトルモデルを 設定可能
+   - [x] オリジナルファイルの 保存
+   - [ ] ファイル 学習 エージェント
 
-3. 複数の効果測定チャンネル
+3. 複数 の 効果測定 チャンネル
 
-   - [x] シングルポイントナレッジベース検索テスト
-   - [x] 対話中のフィードバック参照と修正・削除機能
-   - [x] 完全なコンテキストの提示
-   - [ ] 完全なモジュール中間値提示
+   - [x] シングルポイントナレッジベース 検索 テスト
+   - [x] 対話中 のフィードバック 参照 と 修正 ・ 削除機能
+   - [x] 完全 なコンテキストの 提示
+   - [ ] 完全 なモジュール 中間値提示
 
 4. OpenAPI
 
-   - [x] 補完インターフェイス（GPT インターフェイスに合わせる）
+   - [x] 補完 インターフェイス (GPT インターフェイスに 合 わせる)
    - [ ] ナレッジベース CRUD
 
-5. オペレーション機能
+5. オペレーション 機能
 
-   - [x] ログイン不要の共有ウィンドウ
-   - [x] Iframe によるワンクリック埋め込み
-   - [ ] 対話記録への統一されたアクセス
+   - [x] ログイン 不要 の 共有 ウィンドウ
+   - [x] Iframe によるワンクリック 埋 め 込 み
+   - [ ] 対話記録 への 統一 されたアクセス
 
 ## 👨‍💻 開発
 
-プロジェクトの技術スタック: NextJs + TS + ChakraUI + Mongo + Postgres (Vector プラグイン)
+プロジェクトの 技術 スタック：NextJs + TS + ChakraUI + Mongo + Postgres (Vector プラグイン)
 
 - **⚡ デプロイ**
 
   [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
 
-  デプロイ後、データベースをセットアップするので、2～4分待ってください。基本設定を使っているので、最初は少し遅いかもしれません。
+  デプロイ 後、データベースをセットアップするので、2～4分待 ってください。基本設定 を 使 っているので、最初 は 少 し 遅 いかもしれません。
 
-- [ローカル開発入門](https://doc.fastgpt.run/docs/development)
+- [ローカル 開発入門](https://doc.fastgpt.run/docs/development)
 - [FastGPT のデプロイ](https://doc.fastgpt.run/docs/installation)
-- [システム設定ガイド](https://doc.fastgpt.run/docs/installation/reference)
-- [複数モデルの設定](https://doc.fastgpt.run/docs/installation/reference/models)
-- [バージョン更新とアップグレード](https://doc.fastgpt.run/docs/installation/upgrading)
+- [システム 設定 ガイド](https://doc.fastgpt.run/docs/installation/reference)
+- [複数 モデルの 設定](https://doc.fastgpt.run/docs/installation/reference/models)
+- [バージョン 更新 とアップグレード](https://doc.fastgpt.run/docs/installation/upgrading)
 
 <!-- ## :point_right: ロードマップ
 - [FastGPT ロードマップ](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
@@ -112,23 +112,23 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 | ------------------------------------------------- | ---------------------------------------------- |
 | ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) | -->
 
-## 👀 その他
+## 👀 その 他
 
 - [FastGPT FAQ](https://kjqvjse66l.feishu.cn/docx/HtrgdT0pkonP4kxGx8qcu6XDnGh)
-- [Docker 導入チュートリアル動画](https://www.bilibili.com/video/BV1jo4y147fT/)
-- [公式アカウント統合ビデオチュートリアル](https://www.bilibili.com/video/BV1xh4y1t7fy/)
+- [Docker 導入 チュートリアル 動画](https://www.bilibili.com/video/BV1jo4y147fT/)
+- [公式 アカウント 統合 ビデオチュートリアル](https://www.bilibili.com/video/BV1xh4y1t7fy/)
 - [FastGPT ナレッジベースデモ](https://www.bilibili.com/video/BV1Wo4y1p7i1/)
 
-## 💪 関連プロジェクト
+## 💪 関連 プロジェクト
 
-- [Laf: サードパーティ製アプリケーションに 3 分でクイックアクセス](https://github.com/labring/laf)
-- [Sealos: クラスタアプリケーションの迅速な展開](https://github.com/labring/sealos)
-- [One API: マルチモデル管理、Azure、Wenxin Yiyuan などをサポートします。](https://github.com/songquanpeng/one-api)
-- [TuShan: 5 分でバックエンド管理システムを構築](https://github.com/msgbyte/tushan)
+- [Laf：サードパーティ 製 アプリケーションに 3 分 でクイックアクセス](https://github.com/labring/laf)
+- [Sealos：クラスタアプリケーションの 迅速 な 展開](https://github.com/labring/sealos)
+- [One API：マルチモデル 管理、Azure、Wenxin Yiyuan などをサポートします。](https://github.com/songquanpeng/one-api)
+- [TuShan：5 分 でバックエンド 管理 システムを 構築](https://github.com/msgbyte/tushan)
 
 ## 🤝 サードパーティエコシステム
 
-- [luolinAI: すぐに使える企業向け WeChat ボット](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
+- [luolinAI：すぐに 使 える 企業向 け WeChat ボット](https://github.com/luolin-ai/FastGPT-Enterprise-WeChatbot)
 
 ## 🌟 Star History
 
