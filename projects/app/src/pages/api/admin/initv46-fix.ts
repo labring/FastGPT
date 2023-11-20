@@ -12,6 +12,8 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { Types, connectionMongo } from '@fastgpt/service/common/mongo';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { getUserDefaultTeam } from '@fastgpt/service/support/user/team/controller';
+import { getGFSCollection } from '@fastgpt/service/common/file/gridfs/controller';
 
 let success = 0;
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
@@ -22,9 +24,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     success = 0;
 
-    jsonRes(res, {
-      data: await init(limit)
-    });
+    await init(limit);
+    await initCollectionFileTeam(limit);
+
+    jsonRes(res, {});
   } catch (error) {
     console.log(error);
 
@@ -100,6 +103,74 @@ async function init(limit: number): Promise<any> {
       console.log(error);
       await delay(500);
       return initData(index);
+    }
+  }
+}
+
+async function initCollectionFileTeam(limit: number) {
+  /* init user default Team */
+  const DatasetFile = getGFSCollection('dataset');
+  const matchWhere = {
+    $or: [{ 'metadata.teamId': { $exists: false } }, { 'metadata.teamId': null }]
+  };
+  const uniqueUsersWithNoTeamId = await DatasetFile.aggregate([
+    {
+      $match: matchWhere
+    },
+    {
+      $group: {
+        _id: '$metadata.userId', // 按 metadata.userId 分组以去重
+        userId: { $first: '$metadata.userId' } // 保留第一个出现的 userId
+      }
+    },
+    {
+      $project: {
+        _id: 0, // 不显示 _id 字段
+        userId: 1 // 只显示 userId 字段
+      }
+    }
+  ]).toArray();
+  const users = uniqueUsersWithNoTeamId;
+
+  console.log('un init total', users.length);
+  // limit 组一次
+  const userArr: any[][] = [];
+  for (let i = 0; i < users.length; i += limit) {
+    userArr.push(users.slice(i, i + limit));
+  }
+
+  let success = 0;
+  for await (const item of userArr) {
+    await Promise.all(item.map((item) => init(item.userId)));
+    success += limit;
+    console.log(success);
+  }
+
+  async function init(userId: string): Promise<any> {
+    try {
+      const tmb = await getUserDefaultTeam({
+        userId
+      });
+
+      await DatasetFile.updateMany(
+        {
+          'metadata.userId': String(userId),
+          ...matchWhere
+        },
+        {
+          $set: {
+            'metadata.teamId': String(tmb.teamId),
+            'metadata.tmbId': String(tmb.tmbId)
+          }
+        }
+      );
+    } catch (error) {
+      if (error === 'team not exist' || error === 'tmbId or userId is required') {
+        return;
+      }
+      console.log(error);
+      await delay(1000);
+      return init(userId);
     }
   }
 }
