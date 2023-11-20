@@ -71,7 +71,6 @@ export const DatasetSelectModal = ({
     <DatasetSelectContainer
       isOpen={isOpen}
       paths={paths}
-      parentId={parentId}
       setParentId={setParentId}
       tips={'仅能选择同一个索引模型的知识库'}
       onClose={onClose}
