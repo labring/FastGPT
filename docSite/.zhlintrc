@@ -1,6 +1,6 @@
 {
-  "preset": "default",
-  "rules": {
-    "adjustedFullWidthPunctuation": ""
+    "preset": "default",
+    "rules": {
+      "adjustedFullWidthPunctuation": ""
+    }
   }
-}

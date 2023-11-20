@@ -286,7 +286,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
               transform={'translateY(1px)'}
               onClick={() => {
                 if (isSpeaking) return;
-                onOpenSelectFile;
+                onOpenSelectFile();
               }}
             >
               <MyTooltip label={t('core.chat.Select File')}>

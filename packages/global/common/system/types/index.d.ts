@@ -4,7 +4,6 @@ export type FeConfigsType = {
   show_appStore?: boolean;
   show_contact?: boolean;
   show_git?: boolean;
-  show_doc?: boolean;
   show_pay?: boolean;
   show_openai_account?: boolean;
   show_promotion?: boolean;

@@ -118,8 +118,6 @@
       "model": "tts-1",
       "name": "OpenAI TTS1",
       "price": 0,
-      "baseUrl": "",
-      "key": "",
       "voices": [
         { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
         { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },

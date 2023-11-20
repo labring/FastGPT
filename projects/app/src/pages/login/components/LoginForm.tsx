@@ -141,7 +141,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 注册账号
               </Box>
             </Flex>
-            {feConfigs?.show_doc && (
+            {feConfigs?.docUrl && (
               <Box textAlign={'center'} mt={2} fontSize={'sm'}>
                 使用即代表你同意我们的{' '}
                 <Link

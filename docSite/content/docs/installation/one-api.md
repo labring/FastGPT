@@ -46,7 +46,6 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 
 ```
 SESSION_SECRET=SESSION_SECRET
-CHANNEL_TEST_FREQUENCY=30
 POLLING_INTERVAL=60
 BATCH_UPDATE_ENABLED=true
 BATCH_UPDATE_INTERVAL=60
@@ -72,7 +71,7 @@ BATCH_UPDATE_INTERVAL=60
 
 ### 3. 修改 FastGPT 的环境变量
 
-有了 One API 令牌后，FastGPT 可以通过修改 baseurl 和 key 去请求到 One API，再由 One API 去请求不同的模型。修改下面两个环境变量：
+有了 One API 令牌后，FastGPT 可以通过修改 `baseurl` 和 `key` 去请求到 One API，再由 One API 去请求不同的模型。修改下面两个环境变量：
 
 ```bash
 # 下面的地址是 Sealos 提供的，务必写上 v1， 两个项目都在 sealos 部署时候，https://xxxx.cloud.sealos.io 可以改用内网地址
@@ -104,6 +103,7 @@ CHAT_API_KEY=sk-xxxxxx
       // 例如：文心一言的中英文 token 基本是 1:1，而 GPT 的中文 Token 是 2:1，如果文心一言官方最大 Token 是 4000，那么这里就可以填 8000，保险点就填 7000.
       "quoteMaxToken": 2000, // 引用知识库的最大 Token
       "maxTemperature": 1, // 最大温度
+      "vision": false, // 是否开启图片识别
       "defaultSystemChatPrompt": "" // 默认的系统提示词
     }
     ...

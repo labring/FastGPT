@@ -27,7 +27,6 @@ const MySelect = (
   selectRef: any
 ) => {
   const ref = useRef<HTMLButtonElement>(null);
-  const SelectRef = useRef<HTMLDivElement>(null);
   const menuItemStyles = {
     borderRadius: 'sm',
     py: 2,
@@ -40,13 +39,6 @@ const MySelect = (
   const { isOpen, onOpen, onClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
-  useOutsideClick({
-    ref: SelectRef,
-    handler: () => {
-      onClose();
-    }
-  });
-
   return (
     <Menu
       autoSelect={false}
@@ -56,13 +48,6 @@ const MySelect = (
       strategy={'fixed'}
       matchWidth
     >
-      {/* <Box
-        ref={SelectRef}
-        position={'relative'}
-        onClick={() => {
-          isOpen ? onClose() : onOpen();
-        }}
-      > */}
       <MenuButton
         as={Button}
         ref={ref}
