@@ -104,6 +104,7 @@ CHAT_API_KEY=sk-xxxxxx
       // 例如：文心一言的中英文 token 基本是 1:1，而 GPT 的中文 Token 是 2:1，如果文心一言官方最大 Token 是 4000，那么这里就可以填 8000，保险点就填 7000.
       "quoteMaxToken": 2000, // 引用知识库的最大 Token
       "maxTemperature": 1, // 最大温度
+      "vision": false, // 是否开启图片识别
       "defaultSystemChatPrompt": "" // 默认的系统提示词
     }
     ...

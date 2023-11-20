@@ -52,11 +52,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       model: ttsConfig.model,
       voice: ttsConfig.voice,
       speed: ttsConfig.speed,
-      props: {
-        // temp code
-        baseUrl: ttsModel.baseUrl || '',
-        key: ttsModel.key || ''
-      },
       onSuccess: async ({ model, buffer }) => {
         try {
           pushAudioSpeechBill({
