@@ -3,10 +3,7 @@ import type { IconProps } from '@chakra-ui/react';
 import { Icon } from '@chakra-ui/react';
 
 const iconPaths = {
-  appFill: () => import('./icons/fill/app.svg'),
-  appLight: () => import('./icons/light/app.svg'),
   copy: () => import('./icons/copy.svg'),
-  chatSend: () => import('./icons/chatSend.svg'),
   delete: () => import('./icons/delete.svg'),
   stop: () => import('./icons/stop.svg'),
   collectionLight: () => import('./icons/collectionLight.svg'),
@@ -89,7 +86,6 @@ const iconPaths = {
   moveLight: () => import('./icons/light/move.svg'),
   questionGuide: () => import('./icons/app/questionGuide.svg'),
   loading: () => import('./icons/light/loading.svg'),
-  pause: () => import('./icons/common/pause.svg'),
   'core/app/aiLight': () => import('./icons/core/app/aiLight.svg'),
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
   'common/text/t': () => import('./icons/common/text/t.svg'),

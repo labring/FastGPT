@@ -185,6 +185,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
         boxShadow={isSpeaking ? `0 0 10px rgba(54,111,255,0.4)` : `0 0 10px rgba(0,0,0,0.2)`}
         borderRadius={['none', 'md']}
         bg={'white'}
+        overflow={'hidden'}
         {...(isPc
           ? {
               border: '1px solid',
@@ -289,8 +290,8 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                 onOpenSelectFile();
               }}
             >
-              <MyTooltip label={t('core.chat.Select File')}>
-                <MyIcon name={'core/chat/fileSelect'} />
+              <MyTooltip label={t('core.chat.Select Image')}>
+                <MyIcon name={'core/chat/fileSelect'} w={'18px'} color={'myGray.600'} />
               </MyTooltip>
               <File onSelect={onSelectFile} />
             </Flex>
