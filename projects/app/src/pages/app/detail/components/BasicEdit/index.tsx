@@ -60,33 +60,30 @@ import PermissionIconText from '@/components/support/permission/IconText';
 import QGSwitch from '../QGSwitch';
 import TTSSelect from '../TTSSelect';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
+import { useSticky } from '@/web/common/hooks/useSticky';
 
 const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const AIChatSettingsModal = dynamic(() => import('@/components/core/module/AIChatSettingsModal'));
 
-const Settings = ({ appId }: { appId: string }) => {
+function ConfigForm({
+  divRef,
+  isSticky
+}: {
+  divRef: React.RefObject<HTMLDivElement>;
+  isSticky: boolean;
+}) {
   const theme = useTheme();
   const router = useRouter();
-  const { t } = useTranslation();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useSystemStore();
-
   const [editVariable, setEditVariable] = useState<VariableItemType>();
-  const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
-
   const [refresh, setRefresh] = useState(false);
 
-  const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
-    content: t('app.Confirm Save App Tip'),
-    bg: appDetail.type === AppTypeEnum.basic ? '' : 'red.600'
-  });
-  const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('app.Confirm Del App Tip')
-  });
   const { register, setValue, getValues, reset, handleSubmit, control } = useForm<EditFormType>({
     defaultValues: getDefaultAppForm()
   });
@@ -111,15 +108,20 @@ const Settings = ({ appId }: { appId: string }) => {
     onClose: onCloseAIChatSetting
   } = useDisclosure();
   const {
-    isOpen: isOpenKbSelect,
+    isOpen: isOpenDatasetSelect,
     onOpen: onOpenKbSelect,
     onClose: onCloseKbSelect
   } = useDisclosure();
   const {
-    isOpen: isOpenKbParams,
+    isOpen: isOpenDatasetParams,
     onOpen: onOpenKbParams,
     onClose: onCloseKbParams
   } = useDisclosure();
+
+  const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
+    content: t('app.Confirm Save App Tip'),
+    bg: appDetail.type === AppTypeEnum.basic ? '' : 'red.600'
+  });
 
   const chatModelSelectList = useMemo(() => {
     return chatModelList.map((item) => ({
@@ -132,32 +134,6 @@ const Settings = ({ appId }: { appId: string }) => {
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
     [allDatasets, datasets]
   );
-
-  /* 点击删除 */
-  const { mutate: handleDelModel, isLoading } = useRequest({
-    mutationFn: async () => {
-      if (!appDetail) return null;
-      await delModelById(appDetail._id);
-      return 'success';
-    },
-    onSuccess(res) {
-      if (!res) return;
-      toast({
-        title: t('common.Delete Success'),
-        status: 'success'
-      });
-      router.replace(`/app/list`);
-    },
-    errorToast: t('common.Delete Failed')
-  });
-
-  const appModule2Form = useCallback(() => {
-    const formVal = appModules2Form(appDetail.modules);
-    reset(formVal);
-    setTimeout(() => {
-      setRefresh((state) => !state);
-    }, 100);
-  }, [appDetail.modules, reset]);
 
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
     mutationFn: async (data: EditFormType) => {
@@ -173,11 +149,19 @@ const Settings = ({ appId }: { appId: string }) => {
     errorToast: t('common.Save Failed')
   });
 
+  const appModule2Form = useCallback(() => {
+    const formVal = appModules2Form(appDetail.modules);
+    reset(formVal);
+    setTimeout(() => {
+      setRefresh((state) => !state);
+    }, 100);
+  }, [appDetail.modules, reset]);
+
+  useQuery(['loadAllDatasets'], loadAllDatasets);
+
   useEffect(() => {
     appModule2Form();
   }, [appModule2Form]);
-
-  useQuery(['loadAllDatasets'], loadAllDatasets);
 
   const BoxStyles: BoxProps = {
     bg: 'myWhite.200',
@@ -202,110 +186,23 @@ const Settings = ({ appId }: { appId: string }) => {
   };
 
   return (
-    <Box
-      h={'100%'}
-      borderRight={'1.5px solid'}
-      borderColor={'myGray.200'}
-      p={4}
-      pt={[0, 4]}
-      pb={10}
-      overflow={'overlay'}
-    >
-      <Flex alignItems={'flex-end'}>
-        <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-          <PermissionIconText permission={appDetail.permission} />
-        </Box>
-        <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
-          (AppId:{' '}
-          <Box as={'span'} userSelect={'all'}>
-            {appId}
-          </Box>
-          )
-        </Box>
-      </Flex>
-      {/* basic info */}
-      <Box
-        border={theme.borders.base}
-        borderRadius={'lg'}
-        mt={2}
-        px={5}
+    <Box mt={2}>
+      {/* title */}
+      <Flex
+        ref={divRef}
+        position={'sticky'}
+        top={-4}
+        bg={'white'}
         py={4}
-        bg={'myBlue.100'}
-        position={'relative'}
+        justifyContent={'space-between'}
+        alignItems={'center'}
+        zIndex={10}
+        px={4}
+        {...(isSticky && {
+          borderBottom: theme.borders.base,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.12)'
+        })}
       >
-        <Flex alignItems={'center'} py={2}>
-          <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
-          <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
-            {appDetail.name}
-          </Box>
-          {appDetail.isOwner && (
-            <IconButton
-              className="delete"
-              position={'absolute'}
-              top={4}
-              right={4}
-              size={'sm'}
-              icon={<MyIcon name={'delete'} w={'14px'} />}
-              variant={'base'}
-              borderRadius={'md'}
-              aria-label={'delete'}
-              _hover={{
-                bg: 'myGray.100',
-                color: 'red.600'
-              }}
-              isLoading={isLoading}
-              onClick={openConfirmDel(handleDelModel)}
-            />
-          )}
-        </Flex>
-        <Box
-          flex={1}
-          my={2}
-          className={'textEllipsis3'}
-          wordBreak={'break-all'}
-          color={'myGray.600'}
-        >
-          {appDetail.intro || '快来给应用一个介绍~'}
-        </Box>
-        <Flex>
-          <Button
-            size={['sm', 'md']}
-            variant={'base'}
-            leftIcon={<MyIcon name={'chat'} w={'16px'} />}
-            onClick={() => router.push(`/chat?appId=${appId}`)}
-          >
-            对话
-          </Button>
-          <Button
-            mx={3}
-            size={['sm', 'md']}
-            variant={'base'}
-            leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
-            onClick={() => {
-              router.replace({
-                query: {
-                  appId,
-                  currentTab: 'outLink'
-                }
-              });
-            }}
-          >
-            外接
-          </Button>
-          {appDetail.isOwner && (
-            <Button
-              size={['sm', 'md']}
-              variant={'base'}
-              leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
-              onClick={() => setSettingAppInfo(appDetail)}
-            >
-              设置
-            </Button>
-          )}
-        </Flex>
-      </Box>
-
-      <Flex mt={5} justifyContent={'space-between'} alignItems={'center'}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
           应用配置
           <MyTooltip label={'仅包含基础功能，复杂 agent 功能请使用高级编排。'} forceShow>
@@ -329,215 +226,217 @@ const Settings = ({ appId }: { appId: string }) => {
         </Button>
       </Flex>
 
-      {/* welcome */}
-      <Box mt={5} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
-          <Box mx={2}>对话开场白</Box>
-          <MyTooltip label={welcomeTextTip} forceShow>
-            <QuestionOutlineIcon />
-          </MyTooltip>
-        </Flex>
-        <Textarea
-          mt={2}
-          rows={5}
-          placeholder={welcomeTextTip}
-          borderColor={'myGray.100'}
-          {...register('guide.welcome.text')}
-        />
-      </Box>
-      {/* variable */}
-      <Box mt={2} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <Avatar src={'/imgs/module/variable.png'} objectFit={'contain'} w={'18px'} />
-          <Box ml={2} flex={1}>
-            变量
-          </Box>
-          <Flex {...BoxBtnStyles} onClick={() => setEditVariable(addVariable())}>
-            +&ensp;新增
-          </Flex>
-        </Flex>
-        {variables.length > 0 && (
-          <Box
-            mt={2}
-            borderRadius={'lg'}
-            overflow={'hidden'}
-            borderWidth={'1px'}
-            borderBottom="none"
-          >
-            <TableContainer>
-              <Table bg={'white'}>
-                <Thead>
-                  <Tr>
-                    <Th>变量名</Th>
-                    <Th>变量 key</Th>
-                    <Th>必填</Th>
-                    <Th></Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {variables.map((item, index) => (
-                    <Tr key={item.id}>
-                      <Td>{item.label} </Td>
-                      <Td>{item.key}</Td>
-                      <Td>{item.required ? '✔' : ''}</Td>
-                      <Td>
-                        <MyIcon
-                          mr={3}
-                          name={'settingLight'}
-                          w={'16px'}
-                          cursor={'pointer'}
-                          onClick={() => setEditVariable(item)}
-                        />
-                        <MyIcon
-                          name={'delete'}
-                          w={'16px'}
-                          cursor={'pointer'}
-                          onClick={() => removeVariable(index)}
-                        />
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
-      </Box>
-
-      {/* ai */}
-      <Box mt={5} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <Avatar src={'/imgs/module/AI.png'} w={'18px'} />
-          <Box ml={2} flex={1}>
-            {t('app.AI Settings')}
-          </Box>
-          <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
-            <MyIcon mr={1} name={'settingLight'} w={'14px'} />
-            {t('app.Open AI Advanced Settings')}
-          </Flex>
-        </Flex>
-
-        <Flex alignItems={'center'} mt={5}>
-          <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
-          <Box flex={'1 0 0'}>
-            <MySelect
-              width={'100%'}
-              value={getValues('chatModel.model')}
-              list={chatModelSelectList}
-              onchange={(val: any) => {
-                setValue('chatModel.model', val);
-                const maxToken =
-                  chatModelList.find((item) => item.model === getValues('chatModel.model'))
-                    ?.maxResponse || 4000;
-                const token = maxToken / 2;
-                setValue('chatModel.maxToken', token);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
-        <Flex mt={10} alignItems={'flex-start'}>
-          <Box {...LabelStyles}>
-            {t('core.ai.Prompt')}
-            <MyTooltip label={ChatModelSystemTip} forceShow>
-              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+      <Box px={4}>
+        {/* welcome */}
+        <Box {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
+            <Box mx={2}>对话开场白</Box>
+            <MyTooltip label={welcomeTextTip} forceShow>
+              <QuestionOutlineIcon />
             </MyTooltip>
-          </Box>
+          </Flex>
           <Textarea
+            mt={2}
             rows={5}
-            placeholder={ChatModelSystemTip}
+            placeholder={welcomeTextTip}
             borderColor={'myGray.100'}
-            {...register('chatModel.systemPrompt')}
-          ></Textarea>
-        </Flex>
-      </Box>
+            {...register('guide.welcome.text')}
+          />
+        </Box>
 
-      {/* dataset */}
-      <Box mt={5} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <Flex alignItems={'center'} flex={1}>
-            <Avatar src={'/imgs/module/db.png'} w={'18px'} />
-            <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
+        {/* variable */}
+        <Box mt={2} {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Avatar src={'/imgs/module/variable.png'} objectFit={'contain'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              变量
+            </Box>
+            <Flex {...BoxBtnStyles} onClick={() => setEditVariable(addVariable())}>
+              +&ensp;新增
+            </Flex>
           </Flex>
-          <Flex alignItems={'center'} mr={3} {...BoxBtnStyles} onClick={onOpenKbSelect}>
-            <SmallAddIcon />
-            {t('common.Choose')}
-          </Flex>
-          <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbParams}>
-            <MyIcon name={'edit'} w={'14px'} mr={1} />
-            {t('common.Params')}
-          </Flex>
-        </Flex>
-        <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-          {t('core.dataset.Similarity')}: {getValues('dataset.searchSimilarity')},{' '}
-          {t('core.dataset.Search Top K')}: {getValues('dataset.searchLimit')}
-          {getValues('dataset.searchEmptyText') === ''
-            ? ''
-            : t('core.dataset.Set Empty Result Tip')}
-        </Flex>
-        <Grid
-          gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
-          my={2}
-          gridGap={[2, 4]}
-        >
-          {selectDatasets.map((item) => (
-            <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
-              <Flex
-                overflow={'hidden'}
-                alignItems={'center'}
-                p={2}
-                bg={'white'}
-                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                borderRadius={'md'}
-                border={theme.borders.base}
-                cursor={'pointer'}
-                onClick={() =>
-                  router.push({
-                    pathname: '/dataset/detail',
-                    query: {
-                      datasetId: item._id
-                    }
-                  })
-                }
-              >
-                <Avatar src={item.avatar} w={'18px'} mr={1} />
-                <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
-                  {item.name}
-                </Box>
-              </Flex>
-            </MyTooltip>
-          ))}
-        </Grid>
-      </Box>
+          {variables.length > 0 && (
+            <Box
+              mt={2}
+              borderRadius={'lg'}
+              overflow={'hidden'}
+              borderWidth={'1px'}
+              borderBottom="none"
+            >
+              <TableContainer>
+                <Table bg={'white'}>
+                  <Thead>
+                    <Tr>
+                      <Th>变量名</Th>
+                      <Th>变量 key</Th>
+                      <Th>必填</Th>
+                      <Th></Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {variables.map((item, index) => (
+                      <Tr key={item.id}>
+                        <Td>{item.label} </Td>
+                        <Td>{item.key}</Td>
+                        <Td>{item.required ? '✔' : ''}</Td>
+                        <Td>
+                          <MyIcon
+                            mr={3}
+                            name={'settingLight'}
+                            w={'16px'}
+                            cursor={'pointer'}
+                            onClick={() => setEditVariable(item)}
+                          />
+                          <MyIcon
+                            name={'delete'}
+                            w={'16px'}
+                            cursor={'pointer'}
+                            onClick={() => removeVariable(index)}
+                          />
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </Box>
 
-      <Box mt={5} {...BoxStyles}>
-        <TTSSelect
-          value={getValues('tts')}
-          onChange={(e) => {
-            setValue('tts', e);
-            setRefresh((state) => !state);
-          }}
-        />
-      </Box>
+        {/* ai */}
+        <Box mt={5} {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Avatar src={'/imgs/module/AI.png'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              {t('app.AI Settings')}
+            </Box>
+            <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
+              <MyIcon mr={1} name={'settingLight'} w={'14px'} />
+              {t('app.Open AI Advanced Settings')}
+            </Flex>
+          </Flex>
 
-      <Box mt={5} {...BoxStyles}>
-        <QGSwitch
-          isChecked={getValues('questionGuide')}
-          size={'lg'}
-          onChange={(e) => {
-            const value = e.target.checked;
-            setValue('questionGuide', value);
-            setRefresh((state) => !state);
-          }}
-        />
+          <Flex alignItems={'center'} mt={5}>
+            <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
+            <Box flex={'1 0 0'}>
+              <MySelect
+                width={'100%'}
+                value={getValues('chatModel.model')}
+                list={chatModelSelectList}
+                onchange={(val: any) => {
+                  setValue('chatModel.model', val);
+                  const maxToken =
+                    chatModelList.find((item) => item.model === getValues('chatModel.model'))
+                      ?.maxResponse || 4000;
+                  const token = maxToken / 2;
+                  setValue('chatModel.maxToken', token);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+          <Flex mt={10} alignItems={'flex-start'}>
+            <Box {...LabelStyles}>
+              {t('core.ai.Prompt')}
+              <MyTooltip label={ChatModelSystemTip} forceShow>
+                <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+              </MyTooltip>
+            </Box>
+            <Textarea
+              rows={5}
+              minH={'60px'}
+              placeholder={ChatModelSystemTip}
+              borderColor={'myGray.100'}
+              {...register('chatModel.systemPrompt')}
+            ></Textarea>
+          </Flex>
+        </Box>
+
+        {/* dataset */}
+        <Box mt={5} {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={1}>
+              <Avatar src={'/imgs/module/db.png'} w={'18px'} />
+              <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
+            </Flex>
+            <Flex alignItems={'center'} mr={3} {...BoxBtnStyles} onClick={onOpenKbSelect}>
+              <SmallAddIcon />
+              {t('common.Choose')}
+            </Flex>
+            <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbParams}>
+              <MyIcon name={'edit'} w={'14px'} mr={1} />
+              {t('common.Params')}
+            </Flex>
+          </Flex>
+          <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
+            {t('core.dataset.Similarity')}: {getValues('dataset.searchSimilarity')},{' '}
+            {t('core.dataset.Search Top K')}: {getValues('dataset.searchLimit')}
+            {getValues('dataset.searchEmptyText') === ''
+              ? ''
+              : t('core.dataset.Set Empty Result Tip')}
+          </Flex>
+          <Grid
+            gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
+            my={2}
+            gridGap={[2, 4]}
+          >
+            {selectDatasets.map((item) => (
+              <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
+                <Flex
+                  overflow={'hidden'}
+                  alignItems={'center'}
+                  p={2}
+                  bg={'white'}
+                  boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                  borderRadius={'md'}
+                  border={theme.borders.base}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    router.push({
+                      pathname: '/dataset/detail',
+                      query: {
+                        datasetId: item._id
+                      }
+                    })
+                  }
+                >
+                  <Avatar src={item.avatar} w={'18px'} mr={1} />
+                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                    {item.name}
+                  </Box>
+                </Flex>
+              </MyTooltip>
+            ))}
+          </Grid>
+        </Box>
+
+        {/* tts */}
+        <Box mt={5} {...BoxStyles}>
+          <TTSSelect
+            value={getValues('tts')}
+            onChange={(e) => {
+              setValue('tts', e);
+              setRefresh((state) => !state);
+            }}
+          />
+        </Box>
+
+        {/* whisper */}
+        <Box mt={5} {...BoxStyles}>
+          <QGSwitch
+            isChecked={getValues('questionGuide')}
+            size={'lg'}
+            onChange={(e) => {
+              const value = e.target.checked;
+              setValue('questionGuide', value);
+              setRefresh((state) => !state);
+            }}
+          />
+        </Box>
       </Box>
 
       <ConfirmSaveModal />
-      <ConfirmDelModal />
-      {settingAppInfo && (
-        <InfoModal defaultApp={settingAppInfo} onClose={() => setSettingAppInfo(undefined)} />
-      )}
       {editVariable && (
         <VariableEditModal
           defaultVariable={editVariable}
@@ -573,9 +472,9 @@ const Settings = ({ appId }: { appId: string }) => {
           defaultData={getValues('chatModel')}
         />
       )}
-      {isOpenKbSelect && (
+      {isOpenDatasetSelect && (
         <DatasetSelectModal
-          isOpen={isOpenKbSelect}
+          isOpen={isOpenDatasetSelect}
           activeDatasets={selectDatasets.map((item) => ({
             datasetId: item._id,
             vectorModel: item.vectorModel
@@ -584,8 +483,7 @@ const Settings = ({ appId }: { appId: string }) => {
           onChange={replaceKbList}
         />
       )}
-
-      {isOpenKbParams && (
+      {isOpenDatasetParams && (
         <DatasetParamsModal
           {...getValues('dataset')}
           onClose={onCloseKbParams}
@@ -601,9 +499,156 @@ const Settings = ({ appId }: { appId: string }) => {
       )}
     </Box>
   );
-};
+}
 
-const ChatTest = ({ appId }: { appId: string }) => {
+function Settings({ appId }: { appId: string }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const { parentRef, divRef, isSticky } = useSticky();
+  const { appDetail } = useAppStore();
+  const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
+
+  const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
+    content: t('app.Confirm Del App Tip')
+  });
+
+  /* 点击删除 */
+  const { mutate: handleDelModel, isLoading } = useRequest({
+    mutationFn: async () => {
+      if (!appDetail) return null;
+      await delModelById(appDetail._id);
+      return 'success';
+    },
+    onSuccess(res) {
+      if (!res) return;
+      toast({
+        title: t('common.Delete Success'),
+        status: 'success'
+      });
+      router.replace(`/app/list`);
+    },
+    errorToast: t('common.Delete Failed')
+  });
+
+  return (
+    <Box
+      ref={parentRef}
+      h={'100%'}
+      borderRight={'1.5px solid'}
+      borderColor={'myGray.200'}
+      pt={[0, 4]}
+      pb={10}
+      overflow={'overlay'}
+    >
+      <Box px={4}>
+        <Flex alignItems={'flex-end'}>
+          <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
+            <PermissionIconText permission={appDetail.permission} />
+          </Box>
+          <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
+            (AppId:{' '}
+            <Box as={'span'} userSelect={'all'}>
+              {appId}
+            </Box>
+            )
+          </Box>
+        </Flex>
+        {/* basic info */}
+        <Box
+          border={theme.borders.base}
+          borderRadius={'lg'}
+          mt={2}
+          px={5}
+          py={4}
+          bg={'myBlue.100'}
+          position={'relative'}
+        >
+          <Flex alignItems={'center'} py={2}>
+            <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
+            <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
+              {appDetail.name}
+            </Box>
+            {appDetail.isOwner && (
+              <IconButton
+                className="delete"
+                position={'absolute'}
+                top={4}
+                right={4}
+                size={'sm'}
+                icon={<MyIcon name={'delete'} w={'14px'} />}
+                variant={'base'}
+                borderRadius={'md'}
+                aria-label={'delete'}
+                _hover={{
+                  bg: 'myGray.100',
+                  color: 'red.600'
+                }}
+                isLoading={isLoading}
+                onClick={openConfirmDel(handleDelModel)}
+              />
+            )}
+          </Flex>
+          <Box
+            flex={1}
+            my={2}
+            className={'textEllipsis3'}
+            wordBreak={'break-all'}
+            color={'myGray.600'}
+          >
+            {appDetail.intro || '快来给应用一个介绍~'}
+          </Box>
+          <Flex>
+            <Button
+              size={['sm', 'md']}
+              variant={'base'}
+              leftIcon={<MyIcon name={'chat'} w={'16px'} />}
+              onClick={() => router.push(`/chat?appId=${appId}`)}
+            >
+              对话
+            </Button>
+            <Button
+              mx={3}
+              size={['sm', 'md']}
+              variant={'base'}
+              leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
+              onClick={() => {
+                router.replace({
+                  query: {
+                    appId,
+                    currentTab: 'outLink'
+                  }
+                });
+              }}
+            >
+              外接
+            </Button>
+            {appDetail.isOwner && (
+              <Button
+                size={['sm', 'md']}
+                variant={'base'}
+                leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
+                onClick={() => setSettingAppInfo(appDetail)}
+              >
+                设置
+              </Button>
+            )}
+          </Flex>
+        </Box>
+      </Box>
+      {/* config form */}
+      <ConfigForm divRef={divRef} isSticky={isSticky} />
+
+      <ConfirmDelModal />
+      {settingAppInfo && (
+        <InfoModal defaultApp={settingAppInfo} onClose={() => setSettingAppInfo(undefined)} />
+      )}
+    </Box>
+  );
+}
+
+function ChatTest({ appId }: { appId: string }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { appDetail } = useAppStore();
@@ -703,7 +748,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
       )}
     </Flex>
   );
-};
+}
 
 const BasicEdit = ({ appId }: { appId: string }) => {
   const { isPc } = useSystemStore();

@@ -34,7 +34,7 @@ const DatasetSelectContainer = ({
   return (
     <MyModal isOpen={isOpen} onClose={onClose} w={'100%'} maxW={['90vw', '900px']} isCentered>
       <Flex flexDirection={'column'} h={'90vh'}>
-        <ModalHeader>
+        <ModalHeader fontWeight={'normal'}>
           <ParentPaths
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
