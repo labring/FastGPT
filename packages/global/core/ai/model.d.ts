@@ -30,8 +30,6 @@ export type AudioSpeechModelType = {
   model: string;
   name: string;
   price: number;
-  baseUrl?: string;
-  key?: string;
   voices: { label: string; value: string; bufferId: string }[];
 };
 
