@@ -5,7 +5,7 @@
   "scripts": {
     "prepare": "husky install",
     "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
-    "format-doc": "zhlint --dir ./docSite *.md --fix"
+    "format-doc": "zhlint --dir ./docSite '*.md' --fix"
   },
   "devDependencies": {
     "@types/multer": "^1.4.10",

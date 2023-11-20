@@ -1,5 +1,5 @@
 ---
-title: 'Api Key 使用与鉴权'
+title: 'Api Key使用与鉴权'
 description: 'FastGPT Api Key使用与鉴权'
 icon: 'key'
 draft: false
@@ -19,9 +19,9 @@ FasGPT OpenAPI 接口允许你使用 Api Key 进行鉴权，从而操作 FastGPT
 
 ## 如何获取 Api Key
 
-FastGPT 的 API Key **有2类**，一类是全局通用的 key（无法直接调用应用对话）；一类是携带了 AppId 也就是有应用标记的key（可直接调用应用对话）。
+FastGPT 的 API Key **有 2 类**，一类是全局通用的 key (无法直接调用应用对话)；一类是携带了 AppId 也就是有应用标记的 key (可直接调用应用对话)。
 
-我们建议，仅操作应用或者对话的相关接口使用`应用特定key`，其他接口使用`通用key`。
+我们建议，仅操作应用或者对话的相关接口使用 `应用特定key`，其他接口使用 `通用key`。
 
 |        通用key               |           应用特定 key            |
 | --------------------- | --------------------- |
