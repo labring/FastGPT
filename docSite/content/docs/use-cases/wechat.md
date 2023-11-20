@@ -39,9 +39,9 @@ weight: 322
 ![](/imgs/wechat5.png)
 
 这里需要填写四个环境变量：   
-AIBOTK_KEY="微秘书 APIKEY"   
-AIBOTK_SECRET="微秘书 APISECRET"   
-WORK_PRO_TOKEN="你申请的企微 token"   （企业微信需要填写，私人微信不需要）
+AIBOTK_KEY=微秘书 APIKEY   
+AIBOTK_SECRET=微秘书 APISECRET   
+WORK_PRO_TOKEN=你申请的企微 token   （企业微信需要填写，私人微信不需要）
 WECHATY_PUPPET_SERVICE_AUTHORITY=token-service-discovery-test.juzibot.com（企业微信需要填写，私人微信不需要）  
 
 这里最后两个变量只有部署企业微信才需要，私人微信只需要填写前两个即可。
