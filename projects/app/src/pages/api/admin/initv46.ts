@@ -264,7 +264,7 @@ async function initCollectionFileTeam(limit: number) {
 
       await DatasetFile.updateMany(
         {
-          userId,
+          'metadata.userId': String(userId),
           ...matchWhere
         },
         {

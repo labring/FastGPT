@@ -7,7 +7,7 @@
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
-  <a href="./README_ja.md">日本語</a>
+  <a href="./README_ja.md">日语</a>
 </p>
 
 FastGPT is a knowledge-based Q&A system built on the LLM, offers out-of-the-box data processing and model invocation capabilities, allows for workflow orchestration through Flow visualization!

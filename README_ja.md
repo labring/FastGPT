@@ -7,7 +7,7 @@
 <p align="center">
   <a href="./README_en.md">English</a> |
   <a href="./README.md">简体中文</a> |
-  <a href="./README_ja.md">日本語</a>
+  <a href="./README_ja.md">日语</a>
 </p>
 
 FastGPT は、LLM 上 に 構築 された 知識 ベースの Q&A システムで、すぐに 使 えるデータ 処理 とモデル 呼 び 出 し 機能 を 提供 し、Flow の 可視化 を 通 じてワークフローのオーケストレーションを 可能 にします！
