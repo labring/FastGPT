@@ -99,7 +99,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           display={['none', 'flex']}
           flexDirection={'column'}
           p={4}
-          w={'200px'}
+          w={'180px'}
           borderRight={theme.borders.base}
         >
           <Flex mb={4} alignItems={'center'}>

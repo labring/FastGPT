@@ -201,7 +201,8 @@
       "Drag Tip": "点我可拖动",
       "Move Success": "移动成功",
       "No Folder": "没有子目录了，就放这里吧",
-      "Root Path": "根目录"
+      "Root Path": "根目录",
+      "empty": "这个目录已经没东西可选了~"
     },
     "input": {
       "Repeat Value": "有重复的值"
@@ -237,6 +238,7 @@
       "Record": "语音输入",
       "Restart": "重开对话",
       "Select File": "选择文件",
+      "Select Image": "选择图片",
       "Send Message": "发送",
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
@@ -286,6 +288,7 @@
     "My Dataset": "我的知识库",
     "Queue Desc": "该数据是指整个系统当前待训练的数量。{{title}} 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
     "Select Dataset": "选择该知识库",
+    "Select Dataset Tips": "仅能选择同一个索引模型的知识库",
     "Select Folder": "进入文件夹",
     "System Data Queue": "排队长度",
     "Training Name": "数据训练",

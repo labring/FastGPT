@@ -201,7 +201,8 @@
       "Drag Tip": "Click and move",
       "Move Success": "Move Success",
       "No Folder": "There's no subdirectory. Just put it here",
-      "Root Path": "Root Folder"
+      "Root Path": "Root Folder",
+      "empty": "There is nothing to choose from in this directory"
     },
     "input": {
       "Repeat Value": "Repeat Value"
@@ -237,6 +238,7 @@
       "Record": "Speech",
       "Restart": "Restart",
       "Select File": "Select file",
+      "Select Image": "Select Image",
       "Send Message": "Send Message",
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
@@ -286,6 +288,7 @@
     "My Dataset": "My Dataset",
     "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
     "Select Dataset": "Select Dataset",
+    "Select Dataset Tips": "Select only knowledge bases with the same index model",
     "Select Folder": "Enter folder",
     "System Data Queue": "Data Queue",
     "Training Name": "Dataset Training",

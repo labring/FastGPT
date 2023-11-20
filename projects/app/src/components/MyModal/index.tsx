@@ -39,7 +39,7 @@ const MyModal = ({
         minW={['90vw', '400px']}
         maxW={maxW}
         position={'relative'}
-        maxH={'90vh'}
+        maxH={['80vh', '85vh']}
         {...props}
       >
         {!title && onClose && <ModalCloseButton zIndex={1} />}

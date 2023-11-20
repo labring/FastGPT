@@ -40,6 +40,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import ParentPaths from '@/components/common/ParentPaths';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -113,64 +114,34 @@ const Kb = () => {
     return Promise.all([loadDatasets(parentId), getDatasetPaths(parentId)]);
   });
 
-  const paths = useMemo(
-    () => [
-      {
-        parentId: '',
-        parentName: t('dataset.My Dataset')
-      },
-      ...(data?.[1] || [])
-    ],
-    [data, t]
-  );
+  const paths = data?.[1] || [];
 
   return (
     <PageContainer>
       <Flex pt={3} px={5} alignItems={'center'}>
         {/* url path */}
-        {!!parentId ? (
-          <Flex flex={1}>
-            {paths.map((item, i) => (
-              <Flex key={item.parentId} mr={2} alignItems={'center'}>
-                <Box
-                  fontSize={['sm', 'lg']}
-                  px={[0, 2]}
-                  py={1}
-                  borderRadius={'md'}
-                  {...(i === paths.length - 1
-                    ? {
-                        cursor: 'default'
-                      }
-                    : {
-                        cursor: 'pointer',
-                        _hover: {
-                          bg: 'myGray.100'
-                        },
-                        onClick: () => {
-                          router.push({
-                            query: {
-                              parentId: item.parentId
-                            }
-                          });
-                        }
-                      })}
-                >
-                  {item.parentName}
-                </Box>
-                {i !== paths.length - 1 && (
-                  <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={['18px', '24px']} />
-                )}
-              </Flex>
-            ))}
-          </Flex>
-        ) : (
-          <Flex flex={1} alignItems={'center'}>
-            <Image src={'/imgs/module/db.png'} alt={''} mr={2} h={'24px'} />
-            <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-              我的知识库
-            </Box>
-          </Flex>
-        )}
+        <ParentPaths
+          paths={paths.map((path, i) => ({
+            parentId: path.parentId,
+            parentName: path.parentName
+          }))}
+          FirstPathDom={
+            <Flex flex={1} alignItems={'center'}>
+              <Image src={'/imgs/module/db.png'} alt={''} mr={2} h={'24px'} />
+              <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
+                {t('dataset.My Dataset')}
+              </Box>
+            </Flex>
+          }
+          onClick={(e) => {
+            router.push({
+              query: {
+                parentId: e
+              }
+            });
+          }}
+        />
+        {/* create icon */}
         {userInfo?.team?.canWrite && (
           <MyMenu
             offset={[-30, 10]}
