@@ -1,6 +1,6 @@
 ---
-title: 'Api Key使用与鉴权'
-description: 'FastGPT Api Key使用与鉴权'
+title: 'Api Key 使用与鉴权'
+description: 'FastGPT Api Key 使用与鉴权'
 icon: 'key'
 draft: false
 toc: true
