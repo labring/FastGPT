@@ -39,7 +39,7 @@ const Tools = () => {
           }
         ]
       : []),
-    ...(feConfigs?.show_doc
+    ...(feConfigs?.docUrl
       ? [
           {
             icon: 'courseLight',

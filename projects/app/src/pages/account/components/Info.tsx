@@ -247,7 +247,7 @@ const UserInfo = () => {
             )}
           </Flex>
         </Box>
-        {feConfigs?.show_doc && (
+        {feConfigs?.docUrl && (
           <>
             <Flex
               mt={4}

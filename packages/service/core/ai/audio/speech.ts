@@ -10,8 +10,7 @@ export async function text2Speech({
   input,
   model = defaultAudioSpeechModels[0].model,
   voice,
-  speed = 1,
-  props
+  speed = 1
 }: {
   res: NextApiResponse;
   onSuccess: (e: { model: string; buffer: Buffer }) => void;
@@ -20,9 +19,8 @@ export async function text2Speech({
   model: string;
   voice: string;
   speed?: number;
-  props?: UserModelSchema['openaiAccount'];
 }) {
-  const ai = getAIApi(props);
+  const ai = getAIApi();
   const response = await ai.audio.speech.create({
     model,
     // @ts-ignore

@@ -66,7 +66,7 @@ const AIChatSettingsModal = ({
       title={
         <Flex alignItems={'flex-end'}>
           {t('app.AI Advanced Settings')}
-          {feConfigs?.show_doc && (
+          {feConfigs?.docUrl && (
             <Link
               href={`${feConfigs.docUrl}/docs/use-cases/ai_settings/`}
               target={'_blank'}

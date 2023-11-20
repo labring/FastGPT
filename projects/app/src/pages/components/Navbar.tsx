@@ -41,7 +41,7 @@ const Navbar = () => {
           }
         ]
       : []),
-    ...(feConfigs?.show_doc
+    ...(feConfigs?.docUrl
       ? [
           {
             label: t('home.Docs'),
