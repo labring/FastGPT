@@ -71,7 +71,7 @@ BATCH_UPDATE_INTERVAL=60
 
 ### 3. 修改 FastGPT 的环境变量
 
-有了 One API 令牌后，FastGPT 可以通过修改 baseurl 和 key 去请求到 One API，再由 One API 去请求不同的模型。修改下面两个环境变量：
+有了 One API 令牌后，FastGPT 可以通过修改 `baseurl` 和 `key` 去请求到 One API，再由 One API 去请求不同的模型。修改下面两个环境变量：
 
 ```bash
 # 下面的地址是 Sealos 提供的，务必写上 v1， 两个项目都在 sealos 部署时候，https://xxxx.cloud.sealos.io 可以改用内网地址
