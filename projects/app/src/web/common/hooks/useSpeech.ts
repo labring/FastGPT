@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { POST } from '../api/request';
 import { useToast } from './useToast';
 import { useTranslation } from 'next-i18next';
@@ -8,7 +8,8 @@ export const useSpeech = (props?: { shareId?: string }) => {
   const { shareId } = props || {};
   const { t } = useTranslation();
   const mediaRecorder = useRef<MediaRecorder>();
-  const mediaStream = useRef<MediaStream>();
+  // const mediaStream = useRef<MediaStream>();
+  const [mediaStream, setMediaStream] = useState<MediaStream>();
   const { toast } = useToast();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTransCription, setIsTransCription] = useState(false);
@@ -24,7 +25,7 @@ export const useSpeech = (props?: { shareId?: string }) => {
     return `${formattedMinutes}:${formattedSeconds}`;
   }, [audioSecond]);
 
-  const renderAudioGraph = (analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
+  const renderAudioGraph = useCallback((analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
     const bufferLength = analyser.frequencyBinCount;
     const backgroundColor = 'white';
     const dataArray = new Uint8Array(bufferLength);
@@ -47,12 +48,12 @@ export const useSpeech = (props?: { shareId?: string }) => {
       canvasCtx.fillRect(x, height - adjustedBarHeight, barWidth, adjustedBarHeight);
       x += barWidth + 1;
     }
-  };
+  }, []);
 
   const startSpeak = async (onFinish: (text: string) => void) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStream.current = stream;
+      setMediaStream(stream);
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       setIsSpeaking(true);
@@ -121,8 +122,8 @@ export const useSpeech = (props?: { shareId?: string }) => {
       if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
         mediaRecorder.current.stop();
       }
-      if (mediaStream.current) {
-        mediaStream.current.getTracks().forEach((track) => track.stop());
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -133,7 +134,7 @@ export const useSpeech = (props?: { shareId?: string }) => {
     isSpeaking,
     isTransCription,
     renderAudioGraph,
-    stream: mediaStream.current,
+    stream: mediaStream,
     speakingTimeString
   };
 };
