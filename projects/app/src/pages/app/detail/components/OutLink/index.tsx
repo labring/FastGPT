@@ -24,7 +24,7 @@ const OutLink = ({ appId }: { appId: string }) => {
           iconSize={'20px'}
           list={[
             {
-              icon: 'outlink_share',
+              icon: 'support/outlink/shareLight',
               title: '免登录窗口',
               desc: '分享链接给其他用户，无需登录即可直接进行使用',
               value: OutLinkTypeEnum.share
@@ -36,7 +36,7 @@ const OutLink = ({ appId }: { appId: string }) => {
               value: OutLinkTypeEnum.apikey
             }
             // {
-            //   icon: 'outlink_iframe',
+            //   icon: 'support/outlink/iframeLight',
             //   title: '网页嵌入',
             //   desc: '嵌入到已有网页中，右下角会生成对话按键',
             //   value: OutLinkTypeEnum.iframe

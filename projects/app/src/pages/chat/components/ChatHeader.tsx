@@ -55,7 +55,7 @@ const ChatHeader = ({
           </Tag>
           {!!chatModels && chatModels.length > 0 && (
             <Tag ml={2} colorSchema={'green'}>
-              <MyIcon name={'chatModelTag'} w={'14px'} />
+              <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
               <Box ml={1}>{chatModels.join(',')}</Box>
             </Tag>
           )}

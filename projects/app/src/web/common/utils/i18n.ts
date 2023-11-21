@@ -8,11 +8,11 @@ export enum LangEnum {
 export const langMap = {
   [LangEnum.en]: {
     label: 'English',
-    icon: 'language_en'
+    icon: 'common/language/en'
   },
   [LangEnum.zh]: {
     label: '简体中文',
-    icon: 'language_zh'
+    icon: 'common/language/zh'
   }
 };
 

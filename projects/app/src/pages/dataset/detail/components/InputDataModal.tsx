@@ -91,7 +91,7 @@ const InputDataModal = ({
     ...(defaultValue.id
       ? [{ label: t('dataset.data.edit.Delete'), id: TabEnum.delete, icon: 'delete' }]
       : []),
-    { label: t('dataset.data.edit.Course'), id: TabEnum.doc, icon: 'courseLight' }
+    { label: t('dataset.data.edit.Course'), id: TabEnum.doc, icon: 'common/courseLight' }
   ];
 
   const { ConfirmModal, openConfirm } = useConfirm({
@@ -352,7 +352,7 @@ const InputDataModal = ({
                     })
                   }
                 >
-                  <MyIcon name={'addCircle'} w={'16px'} />
+                  <MyIcon name={'common/addCircleLight'} w={'16px'} />
                   <Box>{t('dataset.data.Add Index')}</Box>
                 </Flex>
               </Grid>

@@ -123,7 +123,7 @@ const ModuleTemplateList = ({
               <Box fontSize={'sm'} transform={'translateY(-1px)'}>
                 {t('plugin.To Edit Plugin')}
               </Box>
-              <MyIcon name={'rightArrowLight'} w={'12px'} />
+              <MyIcon name={'common/rightArrowLight'} w={'12px'} />
             </Flex>
           )}
         </Flex>

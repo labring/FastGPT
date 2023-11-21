@@ -125,7 +125,12 @@ const Logs = ({ appId }: { appId: string }) => {
                         borderRadius={'lg'}
                         fontWeight={'bold'}
                       >
-                        <MyIcon mr={1} name={'badLight'} color={'#C96330'} w={'14px'} />
+                        <MyIcon
+                          mr={1}
+                          name={'core/chat/feedback/badLight'}
+                          color={'#C96330'}
+                          w={'14px'}
+                        />
                         {item.feedbackCount}
                       </Flex>
                     </Box>
@@ -254,7 +259,7 @@ function DetailLogsModal({
               </Tag>
               {!!chat?.app?.chatModels && (
                 <Tag ml={2} colorSchema={'green'}>
-                  <MyIcon name={'chatModelTag'} w={'14px'} />
+                  <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
                   <Box ml={1}>{chat.app.chatModels.join(',')}</Box>
                 </Tag>
               )}

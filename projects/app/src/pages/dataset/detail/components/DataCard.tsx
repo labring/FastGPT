@@ -147,7 +147,12 @@ const DataCard = () => {
         <Box flex={1} mr={1} />
         <MyInput
           leftIcon={
-            <MyIcon name="searchLight" position={'absolute'} w={'14px'} color={'myGray.500'} />
+            <MyIcon
+              name="common/searchLight"
+              position={'absolute'}
+              w={'14px'}
+              color={'myGray.500'}
+            />
           }
           w={['200px', '300px']}
           placeholder="根据匹配知识，预期答案和来源进行搜索"

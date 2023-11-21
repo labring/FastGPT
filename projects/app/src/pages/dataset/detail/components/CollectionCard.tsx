@@ -247,7 +247,12 @@ const CollectionCard = () => {
           <Flex alignItems={'center'} mr={2}>
             <MyInput
               leftIcon={
-                <MyIcon name="searchLight" position={'absolute'} w={'14px'} color={'myGray.500'} />
+                <MyIcon
+                  name="common/searchLight"
+                  position={'absolute'}
+                  w={'14px'}
+                  color={'myGray.500'}
+                />
               }
               w={['100%', '250px']}
               size={['sm', 'md']}
@@ -472,7 +477,7 @@ const CollectionCard = () => {
                         {
                           child: (
                             <Flex alignItems={'center'}>
-                              <MyIcon name={'moveLight'} w={'14px'} mr={2} />
+                              <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
                               {t('Move')}
                             </Flex>
                           ),
