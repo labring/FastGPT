@@ -6,7 +6,7 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
 import { TTSTypeEnum } from '@/constants/app';
-import { AppTTSConfigType } from '@/types/app';
+import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { audioSpeechModels } from '@/web/common/system/staticData';
 import MyModal from '@/components/MyModal';

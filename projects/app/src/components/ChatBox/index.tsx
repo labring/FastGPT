@@ -33,7 +33,7 @@ import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { VariableInputEnum } from '@/constants/app';
+import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import { useForm } from 'react-hook-form';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { fileDownload } from '@/web/common/file/utils';
@@ -59,8 +59,8 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 
 import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import { splitGuideModule } from '@/global/core/app/modules/utils';
-import { AppTTSConfigType } from '@/types/app';
+import { splitGuideModule } from '@fastgpt/global/core/module/utils';
+import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import MessageInput from './MessageInput';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 

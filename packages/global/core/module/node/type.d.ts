@@ -1,5 +1,6 @@
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './constant';
 import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
+import { SelectedDatasetType } from '../api';
 
 export type FlowNodeChangeProps = {
   moduleId: string;
@@ -51,4 +52,23 @@ export type FlowNodeOutputItemType = {
   valueType?: `${ModuleDataTypeEnum}`;
   type?: `${FlowNodeOutputTypeEnum}`;
   targets: FlowNodeOutputTargetItemType[];
+};
+
+/* ------------- item type --------------- */
+/* ai chat modules props */
+export type AIChatModuleProps = {
+  [ModuleInputKeyEnum.aiModel]: string;
+  [ModuleInputKeyEnum.aiSystemPrompt]?: string;
+  [ModuleInputKeyEnum.aiChatTemperature]: number;
+  [ModuleInputKeyEnum.aiChatMaxToken]: number;
+  [ModuleInputKeyEnum.aiChatIsResponseText]: boolean;
+  [ModuleInputKeyEnum.aiChatQuoteTemplate]?: string;
+  [ModuleInputKeyEnum.aiChatQuotePrompt]?: string;
+};
+
+export type DatasetModuleProps = {
+  [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [ModuleInputKeyEnum.datasetSimilarity]: number;
+  [ModuleInputKeyEnum.datasetLimit]: number;
+  [ModuleInputKeyEnum.datasetStartReRank]: boolean;
 };

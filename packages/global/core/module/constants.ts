@@ -76,3 +76,8 @@ export enum ModuleOutputKeyEnum {
   // context extract
   contextExtractFields = 'fields'
 }
+
+export enum VariableInputEnum {
+  input = 'input',
+  select = 'select'
+}

@@ -12,7 +12,7 @@ export const appTemplates: (AppItemType & {
     avatar: '/imgs/module/AI.png',
     name: '简单的对话',
     intro: '一个极其简单的 AI 对话应用',
-    type: AppTypeEnum.basic,
+    type: AppTypeEnum.simple,
     modules: [
       {
         moduleId: 'userGuide',
@@ -229,7 +229,7 @@ export const appTemplates: (AppItemType & {
     avatar: '/imgs/module/db.png',
     name: '知识库 + 对话引导',
     intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
-    type: AppTypeEnum.basic,
+    type: AppTypeEnum.simple,
     modules: [
       {
         moduleId: 'userGuide',
@@ -595,7 +595,7 @@ export const appTemplates: (AppItemType & {
     avatar: '/imgs/module/userGuide.png',
     name: '对话引导 + 变量',
     intro: '可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量',
-    type: AppTypeEnum.basic,
+    type: AppTypeEnum.simple,
     modules: [
       {
         moduleId: 'userGuide',

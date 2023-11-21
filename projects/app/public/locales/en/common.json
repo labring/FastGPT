@@ -231,6 +231,9 @@
         "Test Listen": "Test",
         "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
         "Web": "Browser (free)"
+      },
+      "simple": {
+        "mode template select": "Template"
       }
     },
     "chat": {
@@ -259,6 +262,23 @@
       "data": {
         "Edit": "Edit Data",
         "id": "Data ID"
+      }
+    },
+    "modules": {
+      "input": {
+        "label": {
+          "chat history": "",
+          "switch": "",
+          "user question": ""
+        }
+      },
+      "output": {
+        "description": {
+          "running done": ""
+        },
+        "label": {
+          "running done": ""
+        }
       }
     }
   },

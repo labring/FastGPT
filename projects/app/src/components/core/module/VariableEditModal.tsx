@@ -18,8 +18,8 @@ import {
   useTheme
 } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { VariableInputEnum } from '@/constants/app';
-import type { VariableItemType } from '@/types/app';
+import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
+import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import MyIcon from '@/components/Icon';
 import { useForm } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';

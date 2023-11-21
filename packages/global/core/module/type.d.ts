@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from './node/constant';
-import { ModuleDataTypeEnum } from './constants';
+import { ModuleDataTypeEnum, VariableInputEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
@@ -38,6 +38,24 @@ export type ModuleItemType = {
 };
 
 /* function type */
+// variable
+export type VariableItemType = {
+  id: string;
+  key: string;
+  label: string;
+  type: `${VariableInputEnum}`;
+  required: boolean;
+  maxLen: number;
+  enums: { value: string }[];
+};
+// tts
+export type AppTTSConfigType = {
+  type: 'none' | 'web' | 'model';
+  model?: string;
+  voice?: string;
+  speed?: number;
+};
+
 export type SelectAppItemType = {
   id: string;
   name: string;

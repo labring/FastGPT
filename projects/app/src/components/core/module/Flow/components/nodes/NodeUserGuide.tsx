@@ -25,10 +25,10 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
 import NodeCard from '../modules/NodeCard';
-import { VariableItemType } from '@/types/app';
+import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import QGSwitch from '@/pages/app/detail/components/QGSwitch';
 import TTSSelect from '@/pages/app/detail/components/TTSSelect';
-import { splitGuideModule } from '@/global/core/app/modules/utils';
+import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 
 const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
   const theme = useTheme();

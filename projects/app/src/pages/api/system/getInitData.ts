@@ -1,7 +1,7 @@
 import type { FeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types/index.d';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import type { ConfigFileType, InitDateResponse } from '@/global/common/api/systemRes';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
@@ -16,10 +16,10 @@ import {
   defaultAudioSpeechModels,
   defaultWhisperModel
 } from '@fastgpt/global/core/ai/model';
+import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   getInitConfig();
-  getModelPrice();
 
   jsonRes<InitDateResponse>(res, {
     data: {
@@ -35,7 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         key: undefined
       })),
       priceMd: global.priceMd,
-      systemVersion: global.systemVersion || '0.0.0'
+      systemVersion: global.systemVersion || '0.0.0',
+      simpleModeTemplates: global.simpleModeTemplates
     }
   });
 }
@@ -60,27 +61,20 @@ const defaultFeConfigs: FeConfigsType = {
   favicon: '/favicon.ico'
 };
 
-export function initGlobal() {
-  // init tikToken
-  getTikTokenEnc();
-  initHttpAgent();
-  global.qaQueueLen = 0;
-  global.vectorQueueLen = 0;
-}
-
 export function getInitConfig() {
   try {
     if (global.feConfigs) return;
-
-    getSystemVersion();
+    initGlobal();
 
     const filename =
       process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
     const res = JSON.parse(readFileSync(filename, 'utf-8')) as ConfigFileType;
 
-    console.log(`System Version: ${global.systemVersion}`);
-
     setDefaultData(res);
+
+    getSystemVersion();
+    getSimpleModeTemplates();
+    getModelPrice();
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);
@@ -116,11 +110,12 @@ export function getSystemVersion() {
   try {
     if (process.env.NODE_ENV === 'development') {
       global.systemVersion = process.env.npm_package_version || '0.0.0';
-      return;
-    }
-    const packageJson = JSON.parse(readFileSync('/app/package.json', 'utf-8'));
+    } else {
+      const packageJson = JSON.parse(readFileSync('/app/package.json', 'utf-8'));
 
-    global.systemVersion = packageJson?.version;
+      global.systemVersion = packageJson?.version;
+    }
+    console.log(`System Version: ${global.systemVersion}`);
   } catch (error) {
     console.log(error);
 
@@ -156,4 +151,38 @@ ${global.audioSpeechModels
 ${`| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`}
 `;
   console.log(global.priceMd);
+}
+
+function getSimpleModeTemplates() {
+  if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
+
+  const basePath =
+    process.env.NODE_ENV === 'development'
+      ? 'public/simpleTemplates'
+      : '/app/packages/app/public/simpleTemplates';
+  // read data/simpleTemplates directory, get all json file
+  const files = readdirSync(basePath);
+  // 只要json文件
+  const filterFiles = files.filter((item) => item.endsWith('.json'));
+
+  // 读取文件内容
+  const fileContents = filterFiles.map((item) => {
+    const content = readFileSync(`${basePath}/${item}`, 'utf-8');
+    return {
+      id: item.replace('.json', ''),
+      ...JSON.parse(content)
+    };
+  });
+
+  global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal, ...fileContents];
+  console.log('simple mode templates: ');
+  console.log(global.simpleModeTemplates);
+}
+
+export function initGlobal() {
+  // init tikToken
+  getTikTokenEnc();
+  initHttpAgent();
+  global.qaQueueLen = global.qaQueueLen ?? 0;
+  global.vectorQueueLen = global.vectorQueueLen ?? 0;
 }

@@ -14,7 +14,7 @@ import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { countMessagesTokens, sliceMessagesTB } from '@fastgpt/global/common/string/tiktoken';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
-import type { AIChatProps } from '@/types/core/aiChat';
+import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
@@ -24,7 +24,7 @@ import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export type ChatProps = ModuleDispatchProps<
-  AIChatProps & {
+  AIChatModuleProps & {
     [ModuleInputKeyEnum.userChatInput]: string;
     [ModuleInputKeyEnum.history]?: ChatItemType[];
     [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];

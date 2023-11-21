@@ -28,13 +28,10 @@ import { feConfigs } from '@/web/common/system/staticData';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import EmptyTip from '@/components/EmptyTip';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
-export type KbParamsType = {
-  searchSimilarity: number;
-  searchLimit: number;
-  searchEmptyText: string;
-  rerank: boolean;
-};
+type DatasetParamsProps = AppSimpleEditFormType['dataset'];
 
 export const DatasetSelectModal = ({
   isOpen,
@@ -226,18 +223,18 @@ export const DatasetSelectModal = ({
 
 export const DatasetParamsModal = ({
   searchEmptyText,
-  searchLimit,
-  searchSimilarity,
+  limit,
+  similarity,
   rerank,
   onClose,
   onChange
-}: KbParamsType & { onClose: () => void; onChange: (e: KbParamsType) => void }) => {
+}: DatasetParamsProps & { onClose: () => void; onChange: (e: DatasetParamsProps) => void }) => {
   const [refresh, setRefresh] = useState(false);
-  const { register, setValue, getValues, handleSubmit } = useForm<KbParamsType>({
+  const { register, setValue, getValues, handleSubmit } = useForm<DatasetParamsProps>({
     defaultValues: {
       searchEmptyText,
-      searchLimit,
-      searchSimilarity,
+      limit,
+      similarity,
       rerank
     }
   });
@@ -256,9 +253,9 @@ export const DatasetParamsModal = ({
               </Box>
               <Switch
                 size={'lg'}
-                isChecked={getValues('rerank')}
+                isChecked={getValues(ModuleInputKeyEnum.datasetStartReRank)}
                 onChange={(e) => {
-                  setValue('rerank', e.target.checked);
+                  setValue(ModuleInputKeyEnum.datasetStartReRank, e.target.checked);
                   setRefresh(!refresh);
                 }}
               />
@@ -282,9 +279,9 @@ export const DatasetParamsModal = ({
               min={0}
               max={1}
               step={0.01}
-              value={getValues('searchSimilarity')}
+              value={getValues(ModuleInputKeyEnum.datasetSimilarity)}
               onChange={(val) => {
-                setValue('searchSimilarity', val);
+                setValue(ModuleInputKeyEnum.datasetSimilarity, val);
                 setRefresh(!refresh);
               }}
             />
@@ -301,9 +298,9 @@ export const DatasetParamsModal = ({
                 ]}
                 min={1}
                 max={20}
-                value={getValues('searchLimit')}
+                value={getValues(ModuleInputKeyEnum.datasetLimit)}
                 onChange={(val) => {
-                  setValue('searchLimit', val);
+                  setValue(ModuleInputKeyEnum.datasetLimit, val);
                   setRefresh(!refresh);
                 }}
               />

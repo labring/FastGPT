@@ -16,7 +16,7 @@
   "app": {
     "AI Advanced Settings": "AI 高级配置",
     "AI Settings": "AI 配置",
-    "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
+    "Advance App TestTip": "当前应用可能为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
     "Basic Settings": "基本信息",
     "Chat Debug": "调试预览",
@@ -222,6 +222,9 @@
       "Select TTS": "选择语音播放模式",
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
+      "simple": {
+        "mode template select": "简易模板"
+      },
       "tts": {
         "Close": "不使用",
         "Model alloy": "女声 - Alloy",
@@ -264,17 +267,17 @@
     "modules": {
       "input": {
         "label": {
-          "switch": "触发器",
           "chat history": "聊天记录",
+          "switch": "触发器",
           "user question": "用户问题"
         }
       },
       "output": {
-        "label": {
-          "running done": "模块调用结束"
-        },
         "description": {
           "running done": "模块调用结束时触发"
+        },
+        "label": {
+          "running done": "模块调用结束"
         }
       }
     }

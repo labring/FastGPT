@@ -26,11 +26,6 @@ export const defaultOutLinkForm: OutLinkEditType = {
   }
 };
 
-export enum VariableInputEnum {
-  input = 'input',
-  select = 'select'
-}
-
 export enum TTSTypeEnum {
   none = 'none',
   web = 'web',

@@ -15,23 +15,20 @@ import {
   TableContainer,
   useDisclosure,
   Button,
-  IconButton
+  IconButton,
+  Image
 } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  appModules2Form,
-  getDefaultAppForm,
-  appForm2Modules,
-  type EditFormType
-} from '@/web/core/app/basicSettings';
-import { chatModelList } from '@/web/common/system/staticData';
+import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
+import { chatModelList, simpleModeTemplates } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
-import { VariableItemType } from '@/types/app';
+import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
@@ -42,15 +39,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'next-i18next';
-import { getGuideModule } from '@/global/core/app/modules/utils';
-
-import dynamic from 'next/dynamic';
-import MySelect from '@/components/Select';
-import MyTooltip from '@/components/MyTooltip';
-import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
-import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-
+import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { addVariable } from '@/components/core/module/VariableEditModal';
 import { DatasetParamsModal } from '@/components/core/module/DatasetSelectModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -61,6 +50,15 @@ import QGSwitch from '../QGSwitch';
 import TTSSelect from '../TTSSelect';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import { useSticky } from '@/web/common/hooks/useSticky';
+import { postForm2Modules } from '@/web/core/app/utils';
+
+import dynamic from 'next/dynamic';
+import MySelect from '@/components/Select';
+import MyTooltip from '@/components/MyTooltip';
+import Avatar from '@/components/Avatar';
+import MyIcon from '@/components/Icon';
+import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 
 const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
@@ -84,9 +82,10 @@ function ConfigForm({
   const [editVariable, setEditVariable] = useState<VariableItemType>();
   const [refresh, setRefresh] = useState(false);
 
-  const { register, setValue, getValues, reset, handleSubmit, control } = useForm<EditFormType>({
-    defaultValues: getDefaultAppForm()
-  });
+  const { register, setValue, getValues, reset, handleSubmit, control } =
+    useForm<AppSimpleEditFormType>({
+      defaultValues: getDefaultAppForm()
+    });
 
   const {
     fields: variables,
@@ -95,11 +94,11 @@ function ConfigForm({
     replace: replaceVariables
   } = useFieldArray({
     control,
-    name: 'variables'
+    name: 'userGuide.variables'
   });
   const { fields: datasets, replace: replaceKbList } = useFieldArray({
     control,
-    name: 'dataset.list'
+    name: 'dataset.datasets'
   });
 
   const {
@@ -120,7 +119,7 @@ function ConfigForm({
 
   const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
     content: t('app.Confirm Save App Tip'),
-    bg: appDetail.type === AppTypeEnum.basic ? '' : 'red.600'
+    bg: appDetail.type === AppTypeEnum.simple ? '' : 'red.600'
   });
 
   const chatModelSelectList = useMemo(() => {
@@ -135,13 +134,21 @@ function ConfigForm({
     [allDatasets, datasets]
   );
 
+  const selectSimpleTemplate = useMemo(
+    () =>
+      simpleModeTemplates?.find((item) => item.id === getValues('templateId')) ||
+      SimpleModeTemplate_FastGPT_Universal,
+    [getValues, refresh]
+  );
+
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
-    mutationFn: async (data: EditFormType) => {
-      const modules = appForm2Modules(data);
+    mutationFn: async (data: AppSimpleEditFormType) => {
+      const modules = await postForm2Modules(data, data.templateId);
 
       await updateAppDetail(appDetail._id, {
         modules,
-        type: AppTypeEnum.basic,
+        type: AppTypeEnum.simple,
+        simpleTemplateId: data.templateId,
         permission: undefined
       });
     },
@@ -150,18 +157,20 @@ function ConfigForm({
   });
 
   const appModule2Form = useCallback(() => {
-    const formVal = appModules2Form(appDetail.modules);
+    const formVal = appModules2Form({
+      templateId: appDetail.simpleTemplateId,
+      modules: appDetail.modules
+    });
     reset(formVal);
     setTimeout(() => {
       setRefresh((state) => !state);
     }, 100);
-  }, [appDetail.modules, reset]);
-
-  useQuery(['loadAllDatasets'], loadAllDatasets);
+  }, [appDetail.modules, appDetail.simpleTemplateId, reset]);
 
   useEffect(() => {
     appModule2Form();
   }, [appModule2Form]);
+  useQuery(['loadAllDatasets'], loadAllDatasets);
 
   const BoxStyles: BoxProps = {
     bg: 'myWhite.200',
@@ -213,9 +222,9 @@ function ConfigForm({
           isLoading={isSaving}
           fontSize={'sm'}
           size={['sm', 'md']}
-          variant={appDetail.type === AppTypeEnum.basic ? 'primary' : 'base'}
+          variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'base'}
           onClick={() => {
-            if (appDetail.type !== AppTypeEnum.basic) {
+            if (appDetail.type !== AppTypeEnum.simple) {
               openConfirmSave(handleSubmit((data) => onSubmitSave(data)))();
             } else {
               handleSubmit((data) => onSubmitSave(data))();
@@ -227,213 +236,264 @@ function ConfigForm({
       </Flex>
 
       <Box px={4}>
-        {/* welcome */}
-        <Box {...BoxStyles}>
-          <Flex alignItems={'center'}>
-            <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
-            <Box mx={2}>对话开场白</Box>
-            <MyTooltip label={welcomeTextTip} forceShow>
-              <QuestionOutlineIcon />
-            </MyTooltip>
+        {/* simple mode select */}
+        <Flex {...BoxStyles}>
+          <Flex alignItems={'center'} flex={'1 0 0'}>
+            <Image alt={''} src={'/imgs/module/templates.png'} w={'18px'} />
+            <Box mx={2}>{t('core.app.simple.mode template select')}</Box>
           </Flex>
-          <Textarea
-            mt={2}
-            rows={5}
-            placeholder={welcomeTextTip}
-            borderColor={'myGray.100'}
-            {...register('guide.welcome.text')}
+          <MySelect
+            w={['200px', '250px']}
+            list={
+              simpleModeTemplates?.map((item) => ({
+                alias: item.name,
+                label: item.desc,
+                value: item.id
+              })) || []
+            }
+            value={getValues('templateId')}
+            onchange={(val) => {
+              setValue('templateId', val);
+              setRefresh(!refresh);
+            }}
           />
-        </Box>
+        </Flex>
+
+        {/* welcome */}
+        {selectSimpleTemplate?.systemForm?.userGuide?.welcomeText && (
+          <Box {...BoxStyles} mt={2}>
+            <Flex alignItems={'center'}>
+              <Image alt={''} src={'/imgs/module/userGuide.png'} w={'18px'} />
+              <Box mx={2}>对话开场白</Box>
+              <MyTooltip label={welcomeTextTip} forceShow>
+                <QuestionOutlineIcon />
+              </MyTooltip>
+            </Flex>
+            <Textarea
+              mt={2}
+              rows={5}
+              placeholder={welcomeTextTip}
+              borderColor={'myGray.100'}
+              {...register('userGuide.welcomeText')}
+            />
+          </Box>
+        )}
 
         {/* variable */}
-        <Box mt={2} {...BoxStyles}>
-          <Flex alignItems={'center'}>
-            <Avatar src={'/imgs/module/variable.png'} objectFit={'contain'} w={'18px'} />
-            <Box ml={2} flex={1}>
-              变量
-            </Box>
-            <Flex {...BoxBtnStyles} onClick={() => setEditVariable(addVariable())}>
-              +&ensp;新增
+        {selectSimpleTemplate?.systemForm?.userGuide?.variables && (
+          <Box mt={2} {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <Image alt={''} src={'/imgs/module/variable.png'} objectFit={'contain'} w={'18px'} />
+              <Box ml={2} flex={1}>
+                变量
+              </Box>
+              <Flex {...BoxBtnStyles} onClick={() => setEditVariable(addVariable())}>
+                +&ensp;新增
+              </Flex>
             </Flex>
-          </Flex>
-          {variables.length > 0 && (
-            <Box
-              mt={2}
-              borderRadius={'lg'}
-              overflow={'hidden'}
-              borderWidth={'1px'}
-              borderBottom="none"
-            >
-              <TableContainer>
-                <Table bg={'white'}>
-                  <Thead>
-                    <Tr>
-                      <Th>变量名</Th>
-                      <Th>变量 key</Th>
-                      <Th>必填</Th>
-                      <Th></Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {variables.map((item, index) => (
-                      <Tr key={item.id}>
-                        <Td>{item.label} </Td>
-                        <Td>{item.key}</Td>
-                        <Td>{item.required ? '✔' : ''}</Td>
-                        <Td>
-                          <MyIcon
-                            mr={3}
-                            name={'settingLight'}
-                            w={'16px'}
-                            cursor={'pointer'}
-                            onClick={() => setEditVariable(item)}
-                          />
-                          <MyIcon
-                            name={'delete'}
-                            w={'16px'}
-                            cursor={'pointer'}
-                            onClick={() => removeVariable(index)}
-                          />
-                        </Td>
+            {variables.length > 0 && (
+              <Box
+                mt={2}
+                borderRadius={'lg'}
+                overflow={'hidden'}
+                borderWidth={'1px'}
+                borderBottom="none"
+              >
+                <TableContainer>
+                  <Table bg={'white'}>
+                    <Thead>
+                      <Tr>
+                        <Th>变量名</Th>
+                        <Th>变量 key</Th>
+                        <Th>必填</Th>
+                        <Th></Th>
                       </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-        </Box>
+                    </Thead>
+                    <Tbody>
+                      {variables.map((item, index) => (
+                        <Tr key={item.id}>
+                          <Td>{item.label} </Td>
+                          <Td>{item.key}</Td>
+                          <Td>{item.required ? '✔' : ''}</Td>
+                          <Td>
+                            <MyIcon
+                              mr={3}
+                              name={'settingLight'}
+                              w={'16px'}
+                              cursor={'pointer'}
+                              onClick={() => setEditVariable(item)}
+                            />
+                            <MyIcon
+                              name={'delete'}
+                              w={'16px'}
+                              cursor={'pointer'}
+                              onClick={() => removeVariable(index)}
+                            />
+                          </Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </Box>
+        )}
 
         {/* ai */}
-        <Box mt={5} {...BoxStyles}>
-          <Flex alignItems={'center'}>
-            <Avatar src={'/imgs/module/AI.png'} w={'18px'} />
-            <Box ml={2} flex={1}>
-              {t('app.AI Settings')}
-            </Box>
-            <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
-              <MyIcon mr={1} name={'settingLight'} w={'14px'} />
-              {t('app.Open AI Advanced Settings')}
+        {selectSimpleTemplate?.systemForm?.aiSettings && (
+          <Box mt={5} {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <Image alt={''} src={'/imgs/module/AI.png'} w={'18px'} />
+              <Box ml={2} flex={1}>
+                {t('app.AI Settings')}
+              </Box>
+              {(selectSimpleTemplate.systemForm.aiSettings.maxToken ||
+                selectSimpleTemplate.systemForm.aiSettings.temperature ||
+                selectSimpleTemplate.systemForm.aiSettings.quoteTemplate ||
+                selectSimpleTemplate.systemForm.aiSettings.quotePrompt) && (
+                <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
+                  <MyIcon mr={1} name={'settingLight'} w={'14px'} />
+                  {t('app.Open AI Advanced Settings')}
+                </Flex>
+              )}
             </Flex>
-          </Flex>
+            {selectSimpleTemplate.systemForm.aiSettings?.model && (
+              <Flex alignItems={'center'} mt={5}>
+                <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
+                <Box flex={'1 0 0'}>
+                  <MySelect
+                    width={'100%'}
+                    value={getValues(`aiSettings.model`)}
+                    list={chatModelSelectList}
+                    onchange={(val: any) => {
+                      setValue('aiSettings.model', val);
+                      const maxToken =
+                        chatModelList.find((item) => item.model === getValues('aiSettings.model'))
+                          ?.maxResponse || 4000;
+                      const token = maxToken / 2;
+                      setValue('aiSettings.maxToken', token);
+                      setRefresh(!refresh);
+                    }}
+                  />
+                </Box>
+              </Flex>
+            )}
 
-          <Flex alignItems={'center'} mt={5}>
-            <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
-            <Box flex={'1 0 0'}>
-              <MySelect
-                width={'100%'}
-                value={getValues('chatModel.model')}
-                list={chatModelSelectList}
-                onchange={(val: any) => {
-                  setValue('chatModel.model', val);
-                  const maxToken =
-                    chatModelList.find((item) => item.model === getValues('chatModel.model'))
-                      ?.maxResponse || 4000;
-                  const token = maxToken / 2;
-                  setValue('chatModel.maxToken', token);
-                  setRefresh(!refresh);
-                }}
-              />
-            </Box>
-          </Flex>
-          <Flex mt={10} alignItems={'flex-start'}>
-            <Box {...LabelStyles}>
-              {t('core.ai.Prompt')}
-              <MyTooltip label={chatNodeSystemPromptTip} forceShow>
-                <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-              </MyTooltip>
-            </Box>
-            <Textarea
-              rows={5}
-              minH={'60px'}
-              placeholder={chatNodeSystemPromptTip}
-              borderColor={'myGray.100'}
-              {...register('chatModel.systemPrompt')}
-            ></Textarea>
-          </Flex>
-        </Box>
+            {selectSimpleTemplate.systemForm.aiSettings?.systemPrompt && (
+              <Flex mt={10} alignItems={'flex-start'}>
+                <Box {...LabelStyles}>
+                  {t('core.ai.Prompt')}
+                  <MyTooltip label={chatNodeSystemPromptTip} forceShow>
+                    <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+                  </MyTooltip>
+                </Box>
+                <Textarea
+                  rows={5}
+                  minH={'60px'}
+                  placeholder={chatNodeSystemPromptTip}
+                  borderColor={'myGray.100'}
+                  {...register('aiSettings.systemPrompt')}
+                ></Textarea>
+              </Flex>
+            )}
+          </Box>
+        )}
 
         {/* dataset */}
-        <Box mt={5} {...BoxStyles}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={1}>
-              <Avatar src={'/imgs/module/db.png'} w={'18px'} />
-              <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
-            </Flex>
-            <Flex alignItems={'center'} mr={3} {...BoxBtnStyles} onClick={onOpenKbSelect}>
-              <SmallAddIcon />
-              {t('common.Choose')}
-            </Flex>
-            <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbParams}>
-              <MyIcon name={'edit'} w={'14px'} mr={1} />
-              {t('common.Params')}
-            </Flex>
-          </Flex>
-          <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-            {t('core.dataset.Similarity')}: {getValues('dataset.searchSimilarity')},{' '}
-            {t('core.dataset.Search Top K')}: {getValues('dataset.searchLimit')}
-            {getValues('dataset.searchEmptyText') === ''
-              ? ''
-              : t('core.dataset.Set Empty Result Tip')}
-          </Flex>
-          <Grid
-            gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
-            my={2}
-            gridGap={[2, 4]}
-          >
-            {selectDatasets.map((item) => (
-              <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
-                <Flex
-                  overflow={'hidden'}
-                  alignItems={'center'}
-                  p={2}
-                  bg={'white'}
-                  boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                  borderRadius={'md'}
-                  border={theme.borders.base}
-                  cursor={'pointer'}
-                  onClick={() =>
-                    router.push({
-                      pathname: '/dataset/detail',
-                      query: {
-                        datasetId: item._id
-                      }
-                    })
-                  }
-                >
-                  <Avatar src={item.avatar} w={'18px'} mr={1} />
-                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
-                    {item.name}
-                  </Box>
+        {selectSimpleTemplate?.systemForm?.dataset && (
+          <Box mt={5} {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <Flex alignItems={'center'} flex={1}>
+                <Image alt={''} src={'/imgs/module/db.png'} w={'18px'} />
+                <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
+              </Flex>
+              {selectSimpleTemplate.systemForm.dataset.datasets && (
+                <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbSelect}>
+                  <SmallAddIcon />
+                  {t('common.Choose')}
                 </Flex>
-              </MyTooltip>
-            ))}
-          </Grid>
-        </Box>
+              )}
+              {(selectSimpleTemplate.systemForm.dataset.limit ||
+                selectSimpleTemplate.systemForm.dataset.rerank ||
+                selectSimpleTemplate.systemForm.dataset.searchEmptyText ||
+                selectSimpleTemplate.systemForm.dataset.similarity) && (
+                <Flex alignItems={'center'} ml={3} {...BoxBtnStyles} onClick={onOpenKbParams}>
+                  <MyIcon name={'edit'} w={'14px'} mr={1} />
+                  {t('common.Params')}
+                </Flex>
+              )}
+            </Flex>
+            <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
+              {t('core.dataset.Similarity')}: {getValues('dataset.similarity')},{' '}
+              {t('core.dataset.Search Top K')}: {getValues('dataset.limit')}
+              {getValues('dataset.searchEmptyText') === ''
+                ? ''
+                : t('core.dataset.Set Empty Result Tip')}
+            </Flex>
+            <Grid
+              gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
+              my={2}
+              gridGap={[2, 4]}
+            >
+              {selectDatasets.map((item) => (
+                <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
+                  <Flex
+                    overflow={'hidden'}
+                    alignItems={'center'}
+                    p={2}
+                    bg={'white'}
+                    boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                    borderRadius={'md'}
+                    border={theme.borders.base}
+                    cursor={'pointer'}
+                    onClick={() =>
+                      router.push({
+                        pathname: '/dataset/detail',
+                        query: {
+                          datasetId: item._id
+                        }
+                      })
+                    }
+                  >
+                    <Image alt={''} src={item.avatar} w={'18px'} mr={1} />
+                    <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                      {item.name}
+                    </Box>
+                  </Flex>
+                </MyTooltip>
+              ))}
+            </Grid>
+          </Box>
+        )}
 
         {/* tts */}
-        <Box mt={5} {...BoxStyles}>
-          <TTSSelect
-            value={getValues('tts')}
-            onChange={(e) => {
-              setValue('tts', e);
-              setRefresh((state) => !state);
-            }}
-          />
-        </Box>
+        {selectSimpleTemplate?.systemForm?.userGuide?.tts && (
+          <Box mt={5} {...BoxStyles}>
+            <TTSSelect
+              value={getValues('userGuide.tts')}
+              onChange={(e) => {
+                setValue('userGuide.tts', e);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
+        )}
 
-        {/* whisper */}
-        <Box mt={5} {...BoxStyles}>
-          <QGSwitch
-            isChecked={getValues('questionGuide')}
-            size={'lg'}
-            onChange={(e) => {
-              const value = e.target.checked;
-              setValue('questionGuide', value);
-              setRefresh((state) => !state);
-            }}
-          />
-        </Box>
+        {/* question guide */}
+        {selectSimpleTemplate?.systemForm?.userGuide?.questionGuide && (
+          <Box mt={5} {...BoxStyles}>
+            <QGSwitch
+              isChecked={getValues('userGuide.questionGuide')}
+              size={'lg'}
+              onChange={(e) => {
+                const value = e.target.checked;
+                setValue('userGuide.questionGuide', value);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
+        )}
       </Box>
 
       <ConfirmSaveModal />
@@ -466,10 +526,11 @@ function ConfigForm({
         <AIChatSettingsModal
           onClose={onCloseAIChatSetting}
           onSuccess={(e) => {
-            setValue('chatModel', e);
+            setValue('aiSettings', e);
             onCloseAIChatSetting();
           }}
-          defaultData={getValues('chatModel')}
+          defaultData={getValues('aiSettings')}
+          simpleModeTemplate={selectSimpleTemplate}
         />
       )}
       {isOpenDatasetSelect && (
@@ -689,9 +750,8 @@ function ChatTest({ appId }: { appId: string }) {
   }, []);
 
   useEffect(() => {
-    const formVal = appModules2Form(appDetail.modules);
-    setModules(appForm2Modules(formVal));
     resetChatBox();
+    setModules(appDetail.modules);
   }, [appDetail, resetChatBox]);
 
   return (
@@ -727,7 +787,7 @@ function ChatTest({ appId }: { appId: string }) {
           onDelMessage={() => {}}
         />
       </Box>
-      {appDetail.type !== AppTypeEnum.basic && (
+      {appDetail.type !== AppTypeEnum.simple && (
         <Flex
           position={'absolute'}
           top={0}
@@ -750,7 +810,7 @@ function ChatTest({ appId }: { appId: string }) {
   );
 }
 
-const BasicEdit = ({ appId }: { appId: string }) => {
+const SimpleEdit = ({ appId }: { appId: string }) => {
   const { isPc } = useSystemStore();
   return (
     <Grid gridTemplateColumns={['1fr', '550px 1fr']} h={'100%'}>
@@ -760,4 +820,4 @@ const BasicEdit = ({ appId }: { appId: string }) => {
   );
 };
 
-export default BasicEdit;
+export default SimpleEdit;

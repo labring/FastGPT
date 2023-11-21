@@ -10,7 +10,8 @@ import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, avatar, type, intro, modules, permission } = req.body as AppUpdateParams;
+    const { name, avatar, type, simpleTemplateId, intro, modules, permission } =
+      req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
     if (!appId) {
@@ -28,6 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       {
         name,
         type,
+        simpleTemplateId,
         avatar,
         intro,
         permission,

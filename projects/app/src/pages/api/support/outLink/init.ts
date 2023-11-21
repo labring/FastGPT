@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import type { InitShareChatResponse } from '@fastgpt/global/support/outLink/api.d';
 import { HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
-import { getGuideModule } from '@/global/core/app/modules/utils';
+import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { authShareChatInit } from '@/service/support/outLink/auth';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/auth/outLink';

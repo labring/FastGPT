@@ -5,7 +5,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import type { InitChatResponse } from '@fastgpt/global/core/chat/api.d';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { getGuideModule } from '@/global/core/app/modules/utils';
+import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
 import { authChat } from '@fastgpt/service/support/permission/auth/chat';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';

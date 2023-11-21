@@ -28,7 +28,7 @@ import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
-import { AIChatProps } from '@/types/core/aiChat';
+import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
 import { chatModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -379,7 +379,7 @@ var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderP
     inputs.forEach((item) => {
       obj[item.key] = item.value;
     });
-    return obj as AIChatProps;
+    return obj as AIChatModuleProps;
   }, [inputs]);
 
   const {
