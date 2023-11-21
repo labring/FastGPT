@@ -53,13 +53,14 @@ export const Label = React.memo(function Label({
   inputKey: string;
   editFiledType?: EditFieldModeType;
 }) {
+  const { t } = useTranslation();
   const { required = false, description, edit, label, type, valueType } = item;
   const [editField, setEditField] = useState<EditFieldType>();
 
   return (
     <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
       <Box position={'relative'}>
-        {label}
+        {t(label)}
         {description && (
           <MyTooltip label={description} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
@@ -209,9 +210,6 @@ const RenderInput = ({
                 )}
                 {item.type === FlowNodeInputTypeEnum.aiSettings && (
                   <AISetting inputs={sortInputs} item={item} moduleId={moduleId} />
-                )}
-                {item.type === FlowNodeInputTypeEnum.maxToken && (
-                  <MaxTokenRender inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowNodeInputTypeEnum.selectChatModel && (
                   <SelectChatModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
@@ -424,44 +422,6 @@ var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderP
         />
       )}
     </>
-  );
-});
-
-var MaxTokenRender = React.memo(function MaxTokenRender({
-  inputs = [],
-  item,
-  moduleId
-}: RenderProps) {
-  const model = inputs.find((item) => item.key === 'model')?.value;
-  const modelData = chatModelList.find((item) => item.model === model);
-  const maxToken = modelData ? modelData.maxResponse : 4000;
-  const markList = [
-    { label: '100', value: 100 },
-    { label: `${maxToken}`, value: maxToken }
-  ];
-
-  return (
-    <Box pt={5} pb={4} px={2}>
-      <MySlider
-        markList={markList}
-        width={'100%'}
-        min={item.min || 100}
-        max={maxToken}
-        step={item.step || 1}
-        value={item.value}
-        onChange={(e) => {
-          onChangeNode({
-            moduleId,
-            type: 'updateInput',
-            key: item.key,
-            value: {
-              ...item,
-              value: e
-            }
-          });
-        }}
-      />
-    </Box>
   );
 });
 

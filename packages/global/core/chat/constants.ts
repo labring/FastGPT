@@ -6,12 +6,6 @@ export enum ChatRoleEnum {
   Tool = 'Tool'
 }
 
-export enum TaskResponseKeyEnum {
-  'answerText' = 'answerText', //  answer module text key
-  'responseData' = 'responseData',
-  'history' = 'history'
-}
-
 export const ChatRoleMap = {
   [ChatRoleEnum.System]: {
     name: '系统提示词'

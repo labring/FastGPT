@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { SystemOutputEnum } from '@/constants/app';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -36,8 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             ...modules,
             outputs: modules.outputs.sort((a, b) => {
               // finish output always at last
-              if (a.key === SystemOutputEnum.finish) return 1;
-              if (b.key === SystemOutputEnum.finish) return -1;
+              if (a.key === ModuleOutputKeyEnum.finish) return 1;
+              if (b.key === ModuleOutputKeyEnum.finish) return -1;
               return 0;
             })
           }))

@@ -1,4 +1,5 @@
-import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from './node/constant';
+import { FlowNodeTypeEnum } from './node/constant';
+import { ModuleDataTypeEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {

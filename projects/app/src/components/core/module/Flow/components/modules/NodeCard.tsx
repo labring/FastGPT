@@ -9,10 +9,8 @@ import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
-import {
-  FlowNodeSpecialInputKeyEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getPluginModuleDetail } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -59,9 +57,8 @@ const NodeCard = (props: Props) => {
               icon: 'common/refreshLight',
               label: t('plugin.Synchronous version'),
               onClick: () => {
-                const pluginId = inputs.find(
-                  (item) => item.key === FlowNodeSpecialInputKeyEnum.pluginId
-                )?.value;
+                const pluginId = inputs.find((item) => item.key === ModuleInputKeyEnum.pluginId)
+                  ?.value;
                 if (!pluginId) return;
                 openConfirm(async () => {
                   try {

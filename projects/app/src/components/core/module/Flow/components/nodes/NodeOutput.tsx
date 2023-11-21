@@ -10,9 +10,9 @@ import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { customAlphabet } from 'nanoid';
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeValTypeEnum
+  FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import Container from '../modules/Container';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
@@ -110,7 +110,7 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
                 type: 'addInput',
                 value: {
                   key,
-                  valueType: FlowNodeValTypeEnum.string,
+                  valueType: ModuleDataTypeEnum.string,
                   type: FlowNodeInputTypeEnum.target,
                   label: `入参${inputs.length + 1}`,
                   edit: true,
@@ -123,7 +123,7 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
                 value: {
                   key,
                   label: `入参${inputs.length + 1}`,
-                  valueType: FlowNodeValTypeEnum.string,
+                  valueType: ModuleDataTypeEnum.string,
                   type: FlowNodeOutputTypeEnum.source,
                   edit: true,
                   targets: []

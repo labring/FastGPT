@@ -18,7 +18,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
-import { appTemplates } from '@/constants/flow/ModuleTemplate';
+import { appTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { feConfigs } from '@/web/common/system/staticData';

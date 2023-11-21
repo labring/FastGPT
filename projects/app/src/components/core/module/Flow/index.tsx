@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { edgeOptions, connectionLineStyle } from '@/constants/flow';
+import { edgeOptions, connectionLineStyle } from '@/web/core/modules/constants/flowUi';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 import dynamic from 'next/dynamic';

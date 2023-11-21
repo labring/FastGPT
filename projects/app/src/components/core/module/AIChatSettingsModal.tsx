@@ -19,7 +19,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import { chatModelList, feConfigs } from '@/web/common/system/staticData';
 import MySlider from '@/components/Slider';
-import { SystemInputEnum } from '@/constants/app';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import dynamic from 'next/dynamic';
 import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 
@@ -92,11 +92,11 @@ const AIChatSettingsModal = ({
             </Box>
             <Box flex={1} ml={'10px'}>
               <Switch
-                isChecked={getValues(SystemInputEnum.isResponseAnswerText)}
+                isChecked={getValues(ModuleInputKeyEnum.aiChatIsResponseText)}
                 size={'lg'}
                 onChange={(e) => {
                   const value = e.target.checked;
-                  setValue(SystemInputEnum.isResponseAnswerText, value);
+                  setValue(ModuleInputKeyEnum.aiChatIsResponseText, value);
                   setRefresh((state) => !state);
                 }}
               />

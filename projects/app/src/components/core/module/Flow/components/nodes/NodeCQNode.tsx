@@ -1,6 +1,6 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
-import { Box, Input, Button, Flex, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Divider from '../modules/Divider';
@@ -10,11 +10,8 @@ import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowNodeValTypeEnum,
-  FlowNodeSpecialInputKeyEnum
-} from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import SourceHandle from '../render/SourceHandle';
 import MyTooltip from '@/components/MyTooltip';
@@ -32,7 +29,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
           moduleId={moduleId}
           flowInputList={inputs}
           CustomComponent={{
-            [FlowNodeSpecialInputKeyEnum.agents]: ({
+            [ModuleInputKeyEnum.agents]: ({
               key: agentKey,
               value: agents = [],
               ...props
@@ -100,7 +97,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                           });
                         }}
                       />
-                      <SourceHandle handleKey={item.key} valueType={FlowNodeValTypeEnum.boolean} />
+                      <SourceHandle handleKey={item.key} valueType={ModuleDataTypeEnum.boolean} />
                     </Box>
                   </Box>
                 ))}

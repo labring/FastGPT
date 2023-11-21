@@ -6,7 +6,8 @@ import { AddIcon } from '@chakra-ui/icons';
 import NodeCard from '../../modules/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Container from '../../modules/Container';
-import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
+import { VariableInputEnum } from '@/constants/app';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { VariableItemType } from '@/types/app';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
@@ -29,7 +30,7 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
 
   const variables = useMemo(
     () =>
-      (inputs.find((item) => item.key === SystemInputEnum.variables)
+      (inputs.find((item) => item.key === ModuleInputKeyEnum.variables)
         ?.value as VariableItemType[]) || [],
     [inputs]
   );
@@ -40,10 +41,10 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
     (value: VariableItemType[]) => {
       onChangeNode({
         moduleId,
-        key: SystemInputEnum.variables,
+        key: ModuleInputKeyEnum.variables,
         type: 'updateInput',
         value: {
-          ...inputs.find((item) => item.key === SystemInputEnum.variables),
+          ...inputs.find((item) => item.key === ModuleInputKeyEnum.variables),
           value
         }
       });

@@ -30,7 +30,7 @@ import {
 } from '@/web/core/app/basicSettings';
 import { chatModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
-import { ChatModelSystemTip, welcomeTextTip } from '@/constants/flow/ModuleTemplate';
+import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { VariableItemType } from '@/types/app';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -339,14 +339,14 @@ function ConfigForm({
           <Flex mt={10} alignItems={'flex-start'}>
             <Box {...LabelStyles}>
               {t('core.ai.Prompt')}
-              <MyTooltip label={ChatModelSystemTip} forceShow>
+              <MyTooltip label={chatNodeSystemPromptTip} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Box>
             <Textarea
               rows={5}
               minH={'60px'}
-              placeholder={ChatModelSystemTip}
+              placeholder={chatNodeSystemPromptTip}
               borderColor={'myGray.100'}
               {...register('chatModel.systemPrompt')}
             ></Textarea>

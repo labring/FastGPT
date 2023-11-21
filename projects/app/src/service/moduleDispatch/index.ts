@@ -1,17 +1,17 @@
 import { NextApiResponse } from 'next';
-import { SystemInputEnum, SystemOutputEnum } from '@/constants/app';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { RunningModuleItemType } from '@/types/app';
 import { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { UserType } from '@fastgpt/global/support/user/type';
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { initModuleType } from '@/constants/flow';
+import { initRunningModuleType } from '../core/modules/constant';
 
 import { dispatchHistory } from './init/history';
 import { dispatchChatInput } from './init/userChatInput';
@@ -93,7 +93,7 @@ export async function dispatchModules({
     runningTime = time;
 
     const isResponseAnswerText =
-      inputs.find((item) => item.key === SystemInputEnum.isResponseAnswerText)?.value ?? true;
+      inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
     if (isResponseAnswerText) {
       chatAnswerText += answerText;
     }
@@ -120,7 +120,7 @@ export async function dispatchModules({
         if (!set.has(module.moduleId) && checkInputFinish()) {
           set.add(module.moduleId);
           // remove switch
-          updateInputValue(SystemInputEnum.switch, undefined);
+          updateInputValue(ModuleInputKeyEnum.switch, undefined);
           return moduleRun(module);
         }
       })
@@ -201,25 +201,25 @@ export async function dispatchModules({
     })();
 
     const formatResponseData = (() => {
-      if (!dispatchRes[TaskResponseKeyEnum.responseData]) return undefined;
-      if (Array.isArray(dispatchRes[TaskResponseKeyEnum.responseData]))
-        return dispatchRes[TaskResponseKeyEnum.responseData];
+      if (!dispatchRes[ModuleOutputKeyEnum.responseData]) return undefined;
+      if (Array.isArray(dispatchRes[ModuleOutputKeyEnum.responseData]))
+        return dispatchRes[ModuleOutputKeyEnum.responseData];
       return {
-        ...dispatchRes[TaskResponseKeyEnum.responseData],
+        ...dispatchRes[ModuleOutputKeyEnum.responseData],
         moduleName: module.name,
         moduleType: module.flowType
       };
     })();
 
     return moduleOutput(module, {
-      [SystemOutputEnum.finish]: true,
+      [ModuleOutputKeyEnum.finish]: true,
       ...dispatchRes,
-      [TaskResponseKeyEnum.responseData]: formatResponseData
+      [ModuleOutputKeyEnum.responseData]: formatResponseData
     });
   }
 
   // start process width initInput
-  const initModules = runningModules.filter((item) => initModuleType[item.flowType]);
+  const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
 
   await Promise.all(initModules.map((module) => moduleInput(module, params)));
 
@@ -232,8 +232,8 @@ export async function dispatchModules({
   }
 
   return {
-    [TaskResponseKeyEnum.answerText]: chatAnswerText,
-    [TaskResponseKeyEnum.responseData]: chatResponse
+    [ModuleOutputKeyEnum.answerText]: chatAnswerText,
+    [ModuleOutputKeyEnum.responseData]: chatResponse
   };
 }
 
@@ -269,14 +269,14 @@ function loadModules(
       outputs: module.outputs
         .map((item) => ({
           key: item.key,
-          answer: item.key === TaskResponseKeyEnum.answerText,
+          answer: item.key === ModuleOutputKeyEnum.answerText,
           value: undefined,
           targets: item.targets
         }))
         .sort((a, b) => {
           // finish output always at last
-          if (a.key === SystemOutputEnum.finish) return 1;
-          if (b.key === SystemOutputEnum.finish) return -1;
+          if (a.key === ModuleOutputKeyEnum.finish) return 1;
+          if (b.key === ModuleOutputKeyEnum.finish) return -1;
           return 0;
         })
     };

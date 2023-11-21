@@ -260,6 +260,23 @@
         "Edit": "编辑数据",
         "id": "数据ID"
       }
+    },
+    "modules": {
+      "input": {
+        "label": {
+          "switch": "触发器",
+          "chat history": "聊天记录",
+          "user question": "用户问题"
+        }
+      },
+      "output": {
+        "label": {
+          "running done": "模块调用结束"
+        },
+        "description": {
+          "running done": "模块调用结束时触发"
+        }
+      }
     }
   },
   "dataset": {

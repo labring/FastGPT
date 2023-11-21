@@ -4,7 +4,7 @@ import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { SystemModuleTemplateType } from '@fastgpt/global/core/module/type.d';
-import { SystemModuleTemplates } from '@/constants/flow/ModuleTemplate';
+import { SystemModuleTemplates } from '@/web/core/modules/template/system';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { useQuery } from '@tanstack/react-query';

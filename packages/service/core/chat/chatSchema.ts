@@ -1,16 +1,13 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { ChatSchema as ChatType } from '@fastgpt/global/core/chat/type.d';
-import {
-  ChatRoleMap,
-  ChatSourceMap,
-  TaskResponseKeyEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleMap, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { appCollectionName } from '../app/schema';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export const chatCollectionName = 'chat';
 
@@ -81,7 +78,7 @@ const ChatSchema = new Schema({
           type: String,
           default: ''
         },
-        [TaskResponseKeyEnum.responseData]: {
+        [ModuleOutputKeyEnum.responseData]: {
           type: Array,
           default: []
         }

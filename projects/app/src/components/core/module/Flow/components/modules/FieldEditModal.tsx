@@ -12,34 +12,34 @@ import {
 import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import Avatar from '@/components/Avatar';
-import { FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
 
 const typeSelectList = [
   {
     label: '字符串',
-    value: FlowNodeValTypeEnum.string
+    value: ModuleDataTypeEnum.string
   },
   {
     label: '数字',
-    value: FlowNodeValTypeEnum.number
+    value: ModuleDataTypeEnum.number
   },
   {
     label: '布尔',
-    value: FlowNodeValTypeEnum.boolean
+    value: ModuleDataTypeEnum.boolean
   },
   {
     label: '历史记录',
-    value: FlowNodeValTypeEnum.chatHistory
+    value: ModuleDataTypeEnum.chatHistory
   },
   {
     label: '引用内容',
-    value: FlowNodeValTypeEnum.datasetQuote
+    value: ModuleDataTypeEnum.datasetQuote
   },
   {
     label: '任意',
-    value: FlowNodeValTypeEnum.any
+    value: ModuleDataTypeEnum.any
   }
 ];
 
@@ -47,7 +47,7 @@ export type EditFieldModeType = 'input' | 'output' | 'pluginInput';
 export type EditFieldType = {
   key: string;
   label?: string;
-  valueType?: `${FlowNodeValTypeEnum}`;
+  valueType?: `${ModuleDataTypeEnum}`;
   description?: string;
   required?: boolean;
 };
@@ -58,7 +58,7 @@ const FieldEditModal = ({
     label: '',
     key: '',
     description: '',
-    valueType: FlowNodeValTypeEnum.string,
+    valueType: ModuleDataTypeEnum.string,
     required: false
   },
   onClose,
@@ -104,12 +104,12 @@ const FieldEditModal = ({
             list={typeSelectList}
             value={getValues('valueType')}
             onchange={(e: string) => {
-              const type = e as `${FlowNodeValTypeEnum}`;
+              const type = e as `${ModuleDataTypeEnum}`;
               setValue('valueType', type);
 
               if (
-                type === FlowNodeValTypeEnum.chatHistory ||
-                type === FlowNodeValTypeEnum.datasetQuote
+                type === ModuleDataTypeEnum.chatHistory ||
+                type === ModuleDataTypeEnum.datasetQuote
               ) {
                 const label = typeSelectList.find((item) => item.value === type)?.label;
                 setValue('label', label);

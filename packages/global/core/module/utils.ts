@@ -1,14 +1,11 @@
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeSpecialInputKeyEnum,
-  FlowNodeTypeEnum
-} from './node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from './node/constant';
+import { ModuleInputKeyEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { ModuleItemType } from './type';
 
 export function getPluginTemplatePluginIdInput(pluginId: string) {
   return {
-    key: FlowNodeSpecialInputKeyEnum.pluginId,
+    key: ModuleInputKeyEnum.pluginId,
     type: FlowNodeInputTypeEnum.hidden,
     label: 'pluginId',
     value: pluginId,

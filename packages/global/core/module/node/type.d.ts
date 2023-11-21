@@ -1,9 +1,5 @@
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeValTypeEnum,
-  FlowNodeTypeEnum
-} from './constant';
+import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './constant';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
 
 export type FlowNodeChangeProps = {
   moduleId: string;
@@ -23,9 +19,9 @@ export type FlowNodeChangeProps = {
 };
 
 export type FlowNodeInputItemType = {
-  key: string; // 字段名
+  key: `${ModuleInputKeyEnum}`;
   value?: any;
-  valueType?: `${FlowNodeValTypeEnum}`;
+  valueType?: `${ModuleDataTypeEnum}`;
   type: `${FlowNodeInputTypeEnum}`;
   label: string;
   edit?: boolean;
@@ -48,11 +44,11 @@ export type FlowNodeOutputTargetItemType = {
   key: string;
 };
 export type FlowNodeOutputItemType = {
-  key: string; // 字段名
+  key: `${ModuleOutputKeyEnum}` | string;
   label?: string;
   edit?: boolean;
   description?: string;
-  valueType?: `${FlowNodeValTypeEnum}`;
+  valueType?: `${ModuleDataTypeEnum}`;
   type?: `${FlowNodeOutputTypeEnum}`;
   targets: FlowNodeOutputTargetItemType[];
 };

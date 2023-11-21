@@ -1,13 +1,9 @@
 import type { AppTTSConfigType, VariableItemType } from '@/types/app';
 import { chatModelList } from '@/web/common/system/staticData';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum,
-  FlowNodeValTypeEnum,
-  FlowNodeSpecialInputKeyEnum
-} from '@fastgpt/global/core/module/node/constant';
-import { SystemInputEnum } from '@/constants/app';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type.d';
 import type { AIChatProps } from '@/types/core/aiChat';
@@ -39,12 +35,10 @@ export const getDefaultAppForm = (): EditFormType => {
       model: defaultChatModel?.model,
       systemPrompt: '',
       temperature: 0,
-      [SystemInputEnum.isResponseAnswerText]: true,
+      [ModuleInputKeyEnum.aiChatIsResponseText]: true,
       quotePrompt: '',
       quoteTemplate: '',
-      maxToken: defaultChatModel ? defaultChatModel.maxResponse / 2 : 4000,
-      frequency: 0.5,
-      presence: -0.5
+      maxToken: defaultChatModel ? defaultChatModel.maxResponse / 2 : 4000
     },
     dataset: {
       list: [],
@@ -149,8 +143,7 @@ export const appModules2Form = (modules: ModuleItemType[]) => {
       if (emptyOutput) {
         const target = modules.find((item) => item.moduleId === emptyOutput.moduleId);
         defaultAppForm.dataset.searchEmptyText =
-          target?.inputs?.find((item) => item.key === FlowNodeSpecialInputKeyEnum.answerText)
-            ?.value || '';
+          target?.inputs?.find((item) => item.key === ModuleInputKeyEnum.answerText)?.value || '';
       }
     } else if (module.flowType === FlowNodeTypeEnum.userGuide) {
       const { welcomeText, variableModules, questionGuide, ttsConfig } = splitGuideModule(
@@ -201,7 +194,7 @@ const chatModelInput = (formData: EditFormType): FlowNodeInputItemType[] => [
     connected: true
   },
   {
-    key: SystemInputEnum.isResponseAnswerText,
+    key: ModuleInputKeyEnum.aiChatIsResponseText,
     value: true,
     type: 'hidden',
     label: '返回AI内容',
@@ -252,25 +245,25 @@ const userGuideTemplate = (formData: EditFormType): ModuleItemType[] => [
     flowType: FlowNodeTypeEnum.userGuide,
     inputs: [
       {
-        key: SystemInputEnum.welcomeText,
+        key: ModuleInputKeyEnum.welcomeText,
         type: FlowNodeInputTypeEnum.hidden,
         label: '开场白',
         value: formData.guide.welcome.text
       },
       {
-        key: SystemInputEnum.variables,
+        key: ModuleInputKeyEnum.variables,
         type: FlowNodeInputTypeEnum.hidden,
         label: '对话框变量',
         value: formData.variables
       },
       {
-        key: SystemInputEnum.questionGuide,
+        key: ModuleInputKeyEnum.questionGuide,
         type: FlowNodeInputTypeEnum.hidden,
         label: '问题引导',
         value: formData.questionGuide
       },
       {
-        key: SystemInputEnum.tts,
+        key: ModuleInputKeyEnum.tts,
         type: FlowNodeInputTypeEnum.hidden,
         label: '语音播报',
         value: formData.tts
@@ -539,16 +532,16 @@ const kbTemplate = (formData: EditFormType): ModuleItemType[] => [
           flowType: FlowNodeTypeEnum.answerNode,
           inputs: [
             {
-              key: 'switch',
+              key: ModuleInputKeyEnum.switch,
               type: FlowNodeInputTypeEnum.target,
               label: '触发器',
               connected: true
             },
             {
-              key: FlowNodeSpecialInputKeyEnum.answerText,
+              key: ModuleInputKeyEnum.answerText,
               value: formData.dataset.searchEmptyText,
               type: FlowNodeInputTypeEnum.textarea,
-              valueType: FlowNodeValTypeEnum.string,
+              valueType: ModuleDataTypeEnum.string,
               label: '回复的内容',
               connected: true
             }

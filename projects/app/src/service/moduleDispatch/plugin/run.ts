@@ -1,20 +1,17 @@
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { dispatchModules } from '../index';
-import {
-  FlowNodeSpecialInputKeyEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 
 type RunPluginProps = ModuleDispatchProps<{
-  [FlowNodeSpecialInputKeyEnum.pluginId]: string;
+  [ModuleInputKeyEnum.pluginId]: string;
   [key: string]: any;
 }>;
 type RunPluginResponse = {
-  answerText: string;
-  [TaskResponseKeyEnum.responseData]?: moduleDispatchResType[];
+  [ModuleOutputKeyEnum.answerText]: string;
+  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType[];
 };
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
@@ -45,10 +42,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   return {
     answerText,
-    // [TaskResponseKeyEnum.responseData]: output,
-    [TaskResponseKeyEnum.responseData]: responseData.filter(
-      (item) => item.moduleType !== FlowNodeTypeEnum.pluginOutput
-    ),
+    responseData: responseData.filter((item) => item.moduleType !== FlowNodeTypeEnum.pluginOutput),
     ...(output ? output.pluginOutput : {})
   };
 };

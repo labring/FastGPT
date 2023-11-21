@@ -1,14 +1,11 @@
-import { SystemInputEnum } from '@/constants/app';
-
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 /* ai chat modules props */
 export type AIChatProps = {
-  model: string;
-  systemPrompt?: string;
-  temperature: number;
-  maxToken: number;
-  [SystemInputEnum.isResponseAnswerText]: boolean;
-  quoteTemplate?: string;
-  quotePrompt?: string;
-  frequency: number;
-  presence: number;
+  [ModuleInputKeyEnum.aiModel]: string;
+  [ModuleInputKeyEnum.aiSystemPrompt]?: string;
+  [ModuleInputKeyEnum.aiChatTemperature]: number;
+  [ModuleInputKeyEnum.aiChatMaxToken]: number;
+  [ModuleInputKeyEnum.aiChatIsResponseText]: boolean;
+  [ModuleInputKeyEnum.aiChatQuoteTemplate]?: string;
+  [ModuleInputKeyEnum.aiChatQuotePrompt]?: string;
 };

@@ -1,14 +1,14 @@
-import { HttpPropsEnum } from '@/constants/flow/flowField';
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+
 export type HttpRequestProps = ModuleDispatchProps<{
-  [HttpPropsEnum.url]: string;
+  [ModuleInputKeyEnum.httpUrl]: string;
   [key: string]: any;
 }>;
 export type HttpResponse = {
-  [HttpPropsEnum.failed]?: boolean;
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.failed]?: boolean;
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
 };
 
@@ -32,7 +32,7 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
     });
 
     return {
-      [TaskResponseKeyEnum.responseData]: {
+      responseData: {
         price: 0,
         body: requestBody,
         httpResult: response
@@ -41,8 +41,8 @@ export const dispatchHttpRequest = async (props: Record<string, any>): Promise<H
     };
   } catch (error) {
     return {
-      [HttpPropsEnum.failed]: true,
-      [TaskResponseKeyEnum.responseData]: {
+      [ModuleOutputKeyEnum.failed]: true,
+      responseData: {
         price: 0,
         body: requestBody,
         httpResult: { error }

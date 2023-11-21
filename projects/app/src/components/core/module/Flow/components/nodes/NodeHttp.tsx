@@ -11,9 +11,9 @@ import RenderOutput from '../render/RenderOutput';
 
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeValTypeEnum
+  FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import { onChangeNode } from '../../FlowProvider';
@@ -37,7 +37,7 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
               key,
               value: {
                 key,
-                valueType: FlowNodeValTypeEnum.string,
+                valueType: ModuleDataTypeEnum.string,
                 type: FlowNodeInputTypeEnum.target,
                 label: `入参${inputs.length - 1}`,
                 edit: true
@@ -62,7 +62,7 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
                 value: {
                   key: nanoid(),
                   label: `出参${outputs.length}`,
-                  valueType: FlowNodeValTypeEnum.string,
+                  valueType: ModuleDataTypeEnum.string,
                   type: FlowNodeOutputTypeEnum.source,
                   edit: true,
                   targets: []

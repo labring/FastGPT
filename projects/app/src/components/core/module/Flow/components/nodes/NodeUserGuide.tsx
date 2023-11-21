@@ -16,8 +16,8 @@ import {
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { FlowModuleItemType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { SystemInputEnum } from '@/constants/app';
-import { welcomeTextTip, variableTip } from '@/constants/flow/ModuleTemplate';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { welcomeTextTip, variableTip } from '@fastgpt/global/core/module/template/tip';
 import { onChangeNode } from '../../FlowProvider';
 
 import VariableEditModal, { addVariable } from '../../../VariableEditModal';
@@ -57,7 +57,7 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
   const { inputs, moduleId } = data;
 
   const welcomeText = useMemo(
-    () => inputs.find((item) => item.key === SystemInputEnum.welcomeText),
+    () => inputs.find((item) => item.key === ModuleInputKeyEnum.welcomeText),
     [inputs]
   );
 
@@ -81,7 +81,7 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
           onChange={(e) => {
             onChangeNode({
               moduleId,
-              key: SystemInputEnum.welcomeText,
+              key: ModuleInputKeyEnum.welcomeText,
               type: 'updateInput',
               value: {
                 ...welcomeText,
@@ -100,7 +100,7 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
 
   const variables = useMemo(
     () =>
-      (inputs.find((item) => item.key === SystemInputEnum.variables)
+      (inputs.find((item) => item.key === ModuleInputKeyEnum.variables)
         ?.value as VariableItemType[]) || [],
     [inputs]
   );
@@ -111,10 +111,10 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
     (value: VariableItemType[]) => {
       onChangeNode({
         moduleId,
-        key: SystemInputEnum.variables,
+        key: ModuleInputKeyEnum.variables,
         type: 'updateInput',
         value: {
-          ...inputs.find((item) => item.key === SystemInputEnum.variables),
+          ...inputs.find((item) => item.key === ModuleInputKeyEnum.variables),
           value
         }
       });
@@ -215,7 +215,7 @@ function QuestionGuide({ data }: { data: FlowModuleItemType }) {
 
   const questionGuide = useMemo(
     () =>
-      (inputs.find((item) => item.key === SystemInputEnum.questionGuide)?.value as boolean) ||
+      (inputs.find((item) => item.key === ModuleInputKeyEnum.questionGuide)?.value as boolean) ||
       false,
     [inputs]
   );
@@ -228,10 +228,10 @@ function QuestionGuide({ data }: { data: FlowModuleItemType }) {
         const value = e.target.checked;
         onChangeNode({
           moduleId,
-          key: SystemInputEnum.questionGuide,
+          key: ModuleInputKeyEnum.questionGuide,
           type: 'updateInput',
           value: {
-            ...inputs.find((item) => item.key === SystemInputEnum.questionGuide),
+            ...inputs.find((item) => item.key === ModuleInputKeyEnum.questionGuide),
             value
           }
         });
@@ -250,10 +250,10 @@ function TTSGuide({ data }: { data: FlowModuleItemType }) {
       onChange={(e) => {
         onChangeNode({
           moduleId,
-          key: SystemInputEnum.tts,
+          key: ModuleInputKeyEnum.tts,
           type: 'updateInput',
           value: {
-            ...inputs.find((item) => item.key === SystemInputEnum.tts),
+            ...inputs.find((item) => item.key === ModuleInputKeyEnum.tts),
             value: e
           }
         });

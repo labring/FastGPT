@@ -26,21 +26,6 @@ export const defaultOutLinkForm: OutLinkEditType = {
   }
 };
 
-/* module special */
-export enum SystemInputEnum {
-  'welcomeText' = 'welcomeText',
-  'variables' = 'variables',
-  'switch' = 'switch', // a trigger switch
-  'history' = 'history',
-  'userChatInput' = 'userChatInput',
-  'questionGuide' = 'questionGuide',
-  'tts' = 'tts',
-  isResponseAnswerText = 'isResponseAnswerText'
-}
-export enum SystemOutputEnum {
-  finish = 'finish'
-}
-
 export enum VariableInputEnum {
   input = 'input',
   select = 'select'
