@@ -3,16 +3,16 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../../modules/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
-import Container from '../modules/Container';
+import Container from '../../modules/Container';
 import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
 import type { VariableItemType } from '@/types/app';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import VariableEditModal, { addVariable } from '../../../VariableEditModal';
-import { onChangeNode } from '../../FlowProvider';
+import VariableEditModal, { addVariable } from '../../../../VariableEditModal';
+import { onChangeNode } from '../../../FlowProvider';
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
