@@ -264,7 +264,7 @@ const UserInfo = () => {
                 window.open(`${feConfigs.docUrl}/docs/intro`);
               }}
             >
-              <MyIcon name={'courseLight'} w={'18px'} />
+              <MyIcon name={'common/courseLight'} w={'18px'} />
               <Box ml={2} flex={1}>
                 {t('system.Help Document')}
               </Box>

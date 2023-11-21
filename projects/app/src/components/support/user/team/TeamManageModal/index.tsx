@@ -154,7 +154,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   border={'none'}
                   icon={
                     <MyIcon
-                      name={'addCircle'}
+                      name={'common/addCircleLight'}
                       w={['16px', '18px']}
                       color={'myBlue.600'}
                       cursor={'pointer'}
@@ -282,7 +282,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
-                  leftIcon={<MyIcon name={'loginoutLight'} w={'14px'} color={'myBlue.600'} />}
+                  leftIcon={
+                    <MyIcon
+                      name={'support/account/loginoutLight'}
+                      w={'14px'}
+                      color={'myBlue.600'}
+                    />
+                  }
                   onClick={() => {
                     openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
                   }}

@@ -338,7 +338,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
             }}
             onPaste={(e) => {
               const clipboardData = e.clipboardData;
-              if (clipboardData) {
+              if (clipboardData && showFileSelector) {
                 const items = clipboardData.items;
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))

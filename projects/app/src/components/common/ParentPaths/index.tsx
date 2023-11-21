@@ -51,7 +51,7 @@ const ParentPaths = (props: {
             {item.parentName}
           </Box>
           {i !== concatPaths.length - 1 && (
-            <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={'14px'} />
+            <MyIcon name={'common/rightArrowLight'} color={'myGray.500'} w={'14px'} />
           )}
         </Flex>
       ))}

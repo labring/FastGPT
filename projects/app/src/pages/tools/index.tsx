@@ -42,7 +42,7 @@ const Tools = () => {
     ...(feConfigs?.docUrl
       ? [
           {
-            icon: 'courseLight',
+            icon: 'common/courseLight',
             label: '使用文档',
             link: `${feConfigs.docUrl}/docs/intro`
           }

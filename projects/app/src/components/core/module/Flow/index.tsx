@@ -17,7 +17,7 @@ import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes = {
   [FlowNodeTypeEnum.userGuide]: dynamic(() => import('./components/nodes/NodeUserGuide')),
-  [FlowNodeTypeEnum.variable]: dynamic(() => import('./components/nodes/NodeVariable')),
+  [FlowNodeTypeEnum.variable]: dynamic(() => import('./components/nodes/abandon/NodeVariable')),
   [FlowNodeTypeEnum.questionInput]: dynamic(() => import('./components/nodes/NodeQuestionInput')),
   [FlowNodeTypeEnum.historyNode]: NodeSimple,
   [FlowNodeTypeEnum.chatNode]: NodeSimple,

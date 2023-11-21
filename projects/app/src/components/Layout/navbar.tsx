@@ -184,7 +184,7 @@ const Navbar = ({ unread }: { unread: number }) => {
               window.open(`${feConfigs.docUrl}/docs/intro`);
             }}
           >
-            <MyIcon name={'courseLight'} width={'26px'} height={'26px'} />
+            <MyIcon name={'common/courseLight'} width={'26px'} height={'26px'} />
           </Box>
         </MyTooltip>
       )}

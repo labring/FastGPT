@@ -774,7 +774,7 @@ const ChatBox = (
                         {showMarkIcon && item.adminFeedback && (
                           <Box>
                             <Flex alignItems={'center'} py={2}>
-                              <MyIcon name={'markLight'} w={'14px'} color={'myGray.900'} />
+                              <MyIcon name={'core/app/markLight'} w={'14px'} color={'myGray.900'} />
                               <Box ml={2} color={'myGray.500'}>
                                 {t('chat.Admin Mark Content')}
                               </Box>
@@ -1093,7 +1093,7 @@ function ChatController({
             <MyTooltip label={t('chat.retry')}>
               <MyIcon
                 {...controlIconStyle}
-                name={'retryLight'}
+                name={'common/retryLight'}
                 _hover={{ color: 'green.500' }}
                 onClick={onRetry}
               />
@@ -1113,7 +1113,7 @@ function ChatController({
         hasAudio &&
         (audioLoading ? (
           <MyTooltip label={'加载中...'}>
-            <MyIcon {...controlIconStyle} name={'loading'} />
+            <MyIcon {...controlIconStyle} name={'common/loading'} />
           </MyTooltip>
         ) : audioPlaying ? (
           <Flex alignItems={'center'} mr={2}>
@@ -1160,7 +1160,7 @@ function ChatController({
         <MyTooltip label={t('chat.Mark')}>
           <MyIcon
             {...controlIconStyle}
-            name={'markLight'}
+            name={'core/app/markLight'}
             _hover={{ color: '#67c13b' }}
             onClick={onMark}
           />
@@ -1174,7 +1174,7 @@ function ChatController({
             color={'white'}
             bg={'#FC9663'}
             fontWeight={'bold'}
-            name={'badLight'}
+            name={'core/chat/feedback/badLight'}
             onClick={onReadFeedback}
           />
         </MyTooltip>
@@ -1196,7 +1196,7 @@ function ChatController({
                   _hover: { color: '#FB7C3C' },
                   onClick: onFeedback
                 })}
-            name={'badLight'}
+            name={'core/chat/feedback/badLight'}
           />
         </MyTooltip>
       )}

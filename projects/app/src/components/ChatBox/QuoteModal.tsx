@@ -110,7 +110,7 @@ const QuoteModal = ({
                     href={`/dataset/detail?datasetId=${item.datasetId}&currentTab=dataCard&collectionId=${item.collectionId}`}
                   >
                     {t('core.dataset.Go Dataset')}
-                    <MyIcon name={'rightArrowLight'} w={'10px'} />
+                    <MyIcon name={'common/rightArrowLight'} w={'10px'} />
                   </Link>
                 )}
               </Flex>

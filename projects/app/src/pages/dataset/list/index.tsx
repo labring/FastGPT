@@ -347,7 +347,7 @@ const Kb = () => {
                   {
                     child: (
                       <Flex alignItems={'center'}>
-                        <MyIcon name={'moveLight'} w={'14px'} mr={2} />
+                        <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
                         {t('Move')}
                       </Flex>
                     ),

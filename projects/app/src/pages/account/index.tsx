@@ -53,7 +53,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs?.show_promotion
       ? [
           {
-            icon: 'promotionLight',
+            icon: 'support/account/promotionLight',
             label: t('user.Promotion Record'),
             id: TabEnum.promotion
           }
@@ -62,7 +62,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs?.show_pay && userInfo?.team.canWrite
       ? [
           {
-            icon: 'payRecordLight',
+            icon: 'support/pay/payRecordLight',
             label: t('user.Recharge Record'),
             id: TabEnum.pay
           }
@@ -88,7 +88,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       : []),
 
     {
-      icon: 'loginoutLight',
+      icon: 'support/account/loginoutLight',
       label: t('user.Sign Out'),
       id: TabEnum.loginout
     }

@@ -27,7 +27,6 @@ export enum FlowNodeOutputTypeEnum {
 
 export enum FlowNodeTypeEnum {
   empty = 'empty',
-  variable = 'variable',
   userGuide = 'userGuide',
   questionInput = 'questionInput',
   historyNode = 'historyNode',
@@ -40,7 +39,10 @@ export enum FlowNodeTypeEnum {
   runApp = 'app',
   pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
-  pluginOutput = 'pluginOutput'
+  pluginOutput = 'pluginOutput',
+
+  // abandon
+  variable = 'variable'
 }
 
 export enum FlowNodeSpecialInputKeyEnum {

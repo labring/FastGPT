@@ -85,7 +85,7 @@ const MoveModal = ({
                     {item.parentName}
                   </Box>
                   {i !== paths.length - 1 && (
-                    <MyIcon name={'rightArrowLight'} color={'myGray.500'} w={['18px', '24px']} />
+                    <MyIcon name={'common/rightArrowLight'} color={'myGray.500'} w={'14px'} />
                   )}
                 </Flex>
               ))}
