@@ -64,7 +64,6 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
         .split(`${tempMarker}`)
         .filter((part) => part);
     })();
-    console.log(reg, splitTexts);
 
     let chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {
