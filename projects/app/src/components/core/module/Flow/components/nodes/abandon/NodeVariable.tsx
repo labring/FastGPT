@@ -34,97 +34,26 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
     [inputs]
   );
 
-  const [editVariable, setEditVariable] = useState<VariableItemType>();
-
-  const updateVariables = useCallback(
-    (value: VariableItemType[]) => {
-      onChangeNode({
-        moduleId,
-        key: ModuleInputKeyEnum.variables,
-        type: 'updateInput',
-        value: {
-          ...inputs.find((item) => item.key === ModuleInputKeyEnum.variables),
-          value
-        }
-      });
-    },
-    [inputs, moduleId]
-  );
-
-  const onclickSubmit = useCallback(
-    ({ variable }: { variable: VariableItemType }) => {
-      updateVariables(variables.map((item) => (item.id === variable.id ? variable : item)));
-      setEditVariable(undefined);
-    },
-    [updateVariables, variables]
-  );
-
   return (
     <>
       <NodeCard minW={'300px'} {...data}>
         <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
-          <TableContainer>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>变量名</Th>
-                  <Th>变量 key</Th>
-                  <Th>必填</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {variables.map((item, index) => (
-                  <Tr key={index}>
-                    <Td>{item.label} </Td>
-                    <Td>{item.key}</Td>
-                    <Td>{item.required ? '✔' : ''}</Td>
-                    <Td>
-                      <MyIcon
-                        mr={3}
-                        name={'settingLight'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => {
-                          setEditVariable(item);
-                        }}
-                      />
-                      <MyIcon
-                        name={'delete'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() =>
-                          updateVariables(variables.filter((variable) => variable.id !== item.id))
-                        }
-                      />
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-          <Box mt={2} textAlign={'right'}>
-            <Button
-              variant={'base'}
-              leftIcon={<AddIcon fontSize={'10px'} />}
-              onClick={() => {
-                const newVariable = addVariable();
-                updateVariables(variables.concat(newVariable));
-                setEditVariable(newVariable);
-              }}
-            >
-              新增
-            </Button>
-          </Box>
+          <VariableEditModal
+            variables={variables}
+            onChange={(e) =>
+              onChangeNode({
+                moduleId,
+                key: ModuleInputKeyEnum.variables,
+                type: 'updateInput',
+                value: {
+                  ...inputs.find((item) => item.key === ModuleInputKeyEnum.variables),
+                  value: e
+                }
+              })
+            }
+          />
         </Container>
       </NodeCard>
-      {!!editVariable && (
-        <VariableEditModal
-          defaultVariable={editVariable}
-          onClose={() => setEditVariable(undefined)}
-          onSubmit={onclickSubmit}
-        />
-      )}
     </>
   );
 };
