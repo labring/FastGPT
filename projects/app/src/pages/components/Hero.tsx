@@ -57,7 +57,11 @@ const Hero = () => {
       <Box mt={['', '-50px']} position={'relative'}>
         <Image
           minH={['auto', '400px']}
-          src={isPc ? '/imgs/home/videobgpc.png' : '/imgs/home/videobgphone.png'}
+          src={
+            isPc
+              ? feConfigs.video_image_pc || '/imgs/home/videobgpc.png'
+              : feConfigs.video_image_mobile || '/imgs/home/videobgphone.png'
+          }
           mx={['-10%', 'auto']}
           maxW={['120%', '1000px']}
           alt=""
@@ -102,7 +106,7 @@ const Hero = () => {
               onClick={(e) => {
                 e.stopPropagation();
               }}
-              src={'https://otnvvf-imgs.oss.laf.run/fastgpt.mp4'}
+              src={feConfigs.video_url || 'https://otnvvf-imgs.oss.laf.run/fastgpt.mp4'}
               controls
               autoPlay
             />

@@ -49,7 +49,11 @@ const Ability = () => {
           <Box {...DescStyles} color={'rgba(255,255,255,0.9)'}>
             {t('home.AI Assistant Desc')}
           </Box>
-          <MyImage src="/imgs/home/ai_assiatant.png" alt={''} transform={'translateX(20px)'} />
+          <MyImage
+            src={feConfigs.ability_image_1 || '/imgs/home/ai_assiatant.png'}
+            alt={''}
+            transform={'translateX(20px)'}
+          />
         </Box>
         <Box
           {...CardStyles}
@@ -62,7 +66,12 @@ const Ability = () => {
           <Box {...DescStyles} color={'rgba(255,255,255,0.9)'}>
             {t('home.Dateset Desc')}
           </Box>
-          <MyImage src="/imgs/home/dataset_import.png" w={'90%'} mx={'auto'} borderRadius={'lg'} />
+          <MyImage
+            src={feConfigs.ability_image_2 || '/imgs/home/dataset_import.png'}
+            w={'90%'}
+            mx={'auto'}
+            borderRadius={'lg'}
+          />
         </Box>
       </Grid>
       <Grid
@@ -77,7 +86,11 @@ const Ability = () => {
           <Box {...DescStyles} fontSize={['sm', 'md']}>
             {t('home.Advanced Settings Desc')}
           </Box>
-          <MyImage src="/imgs/home/advanced_settings.png" alt={''} w={'100%'} />
+          <MyImage
+            src={feConfigs.ability_image_3 || '/imgs/home/advanced_settings.png'}
+            alt={''}
+            w={'100%'}
+          />
         </Box>
         <Box
           {...CardStyles}
@@ -87,7 +100,7 @@ const Ability = () => {
           <Box {...TitleStyles}>{t('home.OpenAPI')}</Box>
           <Box {...DescStyles}>{t('home.OpenAPI Desc')}</Box>
           <MyImage
-            src="/imgs/home/openapi.png"
+            src={feConfigs.ability_image_4 || '/imgs/home/openapi.png'}
             alt={''}
             w={'90%'}
             mx={'auto'}

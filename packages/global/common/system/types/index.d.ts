@@ -23,6 +23,13 @@ export type FeConfigsType = {
   };
   scripts?: { [key: string]: string }[];
   favicon?: string;
+  ability_image_1?: string;
+  ability_image_2?: string;
+  ability_image_3?: string;
+  ability_image_4?: string;
+  video_url?: string;
+  video_image_pc?: string;
+  video_image_mobile?: string;
 };
 
 export type SystemEnvType = {
