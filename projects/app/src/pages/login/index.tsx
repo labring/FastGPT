@@ -87,7 +87,7 @@ const Login = () => {
         >
           {isPc && (
             <Image
-              src={'/icon/loginLeft.svg'}
+              src={feConfigs.login_image || '/icon/loginLeft.svg'}
               order={pageType === PageTypeEnum.login ? 0 : 2}
               flex={'1 0 0'}
               w="0"

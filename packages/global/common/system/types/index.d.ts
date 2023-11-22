@@ -30,6 +30,7 @@ export type FeConfigsType = {
   video_url?: string;
   video_image_pc?: string;
   video_image_mobile?: string;
+  login_image?: string;
 };
 
 export type SystemEnvType = {
