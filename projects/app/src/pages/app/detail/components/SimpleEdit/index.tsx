@@ -6,13 +6,6 @@ import {
   BoxProps,
   Textarea,
   useTheme,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
   useDisclosure,
   Button,
   IconButton,
@@ -40,14 +33,13 @@ import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'next-i18next';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
-import { addVariable } from '@/components/core/module/VariableEditModal';
+import { addVariable } from '@/components/core/module/Flow/components/modules/VariableEdit';
 import { DatasetParamsModal } from '@/components/core/module/DatasetSelectModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
-import QGSwitch from '../QGSwitch';
-import TTSSelect from '../TTSSelect';
+
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import { useSticky } from '@/web/common/hooks/useSticky';
 import { postForm2Modules } from '@/web/core/app/utils';
@@ -59,8 +51,10 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
+import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
+import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
+import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
 
-const VariableEditModal = dynamic(() => import('@/components/core/module/VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const AIChatSettingsModal = dynamic(() => import('@/components/core/module/AIChatSettingsModal'));
@@ -87,15 +81,6 @@ function ConfigForm({
       defaultValues: getDefaultAppForm()
     });
 
-  const {
-    fields: variables,
-    append: appendVariable,
-    remove: removeVariable,
-    replace: replaceVariables
-  } = useFieldArray({
-    control,
-    name: 'userGuide.variables'
-  });
   const { fields: datasets, replace: replaceKbList } = useFieldArray({
     control,
     name: 'dataset.datasets'
@@ -282,61 +267,10 @@ function ConfigForm({
         {/* variable */}
         {selectSimpleTemplate?.systemForm?.userGuide?.variables && (
           <Box mt={2} {...BoxStyles}>
-            <Flex alignItems={'center'}>
-              <Image alt={''} src={'/imgs/module/variable.png'} objectFit={'contain'} w={'18px'} />
-              <Box ml={2} flex={1}>
-                变量
-              </Box>
-              <Flex {...BoxBtnStyles} onClick={() => setEditVariable(addVariable())}>
-                +&ensp;新增
-              </Flex>
-            </Flex>
-            {variables.length > 0 && (
-              <Box
-                mt={2}
-                borderRadius={'lg'}
-                overflow={'hidden'}
-                borderWidth={'1px'}
-                borderBottom="none"
-              >
-                <TableContainer>
-                  <Table bg={'white'}>
-                    <Thead>
-                      <Tr>
-                        <Th>变量名</Th>
-                        <Th>变量 key</Th>
-                        <Th>必填</Th>
-                        <Th></Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {variables.map((item, index) => (
-                        <Tr key={item.id}>
-                          <Td>{item.label} </Td>
-                          <Td>{item.key}</Td>
-                          <Td>{item.required ? '✔' : ''}</Td>
-                          <Td>
-                            <MyIcon
-                              mr={3}
-                              name={'settingLight'}
-                              w={'16px'}
-                              cursor={'pointer'}
-                              onClick={() => setEditVariable(item)}
-                            />
-                            <MyIcon
-                              name={'delete'}
-                              w={'16px'}
-                              cursor={'pointer'}
-                              onClick={() => removeVariable(index)}
-                            />
-                          </Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
+            <VariableEdit
+              defaultVariables={getValues('userGuide.variables')}
+              onChange={(e) => setValue('userGuide.variables', e)}
+            />
           </Box>
         )}
 
@@ -497,31 +431,6 @@ function ConfigForm({
       </Box>
 
       <ConfirmSaveModal />
-      {editVariable && (
-        <VariableEditModal
-          defaultVariable={editVariable}
-          onClose={() => setEditVariable(undefined)}
-          onSubmit={({ variable }) => {
-            const record = variables.find((item) => item.id === variable.id);
-            if (record) {
-              replaceVariables(
-                variables.map((item) => (item.id === variable.id ? variable : item))
-              );
-            } else {
-              // auth same key
-              if (variables.find((item) => item.key === variable.key)) {
-                return toast({
-                  status: 'warning',
-                  title: t('app.Variable Key Repeat Tip')
-                });
-              }
-              appendVariable(variable);
-            }
-
-            setEditVariable(undefined);
-          }}
-        />
-      )}
       {isOpenAIChatSetting && (
         <AIChatSettingsModal
           onClose={onCloseAIChatSetting}

@@ -20,14 +20,14 @@ import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { welcomeTextTip, variableTip } from '@fastgpt/global/core/module/template/tip';
 import { onChangeNode } from '../../FlowProvider';
 
-import VariableEditModal, { addVariable } from '../../../VariableEditModal';
+import VariableEdit from '../modules/VariableEdit';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
 import NodeCard from '../modules/NodeCard';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
-import QGSwitch from '@/pages/app/detail/components/QGSwitch';
-import TTSSelect from '@/pages/app/detail/components/TTSSelect';
+import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
+import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 
 const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
@@ -105,8 +105,6 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
     [inputs]
   );
 
-  const [editVariable, setEditVariable] = useState<VariableItemType>();
-
   const updateVariables = useCallback(
     (value: VariableItemType[]) => {
       onChangeNode({
@@ -122,92 +120,7 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
     [inputs, moduleId]
   );
 
-  const onclickSubmit = useCallback(
-    ({ variable }: { variable: VariableItemType }) => {
-      updateVariables(variables.map((item) => (item.id === variable.id ? variable : item)));
-      setEditVariable(undefined);
-    },
-    [updateVariables, variables]
-  );
-
-  return (
-    <>
-      <Flex mb={1} alignItems={'center'}>
-        <MyIcon name={'variable'} mr={2} w={'16px'} color={'#fb7c3d'} />
-        <Box>对话框变量</Box>
-        <MyTooltip label={variableTip} forceShow>
-          <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-        </MyTooltip>
-        <Box flex={1} />
-        <Flex
-          ml={2}
-          textAlign={'right'}
-          cursor={'pointer'}
-          px={3}
-          py={'2px'}
-          borderRadius={'md'}
-          _hover={{ bg: 'myGray.200' }}
-          onClick={() => {
-            const newVariable = addVariable();
-            updateVariables(variables.concat(newVariable));
-            setEditVariable(newVariable);
-          }}
-        >
-          +&ensp;新增
-        </Flex>
-      </Flex>
-      {variables.length > 0 && (
-        <TableContainer borderWidth={'1px'} borderBottom="none" borderRadius={'lg'}>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>变量名</Th>
-                <Th>变量 key</Th>
-                <Th>必填</Th>
-                <Th></Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {variables.map((item, index) => (
-                <Tr key={index}>
-                  <Td>{item.label} </Td>
-                  <Td>{item.key}</Td>
-                  <Td>{item.required ? '✔' : ''}</Td>
-                  <Td>
-                    <MyIcon
-                      mr={3}
-                      name={'settingLight'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() => {
-                        setEditVariable(item);
-                      }}
-                    />
-                    <MyIcon
-                      name={'delete'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() =>
-                        updateVariables(variables.filter((variable) => variable.id !== item.id))
-                      }
-                    />
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
-      )}
-
-      {!!editVariable && (
-        <VariableEditModal
-          defaultVariable={editVariable}
-          onClose={() => setEditVariable(undefined)}
-          onSubmit={onclickSubmit}
-        />
-      )}
-    </>
-  );
+  return <VariableEdit defaultVariables={variables} onChange={(e) => updateVariables(e)} />;
 }
 
 function QuestionGuide({ data }: { data: FlowModuleItemType }) {

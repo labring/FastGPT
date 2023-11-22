@@ -129,12 +129,14 @@
   },
   "common": {
     "Add": "Add",
+    "Add New": "Add",
     "Back": "Back",
     "Beta": "Beta",
     "Business edition features": "This is the commercial version function ~",
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
+    "Confirm": "Confirm",
     "Confirm Create": "Create",
     "Confirm Move": "Move here",
     "Confirm Update": "Update",
@@ -174,6 +176,7 @@
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
     "Request Error": "Request Error",
+    "Require Input": "Required",
     "Save Failed": "Save Failed",
     "Save Success": "Save Success",
     "Search": "Search",
@@ -222,6 +225,9 @@
       "Select TTS": "Select TTS",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "simple": {
+        "mode template select": "Template"
+      },
       "tts": {
         "Close": "NoUse",
         "Model alloy": "Female - Alloy",
@@ -231,9 +237,6 @@
         "Test Listen": "Test",
         "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
         "Web": "Browser (free)"
-      },
-      "simple": {
-        "mode template select": "Template"
       }
     },
     "chat": {
@@ -265,6 +268,8 @@
       }
     },
     "modules": {
+      "Variable": "Variable",
+      "Variable Setting": "Variable Setting",
       "input": {
         "label": {
           "chat history": "",
@@ -279,7 +284,21 @@
         "label": {
           "running done": ""
         }
-      }
+      },
+      "variable": {
+        "select type": "Select",
+        "text type": "Text"
+      },
+      "variable add option": "Add Option",
+      "variable key": "Key",
+      "variable key is required": "variable key is required",
+      "variable max length": "Max Length",
+      "variable name": "Name",
+      "variable name is required": "variable name is required",
+      "variable option is required": "Variable option is required",
+      "variable option is value is required": "Variable option is value is required",
+      "variable options": "Options",
+      "variable type": "Field Type"
     }
   },
   "dataset": {

@@ -129,12 +129,14 @@
   },
   "common": {
     "Add": "添加",
+    "Add New": "新增",
     "Back": "返回",
     "Beta": "实验版",
     "Business edition features": "这是商业版功能~",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
+    "Confirm": "确认",
     "Confirm Create": "确认创建",
     "Confirm Move": "移动到这",
     "Confirm Update": "确认更新",
@@ -174,6 +176,7 @@
     "Rename Failed": "重命名失败",
     "Rename Success": "重命名成功",
     "Request Error": "请求异常",
+    "Require Input": "必填",
     "Save Failed": "保存失败",
     "Save Success": "保存成功",
     "Search": "搜索",
@@ -265,6 +268,8 @@
       }
     },
     "modules": {
+      "Variable": "参数变量",
+      "Variable Setting": "变量设置",
       "input": {
         "label": {
           "chat history": "聊天记录",
@@ -279,7 +284,21 @@
         "label": {
           "running done": "模块调用结束"
         }
-      }
+      },
+      "variable": {
+        "select type": "下拉单选",
+        "text type": "文本"
+      },
+      "variable add option": "添加选项",
+      "variable key": "变量 key",
+      "variable key is required": "变量 key 不能为空",
+      "variable max length": "最大长度",
+      "variable name": "变量名",
+      "variable name is required": "变量名不能为空",
+      "variable option is required": "选项不能全空",
+      "variable option is value is required": "选项内容不能为空",
+      "variable options": "选项",
+      "variable type": "字段类型"
     }
   },
   "dataset": {
