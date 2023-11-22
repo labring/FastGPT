@@ -120,7 +120,7 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
     [inputs, moduleId]
   );
 
-  return <VariableEdit defaultVariables={variables} onChange={(e) => updateVariables(e)} />;
+  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
 }
 
 function QuestionGuide({ data }: { data: FlowModuleItemType }) {

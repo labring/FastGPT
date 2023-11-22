@@ -268,8 +268,11 @@ function ConfigForm({
         {selectSimpleTemplate?.systemForm?.userGuide?.variables && (
           <Box mt={2} {...BoxStyles}>
             <VariableEdit
-              defaultVariables={getValues('userGuide.variables')}
-              onChange={(e) => setValue('userGuide.variables', e)}
+              variables={getValues('userGuide.variables')}
+              onChange={(e) => {
+                setValue('userGuide.variables', e);
+                setRefresh(!refresh);
+              }}
             />
           </Box>
         )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -41,10 +41,10 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 
 const VariableEdit = ({
-  defaultVariables,
+  variables,
   onChange
 }: {
-  defaultVariables: VariableItemType[];
+  variables: VariableItemType[];
   onChange: (data: VariableItemType[]) => void;
 }) => {
   const { t } = useTranslation();
@@ -64,24 +64,6 @@ const VariableEdit = ({
       key: VariableInputEnum.select
     }
   ];
-
-  const { control: variablesController } = useForm<{
-    variables: VariableItemType[];
-  }>({
-    defaultValues: {
-      variables: defaultVariables
-    }
-  });
-
-  const {
-    fields: variables,
-    append: appendVariable,
-    remove: removeVariable,
-    update: updateVariable
-  } = useFieldArray({
-    control: variablesController,
-    name: 'variables'
-  });
 
   const { isOpen: isOpenEdit, onOpen: onOpenEdit, onClose: onCloseEdit } = useDisclosure();
   const {
@@ -165,7 +147,9 @@ const VariableEdit = ({
                         name={'delete'}
                         w={'16px'}
                         cursor={'pointer'}
-                        onClick={() => removeVariable(index)}
+                        onClick={() =>
+                          onChange(variables.filter((variable) => variable.id !== item.id))
+                        }
                       />
                     </Td>
                   </Tr>
@@ -326,11 +310,12 @@ const VariableEdit = ({
               // update
               if (variable.id) {
                 const index = variables.findIndex((item) => item.id === variable.id);
-                updateVariable(index, variable);
                 onChangeVariable[index] = variable;
               } else {
-                appendVariable(variable);
-                onChangeVariable.push(variable);
+                onChangeVariable.push({
+                  ...variable,
+                  id: nanoid()
+                });
               }
               onChange(onChangeVariable);
               onCloseEdit();
