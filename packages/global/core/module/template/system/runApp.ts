@@ -25,9 +25,12 @@ export const RunAppModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.runAppSelectApp,
       type: FlowNodeInputTypeEnum.selectApp,
+      valueType: ModuleDataTypeEnum.selectApp,
       label: '选择一个应用',
       description: '选择一个其他应用进行调用',
-      required: true
+      required: true,
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     Input_Template_History,
     Input_Template_UserChatInput

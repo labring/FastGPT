@@ -6,21 +6,27 @@ import { ModuleDataTypeEnum } from '../constants';
 export const Input_Template_TFSwitch: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.switch,
   type: FlowNodeInputTypeEnum.target,
-  label: 'core.modules.input.label.switch',
-  valueType: ModuleDataTypeEnum.any
+  label: 'core.module.input.label.switch',
+  valueType: ModuleDataTypeEnum.any,
+  showTargetInApp: true,
+  showTargetInPlugin: true
 };
 
 export const Input_Template_History: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.history,
   type: FlowNodeInputTypeEnum.target,
-  label: 'core.modules.input.label.chat history',
-  valueType: ModuleDataTypeEnum.chatHistory
+  label: 'core.module.input.label.chat history',
+  valueType: ModuleDataTypeEnum.chatHistory,
+  showTargetInApp: true,
+  showTargetInPlugin: true
 };
 
 export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.userChatInput,
   type: FlowNodeInputTypeEnum.target,
-  label: 'core.modules.input.label.user question',
+  label: 'core.module.input.label.user question',
   required: true,
-  valueType: ModuleDataTypeEnum.string
+  valueType: ModuleDataTypeEnum.string,
+  showTargetInApp: true,
+  showTargetInPlugin: true
 };

@@ -33,7 +33,6 @@ import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'next-i18next';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
-import { addVariable } from '@/components/core/module/Flow/components/modules/VariableEdit';
 import { DatasetParamsModal } from '@/components/core/module/DatasetSelectModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -448,7 +447,7 @@ function ConfigForm({
       {isOpenDatasetSelect && (
         <DatasetSelectModal
           isOpen={isOpenDatasetSelect}
-          activeDatasets={selectDatasets.map((item) => ({
+          defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item._id,
             vectorModel: item.vectorModel
           }))}

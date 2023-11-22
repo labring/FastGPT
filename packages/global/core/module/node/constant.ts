@@ -1,5 +1,6 @@
 export enum FlowNodeInputTypeEnum {
   systemInput = 'systemInput', // history, userChatInput, variableInput
+
   input = 'input', // one line input
   textarea = 'textarea',
   numberInput = 'numberInput',
@@ -8,7 +9,6 @@ export enum FlowNodeInputTypeEnum {
   custom = 'custom',
   target = 'target', // data input
   switch = 'switch',
-  chatInput = 'chatInput',
   selectApp = 'selectApp',
   // chat special input
   aiSettings = 'aiSettings',

@@ -11,7 +11,7 @@ const NodeSimple = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
 
   return (
-    <NodeCard minW={'300px'} {...data}>
+    <NodeCard minW={'350px'} {...data}>
       <Divider text="Input" />
       <Container>
         <RenderInput moduleId={moduleId} flowInputList={inputs} />

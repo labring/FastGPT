@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
 import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -42,12 +42,21 @@ const Header = ({ plugin, onClose }: Props) => {
             return Promise.reject(t('module.Plugin input must connect'));
           }
         }
-
-        if (item.inputs.find((input) => input.required && !input.connected)) {
-          return Promise.reject(`【${item.name}】存在未连接的必填输入`);
+        if (
+          item.flowType === FlowNodeTypeEnum.pluginOutput &&
+          item.inputs.find((input) => !input.connected)
+        ) {
+          return Promise.reject(t('core.module.Plugin output must connect'));
         }
-        if (item.inputs.find((input) => input.valueCheck && !input.valueCheck(input.value))) {
-          return Promise.reject(`【${item.name}】存在为填写的必填项`);
+
+        if (
+          item.inputs.find((input) => {
+            if (!input.required || input.connected) return false;
+            if (!input.value || input.value === '' || input.value?.length === 0) return true;
+            return false;
+          })
+        ) {
+          return Promise.reject(`【${item.name}】存在未填或未连接参数`);
         }
       }
 

@@ -31,9 +31,8 @@
     "Export Config Successful": "The configuration has been copied. Please check for important data",
     "Export Configs": "Export Configs",
     "Feedback Count": "User Feedback",
-    "Import Config": "Import Config",
-    "Import Config Failed": "Failed to import the configuration, please ensure that the configuration is normal!",
     "Import Configs": "Import Configs",
+    "Import Configs Failed": "Failed to import the configuration, please ensure that the configuration is normal!",
     "Input Field Settings": "Input Field Settings",
     "Logs Empty": "Logs is empty",
     "Logs Message Total": "Message Count",
@@ -54,15 +53,7 @@
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
-      "type": "{{type}}\n{{example}}",
-      "valueType": {
-        "any": "any",
-        "boolean": "boolean",
-        "chatHistory": "Chat History",
-        "datasetQuote": "Dataset Quote",
-        "number": "number",
-        "string": "string"
-      }
+      "type": "{{type}}\n{{example}}"
     },
     "modules": {
       "Title is required": "Title is required"
@@ -270,7 +261,14 @@
         "id": "Data ID"
       }
     },
-    "modules": {
+    "module": {
+      "Data Type": "Data Type",
+      "Field Description": "Description",
+      "Field Name": "Name",
+      "Field Type": "Type",
+      "Field key": "Key",
+      "Input Type": "Input Type",
+      "Plugin output must connect": "Custom outputs must all be connected",
       "Variable": "Variable",
       "Variable Setting": "Variable Setting",
       "input": {
@@ -280,28 +278,47 @@
           "user question": ""
         }
       },
+      "inputType": {
+        "input": "Input",
+        "selectApp": "App Selector",
+        "selectChatModel": "Select Chat Model",
+        "selectDataset": "Dataset Selector",
+        "switch": "Switch",
+        "target": "Target Data",
+        "textarea": "Textarea"
+      },
       "output": {
         "description": {
-          "running done": ""
+          "running done": "running done"
         },
         "label": {
-          "running done": ""
+          "running done": "running done"
         }
       },
-      "variable": {
-        "select type": "Select",
-        "text type": "Text"
+      "valueType": {
+        "any": "Any",
+        "boolean": "Boolean",
+        "chatHistory": "History",
+        "datasetQuote": "Dataset Quote",
+        "number": "Number",
+        "string": "String",
+        "selectDataset": "Select Dataset",
+        "selectApp": "Select App"
       },
-      "variable add option": "Add Option",
-      "variable key": "Key",
-      "variable key is required": "variable key is required",
-      "variable max length": "Max Length",
-      "variable name": "Name",
-      "variable name is required": "variable name is required",
-      "variable option is required": "Variable option is required",
-      "variable option is value is required": "Variable option is value is required",
-      "variable options": "Options",
-      "variable type": "Field Type"
+      "variable": {
+        "add option": "Add Option",
+        "key": "Key",
+        "key is required": "variable key is required",
+        "select type": "Select",
+        "text max length": "Max Length",
+        "text type": "Text",
+        "variable key is required": "",
+        "variable name": "Name",
+        "variable name is required": "variable name is required",
+        "variable option is required": "Variable option is required",
+        "variable option is value is required": "Variable option is value is required",
+        "variable options": "Options"
+      }
     }
   },
   "dataset": {

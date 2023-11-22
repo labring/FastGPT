@@ -27,7 +27,9 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.selectChatModel,
       label: '对话模型',
       required: true,
-      valueCheck: (val) => !!val
+      valueType: ModuleDataTypeEnum.string,
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     // --- settings modal
     {
@@ -35,19 +37,23 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.hidden, // Set in the pop-up window
       label: '温度',
       value: 0,
+      valueType: ModuleDataTypeEnum.number,
       min: 0,
       max: 10,
       step: 1,
       markList: [
         { label: '严谨', value: 0 },
         { label: '发散', value: 10 }
-      ]
+      ],
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.aiChatMaxToken,
       type: FlowNodeInputTypeEnum.hidden, // Set in the pop-up window
       label: '回复上限',
       value: 2000,
+      valueType: ModuleDataTypeEnum.number,
       min: 100,
       max: 4000,
       step: 50,
@@ -57,34 +63,45 @@ export const AiChatModule: FlowModuleTemplateType = {
           label: `${4000}`,
           value: 4000
         }
-      ]
+      ],
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.aiChatIsResponseText,
       type: FlowNodeInputTypeEnum.hidden,
       label: '返回AI内容',
+      value: true,
       valueType: ModuleDataTypeEnum.boolean,
-      value: true
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.aiChatQuoteTemplate,
       type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容模板',
       valueType: ModuleDataTypeEnum.string,
-      value: ''
+      value: '',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.aiChatQuotePrompt,
       type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容提示词',
       valueType: ModuleDataTypeEnum.string,
-      value: ''
+      value: '',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.aiChatSettingModal,
       type: FlowNodeInputTypeEnum.aiSettings,
       label: '',
-      connected: false
+      connected: false,
+      valueType: ModuleDataTypeEnum.any,
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     // settings modal ---
     {
@@ -95,7 +112,9 @@ export const AiChatModule: FlowModuleTemplateType = {
       valueType: ModuleDataTypeEnum.string,
       description: chatNodeSystemPromptTip,
       placeholder: chatNodeSystemPromptTip,
-      value: ''
+      value: '',
+      showTargetInApp: true,
+      showTargetInPlugin: true
     },
     {
       key: ModuleInputKeyEnum.aiChatDatasetQuote,
@@ -103,7 +122,9 @@ export const AiChatModule: FlowModuleTemplateType = {
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
       valueType: ModuleDataTypeEnum.datasetQuote,
-      connected: false
+      connected: false,
+      showTargetInApp: true,
+      showTargetInPlugin: true
     },
     Input_Template_History,
     Input_Template_UserChatInput

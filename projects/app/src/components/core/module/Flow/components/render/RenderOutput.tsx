@@ -73,7 +73,7 @@ export const Label = ({
         </>
       )}
       {description && (
-        <MyTooltip label={description} forceShow>
+        <MyTooltip label={t(description)} forceShow>
           <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
         </MyTooltip>
       )}

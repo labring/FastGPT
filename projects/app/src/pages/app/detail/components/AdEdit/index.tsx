@@ -53,7 +53,7 @@ const Render = ({ app, onClose }: Props) => {
 
 export default React.memo(function AdEdit(props: Props) {
   return (
-    <FlowProvider filterAppIds={[props.app._id]}>
+    <FlowProvider mode={'app'} filterAppIds={[props.app._id]}>
       <Render {...props} />
     </FlowProvider>
   );

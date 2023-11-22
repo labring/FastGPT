@@ -34,7 +34,6 @@ import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useQuery } from '@tanstack/react-query';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 import { feConfigs } from '@/web/common/system/staticData';
 
@@ -54,8 +53,25 @@ export const Label = React.memo(function Label({
   editFiledType?: EditFieldModeType;
 }) {
   const { t } = useTranslation();
-  const { required = false, description, edit, label, type, valueType } = item;
+  const { mode } = useFlowProviderStore();
+  const {
+    required = false,
+    description,
+    edit,
+    label,
+    type,
+    valueType,
+    showTargetInApp,
+    showTargetInPlugin
+  } = item;
   const [editField, setEditField] = useState<EditFieldType>();
+
+  const targetHandle = useMemo(() => {
+    if (type === FlowNodeInputTypeEnum.target) return true;
+    if (mode === 'app' && showTargetInApp) return true;
+    if (mode === 'plugin' && showTargetInPlugin) return true;
+    return false;
+  }, [mode, showTargetInApp, showTargetInPlugin, type]);
 
   return (
     <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
@@ -79,9 +95,7 @@ export const Label = React.memo(function Label({
         )}
       </Box>
 
-      {(type === FlowNodeInputTypeEnum.target || valueType) && (
-        <TargetHandle handleKey={inputKey} valueType={valueType} />
-      )}
+      {targetHandle && <TargetHandle handleKey={inputKey} valueType={valueType} />}
 
       {edit && (
         <>
@@ -94,6 +108,7 @@ export const Label = React.memo(function Label({
             onClick={() =>
               setEditField({
                 label: item.label,
+                type: item.type,
                 valueType: item.valueType,
                 required: item.required,
                 key: inputKey,
@@ -430,7 +445,7 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
   item,
   moduleId
 }: RenderProps) {
-  const modelList = (item.customData?.() as LLMModelItemType[]) || chatModelList || [];
+  const modelList = chatModelList || [];
 
   function onChangeModel(e: string) {
     {
@@ -491,6 +506,7 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
 
 var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, moduleId }: RenderProps) {
   const theme = useTheme();
+  const { mode } = useFlowProviderStore();
   const { allDatasets, loadAllDatasets } = useDatasetStore();
   const {
     isOpen: isOpenKbSelect,
@@ -498,9 +514,9 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
     onClose: onCloseKbSelect
   } = useDisclosure();
 
-  const showKbList = useMemo(() => {
+  const selectedDatasets = useMemo(() => {
     const value = item.value as SelectedDatasetType;
-    return allDatasets.filter((dataset) => value.find((kb) => kb.datasetId === dataset._id));
+    return allDatasets.filter((dataset) => value?.find((item) => item.datasetId === dataset._id));
   }, [allDatasets, item.value]);
 
   useQuery(['loadAllDatasets'], loadAllDatasets);
@@ -511,7 +527,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
         <Button h={'36px'} onClick={onOpenKbSelect}>
           选择知识库
         </Button>
-        {showKbList.map((item) => (
+        {selectedDatasets.map((item) => (
           <Flex
             key={item._id}
             alignItems={'center'}
@@ -534,22 +550,24 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
           </Flex>
         ))}
       </Grid>
-      <DatasetSelectModal
-        isOpen={isOpenKbSelect}
-        activeDatasets={item.value}
-        onChange={(e) => {
-          onChangeNode({
-            moduleId,
-            key: item.key,
-            type: 'updateInput',
-            value: {
-              ...item,
-              value: e
-            }
-          });
-        }}
-        onClose={onCloseKbSelect}
-      />
+      {isOpenKbSelect && (
+        <DatasetSelectModal
+          isOpen={isOpenKbSelect}
+          defaultSelectedDatasets={item.value}
+          onChange={(e) => {
+            onChangeNode({
+              moduleId,
+              key: item.key,
+              type: 'updateInput',
+              value: {
+                ...item,
+                value: e
+              }
+            });
+          }}
+          onClose={onCloseKbSelect}
+        />
+      )}
     </>
   );
 });

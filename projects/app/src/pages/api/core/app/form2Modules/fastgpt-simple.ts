@@ -125,7 +125,7 @@ function simpleChatTemplate({
         {
           key: 'switch',
           type: 'target',
-          label: 'core.modules.input.label.switch',
+          label: 'core.module.input.label.switch',
           valueType: 'any',
           connected: false
         },
@@ -231,14 +231,14 @@ function simpleChatTemplate({
         {
           key: 'history',
           type: 'target',
-          label: 'core.modules.input.label.chat history',
+          label: 'core.module.input.label.chat history',
           valueType: 'chatHistory',
           connected: true
         },
         {
           key: 'userChatInput',
           type: 'target',
-          label: 'core.modules.input.label.user question',
+          label: 'core.module.input.label.user question',
           required: true,
           valueType: 'string',
           connected: true
@@ -255,8 +255,8 @@ function simpleChatTemplate({
         },
         {
           key: 'finish',
-          label: 'core.modules.output.label.running done',
-          description: 'core.modules.output.description.running done',
+          label: 'core.module.output.label.running done',
+          description: 'core.module.output.description.running done',
           valueType: 'boolean',
           type: 'source',
           targets: []
@@ -443,8 +443,8 @@ function datasetTemplate({
         },
         {
           key: 'finish',
-          label: 'core.modules.output.label.running done',
-          description: 'core.modules.output.description.running done',
+          label: 'core.module.output.label.running done',
+          description: 'core.module.output.description.running done',
           valueType: 'boolean',
           type: 'source',
           targets: []
@@ -465,7 +465,7 @@ function datasetTemplate({
         {
           key: 'switch',
           type: 'target',
-          label: 'core.modules.input.label.switch',
+          label: 'core.module.input.label.switch',
           valueType: 'any',
           connected: false
         },
@@ -571,14 +571,14 @@ function datasetTemplate({
         {
           key: 'history',
           type: 'target',
-          label: 'core.modules.input.label.chat history',
+          label: 'core.module.input.label.chat history',
           valueType: 'chatHistory',
           connected: true
         },
         {
           key: 'userChatInput',
           type: 'target',
-          label: 'core.modules.input.label.user question',
+          label: 'core.module.input.label.user question',
           required: true,
           valueType: 'string',
           connected: true
@@ -595,8 +595,8 @@ function datasetTemplate({
         },
         {
           key: 'finish',
-          label: 'core.modules.output.label.running done',
-          description: 'core.modules.output.description.running done',
+          label: 'core.module.output.label.running done',
+          description: 'core.module.output.description.running done',
           valueType: 'boolean',
           type: 'source',
           targets: []

@@ -3,27 +3,22 @@ import { NodeProps } from 'reactflow';
 import NodeCard from '../modules/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { onChangeNode } from '../../FlowProvider';
-
 import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
-import { customAlphabet } from 'nanoid';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
-} from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import Container from '../modules/Container';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { EditFieldType } from '../modules/FieldEditModal';
-import TargetHandle from '../render/TargetHandle';
+import SourceHandle from '../render/SourceHandle';
+import { defaultInputField, type EditFieldType } from '../modules/FieldEditModal';
+import { useToast } from '@/web/common/hooks/useToast';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
+  const { toast } = useToast();
   const [editField, setEditField] = useState<EditFieldType>();
 
   return (
@@ -34,39 +29,25 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
             key={item.key}
             className="nodrag"
             cursor={'default'}
-            justifyContent={'left'}
+            justifyContent={'right'}
             alignItems={'center'}
             position={'relative'}
-            mb={4}
+            mb={7}
           >
-            <TargetHandle handleKey={item.key} valueType={item.valueType} />
-            <Box position={'relative'}>
-              {item.label}
-              {item.required && (
-                <Box
-                  position={'absolute'}
-                  right={'-6px'}
-                  top={'-3px'}
-                  color={'red.500'}
-                  fontWeight={'bold'}
-                >
-                  *
-                </Box>
-              )}
-            </Box>
-
             <MyIcon
               name={'settingLight'}
               w={'14px'}
               cursor={'pointer'}
-              ml={3}
+              mr={3}
               _hover={{ color: 'myBlue.600' }}
               onClick={() =>
                 setEditField({
+                  type: item.type,
                   key: item.key,
                   label: item.label,
                   valueType: item.valueType,
-                  description: item.description
+                  description: item.description,
+                  required: item.required
                 })
               }
             />
@@ -75,14 +56,13 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
               name={'delete'}
               w={'14px'}
               cursor={'pointer'}
-              ml={3}
+              mr={3}
               _hover={{ color: 'red.500' }}
               onClick={() => {
                 onChangeNode({
                   moduleId,
                   type: 'delInput',
-                  key: item.key,
-                  value: ''
+                  key: item.key
                 });
                 onChangeNode({
                   moduleId,
@@ -97,38 +77,29 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
                 <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
               </MyTooltip>
             )}
+            <Box position={'relative'}>
+              {item.label}
+              {item.required && (
+                <Box
+                  position={'absolute'}
+                  right={'-6px'}
+                  top={'-3px'}
+                  color={'red.500'}
+                  fontWeight={'bold'}
+                >
+                  *
+                </Box>
+              )}
+            </Box>
+            <SourceHandle handleKey={item.key} valueType={item.valueType} />
           </Flex>
         ))}
-        <Box textAlign={'left'} mt={5}>
+        <Box textAlign={'right'} mt={5}>
           <Button
             variant={'base'}
             leftIcon={<SmallAddIcon />}
             onClick={() => {
-              const key = nanoid();
-              onChangeNode({
-                moduleId,
-                type: 'addInput',
-                value: {
-                  key,
-                  valueType: ModuleDataTypeEnum.string,
-                  type: FlowNodeInputTypeEnum.target,
-                  label: `入参${inputs.length + 1}`,
-                  edit: true,
-                  required: true
-                }
-              });
-              onChangeNode({
-                moduleId,
-                type: 'addOutput',
-                value: {
-                  key,
-                  label: `入参${inputs.length + 1}`,
-                  valueType: ModuleDataTypeEnum.string,
-                  type: FlowNodeOutputTypeEnum.source,
-                  edit: true,
-                  targets: []
-                }
-              });
+              setEditField(defaultInputField);
             }}
           >
             添加入参
@@ -137,13 +108,52 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
       {!!editField && (
         <FieldEditModal
-          mode={'output'}
+          mode={'pluginInput'}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
           onSubmit={(e) => {
+            // create field
+            if (e.createSign) {
+              // check key repeat
+              const memInput = inputs.find((item) => item.key === e.key);
+              if (memInput) {
+                return toast({
+                  status: 'warning',
+                  title: '字段key已存在'
+                });
+              }
+
+              onChangeNode({
+                moduleId,
+                type: 'addInput',
+                value: {
+                  key: e.key,
+                  valueType: e.valueType,
+                  type: e.type,
+                  label: e.label,
+                  required: e.required,
+                  edit: true
+                }
+              });
+              onChangeNode({
+                moduleId,
+                type: 'addOutput',
+                value: {
+                  key: e.key,
+                  valueType: e.valueType,
+                  label: e.label,
+                  type: FlowNodeOutputTypeEnum.source,
+                  edit: true,
+                  targets: []
+                }
+              });
+              return setEditField(undefined);
+            }
+            // check key valid
             const memInput = inputs.find((item) => item.key === editField.key);
             const memOutput = outputs.find((item) => item.key === editField.key);
-            if (!memInput || !memOutput) return;
+
+            if (!memInput || !memOutput) return setEditField(undefined);
             const input = {
               ...memInput,
               ...e
@@ -188,4 +198,4 @@ const NodeOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
     </NodeCard>
   );
 };
-export default React.memo(NodeOutput);
+export default React.memo(NodePluginInput);

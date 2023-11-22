@@ -1,7 +1,7 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
 import { userGuideTip } from '../tip';
-import { ModuleInputKeyEnum } from '../../constants';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '../../constants';
 
 export const UserGuideModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.userGuide,
@@ -13,23 +13,35 @@ export const UserGuideModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.welcomeText,
       type: FlowNodeInputTypeEnum.hidden,
-      label: '开场白'
+      valueType: ModuleDataTypeEnum.string,
+      label: '开场白',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.variables,
       type: FlowNodeInputTypeEnum.hidden,
+      valueType: ModuleDataTypeEnum.any,
       label: '对话框变量',
-      value: []
+      value: [],
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.questionGuide,
+      valueType: ModuleDataTypeEnum.boolean,
       type: FlowNodeInputTypeEnum.switch,
-      label: '问题引导'
+      label: '问题引导',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.tts,
       type: FlowNodeInputTypeEnum.hidden,
-      label: '语音播报'
+      valueType: ModuleDataTypeEnum.any,
+      label: '语音播报',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     }
   ],
   outputs: []

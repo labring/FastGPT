@@ -1,12 +1,9 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/module/node/type';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -47,11 +44,14 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       // check required connect
       for (let i = 0; i < modules.length; i++) {
         const item = modules[i];
-        if (item.inputs.find((input) => input.required && !input.connected)) {
-          return Promise.reject(`【${item.name}】存在未连接的必填输入`);
-        }
-        if (item.inputs.find((input) => input.valueCheck && !input.valueCheck(input.value))) {
-          return Promise.reject(`【${item.name}】存在为填写的必填项`);
+        if (
+          item.inputs.find((input) => {
+            if (!input.required || input.connected) return false;
+            if (!input.value || input.value === '' || input.value?.length === 0) return true;
+            return false;
+          })
+        ) {
+          return Promise.reject(`【${item.name}】存在未填或未连接参数`);
         }
       }
 

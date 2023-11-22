@@ -80,7 +80,7 @@ const Render = ({ pluginId }: Props) => {
 
 export default function AdEdit(props: any) {
   return (
-    <FlowProvider filterAppIds={[]}>
+    <FlowProvider mode={'plugin'} filterAppIds={[]}>
       <Render {...props} />
     </FlowProvider>
   );

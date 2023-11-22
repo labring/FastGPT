@@ -39,6 +39,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 export type useFlowProviderStoreType = {
   reactFlowWrapper: null | React.RefObject<HTMLDivElement>;
+  mode: 'app' | 'plugin';
   filterAppIds: string[];
   nodes: Node<FlowModuleItemType, string | undefined>[];
   setNodes: Dispatch<SetStateAction<Node<FlowModuleItemType, string | undefined>[]>>;
@@ -63,6 +64,7 @@ export type useFlowProviderStoreType = {
 
 const StateContext = createContext<useFlowProviderStoreType>({
   reactFlowWrapper: null,
+  mode: 'app',
   filterAppIds: [],
   nodes: [],
   setNodes: function (
@@ -115,9 +117,11 @@ const StateContext = createContext<useFlowProviderStoreType>({
 export const useFlowProviderStore = () => useContext(StateContext);
 
 export const FlowProvider = ({
+  mode,
   filterAppIds = [],
   children
 }: {
+  mode: useFlowProviderStoreType['mode'];
   filterAppIds?: string[];
   children: React.ReactNode;
 }) => {
@@ -404,6 +408,7 @@ export const FlowProvider = ({
 
   const value = {
     reactFlowWrapper,
+    mode,
     filterAppIds,
     nodes,
     setNodes,
@@ -447,7 +452,7 @@ export function flowNode2Modules({
     position: item.position,
     inputs: item.data.inputs.map((item) => ({
       ...item,
-      connected: item.connected ?? item.type !== FlowNodeInputTypeEnum.target
+      connected: Boolean(item.value ?? item.connected ?? item.type !== FlowNodeInputTypeEnum.target)
     })),
     outputs: item.data.outputs.map((item) => ({
       ...item,

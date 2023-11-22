@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Flex, Image } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import ParentPaths from '@/components/common/ParentPaths';
 
 type PathItemType = {
@@ -28,7 +28,6 @@ const DatasetSelectContainer = ({
   children: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const { isPc } = useSystemStore();
 
   return (
     <MyModal
@@ -66,10 +65,9 @@ const DatasetSelectContainer = ({
 };
 
 export function useDatasetSelect() {
-  const { t } = useTranslation();
-  const [parentId, setParentId] = useState<string>();
+  const [parentId, setParentId] = useState<string>('');
 
-  const { data, isLoading } = useQuery(['loadDatasetData', parentId], () =>
+  const { data, isFetching } = useQuery(['loadDatasetData', parentId], () =>
     Promise.all([getDatasets({ parentId }), getDatasetPaths(parentId)])
   );
 
@@ -80,7 +78,7 @@ export function useDatasetSelect() {
     setParentId,
     datasets: data?.[0] || [],
     paths,
-    isLoading
+    isFetching
   };
 }
 

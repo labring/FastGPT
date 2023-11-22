@@ -19,30 +19,41 @@ export const FlowValueTypeStyle: Record<`${ModuleDataTypeEnum}`, BoxProps> = {
   },
   [ModuleDataTypeEnum.any]: {
     background: '#9CA2A8'
+  },
+  [ModuleDataTypeEnum.selectApp]: {
+    background: '#6a6efa'
+  },
+  [ModuleDataTypeEnum.selectDataset]: {
+    background: '#21ba45'
   }
 };
-export const FlowValueTypeTip = {
+export const FlowValueTypeMap = {
   [ModuleDataTypeEnum.string]: {
-    label: 'app.module.valueType.string',
+    label: 'core.module.valueType.string',
+    value: ModuleDataTypeEnum.string,
     example: ''
   },
   [ModuleDataTypeEnum.number]: {
-    label: 'app.module.valueType.number',
+    label: 'core.module.valueType.number',
+    value: ModuleDataTypeEnum.number,
     example: ''
   },
   [ModuleDataTypeEnum.boolean]: {
-    label: 'app.module.valueType.boolean',
+    label: 'core.module.valueType.boolean',
+    value: ModuleDataTypeEnum.boolean,
     example: ''
   },
   [ModuleDataTypeEnum.chatHistory]: {
-    label: 'app.module.valueType.chatHistory',
+    label: 'core.module.valueType.chatHistory',
+    value: ModuleDataTypeEnum.chatHistory,
     example: `{
   obj: System | Human | AI;
   value: string;
 }`
   },
   [ModuleDataTypeEnum.datasetQuote]: {
-    label: 'app.module.valueType.datasetQuote',
+    label: 'core.module.valueType.datasetQuote',
+    value: ModuleDataTypeEnum.datasetQuote,
     example: `{
   id: string;
   datasetId: string;
@@ -54,7 +65,18 @@ export const FlowValueTypeTip = {
 }`
   },
   [ModuleDataTypeEnum.any]: {
-    label: 'app.module.valueType.any',
+    label: 'core.module.valueType.any',
+    value: ModuleDataTypeEnum.any,
+    example: ''
+  },
+  [ModuleDataTypeEnum.selectApp]: {
+    label: 'core.module.valueType.selectApp',
+    value: ModuleDataTypeEnum.selectApp,
+    example: ''
+  },
+  [ModuleDataTypeEnum.selectDataset]: {
+    label: 'core.module.valueType.selectDataset',
+    value: ModuleDataTypeEnum.selectDataset,
     example: ''
   }
 };

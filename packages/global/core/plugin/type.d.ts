@@ -11,3 +11,5 @@ export type PluginItemSchema = {
   updateTime: Date;
   modules: ModuleItemType[];
 };
+
+/* plugin template */

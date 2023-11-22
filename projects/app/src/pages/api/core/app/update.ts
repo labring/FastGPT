@@ -34,15 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         intro,
         permission,
         ...(modules && {
-          modules: modules.map((modules) => ({
-            ...modules,
-            outputs: modules.outputs.sort((a, b) => {
-              // finish output always at last
-              if (a.key === ModuleOutputKeyEnum.finish) return 1;
-              if (b.key === ModuleOutputKeyEnum.finish) return -1;
-              return 0;
-            })
-          }))
+          modules
         })
       }
     );

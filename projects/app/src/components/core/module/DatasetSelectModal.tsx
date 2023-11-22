@@ -36,37 +36,37 @@ type DatasetParamsProps = AppSimpleEditFormType['dataset'];
 
 export const DatasetSelectModal = ({
   isOpen,
-  activeDatasets = [],
+  defaultSelectedDatasets = [],
   onChange,
   onClose
 }: {
   isOpen: boolean;
-  activeDatasets: SelectedDatasetType;
+  defaultSelectedDatasets: SelectedDatasetType;
   onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { allDatasets } = useDatasetStore();
-  const [selectedKbList, setSelectedKbList] = useState<SelectedDatasetType>(
-    activeDatasets.filter((dataset) => {
+  const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType>(
+    defaultSelectedDatasets.filter((dataset) => {
       return allDatasets.find((item) => item._id === dataset.datasetId);
     })
   );
   const { toast } = useToast();
-  const { paths, setParentId, datasets, isLoading } = useDatasetSelect();
+  const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
   const { Loading } = useLoading();
 
-  const filterKbList = useMemo(() => {
+  const filterDatasets = useMemo(() => {
     return {
       selected: allDatasets.filter((item) =>
-        selectedKbList.find((dataset) => dataset.datasetId === item._id)
+        selectedDatasets.find((dataset) => dataset.datasetId === item._id)
       ),
       unSelected: datasets.filter(
-        (item) => !selectedKbList.find((dataset) => dataset.datasetId === item._id)
+        (item) => !selectedDatasets.find((dataset) => dataset.datasetId === item._id)
       )
     };
-  }, [datasets, allDatasets, selectedKbList]);
+  }, [datasets, allDatasets, selectedDatasets]);
 
   return (
     <DatasetSelectContainer
@@ -86,7 +86,7 @@ export const DatasetSelectModal = ({
             ]}
             gridGap={3}
           >
-            {filterKbList.selected.map((item) =>
+            {filterDatasets.selected.map((item) =>
               (() => {
                 return (
                   <Card
@@ -107,7 +107,7 @@ export const DatasetSelectModal = ({
                         cursor={'pointer'}
                         _hover={{ color: 'red.500' }}
                         onClick={() => {
-                          setSelectedKbList((state) =>
+                          setSelectedDatasets((state) =>
                             state.filter((kb) => kb.datasetId !== item._id)
                           );
                         }}
@@ -119,7 +119,7 @@ export const DatasetSelectModal = ({
             )}
           </Grid>
 
-          {filterKbList.selected.length > 0 && <Divider my={3} />}
+          {filterDatasets.selected.length > 0 && <Divider my={3} />}
 
           <Grid
             gridTemplateColumns={[
@@ -129,7 +129,7 @@ export const DatasetSelectModal = ({
             ]}
             gridGap={3}
           >
-            {filterKbList.unSelected.map((item) =>
+            {filterDatasets.unSelected.map((item) =>
               (() => {
                 return (
                   <MyTooltip
@@ -153,7 +153,7 @@ export const DatasetSelectModal = ({
                         if (item.type === DatasetTypeEnum.folder) {
                           setParentId(item._id);
                         } else if (item.type === DatasetTypeEnum.dataset) {
-                          const vectorModel = selectedKbList[0]?.vectorModel?.model;
+                          const vectorModel = selectedDatasets[0]?.vectorModel?.model;
 
                           if (vectorModel && vectorModel !== item.vectorModel.model) {
                             return toast({
@@ -161,7 +161,7 @@ export const DatasetSelectModal = ({
                               title: t('dataset.Select Dataset Tips')
                             });
                           }
-                          setSelectedKbList((state) => [
+                          setSelectedDatasets((state) => [
                             ...state,
                             { datasetId: item._id, vectorModel: item.vectorModel }
                           ]);
@@ -197,26 +197,26 @@ export const DatasetSelectModal = ({
               })()
             )}
           </Grid>
-          {filterKbList.unSelected.length === 0 && <EmptyTip text={t('common.folder.empty')} />}
+          {filterDatasets.unSelected.length === 0 && <EmptyTip text={t('common.folder.empty')} />}
         </ModalBody>
 
         <ModalFooter>
           <Button
             onClick={() => {
               // filter out the dataset that is not in the kList
-              const filterKbList = selectedKbList.filter((dataset) => {
+              const filterDatasets = selectedDatasets.filter((dataset) => {
                 return allDatasets.find((item) => item._id === dataset.datasetId);
               });
 
               onClose();
-              onChange(filterKbList);
+              onChange(filterDatasets);
             }}
           >
             {t('common.Done')}
           </Button>
         </ModalFooter>
 
-        <Loading fixed={false} loading={isLoading} />
+        <Loading fixed={false} loading={isFetching} />
       </Flex>
     </DatasetSelectContainer>
   );

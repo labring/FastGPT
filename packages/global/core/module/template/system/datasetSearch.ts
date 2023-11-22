@@ -22,22 +22,27 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.selectDataset,
       label: '关联的知识库',
       value: [],
+      valueType: ModuleDataTypeEnum.selectDataset,
       list: [],
       required: true,
-      valueCheck: (val) => !!val.length
+      showTargetInApp: false,
+      showTargetInPlugin: true
     },
     {
       key: ModuleInputKeyEnum.datasetSimilarity,
       type: FlowNodeInputTypeEnum.slider,
       label: '相似度',
       value: 0.4,
+      valueType: ModuleDataTypeEnum.number,
       min: 0,
       max: 1,
       step: 0.01,
       markList: [
         { label: '100', value: 100 },
         { label: '1', value: 1 }
-      ]
+      ],
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.datasetLimit,
@@ -45,13 +50,16 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       label: '单次搜索上限',
       description: '最多取 n 条记录作为本次问题引用',
       value: 5,
+      valueType: ModuleDataTypeEnum.number,
       min: 1,
       max: 20,
       step: 1,
       markList: [
         { label: '1', value: 1 },
         { label: '20', value: 20 }
-      ]
+      ],
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.datasetStartReRank,
@@ -59,7 +67,10 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       label: '结果重排',
       description: '将召回的结果进行进一步重排，可增加召回率',
       plusField: true,
-      value: false
+      value: false,
+      valueType: ModuleDataTypeEnum.boolean,
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     Input_Template_UserChatInput
   ],

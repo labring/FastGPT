@@ -17,9 +17,10 @@ import {
   defaultWhisperModel
 } from '@fastgpt/global/core/ai/model';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
+import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  getInitConfig();
+  await getInitConfig();
 
   jsonRes<InitDateResponse>(res, {
     data: {
@@ -61,7 +62,7 @@ const defaultFeConfigs: FeConfigsType = {
   favicon: '/favicon.ico'
 };
 
-export function getInitConfig() {
+export async function getInitConfig() {
   try {
     if (global.feConfigs) return;
     initGlobal();
@@ -73,12 +74,20 @@ export function getInitConfig() {
     setDefaultData(res);
 
     getSystemVersion();
-    getSimpleModeTemplates();
     getModelPrice();
+    await getSimpleModeTemplates();
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);
   }
+}
+
+export function initGlobal() {
+  // init tikToken
+  getTikTokenEnc();
+  initHttpAgent();
+  global.qaQueueLen = global.qaQueueLen ?? 0;
+  global.vectorQueueLen = global.vectorQueueLen ?? 0;
 }
 
 export function setDefaultData(res?: ConfigFileType) {
@@ -153,7 +162,7 @@ ${`| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分
   console.log(global.priceMd);
 }
 
-function getSimpleModeTemplates() {
+async function getSimpleModeTemplates() {
   if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
 
   const basePath =
@@ -162,11 +171,11 @@ function getSimpleModeTemplates() {
       : '/app/packages/app/public/simpleTemplates';
   // read data/simpleTemplates directory, get all json file
   const files = readdirSync(basePath);
-  // 只要json文件
+  // filter json file
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
-  // 读取文件内容
-  const fileContents = filterFiles.map((item) => {
+  // read json file
+  const fileTemplates = filterFiles.map((item) => {
     const content = readFileSync(`${basePath}/${item}`, 'utf-8');
     return {
       id: item.replace('.json', ''),
@@ -174,15 +183,16 @@ function getSimpleModeTemplates() {
     };
   });
 
-  global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal, ...fileContents];
+  // fetch templates from plus
+  const plusTemplates = await getSimpleTemplatesFromPlus();
+
+  global.simpleModeTemplates = [
+    SimpleModeTemplate_FastGPT_Universal,
+    ...plusTemplates,
+    ...fileTemplates
+  ];
   console.log('simple mode templates: ');
   console.log(global.simpleModeTemplates);
 }
 
-export function initGlobal() {
-  // init tikToken
-  getTikTokenEnc();
-  initHttpAgent();
-  global.qaQueueLen = global.qaQueueLen ?? 0;
-  global.vectorQueueLen = global.vectorQueueLen ?? 0;
-}
+async function getSystemPlugin() {}

@@ -54,12 +54,12 @@ const VariableEdit = ({
 
   const VariableTypeList = [
     {
-      label: t('core.modules.variable.text type'),
+      label: t('core.module.variable.text type'),
       icon: 'settingLight',
       key: VariableInputEnum.input
     },
     {
-      label: t('core.modules.variable.select type'),
+      label: t('core.module.variable.select type'),
       icon: 'settingLight',
       key: VariableInputEnum.select
     }
@@ -99,7 +99,7 @@ const VariableEdit = ({
       <Flex alignItems={'center'}>
         <Image alt={''} src={'/imgs/module/variable.png'} objectFit={'contain'} w={'18px'} />
         <Box ml={2} flex={1}>
-          {t('core.modules.Variable')}
+          {t('core.module.Variable')}
           <MyTooltip label={variableTip} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
@@ -120,8 +120,8 @@ const VariableEdit = ({
             <Table bg={'white'}>
               <Thead>
                 <Tr>
-                  <Th>{t('core.modules.variable name')}</Th>
-                  <Th>{t('core.modules.variable key')}</Th>
+                  <Th>{t('core.module.variable.variable name')}</Th>
+                  <Th>{t('core.module.variable.key')}</Th>
                   <Th>{t('common.Require Input')}</Th>
                   <Th></Th>
                 </Tr>
@@ -163,7 +163,7 @@ const VariableEdit = ({
         title={
           <>
             <MyIcon name={'variable'} mr={2} w={'24px'} color={'#FF8A4C'} />
-            {t('core.modules.Variable Setting')}
+            {t('core.module.Variable Setting')}
           </>
         }
         isOpen={isOpenEdit}
@@ -175,24 +175,24 @@ const VariableEdit = ({
             <Switch {...registerEdit('variable.required')} />
           </Flex>
           <Flex mt={5} alignItems={'center'}>
-            <Box w={'80px'}>{t('core.modules.variable name')}</Box>
+            <Box w={'80px'}>{t('core.module.variable.variable name')}</Box>
             <Input
               {...registerEdit('variable.label', {
-                required: t('core.modules.variable name is required')
+                required: t('core.module.variable.variable name is required')
               })}
             />
           </Flex>
           <Flex mt={5} alignItems={'center'}>
-            <Box w={'80px'}>{t('core.modules.variable key')}</Box>
+            <Box w={'80px'}>{t('core.module.variable.key')}</Box>
             <Input
               {...registerEdit('variable.key', {
-                required: t('core.modules.variable key is required')
+                required: t('core.module.variable.key is required')
               })}
             />
           </Flex>
 
           <Box mt={5} mb={2}>
-            {t('core.modules.variable type')}
+            {t('core.module.Field Type')}
           </Box>
           <Grid gridTemplateColumns={'repeat(2,130px)'} gridGap={4}>
             {VariableTypeList.map((item) => (
@@ -226,7 +226,7 @@ const VariableEdit = ({
           {getValuesEdit('variable.type') === VariableInputEnum.input && (
             <>
               <Box mt={5} mb={2}>
-                {t('core.modules.variable max length')}
+                {t('core.module.variable.text max length')}
               </Box>
               <Box>
                 <NumberInput max={100} min={1} step={1} position={'relative'}>
@@ -250,7 +250,7 @@ const VariableEdit = ({
           {getValuesEdit('variable.type') === VariableInputEnum.select && (
             <>
               <Box mt={5} mb={2}>
-                {t('core.modules.variable options')}
+                {t('core.module.variable.variable options')}
               </Box>
               <Box>
                 {selectEnums.map((item, i) => (
@@ -258,7 +258,7 @@ const VariableEdit = ({
                     <FormControl>
                       <Input
                         {...registerEdit(`variable.enums.${i}.value`, {
-                          required: t('core.modules.variable option is value is required')
+                          required: t('core.module.variable.variable option is value is required')
                         })}
                       />
                     </FormControl>
@@ -283,7 +283,7 @@ const VariableEdit = ({
                 bg={'myGray.100 !important'}
                 onClick={() => appendEnums({ value: '' })}
               >
-                {t('core.modules.variable add option')}
+                {t('core.module.variable add option')}
               </Button>
             </>
           )}
@@ -301,7 +301,7 @@ const VariableEdit = ({
                 if (enums.length === 0) {
                   toast({
                     status: 'warning',
-                    title: t('core.modules.variable option is required')
+                    title: t('core.module.variable.variable option is required')
                   });
                   return;
                 }

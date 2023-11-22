@@ -16,7 +16,10 @@ export const UserInputModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.userChatInput,
       type: FlowNodeInputTypeEnum.systemInput,
-      label: '用户问题'
+      valueType: ModuleDataTypeEnum.string,
+      label: '用户问题',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     }
   ],
   outputs: [

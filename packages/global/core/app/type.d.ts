@@ -88,7 +88,7 @@ export type AppSimpleEditFormType = {
   };
 };
 
-/* simple */
+/* simple mode template*/
 export type AppSimpleEditConfigTemplateType = {
   id: string;
   name: string;

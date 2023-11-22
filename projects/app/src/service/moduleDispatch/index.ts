@@ -98,55 +98,61 @@ export async function dispatchModules({
       chatAnswerText += answerText;
     }
   }
-  function moduleInput(
-    module: RunningModuleItemType,
-    data: Record<string, any> = {}
-  ): Promise<any> {
-    const checkInputFinish = () => {
-      return !module.inputs.find((item: any) => item.value === undefined);
-    };
+  function moduleInput(module: RunningModuleItemType, data: Record<string, any> = {}) {
     const updateInputValue = (key: string, value: any) => {
       const index = module.inputs.findIndex((item: any) => item.key === key);
       if (index === -1) return;
       module.inputs[index].value = value;
     };
-
-    const set = new Set();
-
-    return Promise.all(
-      Object.entries(data).map(([key, val]: any) => {
-        updateInputValue(key, val);
-
-        if (!set.has(module.moduleId) && checkInputFinish()) {
-          set.add(module.moduleId);
-          // remove switch
-          updateInputValue(ModuleInputKeyEnum.switch, undefined);
-          return moduleRun(module);
-        }
-      })
-    );
+    Object.entries(data).map(([key, val]: any) => {
+      updateInputValue(key, val);
+    });
+    return;
   }
   function moduleOutput(
     module: RunningModuleItemType,
     result: Record<string, any> = {}
   ): Promise<any> {
     pushStore(module, result);
+
+    const nextRunModules: RunningModuleItemType[] = [];
+
+    // Assign the output value to the next module
+    module.outputs.map((outputItem) => {
+      if (result[outputItem.key] === undefined) return;
+      /* update output value */
+      outputItem.value = result[outputItem.key];
+
+      /* update target */
+      outputItem.targets.map((target: any) => {
+        // find module
+        const targetModule = runningModules.find((item) => item.moduleId === target.moduleId);
+        if (!targetModule) return;
+
+        // push to running queue
+        nextRunModules.push(targetModule);
+
+        // update input
+        moduleInput(targetModule, { [target.key]: outputItem.value });
+      });
+    });
+
+    return checkModulesCanRun(nextRunModules);
+  }
+  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
+    const set = new Set<string>();
+    const filterModules = modules.filter((module) => {
+      if (set.has(module.moduleId)) return false;
+      set.add(module.moduleId);
+      return true;
+    });
+
     return Promise.all(
-      module.outputs.map((outputItem) => {
-        if (result[outputItem.key] === undefined) return;
-        /* update output value */
-        outputItem.value = result[outputItem.key];
-
-        /* update target */
-        return Promise.all(
-          outputItem.targets.map((target: any) => {
-            // find module
-            const targetModule = runningModules.find((item) => item.moduleId === target.moduleId);
-            if (!targetModule) return;
-
-            return moduleInput(targetModule, { [target.key]: outputItem.value });
-          })
-        );
+      filterModules.map((module) => {
+        if (!module.inputs.find((item: any) => item.value === undefined)) {
+          moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
+          return moduleRun(module);
+        }
       })
     );
   }
@@ -220,10 +226,10 @@ export async function dispatchModules({
 
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
+  initModules.map((module) => moduleInput(module, params));
+  await checkModulesCanRun(initModules);
 
-  await Promise.all(initModules.map((module) => moduleInput(module, params)));
-
-  // focus running pluginOutput
+  // focus try to run pluginOutput
   const pluginOutputModule = runningModules.find(
     (item) => item.flowType === FlowNodeTypeEnum.pluginOutput
   );

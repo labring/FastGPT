@@ -31,9 +31,8 @@
     "Export Config Successful": "已复制配置，请注意检查是否有重要数据",
     "Export Configs": "导出配置",
     "Feedback Count": "用户反馈",
-    "Import Config": "导入配置",
-    "Import Config Failed": "导入配置失败，请确保配置正常！",
     "Import Configs": "导入配置",
+    "Import Configs Failed": "导入配置失败，请确保配置正常！",
     "Input Field Settings": "输入字段编辑",
     "Logs Empty": "还没有日志噢~",
     "Logs Message Total": "消息总数",
@@ -54,15 +53,7 @@
       "My Modules": "",
       "No Modules": "还没有模块~",
       "System Module": "系统模块",
-      "type": "\"{{type}}\"类型\n{{example}}",
-      "valueType": {
-        "any": "任意",
-        "boolean": "布尔",
-        "chatHistory": "聊天记录",
-        "datasetQuote": "引用内容",
-        "number": "数字",
-        "string": "字符串"
-      }
+      "type": "\"{{type}}\"类型\n{{example}}"
     },
     "modules": {
       "Title is required": "模块名不能为空"
@@ -270,7 +261,14 @@
         "id": "数据ID"
       }
     },
-    "modules": {
+    "module": {
+      "Data Type": "数据类型",
+      "Field Description": "字段描述",
+      "Field Name": "字段名",
+      "Field Type": "字段类型",
+      "Field key": "字段 Key",
+      "Input Type": "输入类型",
+      "Plugin output must connect": "自定义输出必须全部连接",
       "Variable": "参数变量",
       "Variable Setting": "变量设置",
       "input": {
@@ -280,6 +278,15 @@
           "user question": "用户问题"
         }
       },
+      "inputType": {
+        "input": "输入框",
+        "selectApp": "应用选择",
+        "selectChatModel": "对话模型选择",
+        "selectDataset": "知识库选择",
+        "switch": "开关",
+        "target": "外部数据",
+        "textarea": "段落输入"
+      },
       "output": {
         "description": {
           "running done": "模块调用结束时触发"
@@ -288,20 +295,30 @@
           "running done": "模块调用结束"
         }
       },
-      "variable": {
-        "select type": "下拉单选",
-        "text type": "文本"
+      "valueType": {
+        "any": "任意",
+        "boolean": "布尔",
+        "chatHistory": "聊天记录",
+        "datasetQuote": "引用内容",
+        "number": "数字",
+        "string": "字符串",
+        "selectDataset": "知识库选择",
+        "selectApp": "应用选择"
       },
-      "variable add option": "添加选项",
-      "variable key": "变量 key",
-      "variable key is required": "变量 key 不能为空",
-      "variable max length": "最大长度",
-      "variable name": "变量名",
-      "variable name is required": "变量名不能为空",
-      "variable option is required": "选项不能全空",
-      "variable option is value is required": "选项内容不能为空",
-      "variable options": "选项",
-      "variable type": "字段类型"
+      "variable": {
+        "add option": "添加选项",
+        "key": "变量 key",
+        "key is required": "",
+        "select type": "下拉单选",
+        "text max length": "最大长度",
+        "text type": "文本",
+        "variable key is required": "变量 key 不能为空",
+        "variable name": "变量名",
+        "variable name is required": "变量名不能为空",
+        "variable option is required": "选项不能全空",
+        "variable option is value is required": "选项内容不能为空",
+        "variable options": "选项"
+      }
     }
   },
   "dataset": {

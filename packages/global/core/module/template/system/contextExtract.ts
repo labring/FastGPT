@@ -25,7 +25,10 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       label: '提取要求描述',
       description: '写一段提取要求，告诉 AI 需要提取哪些内容',
       required: true,
-      placeholder: '例如: \n1. 你是一个实验室预约助手。根据用户问题，提取出姓名、实验室号和预约时间'
+      placeholder:
+        '例如: \n1. 你是一个实验室预约助手。根据用户问题，提取出姓名、实验室号和预约时间',
+      showTargetInApp: true,
+      showTargetInPlugin: true
     },
     Input_Template_History,
     {
@@ -33,14 +36,19 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.target,
       label: '需要提取的文本',
       required: true,
-      valueType: ModuleDataTypeEnum.string
+      valueType: ModuleDataTypeEnum.string,
+      showTargetInApp: true,
+      showTargetInPlugin: true
     },
     {
       key: ModuleInputKeyEnum.extractKeys,
       type: FlowNodeInputTypeEnum.custom,
       label: '目标字段',
+      valueType: ModuleDataTypeEnum.any,
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
-      value: [] // {desc: string; key: string; required: boolean;}[]
+      value: [], // {desc: string; key: string; required: boolean;}[]
+      showTargetInApp: false,
+      showTargetInPlugin: false
     }
   ],
   outputs: [

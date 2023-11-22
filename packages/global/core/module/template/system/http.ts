@@ -1,6 +1,6 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleInputKeyEnum } from '../../constants';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '../../constants';
 import { Input_Template_TFSwitch } from '../input';
 import { Output_Template_Finish } from '../output';
 
@@ -18,11 +18,13 @@ export const HttpModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.httpUrl,
       value: '',
       type: FlowNodeInputTypeEnum.input,
+      valueType: ModuleDataTypeEnum.string,
       label: '请求地址',
       description: '请求目标地址',
       placeholder: 'https://api.fastgpt.run/getInventory',
       required: true,
-      valueCheck: (val) => !!val
+      showTargetInApp: false,
+      showTargetInPlugin: false
     }
   ],
   outputs: [Output_Template_Finish]

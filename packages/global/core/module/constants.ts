@@ -1,10 +1,14 @@
 export enum ModuleDataTypeEnum {
-  'string' = 'string',
-  'number' = 'number',
-  'boolean' = 'boolean',
-  'chatHistory' = 'chatHistory',
-  'datasetQuote' = 'datasetQuote',
-  'any' = 'any'
+  string = 'string',
+  number = 'number',
+  boolean = 'boolean',
+  chatHistory = 'chatHistory',
+  datasetQuote = 'datasetQuote',
+  any = 'any',
+
+  // plugin special type
+  selectApp = 'selectApp',
+  selectDataset = 'selectDataset'
 }
 
 /* reg: modulename key */

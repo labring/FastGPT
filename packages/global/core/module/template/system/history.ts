@@ -18,13 +18,19 @@ export const HistoryModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.numberInput,
       label: '最长记录数',
       value: 6,
+      valueType: ModuleDataTypeEnum.number,
       min: 0,
-      max: 50
+      max: 50,
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       key: ModuleInputKeyEnum.history,
       type: FlowNodeInputTypeEnum.hidden,
-      label: '聊天记录'
+      valueType: ModuleDataTypeEnum.chatHistory,
+      label: '聊天记录',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     }
   ],
   outputs: [

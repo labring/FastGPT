@@ -21,6 +21,7 @@ export type SystemModuleTemplateType = {
   list: FlowModuleTemplateType[];
 }[];
 
+// store module type
 export type ModuleItemType = {
   name: string;
   logo?: string;

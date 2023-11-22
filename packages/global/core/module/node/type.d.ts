@@ -21,23 +21,26 @@ export type FlowNodeChangeProps = {
 
 export type FlowNodeInputItemType = {
   key: `${ModuleInputKeyEnum}`;
+  type: `${FlowNodeInputTypeEnum}`; // Decide on a render style
   value?: any;
-  valueType?: `${ModuleDataTypeEnum}`;
-  type: `${FlowNodeInputTypeEnum}`;
+  valueType: `${ModuleDataTypeEnum}`; // data type
   label: string;
-  edit?: boolean;
-  connected?: boolean;
   description?: string;
-  placeholder?: string;
-  plusField?: boolean;
+  required?: boolean;
+  edit?: boolean; // Whether to allow editing
+  connected?: boolean; // unConnected field will be deleted
+
+  showTargetInApp: boolean;
+  showTargetInPlugin: boolean;
+
+  placeholder?: string; // input,textarea
+  list?: { label: string; value: any }[]; // select
+  step?: number; // slider max?: number;
   max?: number;
   min?: number;
-  step?: number;
-  required?: boolean;
-  list?: { label: string; value: any }[];
-  markList?: { label: string; value: any }[];
-  customData?: () => any;
-  valueCheck?: (value: any) => boolean;
+  markList?: { label: string; value: any }[]; // slider
+
+  plusField?: boolean; // plus system will show
 };
 
 export type FlowNodeOutputTargetItemType = {
