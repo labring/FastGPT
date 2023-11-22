@@ -66,7 +66,7 @@ const Choice = () => {
       </Box>
       <Grid px={[5, 0]} gridTemplateColumns={['1fr', `1fr 1fr`, 'repeat(3,1fr)']} gridGap={6}>
         {list.map((item) => (
-          <MyTooltip key={item.title} label={item.tooltip}>
+          <MyTooltip key={item.title} label={item.tooltip} shouldWrapChildren={false}>
             <Flex
               alignItems={'flex-start'}
               border={theme.borders.md}
