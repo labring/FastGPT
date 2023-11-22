@@ -10,7 +10,8 @@ import {
   Textarea,
   Grid,
   Divider,
-  Switch
+  Switch,
+  Image
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
 import { useForm } from 'react-hook-form';
@@ -240,7 +241,13 @@ export const DatasetParamsModal = ({
   });
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={'搜索参数调整'} minW={['90vw', '600px']}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/modal/params.svg"
+      title={'搜索参数调整'}
+      minW={['90vw', '600px']}
+    >
       <Flex flexDirection={'column'}>
         <ModalBody>
           {feConfigs?.isPlus && (

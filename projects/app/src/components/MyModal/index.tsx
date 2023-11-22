@@ -6,10 +6,12 @@ import {
   ModalHeader,
   ModalCloseButton,
   ModalContentProps,
-  Box
+  Box,
+  Image
 } from '@chakra-ui/react';
 
 interface Props extends ModalContentProps {
+  iconSrc?: string;
   title?: any;
   isCentered?: boolean;
   isOpen: boolean;
@@ -19,6 +21,7 @@ interface Props extends ModalContentProps {
 const MyModal = ({
   isOpen,
   onClose,
+  iconSrc,
   title,
   children,
   isCentered,
@@ -53,6 +56,7 @@ const MyModal = ({
             roundedTop={'lg'}
             py={3}
           >
+            {iconSrc && <Image mr={2} objectFit={'contain'} alt="" src={iconSrc} w={'18px'} />}
             {title}
             <Box flex={1} />
             {onClose && <ModalCloseButton position={'relative'} top={0} right={0} />}

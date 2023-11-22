@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ModalBody, Box, useTheme, Flex, Progress, Link } from '@chakra-ui/react';
+import { ModalBody, Box, useTheme, Flex, Progress, Link, Image } from '@chakra-ui/react';
 import { getDatasetDataItemById } from '@/web/core/dataset/api';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -68,6 +68,7 @@ const QuoteModal = ({
         h={['90vh', '80vh']}
         isCentered
         minW={['90vw', '600px']}
+        iconSrc="/imgs/modal/quote.svg"
         title={
           <Box>
             知识库引用({rawSearch.length}条)
@@ -77,7 +78,7 @@ const QuoteModal = ({
           </Box>
         }
       >
-        <ModalBody pt={0} whiteSpace={'pre-wrap'} textAlign={'justify'} wordBreak={'break-all'}>
+        <ModalBody whiteSpace={'pre-wrap'} textAlign={'justify'} wordBreak={'break-all'}>
           {rawSearch.map((item, i) => (
             <Box
               key={i}

@@ -7,6 +7,7 @@ import {
   BoxProps,
   Button,
   Flex,
+  Image,
   Link,
   ModalBody,
   ModalFooter,
@@ -70,8 +71,9 @@ const AIChatSettingsModal = ({
   return (
     <MyModal
       isOpen
+      iconSrc="/imgs/module/AI.png"
       title={
-        <Flex alignItems={'flex-end'}>
+        <>
           {t('app.AI Advanced Settings')}
           {feConfigs?.docUrl && (
             <Link
@@ -85,7 +87,7 @@ const AIChatSettingsModal = ({
               查看说明
             </Link>
           )}
-        </Flex>
+        </>
       }
       isCentered
       w={'700px'}

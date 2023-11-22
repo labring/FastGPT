@@ -225,6 +225,8 @@
       "Select TTS": "Select TTS",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "create app": "Create App",
+      "setting": "App Setting",
       "simple": {
         "mode template select": "Template"
       },
@@ -255,6 +257,7 @@
     },
     "dataset": {
       "Choose Dataset": "Choose Dataset",
+      "Create dataset": "Create Dataset",
       "Dataset": "Dataset",
       "Go Dataset": "To Dataset",
       "Quote Length": "Quote Length",

@@ -7,7 +7,8 @@ import {
   Input,
   Textarea,
   ModalFooter,
-  ModalBody
+  ModalBody,
+  Image
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -118,7 +119,12 @@ const InfoModal = ({
   );
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={'应用信息设置'}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/module/ai.svg"
+      title={t('core.app.setting')}
+    >
       <ModalBody>
         <Box>头像 & 名称</Box>
         <Flex mt={2} alignItems={'center'}>
