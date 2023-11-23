@@ -73,15 +73,15 @@ export async function getInitConfig() {
     const res = JSON.parse(readFileSync(filename, 'utf-8')) as ConfigFileType;
 
     setDefaultData(res);
-
-    getSystemVersion();
-    getModelPrice();
-    getSystemPlugin();
-    await getSimpleModeTemplates();
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);
   }
+  await getSimpleModeTemplates();
+
+  getSystemVersion();
+  getModelPrice();
+  getSystemPlugin();
 }
 
 export function initGlobal() {
@@ -169,32 +169,36 @@ ${`| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分
 async function getSimpleModeTemplates() {
   if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
 
-  const basePath =
-    process.env.NODE_ENV === 'development'
-      ? 'public/simpleTemplates'
-      : '/app/packages/app/public/simpleTemplates';
-  // read data/simpleTemplates directory, get all json file
-  const files = readdirSync(basePath);
-  // filter json file
-  const filterFiles = files.filter((item) => item.endsWith('.json'));
+  try {
+    const basePath =
+      process.env.NODE_ENV === 'development'
+        ? 'public/simpleTemplates'
+        : '/app/projects/app/public/simpleTemplates';
+    // read data/simpleTemplates directory, get all json file
+    const files = readdirSync(basePath);
+    // filter json file
+    const filterFiles = files.filter((item) => item.endsWith('.json'));
 
-  // read json file
-  const fileTemplates = filterFiles.map((item) => {
-    const content = readFileSync(`${basePath}/${item}`, 'utf-8');
-    return {
-      id: item.replace('.json', ''),
-      ...JSON.parse(content)
-    };
-  });
+    // read json file
+    const fileTemplates = filterFiles.map((item) => {
+      const content = readFileSync(`${basePath}/${item}`, 'utf-8');
+      return {
+        id: item.replace('.json', ''),
+        ...JSON.parse(content)
+      };
+    });
 
-  // fetch templates from plus
-  const plusTemplates = await getSimpleTemplatesFromPlus();
+    // fetch templates from plus
+    const plusTemplates = await getSimpleTemplatesFromPlus();
 
-  global.simpleModeTemplates = [
-    SimpleModeTemplate_FastGPT_Universal,
-    ...plusTemplates,
-    ...fileTemplates
-  ];
+    global.simpleModeTemplates = [
+      SimpleModeTemplate_FastGPT_Universal,
+      ...plusTemplates,
+      ...fileTemplates
+    ];
+  } catch (error) {
+    global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal];
+  }
   console.log('simple mode templates: ');
   console.log(global.simpleModeTemplates);
 }
@@ -205,7 +209,7 @@ function getSystemPlugin() {
   const basePath =
     process.env.NODE_ENV === 'development'
       ? 'public/pluginTemplates'
-      : '/app/packages/app/public/pluginTemplates';
+      : '/app/projects/app/public/pluginTemplates';
   // read data/pluginTemplates directory, get all json file
   const files = readdirSync(basePath);
   // filter json file
