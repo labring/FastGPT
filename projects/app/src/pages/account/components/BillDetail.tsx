@@ -63,15 +63,15 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                   <Th>模块名</Th>
                   <Th>AI模型</Th>
                   <Th>Token长度</Th>
-                  <Th>费用</Th>
+                  <Th>费用(￥)</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {filterBillList.map((item, i) => (
                   <Tr key={i}>
                     <Td>{t(item.moduleName)}</Td>
-                    <Td>{item.model}</Td>
-                    <Td>{item.tokenLen}</Td>
+                    <Td>{item.model || '-'}</Td>
+                    <Td>{item.tokenLen || '-'}</Td>
                     <Td>{formatPrice(item.amount)}</Td>
                   </Tr>
                 ))}

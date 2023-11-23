@@ -31,7 +31,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const { responseData, answerText } = await dispatchModules({
     ...props,
-    modules: plugin.modules,
+    modules: plugin.modules.map((module) => ({
+      ...module,
+      showStatus: false
+    })),
     params: data
   });
 

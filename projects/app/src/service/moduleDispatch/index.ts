@@ -211,9 +211,9 @@ export async function dispatchModules({
       if (Array.isArray(dispatchRes[ModuleOutputKeyEnum.responseData]))
         return dispatchRes[ModuleOutputKeyEnum.responseData];
       return {
-        ...dispatchRes[ModuleOutputKeyEnum.responseData],
         moduleName: module.name,
-        moduleType: module.flowType
+        moduleType: module.flowType,
+        ...dispatchRes[ModuleOutputKeyEnum.responseData]
       };
     })();
 
