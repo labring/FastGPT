@@ -300,7 +300,7 @@ function getMaxTokens({
   const promptsToken = countMessagesTokens({
     messages: filterMessages
   });
-  maxToken = promptsToken + model.maxResponse > tokensLimit ? tokensLimit - promptsToken : maxToken;
+  maxToken = promptsToken + maxToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
 
   return {
     max_tokens: maxToken
