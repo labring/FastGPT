@@ -9,8 +9,15 @@ import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/use
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, tags, avatar, vectorModel, agentModel, parentId, type } =
-      req.body as CreateDatasetParams;
+    const {
+      name,
+      tags,
+      avatar,
+      vectorModel = global.vectorModels[0].model,
+      agentModel,
+      parentId,
+      type
+    } = req.body as CreateDatasetParams;
 
     // 凭证校验
     const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });

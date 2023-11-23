@@ -329,7 +329,7 @@ export const FlowProvider = ({
         const node = nodes.find((node) => node.id === nodeId);
         if (!node) return nodes;
         const template = {
-          logo: node.data.logo,
+          avatar: node.data.avatar,
           name: node.data.name,
           intro: node.data.intro,
           flowType: node.data.flowType,
@@ -445,7 +445,7 @@ export function flowNode2Modules({
   const modules: ModuleItemType[] = nodes.map((item) => ({
     moduleId: item.data.moduleId,
     name: item.data.name,
-    logo: item.data.logo,
+    avatar: item.data.avatar,
     flowType: item.data.flowType,
     showStatus: item.data.showStatus,
     position: item.position,
