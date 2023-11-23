@@ -18,7 +18,7 @@ import type {
 } from '@fastgpt/global/core/module/type.d';
 import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
-export const systemModuleTemplates: FlowModuleTemplateType[] = [
+export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   UserGuideModule,
   UserInputModule,
   HistoryModule,
@@ -30,7 +30,7 @@ export const systemModuleTemplates: FlowModuleTemplateType[] = [
   ContextExtractModule,
   HttpModule
 ];
-export const pluginModuleTemplates: FlowModuleTemplateType[] = [
+export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
   HistoryModule,
@@ -111,7 +111,7 @@ export const moduleTemplatesList: moduleTemplateListType = [
     list: []
   }
 ];
-// export const systemModuleTemplates = [
+// export const appSystemModuleTemplates = [
 //   {
 //     label: '引导模块',
 //     list: [UserGuideModule]
