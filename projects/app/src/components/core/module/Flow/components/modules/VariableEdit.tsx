@@ -160,12 +160,8 @@ const VariableEdit = ({
         </Box>
       )}
       <MyModal
-        title={
-          <>
-            <MyIcon name={'variable'} mr={2} w={'24px'} color={'#FF8A4C'} />
-            {t('core.module.Variable Setting')}
-          </>
-        }
+        iconSrc="/imgs/module/variable.png"
+        title={t('core.module.Variable Setting')}
         isOpen={isOpenEdit}
         onClose={onCloseEdit}
       >

@@ -98,6 +98,7 @@ function EditModal({
     <MyModal
       isOpen
       onClose={onClose}
+      iconSrc="/imgs/modal/team.svg"
       title={defaultData.id ? t('user.team.Update Team') : t('user.team.Create Team')}
     >
       <ModalBody>

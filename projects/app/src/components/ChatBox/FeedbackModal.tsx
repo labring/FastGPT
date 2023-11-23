@@ -33,7 +33,12 @@ const FeedbackModal = ({
   });
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={t('chat.Feedback Modal')}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/modal/badAnswer.svg"
+      title={t('chat.Feedback Modal')}
+    >
       <ModalBody>
         <Textarea
           ref={ref}

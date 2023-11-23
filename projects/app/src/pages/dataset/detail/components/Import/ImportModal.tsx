@@ -71,6 +71,7 @@ const ImportData = ({
 
   return (
     <MyModal
+      iconSrc="/imgs/modal/import.svg"
       title={<Box {...TitleStyle}>{t('dataset.data.File import')}</Box>}
       isOpen
       isCentered
@@ -79,7 +80,7 @@ const ImportData = ({
       h={'90vh'}
     >
       <ModalCloseButton onClick={onClose} />
-      <Flex flexDirection={'column'} flex={'1 0 0'}>
+      <Flex mt={2} flexDirection={'column'} flex={'1 0 0'}>
         <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
           <MyRadio
             gridTemplateColumns={['repeat(1,1fr)', 'repeat(3,1fr)']}

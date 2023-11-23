@@ -30,13 +30,14 @@ const UrlFetchModal = ({
 
   return (
     <MyModal
+      iconSrc="/imgs/modal/network.svg"
       title={
-        <>
+        <Box>
           <Box>{t('file.Fetch Url')}</Box>
           <Box fontWeight={'normal'} fontSize={'sm'} color={'myGray.500'} mt={1}>
             目前仅支持读取静态链接，请注意检查结果
           </Box>
-        </>
+        </Box>
       }
       top={'15vh'}
       isOpen

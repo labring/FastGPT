@@ -29,7 +29,12 @@ const OpenAIAccountModal = ({
   });
 
   return (
-    <MyModal isOpen onClose={onClose} title={t('user.OpenAI Account Setting')}>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="/imgs/modal/openai.svg"
+      title={t('user.OpenAI Account Setting')}
+    >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
           可以填写 OpenAI/OneAPI 的相关秘钥。如果你填写了该内容，在线上平台使用 OpenAI Chat

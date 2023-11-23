@@ -19,7 +19,7 @@ const PromptTemplate = ({
   const [selectTemplateTitle, setSelectTemplateTitle] = useState<PromptTemplateItem>();
 
   return (
-    <MyModal isOpen title={title} onClose={onClose} isCentered>
+    <MyModal isOpen title={title} onClose={onClose} iconSrc="/imgs/modal/prompt.svg">
       <ModalBody h="100%" w={'600px'} maxW={'90vw'} overflowY={'auto'}>
         <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={4}>
           {templates.map((item) => (

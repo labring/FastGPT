@@ -68,13 +68,14 @@ const InviteModal = ({
   return (
     <MyModal
       isOpen
+      iconSrc="/imgs/modal/team.svg"
       title={
-        <>
+        <Box>
           <Box>{t('user.team.Invite Member')}</Box>
           <Box color={'myGray.500'} fontSize={'xs'} fontWeight={'normal'}>
             {t('user.team.Invite Member Tips')}
           </Box>
-        </>
+        </Box>
       }
       maxW={['90vw', '400px']}
       overflow={'unset'}

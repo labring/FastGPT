@@ -53,13 +53,14 @@ const UpdateInviteModal = () => {
   return (
     <MyModal
       isOpen={inviteList && inviteList.length > 0}
+      iconSrc="/imgs/modal/team.svg"
       title={
-        <>
+        <Box>
           <Box>{t('user.team.Processing invitations')}</Box>
           <Box fontWeight={'normal'} fontSize={'sm'} color={'myGray.500'}>
             {t('user.team.Processing invitations Tips', { amount: inviteList?.length })}
           </Box>
-        </>
+        </Box>
       }
       maxW={['90vw', '500px']}
     >

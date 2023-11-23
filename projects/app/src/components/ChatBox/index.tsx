@@ -760,6 +760,8 @@ const ChatBox = (
                                     variant={'outline'}
                                     colorScheme={'gray'}
                                     size={'xs'}
+                                    whiteSpace={'pre-wrap'}
+                                    h={'auto'}
                                     onClick={() => {
                                       resetInputVal(item);
                                     }}

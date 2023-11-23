@@ -277,7 +277,11 @@ function EditLinkModal({
   });
 
   return (
-    <MyModal isOpen={true} title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}>
+    <MyModal
+      isOpen={true}
+      iconSrc="/imgs/modal/shareLight.svg"
+      title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}
+    >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('Name')}:</Box>

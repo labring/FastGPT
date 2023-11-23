@@ -54,9 +54,9 @@ const MyModal = ({
             background={'#FBFBFC'}
             borderBottom={'1px solid #F4F6F8'}
             roundedTop={'lg'}
-            py={3}
+            py={'10px'}
           >
-            {iconSrc && <Image mr={2} objectFit={'contain'} alt="" src={iconSrc} w={'18px'} />}
+            {iconSrc && <Image mr={3} objectFit={'contain'} alt="" src={iconSrc} w={'20px'} />}
             {title}
             <Box flex={1} />
             {onClose && <ModalCloseButton position={'relative'} top={0} right={0} />}

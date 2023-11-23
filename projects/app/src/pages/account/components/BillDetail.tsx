@@ -26,7 +26,12 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
   );
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={t('user.Bill Detail')}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/modal/bill.svg"
+      title={t('user.Bill Detail')}
+    >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>用户:</Box>

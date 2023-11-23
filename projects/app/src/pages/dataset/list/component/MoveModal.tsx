@@ -59,9 +59,13 @@ const MoveModal = ({
   });
 
   return (
-    <MyModal isOpen={true} maxW={['90vw', '800px']} w={'800px'} onClose={onClose}>
-      <Flex flexDirection={'column'} h={['90vh', 'auto']}>
-        <ModalHeader>
+    <MyModal
+      isOpen={true}
+      maxW={['90vw', '800px']}
+      w={'800px'}
+      iconSrc="/imgs/modal/move.svg"
+      title={
+        <>
           {!!parentId ? (
             <Flex flex={1} userSelect={'none'} fontSize={['sm', 'lg']} fontWeight={'normal'}>
               {paths.map((item, i) => (
@@ -93,8 +97,11 @@ const MoveModal = ({
           ) : (
             <Box>我的知识库</Box>
           )}
-        </ModalHeader>
-
+        </>
+      }
+      onClose={onClose}
+    >
+      <Flex flexDirection={'column'} h={['90vh', 'auto']}>
         <ModalBody
           flex={['1 0 0', '0 0 auto']}
           maxH={'80vh'}

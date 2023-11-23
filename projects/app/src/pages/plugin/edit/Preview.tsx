@@ -44,7 +44,13 @@ const PreviewPlugin = ({
   }, [modules, plugin, setNodes]);
 
   return (
-    <MyModal isOpen title={t('module.Preview Plugin')} onClose={onClose} isCentered>
+    <MyModal
+      isOpen
+      title={t('module.Preview Plugin')}
+      iconSrc="/imgs/modal/preview.svg"
+      onClose={onClose}
+      isCentered
+    >
       <Box h={'400px'} w={'400px'}>
         <ReactFlowProvider>
           <ReactFlow
