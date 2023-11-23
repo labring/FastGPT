@@ -12,8 +12,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   flowType: FlowNodeTypeEnum.contentExtract,
   logo: '/imgs/module/extract.png',
   name: '文本内容提取',
-  intro: '从文本中提取出指定格式的数据',
-  description: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
+  intro: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
   showStatus: true,
   inputs: [
     Input_Template_TFSwitch,

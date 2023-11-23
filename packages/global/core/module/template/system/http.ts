@@ -10,7 +10,6 @@ export const HttpModule: FlowModuleTemplateType = {
   logo: '/imgs/module/http.png',
   name: 'HTTP模块',
   intro: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
-  description: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,
   inputs: [
     Input_Template_TFSwitch,

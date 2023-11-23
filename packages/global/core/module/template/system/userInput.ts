@@ -10,7 +10,7 @@ export const UserInputModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.questionInput,
   flowType: FlowNodeTypeEnum.questionInput,
   logo: '/imgs/module/userChatInput.png',
-  name: '用户问题(对话入口)',
+  name: '用户问题(入口)',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
   inputs: [
     {

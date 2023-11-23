@@ -16,7 +16,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyIcon from '@/components/Icon';
 import EmptyTip from '@/components/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { getPluginModuleDetail } from '@/web/core/plugin/api';
+import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -162,7 +162,7 @@ var RenderList = React.memo(function RenderList({
       try {
         if (templateModule.flowType === FlowNodeTypeEnum.pluginModule) {
           setLoading(true);
-          const pluginModule = await getPluginModuleDetail(templateModule.id);
+          const pluginModule = await getPreviewPluginModule(templateModule.id);
           templateModule = {
             ...templateModule,
             ...pluginModule

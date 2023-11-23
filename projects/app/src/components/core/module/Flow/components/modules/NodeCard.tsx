@@ -12,7 +12,7 @@ import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getPluginModuleDetail } from '@/web/core/plugin/api';
+import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 
@@ -27,7 +27,7 @@ const NodeCard = (props: Props) => {
     children,
     logo = '/icon/logo.svg',
     name = '未知模块',
-    description,
+    intro,
     minW = '300px',
     moduleId,
     flowType,
@@ -63,7 +63,7 @@ const NodeCard = (props: Props) => {
                 openConfirm(async () => {
                   try {
                     setLoading(true);
-                    const pluginModule = await getPluginModuleDetail(pluginId);
+                    const pluginModule = await getPreviewPluginModule(pluginId);
                     onResetNode(moduleId, pluginModule);
                   } catch (e) {
                     return toast({
@@ -148,14 +148,9 @@ const NodeCard = (props: Props) => {
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
           {name}
         </Box>
-        {description && (
-          <MyTooltip label={description} forceShow>
-            <QuestionOutlineIcon
-              display={['none', 'inline']}
-              transform={'translateY(1px)'}
-              mb={'1px'}
-              ml={1}
-            />
+        {intro && (
+          <MyTooltip label={intro} forceShow>
+            <QuestionOutlineIcon display={['none', 'inline']} mb={'1px'} ml={1} />
           </MyTooltip>
         )}
         <Box flex={1} />

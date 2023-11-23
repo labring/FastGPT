@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { getPluginModuleDetail } from '@fastgpt/service/core/plugin/controller';
+import { getPluginPreviewModule } from '@fastgpt/service/core/plugin/controller';
 import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await authPluginCrud({ req, authToken: true, id, per: 'r' });
 
     jsonRes(res, {
-      data: await getPluginModuleDetail({ id })
+      data: await getPluginPreviewModule({ id })
     });
   } catch (err) {
     jsonRes(res, {

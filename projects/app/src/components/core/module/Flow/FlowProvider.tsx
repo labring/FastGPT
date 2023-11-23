@@ -332,7 +332,6 @@ export const FlowProvider = ({
           logo: node.data.logo,
           name: node.data.name,
           intro: node.data.intro,
-          description: node.data.description,
           flowType: node.data.flowType,
           inputs: node.data.inputs,
           outputs: node.data.outputs,

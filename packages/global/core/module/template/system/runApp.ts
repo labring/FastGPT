@@ -18,7 +18,6 @@ export const RunAppModule: FlowModuleTemplateType = {
   logo: '/imgs/module/app.png',
   name: '应用调用',
   intro: '可以选择一个其他应用进行调用',
-  description: '可以选择一个其他应用进行调用',
   showStatus: true,
   inputs: [
     Input_Template_TFSwitch,

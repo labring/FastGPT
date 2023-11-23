@@ -8,7 +8,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import dynamic from 'next/dynamic';
 
 import ButtonEdge from './components/modules/ButtonEdge';
-import TemplateList, { type ModuleTemplateProps } from './TemplateList';
+import ModuleTemplateList, { type ModuleTemplateProps } from './ModuleTemplateList';
 import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
@@ -114,7 +114,7 @@ const Container = React.memo(function Container(props: Props) {
           <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
         </ReactFlow>
 
-        <TemplateList
+        <ModuleTemplateList
           systemTemplates={systemTemplates}
           pluginTemplates={pluginTemplates}
           show2Plugin={show2Plugin}

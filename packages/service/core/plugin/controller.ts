@@ -3,7 +3,7 @@ import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { formatPluginIOModules } from '@fastgpt/global/core/module/utils';
 
-/* plugin templates */
+/* plugin templates, delete inputs and outputs */
 export async function getUserPlugins2Templates({
   teamId
 }: {
@@ -16,15 +16,18 @@ export async function getUserPlugins2Templates({
     flowType: FlowNodeTypeEnum.pluginModule,
     logo: plugin.avatar,
     name: plugin.name,
-    description: plugin.intro,
     intro: plugin.intro,
     showStatus: false,
     inputs: [],
     outputs: []
   }));
 }
-/* one plugin 2 module detail */
-export async function getPluginModuleDetail({ id }: { id: string }) {
+/* format plugin modules to plugin preview module */
+export async function getPluginPreviewModule({
+  id
+}: {
+  id: string;
+}): Promise<FlowModuleTemplateType> {
   const plugin = await MongoPlugin.findById(id);
   if (!plugin) return Promise.reject('plugin not found');
   return {
@@ -32,7 +35,6 @@ export async function getPluginModuleDetail({ id }: { id: string }) {
     flowType: FlowNodeTypeEnum.pluginModule,
     logo: plugin.avatar,
     name: plugin.name,
-    description: plugin.intro,
     intro: plugin.intro,
     showStatus: false,
     ...formatPluginIOModules(String(plugin._id), plugin.modules)

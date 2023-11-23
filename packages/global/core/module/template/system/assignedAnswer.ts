@@ -10,7 +10,6 @@ export const AssignedAnswerModule: FlowModuleTemplateType = {
   logo: '/imgs/module/reply.png',
   name: '指定回复',
   intro: '该模块可以直接回复一段指定的内容。常用于引导、提示',
-  description: '该模块可以直接回复一段指定的内容。常用于引导、提示',
   inputs: [
     Input_Template_TFSwitch,
     {

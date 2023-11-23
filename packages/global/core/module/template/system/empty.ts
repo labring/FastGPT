@@ -7,7 +7,6 @@ export const EmptyModule: FlowModuleTemplateType = {
   logo: '/imgs/module/cq.png',
   name: '该模块已被移除',
   intro: '',
-  description: '',
   inputs: [],
   outputs: []
 };

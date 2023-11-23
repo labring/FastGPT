@@ -7,8 +7,7 @@ export type FlowModuleTemplateType = {
   flowType: `${FlowNodeTypeEnum}`; // unique
   logo?: string;
   name: string;
-  description?: string;
-  intro?: string;
+  intro: string; // template list intro
   showStatus?: boolean; // chatting response step status
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -26,7 +25,6 @@ export type ModuleItemType = {
   name: string;
   logo?: string;
   intro?: string;
-  description?: string;
   moduleId: string;
   position?: {
     x: number;
