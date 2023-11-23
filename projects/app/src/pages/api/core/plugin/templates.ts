@@ -6,16 +6,21 @@ import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
+import { GET } from '@fastgpt/service/common/api/plusRequest';
+import type { PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const { teamId } = await authCert({ req, authToken: true });
 
-    const plugins = await MongoPlugin.find({ teamId }).lean();
+    const [userPlugins, plusPlugins] = await Promise.all([
+      MongoPlugin.find({ teamId }).lean(),
+      GET<PluginTemplateType[]>('/core/plugin/getTemplates')
+    ]);
 
     const data: FlowModuleTemplateType[] = [
-      ...plugins.map((plugin) => ({
+      ...userPlugins.map((plugin) => ({
         id: String(plugin._id),
         templateType: ModuleTemplateTypeEnum.personalPlugin,
         flowType: FlowNodeTypeEnum.pluginModule,

@@ -1,3 +1,4 @@
+import { ModuleTemplateTypeEnum } from 'core/module/constants';
 import type { ModuleItemType } from '../module/type.d';
 import { PluginTypeEnum } from './constants';
 
@@ -21,4 +22,5 @@ export type PluginTemplateType = {
   avatar: string;
   intro: string;
   modules: ModuleItemType[];
+  templateType?: `${ModuleTemplateTypeEnum}`;
 };
