@@ -12,9 +12,13 @@ import { RunAppModule } from '@fastgpt/global/core/module/template/system/runApp
 import { PluginInputModule } from '@fastgpt/global/core/module/template/system/pluginInput';
 import { PluginOutputModule } from '@fastgpt/global/core/module/template/system/pluginOutput';
 import { RunPluginModule } from '@fastgpt/global/core/module/template/system/runPlugin';
-import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
+import type {
+  FlowModuleTemplateType,
+  moduleTemplateListType
+} from '@fastgpt/global/core/module/type.d';
+import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
-export const SystemModuleTemplates: FlowModuleTemplateType[] = [
+export const systemModuleTemplates: FlowModuleTemplateType[] = [
   UserGuideModule,
   UserInputModule,
   HistoryModule,
@@ -26,7 +30,7 @@ export const SystemModuleTemplates: FlowModuleTemplateType[] = [
   ContextExtractModule,
   HttpModule
 ];
-export const PluginModuleTemplates: FlowModuleTemplateType[] = [
+export const pluginModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
   HistoryModule,
@@ -38,7 +42,7 @@ export const PluginModuleTemplates: FlowModuleTemplateType[] = [
   ContextExtractModule,
   HttpModule
 ];
-export const ModuleTemplatesFlat: FlowModuleTemplateType[] = [
+export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
   UserInputModule,
   HistoryModule,
@@ -55,7 +59,59 @@ export const ModuleTemplatesFlat: FlowModuleTemplateType[] = [
   RunPluginModule
 ];
 
-// export const SystemModuleTemplates = [
+export const moduleTemplatesList: moduleTemplateListType = [
+  {
+    type: ModuleTemplateTypeEnum.userGuide,
+    label: '引导模块',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.systemInput,
+    label: '系统输入',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.textAnswer,
+    label: '文本输出',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.dataset,
+    label: '知识库',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.functionCall,
+    label: '函数调用',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.externalCall,
+    label: '外部调用',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.personalPlugin,
+    label: '个人插件',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.communityPlugin,
+    label: '社区插件',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.commercialPlugin,
+    label: '商业插件',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.other,
+    label: '其他',
+    list: []
+  }
+];
+// export const systemModuleTemplates = [
 //   {
 //     label: '引导模块',
 //     list: [UserGuideModule]
@@ -77,7 +133,7 @@ export const ModuleTemplatesFlat: FlowModuleTemplateType[] = [
 //     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
 //   }
 // ];
-// export const PluginModuleTemplates = [
+// export const pluginModuleTemplates = [
 //   {
 //     label: '输入输出',
 //     list: [PluginInputModule, PluginOutputModule, HistoryModule]

@@ -1,6 +1,18 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
-import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
+import {
+  Box,
+  Flex,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
+  useTheme
+} from '@chakra-ui/react';
+import type {
+  FlowModuleTemplateType,
+  moduleTemplateListType
+} from '@fastgpt/global/core/module/type.d';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -16,29 +28,28 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { moduleTemplatesList } from '@/web/core/modules/template/system';
+import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
 enum TemplateTypeEnum {
   system = 'system',
-  combine = 'combine'
+  plugin = 'plugin'
 }
 
 export type ModuleTemplateProps = {
   systemTemplates: FlowModuleTemplateType[];
   pluginTemplates: FlowModuleTemplateType[];
-  show2Plugin?: boolean;
 };
 
 const ModuleTemplateList = ({
   systemTemplates,
   pluginTemplates,
-  show2Plugin = false,
   isOpen,
   onClose
 }: ModuleTemplateProps & {
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const router = useRouter();
   const { t } = useTranslation();
   const [templateType, setTemplateType] = React.useState(TemplateTypeEnum.system);
 
@@ -50,9 +61,9 @@ const ModuleTemplateList = ({
         child: <RenderList templates={systemTemplates} onClose={onClose} />
       },
       {
-        type: TemplateTypeEnum.combine,
+        type: TemplateTypeEnum.plugin,
         label: t('plugin.Plugin Module'),
-        child: <RenderList templates={pluginTemplates} onClose={onClose} />
+        child: <RenderList templates={pluginTemplates} onClose={onClose} isPlugin />
       }
     ],
     [pluginTemplates, onClose, systemTemplates, t]
@@ -109,20 +120,6 @@ const ModuleTemplateList = ({
               {item.label}
             </Box>
           ))}
-          <Box flex={1} />
-          {show2Plugin && templateType === TemplateTypeEnum.combine && (
-            <Flex
-              alignItems={'center'}
-              _hover={{ textDecoration: 'underline' }}
-              cursor={'pointer'}
-              onClick={() => router.push('/plugin/list')}
-            >
-              <Box fontSize={'sm'} transform={'translateY(-1px)'}>
-                {t('plugin.To Edit Plugin')}
-              </Box>
-              <MyIcon name={'common/rightArrowLight'} w={'12px'} />
-            </Flex>
-          )}
         </Flex>
         {TemplateItem}
       </Flex>
@@ -132,19 +129,32 @@ const ModuleTemplateList = ({
 
 export default React.memo(ModuleTemplateList);
 
-var RenderList = React.memo(function RenderList({
+const RenderList = React.memo(function RenderList({
   templates,
+  isPlugin = false,
   onClose
 }: {
   templates: FlowModuleTemplateType[];
+  isPlugin?: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { isPc } = useSystemStore();
   const { setNodes, reactFlowWrapper } = useFlowProviderStore();
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
   const { toast } = useToast();
+
+  const formatTemplates = useMemo<moduleTemplateListType>(() => {
+    const copy: moduleTemplateListType = JSON.parse(JSON.stringify(moduleTemplatesList));
+    templates.forEach((item) => {
+      const index = copy.findIndex((template) => template.type === item.templateType);
+      if (index === -1) return;
+      copy[index].list.push(item);
+    });
+    return copy.filter((item) => item.list.length > 0);
+  }, [templates]);
 
   const onAddNode = useCallback(
     async ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
@@ -194,39 +204,68 @@ var RenderList = React.memo(function RenderList({
   ) : (
     <Box flex={'1 0 0'} overflow={'overlay'}>
       <Box w={['100%', '330px']} mx={'auto'}>
-        {templates.map((item) => (
-          <Flex
-            key={item.id}
-            alignItems={'center'}
-            p={5}
-            cursor={'pointer'}
-            _hover={{ bg: 'myWhite.600' }}
-            borderRadius={'md'}
-            draggable
-            onDragEnd={(e) => {
-              if (e.clientX < 360) return;
-              onAddNode({
-                template: item,
-                position: { x: e.clientX, y: e.clientY }
-              });
-            }}
-            onClick={(e) => {
-              if (isPc) return;
-              onClose();
-              onAddNode({
-                template: item,
-                position: { x: e.clientX, y: e.clientY }
-              });
-            }}
-          >
-            <Avatar src={item.avatar} w={'34px'} objectFit={'contain'} borderRadius={'0'} />
-            <Box ml={5} flex={'1 0 0'}>
-              <Box color={'black'}>{item.name}</Box>
-              <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
-                {item.intro}
+        {formatTemplates.map((item, i) => (
+          <Box key={item.type}>
+            <Flex>
+              <Box fontWeight={'bold'} flex={1}>
+                {item.label}
               </Box>
-            </Box>
-          </Flex>
+              {isPlugin && item.type === ModuleTemplateTypeEnum.personalPlugin && (
+                <Flex
+                  alignItems={'center'}
+                  _hover={{ textDecoration: 'underline' }}
+                  cursor={'pointer'}
+                  onClick={() => router.push('/plugin/list')}
+                >
+                  <Box fontSize={'sm'} transform={'translateY(-1px)'}>
+                    {t('plugin.To Edit Plugin')}
+                  </Box>
+                  <MyIcon name={'common/rightArrowLight'} w={'12px'} />
+                </Flex>
+              )}
+            </Flex>
+            <>
+              {item.list.map((template) => (
+                <Flex
+                  key={template.id}
+                  alignItems={'center'}
+                  p={5}
+                  cursor={'pointer'}
+                  _hover={{ bg: 'myWhite.600' }}
+                  borderRadius={'sm'}
+                  draggable
+                  onDragEnd={(e) => {
+                    if (e.clientX < 360) return;
+                    onAddNode({
+                      template: template,
+                      position: { x: e.clientX, y: e.clientY }
+                    });
+                  }}
+                  onClick={(e) => {
+                    if (isPc) return;
+                    onClose();
+                    onAddNode({
+                      template: template,
+                      position: { x: e.clientX, y: e.clientY }
+                    });
+                  }}
+                >
+                  <Avatar
+                    src={template.avatar}
+                    w={'34px'}
+                    objectFit={'contain'}
+                    borderRadius={'0'}
+                  />
+                  <Box ml={5} flex={'1 0 0'}>
+                    <Box color={'black'}>{template.name}</Box>
+                    <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
+                      {template.intro}
+                    </Box>
+                  </Box>
+                </Flex>
+              ))}
+            </>
+          </Box>
         ))}
       </Box>
     </Box>

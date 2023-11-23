@@ -4,7 +4,7 @@ import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
-import { SystemModuleTemplates } from '@/web/core/modules/template/system';
+import { systemModuleTemplates } from '@/web/core/modules/template/system';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +17,7 @@ const Render = ({ app, onClose }: Props) => {
 
   const filterTemplates = useMemo(() => {
     const copyTemplates: FlowModuleTemplateType[] = JSON.parse(
-      JSON.stringify(SystemModuleTemplates)
+      JSON.stringify(systemModuleTemplates)
     );
 
     const filterType: Record<string, 1> = {
@@ -44,7 +44,6 @@ const Render = ({ app, onClose }: Props) => {
     <Flow
       systemTemplates={filterTemplates}
       pluginTemplates={pluginModuleTemplates}
-      show2Plugin
       modules={app.modules}
       Header={<Header app={app} onClose={onClose} />}
     />

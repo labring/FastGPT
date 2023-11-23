@@ -40,7 +40,7 @@ type Props = {
 } & ModuleTemplateProps;
 
 const Container = React.memo(function Container(props: Props) {
-  const { modules = [], Header, systemTemplates, pluginTemplates, show2Plugin } = props;
+  const { modules = [], Header, systemTemplates, pluginTemplates } = props;
 
   const {
     isOpen: isOpenTemplate,
@@ -117,7 +117,6 @@ const Container = React.memo(function Container(props: Props) {
         <ModuleTemplateList
           systemTemplates={systemTemplates}
           pluginTemplates={pluginTemplates}
-          show2Plugin={show2Plugin}
           isOpen={isOpenTemplate}
           onClose={onCloseTemplate}
         />

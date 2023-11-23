@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { useTranslation } from 'next-i18next';
-import { ModuleTemplatesFlat } from '@/web/core/modules/template/system';
+import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
 import Tabs from '../Tabs';
 
 import MyModal from '../MyModal';
@@ -52,7 +52,7 @@ const WholeResponseModal = ({
               mr={2}
               src={
                 item.moduleLogo ||
-                ModuleTemplatesFlat.find((template) => item.moduleType === template.flowType)
+                moduleTemplatesFlat.find((template) => item.moduleType === template.flowType)
                   ?.avatar
               }
               alt={''}

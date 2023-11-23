@@ -2,6 +2,7 @@
   "logo": "",
   "name": "测试插件",
   "intro": "测试插件",
+  "avatar": "",
   "modules": [
     {
       "moduleId": "o0081k",

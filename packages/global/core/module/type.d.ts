@@ -16,6 +16,11 @@ export type FlowModuleTemplateType = {
 export type FlowModuleItemType = FlowModuleTemplateType & {
   moduleId: string;
 };
+export type moduleTemplateListType = {
+  type: `${ModuleTemplateTypeEnum}`;
+  label: string;
+  list: FlowModuleTemplateType[];
+}[];
 
 // store module type
 export type ModuleItemType = {
