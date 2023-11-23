@@ -6,6 +6,7 @@ import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/pg';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { authDatasetByTmbId } from '@fastgpt/service/support/permission/auth/dataset';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -25,6 +26,8 @@ export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
   const {
+    teamId,
+    tmbId,
     inputs: { datasets = [], similarity = 0.4, limit = 5, rerank, userChatInput }
   } = props as DatasetSearchProps;
 
@@ -35,6 +38,17 @@ export async function dispatchDatasetSearch(
   if (!userChatInput) {
     return Promise.reject('Your input is empty');
   }
+
+  await Promise.all(
+    datasets.map((item) =>
+      authDatasetByTmbId({
+        teamId,
+        tmbId,
+        datasetId: item.datasetId,
+        per: 'r'
+      })
+    )
+  );
 
   // get vector
   const vectorModel = datasets[0]?.vectorModel || global.vectorModels[0];

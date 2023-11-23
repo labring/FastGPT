@@ -4,7 +4,12 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../../constants';
+import {
+  ModuleDataTypeEnum,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleTemplateTypeEnum
+} from '../../constants';
 import {
   Input_Template_History,
   Input_Template_TFSwitch,
@@ -15,8 +20,9 @@ import { Output_Template_Finish } from '../output';
 
 export const AiChatModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
+  templateType: ModuleTemplateTypeEnum.textAnswer,
   flowType: FlowNodeTypeEnum.chatNode,
-  logo: '/imgs/module/AI.png',
+  avatar: '/imgs/module/AI.png',
   name: 'AI 对话',
   intro: 'AI 大模型对话',
   showStatus: true,

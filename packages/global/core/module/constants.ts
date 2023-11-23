@@ -1,3 +1,18 @@
+export enum ModuleTemplateTypeEnum {
+  userGuide = 'userGuide',
+  systemInput = 'systemInput',
+  textAnswer = 'textAnswer',
+  dataset = 'dataset',
+  functionCall = 'functionCall',
+  externalCall = 'externalCall',
+
+  personalPlugin = 'personalPlugin',
+  communityPlugin = 'communityPlugin',
+  commercialPlugin = 'commercialPlugin',
+
+  other = 'other'
+}
+
 export enum ModuleDataTypeEnum {
   string = 'string',
   number = 'number',

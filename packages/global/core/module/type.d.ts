@@ -1,11 +1,12 @@
 import { FlowNodeTypeEnum } from './node/constant';
-import { ModuleDataTypeEnum, VariableInputEnum } from './constants';
+import { ModuleDataTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
   id: string;
+  templateType: `${ModuleTemplateTypeEnum}`;
   flowType: `${FlowNodeTypeEnum}`; // unique
-  logo?: string;
+  avatar?: string;
   name: string;
   intro: string; // template list intro
   showStatus?: boolean; // chatting response step status
@@ -15,10 +16,6 @@ export type FlowModuleTemplateType = {
 export type FlowModuleItemType = FlowModuleTemplateType & {
   moduleId: string;
 };
-export type SystemModuleTemplateType = {
-  label: string;
-  list: FlowModuleTemplateType[];
-}[];
 
 // store module type
 export type ModuleItemType = {

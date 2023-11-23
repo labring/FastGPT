@@ -1,9 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import type {
-  FlowModuleTemplateType,
-  SystemModuleTemplateType
-} from '@fastgpt/global/core/module/type.d';
+import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -26,8 +23,8 @@ enum TemplateTypeEnum {
 }
 
 export type ModuleTemplateProps = {
-  systemTemplates: SystemModuleTemplateType;
-  pluginTemplates: SystemModuleTemplateType;
+  systemTemplates: FlowModuleTemplateType[];
+  pluginTemplates: FlowModuleTemplateType[];
   show2Plugin?: boolean;
 };
 
@@ -139,10 +136,7 @@ var RenderList = React.memo(function RenderList({
   templates,
   onClose
 }: {
-  templates: {
-    label: string;
-    list: FlowModuleTemplateType[];
-  }[];
+  templates: FlowModuleTemplateType[];
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -156,26 +150,25 @@ var RenderList = React.memo(function RenderList({
     async ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
       if (!reactFlowWrapper?.current) return;
 
-      let templateModule = { ...template };
-
-      // get plugin module
-      try {
-        if (templateModule.flowType === FlowNodeTypeEnum.pluginModule) {
-          setLoading(true);
-          const pluginModule = await getPreviewPluginModule(templateModule.id);
-          templateModule = {
-            ...templateModule,
-            ...pluginModule
-          };
+      const templateModule = await (async () => {
+        try {
+          // get plugin preview module
+          if (template.flowType === FlowNodeTypeEnum.pluginModule) {
+            setLoading(true);
+            const res = await getPreviewPluginModule(template.id);
+            setLoading(false);
+            return res;
+          }
+          return { ...template };
+        } catch (e) {
+          toast({
+            status: 'error',
+            title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
+          });
+          setLoading(false);
+          return Promise.reject(e);
         }
-      } catch (e) {
-        return toast({
-          status: 'error',
-          title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
-        });
-      } finally {
-        setLoading(false);
-      }
+      })();
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
@@ -196,14 +189,12 @@ var RenderList = React.memo(function RenderList({
     [reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );
 
-  const list = useMemo(() => templates.map((item) => item.list).flat(), [templates]);
-
-  return list.length === 0 ? (
+  return templates.length === 0 ? (
     <EmptyTip text={t('app.module.No Modules')} />
   ) : (
     <Box flex={'1 0 0'} overflow={'overlay'}>
       <Box w={['100%', '330px']} mx={'auto'}>
-        {list.map((item) => (
+        {templates.map((item) => (
           <Flex
             key={item.id}
             alignItems={'center'}
@@ -228,7 +219,7 @@ var RenderList = React.memo(function RenderList({
               });
             }}
           >
-            <Avatar src={item.logo} w={'34px'} objectFit={'contain'} borderRadius={'0'} />
+            <Avatar src={item.avatar} w={'34px'} objectFit={'contain'} borderRadius={'0'} />
             <Box ml={5} flex={'1 0 0'}>
               <Box color={'black'}>{item.name}</Box>
               <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>

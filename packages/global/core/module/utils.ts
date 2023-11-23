@@ -29,26 +29,26 @@ export const splitGuideModule = (guideModules?: ModuleItemType) => {
   };
 };
 
-export function getPluginTemplatePluginIdInput(pluginId: string): FlowNodeInputItemType {
-  return {
-    key: ModuleInputKeyEnum.pluginId,
-    type: FlowNodeInputTypeEnum.hidden,
-    label: 'pluginId',
-    value: pluginId,
-    valueType: ModuleDataTypeEnum.string,
-    connected: true,
-    showTargetInApp: false,
-    showTargetInPlugin: false
-  };
-}
-
-export function formatPluginIOModules(
+export function formatPluginToPreviewModule(
   pluginId: string,
   modules: ModuleItemType[]
 ): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 } {
+  function getPluginTemplatePluginIdInput(pluginId: string): FlowNodeInputItemType {
+    return {
+      key: ModuleInputKeyEnum.pluginId,
+      type: FlowNodeInputTypeEnum.hidden,
+      label: 'pluginId',
+      value: pluginId,
+      valueType: ModuleDataTypeEnum.string,
+      connected: true,
+      showTargetInApp: false,
+      showTargetInPlugin: false
+    };
+  }
+
   const pluginInput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginInput);
   const customOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
 

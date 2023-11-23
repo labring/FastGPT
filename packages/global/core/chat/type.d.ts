@@ -78,6 +78,7 @@ export type ChatHistoryItemType = HistoryItemType & {
 
 // response data
 export type moduleDispatchResType = {
+  moduleLogo?: string;
   price: number;
   runningTime?: number;
   tokens?: number;

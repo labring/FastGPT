@@ -1,13 +1,14 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '../../constants';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
 import { Input_Template_TFSwitch } from '../input';
 import { Output_Template_Finish } from '../output';
 
 export const AssignedAnswerModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.answerNode,
+  templateType: ModuleTemplateTypeEnum.textAnswer,
   flowType: FlowNodeTypeEnum.answerNode,
-  logo: '/imgs/module/reply.png',
+  avatar: '/imgs/module/reply.png',
   name: '指定回复',
   intro: '该模块可以直接回复一段指定的内容。常用于引导、提示',
   inputs: [

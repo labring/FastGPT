@@ -12,14 +12,22 @@ const NodeSimple = ({ data }: NodeProps<FlowModuleItemType>) => {
 
   return (
     <NodeCard minW={'350px'} {...data}>
-      <Divider text="Input" />
-      <Container>
-        <RenderInput moduleId={moduleId} flowInputList={inputs} />
-      </Container>
-      <Divider text="Output" />
-      <Container>
-        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
-      </Container>
+      {inputs.length > 0 && (
+        <>
+          <Divider text="Input" />
+          <Container>
+            <RenderInput moduleId={moduleId} flowInputList={inputs} />
+          </Container>
+        </>
+      )}
+      {outputs.length > 0 && (
+        <>
+          <Divider text="Output" />
+          <Container>
+            <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
+          </Container>
+        </>
+      )}
     </NodeCard>
   );
 };

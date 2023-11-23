@@ -12,48 +12,33 @@ import { RunAppModule } from '@fastgpt/global/core/module/template/system/runApp
 import { PluginInputModule } from '@fastgpt/global/core/module/template/system/pluginInput';
 import { PluginOutputModule } from '@fastgpt/global/core/module/template/system/pluginOutput';
 import { RunPluginModule } from '@fastgpt/global/core/module/template/system/runPlugin';
+import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 
-export const SystemModuleTemplates = [
-  {
-    label: '引导模块',
-    list: [UserGuideModule]
-  },
-  {
-    label: '输入模块',
-    list: [UserInputModule, HistoryModule]
-  },
-  {
-    label: '内容生成',
-    list: [AiChatModule, AssignedAnswerModule]
-  },
-  {
-    label: '核心调用',
-    list: [DatasetSearchModule, RunAppModule]
-  },
-  {
-    label: '函数模块',
-    list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
-  }
+export const SystemModuleTemplates: FlowModuleTemplateType[] = [
+  UserGuideModule,
+  UserInputModule,
+  HistoryModule,
+  AiChatModule,
+  AssignedAnswerModule,
+  DatasetSearchModule,
+  RunAppModule,
+  ClassifyQuestionModule,
+  ContextExtractModule,
+  HttpModule
 ];
-export const PluginModuleTemplates = [
-  {
-    label: '输入输出',
-    list: [PluginInputModule, PluginOutputModule, HistoryModule]
-  },
-  {
-    label: '内容生成',
-    list: [AiChatModule, AssignedAnswerModule]
-  },
-  {
-    label: '核心调用',
-    list: [DatasetSearchModule, RunAppModule]
-  },
-  {
-    label: '函数模块',
-    list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
-  }
+export const PluginModuleTemplates: FlowModuleTemplateType[] = [
+  PluginInputModule,
+  PluginOutputModule,
+  HistoryModule,
+  AiChatModule,
+  AssignedAnswerModule,
+  DatasetSearchModule,
+  RunAppModule,
+  ClassifyQuestionModule,
+  ContextExtractModule,
+  HttpModule
 ];
-export const ModuleTemplatesFlat = [
+export const ModuleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
   UserInputModule,
   HistoryModule,
@@ -69,3 +54,44 @@ export const ModuleTemplatesFlat = [
   PluginOutputModule,
   RunPluginModule
 ];
+
+// export const SystemModuleTemplates = [
+//   {
+//     label: '引导模块',
+//     list: [UserGuideModule]
+//   },
+//   {
+//     label: '输入模块',
+//     list: [UserInputModule, HistoryModule]
+//   },
+//   {
+//     label: '内容生成',
+//     list: [AiChatModule, AssignedAnswerModule]
+//   },
+//   {
+//     label: '核心调用',
+//     list: [DatasetSearchModule, RunAppModule]
+//   },
+//   {
+//     label: '函数模块',
+//     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
+//   }
+// ];
+// export const PluginModuleTemplates = [
+//   {
+//     label: '输入输出',
+//     list: [PluginInputModule, PluginOutputModule, HistoryModule]
+//   },
+//   {
+//     label: '内容生成',
+//     list: [AiChatModule, AssignedAnswerModule]
+//   },
+//   {
+//     label: '核心调用',
+//     list: [DatasetSearchModule, RunAppModule]
+//   },
+//   {
+//     label: '函数模块',
+//     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
+//   }
+// ];

@@ -1,0 +1,334 @@
+{
+  "logo": "",
+  "name": "测试插件",
+  "intro": "测试插件",
+  "modules": [
+    {
+      "moduleId": "o0081k",
+      "name": "知识库搜索",
+      "logo": "/imgs/module/db.png",
+      "flowType": "datasetSearchNode",
+      "showStatus": true,
+      "position": {
+        "x": 853.8152424356291,
+        "y": -363.40066243657435
+      },
+      "inputs": [
+        {
+          "key": "switch",
+          "type": "target",
+          "label": "core.module.input.label.switch",
+          "valueType": "any",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": false
+        },
+        {
+          "key": "datasets",
+          "type": "selectDataset",
+          "label": "关联的知识库",
+          "value": [],
+          "valueType": "selectDataset",
+          "list": [],
+          "required": true,
+          "showTargetInApp": false,
+          "showTargetInPlugin": true,
+          "connected": true
+        },
+        {
+          "key": "similarity",
+          "type": "slider",
+          "label": "相似度",
+          "value": 0.5,
+          "valueType": "number",
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "markList": [
+            {
+              "label": "100",
+              "value": 100
+            },
+            {
+              "label": "1",
+              "value": 1
+            }
+          ],
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": true
+        },
+        {
+          "key": "limit",
+          "type": "slider",
+          "label": "单次搜索上限",
+          "description": "最多取 n 条记录作为本次问题引用",
+          "value": 14,
+          "valueType": "number",
+          "min": 1,
+          "max": 20,
+          "step": 1,
+          "markList": [
+            {
+              "label": "1",
+              "value": 1
+            },
+            {
+              "label": "20",
+              "value": 20
+            }
+          ],
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": true
+        },
+        {
+          "key": "rerank",
+          "type": "switch",
+          "label": "结果重排",
+          "description": "将召回的结果进行进一步重排，可增加召回率",
+          "plusField": true,
+          "value": false,
+          "valueType": "boolean",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "userChatInput",
+          "type": "target",
+          "label": "core.module.input.label.user question",
+          "required": true,
+          "valueType": "string",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "isEmpty",
+          "label": "搜索结果为空",
+          "type": "source",
+          "valueType": "boolean",
+          "targets": [
+            {
+              "moduleId": "c40r0t",
+              "key": "iuk8w9"
+            }
+          ]
+        },
+        {
+          "key": "unEmpty",
+          "label": "搜索结果不为空",
+          "type": "source",
+          "valueType": "boolean",
+          "targets": [
+            {
+              "moduleId": "c40r0t",
+              "key": "bfj0it"
+            }
+          ]
+        },
+        {
+          "key": "quoteQA",
+          "label": "引用内容",
+          "description": "始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器",
+          "type": "source",
+          "valueType": "datasetQuote",
+          "targets": [
+            {
+              "moduleId": "c40r0t",
+              "key": "eph6c2"
+            }
+          ]
+        },
+        {
+          "key": "finish",
+          "label": "core.module.output.label.running done",
+          "description": "core.module.output.description.running done",
+          "valueType": "boolean",
+          "type": "source",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "moduleId": "w90mfp",
+      "name": "定义插件输入",
+      "logo": "/imgs/module/input.png",
+      "flowType": "pluginInput",
+      "showStatus": false,
+      "position": {
+        "x": 345.8742555287673,
+        "y": -185.9086993030344
+      },
+      "inputs": [
+        {
+          "key": "fr",
+          "valueType": "string",
+          "type": "target",
+          "label": "2323",
+          "edit": true,
+          "description": "",
+          "required": true,
+          "connected": true
+        },
+        {
+          "key": "7h0f5t",
+          "valueType": "selectDataset",
+          "type": "selectDataset",
+          "label": "知识库选择",
+          "edit": true,
+          "required": true,
+          "description": "",
+          "connected": true
+        },
+        {
+          "key": "gdxg",
+          "valueType": "string",
+          "type": "input",
+          "label": "知识库选择",
+          "required": true,
+          "edit": true,
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "fr",
+          "label": "2323",
+          "valueType": "string",
+          "type": "target",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "o0081k",
+              "key": "userChatInput"
+            }
+          ],
+          "description": "",
+          "required": true
+        },
+        {
+          "key": "7h0f5t",
+          "label": "知识库选择",
+          "valueType": "selectDataset",
+          "type": "selectDataset",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "o0081k",
+              "key": "datasets"
+            }
+          ],
+          "description": "",
+          "required": true
+        },
+        {
+          "key": "gdxg",
+          "valueType": "string",
+          "label": "知识库选择",
+          "type": "source",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "o0081k",
+              "key": "userChatInput"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "c40r0t",
+      "name": "定义插件输出",
+      "logo": "/imgs/module/output.png",
+      "flowType": "pluginOutput",
+      "showStatus": false,
+      "position": {
+        "x": 1406.1524734662985,
+        "y": 179.33964336573632
+      },
+      "inputs": [
+        {
+          "key": "iuk8w9",
+          "valueType": "string",
+          "type": "target",
+          "label": "搜索结果为空",
+          "edit": true,
+          "required": true,
+          "description": "",
+          "connected": true
+        },
+        {
+          "key": "bfj0it",
+          "valueType": "boolean",
+          "type": "target",
+          "label": "不为空",
+          "edit": true,
+          "required": true,
+          "description": "",
+          "connected": true
+        },
+        {
+          "key": "eph6c2",
+          "valueType": "datasetQuote",
+          "type": "target",
+          "label": "引用内容",
+          "edit": true,
+          "required": true,
+          "description": "",
+          "connected": true
+        },
+        {
+          "key": "iu",
+          "valueType": "string",
+          "label": "DASf ",
+          "required": true,
+          "edit": true,
+          "description": "",
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "iuk8w9",
+          "label": "搜索结果为空",
+          "valueType": "string",
+          "type": "source",
+          "edit": true,
+          "targets": [],
+          "description": ""
+        },
+        {
+          "key": "bfj0it",
+          "label": "不为空",
+          "valueType": "boolean",
+          "type": "source",
+          "edit": true,
+          "targets": [],
+          "description": ""
+        },
+        {
+          "key": "eph6c2",
+          "label": "引用内容",
+          "valueType": "datasetQuote",
+          "type": "source",
+          "edit": true,
+          "targets": [],
+          "description": ""
+        },
+        {
+          "key": "iu",
+          "valueType": "string",
+          "label": "DASf ",
+          "type": "source",
+          "edit": true,
+          "targets": [],
+          "description": ""
+        }
+      ]
+    }
+  ]
+}

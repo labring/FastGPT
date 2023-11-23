@@ -3,7 +3,8 @@ import { dispatchModules } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
+import { getPluginRuntimeById } from '@fastgpt/service/core/plugin/controller';
+import { authPluginCanUse } from '@fastgpt/service/support/permission/auth/plugin';
 
 type RunPluginProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.pluginId]: string;
@@ -11,11 +12,13 @@ type RunPluginProps = ModuleDispatchProps<{
 }>;
 type RunPluginResponse = {
   [ModuleOutputKeyEnum.answerText]: string;
-  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType[];
+  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
 };
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
+    teamId,
+    tmbId,
     inputs: { pluginId, ...data }
   } = props;
 
@@ -23,10 +26,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('Input is empty');
   }
 
-  const plugin = await MongoPlugin.findOne({ _id: pluginId });
-  if (!plugin) {
-    return Promise.reject('Plugin not found');
-  }
+  await authPluginCanUse({ id: pluginId, teamId, tmbId });
+  const plugin = await getPluginRuntimeById(pluginId);
 
   const { responseData, answerText } = await dispatchModules({
     ...props,
@@ -42,7 +43,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   return {
     answerText,
-    responseData: responseData.filter((item) => item.moduleType !== FlowNodeTypeEnum.pluginOutput),
+    responseData: {
+      moduleLogo: plugin.avatar,
+      price: responseData.reduce((sum, item) => sum + item.price, 0),
+      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0),
+      pluginOutput: output?.pluginOutput
+    },
     ...(output ? output.pluginOutput : {})
   };
 };

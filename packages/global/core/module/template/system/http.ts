@@ -1,13 +1,14 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '../../constants';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
 import { Input_Template_TFSwitch } from '../input';
 import { Output_Template_Finish } from '../output';
 
 export const HttpModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.httpRequest,
+  templateType: ModuleTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.httpRequest,
-  logo: '/imgs/module/http.png',
+  avatar: '/imgs/module/http.png',
   name: 'HTTP模块',
   intro: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,

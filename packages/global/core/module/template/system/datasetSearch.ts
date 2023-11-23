@@ -4,14 +4,20 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../../constants';
+import {
+  ModuleDataTypeEnum,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleTemplateTypeEnum
+} from '../../constants';
 import { Input_Template_TFSwitch, Input_Template_UserChatInput } from '../input';
 import { Output_Template_Finish } from '../output';
 
 export const DatasetSearchModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,
+  templateType: ModuleTemplateTypeEnum.dataset,
   flowType: FlowNodeTypeEnum.datasetSearchNode,
-  logo: '/imgs/module/db.png',
+  avatar: '/imgs/module/db.png',
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
   showStatus: true,
@@ -31,14 +37,14 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.datasetSimilarity,
       type: FlowNodeInputTypeEnum.slider,
-      label: '相似度',
+      label: '最低相关性',
       value: 0.4,
       valueType: ModuleDataTypeEnum.number,
       min: 0,
       max: 1,
       step: 0.01,
       markList: [
-        { label: '100', value: 100 },
+        { label: '0', value: 0 },
         { label: '1', value: 1 }
       ],
       showTargetInApp: false,

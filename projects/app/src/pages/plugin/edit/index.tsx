@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import { SystemModuleTemplateType } from '@fastgpt/global/core/module/type.d';
+import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 import { PluginModuleTemplates } from '@/web/core/modules/template/system';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -22,10 +22,10 @@ const Render = ({ pluginId }: Props) => {
   const router = useRouter();
   const { toast } = useToast();
   const { nodes = [] } = useFlowProviderStore();
-  const { pluginModuleTemplates, loadPluginModuleTemplates } = usePluginStore();
+  const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
   const filterTemplates = useMemo(() => {
-    const copyTemplates: SystemModuleTemplateType = JSON.parse(
+    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(
       JSON.stringify(PluginModuleTemplates)
     );
     const filterType: Record<string, 1> = {
@@ -37,12 +37,10 @@ const Render = ({ pluginId }: Props) => {
     // filter some template
     nodes.forEach((node) => {
       if (node.type && filterType[node.type]) {
-        copyTemplates.forEach((item) => {
-          item.list.forEach((module, index) => {
-            if (module.flowType === node.type) {
-              item.list.splice(index, 1);
-            }
-          });
+        copyTemplates.forEach((module, index) => {
+          if (module.flowType === node.type) {
+            copyTemplates.splice(index, 1);
+          }
         });
       }
     });
@@ -60,16 +58,15 @@ const Render = ({ pluginId }: Props) => {
     }
   });
 
-  useQuery(['getUserPlugs2ModuleTemplates'], () => loadPluginModuleTemplates());
-  const filterPlugins = useMemo(
-    () => pluginModuleTemplates.filter((item) => item.id !== pluginId),
-    [pluginId, pluginModuleTemplates]
-  );
+  useQuery(['getPlugTemplates'], () => loadPluginTemplates());
+  const filterPlugins = useMemo(() => {
+    return pluginModuleTemplates.filter((item) => item.id !== pluginId);
+  }, [pluginId, pluginModuleTemplates]);
 
   return data ? (
     <Flow
       systemTemplates={filterTemplates}
-      pluginTemplates={[{ label: '', list: filterPlugins }]}
+      pluginTemplates={filterPlugins}
       modules={data?.modules || []}
       Header={<Header plugin={data} onClose={() => router.back()} />}
     />

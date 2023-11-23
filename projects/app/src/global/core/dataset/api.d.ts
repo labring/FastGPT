@@ -8,7 +8,7 @@ export type CreateDatasetParams = {
   name: string;
   tags: string;
   avatar: string;
-  vectorModel?: string;
+  vectorModel: string;
   agentModel?: string;
   type: `${DatasetTypeEnum}`;
 };

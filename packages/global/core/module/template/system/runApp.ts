@@ -4,7 +4,12 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../../constants';
+import {
+  ModuleDataTypeEnum,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleTemplateTypeEnum
+} from '../../constants';
 import {
   Input_Template_History,
   Input_Template_TFSwitch,
@@ -14,8 +19,9 @@ import { Output_Template_Finish } from '../output';
 
 export const RunAppModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.runApp,
+  templateType: ModuleTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.runApp,
-  logo: '/imgs/module/app.png',
+  avatar: '/imgs/module/app.png',
   name: '应用调用',
   intro: '可以选择一个其他应用进行调用',
   showStatus: true,

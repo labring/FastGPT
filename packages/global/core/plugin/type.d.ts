@@ -1,4 +1,5 @@
 import type { ModuleItemType } from '../module/type.d';
+import { PluginTypeEnum } from './constants';
 
 export type PluginItemSchema = {
   _id: string;
@@ -13,3 +14,11 @@ export type PluginItemSchema = {
 };
 
 /* plugin template */
+export type PluginTemplateType = {
+  id: string;
+  type: `${PluginTypeEnum}`;
+  name: string;
+  avatar: string;
+  intro: string;
+  modules: ModuleItemType[];
+};

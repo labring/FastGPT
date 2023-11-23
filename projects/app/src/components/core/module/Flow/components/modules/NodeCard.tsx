@@ -15,6 +15,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { LOGO_ICON } from '@fastgpt/global/core/chat/constants';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -25,7 +26,7 @@ type Props = FlowModuleItemType & {
 const NodeCard = (props: Props) => {
   const {
     children,
-    logo = '/icon/logo.svg',
+    avatar = LOGO_ICON,
     name = '未知模块',
     intro,
     minW = '300px',
@@ -144,7 +145,7 @@ const NodeCard = (props: Props) => {
       className={isPreview ? 'nodrag' : ''}
     >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
-        <Avatar src={logo} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
+        <Avatar src={avatar} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
           {name}
         </Box>

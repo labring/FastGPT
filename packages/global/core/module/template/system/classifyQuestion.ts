@@ -4,7 +4,7 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '../../constants';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
 import {
   Input_Template_History,
   Input_Template_TFSwitch,
@@ -13,8 +13,9 @@ import {
 
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
+  templateType: ModuleTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.classifyQuestion,
-  logo: '/imgs/module/cq.png',
+  avatar: '/imgs/module/cq.png',
   name: '问题分类',
   intro:
     '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',

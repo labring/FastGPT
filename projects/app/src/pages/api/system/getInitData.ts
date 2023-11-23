@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/ai/model';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
+import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -75,6 +76,7 @@ export async function getInitConfig() {
 
     getSystemVersion();
     getModelPrice();
+    getSystemPlugin();
     await getSimpleModeTemplates();
   } catch (error) {
     setDefaultData();
@@ -86,6 +88,8 @@ export function initGlobal() {
   // init tikToken
   getTikTokenEnc();
   initHttpAgent();
+  global.communityPlugins = [];
+  global.simpleModeTemplates = [];
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
 }
@@ -195,4 +199,29 @@ async function getSimpleModeTemplates() {
   console.log(global.simpleModeTemplates);
 }
 
-async function getSystemPlugin() {}
+function getSystemPlugin() {
+  if (global.communityPlugins && global.communityPlugins.length > 0) return;
+
+  const basePath =
+    process.env.NODE_ENV === 'development'
+      ? 'public/pluginTemplates'
+      : '/app/packages/app/public/pluginTemplates';
+  // read data/pluginTemplates directory, get all json file
+  const files = readdirSync(basePath);
+  // filter json file
+  const filterFiles = files.filter((item) => item.endsWith('.json'));
+
+  // read json file
+  const fileTemplates = filterFiles.map((item) => {
+    const content = readFileSync(`${basePath}/${item}`, 'utf-8');
+    return {
+      id: `${PluginTypeEnum.community}-${item.replace('.json', '')}`,
+      type: PluginTypeEnum.community,
+      ...JSON.parse(content)
+    };
+  });
+
+  global.communityPlugins = fileTemplates;
+  console.log('community plugins: ');
+  console.log(fileTemplates);
+}

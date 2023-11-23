@@ -27,6 +27,7 @@ export async function insertData2Dataset({
   model: string;
 }) {
   if (!q || !datasetId || !collectionId || !model) {
+    console.log(q, a, datasetId, collectionId, model);
     return Promise.reject('q, datasetId, collectionId, model is required');
   }
   if (String(teamId) === String(tmbId)) {

@@ -4,13 +4,19 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../../constants';
+import {
+  ModuleDataTypeEnum,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleTemplateTypeEnum
+} from '../../constants';
 import { Input_Template_History, Input_Template_TFSwitch } from '../input';
 
 export const ContextExtractModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
+  templateType: ModuleTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.contentExtract,
-  logo: '/imgs/module/extract.png',
+  avatar: '/imgs/module/extract.png',
   name: '文本内容提取',
   intro: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
   showStatus: true,
