@@ -20,7 +20,9 @@ export const AssignedAnswerModule: FlowModuleTemplateType = {
       value: '',
       label: '回复的内容',
       description:
-        '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n\n如传入非字符串类型数据将会自动转成字符串'
+        '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n\n如传入非字符串类型数据将会自动转成字符串',
+      showTargetInApp: true,
+      showTargetInPlugin: true
     }
   ],
   outputs: [Output_Template_Finish]

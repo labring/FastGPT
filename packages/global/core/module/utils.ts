@@ -1,5 +1,5 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from './node/constant';
-import { ModuleInputKeyEnum } from './constants';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
 
@@ -29,13 +29,16 @@ export const splitGuideModule = (guideModules?: ModuleItemType) => {
   };
 };
 
-export function getPluginTemplatePluginIdInput(pluginId: string) {
+export function getPluginTemplatePluginIdInput(pluginId: string): FlowNodeInputItemType {
   return {
     key: ModuleInputKeyEnum.pluginId,
     type: FlowNodeInputTypeEnum.hidden,
     label: 'pluginId',
     value: pluginId,
-    connected: true
+    valueType: ModuleDataTypeEnum.string,
+    connected: true,
+    showTargetInApp: false,
+    showTargetInPlugin: false
   };
 }
 

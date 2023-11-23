@@ -23,15 +23,15 @@ export type FlowNodeInputItemType = {
   key: `${ModuleInputKeyEnum}`;
   type: `${FlowNodeInputTypeEnum}`; // Decide on a render style
   value?: any;
-  valueType: `${ModuleDataTypeEnum}`; // data type
+  valueType?: `${ModuleDataTypeEnum}`; // data type
   label: string;
   description?: string;
   required?: boolean;
   edit?: boolean; // Whether to allow editing
   connected?: boolean; // unConnected field will be deleted
 
-  showTargetInApp: boolean;
-  showTargetInPlugin: boolean;
+  showTargetInApp?: boolean;
+  showTargetInPlugin?: boolean;
 
   placeholder?: string; // input,textarea
   list?: { label: string; value: any }[]; // select
