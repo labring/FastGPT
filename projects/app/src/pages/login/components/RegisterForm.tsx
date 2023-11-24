@@ -7,7 +7,7 @@ import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/web/common/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
-import { appTemplates } from '@/constants/flow/ModuleTemplate';
+import { appTemplates } from '@/web/core/app/templates';
 import { feConfigs } from '@/web/common/system/staticData';
 
 interface Props {

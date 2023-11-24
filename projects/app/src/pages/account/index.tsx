@@ -106,7 +106,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     (tab: string) => {
       if (tab === TabEnum.loginout) {
         openConfirm(() => {
-          clearToken();
           setUserInfo(null);
           router.replace('/login');
         })();

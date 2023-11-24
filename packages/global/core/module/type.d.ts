@@ -1,13 +1,14 @@
-import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from './node/constant';
+import { FlowNodeTypeEnum } from './node/constant';
+import { ModuleDataTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
   id: string;
+  templateType: `${ModuleTemplateTypeEnum}`;
   flowType: `${FlowNodeTypeEnum}`; // unique
-  logo?: string;
+  avatar?: string;
   name: string;
-  description?: string;
-  intro?: string;
+  intro: string; // template list intro
   showStatus?: boolean; // chatting response step status
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -15,16 +16,17 @@ export type FlowModuleTemplateType = {
 export type FlowModuleItemType = FlowModuleTemplateType & {
   moduleId: string;
 };
-export type SystemModuleTemplateType = {
+export type moduleTemplateListType = {
+  type: `${ModuleTemplateTypeEnum}`;
   label: string;
   list: FlowModuleTemplateType[];
 }[];
 
+// store module type
 export type ModuleItemType = {
   name: string;
   logo?: string;
   intro?: string;
-  description?: string;
   moduleId: string;
   position?: {
     x: number;
@@ -37,6 +39,24 @@ export type ModuleItemType = {
 };
 
 /* function type */
+// variable
+export type VariableItemType = {
+  id: string;
+  key: string;
+  label: string;
+  type: `${VariableInputEnum}`;
+  required: boolean;
+  maxLen: number;
+  enums: { value: string }[];
+};
+// tts
+export type AppTTSConfigType = {
+  type: 'none' | 'web' | 'model';
+  model?: string;
+  voice?: string;
+  speed?: number;
+};
+
 export type SelectAppItemType = {
   id: string;
   name: string;

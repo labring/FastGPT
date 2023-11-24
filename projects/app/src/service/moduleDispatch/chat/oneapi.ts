@@ -6,7 +6,6 @@ import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant'
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { countModelPrice } from '@/service/support/wallet/bill/utils';
 import type { ChatModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
@@ -15,26 +14,26 @@ import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { countMessagesTokens, sliceMessagesTB } from '@fastgpt/global/common/string/tiktoken';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
-import type { AIChatProps } from '@/types/core/aiChat';
+import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export type ChatProps = ModuleDispatchProps<
-  AIChatProps & {
-    userChatInput: string;
-    history?: ChatItemType[];
-    quoteQA?: SearchDataResponseItemType[];
-    limitPrompt?: string;
+  AIChatModuleProps & {
+    [ModuleInputKeyEnum.userChatInput]: string;
+    [ModuleInputKeyEnum.history]?: ChatItemType[];
+    [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
 export type ChatResponse = {
-  [TaskResponseKeyEnum.answerText]: string;
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
-  [TaskResponseKeyEnum.history]: ChatItemType[];
+  [ModuleOutputKeyEnum.answerText]: string;
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.history]: ChatItemType[];
 };
 
 /* request openai chat */
@@ -54,7 +53,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userChatInput,
       isResponseAnswerText = true,
       systemPrompt = '',
-      limitPrompt,
       quoteTemplate,
       quotePrompt
     }
@@ -93,8 +91,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     quoteText,
     quotePrompt,
     userChatInput,
-    systemPrompt,
-    limitPrompt
+    systemPrompt
   });
   const { max_tokens } = getMaxTokens({
     model: modelConstantsData,
@@ -182,19 +179,19 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   })();
 
   return {
-    [TaskResponseKeyEnum.answerText]: answerText,
-    [TaskResponseKeyEnum.responseData]: {
+    answerText,
+    responseData: {
       price: user.openaiAccount?.key
         ? 0
         : countModelPrice({ model, tokens: totalTokens, type: ModelTypeEnum.chat }),
       model: modelConstantsData.name,
       tokens: totalTokens,
-      question: userChatInput,
+      query: userChatInput,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(completeMessages)
     },
-    [TaskResponseKeyEnum.history]: completeMessages
+    history: completeMessages
   };
 };
 
@@ -243,7 +240,6 @@ function getChatMessages({
   quoteText,
   history = [],
   systemPrompt,
-  limitPrompt,
   userChatInput,
   model
 }: {
@@ -251,7 +247,6 @@ function getChatMessages({
   quoteText: string;
   history: ChatProps['inputs']['history'];
   systemPrompt: string;
-  limitPrompt?: string;
   userChatInput: string;
   model: ChatModelItemType;
 }) {
@@ -272,14 +267,6 @@ function getChatMessages({
         ]
       : []),
     ...history,
-    ...(limitPrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: limitPrompt
-          }
-        ]
-      : []),
     {
       obj: ChatRoleEnum.Human,
       value: question
@@ -313,7 +300,7 @@ function getMaxTokens({
   const promptsToken = countMessagesTokens({
     messages: filterMessages
   });
-  maxToken = promptsToken + model.maxResponse > tokensLimit ? tokensLimit - promptsToken : maxToken;
+  maxToken = promptsToken + maxToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
 
   return {
     max_tokens: maxToken
@@ -330,7 +317,7 @@ function targetResponse({
   detail: boolean;
 }) {
   const targets =
-    outputs.find((output) => output.key === TaskResponseKeyEnum.answerText)?.targets || [];
+    outputs.find((output) => output.key === ModuleOutputKeyEnum.answerText)?.targets || [];
 
   if (targets.length === 0) return;
   responseWrite({

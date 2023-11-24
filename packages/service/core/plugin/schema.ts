@@ -6,7 +6,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const ModuleCollectionName = 'plugins';
+export const PluginCollectionName = 'plugins';
 
 const PluginSchema = new Schema({
   userId: {
@@ -52,5 +52,5 @@ try {
 }
 
 export const MongoPlugin: Model<PluginItemSchema> =
-  models[ModuleCollectionName] || model(ModuleCollectionName, PluginSchema);
+  models[PluginCollectionName] || model(PluginCollectionName, PluginSchema);
 MongoPlugin.syncIndexes();

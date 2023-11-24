@@ -30,5 +30,4 @@ export type InitChatResponse = {
 export type ChatHistoryItemResType = moduleDispatchResType & {
   moduleType: `${FlowNodeTypeEnum}`;
   moduleName: string;
-  moduleLogo?: string;
 };

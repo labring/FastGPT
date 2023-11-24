@@ -1,9 +1,9 @@
-import { SystemInputEnum } from '@/constants/app';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 export type HistoryProps = ModuleDispatchProps<{
   maxContext: number;
-  [SystemInputEnum.history]: ChatItemType[];
+  [ModuleInputKeyEnum.history]: ChatItemType[];
 }>;
 
 export const dispatchHistory = (props: Record<string, any>) => {

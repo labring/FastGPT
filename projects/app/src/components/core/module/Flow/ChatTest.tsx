@@ -15,7 +15,7 @@ import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import { getGuideModule } from '@/global/core/app/modules/utils';
+import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 
 export type ChatTestComponentRef = {

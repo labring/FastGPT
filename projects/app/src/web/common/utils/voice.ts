@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { AppTTSConfigType } from '@/types/app';
+import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { TTSTypeEnum } from '@/constants/app';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';

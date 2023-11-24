@@ -1,5 +1,6 @@
 export enum FlowNodeInputTypeEnum {
   systemInput = 'systemInput', // history, userChatInput, variableInput
+
   input = 'input', // one line input
   textarea = 'textarea',
   numberInput = 'numberInput',
@@ -8,11 +9,10 @@ export enum FlowNodeInputTypeEnum {
   custom = 'custom',
   target = 'target', // data input
   switch = 'switch',
-  chatInput = 'chatInput',
   selectApp = 'selectApp',
   // chat special input
   aiSettings = 'aiSettings',
-  maxToken = 'maxToken',
+  // maxToken = 'maxToken',
   selectChatModel = 'selectChatModel',
   // dataset special input
   selectDataset = 'selectDataset',
@@ -43,19 +43,4 @@ export enum FlowNodeTypeEnum {
 
   // abandon
   variable = 'variable'
-}
-
-export enum FlowNodeSpecialInputKeyEnum {
-  'answerText' = 'text',
-  'agents' = 'agents', // cq agent key
-  'pluginId' = 'pluginId'
-}
-
-export enum FlowNodeValTypeEnum {
-  'string' = 'string',
-  'number' = 'number',
-  'boolean' = 'boolean',
-  'chatHistory' = 'chatHistory',
-  'datasetQuote' = 'datasetQuote',
-  'any' = 'any'
 }

@@ -1,26 +1,26 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
-import { ContextExtractEnum } from '@/constants/flow/flowField';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 type Props = ModuleDispatchProps<{
-  history?: ChatItemType[];
-  [ContextExtractEnum.content]: string;
-  [ContextExtractEnum.extractKeys]: ContextExtractAgentItemType[];
-  [ContextExtractEnum.description]: string;
+  [ModuleInputKeyEnum.history]?: ChatItemType[];
+  [ModuleInputKeyEnum.contextExtractInput]: string;
+  [ModuleInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
+  [ModuleInputKeyEnum.description]: string;
 }>;
 type Response = {
-  [ContextExtractEnum.success]?: boolean;
-  [ContextExtractEnum.failed]?: boolean;
-  [ContextExtractEnum.fields]: string;
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.success]?: boolean;
+  [ModuleOutputKeyEnum.failed]?: boolean;
+  [ModuleOutputKeyEnum.contextExtractFields]: string;
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
 };
 
 const agentFunName = 'agent_extract_data';
@@ -70,13 +70,14 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   }
 
   return {
-    [ContextExtractEnum.success]: success ? true : undefined,
-    [ContextExtractEnum.failed]: success ? undefined : true,
-    [ContextExtractEnum.fields]: JSON.stringify(arg),
+    [ModuleOutputKeyEnum.success]: success ? true : undefined,
+    [ModuleOutputKeyEnum.failed]: success ? undefined : true,
+    [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
-    [TaskResponseKeyEnum.responseData]: {
+    [ModuleOutputKeyEnum.responseData]: {
       price: user.openaiAccount?.key ? 0 : extractModel.price * tokens,
       model: extractModel.name || '',
+      query: content,
       tokens,
       extractDescription: description,
       extractResult: arg

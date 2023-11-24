@@ -254,7 +254,7 @@ const ChatHistorySlider = ({
                             }}
                           >
                             <MyIcon mr={2} name={'customTitle'} w={'16px'}></MyIcon>
-                            自定义标题
+                            {t('common.Custom Title')}
                           </MenuItem>
                         )}
                         <MenuItem

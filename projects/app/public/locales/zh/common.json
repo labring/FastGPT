@@ -16,7 +16,7 @@
   "app": {
     "AI Advanced Settings": "AI 高级配置",
     "AI Settings": "AI 配置",
-    "Advance App TestTip": "当前应用为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
+    "Advance App TestTip": "当前应用可能为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
     "App Detail": "应用详情",
     "Basic Settings": "基本信息",
     "Chat Debug": "调试预览",
@@ -31,9 +31,8 @@
     "Export Config Successful": "已复制配置，请注意检查是否有重要数据",
     "Export Configs": "导出配置",
     "Feedback Count": "用户反馈",
-    "Import Config": "导入配置",
-    "Import Config Failed": "导入配置失败，请确保配置正常！",
     "Import Configs": "导入配置",
+    "Import Configs Failed": "导入配置失败，请确保配置正常！",
     "Input Field Settings": "输入字段编辑",
     "Logs Empty": "还没有日志噢~",
     "Logs Message Total": "消息总数",
@@ -54,15 +53,7 @@
       "My Modules": "",
       "No Modules": "还没有模块~",
       "System Module": "系统模块",
-      "type": "\"{{type}}\"类型\n{{example}}",
-      "valueType": {
-        "any": "任意",
-        "boolean": "布尔",
-        "chatHistory": "聊天记录",
-        "datasetQuote": "引用内容",
-        "number": "数字",
-        "string": "字符串"
-      }
+      "type": "\"{{type}}\"类型\n{{example}}"
     },
     "modules": {
       "Title is required": "模块名不能为空"
@@ -115,9 +106,11 @@
       "module model": "模型",
       "module name": "模型名",
       "module price": "计费",
+      "module query": "问题/检索词",
       "module question": "问题",
       "module quoteList": "引用内容",
       "module runningTime": "运行时长",
+      "module search query": "检索词",
       "module search response": "搜索结果",
       "module similarity": "相似度",
       "module temperature": "温度",
@@ -129,12 +122,14 @@
   },
   "common": {
     "Add": "添加",
+    "Add New": "新增",
     "Back": "返回",
     "Beta": "实验版",
     "Business edition features": "这是商业版功能~",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
+    "Confirm": "确认",
     "Confirm Create": "确认创建",
     "Confirm Move": "移动到这",
     "Confirm Update": "确认更新",
@@ -174,6 +169,7 @@
     "Rename Failed": "重命名失败",
     "Rename Success": "重命名成功",
     "Request Error": "请求异常",
+    "Require Input": "必填",
     "Save Failed": "保存失败",
     "Save Success": "保存成功",
     "Search": "搜索",
@@ -222,6 +218,11 @@
       "Select TTS": "选择语音播放模式",
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
+      "create app": "创建属于你的 AI 应用",
+      "setting": "应用信息设置",
+      "simple": {
+        "mode template select": "简易模板"
+      },
       "tts": {
         "Close": "不使用",
         "Model alloy": "女声 - Alloy",
@@ -249,6 +250,7 @@
     },
     "dataset": {
       "Choose Dataset": "关联知识库",
+      "Create dataset": "创建一个知识库",
       "Dataset": "知识库",
       "Go Dataset": "前往知识库",
       "Quote Length": "引用内容长度",
@@ -259,6 +261,65 @@
       "data": {
         "Edit": "编辑数据",
         "id": "数据ID"
+      }
+    },
+    "module": {
+      "Data Type": "数据类型",
+      "Field Description": "字段描述",
+      "Field Name": "字段名",
+      "Field Type": "字段类型",
+      "Field key": "字段 Key",
+      "Input Type": "输入类型",
+      "Plugin output must connect": "自定义输出必须全部连接",
+      "Variable": "参数变量",
+      "Variable Setting": "变量设置",
+      "input": {
+        "label": {
+          "chat history": "聊天记录",
+          "switch": "触发器",
+          "user question": "用户问题"
+        }
+      },
+      "inputType": {
+        "input": "输入框",
+        "selectApp": "应用选择",
+        "selectChatModel": "对话模型选择",
+        "selectDataset": "知识库选择",
+        "switch": "开关",
+        "target": "外部数据",
+        "textarea": "段落输入"
+      },
+      "output": {
+        "description": {
+          "running done": "模块调用结束时触发"
+        },
+        "label": {
+          "running done": "模块调用结束"
+        }
+      },
+      "valueType": {
+        "any": "任意",
+        "boolean": "布尔",
+        "chatHistory": "聊天记录",
+        "datasetQuote": "引用内容",
+        "number": "数字",
+        "selectApp": "应用选择",
+        "selectDataset": "知识库选择",
+        "string": "字符串"
+      },
+      "variable": {
+        "add option": "添加选项",
+        "key": "变量 key",
+        "key is required": "",
+        "select type": "下拉单选",
+        "text max length": "最大长度",
+        "text type": "文本",
+        "variable key is required": "变量 key 不能为空",
+        "variable name": "变量名",
+        "variable name is required": "变量名不能为空",
+        "variable option is required": "选项不能全空",
+        "variable option is value is required": "选项内容不能为空",
+        "variable options": "选项"
       }
     }
   },

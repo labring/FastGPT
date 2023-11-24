@@ -1,8 +1,9 @@
 import { ClassifyQuestionAgentItemType } from '../module/type';
 import { SearchDataResponseItemType } from '../dataset/type';
-import { ChatRoleEnum, ChatSourceEnum, TaskResponseKeyEnum } from './constants';
+import { ChatRoleEnum, ChatSourceEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
-import { AppSchema } from 'core/app/type';
+import { ModuleOutputKeyEnum } from '../module/constants';
+import { AppSchema } from '../app/type';
 
 export type ChatSchema = {
   _id: string;
@@ -38,7 +39,7 @@ export type ChatItemSchema = {
   value: string;
   userFeedback?: string;
   adminFeedback?: AdminFbkType;
-  [TaskResponseKeyEnum.responseData]?: ChatHistoryItemResType[];
+  [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
 
 export type AdminFbkType = {
@@ -55,14 +56,14 @@ export type ChatItemType = {
   value: any;
   userFeedback?: string;
   adminFeedback?: ChatItemSchema['feedback'];
-  [TaskResponseKeyEnum.responseData]?: ChatItemSchema[TaskResponseKeyEnum.responseData];
+  [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
 
-export type ChatSiteItemType = {
+export type ChatSiteItemType = ChatItemType & {
   status: 'loading' | 'running' | 'finish';
   moduleName?: string;
   ttsBuffer?: Uint8Array;
-} & ChatItemType;
+};
 
 export type HistoryItemType = {
   chatId: string;
@@ -77,13 +78,14 @@ export type ChatHistoryItemType = HistoryItemType & {
 
 // response data
 export type moduleDispatchResType = {
+  moduleLogo?: string;
   price: number;
   runningTime?: number;
   tokens?: number;
   model?: string;
+  query?: string;
 
   // chat
-  question?: string;
   temperature?: number;
   maxToken?: number;
   quoteList?: SearchDataResponseItemType[];

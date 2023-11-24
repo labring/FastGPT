@@ -4,9 +4,10 @@ import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import { dispatchModules } from '../index';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 type Props = ModuleDispatchProps<{
   userChatInput: string;
@@ -14,9 +15,9 @@ type Props = ModuleDispatchProps<{
   app: SelectAppItemType;
 }>;
 type Response = {
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType[];
-  [TaskResponseKeyEnum.answerText]: string;
-  [TaskResponseKeyEnum.history]: ChatItemType[];
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType[];
+  [ModuleOutputKeyEnum.answerText]: string;
+  [ModuleOutputKeyEnum.history]: ChatItemType[];
 };
 
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
@@ -53,6 +54,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const { responseData, answerText } = await dispatchModules({
     ...props,
+    appId: app.id,
     modules: appData.modules,
     params: {
       history,
@@ -73,7 +75,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   return {
     responseData,
-    [TaskResponseKeyEnum.answerText]: answerText,
-    [TaskResponseKeyEnum.history]: completeMessages
+    answerText: answerText,
+    history: completeMessages
   };
 };

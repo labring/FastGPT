@@ -31,9 +31,8 @@
     "Export Config Successful": "The configuration has been copied. Please check for important data",
     "Export Configs": "Export Configs",
     "Feedback Count": "User Feedback",
-    "Import Config": "Import Config",
-    "Import Config Failed": "Failed to import the configuration, please ensure that the configuration is normal!",
     "Import Configs": "Import Configs",
+    "Import Configs Failed": "Failed to import the configuration, please ensure that the configuration is normal!",
     "Input Field Settings": "Input Field Settings",
     "Logs Empty": "Logs is empty",
     "Logs Message Total": "Message Count",
@@ -54,15 +53,7 @@
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
-      "type": "{{type}}\n{{example}}",
-      "valueType": {
-        "any": "any",
-        "boolean": "boolean",
-        "chatHistory": "Chat History",
-        "datasetQuote": "Dataset Quote",
-        "number": "number",
-        "string": "string"
-      }
+      "type": "{{type}}\n{{example}}"
     },
     "modules": {
       "Title is required": "Title is required"
@@ -115,9 +106,11 @@
       "module model": "Model",
       "module name": "Name",
       "module price": "Price",
+      "module query": "Question/Query",
       "module question": "Question",
       "module quoteList": "Quotes",
       "module runningTime": "Time",
+      "module search query": "Query",
       "module search response": "Search Result",
       "module similarity": "Similarity",
       "module temperature": "Temperature",
@@ -129,12 +122,14 @@
   },
   "common": {
     "Add": "Add",
+    "Add New": "Add",
     "Back": "Back",
     "Beta": "Beta",
     "Business edition features": "This is the commercial version function ~",
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
+    "Confirm": "Confirm",
     "Confirm Create": "Create",
     "Confirm Move": "Move here",
     "Confirm Update": "Update",
@@ -174,6 +169,7 @@
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
     "Request Error": "Request Error",
+    "Require Input": "Required",
     "Save Failed": "Save Failed",
     "Save Success": "Save Success",
     "Search": "Search",
@@ -222,6 +218,11 @@
       "Select TTS": "Select TTS",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "create app": "Create App",
+      "setting": "App Setting",
+      "simple": {
+        "mode template select": "Template"
+      },
       "tts": {
         "Close": "NoUse",
         "Model alloy": "Female - Alloy",
@@ -249,6 +250,7 @@
     },
     "dataset": {
       "Choose Dataset": "Choose Dataset",
+      "Create dataset": "Create Dataset",
       "Dataset": "Dataset",
       "Go Dataset": "To Dataset",
       "Quote Length": "Quote Length",
@@ -259,6 +261,65 @@
       "data": {
         "Edit": "Edit Data",
         "id": "Data ID"
+      }
+    },
+    "module": {
+      "Data Type": "Data Type",
+      "Field Description": "Description",
+      "Field Name": "Name",
+      "Field Type": "Type",
+      "Field key": "Key",
+      "Input Type": "Input Type",
+      "Plugin output must connect": "Custom outputs must all be connected",
+      "Variable": "Variable",
+      "Variable Setting": "Variable Setting",
+      "input": {
+        "label": {
+          "chat history": "",
+          "switch": "",
+          "user question": ""
+        }
+      },
+      "inputType": {
+        "input": "Input",
+        "selectApp": "App Selector",
+        "selectChatModel": "Select Chat Model",
+        "selectDataset": "Dataset Selector",
+        "switch": "Switch",
+        "target": "Target Data",
+        "textarea": "Textarea"
+      },
+      "output": {
+        "description": {
+          "running done": "running done"
+        },
+        "label": {
+          "running done": "running done"
+        }
+      },
+      "valueType": {
+        "any": "Any",
+        "boolean": "Boolean",
+        "chatHistory": "History",
+        "datasetQuote": "Dataset Quote",
+        "number": "Number",
+        "selectApp": "Select App",
+        "selectDataset": "Select Dataset",
+        "string": "String"
+      },
+      "variable": {
+        "add option": "Add Option",
+        "key": "Key",
+        "key is required": "variable key is required",
+        "select type": "Select",
+        "text max length": "Max Length",
+        "text type": "Text",
+        "variable key is required": "",
+        "variable name": "Name",
+        "variable name is required": "variable name is required",
+        "variable option is required": "Variable option is required",
+        "variable option is value is required": "Variable option is value is required",
+        "variable options": "Options"
       }
     }
   },

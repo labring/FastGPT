@@ -134,10 +134,13 @@ const CreateModal = ({
   }, [defaultValue.id, onClose, toast, t, onDelete]);
 
   return (
-    <MyModal isOpen onClose={onClose} isCentered={!isPc}>
-      <ModalHeader fontSize={'2xl'}>
-        {defaultValue.id ? t('plugin.Update Your Plugin') : t('plugin.Create Your Plugin')}
-      </ModalHeader>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="/imgs/modal/edit.svg"
+      title={defaultValue.id ? t('plugin.Update Your Plugin') : t('plugin.Create Your Plugin')}
+      isCentered={!isPc}
+    >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
           {t('plugin.Set Name')}

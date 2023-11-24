@@ -1,28 +1,32 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { countModelPrice } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/pg';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 type DatasetSearchProps = ModuleDispatchProps<{
-  datasets: SelectedDatasetType;
-  similarity: number;
-  limit: number;
-  rerank: boolean;
-  userChatInput: string;
+  [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [ModuleInputKeyEnum.datasetSimilarity]: number;
+  [ModuleInputKeyEnum.datasetLimit]: number;
+  [ModuleInputKeyEnum.datasetStartReRank]: boolean;
+  [ModuleInputKeyEnum.userChatInput]: string;
 }>;
-export type KBSearchResponse = {
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
-  isEmpty?: boolean;
-  unEmpty?: boolean;
-  quoteQA: SearchDataResponseItemType[];
+export type DatasetSearchResponse = {
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.datasetIsEmpty]?: boolean;
+  [ModuleOutputKeyEnum.datasetUnEmpty]?: boolean;
+  [ModuleOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 };
 
-export async function dispatchDatasetSearch(props: DatasetSearchProps): Promise<KBSearchResponse> {
+export async function dispatchDatasetSearch(
+  props: DatasetSearchProps
+): Promise<DatasetSearchResponse> {
   const {
+    teamId,
+    tmbId,
     inputs: { datasets = [], similarity = 0.4, limit = 5, rerank, userChatInput }
   } = props as DatasetSearchProps;
 
@@ -56,6 +60,7 @@ export async function dispatchDatasetSearch(props: DatasetSearchProps): Promise<
         tokens: tokenLen,
         type: ModelTypeEnum.vector
       }),
+      query: userChatInput,
       model: vectorModel.name,
       tokens: tokenLen,
       similarity,

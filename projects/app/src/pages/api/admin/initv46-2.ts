@@ -41,7 +41,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ]);
     } catch (error) {}
 
-    await initPgData();
+    try {
+      await initPgData();
+    } catch (error) {}
 
     await MongoDataset.updateMany(
       {},

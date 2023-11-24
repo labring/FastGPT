@@ -1,5 +1,14 @@
 import React, { useCallback, useState, useRef } from 'react';
-import { Box, Flex, Button, ModalHeader, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Button,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  Input,
+  Image
+} from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgAndUpload } from '@/web/common/file/controller';
@@ -79,8 +88,14 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
   });
 
   return (
-    <MyModal isOpen onClose={onClose} isCentered={!isPc} w={'450px'}>
-      <ModalHeader fontSize={'2xl'}>创建一个知识库</ModalHeader>
+    <MyModal
+      iconSrc="/imgs/module/db.png"
+      title={t('core.dataset.Create dataset')}
+      isOpen
+      onClose={onClose}
+      isCentered={!isPc}
+      w={'450px'}
+    >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
           取个名字

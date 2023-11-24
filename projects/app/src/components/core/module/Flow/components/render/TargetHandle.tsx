@@ -1,26 +1,26 @@
 import React, { useMemo } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { Handle, OnConnect, Position } from 'reactflow';
-import { FlowValueTypeStyle, FlowValueTypeTip } from '@/constants/flow';
+import { FlowValueTypeStyle, FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 
 interface Props extends BoxProps {
   handleKey: string;
-  valueType?: `${FlowNodeValTypeEnum}`;
+  valueType?: `${ModuleDataTypeEnum}`;
   onConnect?: OnConnect;
 }
 
 const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
   const { t } = useTranslation();
 
-  const valType = valueType ?? FlowNodeValTypeEnum.any;
+  const valType = valueType ?? ModuleDataTypeEnum.any;
   const valueStyle = useMemo(
     () =>
       valueType
         ? FlowValueTypeStyle[valueType]
-        : (FlowValueTypeStyle[FlowNodeValTypeEnum.any] as any),
+        : (FlowValueTypeStyle[ModuleDataTypeEnum.any] as any),
     [valueType]
   );
 
@@ -35,8 +35,8 @@ const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
     >
       <MyTooltip
         label={t('app.module.type', {
-          type: t(FlowValueTypeTip[valType].label),
-          example: FlowValueTypeTip[valType].example
+          type: t(FlowValueTypeMap[valType].label),
+          example: FlowValueTypeMap[valType].example
         })}
       >
         <Handle

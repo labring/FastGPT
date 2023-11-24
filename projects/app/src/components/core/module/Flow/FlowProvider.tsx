@@ -28,11 +28,8 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum,
-  FlowNodeValTypeEnum
-} from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -42,6 +39,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 export type useFlowProviderStoreType = {
   reactFlowWrapper: null | React.RefObject<HTMLDivElement>;
+  mode: 'app' | 'plugin';
   filterAppIds: string[];
   nodes: Node<FlowModuleItemType, string | undefined>[];
   setNodes: Dispatch<SetStateAction<Node<FlowModuleItemType, string | undefined>[]>>;
@@ -66,6 +64,7 @@ export type useFlowProviderStoreType = {
 
 const StateContext = createContext<useFlowProviderStoreType>({
   reactFlowWrapper: null,
+  mode: 'app',
   filterAppIds: [],
   nodes: [],
   setNodes: function (
@@ -118,9 +117,11 @@ const StateContext = createContext<useFlowProviderStoreType>({
 export const useFlowProviderStore = () => useContext(StateContext);
 
 export const FlowProvider = ({
+  mode,
   filterAppIds = [],
   children
 }: {
+  mode: useFlowProviderStoreType['mode'];
   filterAppIds?: string[];
   children: React.ReactNode;
 }) => {
@@ -173,7 +174,7 @@ export const FlowProvider = ({
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
-          return FlowNodeValTypeEnum.boolean;
+          return ModuleDataTypeEnum.boolean;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -192,8 +193,8 @@ export const FlowProvider = ({
         });
       }
       if (
-        sourceType !== FlowNodeValTypeEnum.any &&
-        targetType !== FlowNodeValTypeEnum.any &&
+        sourceType !== ModuleDataTypeEnum.any &&
+        targetType !== ModuleDataTypeEnum.any &&
         sourceType !== targetType
       ) {
         return toast({
@@ -328,10 +329,9 @@ export const FlowProvider = ({
         const node = nodes.find((node) => node.id === nodeId);
         if (!node) return nodes;
         const template = {
-          logo: node.data.logo,
+          avatar: node.data.avatar,
           name: node.data.name,
           intro: node.data.intro,
-          description: node.data.description,
           flowType: node.data.flowType,
           inputs: node.data.inputs,
           outputs: node.data.outputs,
@@ -407,6 +407,7 @@ export const FlowProvider = ({
 
   const value = {
     reactFlowWrapper,
+    mode,
     filterAppIds,
     nodes,
     setNodes,
@@ -444,13 +445,13 @@ export function flowNode2Modules({
   const modules: ModuleItemType[] = nodes.map((item) => ({
     moduleId: item.data.moduleId,
     name: item.data.name,
-    logo: item.data.logo,
+    avatar: item.data.avatar,
     flowType: item.data.flowType,
     showStatus: item.data.showStatus,
     position: item.position,
     inputs: item.data.inputs.map((item) => ({
       ...item,
-      connected: item.connected ?? item.type !== FlowNodeInputTypeEnum.target
+      connected: Boolean(item.value ?? item.connected ?? item.type !== FlowNodeInputTypeEnum.target)
     })),
     outputs: item.data.outputs.map((item) => ({
       ...item,

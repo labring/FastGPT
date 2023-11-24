@@ -1,10 +1,7 @@
-import { FlowNodeTypeEnum, FlowNodeValTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { XYPosition } from 'reactflow';
-import {
-  AppModuleItemTypeEnum,
-  ModulesInputItemTypeEnum,
-  VariableInputEnum
-} from '../constants/app';
+import { AppModuleItemTypeEnum, ModulesInputItemTypeEnum } from '../constants/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
   FlowNodeInputItemType,
@@ -25,23 +22,6 @@ export interface ShareAppItem {
   share: AppSchema['share'];
   isCollection: boolean;
 }
-
-export type VariableItemType = {
-  id: string;
-  key: string;
-  label: string;
-  type: `${VariableInputEnum}`;
-  required: boolean;
-  maxLen: number;
-  enums: { value: string }[];
-};
-
-export type AppTTSConfigType = {
-  type: 'none' | 'web' | 'model';
-  model?: string;
-  voice?: string;
-  speed?: number;
-};
 
 /* app module */
 export type AppItemType = {

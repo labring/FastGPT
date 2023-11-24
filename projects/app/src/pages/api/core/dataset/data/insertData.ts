@@ -51,8 +51,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // token check
     const token = countPromptTokens(formatQ, 'system');
+    const vectorModelData = getVectorModel(vectorModel);
 
-    if (token > getVectorModel(vectorModel).maxToken) {
+    if (token > vectorModelData.maxToken) {
       return Promise.reject('Q Over Tokens');
     }
 
@@ -70,7 +71,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       collectionId,
       q: formatQ,
       a: formatA,
-      model: vectorModel,
+      model: vectorModelData.model,
       indexes
     });
 
@@ -78,7 +79,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       teamId,
       tmbId,
       tokenLen: tokenLen,
-      model: vectorModel
+      model: vectorModelData.model
     });
 
     jsonRes<string>(res, {

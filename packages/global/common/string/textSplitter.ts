@@ -20,7 +20,7 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
 
     4: /(\n\n)/g,
     5: /([\n])/g,
-    6: /[。]|(?!<[^a-zA-Z])\.\s/g,
+    6: /([。]|(?!<[^a-zA-Z])\.\s)/g,
     7: /([！？]|!\s|\?\s)/g,
     8: /([；]|;\s)/g,
     9: /([，]|,\s)/g
@@ -55,10 +55,15 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     }
 
     // split text by special char
-    const splitTexts = text
-      .replace(reg, isMarkdownSplit ? `${tempMarker}$1` : `$1${tempMarker}`)
-      .split(`${tempMarker}`)
-      .filter((part) => part);
+    const splitTexts = (() => {
+      if (!reg.test(text)) {
+        return [text];
+      }
+      return text
+        .replace(reg, isMarkdownSplit ? `${tempMarker}$1` : `$1${tempMarker}`)
+        .split(`${tempMarker}`)
+        .filter((part) => part);
+    })();
 
     let chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {

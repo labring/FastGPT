@@ -15,19 +15,17 @@ import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getTeamInfoByTmbId } from '../../user/team/controller';
 
-export async function authDataset({
+export async function authDatasetByTmbId({
+  teamId,
+  tmbId,
   datasetId,
-  per = 'owner',
-  ...props
-}: AuthModeType & {
+  per
+}: {
+  teamId: string;
+  tmbId: string;
   datasetId: string;
-}): Promise<
-  AuthResponseType & {
-    dataset: DatasetSchemaType;
-  }
-> {
-  const result = await parseHeaderCert(props);
-  const { teamId, tmbId } = result;
+  per: AuthModeType['per'];
+}) {
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const { dataset, isOwner, canWrite } = await (async () => {
@@ -57,6 +55,32 @@ export async function authDataset({
 
     return { dataset, isOwner, canWrite };
   })();
+
+  return {
+    dataset,
+    isOwner,
+    canWrite
+  };
+}
+export async function authDataset({
+  datasetId,
+  per = 'owner',
+  ...props
+}: AuthModeType & {
+  datasetId: string;
+}): Promise<
+  AuthResponseType & {
+    dataset: DatasetSchemaType;
+  }
+> {
+  const result = await parseHeaderCert(props);
+  const { teamId, tmbId } = result;
+  const { dataset, isOwner, canWrite } = await authDatasetByTmbId({
+    teamId,
+    tmbId,
+    datasetId,
+    per
+  });
 
   return {
     ...result,

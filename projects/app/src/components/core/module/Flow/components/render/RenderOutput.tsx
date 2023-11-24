@@ -8,7 +8,8 @@ import SourceHandle from './SourceHandle';
 import MyIcon from '@/components/Icon';
 import dynamic from 'next/dynamic';
 import { onChangeNode } from '../../FlowProvider';
-import { SystemOutputEnum } from '@/constants/app';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { useTranslation } from 'next-i18next';
 
 import type { EditFieldType, EditFieldModeType } from '../modules/FieldEditModal';
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
@@ -25,7 +26,8 @@ export const Label = ({
   outputs: FlowNodeOutputItemType[];
   editFiledType?: EditFieldModeType;
 }) => {
-  const { label, description, edit } = item;
+  const { t } = useTranslation();
+  const { label = '', description, edit } = item;
   const [editField, setEditField] = useState<EditFieldType>();
 
   return (
@@ -71,11 +73,11 @@ export const Label = ({
         </>
       )}
       {description && (
-        <MyTooltip label={description} forceShow>
+        <MyTooltip label={t(description)} forceShow>
           <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
         </MyTooltip>
       )}
-      <Box>{label}</Box>
+      <Box>{t(label)}</Box>
 
       {!!editField && (
         <FieldEditModal
@@ -123,8 +125,8 @@ const RenderOutput = ({
   const sortOutput = useMemo(
     () =>
       [...flowOutputList].sort((a, b) => {
-        if (a.key === SystemOutputEnum.finish) return -1;
-        if (b.key === SystemOutputEnum.finish) return 1;
+        if (a.key === ModuleOutputKeyEnum.finish) return -1;
+        if (b.key === ModuleOutputKeyEnum.finish) return 1;
         return 0;
       }),
     [flowOutputList]

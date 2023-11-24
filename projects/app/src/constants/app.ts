@@ -5,7 +5,8 @@ export const defaultApp: AppDetailType = {
   _id: '',
   userId: 'userId',
   name: '模型加载中',
-  type: 'basic',
+  type: 'simple',
+  simpleTemplateId: 'fastgpt-universal',
   avatar: '/icon/logo.svg',
   intro: '',
   updateTime: Date.now(),
@@ -25,26 +26,6 @@ export const defaultOutLinkForm: OutLinkEditType = {
     credit: -1
   }
 };
-
-/* module special */
-export enum SystemInputEnum {
-  'welcomeText' = 'welcomeText',
-  'variables' = 'variables',
-  'switch' = 'switch', // a trigger switch
-  'history' = 'history',
-  'userChatInput' = 'userChatInput',
-  'questionGuide' = 'questionGuide',
-  'tts' = 'tts',
-  isResponseAnswerText = 'isResponseAnswerText'
-}
-export enum SystemOutputEnum {
-  finish = 'finish'
-}
-
-export enum VariableInputEnum {
-  input = 'input',
-  select = 'select'
-}
 
 export enum TTSTypeEnum {
   none = 'none',

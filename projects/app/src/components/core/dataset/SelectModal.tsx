@@ -4,8 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Flex, ModalHeader } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import { Box, Flex } from '@chakra-ui/react';
 import ParentPaths from '@/components/common/ParentPaths';
 
 type PathItemType = {
@@ -29,12 +28,12 @@ const DatasetSelectContainer = ({
   children: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const { isPc } = useSystemStore();
 
   return (
-    <MyModal isOpen={isOpen} onClose={onClose} w={'100%'} maxW={['90vw', '900px']} isCentered>
-      <Flex flexDirection={'column'} h={'90vh'}>
-        <ModalHeader fontWeight={'normal'}>
+    <MyModal
+      iconSrc="/imgs/module/db.png"
+      title={
+        <Box fontWeight={'normal'}>
           <ParentPaths
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
@@ -50,7 +49,15 @@ const DatasetSelectContainer = ({
               {tips}
             </Box>
           )}
-        </ModalHeader>
+        </Box>
+      }
+      isOpen={isOpen}
+      onClose={onClose}
+      w={'100%'}
+      maxW={['90vw', '900px']}
+      isCentered
+    >
+      <Flex flexDirection={'column'} h={'90vh'}>
         <Box flex={'1 0 0'}>{children}</Box>
       </Flex>
     </MyModal>
@@ -58,10 +65,9 @@ const DatasetSelectContainer = ({
 };
 
 export function useDatasetSelect() {
-  const { t } = useTranslation();
-  const [parentId, setParentId] = useState<string>();
+  const [parentId, setParentId] = useState<string>('');
 
-  const { data, isLoading } = useQuery(['loadDatasetData', parentId], () =>
+  const { data, isFetching } = useQuery(['loadDatasetData', parentId], () =>
     Promise.all([getDatasets({ parentId }), getDatasetPaths(parentId)])
   );
 
@@ -72,7 +78,7 @@ export function useDatasetSelect() {
     setParentId,
     datasets: data?.[0] || [],
     paths,
-    isLoading
+    isFetching
   };
 }
 

@@ -26,7 +26,12 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
   );
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={t('user.Bill Detail')}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/modal/bill.svg"
+      title={t('user.Bill Detail')}
+    >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>用户:</Box>
@@ -63,15 +68,15 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                   <Th>模块名</Th>
                   <Th>AI模型</Th>
                   <Th>Token长度</Th>
-                  <Th>费用</Th>
+                  <Th>费用(￥)</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {filterBillList.map((item, i) => (
                   <Tr key={i}>
                     <Td>{t(item.moduleName)}</Td>
-                    <Td>{item.model}</Td>
-                    <Td>{item.tokenLen}</Td>
+                    <Td>{item.model || '-'}</Td>
+                    <Td>{item.tokenLen || '-'}</Td>
                     <Td>{formatPrice(item.amount)}</Td>
                   </Tr>
                 ))}

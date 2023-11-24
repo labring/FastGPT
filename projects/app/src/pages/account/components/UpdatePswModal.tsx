@@ -37,7 +37,12 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
   });
 
   return (
-    <MyModal isOpen onClose={onClose} title={t('user.Update Password')}>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="/imgs/modal/password.svg"
+      title={t('user.Update Password')}
+    >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 70px'}>旧密码:</Box>
