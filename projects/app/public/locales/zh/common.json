@@ -106,9 +106,11 @@
       "module model": "模型",
       "module name": "模型名",
       "module price": "计费",
+      "module query": "问题/检索词",
       "module question": "问题",
       "module quoteList": "引用内容",
       "module runningTime": "运行时长",
+      "module search query": "检索词",
       "module search response": "搜索结果",
       "module similarity": "相似度",
       "module temperature": "温度",
@@ -301,9 +303,9 @@
         "chatHistory": "聊天记录",
         "datasetQuote": "引用内容",
         "number": "数字",
-        "string": "字符串",
+        "selectApp": "应用选择",
         "selectDataset": "知识库选择",
-        "selectApp": "应用选择"
+        "string": "字符串"
       },
       "variable": {
         "add option": "添加选项",

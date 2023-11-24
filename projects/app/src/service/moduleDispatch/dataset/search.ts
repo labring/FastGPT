@@ -60,6 +60,7 @@ export async function dispatchDatasetSearch(
         tokens: tokenLen,
         type: ModelTypeEnum.vector
       }),
+      query: userChatInput,
       model: vectorModel.name,
       tokens: tokenLen,
       similarity,

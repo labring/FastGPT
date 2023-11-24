@@ -106,9 +106,11 @@
       "module model": "Model",
       "module name": "Name",
       "module price": "Price",
+      "module query": "Question/Query",
       "module question": "Question",
       "module quoteList": "Quotes",
       "module runningTime": "Time",
+      "module search query": "Query",
       "module search response": "Search Result",
       "module similarity": "Similarity",
       "module temperature": "Temperature",
@@ -301,9 +303,9 @@
         "chatHistory": "History",
         "datasetQuote": "Dataset Quote",
         "number": "Number",
-        "string": "String",
+        "selectApp": "Select App",
         "selectDataset": "Select Dataset",
-        "selectApp": "Select App"
+        "string": "String"
       },
       "variable": {
         "add option": "Add Option",

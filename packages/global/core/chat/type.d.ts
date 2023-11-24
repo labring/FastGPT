@@ -83,9 +83,9 @@ export type moduleDispatchResType = {
   runningTime?: number;
   tokens?: number;
   model?: string;
+  query?: string;
 
   // chat
-  question?: string;
   temperature?: number;
   maxToken?: number;
   quoteList?: SearchDataResponseItemType[];

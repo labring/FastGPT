@@ -58,6 +58,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     [ModuleOutputKeyEnum.responseData]: {
       price: user.openaiAccount?.key ? 0 : cqModel.price * tokens,
       model: cqModel.name || '',
+      query: userChatInput,
       tokens,
       cqList: agents,
       cqResult: result.value

@@ -106,9 +106,9 @@ const WholeResponseModal = ({
           />
           <Row label={t('chat.response.module tokens')} value={`${activeModule?.tokens}`} />
           <Row label={t('chat.response.module model')} value={activeModule?.model} />
+          <Row label={t('chat.response.module query')} value={activeModule?.query} />
 
           {/* ai chat */}
-          <Row label={t('chat.response.module question')} value={activeModule?.question} />
           <Row label={t('chat.response.module temperature')} value={activeModule?.temperature} />
           <Row label={t('chat.response.module maxToken')} value={activeModule?.maxToken} />
           {activeModule.quoteList && activeModule.quoteList.length > 0 && (

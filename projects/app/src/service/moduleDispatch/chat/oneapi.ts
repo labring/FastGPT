@@ -186,7 +186,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         : countModelPrice({ model, tokens: totalTokens, type: ModelTypeEnum.chat }),
       model: modelConstantsData.name,
       tokens: totalTokens,
-      question: userChatInput,
+      query: userChatInput,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(completeMessages)

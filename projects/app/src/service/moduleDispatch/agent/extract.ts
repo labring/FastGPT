@@ -77,6 +77,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [ModuleOutputKeyEnum.responseData]: {
       price: user.openaiAccount?.key ? 0 : extractModel.price * tokens,
       model: extractModel.name || '',
+      query: content,
       tokens,
       extractDescription: description,
       extractResult: arg
