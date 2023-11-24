@@ -4,23 +4,23 @@
   "dependencies": {
     "@fastgpt/global": "workspace:*",
     "axios": "^1.5.1",
-    "nextjs-cors": "^2.1.2",
-    "next": "13.5.2",
     "cookie": "^0.5.0",
+    "encoding": "^0.1.13",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.0.2",
-    "winston": "^3.10.0",
-    "winston-mongodb": "^5.1.1",
-    "tunnel": "^0.0.6",
-    "encoding": "^0.1.13",
+    "nanoid": "^4.0.1",
+    "next": "13.5.2",
+    "nextjs-cors": "^2.1.2",
     "pg": "^8.10.0",
-    "nanoid": "^4.0.1"
+    "tunnel": "^0.0.6",
+    "winston": "^3.10.0",
+    "winston-mongodb": "^5.1.1"
   },
   "devDependencies": {
-    "@types/tunnel": "^0.0.4",
-    "@types/pg": "^8.6.6",
-    "@types/node": "^20.8.5",
     "@types/cookie": "^0.5.2",
-    "@types/jsonwebtoken": "^9.0.3"
+    "@types/jsonwebtoken": "^9.0.3",
+    "@types/node": "^20.8.5",
+    "@types/pg": "^8.6.6",
+    "@types/tunnel": "^0.0.4"
   }
 }

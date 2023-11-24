@@ -8,6 +8,7 @@ import { deletePgDataById, insertData2Pg, updatePgDataById } from './pg';
 import { Types } from 'mongoose';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
+import { jiebaSplit } from '../utils';
 
 /* insert data.
  * 1. create data id
@@ -74,6 +75,7 @@ export async function insertData2Dataset({
     collectionId,
     q,
     a,
+    fullTextToken: jiebaSplit({ text: q + a }),
     indexes: indexes.map((item, i) => ({
       ...item,
       dataId: result[i].insertId
@@ -203,6 +205,7 @@ export async function updateData2Dataset({
   // update mongo
   mongoData.q = q || mongoData.q;
   mongoData.a = a ?? mongoData.a;
+  mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
   // @ts-ignore
   mongoData.indexes = indexes;
   await mongoData.save();

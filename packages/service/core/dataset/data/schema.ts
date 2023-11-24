@@ -43,13 +43,9 @@ const DatasetDataSchema = new Schema({
     type: String,
     default: ''
   },
-  qToken: {
+  fullTextToken: {
     type: String,
-    default: ''
-  },
-  aToken: {
-    type: String,
-    default: ''
+    required: true
   },
   indexes: {
     type: [
@@ -82,7 +78,7 @@ try {
   DatasetDataSchema.index({ datasetId: 1 });
   DatasetDataSchema.index({ collectionId: 1 });
   // full text index
-  DatasetDataSchema.index({ qToken: 'text', aToken: 'text' });
+  DatasetDataSchema.index({ fullTextToken: 'text' });
 } catch (error) {
   console.log(error);
 }

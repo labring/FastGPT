@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import type { SearchTestProps } from '@/global/core/api/datasetReq.d';
+import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import { connectToDatabase } from '@/service/mongo';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
@@ -21,6 +20,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!datasetId || !text) {
       throw new Error('缺少参数');
     }
+
+    const start = Date.now();
 
     // auth dataset role
     const { dataset, teamId, tmbId, apikey } = await authDataset({
@@ -61,8 +62,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
     }
 
-    jsonRes<SearchDataResponseItemType[]>(res, {
-      data: searchRes
+    jsonRes<SearchTestResponse>(res, {
+      data: {
+        list: searchRes,
+        duration: `${((Date.now() - start) / 1000).toFixed(3)}s`
+      }
     });
   } catch (err) {
     jsonRes(res, {
