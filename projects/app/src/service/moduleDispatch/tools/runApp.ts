@@ -54,6 +54,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const { responseData, answerText } = await dispatchModules({
     ...props,
+    appId: app.id,
     modules: appData.modules,
     params: {
       history,

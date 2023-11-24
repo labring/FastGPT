@@ -29,6 +29,7 @@ import { dispatchPluginOutput } from './plugin/runOutput';
 /* running */
 export async function dispatchModules({
   res,
+  appId,
   chatId,
   modules,
   user,
@@ -40,6 +41,7 @@ export async function dispatchModules({
   detail = false
 }: {
   res: NextApiResponse;
+  appId: string;
   chatId?: string;
   modules: ModuleItemType[];
   user: UserType;
@@ -174,6 +176,8 @@ export async function dispatchModules({
     });
     const props: ModuleDispatchProps<Record<string, any>> = {
       res,
+      appId,
+      chatId,
       stream,
       detail,
       variables,
@@ -181,7 +185,6 @@ export async function dispatchModules({
       user,
       teamId,
       tmbId,
-      chatId,
       inputs: params
     };
 

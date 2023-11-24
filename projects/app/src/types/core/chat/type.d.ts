@@ -5,6 +5,7 @@ import type { UserType } from '@fastgpt/global/support/user/type';
 // module dispatch props type
 export type ModuleDispatchProps<T> = {
   res: NextApiResponse;
+  appId: string;
   chatId?: string;
   stream: boolean;
   detail: boolean;
