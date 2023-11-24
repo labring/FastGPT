@@ -36,7 +36,7 @@ const FastLogin = ({
       setToken(res.token);
 
       setTimeout(() => {
-        router.push(callbackUrl);
+        router.push(decodeURIComponent(callbackUrl));
       }, 100);
     },
     [setLastChatId, setLastChatAppId, setUserInfo, router, callbackUrl]
@@ -74,7 +74,6 @@ const FastLogin = ({
 
   useEffect(() => {
     router.prefetch('/app/list');
-    console.log(code, token);
     authCode(code, token);
   }, []);
 
