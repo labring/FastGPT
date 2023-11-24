@@ -258,7 +258,7 @@ function loadModules(
       flowType: module.flowType,
       showStatus: module.showStatus,
       inputs: module.inputs
-        .filter((item) => item.connected) // filter unconnected target input
+        .filter((item) => item.connected || item.value !== undefined) // filter unconnected target input
         .map((item) => {
           if (typeof item.value !== 'string') {
             return {

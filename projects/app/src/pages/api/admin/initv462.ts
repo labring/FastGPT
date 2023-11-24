@@ -23,14 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authCert({ req, authRoot: true });
     await connectToDatabase();
 
-    await MongoApp.updateMany(
-      {},
-      {
-        $set: {
-          simpleTemplateId: 'fastgpt-universal'
-        }
-      }
-    );
+    await initFullTextToken(limit);
 
     jsonRes(res, {
       message: 'success'
@@ -44,3 +37,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+export async function initFullTextToken(limit = 50) {}
