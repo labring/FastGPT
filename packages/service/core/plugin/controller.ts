@@ -1,40 +1,100 @@
 import { MongoPlugin } from './schema';
 import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { formatPluginIOModules } from '@fastgpt/global/core/module/utils';
+import { formatPluginToPreviewModule } from '@fastgpt/global/core/module/utils';
+import { PluginType2TemplateTypeMap, PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import type { PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
 
-/* plugin templates */
-export async function getUserPlugins2Templates({
-  teamId
-}: {
-  teamId: string;
-}): Promise<FlowModuleTemplateType[]> {
-  const plugins = await MongoPlugin.find({ teamId }).lean();
+/* 
+  plugin id rule:
+  personal: id
+  community: community-id
+  commercial: commercial-id
+*/
 
-  return plugins.map((plugin) => ({
-    id: String(plugin._id),
-    flowType: FlowNodeTypeEnum.pluginModule,
-    logo: plugin.avatar,
-    name: plugin.name,
-    description: plugin.intro,
-    intro: plugin.intro,
-    showStatus: false,
-    inputs: [],
-    outputs: []
-  }));
+export async function splitCombinePluginId(id: string) {
+  const splitRes = id.split('-');
+  if (splitRes.length === 1 && id.length === 24) {
+    return {
+      type: PluginTypeEnum.personal,
+      pluginId: id
+    };
+  }
+
+  const [type, pluginId] = id.split('-') as [`${PluginTypeEnum}`, string];
+  if (!type || !pluginId) return Promise.reject('pluginId not found');
+
+  return { type, pluginId: id };
 }
-/* one plugin 2 module detail */
-export async function getPluginModuleDetail({ id }: { id: string }) {
-  const plugin = await MongoPlugin.findById(id);
+/* format plugin modules to plugin preview module */
+export async function getPluginPreviewModule({
+  id
+}: {
+  id: string;
+}): Promise<FlowModuleTemplateType> {
+  // classify
+  const { type, pluginId } = await splitCombinePluginId(id);
+
+  const plugin = await (async () => {
+    if (type === PluginTypeEnum.community) {
+      return global.communityPlugins?.find((plugin) => plugin.id === pluginId);
+    }
+    if (type === PluginTypeEnum.personal) {
+      const item = await MongoPlugin.findById(id);
+      if (!item) return undefined;
+      return {
+        id: String(item._id),
+        name: item.name,
+        avatar: item.avatar,
+        intro: item.intro,
+        type: PluginTypeEnum.personal,
+        modules: item.modules
+      };
+    }
+  })();
+
   if (!plugin) return Promise.reject('plugin not found');
   return {
-    id: String(plugin._id),
+    id: plugin.id,
+    templateType: PluginType2TemplateTypeMap[plugin.type],
     flowType: FlowNodeTypeEnum.pluginModule,
-    logo: plugin.avatar,
+    avatar: plugin.avatar,
     name: plugin.name,
-    description: plugin.intro,
     intro: plugin.intro,
-    showStatus: false,
-    ...formatPluginIOModules(String(plugin._id), plugin.modules)
+    showStatus: true,
+    ...formatPluginToPreviewModule(plugin.id, plugin.modules)
+  };
+}
+
+export async function getPluginRuntimeById(id: string): Promise<PluginTemplateType> {
+  const { type, pluginId } = await splitCombinePluginId(id);
+
+  const plugin = await (async () => {
+    if (type === PluginTypeEnum.community) {
+      return global.communityPlugins?.find((plugin) => plugin.id === pluginId);
+    }
+    if (type === PluginTypeEnum.personal) {
+      const item = await MongoPlugin.findById(id);
+      if (!item) return undefined;
+      return {
+        id: String(item._id),
+        name: item.name,
+        avatar: item.avatar,
+        intro: item.intro,
+        type: PluginTypeEnum.personal,
+        modules: item.modules
+      };
+    }
+  })();
+
+  if (!plugin) return Promise.reject('plugin not found');
+
+  return {
+    id: plugin.id,
+    type: plugin.type,
+    name: plugin.name,
+    avatar: plugin.avatar,
+    intro: plugin.intro,
+    modules: plugin.modules
   };
 }

@@ -1,9 +1,6 @@
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeValTypeEnum,
-  FlowNodeTypeEnum
-} from './constant';
+import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './constant';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
+import { SelectedDatasetType } from '../api';
 
 export type FlowNodeChangeProps = {
   moduleId: string;
@@ -23,24 +20,27 @@ export type FlowNodeChangeProps = {
 };
 
 export type FlowNodeInputItemType = {
-  key: string; // 字段名
+  key: `${ModuleInputKeyEnum}`;
+  type: `${FlowNodeInputTypeEnum}`; // Decide on a render style
   value?: any;
-  valueType?: `${FlowNodeValTypeEnum}`;
-  type: `${FlowNodeInputTypeEnum}`;
+  valueType?: `${ModuleDataTypeEnum}`; // data type
   label: string;
-  edit?: boolean;
-  connected?: boolean;
   description?: string;
-  placeholder?: string;
-  plusField?: boolean;
+  required?: boolean;
+  edit?: boolean; // Whether to allow editing
+  connected?: boolean; // unConnected field will be deleted
+
+  showTargetInApp?: boolean;
+  showTargetInPlugin?: boolean;
+
+  placeholder?: string; // input,textarea
+  list?: { label: string; value: any }[]; // select
+  step?: number; // slider max?: number;
   max?: number;
   min?: number;
-  step?: number;
-  required?: boolean;
-  list?: { label: string; value: any }[];
-  markList?: { label: string; value: any }[];
-  customData?: () => any;
-  valueCheck?: (value: any) => boolean;
+  markList?: { label: string; value: any }[]; // slider
+
+  plusField?: boolean; // plus system will show
 };
 
 export type FlowNodeOutputTargetItemType = {
@@ -48,11 +48,30 @@ export type FlowNodeOutputTargetItemType = {
   key: string;
 };
 export type FlowNodeOutputItemType = {
-  key: string; // 字段名
+  key: `${ModuleOutputKeyEnum}` | string;
   label?: string;
   edit?: boolean;
   description?: string;
-  valueType?: `${FlowNodeValTypeEnum}`;
+  valueType?: `${ModuleDataTypeEnum}`;
   type?: `${FlowNodeOutputTypeEnum}`;
   targets: FlowNodeOutputTargetItemType[];
+};
+
+/* ------------- item type --------------- */
+/* ai chat modules props */
+export type AIChatModuleProps = {
+  [ModuleInputKeyEnum.aiModel]: string;
+  [ModuleInputKeyEnum.aiSystemPrompt]?: string;
+  [ModuleInputKeyEnum.aiChatTemperature]: number;
+  [ModuleInputKeyEnum.aiChatMaxToken]: number;
+  [ModuleInputKeyEnum.aiChatIsResponseText]: boolean;
+  [ModuleInputKeyEnum.aiChatQuoteTemplate]?: string;
+  [ModuleInputKeyEnum.aiChatQuotePrompt]?: string;
+};
+
+export type DatasetModuleProps = {
+  [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [ModuleInputKeyEnum.datasetSimilarity]: number;
+  [ModuleInputKeyEnum.datasetLimit]: number;
+  [ModuleInputKeyEnum.datasetStartReRank]: boolean;
 };

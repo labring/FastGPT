@@ -153,11 +153,11 @@ export async function searchDatasetData({
     SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
     select id, collection_id, data_id, (vector <#> '[${
       vectors[0]
-    }]') * -1 AS score from ${PgDatasetTableName} where dataset_id IN (${datasetIds
-      .map((id) => `'${String(id)}'`)
-      .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
+    }]') * -1 AS score from ${PgDatasetTableName} 
+    where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')}) AND vector <#> '[${
       vectors[0]
-    }]' limit ${minLimit};
+    }]' < -${similarity} 
+    order by score desc limit ${minLimit};
     COMMIT;`
   );
 

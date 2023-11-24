@@ -4,7 +4,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { setToken } from '@/web/support/user/auth';
+import { clearToken, setToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
@@ -21,12 +21,13 @@ const provider = ({ code, state }: { code: string; state: string }) => {
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
+      setToken(res.token);
+      setUserInfo(res.user);
+
       // init store
       setLastChatId('');
       setLastChatAppId('');
 
-      setUserInfo(res.user);
-      setToken(res.token);
       setTimeout(() => {
         router.push(
           loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list'
@@ -72,8 +73,11 @@ const provider = ({ code, state }: { code: string; state: string }) => {
     [loginStore, loginSuccess, router, toast]
   );
 
-  useQuery(['init', code], () => {
+  useEffect(() => {
+    clearToken();
+    router.prefetch('/app/list');
     if (!code) return;
+
     if (state !== loginStore?.state) {
       toast({
         status: 'warning',
@@ -85,11 +89,6 @@ const provider = ({ code, state }: { code: string; state: string }) => {
       return;
     }
     authCode(code);
-    return null;
-  });
-
-  useEffect(() => {
-    router.prefetch('/app/list');
   }, []);
 
   return <Loading />;

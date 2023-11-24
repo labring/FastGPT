@@ -2,31 +2,33 @@ import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { useTranslation } from 'next-i18next';
-import { ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
+import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
 import Tabs from '../Tabs';
 
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import Markdown from '../Markdown';
 
-function Row({ label, value }: { label: string; value?: string | number | React.ReactNode }) {
+function Row({ label, value }: { label: string; value?: string | number }) {
   const theme = useTheme();
+  const strValue = `${value}`;
+  const isCodeBlock = strValue.startsWith('~~~json');
+
   return value !== undefined && value !== '' && value !== 'undefined' ? (
-    <Box mb={2}>
-      <Box fontSize={['sm', 'md']} mb={1} flex={'0 0 90px'}>
+    <Box mb={3}>
+      <Box fontSize={['sm', 'md']} mb={isCodeBlock ? 0 : 1} flex={'0 0 90px'}>
         {label}:
       </Box>
       <Box
-        borderRadius={'lg'}
-        border={theme.borders.base}
-        px={3}
-        py={1}
-        position={'relative'}
-        whiteSpace={'pre-wrap'}
+        borderRadius={'md'}
         fontSize={'sm'}
+        {...(isCodeBlock
+          ? { transform: 'translateY(-3px)' }
+          : { px: 3, py: 1, border: theme.borders.base })}
       >
-        {value}
+        <Markdown source={strValue} />
       </Box>
     </Box>
   ) : null;
@@ -39,7 +41,6 @@ const WholeResponseModal = ({
   response: ChatHistoryItemResType[];
   onClose: () => void;
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
 
   const list = useMemo(
@@ -51,7 +52,8 @@ const WholeResponseModal = ({
               mr={2}
               src={
                 item.moduleLogo ||
-                ModuleTemplatesFlat.find((template) => item.moduleType === template.flowType)?.logo
+                moduleTemplatesFlat.find((template) => item.moduleType === template.flowType)
+                  ?.avatar
               }
               alt={''}
               w={['14px', '16px']}
@@ -75,6 +77,7 @@ const WholeResponseModal = ({
       onClose={onClose}
       h={['90vh', '80vh']}
       w={['90vw', '500px']}
+      iconSrc="/imgs/modal/wholeRecord.svg"
       title={
         <Flex alignItems={'center'}>
           {t('chat.Complete Response')}
@@ -102,37 +105,26 @@ const WholeResponseModal = ({
           />
           <Row label={t('chat.response.module tokens')} value={`${activeModule?.tokens}`} />
           <Row label={t('chat.response.module model')} value={activeModule?.model} />
+          <Row label={t('chat.response.module query')} value={activeModule?.query} />
 
           {/* ai chat */}
-          <Row label={t('chat.response.module question')} value={activeModule?.question} />
           <Row label={t('chat.response.module temperature')} value={activeModule?.temperature} />
           <Row label={t('chat.response.module maxToken')} value={activeModule?.maxToken} />
-          <Row
-            label={t('chat.response.module quoteList')}
-            value={(() => {
-              try {
-                JSON.stringify(activeModule.quoteList, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
-          />
           <Row
             label={t('chat.response.module historyPreview')}
             value={(() => {
               if (!activeModule?.historyPreview) return '';
-              return (
-                <>
-                  {activeModule.historyPreview.map((item, i) => (
-                    <Box key={i} _notLast={{ mb: 3, borderBottom: theme.borders.base }} pb={3}>
-                      <Box fontWeight={'bold'}>{item.obj}</Box>
-                      <Box>{item.value}</Box>
-                    </Box>
-                  ))}
-                </>
-              );
+              return activeModule.historyPreview
+                .map((item, i) => `**${item.obj}**\n${item.value}`)
+                .join('\n---\n');
             })()}
           />
+          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+            <Row
+              label={t('chat.response.module quoteList')}
+              value={`~~~json\n${JSON.stringify(activeModule.quoteList, null, 2)}`}
+            />
+          )}
 
           {/* dataset search */}
           <Row label={t('chat.response.module similarity')} value={activeModule?.similarity} />
@@ -143,15 +135,7 @@ const WholeResponseModal = ({
             label={t('chat.response.module cq')}
             value={(() => {
               if (!activeModule?.cqList) return '';
-              return (
-                <Box as={'ol'} px={3}>
-                  {activeModule.cqList.map((item) => (
-                    <Box key={item.key} as={'li'}>
-                      {item.value}
-                    </Box>
-                  ))}
-                </Box>
-              );
+              return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
             })()}
           />
           <Row label={t('chat.response.module cq result')} value={activeModule?.cqResult} />
@@ -161,50 +145,34 @@ const WholeResponseModal = ({
             label={t('chat.response.module extract description')}
             value={activeModule?.extractDescription}
           />
-          <Row
-            label={t('chat.response.module extract result')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.extractResult, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
-          />
+          {activeModule?.extractResult && (
+            <Row
+              label={t('chat.response.module extract result')}
+              value={`~~~json\n${JSON.stringify(activeModule?.extractResult, null, 2)}`}
+            />
+          )}
 
           {/* http */}
-          <Row
-            label={t('chat.response.module http body')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.body, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
-          />
-          <Row
-            label={t('chat.response.module http result')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.httpResult, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
-          />
+          {activeModule?.body && (
+            <Row
+              label={t('chat.response.module http body')}
+              value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`}
+            />
+          )}
+          {activeModule?.httpResult && (
+            <Row
+              label={t('chat.response.module http result')}
+              value={`~~~json\n${JSON.stringify(activeModule?.httpResult, null, 2)}`}
+            />
+          )}
 
           {/* plugin */}
-          <Row
-            label={t('chat.response.plugin output')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.pluginOutput, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
-          />
+          {activeModule?.pluginOutput && (
+            <Row
+              label={t('chat.response.plugin output')}
+              value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
+            />
+          )}
         </Box>
       </Flex>
     </MyModal>

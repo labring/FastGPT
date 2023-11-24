@@ -7,6 +7,7 @@ import {
   WhisperModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { TrackEventName } from '@/constants/common';
+import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
 
 export type PagingData<T> = {
   pageNum: number;
@@ -32,6 +33,8 @@ declare global {
 
   var priceMd: string;
   var systemVersion: string;
+
+  var simpleModeTemplates: AppSimpleEditConfigTemplateType[];
 
   interface Window {
     ['pdfjs-dist/build/pdf']: any;

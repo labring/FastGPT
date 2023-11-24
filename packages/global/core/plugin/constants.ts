@@ -1,8 +1,9 @@
+import { ModuleTemplateTypeEnum } from '../module/constants';
 import { ModuleItemType } from '../module/type';
 
 export const defaultModules: ModuleItemType[] = [
   {
-    moduleId: 'fph4s3',
+    moduleId: 'custom-output',
     name: '自定义输出',
     flowType: 'pluginOutput',
     showStatus: false,
@@ -14,7 +15,7 @@ export const defaultModules: ModuleItemType[] = [
     outputs: []
   },
   {
-    moduleId: 'w09v30',
+    moduleId: 'custom-input',
     name: '自定义输入',
     flowType: 'pluginInput',
     showStatus: false,
@@ -26,3 +27,14 @@ export const defaultModules: ModuleItemType[] = [
     outputs: []
   }
 ];
+
+export enum PluginTypeEnum {
+  personal = 'personal',
+  community = 'community',
+  commercial = 'commercial'
+}
+export const PluginType2TemplateTypeMap = {
+  [PluginTypeEnum.personal]: ModuleTemplateTypeEnum.personalPlugin,
+  [PluginTypeEnum.community]: ModuleTemplateTypeEnum.communityPlugin,
+  [PluginTypeEnum.commercial]: ModuleTemplateTypeEnum.commercialPlugin
+};

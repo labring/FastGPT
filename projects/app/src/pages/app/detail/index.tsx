@@ -12,7 +12,7 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
-import BasicEdit from './components/BasicEdit';
+import SimpleEdit from './components/SimpleEdit';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 
@@ -23,7 +23,7 @@ const OutLink = dynamic(() => import('./components/OutLink'), {});
 const Logs = dynamic(() => import('./components/Logs'), {});
 
 enum TabEnum {
-  'basicEdit' = 'basicEdit',
+  'simpleEdit' = 'simpleEdit',
   'adEdit' = 'adEdit',
   'outLink' = 'outLink',
   'logs' = 'logs',
@@ -51,7 +51,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '简易配置', id: TabEnum.basicEdit, icon: 'overviewLight' },
+      { label: '简易配置', id: TabEnum.simpleEdit, icon: 'overviewLight' },
       ...(feConfigs?.hide_app_flow
         ? []
         : [{ label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' }]),
@@ -167,9 +167,9 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           />
         </Box>
         <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
-          {currentTab === TabEnum.basicEdit && <BasicEdit appId={appId} />}
+          {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
           {currentTab === TabEnum.adEdit && appDetail && (
-            <AdEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.basicEdit)} />
+            <AdEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
           )}
           {currentTab === TabEnum.logs && <Logs appId={appId} />}
           {currentTab === TabEnum.outLink && <OutLink appId={appId} />}
@@ -180,7 +180,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 };
 
 export async function getServerSideProps(context: any) {
-  const currentTab = context?.query?.currentTab || TabEnum.basicEdit;
+  const currentTab = context?.query?.currentTab || TabEnum.simpleEdit;
 
   return {
     props: { currentTab, ...(await serviceSideProps(context)) }

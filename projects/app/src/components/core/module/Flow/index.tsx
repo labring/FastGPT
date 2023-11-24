@@ -2,13 +2,13 @@ import React, { useEffect } from 'react';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { edgeOptions, connectionLineStyle } from '@/constants/flow';
+import { edgeOptions, connectionLineStyle } from '@/web/core/modules/constants/flowUi';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 import dynamic from 'next/dynamic';
 
 import ButtonEdge from './components/modules/ButtonEdge';
-import TemplateList, { type ModuleTemplateProps } from './TemplateList';
+import ModuleTemplateList, { type ModuleTemplateProps } from './ModuleTemplateList';
 import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
@@ -27,8 +27,8 @@ const nodeTypes = {
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./components/nodes/NodeExtract')),
   [FlowNodeTypeEnum.httpRequest]: dynamic(() => import('./components/nodes/NodeHttp')),
   [FlowNodeTypeEnum.runApp]: NodeSimple,
-  [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodeInput')),
-  [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodeOutput')),
+  [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodePluginInput')),
+  [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple
 };
 const edgeTypes = {
@@ -40,7 +40,7 @@ type Props = {
 } & ModuleTemplateProps;
 
 const Container = React.memo(function Container(props: Props) {
-  const { modules = [], Header, systemTemplates, pluginTemplates, show2Plugin } = props;
+  const { modules = [], Header, systemTemplates, pluginTemplates } = props;
 
   const {
     isOpen: isOpenTemplate,
@@ -114,10 +114,9 @@ const Container = React.memo(function Container(props: Props) {
           <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
         </ReactFlow>
 
-        <TemplateList
+        <ModuleTemplateList
           systemTemplates={systemTemplates}
           pluginTemplates={pluginTemplates}
-          show2Plugin={show2Plugin}
           isOpen={isOpenTemplate}
           onClose={onCloseTemplate}
         />

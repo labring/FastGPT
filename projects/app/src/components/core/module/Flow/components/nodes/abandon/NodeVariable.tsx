@@ -6,12 +6,12 @@ import { AddIcon } from '@chakra-ui/icons';
 import NodeCard from '../../modules/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Container from '../../modules/Container';
-import { SystemInputEnum, VariableInputEnum } from '@/constants/app';
-import type { VariableItemType } from '@/types/app';
+import { VariableInputEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import VariableEditModal, { addVariable } from '../../../../VariableEditModal';
+import VariableEditModal, { addVariable } from '../../modules/VariableEdit';
 import { onChangeNode } from '../../../FlowProvider';
 
 export const defaultVariable: VariableItemType = {
@@ -29,102 +29,31 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
 
   const variables = useMemo(
     () =>
-      (inputs.find((item) => item.key === SystemInputEnum.variables)
+      (inputs.find((item) => item.key === ModuleInputKeyEnum.variables)
         ?.value as VariableItemType[]) || [],
     [inputs]
-  );
-
-  const [editVariable, setEditVariable] = useState<VariableItemType>();
-
-  const updateVariables = useCallback(
-    (value: VariableItemType[]) => {
-      onChangeNode({
-        moduleId,
-        key: SystemInputEnum.variables,
-        type: 'updateInput',
-        value: {
-          ...inputs.find((item) => item.key === SystemInputEnum.variables),
-          value
-        }
-      });
-    },
-    [inputs, moduleId]
-  );
-
-  const onclickSubmit = useCallback(
-    ({ variable }: { variable: VariableItemType }) => {
-      updateVariables(variables.map((item) => (item.id === variable.id ? variable : item)));
-      setEditVariable(undefined);
-    },
-    [updateVariables, variables]
   );
 
   return (
     <>
       <NodeCard minW={'300px'} {...data}>
         <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
-          <TableContainer>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>变量名</Th>
-                  <Th>变量 key</Th>
-                  <Th>必填</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {variables.map((item, index) => (
-                  <Tr key={index}>
-                    <Td>{item.label} </Td>
-                    <Td>{item.key}</Td>
-                    <Td>{item.required ? '✔' : ''}</Td>
-                    <Td>
-                      <MyIcon
-                        mr={3}
-                        name={'settingLight'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => {
-                          setEditVariable(item);
-                        }}
-                      />
-                      <MyIcon
-                        name={'delete'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() =>
-                          updateVariables(variables.filter((variable) => variable.id !== item.id))
-                        }
-                      />
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-          <Box mt={2} textAlign={'right'}>
-            <Button
-              variant={'base'}
-              leftIcon={<AddIcon fontSize={'10px'} />}
-              onClick={() => {
-                const newVariable = addVariable();
-                updateVariables(variables.concat(newVariable));
-                setEditVariable(newVariable);
-              }}
-            >
-              新增
-            </Button>
-          </Box>
+          <VariableEditModal
+            variables={variables}
+            onChange={(e) =>
+              onChangeNode({
+                moduleId,
+                key: ModuleInputKeyEnum.variables,
+                type: 'updateInput',
+                value: {
+                  ...inputs.find((item) => item.key === ModuleInputKeyEnum.variables),
+                  value: e
+                }
+              })
+            }
+          />
         </Container>
       </NodeCard>
-      {!!editVariable && (
-        <VariableEditModal
-          defaultVariable={editVariable}
-          onClose={() => setEditVariable(undefined)}
-          onSubmit={onclickSubmit}
-        />
-      )}
     </>
   );
 };

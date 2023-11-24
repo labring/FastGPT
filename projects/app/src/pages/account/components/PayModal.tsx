@@ -67,9 +67,10 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       isOpen={true}
       onClose={payId ? undefined : onClose}
       title={t('user.Pay')}
+      iconSrc="/imgs/modal/pay.svg"
       isCentered={!payId}
     >
-      <ModalBody p={0} minH={payId ? 'auto' : '70vh'} display={'flex'} flexDirection={'column'}>
+      <ModalBody px={0} minH={payId ? 'auto' : '70vh'} display={'flex'} flexDirection={'column'}>
         {!payId && (
           <>
             <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4} px={6}>

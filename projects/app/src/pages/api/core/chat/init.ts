@@ -1,16 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import type { InitChatResponse } from '@fastgpt/global/core/chat/api.d';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import type { ChatSchema } from '@fastgpt/global/core/chat/type.d';
-import { getGuideModule } from '@/global/core/app/modules/utils';
+import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { authChat } from '@fastgpt/service/support/permission/auth/chat';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -55,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             chatId
           },
-          `dataId obj value adminFeedback userFeedback ${TaskResponseKeyEnum.responseData}`
+          `dataId obj value adminFeedback userFeedback ${ModuleOutputKeyEnum.responseData}`
         )
           .sort({ _id: -1 })
           .limit(30);

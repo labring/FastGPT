@@ -28,13 +28,12 @@ import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
-import { AIChatProps } from '@/types/core/aiChat';
+import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
 import { chatModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useQuery } from '@tanstack/react-query';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 import { feConfigs } from '@/web/common/system/staticData';
 
@@ -53,13 +52,31 @@ export const Label = React.memo(function Label({
   inputKey: string;
   editFiledType?: EditFieldModeType;
 }) {
-  const { required = false, description, edit, label, type, valueType } = item;
+  const { t } = useTranslation();
+  const { mode } = useFlowProviderStore();
+  const {
+    required = false,
+    description,
+    edit,
+    label,
+    type,
+    valueType,
+    showTargetInApp,
+    showTargetInPlugin
+  } = item;
   const [editField, setEditField] = useState<EditFieldType>();
+
+  const targetHandle = useMemo(() => {
+    if (type === FlowNodeInputTypeEnum.target) return true;
+    if (mode === 'app' && showTargetInApp) return true;
+    if (mode === 'plugin' && showTargetInPlugin) return true;
+    return false;
+  }, [mode, showTargetInApp, showTargetInPlugin, type]);
 
   return (
     <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
       <Box position={'relative'}>
-        {label}
+        {t(label)}
         {description && (
           <MyTooltip label={description} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
@@ -78,9 +95,7 @@ export const Label = React.memo(function Label({
         )}
       </Box>
 
-      {(type === FlowNodeInputTypeEnum.target || valueType) && (
-        <TargetHandle handleKey={inputKey} valueType={valueType} />
-      )}
+      {targetHandle && <TargetHandle handleKey={inputKey} valueType={valueType} />}
 
       {edit && (
         <>
@@ -93,6 +108,7 @@ export const Label = React.memo(function Label({
             onClick={() =>
               setEditField({
                 label: item.label,
+                type: item.type,
                 valueType: item.valueType,
                 required: item.required,
                 key: inputKey,
@@ -209,9 +225,6 @@ const RenderInput = ({
                 )}
                 {item.type === FlowNodeInputTypeEnum.aiSettings && (
                   <AISetting inputs={sortInputs} item={item} moduleId={moduleId} />
-                )}
-                {item.type === FlowNodeInputTypeEnum.maxToken && (
-                  <MaxTokenRender inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowNodeInputTypeEnum.selectChatModel && (
                   <SelectChatModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
@@ -381,7 +394,7 @@ var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderP
     inputs.forEach((item) => {
       obj[item.key] = item.value;
     });
-    return obj as AIChatProps;
+    return obj as AIChatModuleProps;
   }, [inputs]);
 
   const {
@@ -427,50 +440,12 @@ var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderP
   );
 });
 
-var MaxTokenRender = React.memo(function MaxTokenRender({
-  inputs = [],
-  item,
-  moduleId
-}: RenderProps) {
-  const model = inputs.find((item) => item.key === 'model')?.value;
-  const modelData = chatModelList.find((item) => item.model === model);
-  const maxToken = modelData ? modelData.maxResponse : 4000;
-  const markList = [
-    { label: '100', value: 100 },
-    { label: `${maxToken}`, value: maxToken }
-  ];
-
-  return (
-    <Box pt={5} pb={4} px={2}>
-      <MySlider
-        markList={markList}
-        width={'100%'}
-        min={item.min || 100}
-        max={maxToken}
-        step={item.step || 1}
-        value={item.value}
-        onChange={(e) => {
-          onChangeNode({
-            moduleId,
-            type: 'updateInput',
-            key: item.key,
-            value: {
-              ...item,
-              value: e
-            }
-          });
-        }}
-      />
-    </Box>
-  );
-});
-
 var SelectChatModelRender = React.memo(function SelectChatModelRender({
   inputs = [],
   item,
   moduleId
 }: RenderProps) {
-  const modelList = (item.customData?.() as LLMModelItemType[]) || chatModelList || [];
+  const modelList = chatModelList || [];
 
   function onChangeModel(e: string) {
     {
@@ -531,6 +506,7 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
 
 var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, moduleId }: RenderProps) {
   const theme = useTheme();
+  const { mode } = useFlowProviderStore();
   const { allDatasets, loadAllDatasets } = useDatasetStore();
   const {
     isOpen: isOpenKbSelect,
@@ -538,9 +514,9 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
     onClose: onCloseKbSelect
   } = useDisclosure();
 
-  const showKbList = useMemo(() => {
+  const selectedDatasets = useMemo(() => {
     const value = item.value as SelectedDatasetType;
-    return allDatasets.filter((dataset) => value.find((kb) => kb.datasetId === dataset._id));
+    return allDatasets.filter((dataset) => value?.find((item) => item.datasetId === dataset._id));
   }, [allDatasets, item.value]);
 
   useQuery(['loadAllDatasets'], loadAllDatasets);
@@ -551,7 +527,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
         <Button h={'36px'} onClick={onOpenKbSelect}>
           选择知识库
         </Button>
-        {showKbList.map((item) => (
+        {selectedDatasets.map((item) => (
           <Flex
             key={item._id}
             alignItems={'center'}
@@ -574,22 +550,24 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
           </Flex>
         ))}
       </Grid>
-      <DatasetSelectModal
-        isOpen={isOpenKbSelect}
-        activeDatasets={item.value}
-        onChange={(e) => {
-          onChangeNode({
-            moduleId,
-            key: item.key,
-            type: 'updateInput',
-            value: {
-              ...item,
-              value: e
-            }
-          });
-        }}
-        onClose={onCloseKbSelect}
-      />
+      {isOpenKbSelect && (
+        <DatasetSelectModal
+          isOpen={isOpenKbSelect}
+          defaultSelectedDatasets={item.value}
+          onChange={(e) => {
+            onChangeNode({
+              moduleId,
+              key: item.key,
+              type: 'updateInput',
+              value: {
+                ...item,
+                value: e
+              }
+            });
+          }}
+          onClose={onCloseKbSelect}
+        />
+      )}
     </>
   );
 });

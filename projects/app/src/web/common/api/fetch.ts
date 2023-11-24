@@ -1,10 +1,10 @@
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseStreamChunk, SSEParseData } from '@/utils/sse';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
 import { StartChatFnProps } from '@/components/ChatBox';
 import { getToken } from '@/web/support/user/auth';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 type StreamFetchProps = {
   url?: string;
@@ -12,16 +12,17 @@ type StreamFetchProps = {
   onMessage: StartChatFnProps['generatingMessage'];
   abortSignal: AbortController;
 };
+type StreamResponseType = {
+  responseText: string;
+  [ModuleOutputKeyEnum.responseData]: ChatHistoryItemResType[];
+};
 export const streamFetch = ({
   url = '/api/v1/chat/completions',
   data,
   onMessage,
   abortSignal
 }: StreamFetchProps) =>
-  new Promise<{
-    responseText: string;
-    [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
-  }>(async (resolve, reject) => {
+  new Promise<StreamResponseType>(async (resolve, reject) => {
     try {
       const response = await window.fetch(url, {
         method: 'POST',

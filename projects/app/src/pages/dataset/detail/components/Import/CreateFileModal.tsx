@@ -28,7 +28,13 @@ const CreateFileModal = ({
   });
 
   return (
-    <MyModal title={t('file.Create File')} isOpen w={'600px'} top={'15vh'}>
+    <MyModal
+      title={t('file.Create File')}
+      iconSrc="/imgs/modal/txt.svg"
+      isOpen
+      w={'600px'}
+      top={'15vh'}
+    >
       <ModalBody>
         <Box mb={1} fontSize={'sm'}>
           文件名

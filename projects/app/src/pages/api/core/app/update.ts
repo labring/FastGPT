@@ -4,13 +4,14 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { SystemOutputEnum } from '@/constants/app';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, avatar, type, intro, modules, permission } = req.body as AppUpdateParams;
+    const { name, avatar, type, simpleTemplateId, intro, modules, permission } =
+      req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
     if (!appId) {
@@ -28,19 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       {
         name,
         type,
+        simpleTemplateId,
         avatar,
         intro,
         permission,
         ...(modules && {
-          modules: modules.map((modules) => ({
-            ...modules,
-            outputs: modules.outputs.sort((a, b) => {
-              // finish output always at last
-              if (a.key === SystemOutputEnum.finish) return 1;
-              if (b.key === SystemOutputEnum.finish) return -1;
-              return 0;
-            })
-          }))
+          modules
         })
       }
     );

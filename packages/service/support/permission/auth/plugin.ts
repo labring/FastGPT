@@ -6,6 +6,8 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { MongoPlugin } from '../../../core/plugin/schema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';
+import { splitCombinePluginId } from '../../../core/plugin/controller';
+import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 
 export async function authPluginCrud({
   id,
@@ -53,4 +55,30 @@ export async function authPluginCrud({
     isOwner,
     canWrite
   };
+}
+
+export async function authPluginCanUse({
+  id,
+  teamId,
+  tmbId
+}: {
+  id: string;
+  teamId: string;
+  tmbId: string;
+}) {
+  const { type, pluginId } = await splitCombinePluginId(id);
+
+  if (type === PluginTypeEnum.community) {
+    return true;
+  }
+
+  if (type === PluginTypeEnum.personal) {
+    const { role } = await getTeamInfoByTmbId({ tmbId });
+    const plugin = await MongoPlugin.findOne({ _id: pluginId, teamId });
+    if (!plugin) {
+      return Promise.reject(PluginErrEnum.unExist);
+    }
+  }
+
+  return true;
 }

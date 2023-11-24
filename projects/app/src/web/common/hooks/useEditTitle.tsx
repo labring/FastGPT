@@ -51,7 +51,7 @@ export const useEditTitle = ({
   // eslint-disable-next-line react/display-name
   const EditModal = useCallback(
     ({ maxLength = 30 }: { maxLength?: number }) => (
-      <MyModal isOpen={isOpen} onClose={onClose} title={title}>
+      <MyModal isOpen={isOpen} onClose={onClose} iconSrc="/imgs/modal/edit.svg" title={title}>
         <ModalBody>
           {!!tip && (
             <Box mb={2} color={'myGray.500'} fontSize={'sm'}>

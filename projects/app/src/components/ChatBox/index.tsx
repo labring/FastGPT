@@ -33,14 +33,13 @@ import { eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { VariableInputEnum } from '@/constants/app';
+import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import { useForm } from 'react-hook-form';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
 import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
 import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';
@@ -60,9 +59,10 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 
 import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import { splitGuideModule } from '@/global/core/app/modules/utils';
-import { AppTTSConfigType } from '@/types/app';
+import { splitGuideModule } from '@fastgpt/global/core/module/utils';
+import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import MessageInput from './MessageInput';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -105,7 +105,7 @@ type Props = {
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
     responseText: string;
-    [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
+    [ModuleOutputKeyEnum.responseData]: ChatHistoryItemResType[];
     isNewChat?: boolean;
   }>;
   onDelMessage?: (e: { contentId?: string; index: number }) => void;
@@ -760,6 +760,9 @@ const ChatBox = (
                                     variant={'outline'}
                                     colorScheme={'gray'}
                                     size={'xs'}
+                                    whiteSpace={'pre-wrap'}
+                                    h={'auto'}
+                                    py={1}
                                     onClick={() => {
                                       resetInputVal(item);
                                     }}

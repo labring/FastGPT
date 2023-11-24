@@ -189,6 +189,14 @@ const MyApps = () => {
           </MyTooltip>
         ))}
       </Grid>
+      {myApps.length === 0 && (
+        <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
+          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+          <Box mt={2} color={'myGray.500'}>
+            还没有应用，快去创建一个吧！
+          </Box>
+        </Flex>
+      )}
       <ConfirmModal />
       {isOpenCreateModal && (
         <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps(true)} />

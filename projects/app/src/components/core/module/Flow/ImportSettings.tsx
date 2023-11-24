@@ -12,7 +12,13 @@ const ImportSettings = ({ onClose }: { onClose: () => void }) => {
   const { setNodes, setEdges, initData } = useFlowProviderStore();
 
   return (
-    <MyModal isOpen w={'600px'} onClose={onClose} title={t('app.Import Config')}>
+    <MyModal
+      isOpen
+      w={'600px'}
+      onClose={onClose}
+      iconSrc="/imgs/modal/params.svg"
+      title={t('app.Import Configs')}
+    >
       <ModalBody>
         <Textarea
           placeholder={t('app.Paste Config') || 'app.Paste Config'}
@@ -38,7 +44,7 @@ const ImportSettings = ({ onClose }: { onClose: () => void }) => {
               onClose();
             } catch (error) {
               toast({
-                title: t('app.Import Config Failed')
+                title: t('app.Import Configs Failed')
               });
             }
           }}

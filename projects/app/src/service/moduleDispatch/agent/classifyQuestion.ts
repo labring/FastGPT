@@ -1,11 +1,10 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
-import { SystemInputEnum } from '@/constants/app';
-import { FlowNodeSpecialInputKeyEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
@@ -13,14 +12,14 @@ import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getCQModel } from '@/service/core/ai/model';
 
 type Props = ModuleDispatchProps<{
-  model: string;
-  systemPrompt?: string;
-  history?: ChatItemType[];
-  [SystemInputEnum.userChatInput]: string;
-  [FlowNodeSpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
+  [ModuleInputKeyEnum.aiModel]: string;
+  [ModuleInputKeyEnum.aiSystemPrompt]?: string;
+  [ModuleInputKeyEnum.history]?: ChatItemType[];
+  [ModuleInputKeyEnum.userChatInput]: string;
+  [ModuleInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
 type CQResponse = {
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
 };
 
@@ -56,9 +55,10 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   return {
     [result.key]: 1,
-    [TaskResponseKeyEnum.responseData]: {
+    [ModuleOutputKeyEnum.responseData]: {
       price: user.openaiAccount?.key ? 0 : cqModel.price * tokens,
       model: cqModel.name || '',
+      query: userChatInput,
       tokens,
       cqList: agents,
       cqResult: result.value

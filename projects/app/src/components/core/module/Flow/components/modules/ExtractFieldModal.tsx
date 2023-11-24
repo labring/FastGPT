@@ -35,11 +35,12 @@ const ExtractFieldModal = ({
   });
 
   return (
-    <MyModal isOpen={true} onClose={onClose}>
-      <ModalHeader display={'flex'} alignItems={'center'}>
-        <Avatar src={'/imgs/module/extract.png'} mr={2} w={'20px'} objectFit={'cover'} />
-        提取字段配置
-      </ModalHeader>
+    <MyModal
+      isOpen={true}
+      iconSrc="/imgs/module/extract.png"
+      title={'提取字段配置'}
+      onClose={onClose}
+    >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 70px'}>必填</Box>

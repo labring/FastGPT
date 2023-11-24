@@ -1,3 +1,4 @@
+import { AppTypeMap } from '@fastgpt/global/core/app/constants';
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
@@ -31,7 +32,11 @@ const AppSchema = new Schema({
   type: {
     type: String,
     default: 'advanced',
-    enum: ['basic', 'advanced']
+    enum: Object.keys(AppTypeMap)
+  },
+  simpleTemplateId: {
+    type: String,
+    required: true
   },
   avatar: {
     type: String,
@@ -61,6 +66,7 @@ const AppSchema = new Schema({
 
 try {
   AppSchema.index({ updateTime: -1 });
+  AppSchema.index({ teamId: 1 });
 } catch (error) {
   console.log(error);
 }

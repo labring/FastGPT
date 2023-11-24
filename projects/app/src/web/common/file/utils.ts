@@ -28,6 +28,16 @@ export const readTxtContent = (file: File) => {
  */
 export const readPdfContent = (file: File) =>
   new Promise<string>((resolve, reject) => {
+    type TokenType = {
+      str: string;
+      dir: string;
+      width: number;
+      height: number;
+      transform: number[];
+      fontName: string;
+      hasEOL: boolean;
+    };
+
     try {
       const pdfjsLib = window['pdfjs-dist/build/pdf'];
       pdfjsLib.workerSrc = '/js/pdf.worker.js';
@@ -36,9 +46,19 @@ export const readPdfContent = (file: File) =>
         const page = await doc.getPage(pageNo);
         const tokenizedText = await page.getTextContent();
 
+        const viewport = page.getViewport({ scale: 1 });
+        const pageHeight = viewport.height;
+        const headerThreshold = pageHeight * 0.07; // 假设页头在页面顶部5%的区域内
+        const footerThreshold = pageHeight * 0.93; // 假设页脚在页面底部5%的区域内
+
         const pageText = tokenizedText.items
-          .map((token: any) => token.str)
-          .filter((item: string) => item)
+          .filter((token: TokenType) => {
+            return (
+              !token.transform ||
+              (token.transform[5] > headerThreshold && token.transform[5] < footerThreshold)
+            );
+          })
+          .map((token: TokenType) => token.str)
           .join('');
         return pageText;
       };
@@ -54,7 +74,7 @@ export const readPdfContent = (file: File) =>
             pageTextPromises.push(readPDFPage(doc, pageNo));
           }
           const pageTexts = await Promise.all(pageTextPromises);
-          resolve(pageTexts.join('\n'));
+          resolve(pageTexts.join(''));
         } catch (err) {
           console.log(err, 'pdf load error');
           reject('解析 PDF 失败');

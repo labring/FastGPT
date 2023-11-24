@@ -1,23 +1,23 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
-import { getUserPlugs2ModuleTemplates } from '../api';
+import { getPlugTemplates } from '../api';
+import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 
 type State = {
   pluginModuleTemplates: FlowModuleTemplateType[];
-  loadPluginModuleTemplates: (init?: boolean) => Promise<FlowModuleTemplateType[]>;
+  loadPluginTemplates: (init?: boolean) => Promise<FlowModuleTemplateType[]>;
 };
 
 export const usePluginStore = create<State>()(
   devtools(
     immer((set, get) => ({
       pluginModuleTemplates: [],
-      async loadPluginModuleTemplates(init) {
+      async loadPluginTemplates(init) {
         if (!init && get().pluginModuleTemplates.length > 0) {
           return get().pluginModuleTemplates;
         }
-        const templates = await getUserPlugs2ModuleTemplates();
+        const templates = await getPlugTemplates();
         set((state) => {
           state.pluginModuleTemplates = templates;
         });

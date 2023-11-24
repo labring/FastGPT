@@ -11,6 +11,7 @@ import {
   defaultVectorModels,
   defaultAudioSpeechModels
 } from '@fastgpt/global/core/ai/model';
+import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
 
 export let feConfigs: FeConfigsType = {};
 export let priceMd = '';
@@ -23,6 +24,7 @@ export let cqModelList = defaultCQModels;
 export let extractModelList = defaultExtractModels;
 export let qgModelList = defaultQGModels;
 export let audioSpeechModels = defaultAudioSpeechModels;
+export let simpleModeTemplates: AppSimpleEditConfigTemplateType[] = [];
 
 let retryTimes = 3;
 
@@ -42,6 +44,8 @@ export const clientInitData = async (): Promise<InitDateResponse> => {
     feConfigs = res.feConfigs;
     priceMd = res.priceMd;
     systemVersion = res.systemVersion;
+
+    simpleModeTemplates = res.simpleModeTemplates;
 
     return res;
   } catch (error) {

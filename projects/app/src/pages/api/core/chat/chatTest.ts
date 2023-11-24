@@ -52,7 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     /* start process */
     const { responseData } = await dispatchModules({
       res,
-      modules: modules,
+      appId,
+      modules,
       variables,
       teamId,
       tmbId,

@@ -9,14 +9,13 @@ import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
-import {
-  FlowNodeSpecialInputKeyEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getPluginModuleDetail } from '@/web/core/plugin/api';
+import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { LOGO_ICON } from '@fastgpt/global/core/chat/constants';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -27,9 +26,9 @@ type Props = FlowModuleItemType & {
 const NodeCard = (props: Props) => {
   const {
     children,
-    logo = '/icon/logo.svg',
+    avatar = LOGO_ICON,
     name = '未知模块',
-    description,
+    intro,
     minW = '300px',
     moduleId,
     flowType,
@@ -59,14 +58,13 @@ const NodeCard = (props: Props) => {
               icon: 'common/refreshLight',
               label: t('plugin.Synchronous version'),
               onClick: () => {
-                const pluginId = inputs.find(
-                  (item) => item.key === FlowNodeSpecialInputKeyEnum.pluginId
-                )?.value;
+                const pluginId = inputs.find((item) => item.key === ModuleInputKeyEnum.pluginId)
+                  ?.value;
                 if (!pluginId) return;
                 openConfirm(async () => {
                   try {
                     setLoading(true);
-                    const pluginModule = await getPluginModuleDetail(pluginId);
+                    const pluginModule = await getPreviewPluginModule(pluginId);
                     onResetNode(moduleId, pluginModule);
                   } catch (e) {
                     return toast({
@@ -147,18 +145,13 @@ const NodeCard = (props: Props) => {
       className={isPreview ? 'nodrag' : ''}
     >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
-        <Avatar src={logo} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
+        <Avatar src={avatar} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
           {name}
         </Box>
-        {description && (
-          <MyTooltip label={description} forceShow>
-            <QuestionOutlineIcon
-              display={['none', 'inline']}
-              transform={'translateY(1px)'}
-              mb={'1px'}
-              ml={1}
-            />
+        {intro && (
+          <MyTooltip label={intro} forceShow>
+            <QuestionOutlineIcon display={['none', 'inline']} mb={'1px'} ml={1} />
           </MyTooltip>
         )}
         <Box flex={1} />

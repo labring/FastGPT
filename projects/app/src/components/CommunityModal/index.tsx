@@ -13,7 +13,12 @@ const md = `
 const CommunityModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   return (
-    <MyModal isOpen={true} onClose={onClose} title={t('home.Community')}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/modal/concat.svg"
+      title={t('home.Community')}
+    >
       <ModalBody textAlign={'center'}>
         <Markdown source={md} />
       </ModalBody>

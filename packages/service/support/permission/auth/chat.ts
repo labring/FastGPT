@@ -1,6 +1,6 @@
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { AuthModeType } from '../type';
-import type { ChatSchema, ChatWithAppSchema } from '@fastgpt/global/core/chat/type';
+import type { ChatWithAppSchema } from '@fastgpt/global/core/chat/type';
 import { parseHeaderCert } from '../controller';
 import { MongoChat } from '../../../core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -16,7 +16,7 @@ export async function authChat({
   chatId: string;
 }): Promise<
   AuthResponseType & {
-    chat: ChatSchema;
+    chat: ChatWithAppSchema;
   }
 > {
   const { userId, teamId, tmbId } = await parseHeaderCert(props);

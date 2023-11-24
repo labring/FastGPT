@@ -1,7 +1,7 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
-import { ChatRoleMap, TaskResponseKeyEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 import {
@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { appCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const ChatItemSchema = new Schema({
   dataId: {
@@ -65,7 +66,7 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
-  [TaskResponseKeyEnum.responseData]: {
+  [ModuleOutputKeyEnum.responseData]: {
     type: Array,
     default: []
   }
