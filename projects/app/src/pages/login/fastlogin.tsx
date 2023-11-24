@@ -4,7 +4,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { setToken } from '@/web/support/user/auth';
+import { clearToken, setToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
@@ -28,12 +28,12 @@ const FastLogin = ({
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
+      setToken(res.token);
+      setUserInfo(res.user);
+
       // init store
       setLastChatId('');
       setLastChatAppId('');
-
-      setUserInfo(res.user);
-      setToken(res.token);
 
       setTimeout(() => {
         router.push(decodeURIComponent(callbackUrl));
@@ -73,7 +73,8 @@ const FastLogin = ({
   );
 
   useEffect(() => {
-    router.prefetch('/app/list');
+    clearToken();
+    router.prefetch(callbackUrl);
     authCode(code, token);
   }, []);
 

@@ -9,10 +9,11 @@ import { useChatStore } from '@/web/core/chat/storeChat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { setToken } from '@/web/support/user/auth';
+import { clearToken, setToken } from '@/web/support/user/auth';
 import { feConfigs } from '@/web/common/system/staticData';
 import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
+import { loginOut } from '@/web/support/user/api';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
@@ -53,6 +54,7 @@ const Login = () => {
   }
 
   useEffect(() => {
+    clearToken();
     router.prefetch('/app/list');
   }, []);
 

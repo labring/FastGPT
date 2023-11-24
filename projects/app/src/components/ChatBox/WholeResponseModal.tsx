@@ -69,7 +69,6 @@ const WholeResponseModal = ({
   const [currentTab, setCurrentTab] = useState(`0`);
 
   const activeModule = useMemo(() => response[Number(currentTab)], [currentTab, response]);
-  console.log(activeModule);
 
   return (
     <MyModal
@@ -111,13 +110,6 @@ const WholeResponseModal = ({
           {/* ai chat */}
           <Row label={t('chat.response.module temperature')} value={activeModule?.temperature} />
           <Row label={t('chat.response.module maxToken')} value={activeModule?.maxToken} />
-          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
-            <Row
-              label={t('chat.response.module quoteList')}
-              value={`~~~json\n${JSON.stringify(activeModule.quoteList, null, 2)}`}
-            />
-          )}
-
           <Row
             label={t('chat.response.module historyPreview')}
             value={(() => {
@@ -127,6 +119,12 @@ const WholeResponseModal = ({
                 .join('\n---\n');
             })()}
           />
+          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+            <Row
+              label={t('chat.response.module quoteList')}
+              value={`~~~json\n${JSON.stringify(activeModule.quoteList, null, 2)}`}
+            />
+          )}
 
           {/* dataset search */}
           <Row label={t('chat.response.module similarity')} value={activeModule?.similarity} />
