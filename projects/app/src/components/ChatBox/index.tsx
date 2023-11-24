@@ -762,6 +762,7 @@ const ChatBox = (
                                     size={'xs'}
                                     whiteSpace={'pre-wrap'}
                                     h={'auto'}
+                                    py={1}
                                     onClick={() => {
                                       resetInputVal(item);
                                     }}
