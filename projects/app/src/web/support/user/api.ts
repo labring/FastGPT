@@ -4,7 +4,11 @@ import type { ResLogin } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@/constants/common';
 import { UserUpdateParams } from '@/types/user';
 import { UserType } from '@fastgpt/global/support/user/type.d';
-import type { OauthLoginProps, PostLoginProps } from '@fastgpt/global/support/user/api.d';
+import type {
+  FastLoginProps,
+  OauthLoginProps,
+  PostLoginProps
+} from '@fastgpt/global/support/user/api.d';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -16,6 +20,8 @@ export const getTokenLogin = () =>
   GET<UserType>('/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginProps) =>
   POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
+export const postFastLogin = (params: FastLoginProps) =>
+  POST<ResLogin>('/plusApi/support/user/account/login/fastLogin', params);
 
 export const postRegister = ({
   username,

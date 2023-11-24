@@ -13,3 +13,8 @@ export type OauthLoginProps = {
   inviterId?: string;
   tmbId?: string;
 };
+
+export type FastLoginProps = {
+  token: string;
+  code: string;
+};
