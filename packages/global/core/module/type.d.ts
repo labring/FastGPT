@@ -25,7 +25,7 @@ export type moduleTemplateListType = {
 // store module type
 export type ModuleItemType = {
   name: string;
-  logo?: string;
+  avatar?: string;
   intro?: string;
   moduleId: string;
   position?: {

@@ -2,18 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { delay } from '@/utils/tools';
-import { PgClient } from '@fastgpt/service/common/pg';
-import {
-  DatasetDataIndexTypeEnum,
-  PgDatasetTableName
-} from '@fastgpt/global/core/dataset/constant';
-
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { getUserDefaultTeam } from '@fastgpt/service/support/user/team/controller';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { defaultQAModels } from '@fastgpt/global/core/ai/model';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { jiebaSplit } from '@/service/core/dataset/utils';
 
 let success = 0;
@@ -44,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
-export async function initFullTextToken(limit = 50) {
+export async function initFullTextToken(limit = 50): Promise<any> {
   try {
     const dataList = await MongoDatasetData.find({ fullTextToken: { $exists: false } }, '_id q a')
       .limit(limit)

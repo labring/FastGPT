@@ -48,27 +48,32 @@ const Render = ({ pluginId }: Props) => {
     return copyTemplates;
   }, [nodes]);
 
-  const { data } = useQuery(['getOnePlugin', pluginId], () => getOnePlugin(pluginId), {
-    onError: (error) => {
-      toast({
-        status: 'warning',
-        title: getErrText(error, t('plugin.Load Plugin Failed'))
-      });
-      router.replace('/plugin/list');
+  const { data: pluginDetail } = useQuery(
+    ['getOnePlugin', pluginId],
+    () => getOnePlugin(pluginId),
+    {
+      onError: (error) => {
+        toast({
+          status: 'warning',
+          title: getErrText(error, t('plugin.Load Plugin Failed'))
+        });
+        router.replace('/plugin/list');
+      }
     }
-  });
+  );
+  console.log(pluginDetail);
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
   const filterPlugins = useMemo(() => {
     return pluginModuleTemplates.filter((item) => item.id !== pluginId);
   }, [pluginId, pluginModuleTemplates]);
 
-  return data ? (
+  return pluginDetail ? (
     <Flow
       systemTemplates={filterTemplates}
       pluginTemplates={filterPlugins}
-      modules={data?.modules || []}
-      Header={<Header plugin={data} onClose={() => router.back()} />}
+      modules={pluginDetail?.modules || []}
+      Header={<Header plugin={pluginDetail} onClose={() => router.back()} />}
     />
   ) : (
     <Loading />

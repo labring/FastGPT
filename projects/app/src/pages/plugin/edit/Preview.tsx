@@ -34,7 +34,7 @@ const PreviewPlugin = ({
         item: {
           moduleId: 'plugin',
           flowType: FlowNodeTypeEnum.pluginModule,
-          logo: plugin.avatar,
+          avatar: plugin.avatar,
           name: plugin.name,
           intro: plugin.intro,
           ...formatPluginToPreviewModule(plugin._id, modules)
