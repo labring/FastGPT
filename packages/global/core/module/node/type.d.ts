@@ -20,7 +20,7 @@ export type FlowNodeChangeProps = {
 };
 
 export type FlowNodeInputItemType = {
-  key: `${ModuleInputKeyEnum}`;
+  key: `${ModuleInputKeyEnum}` | string;
   type: `${FlowNodeInputTypeEnum}`; // Decide on a render style
   value?: any;
   valueType?: `${ModuleDataTypeEnum}`; // data type

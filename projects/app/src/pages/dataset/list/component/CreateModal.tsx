@@ -178,7 +178,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         <Flex mt={2} flexWrap={'wrap'}>
           {getValues('tags')
             .split(' ')
-            .filter((item) => item)
+            .filter(Boolean)
             .map((item, i) => (
               <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>
                 {item}

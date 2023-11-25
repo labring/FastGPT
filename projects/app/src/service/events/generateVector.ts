@@ -7,8 +7,16 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 
-const reduceQueue = () => {
+const reduceQueue = (retry = false) => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
+
+  if (global.vectorQueueLen === 0 && retry) {
+    setTimeout(() => {
+      generateVector();
+    }, 60000);
+  }
+
+  return global.vectorQueueLen === 0;
 };
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
@@ -57,8 +65,8 @@ export async function generateVector(): Promise<any> {
       return {
         data,
         dataItem: {
-          q: data.q.replace(/[\x00-\x08]/g, ' '),
-          a: data.a?.replace(/[\x00-\x08]/g, ' ') || '',
+          q: data.q,
+          a: data.a || '',
           indexes: data.indexes
         }
       };
@@ -70,12 +78,13 @@ export async function generateVector(): Promise<any> {
     }
   })();
 
-  if (done) {
-    reduceQueue();
-    global.vectorQueueLen <= 0 && console.log(`【index】Task done`);
+  if (done || !data) {
+    if (reduceQueue()) {
+      console.log(`【index】Task done`);
+    }
     return;
   }
-  if (error || !data) {
+  if (error) {
     reduceQueue();
     return generateVector();
   }
@@ -108,8 +117,15 @@ export async function generateVector(): Promise<any> {
   }
 
   // create vector and insert
-
   try {
+    // invalid data
+    if (!data.q.trim()) {
+      await MongoDatasetTraining.findByIdAndDelete(data._id);
+      reduceQueue();
+      generateVector();
+      return;
+    }
+
     // insert data to pg
     const { tokenLen } = await insertData2Dataset({
       teamId: data.teamId,
@@ -135,7 +151,7 @@ export async function generateVector(): Promise<any> {
     reduceQueue();
     generateVector();
   } catch (err: any) {
-    reduceQueue();
+    reduceQueue(true);
     // log
     if (err?.response) {
       addLog.info('openai error: 生成向量错误', {

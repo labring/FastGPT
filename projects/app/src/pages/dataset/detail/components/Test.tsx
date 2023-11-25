@@ -16,6 +16,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { useTranslation } from 'next-i18next';
 import { feConfigs } from '@/web/common/system/staticData';
+import { SearchTestResponse } from '../../../../global/core/dataset/api';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = ({ datasetId }: { datasetId: string }) => {
@@ -37,20 +38,21 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => postSearchText({ datasetId, text: inputText.trim(), rerank, limit: 20 }),
-    onSuccess(res: SearchDataResponseItemType[]) {
-      if (!res || res.length === 0) {
+    mutationFn: () => postSearchText({ datasetId, text: inputText.trim(), rerank, limit: 30 }),
+    onSuccess(res: SearchTestResponse) {
+      if (!res || res.list.length === 0) {
         return toast({
           status: 'warning',
           title: t('dataset.test.noResult')
         });
       }
-      const testItem = {
+      const testItem: SearchTestStoreItemType = {
         id: nanoid(),
         datasetId,
         text: inputText.trim(),
         time: new Date(),
-        results: res
+        results: res.list,
+        duration: res.duration
       };
       pushDatasetTestItem(testItem);
       setDatasetTestItem(testItem);
@@ -176,7 +178,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           <>
             <Flex alignItems={'center'}>
               <Box fontSize={'3xl'} color={'myGray.600'}>
-                测试结果
+                {t('core.dataset.test.Test Result')}
               </Box>
               <MyTooltip
                 label={
@@ -185,12 +187,13 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 forceShow
               >
                 <QuestionOutlineIcon
-                  ml={2}
+                  mx={2}
                   color={'myGray.600'}
                   cursor={'pointer'}
                   fontSize={'lg'}
                 />
               </MyTooltip>
+              <Box>({datasetTestItem.duration})</Box>
             </Flex>
             <Grid
               mt={1}

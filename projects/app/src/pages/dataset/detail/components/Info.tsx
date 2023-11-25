@@ -230,16 +230,13 @@ const Info = (
           placeholder={'标签,使用空格分割。'}
           maxLength={30}
           onChange={(e) => {
-            setValue(
-              'tags',
-              e.target.value.split(' ').filter((item) => item)
-            );
+            setValue('tags', e.target.value.split(' ').filter(Boolean));
             setRefresh(!refresh);
           }}
         />
         <Flex w={'100%'} pl={['90px', '160px']} mt={2}>
           {getValues('tags')
-            .filter((item) => item)
+            .filter(Boolean)
             .map((item, i) => (
               <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>
                 {item}

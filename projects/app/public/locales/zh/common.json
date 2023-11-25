@@ -261,6 +261,9 @@
       "data": {
         "Edit": "编辑数据",
         "id": "数据ID"
+      },
+      "test": {
+        "Test Result": "测试结果"
       }
     },
     "module": {

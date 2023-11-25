@@ -24,17 +24,81 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import MyIcon from '@/components/Icon';
+import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 
-export type FormType = {
+export type FormType = CreateOnePluginParams & {
   id?: string;
-  avatar: string;
-  name: string;
-  intro: string;
 };
-export const defaultForm = {
+export const defaultForm: FormType = {
   avatar: '/icon/logo.svg',
   name: '',
-  intro: ''
+  intro: '',
+  modules: [
+    {
+      moduleId: 'w90mfp',
+      name: '定义插件输入',
+      avatar: '/imgs/module/input.png',
+      flowType: 'pluginInput',
+      showStatus: false,
+      position: {
+        x: 616.4226348688949,
+        y: -165.05298493910115
+      },
+      inputs: [
+        {
+          key: 'question',
+          valueType: 'string',
+          type: 'target',
+          label: '用户问题',
+          required: true,
+          edit: true,
+          connected: false
+        }
+      ],
+      outputs: [
+        {
+          key: 'question',
+          valueType: 'string',
+          label: '用户问题',
+          type: 'source',
+          edit: true,
+          targets: []
+        }
+      ]
+    },
+    {
+      moduleId: 'tze1ju',
+      name: '定义插件输出',
+      avatar: '/imgs/module/output.png',
+      flowType: 'pluginOutput',
+      showStatus: false,
+      position: {
+        x: 1607.7142331269126,
+        y: -151.8669210746189
+      },
+      inputs: [
+        {
+          key: 'answer',
+          type: 'target',
+          valueType: 'string',
+          label: '答案',
+          required: true,
+          edit: true,
+          connected: true
+        }
+      ],
+      outputs: [
+        {
+          key: 'answer',
+          valueType: 'string',
+          label: '答案',
+          type: 'source',
+          edit: true,
+          targets: []
+        }
+      ]
+    }
+  ]
 };
 
 const CreateModal = ({

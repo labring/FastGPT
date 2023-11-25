@@ -1,5 +1,8 @@
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type.d';
+import type {
+  DatasetDataWithCollectionType,
+  SearchDataResponseItemType
+} from '@fastgpt/global/core/dataset/type.d';
 import { PgClient } from '@fastgpt/service/common/pg';
 import { getVectorsByText } from '@/service/core/ai/vector';
 import { delay } from '@/utils/tools';
@@ -8,6 +11,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { PostReRankResponse } from '@fastgpt/global/core/ai/api';
+import { jiebaSplit } from '../utils';
 
 export async function insertData2Pg({
   mongoDataId,
@@ -125,39 +129,100 @@ export async function deletePgDataById(
   };
 }
 
-// search
-export async function searchDatasetData({
-  text,
-  model,
-  similarity = 0,
-  limit,
-  datasetIds = [],
-  rerank = false
-}: {
+// ------------------ search start ------------------
+type SearchProps = {
   text: string;
   model: string;
   similarity?: number; // min distance
   limit: number;
   datasetIds: string[];
   rerank?: boolean;
-}) {
+};
+export async function searchDatasetData(props: SearchProps) {
+  const { text, similarity = 0, limit, rerank = false } = props;
+
+  const [{ tokenLen, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
+    embeddingRecall({
+      ...props,
+      limit: rerank ? Math.max(50, limit * 3) : limit * 2
+    }),
+    fullTextRecall({
+      ...props,
+      limit: 40
+    })
+  ]);
+
+  // concat recall result
+  let set = new Set<string>();
+  const concatRecallResults = embeddingRecallResults;
+  for (const item of fullTextRecallResults) {
+    if (!set.has(item.id)) {
+      concatRecallResults.push(item);
+      set.add(item.id);
+    }
+  }
+
+  // remove same q and a data
+  set = new Set<string>();
+  const filterSameDataResults = concatRecallResults.filter((item) => {
+    const str = `${item.q}${item.a}`.trim();
+    if (set.has(str)) return false;
+    set.add(str);
+    return true;
+  });
+
+  if (!rerank) {
+    return {
+      searchRes: filterSameDataResults.slice(0, limit),
+      tokenLen
+    };
+  }
+
+  // ReRank result
+  const reRankResults = await reRankSearchResult({
+    query: text,
+    data: filterSameDataResults
+  });
+
+  // similarity filter
+  const filterReRankResults = reRankResults.filter((item) => item.score > similarity);
+
+  // concat rerank and embedding data
+  set = new Set<string>(filterReRankResults.map((item) => item.id));
+  const concatResult = filterReRankResults.concat(
+    filterSameDataResults.filter((item) => {
+      if (set.has(item.id)) return false;
+      set.add(item.id);
+      return true;
+    })
+  );
+
+  return {
+    searchRes: concatResult.slice(0, limit),
+    tokenLen
+  };
+}
+export async function embeddingRecall({
+  text,
+  model,
+  similarity = 0,
+  limit,
+  datasetIds = [],
+  rerank = false
+}: SearchProps) {
   const { vectors, tokenLen } = await getVectorsByText({
     model,
     input: [text]
   });
 
-  const minLimit = global.systemEnv.pluginBaseUrl ? Math.max(50, limit * 4) : limit * 2;
-
   const results: any = await PgClient.query(
     `BEGIN;
     SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
-    select id, collection_id, data_id, (vector <#> '[${
-      vectors[0]
-    }]') * -1 AS score from ${PgDatasetTableName} 
-    where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')}) AND vector <#> '[${
-      vectors[0]
-    }]' < -${similarity} 
-    order by score desc limit ${minLimit};
+    select id, collection_id, data_id, (vector <#> '[${vectors[0]}]') * -1 AS score 
+      from ${PgDatasetTableName} 
+      where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+          ${rerank ? '' : `AND vector <#> '[${vectors[0]}]' < -${similarity}`}
+      order by score desc limit ${limit};
     COMMIT;`
   );
 
@@ -212,47 +277,54 @@ export async function searchDatasetData({
     })
     .filter((item) => item !== null) as SearchDataResponseItemType[];
 
-  // remove same q and a data
-  set = new Set<string>();
-  const filterData = formatResult.filter((item) => {
-    const str = `${item.q}${item.a}`.trim();
-    if (set.has(str)) return false;
-    set.add(str);
-    return true;
-  });
-
-  if (!rerank) {
-    return {
-      searchRes: filterData.slice(0, limit),
-      tokenLen
-    };
-  }
-
-  // ReRank result
-  const reRankResult = await reRankSearchResult({
-    query: text,
-    data: filterData
-  });
-
-  // similarity filter
-  const filterReRankResult = reRankResult.filter((item) => item.score > similarity);
-
-  // concat rerank and embedding data
-  set = new Set<string>(filterReRankResult.map((item) => item.id));
-  const concatResult = filterReRankResult.concat(
-    filterData.filter((item) => {
-      if (set.has(item.id)) return false;
-      set.add(item.id);
-      return true;
-    })
-  );
-
   return {
-    searchRes: concatResult.slice(0, limit),
+    embeddingRecallResults: formatResult,
     tokenLen
   };
 }
+export async function fullTextRecall({
+  text,
+  limit,
+  datasetIds = [],
+  rerank = false
+}: SearchProps): Promise<{
+  fullTextRecallResults: SearchDataResponseItemType[];
+  tokenLen: number;
+}> {
+  if (!rerank) {
+    return {
+      fullTextRecallResults: [],
+      tokenLen: 0
+    };
+  }
 
+  const result = (await MongoDatasetData.find(
+    {
+      datasetId: { $in: datasetIds.map((item) => item) },
+      $text: { $search: jiebaSplit({ text }) }
+    },
+    { score: { $meta: 'textScore' } }
+  )
+    .sort({ score: { $meta: 'textScore' } })
+    .limit(limit)
+    .populate('collectionId')
+    .lean()) as DatasetDataWithCollectionType[];
+
+  return {
+    fullTextRecallResults: result.map((item) => ({
+      id: String(item._id),
+      datasetId: String(item.datasetId),
+      collectionId: String(item.collectionId._id),
+      sourceName: item.collectionId.name || '',
+      sourceId: item.collectionId.metadata?.fileId || item.collectionId.metadata?.rawLink,
+      q: item.q,
+      a: item.a,
+      indexes: item.indexes,
+      score: 1
+    })),
+    tokenLen: 0
+  };
+}
 // plus reRank search result
 export async function reRankSearchResult({
   data,
@@ -279,7 +351,7 @@ export async function reRankSearchResult({
           score: item.score ?? target.score
         };
       })
-      .filter((item) => item) as SearchDataResponseItemType[];
+      .filter(Boolean) as SearchDataResponseItemType[];
 
     return mergeResult;
   } catch (error) {
@@ -288,3 +360,4 @@ export async function reRankSearchResult({
     return data;
   }
 }
+// ------------------ search end ------------------

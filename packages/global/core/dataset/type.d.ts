@@ -59,6 +59,7 @@ export type DatasetDataSchemaType = {
   collectionId: string;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
 };
 
@@ -82,6 +83,9 @@ export type DatasetTrainingSchemaType = {
 
 export type CollectionWithDatasetType = Omit<DatasetCollectionSchemaType, 'datasetId'> & {
   datasetId: DatasetSchemaType;
+};
+export type DatasetDataWithCollectionType = Omit<DatasetDataSchemaType, 'collectionId'> & {
+  collectionId: DatasetCollectionSchemaType;
 };
 
 /* ================= dataset ===================== */
@@ -130,6 +134,6 @@ export type DatasetFileSchema = {
 };
 
 /* ============= search =============== */
-export type SearchDataResponseItemType = DatasetDataItemType & {
+export type SearchDataResponseItemType = Omit<DatasetDataItemType, 'isOwner' | 'canWrite'> & {
   score: number;
 };

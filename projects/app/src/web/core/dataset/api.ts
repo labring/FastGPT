@@ -3,12 +3,12 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import type {
   DatasetUpdateParams,
-  SearchTestProps,
   GetDatasetCollectionsProps,
   GetDatasetDataListProps,
   CreateDatasetCollectionParams,
   UpdateDatasetCollectionParams
 } from '@/global/core/api/datasetReq.d';
+import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import type {
   PushDatasetDataProps,
   UpdateDatasetDataProps,
@@ -21,8 +21,6 @@ import type {
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import { getToken } from '@/web/support/user/auth';
-import download from 'downloadjs';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
@@ -53,7 +51,7 @@ export const getCheckExportLimit = (datasetId: string) =>
 
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
-  POST<SearchDataResponseItemType[]>(`/core/dataset/searchTest`, data);
+  POST<SearchTestResponse>(`/core/dataset/searchTest`, data);
 
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>

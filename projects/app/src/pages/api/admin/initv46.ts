@@ -295,7 +295,7 @@ async function initPgData() {
     ]);
   } catch (error) {
     console.log(error);
-    console.log('column exits');
+    console.log('column exists');
   }
 
   const { rows } = await PgClient.query<{ user_id: string }>(`

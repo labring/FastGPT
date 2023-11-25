@@ -2,18 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { delay } from '@/utils/tools';
-import { PgClient } from '@fastgpt/service/common/pg';
-import {
-  DatasetDataIndexTypeEnum,
-  PgDatasetTableName
-} from '@fastgpt/global/core/dataset/constant';
-
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { getUserDefaultTeam } from '@fastgpt/service/support/user/team/controller';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { defaultQAModels } from '@fastgpt/global/core/ai/model';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { jiebaSplit } from '@/service/core/dataset/utils';
 
 let success = 0;
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
@@ -22,6 +13,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { limit = 50 } = req.body as { limit: number };
     await authCert({ req, authRoot: true });
     await connectToDatabase();
+    success = 0;
+
+    console.log(
+      'total',
+      await MongoDatasetData.countDocuments({ fullTextToken: { $exists: false } })
+    );
 
     await initFullTextToken(limit);
 
@@ -37,4 +34,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
-export async function initFullTextToken(limit = 50) {}
+export async function initFullTextToken(limit = 50): Promise<any> {
+  try {
+    const dataList = await MongoDatasetData.find({ fullTextToken: { $exists: false } }, '_id q a')
+      .limit(limit)
+      .lean();
+    if (dataList.length === 0) return;
+
+    const result = await Promise.allSettled(
+      dataList.map((item) => {
+        const text = item.q + (item.a || '');
+        const tokens = jiebaSplit({ text });
+
+        return MongoDatasetData.findByIdAndUpdate(item._id, {
+          $set: {
+            fullTextToken: tokens
+          }
+        });
+      })
+    );
+
+    success += result.filter((item) => item.status === 'fulfilled').length;
+    console.log(`success: ${success}`);
+    return initFullTextToken(limit);
+  } catch (error) {
+    await delay(1000);
+    return initFullTextToken(limit);
+  }
+}

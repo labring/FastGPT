@@ -13,8 +13,15 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '../support/permission/auth/bill';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 
-const reduceQueue = () => {
+const reduceQueue = (retry = false) => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
+  if (global.qaQueueLen === 0 && retry) {
+    setTimeout(() => {
+      generateQA();
+    }, 60000);
+  }
+
+  return global.vectorQueueLen === 0;
 };
 
 export async function generateQA(): Promise<any> {
@@ -32,7 +39,7 @@ export async function generateQA(): Promise<any> {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
           mode: TrainingModeEnum.qa,
-          lockTime: { $lte: new Date(Date.now() - 10 * 60 * 1000) }
+          lockTime: { $lte: new Date(Date.now() - 6 * 60 * 1000) }
         },
         {
           lockTime: new Date()
@@ -70,12 +77,13 @@ export async function generateQA(): Promise<any> {
     }
   })();
 
-  if (done) {
-    reduceQueue();
-    global.vectorQueueLen <= 0 && console.log(`【QA】Task Done`);
+  if (done || !data) {
+    if (reduceQueue()) {
+      console.log(`【QA】Task Done`);
+    }
     return;
   }
-  if (error || !data) {
+  if (error) {
     reduceQueue();
     return generateQA();
   }
@@ -171,7 +179,7 @@ export async function generateQA(): Promise<any> {
     reduceQueue();
     generateQA();
   } catch (err: any) {
-    reduceQueue();
+    reduceQueue(true);
     // log
     if (err?.response) {
       addLog.info('openai error: 生成QA错误', {
