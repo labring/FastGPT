@@ -18,13 +18,6 @@ export type DatasetUpdateParams = {
   agentModel?: LLMModelItemType;
 };
 
-export type SearchTestProps = {
-  datasetId: string;
-  text: string;
-  limit?: number;
-  rerank?: boolean;
-};
-
 /* ======= collections =========== */
 export type GetDatasetCollectionsProps = RequestPaging & {
   datasetId: string;

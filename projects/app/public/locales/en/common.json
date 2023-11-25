@@ -261,6 +261,9 @@
       "data": {
         "Edit": "Edit Data",
         "id": "Data ID"
+      },
+      "test": {
+        "Test Result": "Results"
       }
     },
     "module": {

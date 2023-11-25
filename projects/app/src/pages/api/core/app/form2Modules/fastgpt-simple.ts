@@ -41,7 +41,7 @@ function simpleChatTemplate({
     {
       moduleId: 'userChatInput',
       name: '用户问题(对话入口)',
-      logo: '/imgs/module/userChatInput.png',
+      avatar: '/imgs/module/userChatInput.png',
       flowType: 'questionInput',
       position: {
         x: 464.32198615344566,
@@ -73,7 +73,7 @@ function simpleChatTemplate({
     {
       moduleId: 'history',
       name: '聊天记录',
-      logo: '/imgs/module/history.png',
+      avatar: '/imgs/module/history.png',
       flowType: 'historyNode',
       position: {
         x: 452.5466249541586,
@@ -114,7 +114,7 @@ function simpleChatTemplate({
     {
       moduleId: 'chatModule',
       name: 'AI 对话',
-      logo: '/imgs/module/AI.png',
+      avatar: '/imgs/module/AI.png',
       flowType: 'chatNode',
       showStatus: true,
       position: {
@@ -284,7 +284,7 @@ function datasetTemplate({
     {
       moduleId: 'userChatInput',
       name: '用户问题(对话入口)',
-      logo: '/imgs/module/userChatInput.png',
+      avatar: '/imgs/module/userChatInput.png',
       flowType: 'questionInput',
       position: {
         x: 464.32198615344566,
@@ -320,7 +320,7 @@ function datasetTemplate({
     {
       moduleId: 'history',
       name: '聊天记录',
-      logo: '/imgs/module/history.png',
+      avatar: '/imgs/module/history.png',
       flowType: 'historyNode',
       position: {
         x: 452.5466249541586,
@@ -361,7 +361,7 @@ function datasetTemplate({
     {
       moduleId: 'datasetSearch',
       name: '知识库搜索',
-      logo: '/imgs/module/db.png',
+      avatar: '/imgs/module/db.png',
       flowType: 'datasetSearchNode',
       showStatus: true,
       position: {
@@ -454,7 +454,7 @@ function datasetTemplate({
     {
       moduleId: 'chatModule',
       name: 'AI 对话',
-      logo: '/imgs/module/AI.png',
+      avatar: '/imgs/module/AI.png',
       flowType: 'chatNode',
       showStatus: true,
       position: {

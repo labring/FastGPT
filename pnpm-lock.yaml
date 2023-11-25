@@ -164,6 +164,9 @@ importers:
       '@mozilla/readability':
         specifier: ^0.4.4
         version: registry.npmmirror.com/@mozilla/readability@0.4.4
+      '@node-rs/jieba':
+        specifier: ^1.7.2
+        version: registry.npmmirror.com/@node-rs/jieba@1.7.2
       '@tanstack/react-query':
         specifier: ^4.24.10
         version: registry.npmmirror.com/@tanstack/react-query@4.36.1(react-dom@18.2.0)(react@18.2.0)
@@ -3685,6 +3688,174 @@ packages:
     os: [win32]
     requiresBuild: true
     optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-android-arm-eabi@1.7.2:
+    resolution: {integrity: sha512-FyDHRNSRIHOQO7S6Q4RwuGffnnnuNwaXPH7K8WqSzifEY+zFIaSPcNqrZHrnqyeXc4JiYpBIHeP+0Mkf1kIGRA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-android-arm-eabi/-/jieba-android-arm-eabi-1.7.2.tgz}
+    name: '@node-rs/jieba-android-arm-eabi'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [arm]
+    os: [android]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-android-arm64@1.7.2:
+    resolution: {integrity: sha512-z0UEZCGrAX/IiarhuDMsEIDZBS77UZv4SQyL/J48yrsbWKbb2lJ1vCrYxXIWqwp6auXHEu4r1O/pMriDAcEnPg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-android-arm64/-/jieba-android-arm64-1.7.2.tgz}
+    name: '@node-rs/jieba-android-arm64'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [android]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-darwin-arm64@1.7.2:
+    resolution: {integrity: sha512-M2cHIWRaaOmXGKy446SH2+Y2PzREaI2oYznPbg55wYEdioUp01YS/2WRG8CaoCKEj0aUocA7MFM2vVcoIAsbQw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-darwin-arm64/-/jieba-darwin-arm64-1.7.2.tgz}
+    name: '@node-rs/jieba-darwin-arm64'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-darwin-x64@1.7.2:
+    resolution: {integrity: sha512-euDawBU2FxB0CGTR803BA6WABsiicIrqa61z2AFFDPkJCDrauEM0jbMg3GDKLAvbaLbZ1Etu3QNN5xyroqp4Qw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-darwin-x64/-/jieba-darwin-x64-1.7.2.tgz}
+    name: '@node-rs/jieba-darwin-x64'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-freebsd-x64@1.7.2:
+    resolution: {integrity: sha512-vXCaYxPb90d/xTBVG+ZZXrFLXsO2719pZSyiZCL2tey+UY28U7MOoK6394Wwmf0FCB/eRTQMCKjVIUDi+IRMUg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-freebsd-x64/-/jieba-freebsd-x64-1.7.2.tgz}
+    name: '@node-rs/jieba-freebsd-x64'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [freebsd]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-linux-arm-gnueabihf@1.7.2:
+    resolution: {integrity: sha512-HTep79XlJYO3KRYZ2kJChG9HnYr1DKSQTB+HEYWKLK0ifphqybcxGNLAdH0S4dViG2ciD0+iN/refgtqZEidpw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-linux-arm-gnueabihf/-/jieba-linux-arm-gnueabihf-1.7.2.tgz}
+    name: '@node-rs/jieba-linux-arm-gnueabihf'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [arm]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-linux-arm64-gnu@1.7.2:
+    resolution: {integrity: sha512-P8QJdQydOVewL1MIqYiRpI7LOfrRQag+p4/hwExe+YXH8C7DOrR8rWJD/7XNRTbpOimlHq1UN/e+ZzhxQF/cLw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-linux-arm64-gnu/-/jieba-linux-arm64-gnu-1.7.2.tgz}
+    name: '@node-rs/jieba-linux-arm64-gnu'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-linux-arm64-musl@1.7.2:
+    resolution: {integrity: sha512-WjnN0hmDvTXb2h3hMW5VnUGkK1xaqhs+WHfMMilau55+YN+YOYALKZ0TeBY4BapClLuBx54wqwmBX+B4hAXunQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-linux-arm64-musl/-/jieba-linux-arm64-musl-1.7.2.tgz}
+    name: '@node-rs/jieba-linux-arm64-musl'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-linux-x64-gnu@1.7.2:
+    resolution: {integrity: sha512-gBXds/DwNSA6lNUxJjL6WIaNT6pnlM5juUgV/krLLkBJ8vXpOrQ07p0rrK1tnigz9b20xhsHaFRSwED1Y8zeXw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-linux-x64-gnu/-/jieba-linux-x64-gnu-1.7.2.tgz}
+    name: '@node-rs/jieba-linux-x64-gnu'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-linux-x64-musl@1.7.2:
+    resolution: {integrity: sha512-tNVD3SMuG5zAj7+bLS2Enio3zR7BPxi3PhQtpQ+Hv83jajIcN46QQ0EdoMFz/aB+hkQ9PlLAstu+VREFegs5EA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-linux-x64-musl/-/jieba-linux-x64-musl-1.7.2.tgz}
+    name: '@node-rs/jieba-linux-x64-musl'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-win32-arm64-msvc@1.7.2:
+    resolution: {integrity: sha512-/e1iQ0Dh02lGPNCYTU/H3cfIsWydaGRzZ3TDj6GfWrxkWqXORL98x/VJ/C/uKLpc7GSLLd9ygyZG7SOAfKe2tA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-win32-arm64-msvc/-/jieba-win32-arm64-msvc-1.7.2.tgz}
+    name: '@node-rs/jieba-win32-arm64-msvc'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-win32-ia32-msvc@1.7.2:
+    resolution: {integrity: sha512-cYjA6YUiOwtuEzWErvwMMt/RETNWQDLcmAaiHA8ohsa6c0eB0kRJlQCc683tlaczZxqroY/7C9mxgJNGvoGRbw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-win32-ia32-msvc/-/jieba-win32-ia32-msvc-1.7.2.tgz}
+    name: '@node-rs/jieba-win32-ia32-msvc'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [ia32]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba-win32-x64-msvc@1.7.2:
+    resolution: {integrity: sha512-2M+Um3woFF17sa8VBYQQ6E5PNMe9Kf9fdzmeDh/GzuNHXlxW4LyK9VTV8zchIv/bDNAR5Z85kfW4wASULUxvFQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba-win32-x64-msvc/-/jieba-win32-x64-msvc-1.7.2.tgz}
+    name: '@node-rs/jieba-win32-x64-msvc'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  registry.npmmirror.com/@node-rs/jieba@1.7.2:
+    resolution: {integrity: sha512-zGto08NDU+KWm670qVHYGTb0YTEJ0A97dwH3WCnnhyRYMqTbOXKC6OwTc/cjzfSJP1UDBSar9Ug9BlmWmEThWg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@node-rs/jieba/-/jieba-1.7.2.tgz}
+    name: '@node-rs/jieba'
+    version: 1.7.2
+    engines: {node: '>= 10'}
+    optionalDependencies:
+      '@node-rs/jieba-android-arm-eabi': registry.npmmirror.com/@node-rs/jieba-android-arm-eabi@1.7.2
+      '@node-rs/jieba-android-arm64': registry.npmmirror.com/@node-rs/jieba-android-arm64@1.7.2
+      '@node-rs/jieba-darwin-arm64': registry.npmmirror.com/@node-rs/jieba-darwin-arm64@1.7.2
+      '@node-rs/jieba-darwin-x64': registry.npmmirror.com/@node-rs/jieba-darwin-x64@1.7.2
+      '@node-rs/jieba-freebsd-x64': registry.npmmirror.com/@node-rs/jieba-freebsd-x64@1.7.2
+      '@node-rs/jieba-linux-arm-gnueabihf': registry.npmmirror.com/@node-rs/jieba-linux-arm-gnueabihf@1.7.2
+      '@node-rs/jieba-linux-arm64-gnu': registry.npmmirror.com/@node-rs/jieba-linux-arm64-gnu@1.7.2
+      '@node-rs/jieba-linux-arm64-musl': registry.npmmirror.com/@node-rs/jieba-linux-arm64-musl@1.7.2
+      '@node-rs/jieba-linux-x64-gnu': registry.npmmirror.com/@node-rs/jieba-linux-x64-gnu@1.7.2
+      '@node-rs/jieba-linux-x64-musl': registry.npmmirror.com/@node-rs/jieba-linux-x64-musl@1.7.2
+      '@node-rs/jieba-win32-arm64-msvc': registry.npmmirror.com/@node-rs/jieba-win32-arm64-msvc@1.7.2
+      '@node-rs/jieba-win32-ia32-msvc': registry.npmmirror.com/@node-rs/jieba-win32-ia32-msvc@1.7.2
+      '@node-rs/jieba-win32-x64-msvc': registry.npmmirror.com/@node-rs/jieba-win32-x64-msvc@1.7.2
+    dev: false
 
   registry.npmmirror.com/@nodelib/fs.scandir@2.1.5:
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz}

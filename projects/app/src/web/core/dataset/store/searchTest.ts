@@ -8,6 +8,7 @@ export type SearchTestStoreItemType = {
   datasetId: string;
   text: string;
   time: Date;
+  duration: string;
   results: SearchDataResponseItemType[];
 };
 

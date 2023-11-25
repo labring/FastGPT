@@ -342,7 +342,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                 const items = clipboardData.items;
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
-                  .filter((item) => item) as File[];
+                  .filter(Boolean) as File[];
                 onSelectFile(files);
               }
             }}

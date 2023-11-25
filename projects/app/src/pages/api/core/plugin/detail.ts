@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { id } = req.query as { id: string };
     await connectToDatabase();
-    await authPluginCrud({ req, authToken: true, id, per: 'r' });
+    const { plugin } = await authPluginCrud({ req, authToken: true, id, per: 'r' });
 
     jsonRes(res, {
-      data: await MongoPlugin.findOne({ id })
+      data: plugin
     });
   } catch (err) {
     jsonRes(res, {

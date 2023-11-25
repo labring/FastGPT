@@ -6,6 +6,7 @@ import type { CreateAppParams } from '@fastgpt/global/core/app/api.d';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -39,7 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       teamId,
       tmbId,
       modules,
-      type
+      type,
+      simpleTemplateId: SimpleModeTemplate_FastGPT_Universal.id
     });
 
     jsonRes(res, {

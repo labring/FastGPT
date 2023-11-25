@@ -2,7 +2,7 @@ const decoder = new TextDecoder();
 
 export const parseStreamChunk = (value: BufferSource) => {
   const chunk = decoder.decode(value);
-  const chunkLines = chunk.split('\n\n').filter((item) => item);
+  const chunkLines = chunk.split('\n\n').filter(Boolean);
   const chunkResponse = chunkLines.map((item) => {
     const splitEvent = item.split('\n');
     if (splitEvent.length === 2) {

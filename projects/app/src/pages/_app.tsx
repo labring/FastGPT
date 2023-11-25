@@ -93,7 +93,7 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>{feConfigs?.systemTitle || process.env.SYSTEM_NAME || 'GPT'}</title>
+        <title>{feConfigs?.systemTitle || process.env.SYSTEM_NAME || ''}</title>
         <meta
           name="description"
           content="FastGPT 是一个大模型应用编排系统，提供开箱即用的数据处理、模型调用等能力，可以快速的构建知识库并通过 Flow 可视化进行工作流编排，实现复杂的知识库场景！"
