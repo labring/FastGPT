@@ -15,6 +15,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
+import { simpleText } from '@fastgpt/global/common/string/tools';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -46,8 +47,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     ] = await Promise.all([getCollectionWithDataset(collectionId), authTeamBalance(teamId)]);
 
     // format data
-    const formatQ = q.replace(/\\n/g, '\n').trim().replace(/'/g, '"');
-    const formatA = a?.replace(/\\n/g, '\n').trim().replace(/'/g, '"') || '';
+    const formatQ = simpleText(q);
+    const formatA = simpleText(a);
+    const formatIndexes = indexes?.map((item) => ({
+      ...item,
+      text: simpleText(item.text)
+    }));
 
     // token check
     const token = countPromptTokens(formatQ, 'system');
@@ -72,7 +77,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       q: formatQ,
       a: formatA,
       model: vectorModelData.model,
-      indexes
+      indexes: formatIndexes
     });
 
     pushGenerateVectorBill({

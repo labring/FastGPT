@@ -8,5 +8,5 @@ export const getChatModelNameListByModules = (modules: ModuleItemType[]): string
       const model = item.inputs.find((input) => input.key === 'model')?.value;
       return global.chatModels.find((item) => item.model === model)?.name || '';
     })
-    .filter((item) => item);
+    .filter(Boolean);
 };

@@ -13,6 +13,7 @@ import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
 import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
+import { simpleText } from '@fastgpt/global/common/string/tools';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -70,6 +71,21 @@ export async function pushDataToDatasetCollection({
   const { datasetId, model, maxToken } = await checkModelValid({
     mode,
     collectionId
+  });
+
+  // format q and a, remove empty char
+  data.forEach((item) => {
+    item.q = simpleText(item.q);
+    item.a = simpleText(item.a);
+
+    item.indexes = item.indexes
+      ?.map((index) => {
+        return {
+          ...index,
+          text: simpleText(index.text)
+        };
+      })
+      .filter(Boolean);
   });
 
   // filter repeat or equal content

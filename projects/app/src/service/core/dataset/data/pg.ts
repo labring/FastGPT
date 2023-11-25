@@ -351,7 +351,7 @@ export async function reRankSearchResult({
           score: item.score ?? target.score
         };
       })
-      .filter((item) => item) as SearchDataResponseItemType[];
+      .filter(Boolean) as SearchDataResponseItemType[];
 
     return mergeResult;
   } catch (error) {

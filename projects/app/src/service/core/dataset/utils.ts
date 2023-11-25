@@ -29,6 +29,6 @@ export function jiebaSplit({ text }: { text: string }) {
 
   return tokens
     .map((item) => item.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, '').trim())
-    .filter((item) => item)
+    .filter(Boolean)
     .join(' ');
 }

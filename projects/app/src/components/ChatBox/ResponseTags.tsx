@@ -40,7 +40,7 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
       .filter((item) => item.moduleType === FlowNodeTypeEnum.chatNode)
       .map((item) => item.quoteList)
       .flat()
-      .filter((item) => item) as SearchDataResponseItemType[];
+      .filter(Boolean) as SearchDataResponseItemType[];
     const sourceList = quoteList.reduce(
       (acc: Record<string, SearchDataResponseItemType[]>, cur) => {
         if (!acc[cur.sourceName]) {

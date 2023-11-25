@@ -35,9 +35,6 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  q = q.trim();
-  a = a.trim();
-
   const id = new Types.ObjectId();
   const qaStr = `${q}\n${a}`.trim();
 
