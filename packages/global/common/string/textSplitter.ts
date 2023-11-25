@@ -27,9 +27,6 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     9: /([，]|,\s)/g
   };
 
-  const sliceOverlapText = (chunk: string = '') =>
-    chunk.slice(Math.max(0, chunk.length - overlapLen), chunk.length);
-
   const splitTextRecursively = ({ text = '', step }: { text: string; step: number }) => {
     if (text.length <= maxLen) {
       return [text];
@@ -60,6 +57,7 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     })();
 
     let chunks: string[] = [];
+    let preChunk: string = '';
     let chunk: string = '';
     for (let i = 0; i < splitTexts.length; i++) {
       let text = splitTexts[i];
@@ -72,11 +70,12 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
           chunks.push(chunk);
           // size overlapLen, push it to next chunk
           innerChunks = splitTextRecursively({
-            text: isMarkdownSplit ? text : sliceOverlapText(chunk) + text,
+            text: isMarkdownSplit ? text : preChunk + text,
             step: step + 1
           });
         }
         chunk = '';
+        preChunk = '';
         if (innerChunks.length === 0) continue;
         // If the last chunk is too small, it is merged into the next chunk
         if (innerChunks[innerChunks.length - 1].length <= tooSmallLen) {
@@ -89,10 +88,14 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
       }
 
       chunk += text;
+      // size over lapLen, push it to next chunk
+      if (chunk.length > maxLen - overlapLen) {
+        preChunk += text;
+      }
       if (chunk.length >= maxLen) {
         chunks.push(chunk);
-        // size overlapLen, push it to next chunk
-        chunk = isMarkdownSplit ? '' : sliceOverlapText(chunk);
+        chunk = isMarkdownSplit ? '' : preChunk;
+        preChunk = '';
       }
     }
 
