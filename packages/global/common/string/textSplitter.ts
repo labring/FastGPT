@@ -10,6 +10,7 @@ import { countPromptTokens } from './tiktoken';
  */
 export const splitText2Chunks = (props: { text: string; maxLen: number; overlapLen?: number }) => {
   const { text = '', maxLen, overlapLen = Math.floor(maxLen * 0.2) } = props;
+  const tooSmallLen = Math.floor(maxLen * 0.7);
   const tempMarker = 'SPLIT_HERE_SPLIT_HERE';
 
   const stepReg: Record<number, RegExp> = {
@@ -26,17 +27,10 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     9: /([，]|,\s)/g
   };
 
-  const splitTextRecursively = ({
-    text = '',
-    step,
-    lastChunk,
-    overlayChunk
-  }: {
-    text: string;
-    step: number;
-    lastChunk: string;
-    overlayChunk: string;
-  }) => {
+  const sliceOverlapText = (chunk: string = '') =>
+    chunk.slice(Math.max(0, chunk.length - overlapLen), chunk.length);
+
+  const splitTextRecursively = ({ text = '', step }: { text: string; step: number }) => {
     if (text.length <= maxLen) {
       return [text];
     }
@@ -66,63 +60,51 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     })();
 
     let chunks: string[] = [];
+    let chunk: string = '';
     for (let i = 0; i < splitTexts.length; i++) {
       let text = splitTexts[i];
-      let chunkToken = lastChunk.length;
-      const textToken = text.length;
-
-      // next chunk is too large / new chunk is too large(The current chunk must be smaller than maxLen)
-      if (textToken >= maxLen || chunkToken + textToken > maxLen * 1.4) {
-        // last chunk is too large, push it to chunks, not add to next chunk
-        if (chunkToken > maxLen * 0.7) {
-          chunks.push(lastChunk);
-          lastChunk = '';
-          overlayChunk = '';
+      // chunk over size
+      if (text.length > maxLen) {
+        let innerChunks: string[] | undefined = [];
+        if (chunk.length <= tooSmallLen) {
+          innerChunks = splitTextRecursively({ text: chunk + text, step: step + 1 });
+        } else {
+          chunks.push(chunk);
+          // size overlapLen, push it to next chunk
+          innerChunks = splitTextRecursively({
+            text: isMarkdownSplit ? text : sliceOverlapText(chunk) + text,
+            step: step + 1
+          });
         }
-        // chunk is small, insert to next chunks
-        const innerChunks = splitTextRecursively({
-          text,
-          step: step + 1,
-          lastChunk,
-          overlayChunk
-        });
+        chunk = '';
         if (innerChunks.length === 0) continue;
-        chunks = chunks.concat(innerChunks);
-        lastChunk = '';
-        overlayChunk = '';
-        continue;
+        // If the last chunk is too small, it is merged into the next chunk
+        if (innerChunks[innerChunks.length - 1].length <= tooSmallLen) {
+          text = innerChunks.pop() || '';
+          chunks = chunks.concat(innerChunks);
+        } else {
+          chunks = chunks.concat(innerChunks);
+          continue;
+        }
       }
 
-      // size less than maxLen, push text to last chunk
-      lastChunk += text;
-      chunkToken += textToken; // Definitely less than 1.4 * maxLen
-
-      // size over lapLen, push it to next chunk
-      if (
-        overlapLen !== 0 &&
-        !isMarkdownSplit &&
-        chunkToken >= maxLen - overlapLen &&
-        textToken < overlapLen
-      ) {
-        overlayChunk += text;
-      }
-      if (chunkToken >= maxLen) {
-        chunks.push(lastChunk);
-        lastChunk = overlayChunk;
-        overlayChunk = '';
+      chunk += text;
+      if (chunk.length >= maxLen) {
+        chunks.push(chunk);
+        // size overlapLen, push it to next chunk
+        chunk = isMarkdownSplit ? '' : sliceOverlapText(chunk);
       }
     }
 
     /* If the last chunk is independent, it needs to be push chunks. */
-    if (lastChunk && chunks[chunks.length - 1] && !chunks[chunks.length - 1].endsWith(lastChunk)) {
-      chunks.push(lastChunk);
+    if (chunk && !chunks[chunks.length - 1]?.endsWith(chunk)) {
+      chunks.push(chunk);
     }
-
     return chunks;
   };
 
   try {
-    const chunks = splitTextRecursively({ text, step: 0, lastChunk: '', overlayChunk: '' });
+    const chunks = splitTextRecursively({ text, step: 0 });
 
     const tokens = chunks.reduce((sum, chunk) => sum + countPromptTokens(chunk, 'system'), 0);
 
