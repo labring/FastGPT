@@ -184,7 +184,8 @@ const Provider = ({
         state.map((file) => {
           const splitRes = splitText2Chunks({
             text: file.text,
-            chunkLen
+            chunkLen,
+            overlapRatio: chunkOverlapRatio
           });
 
           return {

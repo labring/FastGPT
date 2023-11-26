@@ -1,6 +1,5 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { postUploadImg } from '@/web/common/file/api';
 
 /**
  * 读取 txt 文件内容
@@ -51,16 +50,30 @@ export const readPdfContent = (file: File) =>
         const headerThreshold = pageHeight * 0.07; // 假设页头在页面顶部5%的区域内
         const footerThreshold = pageHeight * 0.93; // 假设页脚在页面底部5%的区域内
 
-        const pageText = tokenizedText.items
-          .filter((token: TokenType) => {
-            return (
-              !token.transform ||
-              (token.transform[5] > headerThreshold && token.transform[5] < footerThreshold)
-            );
+        const pageTexts: TokenType[] = tokenizedText.items.filter((token: TokenType) => {
+          return (
+            !token.transform ||
+            (token.transform[5] > headerThreshold && token.transform[5] < footerThreshold)
+          );
+        });
+
+        // concat empty string 'hasEOL'
+        for (let i = 0; i < pageTexts.length; i++) {
+          const item = pageTexts[i];
+          if (item.str === '' && pageTexts[i - 1]) {
+            pageTexts[i - 1].hasEOL = item.hasEOL;
+            pageTexts.splice(i, 1);
+            i--;
+          }
+        }
+
+        return pageTexts
+          .map((token) => {
+            const paragraphEnd = token.hasEOL && /([。？！.?!\n\r]|(\r\n))$/.test(token.str);
+
+            return paragraphEnd ? `${token.str}\n` : token.str;
           })
-          .map((token: TokenType) => token.str)
           .join('');
-        return pageText;
       };
 
       let reader = new FileReader();
