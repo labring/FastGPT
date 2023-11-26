@@ -1,5 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
+import { compressBase64ImgAndUpload } from './controller';
 
 /**
  * 读取 txt 文件内容
@@ -113,10 +114,41 @@ export const readDocContent = (file: File) =>
       reader.onload = async ({ target }) => {
         if (!target?.result) return reject('读取 doc 文件失败');
         try {
-          const res = await mammoth.extractRawText({
+          // @ts-ignore
+          const res = await mammoth.convertToMarkdown({
             arrayBuffer: target.result as ArrayBuffer
           });
-          resolve(res?.value);
+
+          let rawText: string = res?.value || '';
+
+          // match base64, upload and replace it
+          const base64Regex = /data:image\/[a-zA-Z]+;base64,([^\)]+)/g;
+          const base64Arr = rawText.match(base64Regex) || [];
+
+          // upload base64 and replace it
+          await Promise.all(
+            base64Arr.map(async (base64) => {
+              try {
+                const str = await compressBase64ImgAndUpload({
+                  base64,
+                  maxW: 800,
+                  maxH: 800,
+                  maxSize: 1024 * 1024 * 2
+                });
+                rawText = rawText.replace(base64, str);
+              } catch (error) {
+                rawText = rawText.replace(base64, '');
+                rawText = rawText.replaceAll('![]()', '');
+              }
+            })
+          );
+
+          const trimReg = /\s*(!\[.*\]\(.*\))\s*/g;
+          if (trimReg.test(rawText)) {
+            rawText = rawText.replace(/\s*(!\[.*\]\(.*\))\s*/g, '$1');
+          }
+
+          resolve(rawText);
         } catch (error) {
           window.umami?.track('wordReadError', {
             err: error?.toString()

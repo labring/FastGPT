@@ -174,7 +174,6 @@ const FileSelect = ({
                 return readTxtContent(file);
               case 'pdf':
                 return readPdfContent(file);
-              case 'doc':
               case 'docx':
                 return readDocContent(file);
             }

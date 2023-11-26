@@ -1,15 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { Box, Flex, Button, Input, Textarea } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Flex, Button, Textarea } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
-const fileExtension = '.txt, .doc, .docx, .pdf, .md';
+const fileExtension = '.txt, .docx, .pdf, .md';
 
 const QAImport = () => {
   const { datasetDetail } = useDatasetStore();

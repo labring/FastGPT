@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Box,
   Image,
   Modal,
   ModalCloseButton,
@@ -8,6 +9,7 @@ import {
   Skeleton,
   useDisclosure
 } from '@chakra-ui/react';
+import MyModal from '@/components/MyModal';
 
 const MdImage = ({ src }: { src?: string }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -43,17 +45,21 @@ const MdImage = ({ src }: { src?: string }) => {
           onOpen();
         }}
       />
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
-        <ModalContent m={'auto'}>
-          <Image
-            src={src}
-            alt={''}
-            fallbackSrc={'/imgs/errImg.png'}
-            fallbackStrategy={'onError'}
-            loading="eager"
-            objectFit={'contain'}
-          />
+        <ModalContent maxW={'80vw'} maxH={'auto'}>
+          <Box>
+            <Image
+              borderRadius={'md'}
+              src={src}
+              alt={''}
+              w={'auto'}
+              h={'auto'}
+              fallbackSrc={'/imgs/errImg.png'}
+              fallbackStrategy={'onError'}
+              objectFit={'contain'}
+            />
+          </Box>
         </ModalContent>
         <ModalCloseButton bg={'myWhite.500'} zIndex={999999} />
       </Modal>
