@@ -99,6 +99,13 @@ const FileSelect = ({
   // select file
   const onSelectFile = useCallback(
     async (files: File[]) => {
+      if (files.length >= 100) {
+        return toast({
+          status: 'warning',
+          title: t('common.file.Select file amount limit 100')
+        });
+      }
+
       try {
         for await (let file of files) {
           const extension = file?.name?.split('.')?.pop()?.toLowerCase();

@@ -193,6 +193,9 @@
       "unKnow": "出现了点意外~"
     },
     "export": "",
+    "file": {
+      "Select file amount limit 100": "每次最多选择100个文件"
+    },
     "folder": {
       "Drag Tip": "点我可拖动",
       "Move Success": "移动成功",

@@ -193,6 +193,9 @@
       "unKnow": "There was an accident"
     },
     "export": "",
+    "file": {
+      "Select file amount limit 100": "You can select a maximum of 100 files at a time"
+    },
     "folder": {
       "Drag Tip": "Click and move",
       "Move Success": "Move Success",
