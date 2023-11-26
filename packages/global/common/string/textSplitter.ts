@@ -11,6 +11,7 @@ import { countPromptTokens } from './tiktoken';
 export const splitText2Chunks = (props: { text: string; maxLen: number; overlapLen?: number }) => {
   const { text = '', maxLen, overlapLen = Math.floor(maxLen * 0.2) } = props;
   const tooSmallLen = Math.floor(maxLen * 0.7);
+  const tooLargeLen = Math.floor(maxLen * 1.4);
   const tempMarker = 'SPLIT_HERE_SPLIT_HERE';
 
   const stepReg: Record<number, RegExp> = {
@@ -61,12 +62,13 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     let chunk: string = '';
     for (let i = 0; i < splitTexts.length; i++) {
       let text = splitTexts[i];
-      // chunk over size
-      if (text.length > maxLen) {
+      // next chunk is too large / new chunk is too large(The current chunk must be smaller than maxLen)
+      if (text.length > maxLen || chunk.length + text.length > tooLargeLen) {
         let innerChunks: string[] | undefined = [];
         if (chunk.length <= tooSmallLen) {
           innerChunks = splitTextRecursively({ text: chunk + text, step: step + 1 });
         } else {
+          // last chunk is too large, push it to chunks, not add to next chunk
           chunks.push(chunk);
           // size overlapLen, push it to next chunk
           innerChunks = splitTextRecursively({
