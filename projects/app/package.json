@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.6.1",
+  "version": "4.6.2",
   "private": false,
   "scripts": {
     "dev": "next dev",
@@ -38,7 +38,7 @@
     "jsdom": "^22.1.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
-    "mammoth": "^1.5.1",
+    "mammoth": "^1.6.0",
     "mermaid": "^10.2.3",
     "multer": "1.4.5-lts.1",
     "nanoid": "^4.0.1",

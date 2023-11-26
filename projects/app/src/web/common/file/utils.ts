@@ -1,6 +1,6 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
-import { postUploadImg } from '@/web/common/file/api';
+import { compressBase64ImgAndUpload } from './controller';
 
 /**
  * 读取 txt 文件内容
@@ -51,16 +51,30 @@ export const readPdfContent = (file: File) =>
         const headerThreshold = pageHeight * 0.07; // 假设页头在页面顶部5%的区域内
         const footerThreshold = pageHeight * 0.93; // 假设页脚在页面底部5%的区域内
 
-        const pageText = tokenizedText.items
-          .filter((token: TokenType) => {
-            return (
-              !token.transform ||
-              (token.transform[5] > headerThreshold && token.transform[5] < footerThreshold)
-            );
+        const pageTexts: TokenType[] = tokenizedText.items.filter((token: TokenType) => {
+          return (
+            !token.transform ||
+            (token.transform[5] > headerThreshold && token.transform[5] < footerThreshold)
+          );
+        });
+
+        // concat empty string 'hasEOL'
+        for (let i = 0; i < pageTexts.length; i++) {
+          const item = pageTexts[i];
+          if (item.str === '' && pageTexts[i - 1]) {
+            pageTexts[i - 1].hasEOL = item.hasEOL;
+            pageTexts.splice(i, 1);
+            i--;
+          }
+        }
+
+        return pageTexts
+          .map((token) => {
+            const paragraphEnd = token.hasEOL && /([。？！.?!\n\r]|(\r\n))$/.test(token.str);
+
+            return paragraphEnd ? `${token.str}\n` : token.str;
           })
-          .map((token: TokenType) => token.str)
           .join('');
-        return pageText;
       };
 
       let reader = new FileReader();
@@ -100,10 +114,41 @@ export const readDocContent = (file: File) =>
       reader.onload = async ({ target }) => {
         if (!target?.result) return reject('读取 doc 文件失败');
         try {
-          const res = await mammoth.extractRawText({
+          // @ts-ignore
+          const res = await mammoth.convertToMarkdown({
             arrayBuffer: target.result as ArrayBuffer
           });
-          resolve(res?.value);
+
+          let rawText: string = res?.value || '';
+
+          // match base64, upload and replace it
+          const base64Regex = /data:image\/[a-zA-Z]+;base64,([^\)]+)/g;
+          const base64Arr = rawText.match(base64Regex) || [];
+
+          // upload base64 and replace it
+          await Promise.all(
+            base64Arr.map(async (base64) => {
+              try {
+                const str = await compressBase64ImgAndUpload({
+                  base64,
+                  maxW: 800,
+                  maxH: 800,
+                  maxSize: 1024 * 1024 * 2
+                });
+                rawText = rawText.replace(base64, str);
+              } catch (error) {
+                rawText = rawText.replace(base64, '');
+                rawText = rawText.replaceAll('![]()', '');
+              }
+            })
+          );
+
+          const trimReg = /\s*(!\[.*\]\(.*\))\s*/g;
+          if (trimReg.test(rawText)) {
+            rawText = rawText.replace(/\s*(!\[.*\]\(.*\))\s*/g, '$1');
+          }
+
+          resolve(rawText);
         } catch (error) {
           window.umami?.track('wordReadError', {
             err: error?.toString()

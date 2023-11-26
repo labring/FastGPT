@@ -44,6 +44,7 @@ type useImportStoreType = {
   price: number;
   uploading: boolean;
   chunkLen: number;
+  chunkOverlapRatio: number;
   setChunkLen: Dispatch<number>;
   showRePreview: boolean;
   setReShowRePreview: Dispatch<SetStateAction<boolean>>;
@@ -66,6 +67,7 @@ const StateContext = createContext<useImportStoreType>({
   },
   price: 0,
   chunkLen: 0,
+  chunkOverlapRatio: 0,
   setChunkLen: function (value: number): void {
     throw new Error('Function not implemented.');
   },
@@ -93,6 +95,7 @@ const Provider = ({
   vectorModel,
   agentModel,
   defaultChunkLen = 500,
+  chunkOverlapRatio = 0.2,
   importType,
   onUploadSuccess,
   children
@@ -104,6 +107,7 @@ const Provider = ({
   vectorModel: string;
   agentModel: string;
   defaultChunkLen: number;
+  chunkOverlapRatio: number;
   importType: `${ImportTypeEnum}`;
   onUploadSuccess: () => void;
   children: React.ReactNode;
@@ -180,7 +184,8 @@ const Provider = ({
         state.map((file) => {
           const splitRes = splitText2Chunks({
             text: file.text,
-            maxLen: chunkLen
+            chunkLen,
+            overlapRatio: chunkOverlapRatio
           });
 
           return {
@@ -228,6 +233,7 @@ const Provider = ({
     onclickUpload,
     uploading,
     chunkLen,
+    chunkOverlapRatio,
     setChunkLen,
     showRePreview,
     setReShowRePreview
@@ -413,7 +419,8 @@ export const SelectorContainer = ({
   tip?: string;
   children: React.ReactNode;
 }) => {
-  const { files, setPreviewFile, isUnselectedFile, setFiles, chunkLen } = useImportStore();
+  const { files, setPreviewFile, isUnselectedFile, setFiles, chunkLen, chunkOverlapRatio } =
+    useImportStore();
   return (
     <Box
       h={'100%'}
@@ -432,6 +439,7 @@ export const SelectorContainer = ({
           setFiles((state) => files.concat(state));
         }}
         chunkLen={chunkLen}
+        overlapRatio={chunkOverlapRatio}
         showUrlFetch={showUrlFetch}
         showCreateFile={showCreateFile}
         fileTemplate={fileTemplate}

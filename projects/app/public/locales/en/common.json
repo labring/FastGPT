@@ -193,6 +193,9 @@
       "unKnow": "There was an accident"
     },
     "export": "",
+    "file": {
+      "Select file amount limit 100": "You can select a maximum of 100 files at a time"
+    },
     "folder": {
       "Drag Tip": "Click and move",
       "Move Success": "Move Success",
@@ -260,10 +263,22 @@
       "Similarity": "Similarity",
       "data": {
         "Edit": "Edit Data",
+        "data is deleted": "Data is deleted",
         "id": "Data ID"
       },
+      "import": {
+        "Ideal chunk length": "Ideal chunk length",
+        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
+      },
       "test": {
-        "Test Result": "Results"
+        "Test": "Start",
+        "Test Result": "Results",
+        "Test Text": "Text",
+        "Test Text Placeholder": "Enter the text you want to test",
+        "delete test history": "Delete the test result",
+        "test history": "Test History",
+        "test result placeholder": "The test results will be presented here",
+        "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
       }
     },
     "module": {

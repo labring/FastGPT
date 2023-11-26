@@ -219,7 +219,7 @@ importers:
         specifier: ^4.17.21
         version: registry.npmmirror.com/lodash@4.17.21
       mammoth:
-        specifier: ^1.5.1
+        specifier: ^1.6.0
         version: registry.npmmirror.com/mammoth@1.6.0
       mermaid:
         specifier: ^10.2.3

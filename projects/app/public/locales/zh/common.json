@@ -193,6 +193,9 @@
       "unKnow": "出现了点意外~"
     },
     "export": "",
+    "file": {
+      "Select file amount limit 100": "每次最多选择100个文件"
+    },
     "folder": {
       "Drag Tip": "点我可拖动",
       "Move Success": "移动成功",
@@ -260,10 +263,22 @@
       "Similarity": "相似度",
       "data": {
         "Edit": "编辑数据",
+        "data is deleted": "该数据已被删除",
         "id": "数据ID"
       },
+      "import": {
+        "Ideal chunk length": "理想分块长度",
+        "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200"
+      },
       "test": {
-        "Test Result": "测试结果"
+        "Test": "测试",
+        "Test Result": "测试结果",
+        "Test Text": "测试文本",
+        "Test Text Placeholder": "输入需要测试的文本",
+        "delete test history": "删除该测试结果",
+        "test history": "测试历史",
+        "test result placeholder": "测试结果将在这里展示",
+        "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
       }
     },
     "module": {

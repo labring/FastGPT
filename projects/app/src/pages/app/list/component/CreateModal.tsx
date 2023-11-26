@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImgAndUpload } from '@/web/common/file/controller';
+import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
@@ -58,7 +58,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImgAndUpload({
+        const src = await compressImgFileAndUpload({
           file,
           maxW: 100,
           maxH: 100

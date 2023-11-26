@@ -8,7 +8,7 @@ import MyIcon from '../Icon';
 import styles from './index.module.scss';
 import { useRouter } from 'next/router';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImgAndUpload } from '@/web/common/file/controller';
+import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
@@ -72,7 +72,7 @@ const MessageInput = ({
   const uploadFile = async (file: FileItemType) => {
     if (file.type === FileTypeEnum.image) {
       try {
-        const src = await compressImgAndUpload({
+        const src = await compressImgFileAndUpload({
           file: file.rawFile,
           maxW: 1000,
           maxH: 1000,
