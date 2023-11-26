@@ -1,15 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { Box, Flex, Button, Input } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Flex, Button, Textarea } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
-const fileExtension = '.txt, .doc, .docx, .pdf, .md';
+const fileExtension = '.txt, .docx, .pdf, .md';
 
 const QAImport = () => {
   const { datasetDetail } = useDatasetStore();
@@ -31,36 +30,27 @@ const QAImport = () => {
     content: `该任务无法终止！导入后会自动调用大模型生成问答对，会有一些细节丢失，请确认！如果余额不足，未完成的任务会被暂停。`
   });
 
-  const [prompt, setPrompt] = useState('');
-
-  const previewQAPrompt = useMemo(() => {
-    return replaceVariable(Prompt_AgentQA.prompt, {
-      theme: prompt || Prompt_AgentQA.defaultTheme
-    });
-  }, [prompt]);
+  const [prompt, setPrompt] = useState(Prompt_AgentQA.description);
 
   return (
     <Box display={['block', 'flex']} h={['auto', '100%']}>
       <SelectorContainer fileExtension={fileExtension}>
         {/* prompt */}
-        <Box py={5}>
-          <Box mb={2}>
-            QA 拆分引导词{' '}
-            <MyTooltip label={previewQAPrompt} forceShow>
-              <InfoOutlineIcon ml={1} />
-            </MyTooltip>
+        <Box p={3} bg={'myWhite.600'} borderRadius={'md'}>
+          <Box mb={1} fontWeight={'bold'}>
+            QA 拆分引导词
           </Box>
-          <Flex alignItems={'center'} fontSize={'sm'}>
-            <Box mr={2}>文件主题</Box>
-            <Input
-              fontSize={'sm'}
-              flex={1}
-              placeholder={Prompt_AgentQA.defaultTheme}
-              bg={'myWhite.500'}
+          <Box whiteSpace={'pre-wrap'} fontSize={'sm'}>
+            <Textarea
               defaultValue={prompt}
-              onChange={(e) => setPrompt(e.target.value || '')}
+              rows={8}
+              fontSize={'sm'}
+              onChange={(e) => {
+                setPrompt(e.target.value);
+              }}
             />
-          </Flex>
+            <Box>{Prompt_AgentQA.fixedText}</Box>
+          </Box>
         </Box>
         {/* price */}
         <Flex py={5} alignItems={'center'}>
@@ -81,10 +71,7 @@ const QAImport = () => {
               重新生成预览
             </Button>
           )}
-          <Button
-            isDisabled={uploading}
-            onClick={openConfirm(() => onclickUpload({ prompt: previewQAPrompt }))}
-          >
+          <Button isDisabled={uploading} onClick={openConfirm(() => onclickUpload({ prompt }))}>
             {uploading ? <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box> : '确认导入'}
           </Button>
         </Flex>

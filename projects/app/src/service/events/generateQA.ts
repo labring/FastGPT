@@ -118,17 +118,14 @@ export async function generateQA(): Promise<any> {
   try {
     const startTime = Date.now();
     const model = data.model ?? global.qaModels[0].model;
+    const prompt = `${data.prompt || Prompt_AgentQA.description}
+${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     // request LLM to get QA
     const messages: ChatMessageItemType[] = [
       {
         role: 'user',
-        content: data.prompt
-          ? replaceVariable(data.prompt, { text })
-          : replaceVariable(Prompt_AgentQA.prompt, {
-              theme: Prompt_AgentQA.defaultTheme,
-              text
-            })
+        content: prompt
       }
     ];
 
@@ -244,7 +241,7 @@ function formatSplitText(text: string, rawText: string) {
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const splitRes = splitText2Chunks({ text: rawText, maxLen: 500 });
+    const splitRes = splitText2Chunks({ text: rawText, chunkLen: 512 });
     splitRes.chunks.forEach((chunk) => {
       result.push({
         q: chunk,

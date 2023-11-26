@@ -102,13 +102,13 @@ export function responseWriteController({
   readStream: any;
 }) {
   res.on('drain', () => {
-    readStream.resume();
+    readStream?.resume?.();
   });
 
   return (text: string | Buffer) => {
     const writeResult = res.write(text);
     if (!writeResult) {
-      readStream?.pause();
+      readStream?.pause?.();
     }
   };
 }

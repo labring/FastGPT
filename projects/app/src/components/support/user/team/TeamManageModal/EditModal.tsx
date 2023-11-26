@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImgAndUpload } from '@/web/common/file/controller';
+import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -49,7 +49,7 @@ function EditModal({
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImgAndUpload({
+        const src = await compressImgFileAndUpload({
           file,
           maxW: 100,
           maxH: 100

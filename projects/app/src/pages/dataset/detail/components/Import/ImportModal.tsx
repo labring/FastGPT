@@ -41,16 +41,19 @@ const ImportData = ({
     const map = {
       [ImportTypeEnum.chunk]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
+        chunkOverlapRatio: 0.2,
         unitPrice: vectorModel?.price || 0.2,
         mode: TrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
-        defaultChunkLen: agentModel?.maxContext * 0.6 || 9000,
+        defaultChunkLen: agentModel?.maxContext * 0.6 || 8000,
+        chunkOverlapRatio: 0,
         unitPrice: agentModel?.price || 3,
         mode: TrainingModeEnum.qa
       },
       [ImportTypeEnum.csv]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
+        chunkOverlapRatio: 0,
         unitPrice: vectorModel?.price || 0.2,
         mode: TrainingModeEnum.chunk
       }

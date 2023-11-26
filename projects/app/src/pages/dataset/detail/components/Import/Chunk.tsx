@@ -16,10 +16,12 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
+import { useTranslation } from 'next-i18next';
 
-const fileExtension = '.txt, .doc, .docx, .pdf, .md';
+const fileExtension = '.txt, .docx, .pdf, .md';
 
 const ChunkImport = () => {
+  const { t } = useTranslation();
   const { datasetDetail } = useDatasetStore();
   const vectorModel = datasetDetail.vectorModel;
   const unitPrice = vectorModel?.price || 0.2;
@@ -48,13 +50,8 @@ const ChunkImport = () => {
         {/* chunk size */}
         <Flex py={4} alignItems={'center'}>
           <Box>
-            段落长度
-            <MyTooltip
-              label={
-                '按结束标点符号进行分段。前后段落会有 20% 的内容重叠。\n中文文档建议不要超过1000，英文不要超过1500'
-              }
-              forceShow
-            >
+            {t('core.dataset.import.Ideal chunk length')}
+            <MyTooltip label={t('core.dataset.import.Ideal chunk length Tips')} forceShow>
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Box>
