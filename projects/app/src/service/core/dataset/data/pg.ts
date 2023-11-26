@@ -1,5 +1,8 @@
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type.d';
+import type {
+  DatasetDataSchemaType,
+  SearchDataResponseItemType
+} from '@fastgpt/global/core/dataset/type.d';
 import { PgClient } from '@fastgpt/service/common/pg';
 import { getVectorsByText } from '@/service/core/ai/vector';
 import { delay } from '@/utils/tools';
@@ -148,9 +151,6 @@ export async function searchDatasetData(props: SearchProps) {
       limit: 40
     })
   ]);
-  fullTextRecallResults.forEach((item) => {
-    console.log(item.score);
-  });
 
   // concat recall result
   let set = new Set<string>();
@@ -298,20 +298,41 @@ export async function fullTextRecall({
     };
   }
 
-  const searchResults = await MongoDatasetData.find(
-    {
-      datasetId: { $in: datasetIds.map((item) => item) },
-      $text: { $search: jiebaSplit({ text }) }
-    },
-    { score: { $meta: 'textScore' } }
-  )
-    .sort({ score: { $meta: 'textScore' } })
-    .limit(limit)
-    .lean();
+  let searchResults = (
+    await Promise.all(
+      datasetIds.map((id) =>
+        MongoDatasetData.find(
+          {
+            datasetId: id,
+            $text: { $search: jiebaSplit({ text }) }
+          },
+          {
+            score: { $meta: 'textScore' },
+            _id: 1,
+            datasetId: 1,
+            collectionId: 1,
+            q: 1,
+            a: 1,
+            indexes: 1
+          }
+        )
+          .sort({ score: { $meta: 'textScore' } })
+          .limit(limit)
+          .lean()
+      )
+    )
+  ).flat() as (DatasetDataSchemaType & { score: number })[];
 
-  const collections = await MongoDatasetCollection.find({
-    _id: { $in: searchResults.map((item) => item.collectionId) }
-  });
+  // resort
+  searchResults.sort((a, b) => b.score - a.score);
+  searchResults.slice(0, limit);
+
+  const collections = await MongoDatasetCollection.find(
+    {
+      _id: { $in: searchResults.map((item) => item.collectionId) }
+    },
+    '_id name metadata'
+  );
 
   return {
     fullTextRecallResults: searchResults.map((item) => {

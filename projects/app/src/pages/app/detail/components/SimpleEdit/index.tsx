@@ -392,7 +392,7 @@ function ConfigForm({
                       })
                     }
                   >
-                    <Image alt={''} src={item.avatar} w={'18px'} mr={1} />
+                    <Avatar src={item.avatar} w={'18px'} mr={1} />
                     <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
                       {item.name}
                     </Box>
