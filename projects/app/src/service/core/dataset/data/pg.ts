@@ -1,8 +1,5 @@
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
-import type {
-  DatasetDataWithCollectionType,
-  SearchDataResponseItemType
-} from '@fastgpt/global/core/dataset/type.d';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type.d';
 import { PgClient } from '@fastgpt/service/common/pg';
 import { getVectorsByText } from '@/service/core/ai/vector';
 import { delay } from '@/utils/tools';
@@ -151,6 +148,9 @@ export async function searchDatasetData(props: SearchProps) {
       limit: 40
     })
   ]);
+  fullTextRecallResults.forEach((item) => {
+    console.log(item.score);
+  });
 
   // concat recall result
   let set = new Set<string>();
@@ -298,7 +298,7 @@ export async function fullTextRecall({
     };
   }
 
-  const result = (await MongoDatasetData.find(
+  const searchResults = await MongoDatasetData.find(
     {
       datasetId: { $in: datasetIds.map((item) => item) },
       $text: { $search: jiebaSplit({ text }) }
@@ -307,21 +307,28 @@ export async function fullTextRecall({
   )
     .sort({ score: { $meta: 'textScore' } })
     .limit(limit)
-    .populate('collectionId')
-    .lean()) as DatasetDataWithCollectionType[];
+    .lean();
+
+  const collections = await MongoDatasetCollection.find({
+    _id: { $in: searchResults.map((item) => item.collectionId) }
+  });
 
   return {
-    fullTextRecallResults: result.map((item) => ({
-      id: String(item._id),
-      datasetId: String(item.datasetId),
-      collectionId: String(item.collectionId._id),
-      sourceName: item.collectionId.name || '',
-      sourceId: item.collectionId.metadata?.fileId || item.collectionId.metadata?.rawLink,
-      q: item.q,
-      a: item.a,
-      indexes: item.indexes,
-      score: 1
-    })),
+    fullTextRecallResults: searchResults.map((item) => {
+      const collection = collections.find((col) => String(col._id) === String(item.collectionId));
+      return {
+        id: String(item._id),
+        datasetId: String(item.datasetId),
+        collectionId: String(item.collectionId),
+        sourceName: collection?.name || '',
+        sourceId: collection?.metadata?.fileId || collection?.metadata?.rawLink,
+        q: item.q,
+        a: item.a,
+        indexes: item.indexes,
+        // @ts-ignore
+        score: item.score
+      };
+    }),
     tokenLen: 0
   };
 }

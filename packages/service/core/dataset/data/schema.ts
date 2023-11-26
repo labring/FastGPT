@@ -78,7 +78,7 @@ try {
   DatasetDataSchema.index({ datasetId: 1 });
   DatasetDataSchema.index({ collectionId: 1 });
   // full text index
-  DatasetDataSchema.index({ fullTextToken: 'text' });
+  DatasetDataSchema.index({ datasetId: 1, fullTextToken: 'text' });
 } catch (error) {
   console.log(error);
 }
