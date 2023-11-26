@@ -48,6 +48,7 @@ export interface Props extends BoxProps {
   onPushFiles: (files: FileItemType[]) => void;
   tipText?: string;
   chunkLen?: number;
+  overlapRatio?: number;
   fileTemplate?: {
     type: string;
     filename: string;
@@ -63,6 +64,7 @@ const FileSelect = ({
   onPushFiles,
   tipText,
   chunkLen = 500,
+  overlapRatio,
   fileTemplate,
   showUrlFetch = true,
   showCreateFile = true,
@@ -176,7 +178,8 @@ const FileSelect = ({
             text = simpleText(text);
             const splitRes = splitText2Chunks({
               text,
-              maxLen: chunkLen
+              chunkLen,
+              overlapRatio
             });
 
             const fileItem: FileItemType = {
@@ -206,7 +209,7 @@ const FileSelect = ({
       }
       setSelectingText(undefined);
     },
-    [chunkLen, datasetDetail._id, onPushFiles, t, toast]
+    [chunkLen, datasetDetail._id, onPushFiles, overlapRatio, t, toast]
   );
   // link fetch
   const onUrlFetch = useCallback(
@@ -214,7 +217,8 @@ const FileSelect = ({
       const result: FileItemType[] = e.map(({ url, content }) => {
         const splitRes = splitText2Chunks({
           text: content,
-          maxLen: chunkLen
+          chunkLen,
+          overlapRatio
         });
         return {
           id: nanoid(),
@@ -234,7 +238,7 @@ const FileSelect = ({
       });
       onPushFiles(result);
     },
-    [chunkLen, onPushFiles]
+    [chunkLen, onPushFiles, overlapRatio]
   );
   // manual create file and copy data
   const onCreateFile = useCallback(
@@ -255,7 +259,8 @@ const FileSelect = ({
 
       const splitRes = splitText2Chunks({
         text: content,
-        maxLen: chunkLen
+        chunkLen,
+        overlapRatio
       });
 
       onPushFiles([
@@ -276,7 +281,7 @@ const FileSelect = ({
         }
       ]);
     },
-    [chunkLen, datasetDetail._id, onPushFiles]
+    [chunkLen, datasetDetail._id, onPushFiles, overlapRatio]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {

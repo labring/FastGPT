@@ -262,6 +262,10 @@
         "Edit": "Edit Data",
         "id": "Data ID"
       },
+      "import": {
+        "Ideal chunk length": "Ideal chunk length",
+        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
+      },
       "test": {
         "Test Result": "Results"
       }

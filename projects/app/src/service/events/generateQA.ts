@@ -244,7 +244,7 @@ function formatSplitText(text: string, rawText: string) {
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const splitRes = splitText2Chunks({ text: rawText, maxLen: 500 });
+    const splitRes = splitText2Chunks({ text: rawText, chunkLen: 512 });
     splitRes.chunks.forEach((chunk) => {
       result.push({
         q: chunk,
