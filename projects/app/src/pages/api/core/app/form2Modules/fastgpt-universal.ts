@@ -283,21 +283,21 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           value: formData.dataset.datasets,
           type: FlowNodeInputTypeEnum.custom,
           label: '关联的知识库',
-          connected: true
+          connected: false
         },
         {
           key: 'similarity',
           value: formData.dataset.similarity,
           type: FlowNodeInputTypeEnum.slider,
           label: '相似度',
-          connected: true
+          connected: false
         },
         {
           key: 'limit',
           value: formData.dataset.limit,
           type: FlowNodeInputTypeEnum.slider,
           label: '单次搜索上限',
-          connected: true
+          connected: false
         },
         {
           key: 'switch',
@@ -317,7 +317,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           label: '结果重排',
           description: '将召回的结果进行进一步重排，可增加召回率',
           plusField: true,
-          connected: true,
+          connected: false,
           value: formData.dataset.rerank
         }
       ],

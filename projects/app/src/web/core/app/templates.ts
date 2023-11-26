@@ -225,7 +225,7 @@ export const appTemplates: (AppItemType & {
     ]
   },
   {
-    id: 'simpleKbChat',
+    id: 'simpleDatasetChat',
     avatar: '/imgs/module/db.png',
     name: '知识库 + 对话引导',
     intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
