@@ -28,6 +28,17 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     9: /([，]|,\s)/g
   };
 
+  const getOverlapText = (chunkTexts: string[] = []): string => {
+    let overlapText: string = '';
+    const getOverlapTextRecursively = (chunkTexts: string[], endIdx: number): string => {
+      if (endIdx === -1 || overlapText.length >= overlapLen) return overlapText;
+      overlapText = chunkTexts[endIdx] + overlapText;
+      return getOverlapTextRecursively(chunkTexts, endIdx - 1);
+    };
+
+    return getOverlapTextRecursively(chunkTexts, chunkTexts.length - 1);
+  };
+
   const splitTextRecursively = ({ text = '', step }: { text: string; step: number }) => {
     if (text.length <= maxLen) {
       return [text];
@@ -58,7 +69,7 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
     })();
 
     let chunks: string[] = [];
-    let preChunk: string = '';
+    let chunkTexts: string[] = [];
     let chunk: string = '';
     for (let i = 0; i < splitTexts.length; i++) {
       let text = splitTexts[i];
@@ -72,12 +83,12 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
           chunks.push(chunk);
           // size overlapLen, push it to next chunk
           innerChunks = splitTextRecursively({
-            text: isMarkdownSplit ? text : preChunk + text,
+            text: isMarkdownSplit ? text : getOverlapText(chunkTexts) + text,
             step: step + 1
           });
         }
         chunk = '';
-        preChunk = '';
+        chunkTexts = [];
         if (innerChunks.length === 0) continue;
         // If the last chunk is too small, it is merged into the next chunk
         if (innerChunks[innerChunks.length - 1].length <= tooSmallLen) {
@@ -90,14 +101,11 @@ export const splitText2Chunks = (props: { text: string; maxLen: number; overlapL
       }
 
       chunk += text;
-      // size over lapLen, push it to next chunk
-      if (chunk.length > maxLen - overlapLen) {
-        preChunk += text;
-      }
+      chunkTexts.push(text);
       if (chunk.length >= maxLen) {
         chunks.push(chunk);
-        chunk = isMarkdownSplit ? '' : preChunk;
-        preChunk = '';
+        chunk = isMarkdownSplit ? '' : getOverlapText(chunkTexts);
+        chunkTexts = [];
       }
     }
 
