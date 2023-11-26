@@ -81,43 +81,45 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         borderRight={['none', theme.borders.base]}
       >
         <Box border={'2px solid'} borderColor={'myBlue.600'} p={3} mx={4} borderRadius={'md'}>
-          <Box fontSize={'sm'} fontWeight={'bold'}>
-            <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'myBlue.700'} />
-            测试文本
-          </Box>
-          <Textarea
-            rows={6}
-            resize={'none'}
-            variant={'unstyled'}
-            maxLength={datasetDetail.vectorModel.maxToken}
-            placeholder="输入需要测试的文本"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-          />
-          <Flex alignItems={'center'} justifyContent={'flex-end'}>
+          <Flex alignItems={'center'}>
+            <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
+              <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'myBlue.700'} />
+              {t('core.dataset.test.Test Text')}
+            </Box>
             {feConfigs?.isPlus && (
               <Flex alignItems={'center'}>
                 {t('dataset.recall.rerank')}
                 <Switch ml={1} isChecked={rerank} onChange={(e) => setRerank(e.target.checked)} />
               </Flex>
             )}
+          </Flex>
+          <Textarea
+            rows={6}
+            resize={'none'}
+            variant={'unstyled'}
+            maxLength={datasetDetail.vectorModel.maxToken}
+            placeholder={t('core.dataset.test.Test Text Placeholder')}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+          />
+          <Flex alignItems={'center'} justifyContent={'flex-end'}>
             <Box mx={3} color={'myGray.500'}>
               {inputText.length}
             </Box>
             <Button isDisabled={inputText === ''} isLoading={isLoading} onClick={mutate}>
-              测试
+              {t('core.dataset.test.Test')}
             </Button>
           </Flex>
         </Box>
         <Box mt={5} flex={'1 0 0'} px={4} overflow={'overlay'} display={['none', 'block']}>
           <Flex alignItems={'center'} color={'myGray.600'}>
             <MyIcon mr={2} name={'history'} w={'16px'} h={'16px'} />
-            <Box fontSize={'2xl'}>测试历史</Box>
+            <Box fontSize={'2xl'}>{t('core.dataset.test.test history')}</Box>
           </Flex>
           <Box mt={2}>
             <Flex py={2} fontWeight={'bold'} borderBottom={theme.borders.sm}>
-              <Box flex={1}>测试文本</Box>
-              <Box w={'80px'}>时间</Box>
+              <Box flex={1}>{t('core.dataset.test.Test Text')}</Box>
+              <Box w={'80px'}>{t('common.Time')}</Box>
               <Box w={'14px'}></Box>
             </Flex>
             {kbTestHistory.map((item) => (
@@ -139,7 +141,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   {item.text}
                 </Box>
                 <Box w={'80px'}>{formatTimeToChatTime(item.time)}</Box>
-                <MyTooltip label={'删除该测试记录'}>
+                <MyTooltip label={t('core.dataset.test.delete test history')}>
                   <Box w={'14px'} h={'14px'}>
                     <MyIcon
                       className="delete"
@@ -171,7 +173,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           >
             <MyIcon name={'empty'} color={'transparent'} w={'54px'} />
             <Box mt={3} color={'myGray.600'}>
-              测试结果将在这里展示
+              {t('core.dataset.test.test result placeholder')}
             </Box>
           </Flex>
         ) : (
@@ -180,12 +182,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               <Box fontSize={'3xl'} color={'myGray.600'}>
                 {t('core.dataset.test.Test Result')}
               </Box>
-              <MyTooltip
-                label={
-                  '根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。'
-                }
-                forceShow
-              >
+              <MyTooltip label={t('core.dataset.test.test result tip')} forceShow>
                 <QuestionOutlineIcon
                   mx={2}
                   color={'myGray.600'}
@@ -221,7 +218,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                       const data = await getDatasetDataItemById(item.id);
 
                       if (!data) {
-                        throw new Error('该数据已被删除');
+                        throw new Error(t('core.dataset.data.data is deleted'));
                       }
 
                       setEditInputData({

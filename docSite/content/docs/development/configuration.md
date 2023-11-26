@@ -26,7 +26,7 @@ weight: 520
     "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
     "pgHNSWEfSearch": 100  // pg vector 索引参数，越大精度高但速度慢
   },
-  "ChatModels": [
+  "ChatModels": [ // 对话模型
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -76,7 +76,7 @@ weight: 520
       "defaultSystemChatPrompt": ""
     }
   ],
-  "QAModels": [
+  "QAModels": [ // QA 生成模型
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
@@ -85,14 +85,14 @@ weight: 520
       "price": 0
     }
   ],
-  "CQModels": [
+  "CQModels": [ // 问题分类模型
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
       "maxContext": 16000,
       "maxResponse": 4000,
       "price": 0,
-      "functionCall": true,
+      "functionCall": true, // 是否支持function call， 不支持的模型需要设置为 false，会走提示词生成
       "functionPrompt": ""
     },
     {
@@ -105,7 +105,7 @@ weight: 520
       "functionPrompt": ""
     }
   ],
-  "ExtractModels": [
+  "ExtractModels": [ // 内容提取模型
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -116,7 +116,7 @@ weight: 520
       "functionPrompt": ""
     }
   ],
-  "QGModels": [
+  "QGModels": [ // 生成下一步指引
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -125,7 +125,7 @@ weight: 520
       "price": 0
     }
   ],
-  "VectorModels": [
+  "VectorModels": [ // 向量模型
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
