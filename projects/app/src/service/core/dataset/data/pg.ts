@@ -1,6 +1,6 @@
 import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type {
-  DatasetDataWithCollectionType,
+  DatasetDataSchemaType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type.d';
 import { PgClient } from '@fastgpt/service/common/pg';
@@ -298,30 +298,58 @@ export async function fullTextRecall({
     };
   }
 
-  const result = (await MongoDatasetData.find(
+  let searchResults = (
+    await Promise.all(
+      datasetIds.map((id) =>
+        MongoDatasetData.find(
+          {
+            datasetId: id,
+            $text: { $search: jiebaSplit({ text }) }
+          },
+          {
+            score: { $meta: 'textScore' },
+            _id: 1,
+            datasetId: 1,
+            collectionId: 1,
+            q: 1,
+            a: 1,
+            indexes: 1
+          }
+        )
+          .sort({ score: { $meta: 'textScore' } })
+          .limit(limit)
+          .lean()
+      )
+    )
+  ).flat() as (DatasetDataSchemaType & { score: number })[];
+
+  // resort
+  searchResults.sort((a, b) => b.score - a.score);
+  searchResults.slice(0, limit);
+
+  const collections = await MongoDatasetCollection.find(
     {
-      datasetId: { $in: datasetIds.map((item) => item) },
-      $text: { $search: jiebaSplit({ text }) }
+      _id: { $in: searchResults.map((item) => item.collectionId) }
     },
-    { score: { $meta: 'textScore' } }
-  )
-    .sort({ score: { $meta: 'textScore' } })
-    .limit(limit)
-    .populate('collectionId')
-    .lean()) as DatasetDataWithCollectionType[];
+    '_id name metadata'
+  );
 
   return {
-    fullTextRecallResults: result.map((item) => ({
-      id: String(item._id),
-      datasetId: String(item.datasetId),
-      collectionId: String(item.collectionId._id),
-      sourceName: item.collectionId.name || '',
-      sourceId: item.collectionId.metadata?.fileId || item.collectionId.metadata?.rawLink,
-      q: item.q,
-      a: item.a,
-      indexes: item.indexes,
-      score: 1
-    })),
+    fullTextRecallResults: searchResults.map((item) => {
+      const collection = collections.find((col) => String(col._id) === String(item.collectionId));
+      return {
+        id: String(item._id),
+        datasetId: String(item.datasetId),
+        collectionId: String(item.collectionId),
+        sourceName: collection?.name || '',
+        sourceId: collection?.metadata?.fileId || collection?.metadata?.rawLink,
+        q: item.q,
+        a: item.a,
+        indexes: item.indexes,
+        // @ts-ignore
+        score: item.score
+      };
+    }),
     tokenLen: 0
   };
 }
