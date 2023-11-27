@@ -98,7 +98,14 @@ export function setDefaultData(res?: ConfigFileType) {
     ? { ...defaultSystemEnv, ...res.SystemParams }
     : defaultSystemEnv;
   global.feConfigs = res?.FeConfig
-    ? { ...defaultFeConfigs, ...res.FeConfig, isPlus: !!res.SystemParams?.pluginBaseUrl }
+    ? {
+        concatMd: res?.FeConfig?.show_git
+          ? '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://doc.fastgpt.in/wechat-fastgpt.webp)'
+          : '',
+        ...defaultFeConfigs,
+        ...res.FeConfig,
+        isPlus: !!res.SystemParams?.pluginBaseUrl
+      }
     : defaultFeConfigs;
 
   global.chatModels = res?.ChatModels || defaultChatModels;
