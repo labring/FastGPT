@@ -1,4 +1,4 @@
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum, PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type {
   DatasetDataSchemaType,
   SearchDataResponseItemType
@@ -136,23 +136,52 @@ type SearchProps = {
   similarity?: number; // min distance
   limit: number;
   datasetIds: string[];
-  rerank?: boolean;
+  searchMode?: `${DatasetSearchModeEnum}`;
 };
 export async function searchDatasetData(props: SearchProps) {
-  const { text, similarity = 0, limit, rerank = false } = props;
+  let { text, similarity = 0, limit, searchMode = DatasetSearchModeEnum.embedding } = props;
+  searchMode = global.systemEnv.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
+
+  const rerank =
+    searchMode === DatasetSearchModeEnum.embeddingReRank ||
+    searchMode === DatasetSearchModeEnum.embFullTextReRank;
+
+  const { embeddingLimit, fullTextLimit } = (() => {
+    // Increase search range, reduce hnsw loss
+    if (searchMode === DatasetSearchModeEnum.embedding) {
+      return {
+        embeddingLimit: limit * 2,
+        fullTextLimit: 0
+      };
+    }
+    // 50 < 2*limit < value < 100
+    if (searchMode === DatasetSearchModeEnum.embeddingReRank) {
+      return {
+        embeddingLimit: Math.min(100, Math.max(50, limit * 2)),
+        fullTextLimit: 0
+      };
+    }
+    // 50 < 3*limit < embedding < 80
+    // 20 < limit < fullTextLimit < 40
+    return {
+      embeddingLimit: Math.min(80, Math.max(50, limit * 2)),
+      fullTextLimit: Math.min(40, Math.max(20, limit))
+    };
+  })();
 
   const [{ tokenLen, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
     embeddingRecall({
       ...props,
-      limit: rerank ? Math.max(50, limit * 3) : limit * 2
+      rerank,
+      limit: embeddingLimit
     }),
     fullTextRecall({
       ...props,
-      limit: 40
+      limit: fullTextLimit
     })
   ]);
 
-  // concat recall result
+  // concat embedding and fullText recall result
   let set = new Set<string>();
   const concatRecallResults = embeddingRecallResults;
   for (const item of fullTextRecallResults) {
@@ -173,7 +202,7 @@ export async function searchDatasetData(props: SearchProps) {
 
   if (!rerank) {
     return {
-      searchRes: filterSameDataResults.slice(0, limit),
+      searchRes: filterSameDataResults.filter((item) => item.score >= similarity).slice(0, limit),
       tokenLen
     };
   }
@@ -184,21 +213,11 @@ export async function searchDatasetData(props: SearchProps) {
     data: filterSameDataResults
   });
 
-  // similarity filter
-  const filterReRankResults = reRankResults.filter((item) => item.score > similarity);
-
-  // concat rerank and embedding data
-  set = new Set<string>(filterReRankResults.map((item) => item.id));
-  const concatResult = filterReRankResults.concat(
-    filterSameDataResults.filter((item) => {
-      if (set.has(item.id)) return false;
-      set.add(item.id);
-      return true;
-    })
-  );
+  // (It's possible that rerank failed)
+  const results = reRankResults.length === 0 ? filterSameDataResults : reRankResults;
 
   return {
-    searchRes: concatResult.slice(0, limit),
+    searchRes: results.filter((item) => item.score > similarity).slice(0, limit),
     tokenLen
   };
 }
@@ -209,7 +228,7 @@ export async function embeddingRecall({
   limit,
   datasetIds = [],
   rerank = false
-}: SearchProps) {
+}: SearchProps & { rerank: boolean }) {
   const { vectors, tokenLen } = await getVectorsByText({
     model,
     input: [text]
@@ -282,16 +301,11 @@ export async function embeddingRecall({
     tokenLen
   };
 }
-export async function fullTextRecall({
-  text,
-  limit,
-  datasetIds = [],
-  rerank = false
-}: SearchProps): Promise<{
+export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchProps): Promise<{
   fullTextRecallResults: SearchDataResponseItemType[];
   tokenLen: number;
 }> {
-  if (!rerank) {
+  if (limit === 0) {
     return {
       fullTextRecallResults: [],
       tokenLen: 0
@@ -370,13 +384,14 @@ export async function reRankSearchResult({
         text: `${item.q}\n${item.a}`.trim()
       }))
     });
+    // add new score to data
     const mergeResult = result
       .map((item) => {
         const target = data.find((dataItem) => dataItem.id === item.id);
         if (!target) return null;
         return {
           ...target,
-          score: item.score ?? target.score
+          score: item.score || 0
         };
       })
       .filter(Boolean) as SearchDataResponseItemType[];
@@ -385,7 +400,7 @@ export async function reRankSearchResult({
   } catch (error) {
     console.log(error);
 
-    return data;
+    return [];
   }
 }
 // ------------------ search end ------------------

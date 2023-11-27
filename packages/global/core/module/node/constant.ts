@@ -16,6 +16,8 @@ export enum FlowNodeInputTypeEnum {
   selectChatModel = 'selectChatModel',
   // dataset special input
   selectDataset = 'selectDataset',
+  selectDatasetParamsModal = 'selectDatasetParamsModal',
+
   hidden = 'hidden'
 }
 

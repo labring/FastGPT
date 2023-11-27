@@ -52,7 +52,7 @@ const defaultFeConfigs: FeConfigsType = {
   show_emptyChat: true,
   show_git: true,
   show_register: false,
-  docUrl: 'https://docs.fastgpt.in',
+  docUrl: 'https://doc.fastgpt.in',
   openAPIDocUrl: 'https://doc.fastgpt.in/docs/development/openapi',
   systemTitle: 'FastGPT',
   limit: {

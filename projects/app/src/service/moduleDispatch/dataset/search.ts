@@ -11,7 +11,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
   [ModuleInputKeyEnum.datasetSimilarity]: number;
   [ModuleInputKeyEnum.datasetLimit]: number;
-  [ModuleInputKeyEnum.datasetStartReRank]: boolean;
+  [ModuleInputKeyEnum.datasetSearchMode]: boolean;
   [ModuleInputKeyEnum.userChatInput]: string;
 }>;
 export type DatasetSearchResponse = {
@@ -27,7 +27,7 @@ export async function dispatchDatasetSearch(
   const {
     teamId,
     tmbId,
-    inputs: { datasets = [], similarity = 0.4, limit = 5, rerank, userChatInput }
+    inputs: { datasets = [], similarity = 0.4, limit = 5, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
   if (datasets.length === 0) {
@@ -47,7 +47,7 @@ export async function dispatchDatasetSearch(
     similarity,
     limit,
     datasetIds: datasets.map((item) => item.datasetId),
-    rerank
+    searchMode
   });
 
   return {

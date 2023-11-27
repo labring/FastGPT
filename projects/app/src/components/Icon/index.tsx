@@ -108,7 +108,10 @@ const iconPaths = {
   'core/chat/stopSpeechFill': () => import('./icons/core/chat/stopSpeechFill.svg'),
   'core/chat/stopSpeech': () => import('./icons/core/chat/stopSpeech.svg'),
   'core/chat/speaking': () => import('./icons/core/chat/speaking.svg'),
-  'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg')
+  'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),
+  'core/dataset/modeEmbedding': () => import('./icons/core/dataset/modeEmbedding.svg'),
+  'core/dataset/modeEmbeddingRerank': () => import('./icons/core/dataset/modeEmbeddingRerank.svg'),
+  'core/dataset/modeEmbFTRerank': () => import('./icons/core/dataset/modeEmbFTRerank.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

@@ -174,7 +174,7 @@ export const readCsvContent = async (file: File) => {
  */
 export const formatMarkdown = async (rawText: string = '') => {
   // match base64, upload and replace it
-  const base64Regex = /data:image\/[a-zA-Z]+;base64,([^\)]+)/g;
+  const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
   const base64Arr = rawText.match(base64Regex) || [];
   // upload base64 and replace it
   await Promise.all(
@@ -189,7 +189,7 @@ export const formatMarkdown = async (rawText: string = '') => {
         rawText = rawText.replace(base64, str);
       } catch (error) {
         rawText = rawText.replace(base64, '');
-        rawText = rawText.replaceAll('![]()', '');
+        rawText = rawText.replace(/!\[.*\]\(\)/g, '');
       }
     })
   );
