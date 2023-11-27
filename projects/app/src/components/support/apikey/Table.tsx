@@ -82,14 +82,16 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
               API 秘钥管理
             </Box>
-            <Link
-              href={feConfigs.openAPIDocUrl || 'https://doc.fastgpt.run/docs/development/openapi'}
-              target={'_blank'}
-              ml={1}
-              color={'myBlue.600'}
-            >
-              查看文档
-            </Link>
+            {feConfigs.docUrl && (
+              <Link
+                href={feConfigs.openAPIDocUrl || `${feConfigs.docUrl}/docs/development/openapi`}
+                target={'_blank'}
+                ml={1}
+                color={'myBlue.600'}
+              >
+                查看文档
+              </Link>
+            )}
           </Flex>
           <Box fontSize={'sm'} color={'myGray.600'}>
             {tips}

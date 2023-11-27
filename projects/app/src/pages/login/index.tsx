@@ -114,7 +114,7 @@ const Login = () => {
           >
             <DynamicComponent type={pageType} />
 
-            {feConfigs?.show_contact && (
+            {feConfigs?.concatMd && (
               <Box
                 fontSize={'sm'}
                 color={'myGray.600'}

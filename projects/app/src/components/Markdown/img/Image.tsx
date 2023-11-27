@@ -47,19 +47,17 @@ const MdImage = ({ src }: { src?: string }) => {
       />
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
-        <ModalContent maxW={'80vw'} maxH={'auto'}>
-          <Box>
-            <Image
-              borderRadius={'md'}
-              src={src}
-              alt={''}
-              w={'auto'}
-              h={'auto'}
-              fallbackSrc={'/imgs/errImg.png'}
-              fallbackStrategy={'onError'}
-              objectFit={'contain'}
-            />
-          </Box>
+        <ModalContent maxW={'auto'} w="auto" bg={'transparent'}>
+          <Image
+            borderRadius={'md'}
+            src={src}
+            alt={''}
+            w={'100%'}
+            maxH={'80vh'}
+            fallbackSrc={'/imgs/errImg.png'}
+            fallbackStrategy={'onError'}
+            objectFit={'contain'}
+          />
         </ModalContent>
         <ModalCloseButton bg={'myWhite.500'} zIndex={999999} />
       </Modal>
