@@ -94,7 +94,9 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       <form onSubmit={handleSubmit(onclickLogin)}>
         <FormControl mt={8} isInvalid={!!errors.username}>
           <Input
-            placeholder="邮箱/手机号/用户名"
+            placeholder={
+              feConfigs?.show_register === false ? '使用root用户登录' : '邮箱/手机号/用户名'
+            }
             size={['md', 'lg']}
             {...register('username', {
               required: '邮箱/手机号/用户名不能为空'
@@ -108,7 +110,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             type={'password'}
             size={['md', 'lg']}
-            placeholder="密码"
+            placeholder={feConfigs?.show_register === false ? 'root密码为你设置的环境变量' : '密码'}
             {...register('password', {
               required: '密码不能为空',
               maxLength: {
