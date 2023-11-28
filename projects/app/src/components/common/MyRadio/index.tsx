@@ -44,7 +44,8 @@ const MyRadio = ({
               }
             : {
                 _hover: {
-                  bg: 'white'
+                  bg: 'myBlue.100',
+                  borderColor: 'myBlue.600'
                 }
               })}
           _after={{

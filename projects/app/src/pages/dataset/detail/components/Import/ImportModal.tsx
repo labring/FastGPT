@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, type BoxProps, Flex, useTheme, ModalCloseButton } from '@chakra-ui/react';
-import MyRadio from '@/components/Radio/index';
+import MyRadio from '@/components/common/MyRadio/index';
 import dynamic from 'next/dynamic';
 import ChunkImport from './Chunk';
 import { useTranslation } from 'next-i18next';
