@@ -113,6 +113,7 @@
       "maxToken": 3000
     }
   ],
+  "ReRankModels": [],
   "AudioSpeechModels": [
     {
       "model": "tts-1",

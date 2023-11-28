@@ -14,7 +14,8 @@ import {
   defaultQGModels,
   defaultVectorModels,
   defaultAudioSpeechModels,
-  defaultWhisperModel
+  defaultWhisperModel,
+  defaultReRankModels
 } from '@fastgpt/global/core/ai/model';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
@@ -31,11 +32,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       cqModels: global.cqModels,
       extractModels: global.extractModels,
       vectorModels: global.vectorModels,
-      audioSpeechModels: global.audioSpeechModels.map((item) => ({
+      reRankModels: global.reRankModels.map((item) => ({
         ...item,
-        baseUrl: undefined,
-        key: undefined
+        requestUrl: undefined,
+        requestAuth: undefined
       })),
+      audioSpeechModels: global.audioSpeechModels,
       priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0',
       simpleModeTemplates: global.simpleModeTemplates
@@ -115,6 +117,8 @@ export function setDefaultData(res?: ConfigFileType) {
   global.qgModels = res?.QGModels || defaultQGModels;
 
   global.vectorModels = res?.VectorModels || defaultVectorModels;
+
+  global.reRankModels = res?.ReRankModels || defaultReRankModels;
 
   global.audioSpeechModels = res?.AudioSpeechModels || defaultAudioSpeechModels;
 

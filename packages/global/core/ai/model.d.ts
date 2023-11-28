@@ -26,6 +26,14 @@ export type VectorModelItemType = {
   maxToken: number;
 };
 
+export type ReRankModelItemType = {
+  model: string;
+  name: string;
+  price: number;
+  requestUrl?: string;
+  requestAuth?: string;
+};
+
 export type AudioSpeechModelType = {
   model: string;
   name: string;

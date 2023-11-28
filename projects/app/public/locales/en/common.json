@@ -694,7 +694,8 @@
     "bill": {
       "Audio Speech": "Audio Speech",
       "Whisper": "Whisper",
-      "bill username": "User"
+      "bill username": "User",
+      "ReRank": "ReRank"
     }
   }
 }

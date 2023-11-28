@@ -7,7 +7,7 @@ import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { useTranslation } from 'next-i18next';
-import { feConfigs } from '@/web/common/system/staticData';
+import { reRankModelList } from '@/web/common/system/staticData';
 
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
@@ -41,7 +41,7 @@ const DatasetParamsModal = ({
 
   const searchModeList = useMemo(() => {
     const list = Object.values(DatasetSearchModeMap);
-    if (feConfigs?.isPlus) {
+    if (reRankModelList.length > 0) {
       return list;
     }
     return list.slice(0, 1);

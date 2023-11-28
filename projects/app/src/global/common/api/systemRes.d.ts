@@ -4,7 +4,8 @@ import type {
   LLMModelItemType,
   VectorModelItemType,
   AudioSpeechModels,
-  WhisperModelType
+  WhisperModelType,
+  ReRankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 
 import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
@@ -19,6 +20,7 @@ export type ConfigFileType = {
   ExtractModels: FunctionModelItemType[];
   QGModels: LLMModelItemType[];
   VectorModels: VectorModelItemType[];
+  ReRankModels: ReRankModelItemType[];
   AudioSpeechModels: AudioSpeechModelType[];
   WhisperModel: WhisperModelType;
 };
@@ -29,6 +31,7 @@ export type InitDateResponse = {
   extractModels: FunctionModelItemType[];
   vectorModels: VectorModelItemType[];
   audioSpeechModels: AudioSpeechModels[];
+  reRankModels: ReRankModelItemType[];
   feConfigs: FeConfigsType;
   priceMd: string;
   systemVersion: string;

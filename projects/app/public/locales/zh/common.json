@@ -694,7 +694,8 @@
     "bill": {
       "Audio Speech": "语音播报",
       "Whisper": "语音输入",
-      "bill username": "用户"
+      "bill username": "用户",
+      "ReRank": "结果重排"
     }
   }
 }

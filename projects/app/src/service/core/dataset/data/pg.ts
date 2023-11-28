@@ -9,9 +9,8 @@ import { delay } from '@/utils/tools';
 import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
-import { PostReRankResponse } from '@fastgpt/global/core/ai/api';
 import { jiebaSplit } from '../utils';
+import { reRankRecall } from '../../ai/rerank';
 
 export async function insertData2Pg({
   mongoDataId,
@@ -214,7 +213,14 @@ export async function searchDatasetData(props: SearchProps) {
   });
 
   // (It's possible that rerank failed)
-  const results = reRankResults.concat(filterSameDataResults);
+  const concatReRankResults = reRankResults.concat(filterSameDataResults);
+  // remove same data
+  set = new Set<string>();
+  const results = concatReRankResults.filter((item) => {
+    if (set.has(item.id)) return false;
+    set.add(item.id);
+    return true;
+  });
 
   return {
     searchRes: results.filter((item) => item.score > similarity).slice(0, limit),
@@ -375,9 +381,8 @@ export async function reRankSearchResult({
   data: SearchDataResponseItemType[];
   query: string;
 }): Promise<SearchDataResponseItemType[]> {
-  if (!global.systemEnv.pluginBaseUrl) return data;
   try {
-    const result = await POST<PostReRankResponse>('/core/ai/retrival/rerank', {
+    const result = await reRankRecall({
       query,
       inputs: data.map((item) => ({
         id: item.id,
