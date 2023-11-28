@@ -23,7 +23,7 @@ export const HistoryModule: FlowModuleTemplateType = {
       value: 6,
       valueType: ModuleDataTypeEnum.number,
       min: 0,
-      max: 1000,
+      max: 100,
       showTargetInApp: false,
       showTargetInPlugin: false
     },
