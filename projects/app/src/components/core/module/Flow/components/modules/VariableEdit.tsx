@@ -225,14 +225,14 @@ const VariableEdit = ({
                 {t('core.module.variable.text max length')}
               </Box>
               <Box>
-                <NumberInput max={100} min={1} step={1} position={'relative'}>
+                <NumberInput max={500} min={1} step={1} position={'relative'}>
                   <NumberInputField
                     {...registerEdit('variable.maxLen', {
                       min: 1,
-                      max: 100,
+                      max: 500,
                       valueAsNumber: true
                     })}
-                    max={100}
+                    max={500}
                   />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
