@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
