@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AppProps } from 'next/app';
 import Script from 'next/script';
 import Head from 'next/head';
@@ -39,15 +39,17 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
-  const { setLastRoute } = useSystemStore();
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
+  const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
 
   useEffect(() => {
     // get init data
     (async () => {
       const {
-        feConfigs: { scripts, isPlus }
+        feConfigs: { scripts, isPlus, systemTitle }
       } = await clientInitData();
+
+      setTitle(systemTitle || 'FastGPT');
 
       // log fastgpt
       !isPlus &&
@@ -89,8 +91,6 @@ function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     hiId && localStorage.setItem('inviterId', hiId);
   }, [hiId]);
-
-  const title = feConfigs?.systemTitle || process.env.SYSTEM_NAME || '';
 
   return (
     <>
