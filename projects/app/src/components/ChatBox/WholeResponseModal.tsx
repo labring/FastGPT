@@ -116,7 +116,7 @@ const WholeResponseModal = ({
               if (!activeModule?.historyPreview) return '';
               return activeModule.historyPreview
                 .map((item, i) => `**${item.obj}**\n${item.value}`)
-                .join('\n---\n');
+                .join('\n\n---\n\n');
             })()}
           />
           {activeModule.quoteList && activeModule.quoteList.length > 0 && (

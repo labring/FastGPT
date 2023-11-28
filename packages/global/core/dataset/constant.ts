@@ -86,4 +86,31 @@ export const TrainingTypeMap = {
   // }
 };
 
+export enum DatasetSearchModeEnum {
+  embedding = 'embedding',
+  embeddingReRank = 'embeddingReRank',
+  embFullTextReRank = 'embFullTextReRank'
+}
+
+export const DatasetSearchModeMap = {
+  [DatasetSearchModeEnum.embedding]: {
+    icon: 'core/dataset/modeEmbedding',
+    title: 'core.dataset.search.mode.embedding',
+    desc: 'core.dataset.search.mode.embedding desc',
+    value: DatasetSearchModeEnum.embedding
+  },
+  [DatasetSearchModeEnum.embeddingReRank]: {
+    icon: 'core/dataset/modeEmbeddingRerank',
+    title: 'core.dataset.search.mode.embeddingReRank',
+    desc: 'core.dataset.search.mode.embeddingReRank desc',
+    value: DatasetSearchModeEnum.embeddingReRank
+  },
+  [DatasetSearchModeEnum.embFullTextReRank]: {
+    icon: 'core/dataset/modeEmbFTRerank',
+    title: 'core.dataset.search.mode.embFullTextReRank',
+    desc: 'core.dataset.search.mode.embFullTextReRank desc',
+    value: DatasetSearchModeEnum.embFullTextReRank
+  }
+};
+
 export const FolderAvatarSrc = '/imgs/files/folder.svg';

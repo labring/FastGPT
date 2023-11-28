@@ -21,7 +21,9 @@ weight: 563
 curl --location --request POST 'https://fastgpt.run/api/support/wallet/bill/createTrainingBill' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
---data-raw ''
+--data-raw '{
+    "name": "可选，自定义订单名称，例如：文档训练-fastgpt.docx"
+}'
 ```
 
 **响应结果**

@@ -77,7 +77,7 @@ const MySlider = ({
         h={'18px'}
         borderRadius={'18px'}
         fontSize={'xs'}
-        transform={'translate(-50%, -170%)'}
+        transform={'translate(-50%, -155%)'}
         boxSizing={'border-box'}
       >
         {value}

@@ -239,3 +239,35 @@ export function pushWhisperBill({
     ]
   });
 }
+
+export function pushReRankBill({
+  teamId,
+  tmbId,
+  source
+}: {
+  teamId: string;
+  tmbId: string;
+  source: `${BillSourceEnum}`;
+}) {
+  const model = global.reRankModels[0];
+  if (!model) return;
+
+  const total = model.price * PRICE_SCALE;
+  const name = 'wallet.bill.ReRank';
+
+  createBill({
+    teamId,
+    tmbId,
+    appName: name,
+    total,
+    source,
+    list: [
+      {
+        moduleName: name,
+        amount: total,
+        model: model.name,
+        tokenLen: 1
+      }
+    ]
+  });
+}

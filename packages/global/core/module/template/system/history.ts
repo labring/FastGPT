@@ -18,10 +18,12 @@ export const HistoryModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.historyMaxAmount,
       type: FlowNodeInputTypeEnum.numberInput,
       label: '最长记录数',
+      description:
+        '该记录数不代表模型可接收这么多的历史记录，具体可接收多少历史记录，取决于模型的能力，通常建议不要超过20条。',
       value: 6,
       valueType: ModuleDataTypeEnum.number,
       min: 0,
-      max: 50,
+      max: 100,
       showTargetInApp: false,
       showTargetInPlugin: false
     },

@@ -67,8 +67,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         'limit.exportKbTime': new Date()
       });
     });
+
+    cursor.on('error', (err) => {
+      addLog.error(`export dataset error`, err);
+      res.status(500);
+      res.end();
+    });
   } catch (err) {
     res.status(500);
+    addLog.error(`export dataset error`, err);
     jsonRes(res, {
       code: 500,
       error: err

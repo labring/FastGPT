@@ -10,7 +10,7 @@ import {
   Image
 } from '@chakra-ui/react';
 
-interface Props extends ModalContentProps {
+export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
   title?: any;
   isCentered?: boolean;
@@ -28,7 +28,7 @@ const MyModal = ({
   w = 'auto',
   maxW = ['90vw', '600px'],
   ...props
-}: Props) => {
+}: MyModalProps) => {
   return (
     <Modal
       isOpen={isOpen}
@@ -42,7 +42,7 @@ const MyModal = ({
         minW={['90vw', '400px']}
         maxW={maxW}
         position={'relative'}
-        maxH={['80vh', '85vh']}
+        maxH={'85vh'}
         {...props}
       >
         {!title && onClose && <ModalCloseButton zIndex={1} />}
