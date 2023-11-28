@@ -559,6 +559,7 @@ const ChatBox = (
                       {item.type === VariableInputEnum.input && (
                         <Input
                           isDisabled={variableIsFinish}
+                          bg={'myWhite.400'}
                           {...register(item.key, {
                             required: item.required
                           })}
@@ -567,6 +568,7 @@ const ChatBox = (
                       {item.type === VariableInputEnum.textarea && (
                         <Textarea
                           isDisabled={variableIsFinish}
+                          bg={'myWhite.400'}
                           {...register(item.key, {
                             required: item.required
                           })}
