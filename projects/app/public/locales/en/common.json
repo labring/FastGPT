@@ -348,11 +348,12 @@
       },
       "variable": {
         "add option": "Add Option",
+        "input type": "Text",
         "key": "Key",
         "key is required": "variable key is required",
         "select type": "Select",
         "text max length": "Max Length",
-        "text type": "Text",
+        "textarea type": "Textarea",
         "variable key is required": "",
         "variable name": "Name",
         "variable name is required": "variable name is required",

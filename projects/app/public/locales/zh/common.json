@@ -348,11 +348,12 @@
       },
       "variable": {
         "add option": "添加选项",
+        "input type": "文本",
         "key": "变量 key",
         "key is required": "变量key是必须的",
         "select type": "下拉单选",
         "text max length": "最大长度",
-        "text type": "文本",
+        "textarea type": "段落",
         "variable key is required": "变量 key 不能为空",
         "variable name": "变量名",
         "variable name is required": "变量名不能为空",

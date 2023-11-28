@@ -111,7 +111,10 @@ const iconPaths = {
   'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),
   'core/dataset/modeEmbedding': () => import('./icons/core/dataset/modeEmbedding.svg'),
   'core/dataset/modeEmbeddingRerank': () => import('./icons/core/dataset/modeEmbeddingRerank.svg'),
-  'core/dataset/modeEmbFTRerank': () => import('./icons/core/dataset/modeEmbFTRerank.svg')
+  'core/dataset/modeEmbFTRerank': () => import('./icons/core/dataset/modeEmbFTRerank.svg'),
+  'core/app/variable/input': () => import('./icons/core/app/variable/input.svg'),
+  'core/app/variable/textarea': () => import('./icons/core/app/variable/textarea.svg'),
+  'core/app/variable/select': () => import('./icons/core/app/variable/select.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

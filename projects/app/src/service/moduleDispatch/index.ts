@@ -231,6 +231,9 @@ export async function dispatchModules({
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
   initModules.map((module) => moduleInput(module, params));
   await checkModulesCanRun(initModules);
+  runningModules.forEach((item) => {
+    console.log(item);
+  });
 
   // focus try to run pluginOutput
   const pluginOutputModule = runningModules.find(
@@ -258,13 +261,6 @@ function loadModules(
       flowType: module.flowType,
       showStatus: module.showStatus,
       inputs: module.inputs
-        .map((item) => {
-          // connected empty value, set it undefined
-          if (item.connected && ['', null].includes(item.value)) {
-            item.value = undefined;
-          }
-          return item;
-        })
         .filter((item) => item.connected || item.value !== undefined) // filter unconnected target input
         .map((item) => {
           if (typeof item.value !== 'string') {

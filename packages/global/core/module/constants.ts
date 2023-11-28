@@ -99,5 +99,6 @@ export enum ModuleOutputKeyEnum {
 
 export enum VariableInputEnum {
   input = 'input',
+  textarea = 'textarea',
   select = 'select'
 }

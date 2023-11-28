@@ -26,7 +26,8 @@ import {
   useTheme,
   BoxProps,
   FlexProps,
-  Image
+  Image,
+  Textarea
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { eventBus } from '@/web/common/utils/eventbus';
@@ -561,6 +562,16 @@ const ChatBox = (
                           {...register(item.key, {
                             required: item.required
                           })}
+                        />
+                      )}
+                      {item.type === VariableInputEnum.textarea && (
+                        <Textarea
+                          isDisabled={variableIsFinish}
+                          {...register(item.key, {
+                            required: item.required
+                          })}
+                          rows={5}
+                          maxLength={4000}
                         />
                       )}
                       {item.type === VariableInputEnum.select && (
