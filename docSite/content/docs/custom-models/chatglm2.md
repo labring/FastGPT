@@ -99,7 +99,7 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
 
 ## 接入 FastGPT
 
-修改 config.json 配置文件，在 VectorModels 中加入 chatglm2 模型：
+修改 config.json 配置文件，在 ChatModels 中加入 chatglm2 模型：
 
 ```json
 "ChatModels": [
@@ -107,10 +107,11 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
   {
     "model": "chatglm2",
     "name": "chatglm2",
-    "maxToken": 8000,
-    "price": 0,
-    "quoteMaxToken": 4000,
-    "maxTemperature": 1.2,
+    "maxContext": 4000,
+    "maxResponse": 4000,
+    "quoteMaxToken": 2000,
+    "maxTemperature": 1,
+    "vision": false, 
     "defaultSystemChatPrompt": ""
   }
 ]

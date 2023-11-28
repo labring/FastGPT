@@ -17,8 +17,11 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   flowType: FlowNodeTypeEnum.classifyQuestion,
   avatar: '/imgs/module/cq.png',
   name: '问题分类',
-  intro:
-    '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',
+  intro: `根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：
+类型1: 打招呼
+类型2: 关于商品“使用”问题
+类型3: 关于商品“购买”问题
+类型4: 其他问题`,
   showStatus: true,
   inputs: [
     Input_Template_TFSwitch,

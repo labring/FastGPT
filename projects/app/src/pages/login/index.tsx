@@ -13,7 +13,6 @@ import { clearToken, setToken } from '@/web/support/user/auth';
 import { feConfigs } from '@/web/common/system/staticData';
 import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
-import { loginOut } from '@/web/support/user/api';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 
@@ -114,10 +113,10 @@ const Login = () => {
           >
             <DynamicComponent type={pageType} />
 
-            {feConfigs?.show_contact && (
+            {feConfigs?.concatMd && (
               <Box
-                fontSize={'sm'}
-                color={'myGray.600'}
+                fontWeight={'bold'}
+                color={'myBlue.700'}
                 cursor={'pointer'}
                 position={'absolute'}
                 right={5}

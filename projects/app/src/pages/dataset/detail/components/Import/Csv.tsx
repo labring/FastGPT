@@ -5,7 +5,10 @@ import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provide
 import { useTranslation } from 'next-i18next';
 
 const fileExtension = '.csv';
-const csvTemplate = `index,content\n"被索引的内容","对应的答案。CSV 中请注意内容不能包含双引号，双引号是列分割符号"\n"什么是 laf","laf 是一个云函数开发平台……",""\n"什么是 sealos","Sealos 是以 kubernetes 为内核的云操作系统发行版,可以……"`;
+const csvTemplate = `index,content
+"必填内容","可选内容。CSV 中请注意内容不能包含双引号，双引号是列分割符号"
+"结合人工智能的演进历程,AIGC的发展大致可以分为三个阶段，即:早期萌芽阶段(20世纪50年代至90年代中期)、沉淀积累阶段(20世纪90年代中期至21世纪10年代中期),以及快速发展展阶段(21世纪10年代中期至今)。",""
+"AIGC发展分为几个阶段？","早期萌芽阶段(20世纪50年代至90年代中期)、沉淀积累阶段(20世纪90年代中期至21世纪10年代中期)、快速发展展阶段(21世纪10年代中期至今)"`;
 
 const CsvImport = () => {
   const { t } = useTranslation();

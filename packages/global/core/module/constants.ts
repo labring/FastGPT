@@ -61,7 +61,8 @@ export enum ModuleInputKeyEnum {
   datasetSelectList = 'datasets',
   datasetSimilarity = 'similarity',
   datasetLimit = 'limit',
-  datasetStartReRank = 'rerank',
+  datasetSearchMode = 'searchMode',
+  datasetParamsModal = 'datasetParamsModal',
 
   // context extract
   contextExtractInput = 'content',
@@ -98,5 +99,6 @@ export enum ModuleOutputKeyEnum {
 
 export enum VariableInputEnum {
   input = 'input',
+  textarea = 'textarea',
   select = 'select'
 }

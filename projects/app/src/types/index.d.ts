@@ -3,6 +3,7 @@ import {
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
+  ReRankModelItemType,
   VectorModelItemType,
   WhisperModelType
 } from '@fastgpt/global/core/ai/model.d';
@@ -30,6 +31,7 @@ declare global {
   var qgModels: LLMModelItemType[];
   var audioSpeechModels: AudioSpeechModelType[];
   var whisperModel: WhisperModelType;
+  var reRankModels: ReRankModelItemType[];
 
   var priceMd: string;
   var systemVersion: string;

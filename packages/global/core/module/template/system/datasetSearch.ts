@@ -12,6 +12,7 @@ import {
 } from '../../constants';
 import { Input_Template_TFSwitch, Input_Template_UserChatInput } from '../input';
 import { Output_Template_Finish } from '../output';
+import { DatasetSearchModeEnum } from '../../../dataset/constant';
 
 export const DatasetSearchModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,
@@ -36,7 +37,7 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleInputKeyEnum.datasetSimilarity,
-      type: FlowNodeInputTypeEnum.slider,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '最低相关性',
       value: 0.4,
       valueType: ModuleDataTypeEnum.number,
@@ -52,7 +53,7 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleInputKeyEnum.datasetLimit,
-      type: FlowNodeInputTypeEnum.slider,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '单次搜索上限',
       description: '最多取 n 条记录作为本次问题引用',
       value: 5,
@@ -68,13 +69,20 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       showTargetInPlugin: false
     },
     {
-      key: ModuleInputKeyEnum.datasetStartReRank,
-      type: FlowNodeInputTypeEnum.switch,
-      label: '结果重排',
-      description: '将召回的结果进行进一步重排，可增加召回率',
-      plusField: true,
-      value: false,
-      valueType: ModuleDataTypeEnum.boolean,
+      key: ModuleInputKeyEnum.datasetSearchMode,
+      type: FlowNodeInputTypeEnum.hidden,
+      label: 'core.dataset.search.Mode',
+      valueType: ModuleDataTypeEnum.string,
+      showTargetInApp: false,
+      showTargetInPlugin: false,
+      value: DatasetSearchModeEnum.embedding
+    },
+    {
+      key: ModuleInputKeyEnum.datasetParamsModal,
+      type: FlowNodeInputTypeEnum.selectDatasetParamsModal,
+      label: '',
+      connected: false,
+      valueType: ModuleDataTypeEnum.any,
       showTargetInApp: false,
       showTargetInPlugin: false
     },

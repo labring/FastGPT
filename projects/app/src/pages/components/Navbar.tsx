@@ -20,7 +20,7 @@ const Navbar = () => {
   const { isOpen: isOpenMenu, onOpen: onOpenMenu, onClose: onCloseMenu } = useDisclosure();
   const { isPc } = useSystemStore();
   const menuList = [
-    ...(feConfigs?.show_contact
+    ...(feConfigs?.concatMd
       ? [
           {
             label: t('home.Commercial'),

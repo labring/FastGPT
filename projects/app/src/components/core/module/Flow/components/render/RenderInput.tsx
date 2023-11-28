@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import {
@@ -36,11 +36,13 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useQuery } from '@tanstack/react-query';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 import { feConfigs } from '@/web/common/system/staticData';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 const SelectAppModal = dynamic(() => import('../../SelectAppModal'));
 const AIChatSettingsModal = dynamic(() => import('../../../AIChatSettingsModal'));
 const DatasetSelectModal = dynamic(() => import('../../../DatasetSelectModal'));
+const DatasetParamsModal = dynamic(() => import('../../../DatasetParamsModal'));
 
 export const Label = React.memo(function Label({
   moduleId,
@@ -232,6 +234,9 @@ const RenderInput = ({
                 {item.type === FlowNodeInputTypeEnum.selectDataset && (
                   <SelectDatasetRender item={item} moduleId={moduleId} />
                 )}
+                {item.type === FlowNodeInputTypeEnum.selectDatasetParamsModal && (
+                  <SelectDatasetParamsRender item={item} inputs={sortInputs} moduleId={moduleId} />
+                )}
                 {item.type === FlowNodeInputTypeEnum.custom && CustomComponent[item.key] && (
                   <>{CustomComponent[item.key]({ ...item })}</>
                 )}
@@ -251,7 +256,7 @@ type RenderProps = {
   moduleId: string;
 };
 
-var NumberInputRender = React.memo(function NumberInputRender({ item, moduleId }: RenderProps) {
+const NumberInputRender = React.memo(function NumberInputRender({ item, moduleId }: RenderProps) {
   return (
     <NumberInput
       defaultValue={item.value}
@@ -278,7 +283,7 @@ var NumberInputRender = React.memo(function NumberInputRender({ item, moduleId }
   );
 });
 
-var TextInputRender = React.memo(function TextInputRender({ item, moduleId }: RenderProps) {
+const TextInputRender = React.memo(function TextInputRender({ item, moduleId }: RenderProps) {
   return (
     <Input
       placeholder={item.placeholder}
@@ -298,7 +303,7 @@ var TextInputRender = React.memo(function TextInputRender({ item, moduleId }: Re
   );
 });
 
-var SwitchRender = React.memo(function SwitchRender({ item, moduleId }: RenderProps) {
+const SwitchRender = React.memo(function SwitchRender({ item, moduleId }: RenderProps) {
   return (
     <Switch
       size={'lg'}
@@ -318,7 +323,7 @@ var SwitchRender = React.memo(function SwitchRender({ item, moduleId }: RenderPr
   );
 });
 
-var TextareaRender = React.memo(function TextareaRender({ item, moduleId }: RenderProps) {
+const TextareaRender = React.memo(function TextareaRender({ item, moduleId }: RenderProps) {
   return (
     <Textarea
       rows={5}
@@ -340,7 +345,7 @@ var TextareaRender = React.memo(function TextareaRender({ item, moduleId }: Rend
   );
 });
 
-var SelectRender = React.memo(function SelectRender({ item, moduleId }: RenderProps) {
+const SelectRender = React.memo(function SelectRender({ item, moduleId }: RenderProps) {
   return (
     <MySelect
       width={'100%'}
@@ -361,7 +366,7 @@ var SelectRender = React.memo(function SelectRender({ item, moduleId }: RenderPr
   );
 });
 
-var SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderProps) {
+const SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderProps) {
   return (
     <Box pt={5} pb={4} px={2}>
       <MySlider
@@ -387,7 +392,7 @@ var SliderRender = React.memo(function SliderRender({ item, moduleId }: RenderPr
   );
 });
 
-var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderProps) {
+const AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderProps) {
   const { t } = useTranslation();
   const chatModulesData = useMemo(() => {
     const obj: Record<string, any> = {};
@@ -440,15 +445,15 @@ var AISetting = React.memo(function AISetting({ inputs = [], moduleId }: RenderP
   );
 });
 
-var SelectChatModelRender = React.memo(function SelectChatModelRender({
+const SelectChatModelRender = React.memo(function SelectChatModelRender({
   inputs = [],
   item,
   moduleId
 }: RenderProps) {
   const modelList = chatModelList || [];
 
-  function onChangeModel(e: string) {
-    {
+  const onChangeModel = useCallback(
+    (e: string) => {
       onChangeNode({
         moduleId,
         type: 'updateInput',
@@ -477,8 +482,9 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
           value: model.maxResponse / 2
         }
       });
-    }
-  }
+    },
+    [inputs, item, modelList, moduleId]
+  );
 
   const list = modelList.map((item) => {
     const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
@@ -489,9 +495,11 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
     };
   });
 
-  if (!item.value && list.length > 0) {
-    onChangeModel(list[0].value);
-  }
+  useEffect(() => {
+    if (!item.value && list.length > 0) {
+      onChangeModel(list[0].value);
+    }
+  }, [item.value, list, onChangeModel]);
 
   return (
     <MySelect
@@ -504,7 +512,10 @@ var SelectChatModelRender = React.memo(function SelectChatModelRender({
   );
 });
 
-var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, moduleId }: RenderProps) {
+const SelectDatasetRender = React.memo(function SelectDatasetRender({
+  item,
+  moduleId
+}: RenderProps) {
   const theme = useTheme();
   const { mode } = useFlowProviderStore();
   const { allDatasets, loadAllDatasets } = useDatasetStore();
@@ -572,7 +583,7 @@ var SelectDatasetRender = React.memo(function SelectDatasetRender({ item, module
   );
 });
 
-var SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: RenderProps) {
+const SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: RenderProps) {
   const { filterAppIds } = useFlowProviderStore();
   const theme = useTheme();
 
@@ -616,6 +627,66 @@ var SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: Re
                 value: e[0]
               }
             });
+          }}
+        />
+      )}
+    </>
+  );
+});
+
+const SelectDatasetParamsRender = React.memo(function SelectDatasetParamsRender({
+  inputs = [],
+  moduleId
+}: RenderProps) {
+  const { t } = useTranslation();
+  const [data, setData] = useState({
+    searchMode: DatasetSearchModeEnum.embedding,
+    limit: 5,
+    similarity: 0.5
+  });
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  useEffect(() => {
+    inputs.forEach((input) => {
+      // @ts-ignore
+      if (data[input.key] !== undefined) {
+        setData((state) => ({
+          ...state,
+          [input.key]: input.value
+        }));
+      }
+    });
+  }, [inputs]);
+
+  return (
+    <>
+      <Button
+        variant={'base'}
+        leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+        onClick={onOpen}
+      >
+        {t('core.dataset.search.Params Setting')}
+      </Button>
+      {isOpen && (
+        <DatasetParamsModal
+          {...data}
+          onClose={onClose}
+          onSuccess={(e) => {
+            for (let key in e) {
+              const item = inputs.find((input) => input.key === key);
+              if (!item) continue;
+              onChangeNode({
+                moduleId,
+                type: 'updateInput',
+                key,
+                value: {
+                  ...item,
+                  //@ts-ignore
+                  value: e[key]
+                }
+              });
+            }
           }}
         />
       )}

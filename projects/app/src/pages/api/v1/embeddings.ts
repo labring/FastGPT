@@ -15,7 +15,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   try {
     let { input, model, billId } = req.body as Props;
     await connectToDatabase();
-    const { teamId, tmbId } = await authCert({ req, authToken: true });
+    const { teamId, tmbId } = await authCert({ req, authToken: true, authApiKey: true });
 
     if (!Array.isArray(input) || typeof input !== 'string') {
       throw new Error('input is nor array or string');

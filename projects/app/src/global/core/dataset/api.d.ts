@@ -1,5 +1,5 @@
 import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import {
   DatasetDataIndexItemType,
   SearchDataResponseItemType
@@ -43,7 +43,7 @@ export type SearchTestProps = {
   datasetId: string;
   text: string;
   limit?: number;
-  rerank?: boolean;
+  searchMode?: `${DatasetSearchModeEnum}`;
 };
 export type SearchTestResponse = {
   list: SearchDataResponseItemType[];
