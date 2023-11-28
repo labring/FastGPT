@@ -349,7 +349,7 @@
       "variable": {
         "add option": "添加选项",
         "key": "变量 key",
-        "key is required": "",
+        "key is required": "变量key是必须的",
         "select type": "下拉单选",
         "text max length": "最大长度",
         "text type": "文本",
@@ -359,7 +359,8 @@
         "variable option is required": "选项不能全空",
         "variable option is value is required": "选项内容不能为空",
         "variable options": "选项"
-      }
+      },
+      "variable add option": "添加选项"
     }
   },
   "dataset": {

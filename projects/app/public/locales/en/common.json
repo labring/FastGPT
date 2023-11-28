@@ -359,7 +359,8 @@
         "variable option is required": "Variable option is required",
         "variable option is value is required": "Variable option is value is required",
         "variable options": "Options"
-      }
+      },
+      "variable add option": "Add Option"
     }
   },
   "dataset": {
