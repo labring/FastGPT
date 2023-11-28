@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import {
@@ -452,8 +452,8 @@ const SelectChatModelRender = React.memo(function SelectChatModelRender({
 }: RenderProps) {
   const modelList = chatModelList || [];
 
-  function onChangeModel(e: string) {
-    {
+  const onChangeModel = useCallback(
+    (e: string) => {
       onChangeNode({
         moduleId,
         type: 'updateInput',
@@ -482,8 +482,9 @@ const SelectChatModelRender = React.memo(function SelectChatModelRender({
           value: model.maxResponse / 2
         }
       });
-    }
-  }
+    },
+    [inputs, item, modelList, moduleId]
+  );
 
   const list = modelList.map((item) => {
     const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
@@ -494,9 +495,11 @@ const SelectChatModelRender = React.memo(function SelectChatModelRender({
     };
   });
 
-  if (!item.value && list.length > 0) {
-    onChangeModel(list[0].value);
-  }
+  useEffect(() => {
+    if (!item.value && list.length > 0) {
+      onChangeModel(list[0].value);
+    }
+  }, [item.value, list, onChangeModel]);
 
   return (
     <MySelect
@@ -648,8 +651,6 @@ const SelectDatasetParamsRender = React.memo(function SelectDatasetParamsRender(
     inputs.forEach((input) => {
       // @ts-ignore
       if (data[input.key] !== undefined) {
-        console.log(input);
-
         setData((state) => ({
           ...state,
           [input.key]: input.value
@@ -672,8 +673,6 @@ const SelectDatasetParamsRender = React.memo(function SelectDatasetParamsRender(
           {...data}
           onClose={onClose}
           onSuccess={(e) => {
-            console.log(e);
-
             for (let key in e) {
               const item = inputs.find((input) => input.key === key);
               if (!item) continue;

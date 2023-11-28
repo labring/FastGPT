@@ -12,6 +12,7 @@ import {
 } from '../../constants';
 import { Input_Template_TFSwitch, Input_Template_UserChatInput } from '../input';
 import { Output_Template_Finish } from '../output';
+import { DatasetSearchModeEnum } from '../../../dataset/constant';
 
 export const DatasetSearchModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,
@@ -73,7 +74,8 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       label: 'core.dataset.search.Mode',
       valueType: ModuleDataTypeEnum.string,
       showTargetInApp: false,
-      showTargetInPlugin: false
+      showTargetInPlugin: false,
+      value: DatasetSearchModeEnum.embedding
     },
     {
       key: ModuleInputKeyEnum.datasetParamsModal,

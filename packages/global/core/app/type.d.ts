@@ -19,6 +19,7 @@ export interface AppSchema {
   updateTime: number;
   modules: ModuleItemType[];
   permission: `${PermissionTypeEnum}`;
+  inited: boolean;
 }
 
 export type AppListItemType = {
