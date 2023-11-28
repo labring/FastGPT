@@ -181,14 +181,14 @@ export async function searchDatasetData(props: SearchProps) {
   ]);
 
   // concat embedding and fullText recall result
-  let set = new Set<string>();
+  let set = new Set<string>(embeddingRecallResults.map((item) => item.id));
   const concatRecallResults = embeddingRecallResults;
-  for (const item of fullTextRecallResults) {
-    if (!set.has(item.id)) {
+  fullTextRecallResults.forEach((item) => {
+    if (!set.has(item.id) && item.score >= similarity) {
       concatRecallResults.push(item);
       set.add(item.id);
     }
-  }
+  });
 
   // remove same q and a data
   set = new Set<string>();
@@ -207,24 +207,24 @@ export async function searchDatasetData(props: SearchProps) {
   }
 
   // ReRank result
-  const reRankResults = await reRankSearchResult({
-    query: text,
-    data: filterSameDataResults
-  });
+  const reRankResults = (
+    await reRankSearchResult({
+      query: text,
+      data: filterSameDataResults
+    })
+  ).filter((item) => item.score > similarity);
 
-  // (It's possible that rerank failed)
-  // remove same data
-  set = new Set<string>();
-  const results = reRankResults;
-  filterSameDataResults.forEach((item) => {
-    if (!set.has(item.id)) {
-      results.push(item);
+  // (It's possible that rerank failed) concat rerank results and search results
+  set = new Set<string>(reRankResults.map((item) => item.id));
+  embeddingRecallResults.forEach((item) => {
+    if (!set.has(item.id) && item.score >= similarity) {
+      reRankResults.push(item);
       set.add(item.id);
     }
   });
 
   return {
-    searchRes: results.filter((item) => item.score > similarity).slice(0, limit),
+    searchRes: reRankResults.slice(0, limit),
     tokenLen
   };
 }
@@ -383,7 +383,7 @@ export async function reRankSearchResult({
   query: string;
 }): Promise<SearchDataResponseItemType[]> {
   try {
-    const result = await reRankRecall({
+    const results = await reRankRecall({
       query,
       inputs: data.map((item) => ({
         id: item.id,
@@ -392,7 +392,7 @@ export async function reRankSearchResult({
     });
 
     // add new score to data
-    const mergeResult = result
+    const mergeResult = results
       .map((item) => {
         const target = data.find((dataItem) => dataItem.id === item.id);
         if (!target) return null;
