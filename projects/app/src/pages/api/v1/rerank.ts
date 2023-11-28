@@ -5,12 +5,12 @@ import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { pushReRankBill } from '@/service/support/wallet/bill/push';
 import { connectToDatabase } from '@/service/mongo';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { PostReRankProps } from '@fastgpt/global/core/ai/api';
+import { PostReRankProps, PostReRankResponse } from '@fastgpt/global/core/ai/api';
 import { reRankRecall } from '@/service/core/ai/rerank';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  let { query, inputs } = req.body as PostReRankProps;
   try {
-    let { query, inputs } = req.body as PostReRankProps;
     await connectToDatabase();
     const { teamId, tmbId } = await authCert({
       req,
@@ -29,14 +29,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       source: 'api'
     });
 
-    jsonRes(res, {
+    jsonRes<PostReRankResponse>(res, {
       data: result
     });
   } catch (err) {
     console.log(err);
-    jsonRes(res, {
-      code: 500,
-      error: err
+    jsonRes<PostReRankResponse>(res, {
+      data: inputs.map((input) => ({
+        id: input.id
+      }))
     });
   }
 });

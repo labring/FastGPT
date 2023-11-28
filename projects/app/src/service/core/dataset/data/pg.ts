@@ -398,7 +398,7 @@ export async function reRankSearchResult({
         if (!target) return null;
         return {
           ...target,
-          score: item.score || 0
+          score: item.score || target.score
         };
       })
       .filter(Boolean) as SearchDataResponseItemType[];
