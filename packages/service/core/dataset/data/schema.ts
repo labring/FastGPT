@@ -45,7 +45,8 @@ const DatasetDataSchema = new Schema({
   },
   fullTextToken: {
     type: String,
-    required: true
+    required: true,
+    default: ''
   },
   indexes: {
     type: [

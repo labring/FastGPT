@@ -213,13 +213,14 @@ export async function searchDatasetData(props: SearchProps) {
   });
 
   // (It's possible that rerank failed)
-  const concatReRankResults = reRankResults.concat(filterSameDataResults);
   // remove same data
   set = new Set<string>();
-  const results = concatReRankResults.filter((item) => {
-    if (set.has(item.id)) return false;
-    set.add(item.id);
-    return true;
+  const results = reRankResults;
+  filterSameDataResults.forEach((item) => {
+    if (!set.has(item.id)) {
+      results.push(item);
+      set.add(item.id);
+    }
   });
 
   return {
@@ -386,7 +387,7 @@ export async function reRankSearchResult({
       query,
       inputs: data.map((item) => ({
         id: item.id,
-        text: `${item.q}${item.a}`
+        text: `${item.q}\n${item.a}`
       }))
     });
 
