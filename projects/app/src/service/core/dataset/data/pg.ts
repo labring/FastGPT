@@ -214,7 +214,7 @@ export async function searchDatasetData(props: SearchProps) {
   });
 
   // (It's possible that rerank failed)
-  const results = reRankResults.length === 0 ? filterSameDataResults : reRankResults;
+  const results = reRankResults.concat(filterSameDataResults);
 
   return {
     searchRes: results.filter((item) => item.score > similarity).slice(0, limit),
@@ -381,9 +381,10 @@ export async function reRankSearchResult({
       query,
       inputs: data.map((item) => ({
         id: item.id,
-        text: `${item.q}\n${item.a}`.trim()
+        text: `${item.q}${item.a}`
       }))
     });
+
     // add new score to data
     const mergeResult = result
       .map((item) => {

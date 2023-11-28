@@ -122,7 +122,7 @@ const QuoteModal = ({
                 <Flex alignItems={'center'} fontSize={'sm'} mt={3} gap={4} color={'myGray.500'}>
                   {isPc && (
                     <MyTooltip label={t('core.dataset.data.id')}>
-                      <Flex border={theme.borders.base} px={3} borderRadius={'md'}>
+                      <Flex border={theme.borders.base} py={'1px'} px={3} borderRadius={'3px'}>
                         # {item.id}
                       </Flex>
                     </MyTooltip>
