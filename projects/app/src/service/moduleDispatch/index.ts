@@ -231,9 +231,6 @@ export async function dispatchModules({
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
   initModules.map((module) => moduleInput(module, params));
   await checkModulesCanRun(initModules);
-  runningModules.forEach((item) => {
-    console.log(item);
-  });
 
   // focus try to run pluginOutput
   const pluginOutputModule = runningModules.find(
