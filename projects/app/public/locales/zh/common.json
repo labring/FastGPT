@@ -266,15 +266,39 @@
       "Search Top K": "单次搜索数量",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Similarity": "相似度",
+      "Sync Time": "最后更新时间",
+      "Virtual File": "虚拟文件",
+      "collection": {
+        "metadata": {
+          "Chunk Size": "分割大小",
+          "Createtime": "创建时间",
+          "Read Metadata": "查看元数据",
+          "Training Type": "训练模式",
+          "Updatetime": "更新时间",
+          "metadata": "元数据",
+          "read source": "查看原始内容",
+          "source": "数据来源",
+          "source name": "来源名",
+          "source size": "来源大小"
+        },
+        "training": {
+          "type manual": "手动",
+          "type chunk": "直接分段",
+          "type qa": "问答拆分"
+        }
+      },
       "data": {
         "Edit": "编辑数据",
         "data is deleted": "该数据已被删除",
         "id": "数据ID"
       },
+      "file": "文件",
+      "folder": "目录",
       "import": {
         "Ideal chunk length": "理想分块长度",
         "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200"
       },
+      "link": "链接",
       "search": {
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
@@ -289,7 +313,8 @@
           "embedding desc": "直接进行向量 topk 相关性查询",
           "embeddingReRank": "增强语义检索",
           "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序"
-        }
+        },
+        "search mode": "检索模式"
       },
       "test": {
         "Test": "测试",
@@ -300,6 +325,10 @@
         "test history": "测试历史",
         "test result placeholder": "测试结果将在这里展示",
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
+      },
+      "training": {
+        "type chunk": "直接分段",
+        "type qa": "问答拆分"
       }
     },
     "module": {
@@ -693,9 +722,9 @@
   "wallet": {
     "bill": {
       "Audio Speech": "语音播报",
+      "ReRank": "结果重排",
       "Whisper": "语音输入",
-      "bill username": "用户",
-      "ReRank": "结果重排"
+      "bill username": "用户"
     }
   }
 }

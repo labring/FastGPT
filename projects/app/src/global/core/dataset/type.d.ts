@@ -16,7 +16,8 @@ export type DatasetCollectionsListItemType = {
   updateTime: Date;
   dataAmount: number;
   trainingAmount: number;
-  metadata: DatasetCollectionSchemaType['metadata'];
+  fileId?: string;
+  rawLink?: string;
   canWrite: boolean;
 };
 

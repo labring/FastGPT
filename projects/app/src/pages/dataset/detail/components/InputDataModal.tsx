@@ -427,7 +427,11 @@ export function RawSourceText({
         {...props}
       >
         <Image src={icon} alt="" w={['14px', '16px']} mr={2} />
-        <Box maxW={['200px', '300px']} className={props.className ?? 'textEllipsis'}>
+        <Box
+          maxW={['200px', '300px']}
+          className={props.className ?? 'textEllipsis'}
+          wordBreak={'break-all'}
+        >
           {sourceName || t('common.UnKnow Source')}
         </Box>
       </Box>

@@ -1,4 +1,8 @@
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionTrainingModeEnum,
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum
+} from '@fastgpt/global/core/dataset/constant';
 import type { RequestPaging } from '@/types';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { SearchTestItemType } from '@/types/core/dataset';
@@ -31,14 +35,15 @@ export type CreateDatasetCollectionParams = {
   parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
-  metadata?: DatasetCollectionSchemaType['metadata'];
-  updateTime?: string;
+  trainingType?: `${DatasetCollectionTrainingModeEnum}`;
+  chunkSize?: number;
+  fileId?: string;
+  rawLink?: string;
 };
 export type UpdateDatasetCollectionParams = {
   id: string;
   parentId?: string;
   name?: string;
-  metadata?: DatasetCollectionSchemaType['metadata'];
 };
 
 /* ==== data ===== */

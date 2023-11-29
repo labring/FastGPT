@@ -36,7 +36,11 @@ import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import EmptyTip from '@/components/EmptyTip';
-import { FolderAvatarSrc, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  FolderAvatarSrc,
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constant';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
 import { TabEnum } from '..';
@@ -347,7 +351,7 @@ const CollectionCard = () => {
               <Th>#</Th>
               <Th>{t('common.Name')}</Th>
               <Th>{t('dataset.collections.Data Amount')}</Th>
-              <Th>{t('common.Time')}</Th>
+              <Th>{t('core.dataset.Sync Time')}</Th>
               <Th>{t('common.Status')}</Th>
               <Th />
             </Tr>

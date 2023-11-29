@@ -1,14 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import {
-  Box,
-  Flex,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-  useTheme
-} from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import type {
   FlowModuleTemplateType,
   moduleTemplateListType

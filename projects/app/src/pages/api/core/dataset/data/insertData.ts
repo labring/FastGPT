@@ -76,6 +76,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       collectionId,
       q: formatQ,
       a: formatA,
+      chunkIndex: 0,
       model: vectorModelData.model,
       indexes: formatIndexes
     });

@@ -6,6 +6,8 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -24,12 +26,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       per: 'r'
     });
 
+    // get file
+    const file = collection?.fileId
+      ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
+      : undefined;
+
     jsonRes<DatasetCollectionItemType>(res, {
       data: {
         ...collection,
         canWrite,
         sourceName: collection?.name,
-        sourceId: collection?.metadata?.fileId || collection?.metadata?.rawLink
+        sourceId: collection?.fileId || collection?.rawLink,
+        file
       }
     });
   } catch (err) {

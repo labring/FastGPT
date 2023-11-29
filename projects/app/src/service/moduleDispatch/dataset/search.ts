@@ -65,7 +65,8 @@ export async function dispatchDatasetSearch(
       model: vectorModel.name,
       tokens: tokenLen,
       similarity,
-      limit
+      limit,
+      searchMode
     }
   };
 }

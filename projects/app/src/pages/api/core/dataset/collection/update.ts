@@ -9,7 +9,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { id, parentId, name, metadata = {} } = req.body as UpdateDatasetCollectionParams;
+    const { id, parentId, name } = req.body as UpdateDatasetCollectionParams;
 
     if (!id) {
       throw new Error('缺少参数');
@@ -22,11 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ...(parentId !== undefined && { parentId: parentId || null }),
       ...(name && { name, updateTime: getCollectionUpdateTime({ name }) })
     };
-
-    // 将metadata的每个字段添加到updateFields中
-    for (const [key, value] of Object.entries(metadata)) {
-      updateFields[`metadata.${key}`] = value;
-    }
 
     await MongoDatasetCollection.findByIdAndUpdate(id, {
       $set: updateFields

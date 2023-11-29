@@ -16,10 +16,7 @@ import type {
   InsertOneDatasetDataProps
 } from '@/global/core/dataset/api.d';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
-import type {
-  DatasetCollectionItemType,
-  SearchDataResponseItemType
-} from '@fastgpt/global/core/dataset/type';
+import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';

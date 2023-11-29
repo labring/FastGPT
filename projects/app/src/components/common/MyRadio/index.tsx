@@ -36,16 +36,17 @@ const MyRadio = ({
           border={theme.borders.sm}
           borderWidth={'1.5px'}
           borderRadius={'md'}
-          bg={'myWhite.300'}
           position={'relative'}
           {...(value === item.value
             ? {
-                borderColor: 'myBlue.700'
+                borderColor: 'myBlue.500',
+                bg: 'myBlue.100'
               }
             : {
+                bg: 'myWhite.300',
                 _hover: {
-                  bg: 'myBlue.100',
-                  borderColor: 'myBlue.600'
+                  bg: '#f5f8ff',
+                  borderColor: '#b2ccff'
                 }
               })}
           _after={{

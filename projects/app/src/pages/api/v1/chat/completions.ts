@@ -142,7 +142,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           responseDetail: detail,
           apikey,
           authType,
-          canWrite: false
+          canWrite: true
         };
       }
 

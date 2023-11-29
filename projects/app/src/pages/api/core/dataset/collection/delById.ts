@@ -42,10 +42,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // delete file
     await Promise.all(
       collections.map((collection) => {
-        if (!collection.metadata?.fileId) return;
+        if (!collection?.fileId) return;
         return delFileById({
           bucketName: BucketNameEnum.dataset,
-          fileId: collection.metadata.fileId
+          fileId: collection.fileId
         });
       })
     );
