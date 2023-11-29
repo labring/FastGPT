@@ -92,6 +92,8 @@ const MessageInput = ({
         );
       } catch (error) {
         setFileList((state) => state.filter((item) => item.id !== file.id));
+        console.log(error);
+
         toast({
           status: 'error',
           title: t('common.Upload File Failed')

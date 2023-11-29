@@ -11,7 +11,7 @@ import { reRankModelList } from '@/web/common/system/staticData';
 
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
-import MyRadio from '@/components/Radio';
+import MyRadio from '@/components/common/MyRadio';
 
 type DatasetParamsProps = {
   similarity?: number;

@@ -223,6 +223,7 @@ const VariableEdit = ({
                       fontWeight: 'bold'
                     }
                   : {
+                      color: 'myGray.600',
                       _hover: {
                         boxShadow: 'md'
                       },
