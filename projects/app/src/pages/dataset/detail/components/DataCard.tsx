@@ -290,6 +290,7 @@ const DataCard = () => {
             </Flex>
             <Box
               maxH={'135px'}
+              minH={'90px'}
               overflow={'hidden'}
               wordBreak={'break-all'}
               pt={1}
