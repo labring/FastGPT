@@ -1,5 +1,5 @@
 import React from 'react';
-import MyRadio from '@/components/Radio';
+import MyRadio from '@/components/common/MyRadio';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { useTranslation } from 'next-i18next';
 
