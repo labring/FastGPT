@@ -89,7 +89,7 @@ export async function delFileById({
   return true;
 }
 
-export async function getDownloadBuf({
+export async function getDownloadStream({
   bucketName,
   fileId
 }: {
@@ -98,14 +98,5 @@ export async function getDownloadBuf({
 }) {
   const bucket = getGridBucket(bucketName);
 
-  const stream = bucket.openDownloadStream(new Types.ObjectId(fileId));
-
-  const buf: Buffer = await new Promise((resolve, reject) => {
-    const buffers: Buffer[] = [];
-    stream.on('data', (data) => buffers.push(data));
-    stream.on('error', reject);
-    stream.on('end', () => resolve(Buffer.concat(buffers)));
-  });
-
-  return buf;
+  return bucket.openDownloadStream(new Types.ObjectId(fileId));
 }

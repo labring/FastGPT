@@ -10,12 +10,15 @@ import { delay } from '@/utils/tools';
 /* 
   check dataset.files data. If there is no match in dataset.collections, delete it
 */
-const limit = 50;
 let deleteFileAmount = 0;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { startDay = 10, endDay = 3 } = req.body as { startDay?: number; endDay?: number };
+    const {
+      startDay = 10,
+      endDay = 3,
+      limit = 30
+    } = req.body as { startDay?: number; endDay?: number; limit?: number };
     await authCert({ req, authRoot: true });
     await connectToDatabase();
 
@@ -24,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const end = new Date(Date.now() - endDay * 24 * 60 * 60 * 1000);
     deleteFileAmount = 0;
 
-    checkFiles(start, end);
+    checkFiles(start, end, limit);
 
     jsonRes(res, {
       message: 'success'
@@ -39,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-export async function checkFiles(start: Date, end: Date) {
+export async function checkFiles(start: Date, end: Date, limit: number) {
   const collection = getGFSCollection('dataset');
   const where = {
     uploadDate: { $gte: start, $lte: end }
@@ -78,6 +81,7 @@ export async function checkFiles(start: Date, end: Date) {
         console.log('delete file', _id);
         deleteFileAmount++;
       }
+      index % 100 === 0 && console.log(index);
       return check(index + limit);
     } catch (error) {
       console.log(error);
