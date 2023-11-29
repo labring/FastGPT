@@ -31,7 +31,7 @@ export async function authDatasetData({
     datasetId: String(datasetData.datasetId),
     collectionId: String(datasetData.collectionId),
     sourceName: result.collection.name || '',
-    sourceId: result.collection.metadata?.fileId || result.collection.metadata?.rawLink,
+    sourceId: result.collection?.fileId || result.collection?.rawLink,
     isOwner: String(datasetData.tmbId) === result.tmbId,
     canWrite: result.canWrite
   };

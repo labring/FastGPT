@@ -4,6 +4,7 @@ import { ChatRoleEnum, ChatSourceEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum } from '../module/constants';
 import { AppSchema } from '../app/type';
+import { DatasetSearchModeEnum } from '../dataset/constant';
 
 export type ChatSchema = {
   _id: string;
@@ -94,6 +95,7 @@ export type moduleDispatchResType = {
   // dataset search
   similarity?: number;
   limit?: number;
+  searchMode?: `${DatasetSearchModeEnum}`;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];

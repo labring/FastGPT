@@ -144,6 +144,7 @@ function ConfigForm({
       templateId: appDetail.simpleTemplateId,
       modules: appDetail.modules
     });
+
     reset(formVal);
     setTimeout(() => {
       setRefresh((state) => !state);

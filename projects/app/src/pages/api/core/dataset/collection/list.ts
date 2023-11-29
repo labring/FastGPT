@@ -115,9 +115,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             name: 1,
             type: 1,
             updateTime: 1,
-            trainingAmount: { $size: '$trainings' },
             dataAmount: { $size: '$datas' },
-            metadata: 1
+            trainingAmount: { $size: '$trainings' },
+            fileId: 1,
+            rawLink: 1
           }
         },
         {

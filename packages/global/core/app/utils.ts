@@ -77,7 +77,7 @@ export const appModules2Form = ({
       );
       defaultAppForm.aiSettings.quotePrompt = findInputValueByKey(
         module.inputs,
-        ModuleInputKeyEnum.aiChatQuoteTemplate
+        ModuleInputKeyEnum.aiChatQuotePrompt
       );
     } else if (module.flowType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(

@@ -270,7 +270,7 @@ export async function embeddingRecall({
       {
         _id: { $in: filterRows.map((item) => item.collection_id) }
       },
-      'name metadata'
+      'name fileId rawLink'
     ).lean(),
     MongoDatasetData.find(
       {
@@ -297,7 +297,7 @@ export async function embeddingRecall({
         datasetId: String(data.datasetId),
         collectionId: String(data.collectionId),
         sourceName: collection.name || '',
-        sourceId: collection.metadata?.fileId || collection.metadata?.rawLink,
+        sourceId: collection?.fileId || collection?.rawLink,
         score: item.score
       };
     })
@@ -352,7 +352,7 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
     {
       _id: { $in: searchResults.map((item) => item.collectionId) }
     },
-    '_id name metadata'
+    '_id name fileId rawLink'
   );
 
   return {
@@ -363,7 +363,7 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
         datasetId: String(item.datasetId),
         collectionId: String(item.collectionId),
         sourceName: collection?.name || '',
-        sourceId: collection?.metadata?.fileId || collection?.metadata?.rawLink,
+        sourceId: collection?.fileId || collection?.rawLink,
         q: item.q,
         a: item.a,
         indexes: item.indexes,

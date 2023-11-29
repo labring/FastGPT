@@ -15,7 +15,10 @@ import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionTrainingModeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constant';
 import { Box, Flex, Image, useTheme } from '@chakra-ui/react';
 import { CloseIcon } from '@chakra-ui/icons';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
@@ -92,6 +95,7 @@ const Provider = ({
   parentId,
   unitPrice,
   mode,
+  collectionTrainingType,
   vectorModel,
   agentModel,
   defaultChunkLen = 500,
@@ -104,6 +108,7 @@ const Provider = ({
   parentId: string;
   unitPrice: number;
   mode: `${TrainingModeEnum}`;
+  collectionTrainingType: `${DatasetCollectionTrainingModeEnum}`;
   vectorModel: string;
   agentModel: string;
   defaultChunkLen: number;
@@ -150,7 +155,10 @@ const Provider = ({
           parentId,
           name: file.filename,
           type: file.type,
-          metadata: file.metadata
+          fileId: file.fileId,
+          rawLink: file.rawLink,
+          chunkSize: chunkLen,
+          trainingType: collectionTrainingType
         });
 
         // upload data
