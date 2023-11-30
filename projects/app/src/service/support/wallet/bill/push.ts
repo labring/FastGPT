@@ -12,14 +12,18 @@ export function createBill(data: CreateBillProps) {
   if (data.total === 0) {
     addLog.info('0 Bill', data);
   }
-  POST('/support/wallet/bill/createBill', data);
+  try {
+    POST('/support/wallet/bill/createBill', data);
+  } catch (error) {}
 }
 export function concatBill(data: ConcatBillProps) {
   if (!global.systemEnv.pluginBaseUrl) return;
   if (data.total === 0) {
     addLog.info('0 Bill', data);
   }
-  POST('/support/wallet/bill/concatBill', data);
+  try {
+    POST('/support/wallet/bill/concatBill', data);
+  } catch (error) {}
 }
 
 export const pushChatBill = ({
@@ -92,7 +96,7 @@ export const pushQABill = async ({
   return { total };
 };
 
-export const pushGenerateVectorBill = async ({
+export const pushGenerateVectorBill = ({
   billId,
   teamId,
   tmbId,
@@ -250,7 +254,7 @@ export function pushReRankBill({
   source: `${BillSourceEnum}`;
 }) {
   const model = global.reRankModels[0];
-  if (!model) return;
+  if (!model) return { total: 0 };
 
   const total = model.price * PRICE_SCALE;
   const name = 'wallet.bill.ReRank';
@@ -270,4 +274,6 @@ export function pushReRankBill({
       }
     ]
   });
+
+  return { total };
 }
