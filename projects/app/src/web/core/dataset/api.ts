@@ -5,9 +5,9 @@ import type {
   DatasetUpdateParams,
   GetDatasetCollectionsProps,
   GetDatasetDataListProps,
-  CreateDatasetCollectionParams,
   UpdateDatasetCollectionParams
 } from '@/global/core/api/datasetReq.d';
+import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import type {
   PushDatasetDataProps,
@@ -64,7 +64,9 @@ export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
 export const delDatasetCollectionById = (params: { collectionId: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
 export const postWebsiteSync = (data: { collectionId: string }) =>
-  POST(`/plusApi/core/dataset/websiteSync`, data);
+  POST(`/plusApi/core/dataset/websiteSync`, data, {
+    timeout: 600000
+  }).catch();
 
 /* =============================== data ==================================== */
 /* get dataset list */

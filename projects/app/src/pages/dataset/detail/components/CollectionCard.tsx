@@ -40,7 +40,6 @@ import EmptyTip from '@/components/EmptyTip';
 import {
   FolderAvatarSrc,
   DatasetCollectionTypeEnum,
-  TrainingModeEnum,
   DatasetCollectionTrainingModeEnum,
   DatasetCollectionStatusEnum,
   DatasetCollectionStatusMap
@@ -56,7 +55,6 @@ import { useToast } from '@/web/common/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 const WebSiteCreate = dynamic(() => import('./Import/Website'), {});
@@ -206,8 +204,8 @@ const CollectionCard = () => {
     onSettled() {
       setLoading(false);
     },
-    successToast: t('dataset.collections.Create Virtual File Success'),
-    errorToast: t('common.Create Virtual File Failed')
+    successToast: t('common.Create Success'),
+    errorToast: t('common.Create Failed')
   });
   const { mutate: onUpdateCollectionName } = useRequest({
     mutationFn: ({ collectionId, name }: { collectionId: string; name: string }) => {
@@ -373,20 +371,20 @@ const CollectionCard = () => {
               {
                 child: (
                   <Flex>
-                    <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
-                    {t('dataset.File Input')}
-                  </Flex>
-                ),
-                onClick: onOpenFileImportModal
-              },
-              {
-                child: (
-                  <Flex>
                     <Image src={'/imgs/modal/website.svg'} alt={''} w={'20px'} mr={2} />
                     {t('core.dataset.collection.Website Sync')}
                   </Flex>
                 ),
                 onClick: onOpenWebsiteModal
+              },
+              {
+                child: (
+                  <Flex>
+                    <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
+                    {t('dataset.File Input')}
+                  </Flex>
+                ),
+                onClick: onOpenFileImportModal
               }
             ]}
           />
@@ -480,11 +478,7 @@ const CollectionCard = () => {
                     </MyTooltip>
                   </Flex>
                 </Td>
-                <Td fontSize={'md'}>
-                  {collection.type === DatasetCollectionTypeEnum.folder
-                    ? '-'
-                    : collection.dataAmount}
-                </Td>
+                <Td fontSize={'md'}>{collection.dataAmount || collection.childrenAmount || 0}</Td>
                 <Td>{dayjs(collection.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
                 <Td>
                   <Flex
@@ -659,7 +653,7 @@ const CollectionCard = () => {
       {isOpenWebsiteModal && (
         <WebSiteCreate
           onClose={onCloseWebsiteModal}
-          onSuccess={(url) => {
+          onSuccess={({ url, selector }) => {
             onCreateCollection({
               name: url,
               type: DatasetCollectionTypeEnum.website,
@@ -667,6 +661,9 @@ const CollectionCard = () => {
               trainingType: DatasetCollectionTrainingModeEnum.chunk,
               chunkSize: 512,
               rawLink: url,
+              metadata: {
+                selector
+              },
               callback: (id: string) => {
                 onCloseWebsiteModal();
                 toast({

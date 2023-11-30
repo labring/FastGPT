@@ -138,7 +138,6 @@
     "Course": "",
     "Create Failed": "Create Failed",
     "Create Success": "Create Success",
-    "Create Virtual File Failed": "Create Virtual File Failed",
     "Custom Title": "Custom Title",
     "Delete": "Delete",
     "Delete Failed": "Delete Failed",
@@ -190,6 +189,7 @@
     "Update Time": "Update Time",
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
+    "choosable": "choosable",
     "error": {
       "unKnow": "There was an accident"
     },
@@ -289,14 +289,18 @@
           "source name": "Source Name",
           "source size": "Source Size"
         },
+        "status": {
+          "active": "Ready",
+          "syncing": "Syncing"
+        },
         "training": {
           "type chunk": "Chunk",
           "type manual": "Manual",
           "type qa": "QA"
         },
-        "status": {
-          "active": "Ready",
-          "syncing": "Syncing"
+        "website": {
+          "Base Url": "BaseUrl",
+          "Selector": "Selector"
         }
       },
       "data": {
@@ -340,7 +344,8 @@
       },
       "training": {
         "type chunk": "Chunk",
-        "type qa": "QA"
+        "type qa": "QA",
+        "Website Sync": "Website Sync"
       }
     },
     "module": {

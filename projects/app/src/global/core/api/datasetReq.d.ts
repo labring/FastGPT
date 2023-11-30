@@ -31,17 +31,7 @@ export type GetDatasetCollectionsProps = RequestPaging & {
   simple?: boolean;
   selectFolder?: boolean;
 };
-export type CreateDatasetCollectionParams = {
-  datasetId: string;
-  parentId?: string;
-  name: string;
-  type: `${DatasetCollectionTypeEnum}`;
-  status?: `${DatasetCollectionStatusEnum}`;
-  trainingType?: `${DatasetCollectionTrainingModeEnum}`;
-  chunkSize?: number;
-  fileId?: string;
-  rawLink?: string;
-};
+
 export type UpdateDatasetCollectionParams = {
   id: string;
   parentId?: string;

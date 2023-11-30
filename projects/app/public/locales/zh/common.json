@@ -138,7 +138,6 @@
     "Course": "",
     "Create Failed": "创建异常",
     "Create Success": "创建成功",
-    "Create Virtual File Failed": "创建虚拟文件失败",
     "Custom Title": "自定义标题",
     "Delete": "删除",
     "Delete Failed": "删除失败",
@@ -190,6 +189,7 @@
     "Update Time": "更新时间",
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
+    "choosable": "可选",
     "error": {
       "unKnow": "出现了点意外~"
     },
@@ -289,14 +289,18 @@
           "source name": "来源名",
           "source size": "来源大小"
         },
+        "status": {
+          "active": "已就绪",
+          "syncing": "同步中"
+        },
         "training": {
           "type chunk": "直接分段",
           "type manual": "手动",
           "type qa": "问答拆分"
         },
-        "status": {
-          "active": "已就绪",
-          "syncing": "同步中"
+        "website": {
+          "Base Url": "根地址",
+          "Selector": "选择器"
         }
       },
       "data": {
@@ -340,7 +344,8 @@
       },
       "training": {
         "type chunk": "直接分段",
-        "type qa": "问答拆分"
+        "type qa": "问答拆分",
+        "Website Sync": "Web 站点同步"
       }
     },
     "module": {
