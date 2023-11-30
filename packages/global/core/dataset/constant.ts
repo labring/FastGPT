@@ -19,7 +19,8 @@ export const DatasetTypeMap = {
 export enum DatasetCollectionTypeEnum {
   folder = 'folder',
   file = 'file',
-  link = 'link',
+  link = 'link', // one link
+  website = 'website', // depp link
   virtual = 'virtual'
 }
 export const DatasetCollectionTypeMap = {
@@ -31,6 +32,9 @@ export const DatasetCollectionTypeMap = {
   },
   [DatasetCollectionTypeEnum.link]: {
     name: 'core.dataset.link'
+  },
+  [DatasetCollectionTypeEnum.website]: {
+    name: 'core.dataset.collection.Website'
   },
   [DatasetCollectionTypeEnum.virtual]: {
     name: 'core.dataset.Virtual File'
@@ -50,6 +54,18 @@ export const DatasetCollectionTrainingTypeMap = {
   },
   [DatasetCollectionTrainingModeEnum.qa]: {
     label: 'core.dataset.collection.training.type qa'
+  }
+};
+export enum DatasetCollectionStatusEnum {
+  active = 'active',
+  syncing = 'syncing'
+}
+export const DatasetCollectionStatusMap = {
+  [DatasetCollectionStatusEnum.active]: {
+    label: 'core.dataset.collection.status.active'
+  },
+  [DatasetCollectionStatusEnum.syncing]: {
+    label: 'core.dataset.collection.status.syncing'
   }
 };
 

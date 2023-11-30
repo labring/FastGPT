@@ -2,6 +2,7 @@ import type { LLMModelItemType, VectorModelItemType } from '../../core/ai/model.
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
 import {
+  DatasetCollectionStatusEnum,
   DatasetCollectionTypeEnum,
   DatasetDataIndexTypeEnum,
   DatasetTypeEnum,
@@ -33,6 +34,7 @@ export type DatasetCollectionSchemaType = {
   parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
+  status: `${DatasetCollectionStatusEnum}`;
   createTime: Date;
   updateTime: Date;
   trainingType: `${TrainingModeEnum}`;

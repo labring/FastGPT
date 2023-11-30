@@ -1,4 +1,5 @@
 import {
+  DatasetCollectionStatusEnum,
   DatasetCollectionTrainingModeEnum,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum
@@ -35,6 +36,7 @@ export type CreateDatasetCollectionParams = {
   parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
+  status?: `${DatasetCollectionStatusEnum}`;
   trainingType?: `${DatasetCollectionTrainingModeEnum}`;
   chunkSize?: number;
   fileId?: string;

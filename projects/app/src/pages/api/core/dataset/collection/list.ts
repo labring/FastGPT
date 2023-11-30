@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // not count data amount
     if (simple) {
-      const collections = await MongoDatasetCollection.find(match, '_id name type parentId')
+      const collections = await MongoDatasetCollection.find(match, '_id parentId type name')
         .sort({
           updateTime: -1
         })
@@ -114,6 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             tmbId: 1,
             name: 1,
             type: 1,
+            status: 1,
             updateTime: 1,
             dataAmount: { $size: '$datas' },
             trainingAmount: { $size: '$trainings' },

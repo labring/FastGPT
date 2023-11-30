@@ -31,9 +31,11 @@ const DatasetSchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
-  updateTime: {
-    type: Date,
-    default: () => new Date()
+  type: {
+    type: String,
+    enum: Object.keys(DatasetTypeMap),
+    required: true,
+    default: 'dataset'
   },
   avatar: {
     type: String,
@@ -42,6 +44,10 @@ const DatasetSchema = new Schema({
   name: {
     type: String,
     required: true
+  },
+  updateTime: {
+    type: Date,
+    default: () => new Date()
   },
   vectorModel: {
     type: String,
@@ -52,12 +58,6 @@ const DatasetSchema = new Schema({
     type: String,
     required: true,
     default: 'gpt-3.5-turbo-16k'
-  },
-  type: {
-    type: String,
-    enum: Object.keys(DatasetTypeMap),
-    required: true,
-    default: 'dataset'
   },
   tags: {
     type: [String],

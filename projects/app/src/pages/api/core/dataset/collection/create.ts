@@ -9,7 +9,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import {
   TrainingModeEnum,
   DatasetCollectionTypeEnum,
-  DatasetCollectionTrainingModeEnum
+  DatasetCollectionTrainingModeEnum,
+  DatasetCollectionStatusEnum
 } from '@fastgpt/global/core/dataset/constant';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
@@ -48,6 +49,7 @@ export async function createOneCollection({
   parentId,
   datasetId,
   type,
+  status = DatasetCollectionStatusEnum.active,
   trainingType = DatasetCollectionTrainingModeEnum.manual,
   chunkSize = 0,
   fileId,
@@ -62,6 +64,7 @@ export async function createOneCollection({
     datasetId,
     parentId: parentId || null,
     type,
+    status,
     trainingType,
     chunkSize,
     fileId,

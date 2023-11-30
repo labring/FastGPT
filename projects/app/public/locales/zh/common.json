@@ -207,6 +207,9 @@
     "input": {
       "Repeat Value": "有重复的值"
     },
+    "link": {
+      "UnValid": "无效的链接"
+    },
     "speech": {
       "error tip": "语音转文字失败"
     }
@@ -269,6 +272,11 @@
       "Sync Time": "最后更新时间",
       "Virtual File": "虚拟文件",
       "collection": {
+        "Create Website Dataset": "Web站点同步",
+        "Create Website Dataset Description": "Web 站点同步功能允许你填写一个网站的根地址，系统会自动深度抓取相关的网页进行知识库训练。仅会抓取静态的网站，以项目文档、博客为主。",
+        "Website Create Success": "创建成功，正在同步数据",
+        "Website Link": "Web 站点地址",
+        "Website Sync": "Web 站点同步",
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
@@ -282,9 +290,13 @@
           "source size": "来源大小"
         },
         "training": {
-          "type manual": "手动",
           "type chunk": "直接分段",
+          "type manual": "手动",
           "type qa": "问答拆分"
+        },
+        "status": {
+          "active": "已就绪",
+          "syncing": "同步中"
         }
       },
       "data": {
@@ -434,7 +446,6 @@
       "Create Training Data": "文件训练-{{filename}}",
       "Create Virtual File Success": "创建虚拟文件成功",
       "Data Amount": "数据总量",
-      "Ready": "已就绪",
       "Select Collection": "选择文件",
       "Select One Collection To Store": "选择一个文件进行存储"
     },
@@ -482,7 +493,6 @@
     "Fetch Url": "链接读取",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式",
     "Parse": "{{name}} 解析中...",
-    "Ready": "",
     "Release the mouse to upload the file": "松开鼠标上传文件",
     "Select a maximum of 10 files": "最多选择10个文件",
     "Uploading": "正在上传 {{name}}，进度: {{percent}}%",

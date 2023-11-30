@@ -63,6 +63,8 @@ export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
 export const delDatasetCollectionById = (params: { collectionId: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
+export const postWebsiteSync = (data: { collectionId: string }) =>
+  POST(`/plusApi/core/dataset/websiteSync`, data);
 
 /* =============================== data ==================================== */
 /* get dataset list */

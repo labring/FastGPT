@@ -18,7 +18,8 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postDatasetCollection,
-  getDatasetCollectionPathById
+  getDatasetCollectionPathById,
+  postWebsiteSync
 } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
@@ -39,7 +40,10 @@ import EmptyTip from '@/components/EmptyTip';
 import {
   FolderAvatarSrc,
   DatasetCollectionTypeEnum,
-  TrainingModeEnum
+  TrainingModeEnum,
+  DatasetCollectionTrainingModeEnum,
+  DatasetCollectionStatusEnum,
+  DatasetCollectionStatusMap
 } from '@fastgpt/global/core/dataset/constant';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
@@ -52,8 +56,10 @@ import { useToast } from '@/web/common/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
+const WebSiteCreate = dynamic(() => import('./Import/Website'), {});
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -76,11 +82,18 @@ const CollectionCard = () => {
     onOpen: onOpenFileImportModal,
     onClose: onCloseFileImportModal
   } = useDisclosure();
+  const {
+    isOpen: isOpenWebsiteModal,
+    onOpen: onOpenWebsiteModal,
+    onClose: onCloseWebsiteModal
+  } = useDisclosure();
   const { onOpenModal: onOpenCreateVirtualFileModal, EditModal: EditCreateVirtualFileModal } =
     useEditTitle({
       title: t('dataset.Create Virtual File'),
-      tip: t('dataset.Virtual File Tip')
+      tip: t('dataset.Virtual File Tip'),
+      canEmpty: false
     });
+
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('Rename')
   });
@@ -128,21 +141,31 @@ const CollectionCard = () => {
     () =>
       collections.map((collection) => {
         const icon = getCollectionIcon(collection.type, collection.name);
+        const status = (() => {
+          if (collection.trainingAmount > 0) {
+            return {
+              statusText: t('dataset.collections.Collection Embedding', {
+                total: collection.trainingAmount
+              }),
+              color: 'myGray.500'
+            };
+          }
+          if (collection.status === DatasetCollectionStatusEnum.syncing) {
+            return {
+              statusText: DatasetCollectionStatusMap[collection.status]?.label,
+              color: 'myGray.500'
+            };
+          }
+          return {
+            statusText: DatasetCollectionStatusMap[collection.status]?.label,
+            color: 'green.500'
+          };
+        })();
 
         return {
           ...collection,
           icon,
-          ...(collection.trainingAmount > 0
-            ? {
-                statusText: t('dataset.collections.Collection Embedding', {
-                  total: collection.trainingAmount
-                }),
-                color: 'myGray.500'
-              }
-            : {
-                statusText: t('dataset.collections.Ready'),
-                color: 'green.500'
-              })
+          ...status
         };
       }),
     [collections, t]
@@ -152,15 +175,30 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
-  const { mutate: onCreateVirtualFile } = useRequest({
-    mutationFn: ({ name }: { name: string }) => {
+  const { mutate: onCreateCollection } = useRequest({
+    mutationFn: async ({
+      name,
+      type,
+      callback,
+      ...props
+    }: {
+      name: string;
+      type: `${DatasetCollectionTypeEnum}`;
+      callback?: (id: string) => void;
+      trainingType?: `${DatasetCollectionTrainingModeEnum}`;
+      rawLink?: string;
+      chunkSize?: number;
+    }) => {
       setLoading(true);
-      return postDatasetCollection({
+      const id = await postDatasetCollection({
         parentId,
         datasetId,
         name,
-        type: DatasetCollectionTypeEnum.virtual
+        type,
+        ...props
       });
+      callback?.(id);
+      return id;
     },
     onSuccess() {
       getData(pageNum);
@@ -229,7 +267,7 @@ const CollectionCard = () => {
           <ParentPath
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
-              parentName: i === paths.length - 1 ? `${path.parentName}(${total})` : path.parentName
+              parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
             }))}
             FirstPathDom={
               <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
@@ -326,7 +364,9 @@ const CollectionCard = () => {
                 onClick: () => {
                   onOpenCreateVirtualFileModal({
                     defaultVal: '',
-                    onSuccess: (name) => onCreateVirtualFile({ name })
+                    onSuccess: (name) => {
+                      onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual });
+                    }
                   });
                 }
               },
@@ -338,6 +378,15 @@ const CollectionCard = () => {
                   </Flex>
                 ),
                 onClick: onOpenFileImportModal
+              },
+              {
+                child: (
+                  <Flex>
+                    <Image src={'/imgs/modal/website.svg'} alt={''} w={'20px'} mr={2} />
+                    {t('core.dataset.collection.Website Sync')}
+                  </Flex>
+                ),
+                onClick: onOpenWebsiteModal
               }
             ]}
           />
@@ -399,7 +448,10 @@ const CollectionCard = () => {
                     : t('dataset.collections.Click to view file')
                 }
                 onClick={() => {
-                  if (collection.type === DatasetCollectionTypeEnum.folder) {
+                  if (
+                    collection.type === DatasetCollectionTypeEnum.folder ||
+                    collection.type === DatasetCollectionTypeEnum.website
+                  ) {
                     router.replace({
                       query: {
                         ...router.query,
@@ -443,10 +495,10 @@ const CollectionCard = () => {
                       h: '10px',
                       mr: 2,
                       borderRadius: 'lg',
-                      bg: collection?.color
+                      bg: collection.color
                     }}
                   >
-                    {collection?.statusText}
+                    {t(collection.statusText)}
                   </Flex>
                 </Td>
                 <Td onClick={(e) => e.stopPropagation()}>
@@ -559,7 +611,6 @@ const CollectionCard = () => {
           onClose={onCloseFileImportModal}
         />
       )}
-
       {!!editFolderData && (
         <EditFolderModal
           onClose={() => setEditFolderData(undefined)}
@@ -570,15 +621,13 @@ const CollectionCard = () => {
                   id: editFolderData.id,
                   name
                 });
+                getData(pageNum);
               } else {
-                await postDatasetCollection({
-                  parentId,
-                  datasetId,
+                onCreateCollection({
                   name,
                   type: DatasetCollectionTypeEnum.folder
                 });
               }
-              getData(pageNum);
             } catch (error) {
               return Promise.reject(error);
             }
@@ -587,7 +636,6 @@ const CollectionCard = () => {
           name={editFolderData.name}
         />
       )}
-
       {!!moveCollectionData && (
         <SelectCollections
           datasetId={datasetId}
@@ -604,6 +652,29 @@ const CollectionCard = () => {
             toast({
               status: 'success',
               title: t('common.folder.Move Success')
+            });
+          }}
+        />
+      )}
+      {isOpenWebsiteModal && (
+        <WebSiteCreate
+          onClose={onCloseWebsiteModal}
+          onSuccess={(url) => {
+            onCreateCollection({
+              name: url,
+              type: DatasetCollectionTypeEnum.website,
+              status: DatasetCollectionStatusEnum.syncing,
+              trainingType: DatasetCollectionTrainingModeEnum.chunk,
+              chunkSize: 512,
+              rawLink: url,
+              callback: (id: string) => {
+                onCloseWebsiteModal();
+                toast({
+                  status: 'success',
+                  title: t('core.dataset.collection.Website Create Success')
+                });
+                postWebsiteSync({ collectionId: id });
+              }
             });
           }}
         />
