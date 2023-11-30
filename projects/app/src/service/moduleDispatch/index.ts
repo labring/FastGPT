@@ -25,28 +25,29 @@ import { dispatchAppRequest } from './tools/runApp';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 /* running */
 export async function dispatchModules({
   res,
-  appId,
-  chatId,
-  modules,
-  user,
   teamId,
   tmbId,
+  user,
+  appId,
+  modules,
+  chatId,
   params = {},
   variables = {},
   stream = false,
   detail = false
 }: {
   res: NextApiResponse;
-  appId: string;
-  chatId?: string;
-  modules: ModuleItemType[];
-  user: UserType;
   teamId: string;
   tmbId: string;
+  user: UserType;
+  appId: string;
+  modules: ModuleItemType[];
+  chatId?: string;
   params?: Record<string, any>;
   variables?: Record<string, any>;
   stream?: boolean;
@@ -176,15 +177,15 @@ export async function dispatchModules({
     });
     const props: ModuleDispatchProps<Record<string, any>> = {
       res,
+      teamId,
+      tmbId,
+      user,
       appId,
       chatId,
       stream,
       detail,
       variables,
       outputs: module.outputs,
-      user,
-      teamId,
-      tmbId,
       inputs: params
     };
 

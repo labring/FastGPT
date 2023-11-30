@@ -52,12 +52,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     /* start process */
     const { responseData } = await dispatchModules({
       res,
-      appId,
-      modules,
-      variables,
       teamId,
       tmbId,
       user,
+      appId,
+      modules,
+      variables,
       params: {
         history,
         userChatInput: prompt
