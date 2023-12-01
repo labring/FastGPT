@@ -66,12 +66,12 @@ const MyApps = () => {
   );
 
   /* 加载模型 */
-  useQuery(['loadApps'], () => loadMyApps(true), {
+  const { isFetching } = useQuery(['loadApps'], () => loadMyApps(true), {
     refetchOnMount: true
   });
 
   return (
-    <PageContainer>
+    <PageContainer isLoading={isFetching}>
       <Flex pt={3} px={5} alignItems={'center'}>
         <Flex flex={1} alignItems={'center'}>
           <Image src={'/imgs/module/ai.svg'} alt={''} mr={2} h={'24px'} />

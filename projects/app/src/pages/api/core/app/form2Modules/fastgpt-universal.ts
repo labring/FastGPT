@@ -312,13 +312,23 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           connected: true
         },
         {
-          key: 'rerank',
-          type: FlowNodeInputTypeEnum.switch,
-          label: '结果重排',
-          description: '将召回的结果进行进一步重排，可增加召回率',
-          plusField: true,
+          key: 'searchMode',
+          type: 'hidden',
+          label: 'core.dataset.search.Mode',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.dataset.searchMode,
+          connected: false
+        },
+        {
+          key: 'datasetParamsModal',
+          type: 'selectDatasetParamsModal',
+          label: '',
           connected: false,
-          value: formData.dataset.rerank
+          valueType: 'any',
+          showTargetInApp: false,
+          showTargetInPlugin: false
         }
       ],
       outputs: [

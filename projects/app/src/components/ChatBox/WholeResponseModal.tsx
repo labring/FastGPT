@@ -10,6 +10,7 @@ import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import Markdown from '../Markdown';
+import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
 
 function Row({ label, value }: { label: string; value?: string | number }) {
   const theme = useTheme();
@@ -116,7 +117,7 @@ const WholeResponseModal = ({
               if (!activeModule?.historyPreview) return '';
               return activeModule.historyPreview
                 .map((item, i) => `**${item.obj}**\n${item.value}`)
-                .join('\n---\n');
+                .join('\n\n---\n\n');
             })()}
           />
           {activeModule.quoteList && activeModule.quoteList.length > 0 && (
@@ -127,6 +128,13 @@ const WholeResponseModal = ({
           )}
 
           {/* dataset search */}
+          {activeModule?.searchMode && (
+            <Row
+              label={t('core.dataset.search.search mode')}
+              // @ts-ignore
+              value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+            />
+          )}
           <Row label={t('chat.response.module similarity')} value={activeModule?.similarity} />
           <Row label={t('chat.response.module limit')} value={activeModule?.limit} />
 

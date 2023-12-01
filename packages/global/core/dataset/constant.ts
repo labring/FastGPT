@@ -1,5 +1,6 @@
 export const PgDatasetTableName = 'modeldata';
 
+/* ------------ dataset -------------- */
 export enum DatasetTypeEnum {
   folder = 'folder',
   dataset = 'dataset'
@@ -14,28 +15,45 @@ export const DatasetTypeMap = {
   }
 };
 
+/* ------------ collection -------------- */
 export enum DatasetCollectionTypeEnum {
-  file = 'file',
   folder = 'folder',
+  file = 'file',
   link = 'link',
   virtual = 'virtual'
 }
-
 export const DatasetCollectionTypeMap = {
-  [DatasetCollectionTypeEnum.file]: {
-    name: 'dataset.file'
-  },
   [DatasetCollectionTypeEnum.folder]: {
-    name: 'dataset.folder'
+    name: 'core.dataset.folder'
+  },
+  [DatasetCollectionTypeEnum.file]: {
+    name: 'core.dataset.file'
   },
   [DatasetCollectionTypeEnum.link]: {
-    name: 'dataset.link'
+    name: 'core.dataset.link'
   },
   [DatasetCollectionTypeEnum.virtual]: {
-    name: 'dataset.Virtual File'
+    name: 'core.dataset.Virtual File'
+  }
+};
+export enum DatasetCollectionTrainingModeEnum {
+  manual = 'manual',
+  chunk = 'chunk',
+  qa = 'qa'
+}
+export const DatasetCollectionTrainingTypeMap = {
+  [DatasetCollectionTrainingModeEnum.manual]: {
+    label: 'core.dataset.collection.training.type manual'
+  },
+  [DatasetCollectionTrainingModeEnum.chunk]: {
+    label: 'core.dataset.collection.training.type chunk'
+  },
+  [DatasetCollectionTrainingModeEnum.qa]: {
+    label: 'core.dataset.collection.training.type qa'
   }
 };
 
+/* ------------ data -------------- */
 export enum DatasetDataIndexTypeEnum {
   chunk = 'chunk',
   qa = 'qa',
@@ -61,29 +79,47 @@ export const DatasetDataIndexTypeMap = {
   }
 };
 
+/* ------------ training -------------- */
 export enum TrainingModeEnum {
-  'chunk' = 'chunk',
-  'qa' = 'qa'
-  // 'hypothetical' = 'hypothetical',
-  // 'summary' = 'summary',
-  // 'multipleIndex' = 'multipleIndex'
+  chunk = 'chunk',
+  qa = 'qa'
 }
+
 export const TrainingTypeMap = {
   [TrainingModeEnum.chunk]: {
-    name: 'chunk'
+    label: 'core.dataset.training.type chunk'
   },
   [TrainingModeEnum.qa]: {
-    name: 'qa'
+    label: 'core.dataset.training.type qa'
   }
-  // [TrainingModeEnum.hypothetical]: {
-  //   name: 'hypothetical'
-  // },
-  // [TrainingModeEnum.summary]: {
-  //   name: 'summary'
-  // },
-  // [TrainingModeEnum.multipleIndex]: {
-  //   name: 'multipleIndex'
-  // }
+};
+
+/* ------------ search -------------- */
+export enum DatasetSearchModeEnum {
+  embedding = 'embedding',
+  embeddingReRank = 'embeddingReRank',
+  embFullTextReRank = 'embFullTextReRank'
+}
+
+export const DatasetSearchModeMap = {
+  [DatasetSearchModeEnum.embedding]: {
+    icon: 'core/dataset/modeEmbedding',
+    title: 'core.dataset.search.mode.embedding',
+    desc: 'core.dataset.search.mode.embedding desc',
+    value: DatasetSearchModeEnum.embedding
+  },
+  [DatasetSearchModeEnum.embeddingReRank]: {
+    icon: 'core/dataset/modeEmbeddingRerank',
+    title: 'core.dataset.search.mode.embeddingReRank',
+    desc: 'core.dataset.search.mode.embeddingReRank desc',
+    value: DatasetSearchModeEnum.embeddingReRank
+  },
+  [DatasetSearchModeEnum.embFullTextReRank]: {
+    icon: 'core/dataset/modeEmbFTRerank',
+    title: 'core.dataset.search.mode.embFullTextReRank',
+    desc: 'core.dataset.search.mode.embFullTextReRank desc',
+    value: DatasetSearchModeEnum.embFullTextReRank
+  }
 };
 
 export const FolderAvatarSrc = '/imgs/files/folder.svg';

@@ -19,7 +19,6 @@ import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
 import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
-import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -40,7 +39,8 @@ export type FileItemType = {
   icon: string;
   tokens: number; // total tokens
   type: DatasetCollectionTypeEnum.file | DatasetCollectionTypeEnum.link;
-  metadata: DatasetCollectionSchemaType['metadata'];
+  fileId?: string;
+  rawLink?: string;
 };
 
 export interface Props extends BoxProps {
@@ -157,9 +157,7 @@ const FileSelect = ({
                 .join('\n')}`,
               chunks: filterData,
               type: DatasetCollectionTypeEnum.file,
-              metadata: {
-                fileId
-              }
+              fileId
             };
 
             onPushFiles([fileItem]);
@@ -195,9 +193,7 @@ const FileSelect = ({
               text,
               tokens: splitRes.tokens,
               type: DatasetCollectionTypeEnum.file,
-              metadata: {
-                fileId
-              },
+              fileId,
               chunks: splitRes.chunks.map((chunk) => ({
                 q: chunk,
                 a: ''
@@ -220,7 +216,7 @@ const FileSelect = ({
   // link fetch
   const onUrlFetch = useCallback(
     (e: FetchResultItem[]) => {
-      const result: FileItemType[] = e.map(({ url, content }) => {
+      const result: FileItemType[] = e.map<FileItemType>(({ url, content }) => {
         const splitRes = splitText2Chunks({
           text: content,
           chunkLen,
@@ -233,9 +229,7 @@ const FileSelect = ({
           text: content,
           tokens: splitRes.tokens,
           type: DatasetCollectionTypeEnum.link,
-          metadata: {
-            rawLink: url
-          },
+          rawLink: url,
           chunks: splitRes.chunks.map((chunk) => ({
             q: chunk,
             a: ''
@@ -277,9 +271,7 @@ const FileSelect = ({
           text: content,
           tokens: splitRes.tokens,
           type: DatasetCollectionTypeEnum.file,
-          metadata: {
-            fileId: fileIds[0]
-          },
+          fileId: fileIds[0],
           chunks: splitRes.chunks.map((chunk) => ({
             q: chunk,
             a: ''

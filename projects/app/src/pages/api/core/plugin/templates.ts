@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const [userPlugins, plusPlugins] = await Promise.all([
       MongoPlugin.find({ teamId }).lean(),
-      GET<PluginTemplateType[]>('/core/plugin/getTemplates')
+      global.systemEnv.pluginBaseUrl ? GET<PluginTemplateType[]>('/core/plugin/getTemplates') : []
     ]);
 
     const data: FlowModuleTemplateType[] = [

@@ -22,7 +22,7 @@ import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { useTranslation } from 'next-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { feConfigs } from '@/web/common/system/staticData';
@@ -30,9 +30,6 @@ import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/data
 import { useLoading } from '@/web/common/hooks/useLoading';
 import EmptyTip from '@/components/EmptyTip';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-
-type DatasetParamsProps = AppSimpleEditFormType['dataset'];
 
 export const DatasetSelectModal = ({
   isOpen,
@@ -219,129 +216,6 @@ export const DatasetSelectModal = ({
         <Loading fixed={false} loading={isFetching} />
       </Flex>
     </DatasetSelectContainer>
-  );
-};
-
-export const DatasetParamsModal = ({
-  searchEmptyText,
-  limit,
-  similarity,
-  rerank,
-  onClose,
-  onChange
-}: DatasetParamsProps & { onClose: () => void; onChange: (e: DatasetParamsProps) => void }) => {
-  const [refresh, setRefresh] = useState(false);
-  const { register, setValue, getValues, handleSubmit } = useForm<DatasetParamsProps>({
-    defaultValues: {
-      searchEmptyText,
-      limit,
-      similarity,
-      rerank
-    }
-  });
-
-  return (
-    <MyModal
-      isOpen={true}
-      onClose={onClose}
-      iconSrc="/imgs/modal/params.svg"
-      title={'搜索参数调整'}
-      minW={['90vw', '600px']}
-    >
-      <Flex flexDirection={'column'}>
-        <ModalBody>
-          {feConfigs?.isPlus && (
-            <Box display={['block', 'flex']} py={5} pt={[0, 5]}>
-              <Box flex={'0 0 100px'} mb={[8, 0]}>
-                结果重排
-                <MyTooltip label={'将召回的结果进行进一步重排，可增加召回率'} forceShow>
-                  <QuestionOutlineIcon ml={1} />
-                </MyTooltip>
-              </Box>
-              <Switch
-                size={'lg'}
-                isChecked={getValues(ModuleInputKeyEnum.datasetStartReRank)}
-                onChange={(e) => {
-                  setValue(ModuleInputKeyEnum.datasetStartReRank, e.target.checked);
-                  setRefresh(!refresh);
-                }}
-              />
-            </Box>
-          )}
-          <Box display={['block', 'flex']} py={5} pt={[0, 5]}>
-            <Box flex={'0 0 100px'} mb={[8, 0]}>
-              相似度
-              <MyTooltip
-                label={'不同索引模型的相似度有区别，请通过搜索测试来选择合适的数值'}
-                forceShow
-              >
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
-            </Box>
-            <MySlider
-              markList={[
-                { label: '0', value: 0 },
-                { label: '1', value: 1 }
-              ]}
-              min={0}
-              max={1}
-              step={0.01}
-              value={getValues(ModuleInputKeyEnum.datasetSimilarity)}
-              onChange={(val) => {
-                setValue(ModuleInputKeyEnum.datasetSimilarity, val);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-          <Box display={['block', 'flex']} py={8}>
-            <Box flex={'0 0 100px'} mb={[8, 0]}>
-              单次搜索数量
-            </Box>
-            <Box flex={1}>
-              <MySlider
-                markList={[
-                  { label: '1', value: 1 },
-                  { label: '20', value: 20 }
-                ]}
-                min={1}
-                max={20}
-                value={getValues(ModuleInputKeyEnum.datasetLimit)}
-                onChange={(val) => {
-                  setValue(ModuleInputKeyEnum.datasetLimit, val);
-                  setRefresh(!refresh);
-                }}
-              />
-            </Box>
-          </Box>
-          <Box display={['block', 'flex']} pt={3}>
-            <Box flex={'0 0 100px'} mb={[2, 0]}>
-              空搜索回复
-            </Box>
-            <Box flex={1}>
-              <Textarea
-                rows={5}
-                maxLength={500}
-                placeholder={`若填写该内容，没有搜索到对应内容时，将直接回复填写的内容。\n为了连贯上下文，${feConfigs?.systemTitle} 会取部分上一个聊天的搜索记录作为补充，因此在连续对话时，该功能可能会失效。`}
-                {...register('searchEmptyText')}
-              ></Textarea>
-            </Box>
-          </Box>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant={'base'} mr={3} onClick={onClose}>
-            取消
-          </Button>
-          <Button
-            onClick={() => {
-              onClose();
-              handleSubmit(onChange)();
-            }}
-          >
-            完成
-          </Button>
-        </ModalFooter>
-      </Flex>
-    </MyModal>
   );
 };
 

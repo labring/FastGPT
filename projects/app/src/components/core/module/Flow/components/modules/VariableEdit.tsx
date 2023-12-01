@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -54,13 +54,18 @@ const VariableEdit = ({
 
   const VariableTypeList = [
     {
-      label: t('core.module.variable.text type'),
-      icon: 'settingLight',
+      label: t('core.module.variable.input type'),
+      icon: 'core/app/variable/input',
       key: VariableInputEnum.input
     },
     {
+      label: t('core.module.variable.textarea type'),
+      icon: 'core/app/variable/textarea',
+      key: VariableInputEnum.textarea
+    },
+    {
       label: t('core.module.variable.select type'),
-      icon: 'settingLight',
+      icon: 'core/app/variable/select',
       key: VariableInputEnum.select
     }
   ];
@@ -94,6 +99,13 @@ const VariableEdit = ({
     }
   };
 
+  const formatVariables = useMemo(() => {
+    return variables.map((item) => ({
+      ...item,
+      icon: VariableTypeList.find((type) => type.key === item.type)?.icon
+    }));
+  }, [variables]);
+
   return (
     <Box>
       <Flex alignItems={'center'}>
@@ -114,12 +126,13 @@ const VariableEdit = ({
           +&ensp;{t('common.Add New')}
         </Flex>
       </Flex>
-      {variables.length > 0 && (
+      {formatVariables.length > 0 && (
         <Box mt={2} borderRadius={'lg'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
           <TableContainer>
             <Table bg={'white'}>
               <Thead>
                 <Tr>
+                  <Th w={'18px !important'} p={0} />
                   <Th>{t('core.module.variable.variable name')}</Th>
                   <Th>{t('core.module.variable.key')}</Th>
                   <Th>{t('common.Require Input')}</Th>
@@ -127,9 +140,12 @@ const VariableEdit = ({
                 </Tr>
               </Thead>
               <Tbody>
-                {variables.map((item, index) => (
+                {formatVariables.map((item) => (
                   <Tr key={item.id}>
-                    <Td>{item.label} </Td>
+                    <Td textAlign={'center'} p={0} pl={3}>
+                      <MyIcon name={item.icon as any} w={'14px'} color={'myGray.500'} />
+                    </Td>
+                    <Td>{item.label}</Td>
                     <Td>{item.key}</Td>
                     <Td>{item.required ? '✔' : ''}</Td>
                     <Td>
@@ -190,20 +206,24 @@ const VariableEdit = ({
           <Box mt={5} mb={2}>
             {t('core.module.Field Type')}
           </Box>
-          <Grid gridTemplateColumns={'repeat(2,130px)'} gridGap={4}>
+          <Grid gridTemplateColumns={'repeat(3,1fr)'} gridGap={4}>
             {VariableTypeList.map((item) => (
               <Flex
                 key={item.key}
-                px={4}
-                py={1}
+                px={3}
+                py={3}
                 border={theme.borders.base}
                 borderRadius={'md'}
                 cursor={'pointer'}
                 {...(item.key === getValuesEdit('variable.type')
                   ? {
-                      bg: 'myWhite.600'
+                      bg: 'myBlue.100',
+                      borderColor: 'myBlue.600',
+                      color: 'myBlue.600',
+                      fontWeight: 'bold'
                     }
                   : {
+                      color: 'myGray.600',
                       _hover: {
                         boxShadow: 'md'
                       },
@@ -214,7 +234,7 @@ const VariableEdit = ({
                     })}
               >
                 <MyIcon name={item.icon as any} w={'16px'} />
-                <Box ml={3}>{item.label}</Box>
+                <Box ml={2}>{item.label}</Box>
               </Flex>
             ))}
           </Grid>
@@ -225,14 +245,14 @@ const VariableEdit = ({
                 {t('core.module.variable.text max length')}
               </Box>
               <Box>
-                <NumberInput max={100} min={1} step={1} position={'relative'}>
+                <NumberInput max={500} min={1} step={1} position={'relative'}>
                   <NumberInputField
                     {...registerEdit('variable.maxLen', {
                       min: 1,
-                      max: 100,
+                      max: 500,
                       valueAsNumber: true
                     })}
-                    max={100}
+                    max={500}
                   />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
@@ -258,16 +278,18 @@ const VariableEdit = ({
                         })}
                       />
                     </FormControl>
-                    <MyIcon
-                      ml={3}
-                      name={'delete'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      p={2}
-                      borderRadius={'lg'}
-                      _hover={{ bg: 'red.100' }}
-                      onClick={() => removeEnums(i)}
-                    />
+                    {selectEnums.length > 1 && (
+                      <MyIcon
+                        ml={3}
+                        name={'delete'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        p={2}
+                        borderRadius={'lg'}
+                        _hover={{ bg: 'red.100' }}
+                        onClick={() => removeEnums(i)}
+                      />
+                    )}
                   </Flex>
                 ))}
               </Box>

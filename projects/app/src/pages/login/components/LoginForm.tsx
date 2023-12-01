@@ -11,7 +11,6 @@ import { feConfigs } from '@/web/common/system/staticData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
-import { useUserStore } from '@/web/support/user/useUserStore';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
@@ -86,6 +85,8 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       : [])
   ];
 
+  const isCommunityVersion = feConfigs?.show_register === false && feConfigs?.show_git;
+
   return (
     <>
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
@@ -94,7 +95,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       <form onSubmit={handleSubmit(onclickLogin)}>
         <FormControl mt={8} isInvalid={!!errors.username}>
           <Input
-            placeholder="邮箱/手机号/用户名"
+            placeholder={isCommunityVersion ? '使用root用户登录' : '邮箱/手机号/用户名'}
             size={['md', 'lg']}
             {...register('username', {
               required: '邮箱/手机号/用户名不能为空'
@@ -108,7 +109,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             type={'password'}
             size={['md', 'lg']}
-            placeholder="密码"
+            placeholder={isCommunityVersion ? 'root密码为你设置的环境变量' : '密码'}
             {...register('password', {
               required: '密码不能为空',
               maxLength: {

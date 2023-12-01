@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, type BoxProps, Flex, useTheme, ModalCloseButton } from '@chakra-ui/react';
-import MyRadio from '@/components/Radio/index';
+import MyRadio from '@/components/common/MyRadio/index';
 import dynamic from 'next/dynamic';
 import ChunkImport from './Chunk';
 import { useTranslation } from 'next-i18next';
@@ -11,7 +11,10 @@ import MyModal from '@/components/MyModal';
 import Provider from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { qaModelList } from '@/web/common/system/staticData';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionTrainingModeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constant';
 
 export enum ImportTypeEnum {
   chunk = 'chunk',
@@ -43,19 +46,22 @@ const ImportData = ({
         defaultChunkLen: vectorModel?.defaultToken || 500,
         chunkOverlapRatio: 0.2,
         unitPrice: vectorModel?.price || 0.2,
-        mode: TrainingModeEnum.chunk
+        mode: TrainingModeEnum.chunk,
+        collectionTrainingType: DatasetCollectionTrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
         defaultChunkLen: agentModel?.maxContext * 0.6 || 8000,
         chunkOverlapRatio: 0,
         unitPrice: agentModel?.price || 3,
-        mode: TrainingModeEnum.qa
+        mode: TrainingModeEnum.qa,
+        collectionTrainingType: DatasetCollectionTrainingModeEnum.qa
       },
       [ImportTypeEnum.csv]: {
-        defaultChunkLen: vectorModel?.defaultToken || 500,
+        defaultChunkLen: 0,
         chunkOverlapRatio: 0,
         unitPrice: vectorModel?.price || 0.2,
-        mode: TrainingModeEnum.chunk
+        mode: TrainingModeEnum.chunk,
+        collectionTrainingType: DatasetCollectionTrainingModeEnum.manual
       }
     };
     return map[importType];

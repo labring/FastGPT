@@ -45,7 +45,7 @@ const DatasetDataSchema = new Schema({
   },
   fullTextToken: {
     type: String,
-    required: true
+    default: ''
   },
   indexes: {
     type: [
@@ -70,6 +70,15 @@ const DatasetDataSchema = new Schema({
       }
     ],
     default: []
+  },
+  // metadata
+  updateTime: {
+    type: Date,
+    default: () => new Date()
+  },
+  chunkIndex: {
+    type: Number,
+    default: 0
   }
 });
 

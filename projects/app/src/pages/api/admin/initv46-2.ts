@@ -152,6 +152,7 @@ async function init(limit: number): Promise<any> {
         collectionId: data.collection_id,
         q: data.q,
         a: data.a,
+        fullTextToken: '',
         indexes: [
           {
             defaultIndex: !data.a,

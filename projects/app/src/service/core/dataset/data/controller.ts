@@ -22,6 +22,7 @@ export async function insertData2Dataset({
   collectionId,
   q,
   a = '',
+  chunkIndex = 0,
   indexes,
   model
 }: CreateDatasetDataProps & {
@@ -72,7 +73,8 @@ export async function insertData2Dataset({
     collectionId,
     q,
     a,
-    fullTextToken: jiebaSplit({ text: q + a }),
+    fullTextToken: jiebaSplit({ text: qaStr }),
+    chunkIndex,
     indexes: indexes.map((item, i) => ({
       ...item,
       dataId: result[i].insertId

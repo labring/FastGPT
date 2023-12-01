@@ -1,4 +1,4 @@
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum, PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 import type {
   DatasetDataSchemaType,
   SearchDataResponseItemType
@@ -9,9 +9,8 @@ import { delay } from '@/utils/tools';
 import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
-import { PostReRankResponse } from '@fastgpt/global/core/ai/api';
 import { jiebaSplit } from '../utils';
+import { reRankRecall } from '../../ai/rerank';
 
 export async function insertData2Pg({
   mongoDataId,
@@ -136,31 +135,60 @@ type SearchProps = {
   similarity?: number; // min distance
   limit: number;
   datasetIds: string[];
-  rerank?: boolean;
+  searchMode?: `${DatasetSearchModeEnum}`;
 };
 export async function searchDatasetData(props: SearchProps) {
-  const { text, similarity = 0, limit, rerank = false } = props;
+  let { text, similarity = 0, limit, searchMode = DatasetSearchModeEnum.embedding } = props;
+  searchMode = global.systemEnv.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
+
+  const rerank =
+    searchMode === DatasetSearchModeEnum.embeddingReRank ||
+    searchMode === DatasetSearchModeEnum.embFullTextReRank;
+
+  const { embeddingLimit, fullTextLimit } = (() => {
+    // Increase search range, reduce hnsw loss
+    if (searchMode === DatasetSearchModeEnum.embedding) {
+      return {
+        embeddingLimit: limit * 2,
+        fullTextLimit: 0
+      };
+    }
+    // 50 < 2*limit < value < 100
+    if (searchMode === DatasetSearchModeEnum.embeddingReRank) {
+      return {
+        embeddingLimit: Math.min(100, Math.max(50, limit * 2)),
+        fullTextLimit: 0
+      };
+    }
+    // 50 < 3*limit < embedding < 80
+    // 20 < limit < fullTextLimit < 40
+    return {
+      embeddingLimit: Math.min(80, Math.max(50, limit * 2)),
+      fullTextLimit: Math.min(40, Math.max(20, limit))
+    };
+  })();
 
   const [{ tokenLen, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
     embeddingRecall({
       ...props,
-      limit: rerank ? Math.max(50, limit * 3) : limit * 2
+      rerank,
+      limit: embeddingLimit
     }),
     fullTextRecall({
       ...props,
-      limit: 40
+      limit: fullTextLimit
     })
   ]);
 
-  // concat recall result
-  let set = new Set<string>();
+  // concat embedding and fullText recall result
+  let set = new Set<string>(embeddingRecallResults.map((item) => item.id));
   const concatRecallResults = embeddingRecallResults;
-  for (const item of fullTextRecallResults) {
-    if (!set.has(item.id)) {
+  fullTextRecallResults.forEach((item) => {
+    if (!set.has(item.id) && item.score >= similarity) {
       concatRecallResults.push(item);
       set.add(item.id);
     }
-  }
+  });
 
   // remove same q and a data
   set = new Set<string>();
@@ -173,32 +201,30 @@ export async function searchDatasetData(props: SearchProps) {
 
   if (!rerank) {
     return {
-      searchRes: filterSameDataResults.slice(0, limit),
+      searchRes: filterSameDataResults.filter((item) => item.score >= similarity).slice(0, limit),
       tokenLen
     };
   }
 
   // ReRank result
-  const reRankResults = await reRankSearchResult({
-    query: text,
-    data: filterSameDataResults
+  const reRankResults = (
+    await reRankSearchResult({
+      query: text,
+      data: filterSameDataResults
+    })
+  ).filter((item) => item.score > similarity);
+
+  // (It's possible that rerank failed) concat rerank results and search results
+  set = new Set<string>(reRankResults.map((item) => item.id));
+  embeddingRecallResults.forEach((item) => {
+    if (!set.has(item.id) && item.score >= similarity) {
+      reRankResults.push(item);
+      set.add(item.id);
+    }
   });
 
-  // similarity filter
-  const filterReRankResults = reRankResults.filter((item) => item.score > similarity);
-
-  // concat rerank and embedding data
-  set = new Set<string>(filterReRankResults.map((item) => item.id));
-  const concatResult = filterReRankResults.concat(
-    filterSameDataResults.filter((item) => {
-      if (set.has(item.id)) return false;
-      set.add(item.id);
-      return true;
-    })
-  );
-
   return {
-    searchRes: concatResult.slice(0, limit),
+    searchRes: reRankResults.slice(0, limit),
     tokenLen
   };
 }
@@ -209,7 +235,7 @@ export async function embeddingRecall({
   limit,
   datasetIds = [],
   rerank = false
-}: SearchProps) {
+}: SearchProps & { rerank: boolean }) {
   const { vectors, tokenLen } = await getVectorsByText({
     model,
     input: [text]
@@ -244,7 +270,7 @@ export async function embeddingRecall({
       {
         _id: { $in: filterRows.map((item) => item.collection_id) }
       },
-      'name metadata'
+      'name fileId rawLink'
     ).lean(),
     MongoDatasetData.find(
       {
@@ -271,7 +297,7 @@ export async function embeddingRecall({
         datasetId: String(data.datasetId),
         collectionId: String(data.collectionId),
         sourceName: collection.name || '',
-        sourceId: collection.metadata?.fileId || collection.metadata?.rawLink,
+        sourceId: collection?.fileId || collection?.rawLink,
         score: item.score
       };
     })
@@ -282,16 +308,11 @@ export async function embeddingRecall({
     tokenLen
   };
 }
-export async function fullTextRecall({
-  text,
-  limit,
-  datasetIds = [],
-  rerank = false
-}: SearchProps): Promise<{
+export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchProps): Promise<{
   fullTextRecallResults: SearchDataResponseItemType[];
   tokenLen: number;
 }> {
-  if (!rerank) {
+  if (limit === 0) {
     return {
       fullTextRecallResults: [],
       tokenLen: 0
@@ -331,7 +352,7 @@ export async function fullTextRecall({
     {
       _id: { $in: searchResults.map((item) => item.collectionId) }
     },
-    '_id name metadata'
+    '_id name fileId rawLink'
   );
 
   return {
@@ -342,7 +363,7 @@ export async function fullTextRecall({
         datasetId: String(item.datasetId),
         collectionId: String(item.collectionId),
         sourceName: collection?.name || '',
-        sourceId: collection?.metadata?.fileId || collection?.metadata?.rawLink,
+        sourceId: collection?.fileId || collection?.rawLink,
         q: item.q,
         a: item.a,
         indexes: item.indexes,
@@ -361,22 +382,23 @@ export async function reRankSearchResult({
   data: SearchDataResponseItemType[];
   query: string;
 }): Promise<SearchDataResponseItemType[]> {
-  if (!global.systemEnv.pluginBaseUrl) return data;
   try {
-    const result = await POST<PostReRankResponse>('/core/ai/retrival/rerank', {
+    const results = await reRankRecall({
       query,
       inputs: data.map((item) => ({
         id: item.id,
-        text: `${item.q}\n${item.a}`.trim()
+        text: `${item.q}\n${item.a}`
       }))
     });
-    const mergeResult = result
+
+    // add new score to data
+    const mergeResult = results
       .map((item) => {
         const target = data.find((dataItem) => dataItem.id === item.id);
         if (!target) return null;
         return {
           ...target,
-          score: item.score ?? target.score
+          score: item.score || target.score
         };
       })
       .filter(Boolean) as SearchDataResponseItemType[];
@@ -385,7 +407,7 @@ export async function reRankSearchResult({
   } catch (error) {
     console.log(error);
 
-    return data;
+    return [];
   }
 }
 // ------------------ search end ------------------

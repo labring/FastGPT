@@ -33,7 +33,6 @@ import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'next-i18next';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
-import { DatasetParamsModal } from '@/components/core/module/DatasetSelectModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
@@ -56,6 +55,7 @@ import VariableEdit from '@/components/core/module/Flow/components/modules/Varia
 
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
+const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
 const AIChatSettingsModal = dynamic(() => import('@/components/core/module/AIChatSettingsModal'));
 
 function ConfigForm({
@@ -72,7 +72,6 @@ function ConfigForm({
   const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useSystemStore();
-  const [editVariable, setEditVariable] = useState<VariableItemType>();
   const [refresh, setRefresh] = useState(false);
 
   const { register, setValue, getValues, reset, handleSubmit, control } =
@@ -145,6 +144,7 @@ function ConfigForm({
       templateId: appDetail.simpleTemplateId,
       modules: appDetail.modules
     });
+
     reset(formVal);
     setTimeout(() => {
       setRefresh((state) => !state);
@@ -197,8 +197,8 @@ function ConfigForm({
         })}
       >
         <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-          应用配置
-          <MyTooltip label={'仅包含基础功能，复杂 agent 功能请使用高级编排。'} forceShow>
+          {t('core.app.App params config')}
+          <MyTooltip label={t('core.app.Simple Config Tip')} forceShow>
             <QuestionOutlineIcon ml={2} fontSize={'md'} />
           </MyTooltip>
         </Box>
@@ -215,7 +215,7 @@ function ConfigForm({
             }
           }}
         >
-          {isPc ? '保存并预览' : '保存'}
+          {isPc ? t('core.app.Save and preview') : t('common.Save')}
         </Button>
       </Flex>
 
@@ -248,7 +248,7 @@ function ConfigForm({
           <Box {...BoxStyles} mt={2}>
             <Flex alignItems={'center'}>
               <Image alt={''} src={'/imgs/module/userGuide.png'} w={'18px'} />
-              <Box mx={2}>对话开场白</Box>
+              <Box mx={2}>{t('core.app.Welcome Text')}</Box>
               <MyTooltip label={welcomeTextTip} forceShow>
                 <QuestionOutlineIcon />
               </MyTooltip>
@@ -351,7 +351,7 @@ function ConfigForm({
                 </Flex>
               )}
               {(selectSimpleTemplate.systemForm.dataset.limit ||
-                selectSimpleTemplate.systemForm.dataset.rerank ||
+                selectSimpleTemplate.systemForm.dataset.searchMode ||
                 selectSimpleTemplate.systemForm.dataset.searchEmptyText ||
                 selectSimpleTemplate.systemForm.dataset.similarity) && (
                 <Flex alignItems={'center'} ml={3} {...BoxBtnStyles} onClick={onOpenKbParams}>
@@ -459,7 +459,7 @@ function ConfigForm({
         <DatasetParamsModal
           {...getValues('dataset')}
           onClose={onCloseKbParams}
-          onChange={(e) => {
+          onSuccess={(e) => {
             setValue('dataset', {
               ...getValues('dataset'),
               ...e

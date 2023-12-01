@@ -75,6 +75,10 @@ const TrainingDataSchema = new Schema({
     type: String,
     default: ''
   },
+  chunkIndex: {
+    type: Number,
+    default: 0
+  },
   indexes: {
     type: [
       {

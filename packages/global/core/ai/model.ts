@@ -4,7 +4,8 @@ import type {
   FunctionModelItemType,
   VectorModelItemType,
   AudioSpeechModelType,
-  WhisperModelType
+  WhisperModelType,
+  ReRankModelItemType
 } from './model.d';
 
 export const defaultChatModels: ChatModelItemType[] = [
@@ -116,6 +117,8 @@ export const defaultVectorModels: VectorModelItemType[] = [
     maxToken: 3000
   }
 ];
+
+export const defaultReRankModels: ReRankModelItemType[] = [];
 
 export const defaultAudioSpeechModels: AudioSpeechModelType[] = [
   {

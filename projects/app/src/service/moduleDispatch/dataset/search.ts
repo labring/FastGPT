@@ -6,12 +6,13 @@ import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/pg';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
   [ModuleInputKeyEnum.datasetSimilarity]: number;
   [ModuleInputKeyEnum.datasetLimit]: number;
-  [ModuleInputKeyEnum.datasetStartReRank]: boolean;
+  [ModuleInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [ModuleInputKeyEnum.userChatInput]: string;
 }>;
 export type DatasetSearchResponse = {
@@ -27,7 +28,7 @@ export async function dispatchDatasetSearch(
   const {
     teamId,
     tmbId,
-    inputs: { datasets = [], similarity = 0.4, limit = 5, rerank, userChatInput }
+    inputs: { datasets = [], similarity = 0.4, limit = 5, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
   if (datasets.length === 0) {
@@ -47,7 +48,7 @@ export async function dispatchDatasetSearch(
     similarity,
     limit,
     datasetIds: datasets.map((item) => item.datasetId),
-    rerank
+    searchMode
   });
 
   return {
@@ -64,7 +65,8 @@ export async function dispatchDatasetSearch(
       model: vectorModel.name,
       tokens: tokenLen,
       similarity,
-      limit
+      limit,
+      searchMode
     }
   };
 }

@@ -24,7 +24,7 @@ export const readTxtContent = (file: File) => {
 };
 
 /**
- * 读取 pdf 内容
+ * read pdf to raw text
  */
 export const readPdfContent = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -104,7 +104,7 @@ export const readPdfContent = (file: File) =>
   });
 
 /**
- * 读取doc
+ * read docx to markdown
  */
 export const readDocContent = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -119,34 +119,7 @@ export const readDocContent = (file: File) =>
             arrayBuffer: target.result as ArrayBuffer
           });
 
-          let rawText: string = res?.value || '';
-
-          // match base64, upload and replace it
-          const base64Regex = /data:image\/[a-zA-Z]+;base64,([^\)]+)/g;
-          const base64Arr = rawText.match(base64Regex) || [];
-
-          // upload base64 and replace it
-          await Promise.all(
-            base64Arr.map(async (base64) => {
-              try {
-                const str = await compressBase64ImgAndUpload({
-                  base64,
-                  maxW: 800,
-                  maxH: 800,
-                  maxSize: 1024 * 1024 * 2
-                });
-                rawText = rawText.replace(base64, str);
-              } catch (error) {
-                rawText = rawText.replace(base64, '');
-                rawText = rawText.replaceAll('![]()', '');
-              }
-            })
-          );
-
-          const trimReg = /\s*(!\[.*\]\(.*\))\s*/g;
-          if (trimReg.test(rawText)) {
-            rawText = rawText.replace(/\s*(!\[.*\]\(.*\))\s*/g, '$1');
-          }
+          const rawText = await formatMarkdown(res?.value);
 
           resolve(rawText);
         } catch (error) {
@@ -172,7 +145,11 @@ export const readDocContent = (file: File) =>
   });
 
 /**
- * 读取csv
+ * read csv to json
+ * @response {
+ *  header: string[],
+ *  data: string[][]
+ * }
  */
 export const readCsvContent = async (file: File) => {
   try {
@@ -188,6 +165,48 @@ export const readCsvContent = async (file: File) => {
   } catch (error) {
     return Promise.reject('解析 csv 文件失败');
   }
+};
+
+/**
+ * format markdown
+ * 1. upload base64
+ * 2. replace \
+ */
+export const formatMarkdown = async (rawText: string = '') => {
+  // match base64, upload and replace it
+  const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
+  const base64Arr = rawText.match(base64Regex) || [];
+  // upload base64 and replace it
+  await Promise.all(
+    base64Arr.map(async (base64) => {
+      try {
+        const str = await compressBase64ImgAndUpload({
+          base64,
+          maxW: 800,
+          maxH: 800,
+          maxSize: 1024 * 1024 * 2
+        });
+        rawText = rawText.replace(base64, str);
+      } catch (error) {
+        rawText = rawText.replace(base64, '');
+        rawText = rawText.replace(/!\[.*\]\(\)/g, '');
+      }
+    })
+  );
+  // Remove white space on both sides of the picture
+  const trimReg = /\s*(!\[.*\]\(.*\))\s*/g;
+  if (trimReg.test(rawText)) {
+    rawText = rawText.replace(/\s*(!\[.*\]\(.*\))\s*/g, '$1');
+  }
+
+  // replace \
+  const reg1 = /\\([-.!`_(){}\[\]])/g;
+  if (reg1.test(rawText)) {
+    rawText = rawText.replace(/\\([`!*()+-_\[\]{}\\.])/g, '$1');
+  }
+  rawText = rawText.replace(/\\\\n/g, '\\n');
+
+  return rawText;
 };
 
 /**

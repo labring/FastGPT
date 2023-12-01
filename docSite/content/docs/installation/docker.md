@@ -86,7 +86,7 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 
 ## 三、启动容器
 
-修改`docker-compose.yml`中的`OPENAI_BASE_URL`和`CHAT_API_KEY`即可，对应为 API 的地址和 key。
+修改`docker-compose.yml`中的`OPENAI_BASE_URL`和`CHAT_API_KEY`即可，对应为 API 的地址(别忘记加/v1)和 key。
 
 ```bash
 # 在 docker-compose.yml 同级目录下执行

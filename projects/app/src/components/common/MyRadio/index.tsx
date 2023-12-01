@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Flex, useTheme, Grid, type GridProps, theme } from '@chakra-ui/react';
-import type { StackProps } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
+import { useTranslation } from 'next-i18next';
 
 // @ts-ignore
 interface Props extends GridProps {
@@ -20,6 +20,7 @@ const MyRadio = ({
   onChange,
   ...props
 }: Props) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   return (
     <Grid gridGap={[3, 5]} fontSize={['sm', 'md']} {...props}>
@@ -35,15 +36,17 @@ const MyRadio = ({
           border={theme.borders.sm}
           borderWidth={'1.5px'}
           borderRadius={'md'}
-          bg={'myWhite.300'}
           position={'relative'}
           {...(value === item.value
             ? {
-                borderColor: 'myBlue.700'
+                borderColor: 'myBlue.500',
+                bg: 'myBlue.100'
               }
             : {
+                bg: 'myWhite.300',
                 _hover: {
-                  bg: 'white'
+                  bg: '#f5f8ff',
+                  borderColor: '#b2ccff'
                 }
               })}
           _after={{
@@ -70,10 +73,10 @@ const MyRadio = ({
         >
           {!!item.icon && <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />}
           <Box pr={2}>
-            <Box>{item.title}</Box>
+            <Box>{t(item.title)}</Box>
             {!!item.desc && (
               <Box fontSize={'sm'} color={'myGray.500'}>
-                {item.desc}
+                {t(item.desc)}
               </Box>
             )}
           </Box>

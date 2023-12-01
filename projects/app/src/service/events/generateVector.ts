@@ -50,6 +50,7 @@ export async function generateVector(): Promise<any> {
           collectionId: 1,
           q: 1,
           a: 1,
+          chunkIndex: 1,
           indexes: 1,
           model: 1,
           billId: 1
@@ -134,6 +135,7 @@ export async function generateVector(): Promise<any> {
       collectionId: data.collectionId,
       q: dataItem.q,
       a: dataItem.a,
+      chunkIndex: data.chunkIndex,
       indexes: dataItem.indexes,
       model: data.model
     });

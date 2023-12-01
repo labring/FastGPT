@@ -5,6 +5,7 @@ export type CreateDatasetDataProps = {
   tmbId: string;
   datasetId: string;
   collectionId: string;
+  chunkIndex?: number;
   q: string;
   a?: string;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];

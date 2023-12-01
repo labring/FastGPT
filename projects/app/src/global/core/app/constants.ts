@@ -1,4 +1,5 @@
 import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type.d';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 export const SimpleModeTemplate_FastGPT_Universal: AppSimpleEditConfigTemplateType = {
   id: 'fastgpt-universal',
@@ -17,7 +18,7 @@ export const SimpleModeTemplate_FastGPT_Universal: AppSimpleEditConfigTemplateTy
       datasets: true,
       similarity: true,
       limit: true,
-      rerank: true,
+      searchMode: DatasetSearchModeEnum.embedding,
       searchEmptyText: true
     },
     userGuide: {

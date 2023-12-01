@@ -3,12 +3,7 @@ import { Button, ModalFooter, ModalBody } from '@chakra-ui/react';
 import MyModal from '../MyModal';
 import { useTranslation } from 'next-i18next';
 import Markdown from '../Markdown';
-
-const md = `
-| 交流群 | 小助手 |
-| ----------------------- | -------------------- |
-| ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |
-`;
+import { feConfigs } from '@/web/common/system/staticData';
 
 const CommunityModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -20,7 +15,7 @@ const CommunityModal = ({ onClose }: { onClose: () => void }) => {
       title={t('home.Community')}
     >
       <ModalBody textAlign={'center'}>
-        <Markdown source={md} />
+        <Markdown source={feConfigs?.concatMd || ''} />
       </ModalBody>
 
       <ModalFooter>

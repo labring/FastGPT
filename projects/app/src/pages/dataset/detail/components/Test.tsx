@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Textarea, Button, Flex, useTheme, Grid, Progress, Switch } from '@chakra-ui/react';
+import {
+  Box,
+  Textarea,
+  Button,
+  Flex,
+  useTheme,
+  Grid,
+  Progress,
+  Switch,
+  useDisclosure
+} from '@chakra-ui/react';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
 import { getDatasetDataItemById, postSearchText } from '@/web/core/dataset/api';
@@ -13,11 +23,13 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { useTranslation } from 'next-i18next';
-import { feConfigs } from '@/web/common/system/staticData';
-import { SearchTestResponse } from '../../../../global/core/dataset/api';
+import { SearchTestResponse } from '@/global/core/dataset/api';
+import { DatasetSearchModeEnum, DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
+import dynamic from 'next/dynamic';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
+
+const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
 
 const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
@@ -30,15 +42,24 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const [inputText, setInputText] = useState('');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
   const [editInputData, setEditInputData] = useState<InputDataType & { collectionId: string }>();
-  const [rerank, setRerank] = useState(false);
+  const [searchMode, setSearchMode] = useState<`${DatasetSearchModeEnum}`>(
+    DatasetSearchModeEnum.embedding
+  );
+  const searchModeData = DatasetSearchModeMap[searchMode];
 
-  const kbTestHistory = useMemo(
+  const {
+    isOpen: isOpenSelectMode,
+    onOpen: onOpenSelectMode,
+    onClose: onCloseSelectMode
+  } = useDisclosure();
+
+  const testHistories = useMemo(
     () => datasetTestList.filter((item) => item.datasetId === datasetId),
     [datasetId, datasetTestList]
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => postSearchText({ datasetId, text: inputText.trim(), rerank, limit: 30 }),
+    mutationFn: () => postSearchText({ datasetId, text: inputText.trim(), searchMode, limit: 30 }),
     onSuccess(res: SearchTestResponse) {
       if (!res || res.list.length === 0) {
         return toast({
@@ -71,6 +92,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
   return (
     <Box h={'100%'} display={['block', 'flex']}>
+      {/* input  */}
       <Box
         h={['auto', '100%']}
         display={['block', 'flex']}
@@ -86,12 +108,14 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'myBlue.700'} />
               {t('core.dataset.test.Test Text')}
             </Box>
-            {feConfigs?.isPlus && (
-              <Flex alignItems={'center'}>
-                {t('dataset.recall.rerank')}
-                <Switch ml={1} isChecked={rerank} onChange={(e) => setRerank(e.target.checked)} />
-              </Flex>
-            )}
+            <Button
+              variant={'base'}
+              leftIcon={<MyIcon name={searchModeData.icon as any} w={'14px'} />}
+              size={'sm'}
+              onClick={onOpenSelectMode}
+            >
+              {t(searchModeData.title)}
+            </Button>
           </Flex>
           <Textarea
             rows={6}
@@ -122,7 +146,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               <Box w={'80px'}>{t('common.Time')}</Box>
               <Box w={'14px'}></Box>
             </Flex>
-            {kbTestHistory.map((item) => (
+            {testHistories.map((item) => (
               <Flex
                 key={item.id}
                 p={1}
@@ -162,6 +186,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           </Box>
         </Box>
       </Box>
+      {/* result show */}
       <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={1}>
         {!datasetTestItem?.results || datasetTestItem.results.length === 0 ? (
           <Flex
@@ -304,6 +329,15 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               setDatasetTestItem(newTestItem);
             }
             setEditInputData(undefined);
+          }}
+        />
+      )}
+      {isOpenSelectMode && (
+        <DatasetParamsModal
+          searchMode={searchMode}
+          onClose={onCloseSelectMode}
+          onSuccess={(e) => {
+            setSearchMode(e.searchMode);
           }}
         />
       )}

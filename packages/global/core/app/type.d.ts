@@ -4,6 +4,7 @@ import { PermissionTypeEnum } from '../../support/permission/constant';
 import type { AIChatModuleProps, DatasetModuleProps } from '../module/node/type.d';
 import { VariableInputEnum } from '../module/constants';
 import { SelectedDatasetType } from '../module/api';
+import { DatasetSearchModeEnum } from '../dataset/constant';
 
 export interface AppSchema {
   _id: string;
@@ -18,6 +19,7 @@ export interface AppSchema {
   updateTime: number;
   modules: ModuleItemType[];
   permission: `${PermissionTypeEnum}`;
+  inited?: boolean;
 }
 
 export type AppListItemType = {
@@ -62,7 +64,7 @@ export type AppSimpleEditFormType = {
     datasets: SelectedDatasetType;
     similarity: number;
     limit: number;
-    rerank: boolean;
+    searchMode: `${DatasetSearchModeEnum}`;
     searchEmptyText: string;
   };
   userGuide: {
@@ -106,7 +108,7 @@ export type AppSimpleEditConfigTemplateType = {
       datasets?: boolean;
       similarity?: boolean;
       limit?: boolean;
-      rerank?: boolean;
+      searchMode: `${DatasetSearchModeEnum}`;
       searchEmptyText?: boolean;
     };
     userGuide?: {

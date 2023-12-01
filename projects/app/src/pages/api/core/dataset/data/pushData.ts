@@ -125,7 +125,7 @@ export async function pushDataToDatasetCollection({
 
   // 插入记录
   const insertRes = await MongoDatasetTraining.insertMany(
-    filterResult.success.map((item) => ({
+    filterResult.success.map((item, i) => ({
       teamId,
       tmbId,
       datasetId,
@@ -136,6 +136,7 @@ export async function pushDataToDatasetCollection({
       model,
       q: item.q,
       a: item.a,
+      chunkIndex: i,
       indexes: item.indexes
     }))
   );

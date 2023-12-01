@@ -170,6 +170,7 @@
     "Rename Success": "Rename Success",
     "Request Error": "Request Error",
     "Require Input": "Required",
+    "Save": "Save",
     "Save Failed": "Save Failed",
     "Save Success": "Save Success",
     "Search": "Search",
@@ -216,11 +217,15 @@
       "Prompt": "Prompt"
     },
     "app": {
+      "App params config": "App Config",
       "Next Step Guide": "Next step guide",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
+      "Save and preview": "Save",
       "Select TTS": "Select TTS",
+      "Simple Config Tip": "Only basic functions are included. For complex agent functions, use advanced orchestration.",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "Welcome Text": "Welcome Text",
       "create app": "Create App",
       "setting": "App Setting",
       "simple": {
@@ -261,14 +266,55 @@
       "Search Top K": "Top K",
       "Set Empty Result Tip": ",Response empty text",
       "Similarity": "Similarity",
+      "Sync Time": "Update Time",
+      "Virtual File": "Virtual File",
+      "collection": {
+        "metadata": {
+          "Chunk Size": "Chunk Size",
+          "Createtime": "Create Time",
+          "Read Metadata": "Read Metadata",
+          "Training Type": "Training Type",
+          "Updatetime": "Update Time",
+          "metadata": "Metadata",
+          "read source": "Read Source",
+          "source": "Source",
+          "source name": "Source Name",
+          "source size": "Source Size"
+        },
+        "training": {
+          "type chunk": "Chunk",
+          "type manual": "Manual",
+          "type qa": "QA"
+        }
+      },
       "data": {
         "Edit": "Edit Data",
         "data is deleted": "Data is deleted",
         "id": "Data ID"
       },
+      "file": "File",
+      "folder": "Folder",
       "import": {
         "Ideal chunk length": "Ideal chunk length",
         "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
+      },
+      "link": "Link",
+      "search": {
+        "Empty result response": "Empty Response",
+        "Empty result response Tips": "If you fill in the content, if no suitable content is found, you will directly reply to the content.",
+        "Min Similarity": "Min Similarity",
+        "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
+        "Params Setting": "Params Setting",
+        "Top K": "Top K",
+        "mode": {
+          "embFullTextReRank": "Hybrid search ",
+          "embFullTextReRank desc": "Reordering with a mixture of vector search and full-text search results by Rerank usually works best",
+          "embedding": "Vector search",
+          "embedding desc": "Direct vector topk correlation query ",
+          "embeddingReRank": "Enhanced semantic retrieval ",
+          "embeddingReRank desc": "Sort using Rerank after overperforming vector topk queries "
+        },
+        "search mode": "Search Mode"
       },
       "test": {
         "Test": "Start",
@@ -279,6 +325,10 @@
         "test history": "Test History",
         "test result placeholder": "The test results will be presented here",
         "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
+      },
+      "training": {
+        "type chunk": "Chunk",
+        "type qa": "QA"
       }
     },
     "module": {
@@ -327,18 +377,20 @@
       },
       "variable": {
         "add option": "Add Option",
+        "input type": "Text",
         "key": "Key",
         "key is required": "variable key is required",
         "select type": "Select",
         "text max length": "Max Length",
-        "text type": "Text",
+        "textarea type": "Textarea",
         "variable key is required": "",
         "variable name": "Name",
         "variable name is required": "variable name is required",
         "variable option is required": "Variable option is required",
         "variable option is value is required": "Variable option is value is required",
         "variable options": "Options"
-      }
+      },
+      "variable add option": "Add Option"
     }
   },
   "dataset": {
@@ -412,9 +464,6 @@
     "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
-    "recall": {
-      "rerank": "Rerank"
-    },
     "test": {
       "noResult": "Search results are empty"
     }
@@ -673,6 +722,7 @@
   "wallet": {
     "bill": {
       "Audio Speech": "Audio Speech",
+      "ReRank": "ReRank",
       "Whisper": "Whisper",
       "bill username": "User"
     }

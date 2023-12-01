@@ -5,6 +5,7 @@ import type { FlowNodeInputItemType } from '../module/node/type.d';
 import { getGuideModule, splitGuideModule } from '../module/utils';
 import { defaultChatModels } from '../ai/model';
 import { ModuleItemType } from '../module/type.d';
+import { DatasetSearchModeEnum } from '../dataset/constant';
 
 export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEditFormType => {
   const defaultChatModel = defaultChatModels[0];
@@ -25,7 +26,7 @@ export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEd
       similarity: 0.4,
       limit: 5,
       searchEmptyText: '',
-      rerank: false
+      searchMode: DatasetSearchModeEnum.embedding
     },
     userGuide: {
       welcomeText: '',
@@ -76,7 +77,7 @@ export const appModules2Form = ({
       );
       defaultAppForm.aiSettings.quotePrompt = findInputValueByKey(
         module.inputs,
-        ModuleInputKeyEnum.aiChatQuoteTemplate
+        ModuleInputKeyEnum.aiChatQuotePrompt
       );
     } else if (module.flowType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
@@ -91,10 +92,9 @@ export const appModules2Form = ({
         module.inputs,
         ModuleInputKeyEnum.datasetLimit
       );
-      defaultAppForm.dataset.rerank = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.datasetStartReRank
-      );
+      defaultAppForm.dataset.searchMode =
+        findInputValueByKey(module.inputs, ModuleInputKeyEnum.datasetSearchMode) ||
+        DatasetSearchModeEnum.embedding;
 
       // empty text
       const emptyOutputs =

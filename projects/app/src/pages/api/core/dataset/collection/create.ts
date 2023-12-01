@@ -6,8 +6,11 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import type { CreateDatasetCollectionParams } from '@/global/core/api/datasetReq.d';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  TrainingModeEnum,
+  DatasetCollectionTypeEnum,
+  DatasetCollectionTrainingModeEnum
+} from '@fastgpt/global/core/dataset/constant';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
@@ -45,7 +48,10 @@ export async function createOneCollection({
   parentId,
   datasetId,
   type,
-  metadata = {},
+  trainingType = DatasetCollectionTrainingModeEnum.manual,
+  chunkSize = 0,
+  fileId,
+  rawLink,
   teamId,
   tmbId
 }: CreateDatasetCollectionParams & { teamId: string; tmbId: string }) {
@@ -56,8 +62,10 @@ export async function createOneCollection({
     datasetId,
     parentId: parentId || null,
     type,
-    metadata,
-    updateTime: getCollectionUpdateTime({ name })
+    trainingType,
+    chunkSize,
+    fileId,
+    rawLink
   });
 
   // create default collection
@@ -94,7 +102,8 @@ export function createDefaultCollection({
     datasetId,
     parentId,
     type: DatasetCollectionTypeEnum.virtual,
-    updateTime: new Date('2099'),
-    metadata: {}
+    trainingType: DatasetCollectionTrainingModeEnum.manual,
+    chunkSize: 0,
+    updateTime: new Date('2099')
   });
 }

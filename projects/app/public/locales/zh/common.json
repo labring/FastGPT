@@ -170,6 +170,7 @@
     "Rename Success": "重命名成功",
     "Request Error": "请求异常",
     "Require Input": "必填",
+    "Save": "保存",
     "Save Failed": "保存失败",
     "Save Success": "保存成功",
     "Search": "搜索",
@@ -216,11 +217,15 @@
       "Prompt": "提示词"
     },
     "app": {
+      "App params config": "应用配置",
       "Next Step Guide": "下一步指引",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
+      "Save and preview": "保存并预览",
       "Select TTS": "选择语音播放模式",
+      "Simple Config Tip": "仅包含基础功能，复杂 agent 功能请使用高级编排。",
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
+      "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
       "setting": "应用信息设置",
       "simple": {
@@ -261,14 +266,55 @@
       "Search Top K": "单次搜索数量",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Similarity": "相似度",
+      "Sync Time": "最后更新时间",
+      "Virtual File": "虚拟文件",
+      "collection": {
+        "metadata": {
+          "Chunk Size": "分割大小",
+          "Createtime": "创建时间",
+          "Read Metadata": "查看元数据",
+          "Training Type": "训练模式",
+          "Updatetime": "更新时间",
+          "metadata": "元数据",
+          "read source": "查看原始内容",
+          "source": "数据来源",
+          "source name": "来源名",
+          "source size": "来源大小"
+        },
+        "training": {
+          "type manual": "手动",
+          "type chunk": "直接分段",
+          "type qa": "问答拆分"
+        }
+      },
       "data": {
         "Edit": "编辑数据",
         "data is deleted": "该数据已被删除",
         "id": "数据ID"
       },
+      "file": "文件",
+      "folder": "目录",
       "import": {
         "Ideal chunk length": "理想分块长度",
         "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200"
+      },
+      "link": "链接",
+      "search": {
+        "Empty result response": "空搜索回复",
+        "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
+        "Min Similarity": "最低相似度",
+        "Min Similarity Tips": "不同索引模型的相似度有区别，请通过搜索测试来选择合适的数值",
+        "Params Setting": "搜索参数设置",
+        "Top K": "单次搜索上限",
+        "mode": {
+          "embFullTextReRank": "混合检索",
+          "embFullTextReRank desc": "使用向量检索与全文检索混合结果进行 Rerank 进行重排，通常效果最佳",
+          "embedding": "语义检索",
+          "embedding desc": "直接进行向量 topk 相关性查询",
+          "embeddingReRank": "增强语义检索",
+          "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序"
+        },
+        "search mode": "检索模式"
       },
       "test": {
         "Test": "测试",
@@ -279,6 +325,10 @@
         "test history": "测试历史",
         "test result placeholder": "测试结果将在这里展示",
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
+      },
+      "training": {
+        "type chunk": "直接分段",
+        "type qa": "问答拆分"
       }
     },
     "module": {
@@ -327,18 +377,20 @@
       },
       "variable": {
         "add option": "添加选项",
+        "input type": "文本",
         "key": "变量 key",
-        "key is required": "",
+        "key is required": "变量key是必须的",
         "select type": "下拉单选",
         "text max length": "最大长度",
-        "text type": "文本",
+        "textarea type": "段落",
         "variable key is required": "变量 key 不能为空",
         "variable name": "变量名",
         "variable name is required": "变量名不能为空",
         "variable option is required": "选项不能全空",
         "variable option is value is required": "选项内容不能为空",
         "variable options": "选项"
-      }
+      },
+      "variable add option": "添加选项"
     }
   },
   "dataset": {
@@ -412,9 +464,6 @@
     "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
     "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
-    "recall": {
-      "rerank": "结果重排"
-    },
     "test": {
       "noResult": "搜索结果为空"
     }
@@ -673,6 +722,7 @@
   "wallet": {
     "bill": {
       "Audio Speech": "语音播报",
+      "ReRank": "结果重排",
       "Whisper": "语音输入",
       "bill username": "用户"
     }

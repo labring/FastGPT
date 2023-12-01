@@ -8,6 +8,7 @@ import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -378,7 +379,7 @@ function datasetTemplate({
         },
         {
           key: 'similarity',
-          value: 0.5,
+          value: 0.4,
           type: FlowNodeInputTypeEnum.slider,
           label: '相似度',
           connected: true
@@ -403,13 +404,23 @@ function datasetTemplate({
           connected: true
         },
         {
-          key: 'rerank',
-          type: FlowNodeInputTypeEnum.switch,
-          label: '结果重排',
-          description: '将召回的结果进行进一步重排，可增加召回率',
-          plusField: true,
-          connected: true,
-          value: true
+          key: 'searchMode',
+          type: 'hidden',
+          label: 'core.dataset.search.Mode',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: DatasetSearchModeEnum.embFullTextReRank,
+          connected: false
+        },
+        {
+          key: 'datasetParamsModal',
+          type: 'selectDatasetParamsModal',
+          label: '',
+          connected: false,
+          valueType: 'any',
+          showTargetInApp: false,
+          showTargetInPlugin: false
         }
       ],
       outputs: [

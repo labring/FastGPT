@@ -105,14 +105,13 @@ export async function parseHeaderCert({
     };
   }
   // root user
-  async function parseRootKey(rootKey?: string, userId = '') {
+  async function parseRootKey(rootKey?: string) {
     if (!rootKey || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
-    return userId;
   }
 
-  const { cookie, token, apikey, rootkey, userid, authorization } = (req.headers ||
+  const { cookie, token, apikey, rootkey, authorization } = (req.headers ||
     {}) as ReqHeaderAuthType;
 
   const { uid, teamId, tmbId, appId, openApiKey, authType } = await (async () => {
@@ -129,9 +128,10 @@ export async function parseHeaderCert({
       };
     }
     if (authRoot && rootkey) {
+      await parseRootKey(rootkey);
       // root user
       return {
-        uid: await parseRootKey(rootkey, userid),
+        uid: '',
         teamId: '',
         tmbId: '',
         appId: '',
