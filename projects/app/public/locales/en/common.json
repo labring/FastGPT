@@ -3,7 +3,6 @@
   "Cancel": "No",
   "Confirm": "Yes",
   "Create New": "Create",
-  "Dataset": "Dataset",
   "Export": "Export",
   "Folder": "Folder",
   "Move": "Move",
@@ -129,6 +128,7 @@
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
+    "Config": "Config",
     "Confirm": "Confirm",
     "Confirm Create": "Create",
     "Confirm Move": "Move here",
@@ -151,6 +151,7 @@
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
+    "Intro": "Intro",
     "Last Step": "Last",
     "Loading": "Loading",
     "Max credit": "Credit",
@@ -189,7 +190,14 @@
     "Update Time": "Update Time",
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
+    "Website": "Website",
     "choosable": "choosable",
+    "confirm": {
+      "Common Tip": "Operational Confirm"
+    },
+    "empty": {
+      "Common Tip": "No data"
+    },
     "error": {
       "unKnow": "There was an accident"
     },
@@ -215,6 +223,7 @@
     }
   },
   "core": {
+    "Max Token": "MaxTokens",
     "ai": {
       "Model": "Model",
       "Prompt": "Prompt"
@@ -241,7 +250,7 @@
         "Speech model": "Speech model",
         "Speech speed": "Speed",
         "Test Listen": "Test",
-        "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
+        "Test Listen Text": "Hello, this is a voice test, if you can hear this sentence, it means that the voice playback function is normal",
         "Web": "Browser (free)"
       }
     },
@@ -261,20 +270,32 @@
     },
     "dataset": {
       "Choose Dataset": "Choose Dataset",
+      "Common Dataset": "Common Dataset",
+      "Common Dataset Desc": "Knowledge bases can be built by importing files, web links, or manual entry",
       "Create dataset": "Create Dataset",
       "Dataset": "Dataset",
+      "Dataset Type": "Dataset Type",
+      "Delete Website Tips": "Confirm to delete the website",
+      "Empty Dataset": "",
+      "Empty Dataset Tips": "There is no knowledge base yet, go create one!",
+      "Folder Dataset": "Folder",
       "Go Dataset": "To Dataset",
+      "Intro Placeholder": "This dataset has not yet been introduced~",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
       "Search Top K": "Top K",
       "Set Empty Result Tip": ",Response empty text",
+      "Set Website Config": "Configuring Website",
       "Similarity": "Similarity",
       "Sync Time": "Update Time",
       "Virtual File": "Virtual File",
+      "Website Dataset": "Website Sync",
+      "Website Dataset Desc": "Web site synchronization allows you to build a knowledge base directly from a web link",
       "collection": {
-        "Create Website Dataset": "Website synchronization",
-        "Create Website Dataset Description": "The Web site synchronization function allows you to fill in the root address of a website, and the system will automatically crawl the relevant pages deeply for knowledge base training. Only crawls static websites, mainly project documents and blogs.",
+        "Click top config website": "Config",
+        "Empty Tip": "The collection is empty",
         "Website Create Success": "Created successfully, data is being synchronized",
+        "Website Empty Tip": "No associated website yet,",
         "Website Link": "Website Link",
         "Website Sync": "Website",
         "metadata": {
@@ -332,6 +353,10 @@
         },
         "search mode": "Search Mode"
       },
+      "status": {
+        "active": "Ready",
+        "syncing": "Syncing"
+      },
       "test": {
         "Test": "Start",
         "Test Result": "Results",
@@ -343,9 +368,15 @@
         "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
       },
       "training": {
+        "Website Sync": "Website Sync",
         "type chunk": "Chunk",
-        "type qa": "QA",
-        "Website Sync": "Website Sync"
+        "type qa": "QA"
+      },
+      "website": {
+        "Config": "Website Configuring",
+        "Config Description": "The Web site synchronization function allows you to fill in the root address of a website, and the system will automatically crawl the relevant pages deeply for knowledge base training. Only crawls static websites, mainly project documents and blogs.",
+        "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
+        "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm"
       }
     },
     "module": {

@@ -1,43 +1,54 @@
-import React, { useState } from 'react';
+import React from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useForm } from 'react-hook-form';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 
 type FormType = {
   url?: string | undefined;
   selector?: string | undefined;
 };
 
-const WebsiteModal = ({
+const WebsiteConfigModal = ({
   onClose,
-  onSuccess
+  onSuccess,
+  defaultValue = {
+    url: '',
+    selector: ''
+  }
 }: {
   onClose: () => void;
   onSuccess: (data: FormType) => void;
+  defaultValue?: FormType;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { register, handleSubmit } = useForm({
-    defaultValues: {
-      url: '',
-      selector: ''
-    }
+    defaultValues: defaultValue
+  });
+  const isEdit = !!defaultValue.url;
+  const confirmTip = isEdit
+    ? t('core.dataset.website.Confirm Update Tips')
+    : t('core.dataset.website.Confirm Create Tips');
+
+  const { ConfirmModal, openConfirm } = useConfirm({
+    type: 'common'
   });
 
   return (
     <MyModal
       isOpen
-      iconSrc="/imgs/modal/website.svg"
-      title={t('core.dataset.collection.Create Website Dataset')}
+      iconSrc="core/dataset/websiteDataset"
+      title={t('core.dataset.website.Config')}
       onClose={onClose}
       maxW={'500px'}
     >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.600'}>
-          {t('core.dataset.collection.Create Website Dataset Description')}
+          {t('core.dataset.website.Config Description')}
         </Box>
         <Box mt={2}>
           <Box>{t('core.dataset.collection.website.Base Url')}</Box>
@@ -52,7 +63,7 @@ const WebsiteModal = ({
           <Box>
             {t('core.dataset.collection.website.Selector')}({t('common.choosable')})
           </Box>
-          <Input {...register('selector')} />
+          <Input {...register('selector')} placeholder="body .content #document" />
         </Box>
       </ModalBody>
       <ModalFooter>
@@ -63,21 +74,28 @@ const WebsiteModal = ({
           ml={2}
           onClick={handleSubmit((data) => {
             if (!data.url) return;
-            //   check is link
+            // check is link
             if (!strIsLink(data.url)) {
               return toast({
                 status: 'warning',
                 title: t('common.link.UnValid')
               });
             }
-            onSuccess(data);
+            openConfirm(
+              () => {
+                onSuccess(data);
+              },
+              undefined,
+              confirmTip
+            )();
           })}
         >
           {t('common.Confirm')}
         </Button>
       </ModalFooter>
+      <ConfirmModal />
     </MyModal>
   );
 };
 
-export default WebsiteModal;
+export default WebsiteConfigModal;

@@ -12,9 +12,6 @@ export function getCollectionIcon(
   if (type === DatasetCollectionTypeEnum.link) {
     return '/imgs/files/link.svg';
   }
-  if (type === DatasetCollectionTypeEnum.website) {
-    return '/imgs/modal/website.svg';
-  }
   if (type === DatasetCollectionTypeEnum.virtual) {
     if (name === '手动录入') {
       return '/imgs/files/manual.svg';

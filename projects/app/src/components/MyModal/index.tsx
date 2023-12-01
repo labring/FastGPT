@@ -9,6 +9,7 @@ import {
   Box,
   Image
 } from '@chakra-ui/react';
+import MyIcon from '../Icon';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
@@ -36,7 +37,7 @@ const MyModal = ({
       autoFocus={false}
       isCentered={isCentered}
     >
-      <ModalOverlay />
+      <ModalOverlay zIndex={100} />
       <ModalContent
         w={w}
         minW={['90vw', '400px']}
@@ -56,7 +57,15 @@ const MyModal = ({
             roundedTop={'lg'}
             py={'10px'}
           >
-            {iconSrc && <Image mr={3} objectFit={'contain'} alt="" src={iconSrc} w={'20px'} />}
+            {iconSrc && (
+              <>
+                {iconSrc.startsWith('/') ? (
+                  <Image mr={3} objectFit={'contain'} alt="" src={iconSrc} w={'20px'} />
+                ) : (
+                  <MyIcon mr={3} name={iconSrc as any} w={'20px'} />
+                )}
+              </>
+            )}
             {title}
             <Box flex={1} />
             {onClose && <ModalCloseButton position={'relative'} top={0} right={0} />}

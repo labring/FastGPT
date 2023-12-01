@@ -2,8 +2,6 @@ import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import {
-  DatasetCollectionStatusEnum,
-  DatasetCollectionStatusMap,
   DatasetCollectionTrainingTypeMap,
   DatasetCollectionTypeMap
 } from '@fastgpt/global/core/dataset/constant';
@@ -46,11 +44,7 @@ const DatasetCollectionSchema = new Schema({
     enum: Object.keys(DatasetCollectionTypeMap),
     required: true
   },
-  status: {
-    type: String,
-    enum: Object.keys(DatasetCollectionStatusMap),
-    default: DatasetCollectionStatusEnum.active
-  },
+
   name: {
     type: String,
     required: true

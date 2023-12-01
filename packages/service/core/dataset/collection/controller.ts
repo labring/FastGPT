@@ -1,5 +1,4 @@
 import {
-  DatasetCollectionStatusEnum,
   DatasetCollectionTrainingModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constant';
@@ -11,7 +10,6 @@ export async function createOneCollection({
   parentId,
   datasetId,
   type,
-  status = DatasetCollectionStatusEnum.active,
   trainingType = DatasetCollectionTrainingModeEnum.manual,
   chunkSize = 0,
   fileId,
@@ -27,7 +25,6 @@ export async function createOneCollection({
     datasetId,
     parentId: parentId || null,
     type,
-    status,
     trainingType,
     chunkSize,
     fileId,

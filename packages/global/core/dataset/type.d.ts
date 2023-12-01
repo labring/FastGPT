@@ -2,9 +2,9 @@ import type { LLMModelItemType, VectorModelItemType } from '../../core/ai/model.
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
 import {
-  DatasetCollectionStatusEnum,
   DatasetCollectionTypeEnum,
   DatasetDataIndexTypeEnum,
+  DatasetStatusEnum,
   DatasetTypeEnum,
   TrainingModeEnum
 } from './constant';
@@ -21,9 +21,14 @@ export type DatasetSchemaType = {
   name: string;
   vectorModel: string;
   agentModel: string;
-  tags: string[];
+  intro: string;
   type: `${DatasetTypeEnum}`;
+  status: `${DatasetStatusEnum}`;
   permission: `${PermissionTypeEnum}`;
+  websiteConfig?: {
+    url: string;
+    selector: string;
+  };
 };
 
 export type DatasetCollectionSchemaType = {
@@ -34,7 +39,6 @@ export type DatasetCollectionSchemaType = {
   parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
-  status: `${DatasetCollectionStatusEnum}`;
   createTime: Date;
   updateTime: Date;
   trainingType: `${TrainingModeEnum}`;
@@ -96,6 +100,17 @@ export type DatasetDataWithCollectionType = Omit<DatasetDataSchemaType, 'collect
 };
 
 /* ================= dataset ===================== */
+export type DatasetListItemType = {
+  _id: string;
+  parentId: string;
+  avatar: string;
+  name: string;
+  intro: string;
+  type: `${DatasetTypeEnum}`;
+  isOwner: boolean;
+  canWrite: boolean;
+  permission: `${PermissionTypeEnum}`;
+};
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;

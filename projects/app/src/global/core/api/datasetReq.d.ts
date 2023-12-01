@@ -1,5 +1,4 @@
 import {
-  DatasetCollectionStatusEnum,
   DatasetCollectionTrainingModeEnum,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum
@@ -13,15 +12,6 @@ import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant'
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 /* ===== dataset ===== */
-export type DatasetUpdateParams = {
-  id: string;
-  parentId?: string;
-  tags?: string[];
-  name?: string;
-  avatar?: string;
-  permission?: `${PermissionTypeEnum}`;
-  agentModel?: LLMModelItemType;
-};
 
 /* ======= collections =========== */
 export type GetDatasetCollectionsProps = RequestPaging & {

@@ -1,7 +1,11 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
-import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetStatusEnum,
+  DatasetStatusMap,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constant';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -37,6 +41,11 @@ const DatasetSchema = new Schema({
     required: true,
     default: 'dataset'
   },
+  status: {
+    type: String,
+    enum: Object.keys(DatasetStatusMap),
+    default: DatasetStatusEnum.active
+  },
   avatar: {
     type: String,
     default: '/icon/logo.svg'
@@ -59,18 +68,26 @@ const DatasetSchema = new Schema({
     required: true,
     default: 'gpt-3.5-turbo-16k'
   },
-  tags: {
-    type: [String],
-    default: [],
-    set(val: string | string[]) {
-      if (Array.isArray(val)) return val;
-      return val.split(' ').filter((item) => item);
-    }
+  intro: {
+    type: String,
+    default: ''
   },
   permission: {
     type: String,
     enum: Object.keys(PermissionTypeMap),
     default: PermissionTypeEnum.private
+  },
+  websiteConfig: {
+    type: {
+      url: {
+        type: String,
+        required: true
+      },
+      selector: {
+        type: String,
+        default: 'body'
+      }
+    }
   }
 });
 

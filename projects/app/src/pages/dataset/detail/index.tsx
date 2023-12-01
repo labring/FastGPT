@@ -25,6 +25,7 @@ import Script from 'next/script';
 import CollectionCard from './components/CollectionCard';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { DatasetTypeMap } from '../../../../../../packages/global/core/dataset/constant';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false
@@ -77,7 +78,6 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   useQuery([datasetId], () => loadDatasetDetail(datasetId), {
     onSuccess(res) {
       form.reset(res);
-      InfoRef.current?.initInput(res.tags?.join(' '));
     },
     onError(err: any) {
       router.replace(`/dataset/list`);
@@ -107,14 +107,24 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
             >
               <Flex mb={4} alignItems={'center'}>
                 <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'lg'} />
-                <Box ml={2} fontWeight={'bold'}>
-                  {datasetDetail.name}
+                <Box ml={2}>
+                  <Box fontWeight={'bold'}>{datasetDetail.name}</Box>
                 </Box>
               </Flex>
+              {DatasetTypeMap[datasetDetail.type] && (
+                <Flex alignItems={'center'}>
+                  <MyIcon
+                    name={DatasetTypeMap[datasetDetail.type]?.icon as any}
+                    mr={1}
+                    w={'16px'}
+                  />
+                  <Box>{t(DatasetTypeMap[datasetDetail.type]?.label)}</Box>
+                </Flex>
+              )}
               <SideTabs
                 flex={1}
                 mx={'auto'}
-                mt={2}
+                mt={3}
                 w={'100%'}
                 list={tabList}
                 activeId={currentTab}

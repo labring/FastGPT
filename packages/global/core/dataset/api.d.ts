@@ -1,11 +1,19 @@
-import { DatasetDataIndexItemType } from './type';
-import {
-  DatasetCollectionStatusEnum,
-  DatasetCollectionTrainingModeEnum,
-  DatasetCollectionTypeEnum
-} from './constant';
+import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
+import { DatasetCollectionTrainingModeEnum, DatasetCollectionTypeEnum } from './constant';
+import type { LLMModelItemType } from '../ai/model.d';
 
 /* ================= dataset ===================== */
+export type DatasetUpdateBody = {
+  id: string;
+  parentId?: string;
+  tags?: string[];
+  name?: string;
+  avatar?: string;
+  permission?: DatasetSchemaType['permission'];
+  agentModel?: LLMModelItemType;
+  websiteConfig?: DatasetSchemaType['websiteConfig'];
+  status?: DatasetSchemaType['status'];
+};
 
 /* ================= collection ===================== */
 export type CreateDatasetCollectionParams = {
@@ -13,7 +21,6 @@ export type CreateDatasetCollectionParams = {
   parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
-  status?: `${DatasetCollectionStatusEnum}`;
   trainingType?: `${DatasetCollectionTrainingModeEnum}`;
   chunkSize?: number;
   fileId?: string;

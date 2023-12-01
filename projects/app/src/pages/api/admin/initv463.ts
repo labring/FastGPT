@@ -4,10 +4,8 @@ import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import {
-  DatasetCollectionStatusEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+import { DatasetStatusEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
 let success = 0;
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
@@ -22,7 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         $set: {
           createTime: '$updateTime',
-          status: DatasetCollectionStatusEnum.active,
           trainingType: {
             $cond: {
               if: { $ifNull: ['$a', false] },
@@ -44,6 +41,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updateTime: new Date()
       }
     );
+
+    await MongoDataset.updateMany(
+      {},
+      {
+        $set: {
+          status: DatasetStatusEnum.active
+        }
+      }
+    );
+
+    // dataset tags to intro
+    await MongoDataset.updateMany({ tags: { $exists: true } }, [
+      {
+        $set: {
+          intro: {
+            $reduce: {
+              input: '$tags',
+              initialValue: '',
+              in: { $concat: ['$$value', ' ', '$$this'] }
+            }
+          }
+        }
+      }
+    ]);
 
     jsonRes(res, {
       message: 'success'
