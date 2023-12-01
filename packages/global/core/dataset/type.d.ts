@@ -110,6 +110,7 @@ export type DatasetListItemType = {
   isOwner: boolean;
   canWrite: boolean;
   permission: `${PermissionTypeEnum}`;
+  vectorModel: VectorModelItemType;
 };
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;

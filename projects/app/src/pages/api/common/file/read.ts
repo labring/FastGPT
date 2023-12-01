@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       res.status(500).end();
     });
     fileStream.on('end', () => {
-      console.log(Date.now());
+      res.end();
     });
   } catch (error) {
     jsonRes(res, {

@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import type { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
+import { getVectorModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -35,7 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         type: item.type,
         permission: item.permission,
         canWrite,
-        isOwner: teamOwner || String(item.tmbId) === tmbId
+        isOwner: teamOwner || String(item.tmbId) === tmbId,
+        vectorModel: getVectorModel(item.vectorModel)
       }))
     );
 

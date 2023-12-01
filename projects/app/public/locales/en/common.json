@@ -256,6 +256,7 @@
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
+      "Quote Amount": "Dataset Quote:{{amount}}",
       "Record": "Speech",
       "Restart": "Restart",
       "Select File": "Select file",
@@ -264,6 +265,9 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "quote": {
+        "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time"
+      },
       "tts": {
         "Stop Speech": "Stop"
       }

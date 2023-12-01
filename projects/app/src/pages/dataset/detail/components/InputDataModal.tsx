@@ -199,12 +199,12 @@ const InputDataModal = ({
         <Box p={5} borderRight={theme.borders.base}>
           <RawSourceText
             w={'200px'}
-            className=""
+            className="textEllipsis3"
             whiteSpace={'pre-wrap'}
             sourceName={collection.sourceName}
             sourceId={collection.sourceId}
             mb={6}
-            fontSize={['14px', '16px']}
+            fontSize={'sm'}
           />
           <SideTabs
             list={tabList}

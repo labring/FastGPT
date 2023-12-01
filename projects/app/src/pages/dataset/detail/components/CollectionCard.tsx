@@ -77,7 +77,7 @@ const CollectionCard = () => {
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
   const [searchText, setSearchText] = useState('');
-  const { datasetDetail, updateDataset } = useDatasetStore();
+  const { datasetDetail, updateDataset, loadDatasetDetail } = useDatasetStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('dataset.Confirm to delete the file')
@@ -227,7 +227,7 @@ const CollectionCard = () => {
     successToast: t('common.Delete Success'),
     errorToast: t('common.Delete Failed')
   });
-  const { mutate: onUpdateDataset } = useRequest({
+  const { mutate: onUpdateDataset, isLoading: isUpdating } = useRequest({
     mutationFn: (websiteConfig: DatasetSchemaType['websiteConfig']) =>
       updateDataset({
         id: datasetDetail._id,
@@ -236,6 +236,7 @@ const CollectionCard = () => {
       }),
     onSuccess() {
       try {
+        onCloseWebsiteModal();
         postWebsiteSync({ datasetId: datasetDetail._id });
       } catch (error) {}
     }
@@ -245,11 +246,9 @@ const CollectionCard = () => {
     getDatasetCollectionPathById(parentId)
   );
 
-  const needRefetchCollections = useMemo(
-    () =>
-      !!formatCollections.find((item) => item.trainingAmount > 0) ||
-      datasetDetail.status === DatasetStatusEnum.syncing,
-    [datasetDetail.status, formatCollections]
+  const hasTrainingData = useMemo(
+    () => !!formatCollections.find((item) => item.trainingAmount > 0),
+    [formatCollections]
   );
   useQuery(
     ['refreshCollection'],
@@ -259,7 +258,19 @@ const CollectionCard = () => {
     },
     {
       refetchInterval: 6000,
-      enabled: needRefetchCollections
+      enabled: hasTrainingData
+    }
+  );
+  useQuery(
+    ['getData-loadDatasetDetail'],
+    () => {
+      getData(1);
+      loadDatasetDetail(datasetId, true);
+      return null;
+    },
+    {
+      refetchInterval: 6000,
+      enabled: datasetDetail.status === DatasetStatusEnum.syncing
     }
   );
 
@@ -648,7 +659,9 @@ const CollectionCard = () => {
           />
         )}
       </TableContainer>
-      <Loading loading={isCreating || isDeleting || (isLoading && collections.length === 0)} />
+      <Loading
+        loading={isCreating || isDeleting || isUpdating || (isLoading && collections.length === 0)}
+      />
 
       <ConfirmModal />
       <EditTitleModal />

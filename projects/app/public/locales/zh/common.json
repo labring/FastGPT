@@ -256,6 +256,7 @@
     },
     "chat": {
       "Audio Speech Error": "语音播报异常",
+      "Quote Amount": "知识库引用({{amount}}条)",
       "Record": "语音输入",
       "Restart": "重开对话",
       "Select File": "选择文件",
@@ -264,6 +265,9 @@
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "quote": {
+        "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新"
+      },
       "tts": {
         "Stop Speech": "停止"
       }

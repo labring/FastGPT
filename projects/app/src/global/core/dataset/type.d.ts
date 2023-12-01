@@ -13,7 +13,6 @@ export type DatasetCollectionsListItemType = {
   tmbId: string;
   name: string;
   type: DatasetCollectionSchemaType['type'];
-  status: DatasetCollectionSchemaType['status'];
   updateTime: Date;
   childrenAmount: number;
   dataAmount: number;

@@ -119,7 +119,9 @@ const iconPaths = {
   'core/dataset/commonDataset': () => import('./icons/core/dataset/commonDataset.svg'),
   'core/dataset/folderDataset': () => import('./icons/core/dataset/folderDataset.svg'),
   'common/confirm/deleteTip': () => import('./icons/common/confirm/deleteTip.svg'),
-  'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg')
+  'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg'),
+  'common/routePushLight': () => import('./icons/common/routePushLight.svg'),
+  'common/viewLight': () => import('./icons/common/viewLight.svg')
 };
 
 export type IconName = keyof typeof iconPaths;
