@@ -7,9 +7,23 @@
   },
   "ChatModels": [
     {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "price": 0,
+      "model": "chatglm2-6b",
+      "name": "ChatGLM2-6B-32K",
+      "location": "ludp",
+      "price": 0.0015,
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 16000,
+      "maxTemperature": 1.2,
+      "censor": false,
+      "vision": false,
+      "defaultSystemChatPrompt": ""
+    },
+    {
+      "model": "gpt-35-turbo-0301",
+      "name": "AGPT35-4k",
+      "location": "azure",
+      "price": 0.0015,
       "maxContext": 16000,
       "maxResponse": 4000,
       "quoteMaxToken": 2000,
@@ -19,8 +33,9 @@
       "defaultSystemChatPrompt": ""
     },
     {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
+      "model": "gpt-35-turbo-16k-0920",
+      "name": "AGPT35-16k",
+      "location": "azure",
       "maxContext": 16000,
       "maxResponse": 16000,
       "price": 0,
@@ -31,8 +46,9 @@
       "defaultSystemChatPrompt": ""
     },
     {
-      "model": "gpt-4",
-      "name": "GPT4-8k",
+      "model": "gpt-4-0920",
+      "name": "AGPT4-8k",
+      "location": "azure",
       "maxContext": 8000,
       "maxResponse": 8000,
       "price": 0,
@@ -43,8 +59,9 @@
       "defaultSystemChatPrompt": ""
     },
     {
-      "model": "gpt-4-vision-preview",
-      "name": "GPT4-Vision",
+      "model": "gpt-4-32k-0920",
+      "name": "AGPT4-32k",
+      "location": "azure",
       "maxContext": 128000,
       "maxResponse": 4000,
       "price": 0,
@@ -57,8 +74,9 @@
   ],
   "QAModels": [
     {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
+      "model": "gpt-35-turbo-16k-0920",
+      "name": "AGPT35-16k",
+      "location": "azure",
       "maxContext": 16000,
       "maxResponse": 16000,
       "price": 0
@@ -66,8 +84,9 @@
   ],
   "CQModels": [
     {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
+      "model": "gpt-35-turbo-0301",
+      "name": "AGPT35-4K",
+      "location": "azure",
       "maxContext": 16000,
       "maxResponse": 4000,
       "price": 0,
@@ -86,8 +105,9 @@
   ],
   "ExtractModels": [
     {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
+      "model": "gpt-35-turbo-0301",
+      "name": "AGPT35-4K",
+      "location": "azure",
       "maxContext": 16000,
       "maxResponse": 4000,
       "price": 0,
@@ -97,8 +117,9 @@
   ],
   "QGModels": [
     {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
+      "model": "gpt-35-turbo-0301",
+      "name": "AGPT35-4K",
+      "location": "azure",
       "maxContext": 1600,
       "maxResponse": 4000,
       "price": 0
@@ -106,8 +127,9 @@
   ],
   "VectorModels": [
     {
-      "model": "text-embedding-ada-002",
-      "name": "Embedding-2",
+      "model": "text-embedding-ada-002-0606",
+      "name": "AGPT-Embedding-2",
+      "location": "azure",
       "price": 0.2,
       "defaultToken": 700,
       "maxToken": 3000

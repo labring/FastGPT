@@ -128,6 +128,21 @@ async function functionCall({
     }
   };
 
+  const targetModels = global.extractModels.filter(
+    (modelObj: any) => modelObj.model === extractModel.model
+  );
+  if (targetModels?.length && user?.openaiAccount) {
+    if (!user.openaiAccount) {
+      user.openaiAccount = {
+        location: targetModels[0].location,
+        baseUrl: `${process.env.AZURE_OPENAI_BASE_URL}${
+          targetModels[0].model || process.env.AZURE_CHAT_MODEL
+        }`
+      };
+    } else {
+      user.openaiAccount.location = targetModels[0].location;
+    }
+  }
   const ai = getAIApi(user.openaiAccount, 480000);
 
   const response = await ai.chat.completions.create({
@@ -180,6 +195,21 @@ Human: ${content}`
     }
   ];
 
+  const targetModels = global.extractModels.filter(
+    (modelObj: any) => modelObj.model === extractModel.model
+  );
+  if (targetModels?.length && user?.openaiAccount) {
+    if (!user.openaiAccount) {
+      user.openaiAccount = {
+        location: targetModels[0].location,
+        baseUrl: `${process.env.AZURE_OPENAI_BASE_URL}${
+          targetModels[0].model || process.env.AZURE_CHAT_MODEL
+        }`
+      };
+    } else {
+      user.openaiAccount.location = targetModels[0].location;
+    }
+  }
   const ai = getAIApi(user.openaiAccount, 480000);
 
   const data = await ai.chat.completions.create({

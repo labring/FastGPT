@@ -27,8 +27,20 @@ export async function getVectorsByText({
       }
     }
 
+    const targetModels = global.vectorModels.filter((modelObj: any) => modelObj.model === model);
+    let targetUser = undefined;
+    if (targetModels?.length) {
+      targetUser = {
+        // key: '',
+        baseUrl: `${process.env.AZURE_OPENAI_BASE_URL}${
+          targetModels[0].model || process.env.AZURE_CHAT_MODEL
+        }`,
+        location: targetModels[0].location
+      };
+    }
+
     // 获取 chatAPI
-    const ai = getAIApi();
+    const ai = getAIApi(targetUser);
 
     // 把输入的内容转成向量
     const result = await ai.embeddings

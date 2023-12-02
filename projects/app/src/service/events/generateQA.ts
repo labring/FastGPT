@@ -129,7 +129,18 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       }
     ];
 
-    const ai = getAIApi(undefined, 600000);
+    const targetModels = global.qaModels.filter((modelObj: any) => modelObj.model === model);
+    let targetUser = undefined;
+    if (targetModels?.length) {
+      targetUser = {
+        // key: '',
+        baseUrl: `${process.env.AZURE_OPENAI_BASE_URL}${
+          targetModels[0].model || process.env.AZURE_CHAT_MODEL
+        }`,
+        location: targetModels[0].location
+      };
+    }
+    const ai = getAIApi(targetUser, 600000);
     const chatResponse = await ai.chat.completions.create({
       model,
       temperature: 0.01,

@@ -22,6 +22,7 @@ import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { UserModelSchema } from '@fastgpt/global/support/user/type';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatModuleProps & {
@@ -102,6 +103,23 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   // FastGPT temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
+
+  const targetModels = global.chatModels.filter((modelObj: any) => modelObj.model === model);
+  if (targetModels?.length && user) {
+    if (!user.openaiAccount) {
+      user.openaiAccount = {
+        location: targetModels[0].location,
+        baseUrl:
+          targetModels[0].location === 'azure'
+            ? `${process.env.AZURE_OPENAI_BASE_URL}${
+                targetModels[0].model || process.env.AZURE_CHAT_MODEL
+              }`
+            : `${process.env.ONEAPI_URL}`
+      };
+    } else {
+      user.openaiAccount.location = targetModels[0].location;
+    }
+  }
   const ai = getAIApi(user.openaiAccount, 480000);
 
   const concatMessages = [
@@ -119,6 +137,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }))
   ];
 
+  console.debug('dispatchChatCompletion> openaiCtx:%o', {
+    model,
+    messages: concatMessages
+  });
   const response = await ai.chat.completions.create(
     {
       model,

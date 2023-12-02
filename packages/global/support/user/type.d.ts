@@ -13,8 +13,9 @@ export type UserModelSchema = {
   createTime: number;
   timezone: string;
   openaiAccount?: {
-    key: string;
+    key?: string;
     baseUrl: string;
+    location?: string;
   };
   limit: {
     exportKbTime?: Date;
