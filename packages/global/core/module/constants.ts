@@ -56,6 +56,7 @@ export enum ModuleInputKeyEnum {
   aiChatQuoteTemplate = 'quoteTemplate',
   aiChatQuotePrompt = 'quotePrompt',
   aiChatDatasetQuote = 'quoteQA',
+  aiChatDatasetQuoteShow = 'quoteShow',
 
   // dataset
   datasetSelectList = 'datasets',

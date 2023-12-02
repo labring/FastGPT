@@ -28,6 +28,7 @@ export type ChatProps = ModuleDispatchProps<
     [ModuleInputKeyEnum.userChatInput]: string;
     [ModuleInputKeyEnum.history]?: ChatItemType[];
     [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
+    [ModuleInputKeyEnum.aiChatDatasetQuoteShow]?: boolean;
   }
 >;
 export type ChatResponse = {
@@ -50,6 +51,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       maxToken = 4000,
       history = [],
       quoteQA = [],
+      quoteShow = false,
       userChatInput,
       isResponseAnswerText = true,
       systemPrompt = '',
@@ -188,7 +190,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       tokens: totalTokens,
       query: userChatInput,
       maxToken: max_tokens,
-      quoteList: filterQuoteQA,
+      quoteList: quoteShow ? filterQuoteQA : undefined,
       historyPreview: getHistoryPreview(completeMessages)
     },
     history: completeMessages

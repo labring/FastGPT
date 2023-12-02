@@ -132,6 +132,16 @@ export const AiChatModule: FlowModuleTemplateType = {
       showTargetInApp: true,
       showTargetInPlugin: true
     },
+    {
+      key: ModuleInputKeyEnum.aiChatDatasetQuoteShow,
+      type: FlowNodeInputTypeEnum.switch,
+      label: '显示引用',
+      description: "是否在回答的结果中显示引用的知识库条目",
+      valueType: ModuleDataTypeEnum.boolean,
+      connected: false,
+      showTargetInApp: true,
+      showTargetInPlugin: true
+    },
     Input_Template_History,
     Input_Template_UserChatInput
   ],
