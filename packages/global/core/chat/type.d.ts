@@ -109,6 +109,11 @@ export type moduleDispatchResType = {
   body?: Record<string, any>;
   httpResult?: Record<string, any>;
 
+  // run code
+  inputData?: string;
+  codeResult?: string;
+  errorMsg?: string;
+
   // plugin output
   pluginOutput?: Record<string, any>;
 };

@@ -72,6 +72,10 @@ export enum ModuleInputKeyEnum {
   // http
   httpUrl = 'url',
 
+  // code
+  code = 'code',
+  inputData = 'inputData',
+
   // app
   runAppSelectApp = 'app',
 

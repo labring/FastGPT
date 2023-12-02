@@ -34,6 +34,7 @@
     "hyperdown": "^2.4.29",
     "i18next": "^22.5.1",
     "immer": "^9.0.19",
+    "isolated-vm": "^4.6.0",
     "jschardet": "^3.0.0",
     "jsdom": "^22.1.0",
     "jsonwebtoken": "^9.0.2",

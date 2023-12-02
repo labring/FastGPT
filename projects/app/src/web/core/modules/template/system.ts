@@ -12,6 +12,7 @@ import { RunAppModule } from '@fastgpt/global/core/module/template/system/runApp
 import { PluginInputModule } from '@fastgpt/global/core/module/template/system/pluginInput';
 import { PluginOutputModule } from '@fastgpt/global/core/module/template/system/pluginOutput';
 import { RunPluginModule } from '@fastgpt/global/core/module/template/system/runPlugin';
+import { RunCodeModule } from '@fastgpt/global/core/module/template/system/runCode';
 import type {
   FlowModuleTemplateType,
   moduleTemplateListType
@@ -28,7 +29,8 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule
+  HttpModule,
+  RunCodeModule
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -40,7 +42,8 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule
+  HttpModule,
+  RunCodeModule
 ];
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
@@ -56,7 +59,8 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   RunAppModule,
   PluginInputModule,
   PluginOutputModule,
-  RunPluginModule
+  RunPluginModule,
+  RunCodeModule
 ];
 
 export const moduleTemplatesList: moduleTemplateListType = [

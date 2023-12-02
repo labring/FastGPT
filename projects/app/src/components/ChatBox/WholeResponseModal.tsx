@@ -174,6 +174,26 @@ const WholeResponseModal = ({
             />
           )}
 
+          {/* run code */}
+          {activeModule?.inputData && (
+            <Row
+              label={t('chat.response.module code input')}
+              value={`${activeModule?.inputData}`}
+            />
+          )}
+          {activeModule?.codeResult && (
+            <Row
+              label={t('chat.response.module code result')}
+              value={`${activeModule?.codeResult}`}
+            />
+          )}
+          {activeModule?.errorMsg && (
+            <Row
+              label={t('chat.response.module code error')}
+              value={`${activeModule?.errorMsg}`}
+            />
+          )}
+
           {/* plugin */}
           {activeModule?.pluginOutput && (
             <Row
