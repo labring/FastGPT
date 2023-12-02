@@ -77,7 +77,7 @@ export const compressBase64ImgAndUpload = ({
       }
 
       ctx.drawImage(img, 0, 0, width, height);
-      const compressedDataUrl = canvas.toDataURL(fileType, 0.8);
+      const compressedDataUrl = canvas.toDataURL(fileType, 1);
       // 移除 canvas 元素
       canvas.remove();
 

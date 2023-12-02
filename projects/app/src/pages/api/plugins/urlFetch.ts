@@ -36,6 +36,7 @@ const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {
               url,
               contentType: 'text/html'
             });
+            // console.log(dom.window.document.querySelector('.docs-content')?.innerHTML);
 
             const reader = new Readability(dom.window.document);
             const article = reader.parse();

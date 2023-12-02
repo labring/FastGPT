@@ -37,7 +37,7 @@ const MyModal = ({
       autoFocus={false}
       isCentered={isCentered}
     >
-      <ModalOverlay zIndex={100} />
+      <ModalOverlay />
       <ModalContent
         w={w}
         minW={['90vw', '400px']}

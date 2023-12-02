@@ -1,6 +1,7 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { compressBase64ImgAndUpload } from './controller';
+import { simpleMarkdownText } from '@fastgpt/global/common/string/tools';
 
 /**
  * 读取 txt 文件内容
@@ -199,14 +200,7 @@ export const formatMarkdown = async (rawText: string = '') => {
     rawText = rawText.replace(/\s*(!\[.*\]\(.*\))\s*/g, '$1');
   }
 
-  // replace \
-  const reg1 = /\\([-.!`_(){}\[\]])/g;
-  if (reg1.test(rawText)) {
-    rawText = rawText.replace(/\\([`!*()+-_\[\]{}\\.])/g, '$1');
-  }
-  rawText = rawText.replace(/\\\\n/g, '\\n');
-
-  return rawText;
+  return simpleMarkdownText(rawText);
 };
 
 /**

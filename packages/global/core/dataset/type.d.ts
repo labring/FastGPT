@@ -45,9 +45,7 @@ export type DatasetCollectionSchemaType = {
   chunkSize: number;
   fileId?: string;
   rawLink?: string;
-  metadata: Record<string, any> & {
-    selector?: string;
-  };
+  metadata?: Record<string, any>;
 };
 
 export type DatasetDataIndexItemType = {

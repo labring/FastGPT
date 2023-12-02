@@ -50,7 +50,7 @@ const Info = ({
     multiple: false
   });
 
-  const { datasetDetail, loadDatasetDetail, loadDatasets, updateDataset } = useDatasetStore();
+  const { datasetDetail, loadDatasets, updateDataset } = useDatasetStore();
 
   /* 点击删除 */
   const onclickDelKb = useCallback(async () => {

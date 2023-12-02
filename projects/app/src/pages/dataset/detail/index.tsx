@@ -7,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type ComponentRef } from './components/Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
@@ -42,7 +41,6 @@ export enum TabEnum {
 }
 
 const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${TabEnum}` }) => {
-  const InfoRef = useRef<ComponentRef>(null);
   const theme = useTheme();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -190,9 +188,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               {currentTab === TabEnum.collectionCard && <CollectionCard />}
               {currentTab === TabEnum.dataCard && <DataCard />}
               {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
-              {currentTab === TabEnum.info && (
-                <Info ref={InfoRef} datasetId={datasetId} form={form} />
-              )}
+              {currentTab === TabEnum.info && <Info datasetId={datasetId} form={form} />}
             </Box>
           )}
         </Flex>
