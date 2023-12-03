@@ -73,7 +73,7 @@ const CollectionCard = () => {
   const { toast } = useToast();
   const { parentId = '', datasetId } = router.query as { parentId: string; datasetId: string };
   const { t } = useTranslation();
-  const { Loading } = useLoading();
+  const { Loading, setIsLoading } = useLoading();
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
   const [searchText, setSearchText] = useState('');
@@ -227,19 +227,22 @@ const CollectionCard = () => {
     successToast: t('common.Delete Success'),
     errorToast: t('common.Delete Failed')
   });
-  const { mutate: onUpdateDataset, isLoading: isUpdating } = useRequest({
-    mutationFn: (websiteConfig: DatasetSchemaType['websiteConfig']) =>
-      updateDataset({
+  const { mutate: onUpdateDatasetWebsiteConfig, isLoading: isUpdating } = useRequest({
+    mutationFn: (websiteConfig: DatasetSchemaType['websiteConfig']) => {
+      onCloseWebsiteModal();
+      return updateDataset({
         id: datasetDetail._id,
         websiteConfig,
         status: DatasetStatusEnum.syncing
-      }),
+      });
+    },
     onSuccess() {
       try {
-        onCloseWebsiteModal();
         postWebsiteSync({ datasetId: datasetDetail._id });
+        loadDatasetDetail(datasetDetail._id, true);
       } catch (error) {}
-    }
+    },
+    errorToast: t('common.Update Failed')
   });
 
   const { data: paths = [] } = useQuery(['getDatasetCollectionPathById', parentId], () =>
@@ -725,7 +728,7 @@ const CollectionCard = () => {
       {isOpenWebsiteModal && (
         <WebSiteConfigModal
           onClose={onCloseWebsiteModal}
-          onSuccess={onUpdateDataset}
+          onSuccess={onUpdateDatasetWebsiteConfig}
           defaultValue={{
             url: datasetDetail?.websiteConfig?.url,
             selector: datasetDetail?.websiteConfig?.selector

@@ -110,7 +110,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                 </Box>
               </Flex>
               {DatasetTypeMap[datasetDetail.type] && (
-                <Flex alignItems={'center'}>
+                <Flex alignItems={'center'} pl={2}>
                   <MyIcon
                     name={DatasetTypeMap[datasetDetail.type]?.icon as any}
                     mr={1}
@@ -164,7 +164,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                   borderRadius={'50%'}
                   aria-label={''}
                 />
-                全部知识库
+                {t('core.dataset.All Dataset')}
               </Flex>
             </Flex>
           ) : (

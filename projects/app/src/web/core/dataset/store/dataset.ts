@@ -54,7 +54,7 @@ export const useDatasetStore = create<State>()(
 
           return data;
         },
-        async updateDataset(data) {
+        updateDataset(data) {
           if (get().datasetDetail._id === data.id) {
             set((state) => {
               state.datasetDetail = {
@@ -74,7 +74,7 @@ export const useDatasetStore = create<State>()(
                 : item
             );
           });
-          await putDatasetById(data);
+          return putDatasetById(data);
         }
       })),
       {

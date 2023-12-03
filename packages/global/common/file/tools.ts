@@ -13,7 +13,18 @@ export const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const cheerioToHtml = ($: cheerio.CheerioAPI, selector?: string) => {
+export const cheerioToHtml = ({
+  fetchUrl,
+  $,
+  selector
+}: {
+  fetchUrl: string;
+  $: cheerio.CheerioAPI;
+  selector?: string;
+}) => {
+  // get origin url
+  const originUrl = new URL(fetchUrl).origin;
+
   // remove i element
   $('i').remove();
   // remove empty a element
@@ -22,6 +33,20 @@ export const cheerioToHtml = ($: cheerio.CheerioAPI, selector?: string) => {
       return $(el).text().trim() === '' && $(el).children().length === 0;
     })
     .remove();
+  // if link,img startWith /, add origin url
+  $('a').each((i, el) => {
+    const href = $(el).attr('href');
+    if (href && href.startsWith('/')) {
+      $(el).attr('href', originUrl + href);
+    }
+  });
+  $('img').each((i, el) => {
+    const src = $(el).attr('src');
+    if (src && src.startsWith('/')) {
+      $(el).attr('src', originUrl + src);
+    }
+  });
+  console.log($(selector || 'body').html(), '===');
 
   return $(selector || 'body').html();
 };
@@ -41,7 +66,13 @@ export const urlsFetch = async ({
 
           const $ = cheerio.load(fetchRes.data);
 
-          const md = htmlToMarkdown(cheerioToHtml($, selector));
+          const md = htmlToMarkdown(
+            cheerioToHtml({
+              fetchUrl: url,
+              $,
+              selector
+            })
+          );
 
           return {
             url,

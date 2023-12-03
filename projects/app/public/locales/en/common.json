@@ -273,6 +273,7 @@
       }
     },
     "dataset": {
+      "All Dataset": "All Dataset",
       "Choose Dataset": "Choose Dataset",
       "Common Dataset": "Common Dataset",
       "Common Dataset Desc": "Knowledge bases can be built by importing files, web links, or manual entry",
@@ -382,7 +383,8 @@
         "Config Description": "The Web site synchronization function allows you to fill in the root address of a website, and the system will automatically crawl the relevant pages deeply for knowledge base training. Only crawls static websites, mainly project documents and blogs.",
         "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
         "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
-        "Selector": "Selector"
+        "Selector": "Selector",
+        "Start Sync": "Start Sync"
       }
     },
     "module": {

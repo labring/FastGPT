@@ -41,7 +41,7 @@ export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/datase
 export const postCreateDataset = (data: CreateDatasetParams) =>
   POST<string>(`/core/dataset/create`, data);
 
-export const putDatasetById = (data: DatasetUpdateBody) => PUT(`/core/dataset/update`, data);
+export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/dataset/update`, data);
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 

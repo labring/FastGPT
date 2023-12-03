@@ -90,7 +90,7 @@ const WebsiteConfigModal = ({
             )();
           })}
         >
-          {t('common.Confirm')}
+          {t('core.dataset.website.Start Sync')}
         </Button>
       </ModalFooter>
       <ConfirmModal />

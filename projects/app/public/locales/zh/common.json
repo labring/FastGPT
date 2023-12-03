@@ -273,6 +273,7 @@
       }
     },
     "dataset": {
+      "All Dataset": "全部知识库",
       "Choose Dataset": "关联知识库",
       "Common Dataset": "通用知识库",
       "Common Dataset Desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
@@ -382,7 +383,8 @@
         "Config Description": "Web 站点同步功能允许你填写一个网站的根地址，系统会自动深度抓取相关的网页进行知识库训练。仅会抓取静态的网站，以项目文档、博客为主。",
         "Confirm Create Tips": "确认同步该站点，同步任务将随后开启，请确认！",
         "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！",
-        "Selector": "选择器"
+        "Selector": "选择器",
+        "Start Sync": "开始同步"
       }
     },
     "module": {
