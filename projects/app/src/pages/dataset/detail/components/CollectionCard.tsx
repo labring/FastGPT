@@ -536,7 +536,7 @@ const CollectionCard = () => {
                     </MyTooltip>
                   </Flex>
                 </Td>
-                <Td fontSize={'md'}>{collection.dataAmount || collection.childrenAmount || 0}</Td>
+                <Td fontSize={'md'}>{collection.dataAmount || '-'}</Td>
                 <Td>{dayjs(collection.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
                 <Td>
                   <Flex

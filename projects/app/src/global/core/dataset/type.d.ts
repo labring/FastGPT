@@ -14,7 +14,6 @@ export type DatasetCollectionsListItemType = {
   name: string;
   type: DatasetCollectionSchemaType['type'];
   updateTime: Date;
-  childrenAmount: number;
   dataAmount: number;
   trainingAmount: number;
   fileId?: string;

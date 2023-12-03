@@ -60,7 +60,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           data: await Promise.all(
             collections.map(async (item) => ({
               ...item,
-              childrenAmount: 0,
               dataAmount: 0,
               trainingAmount: 0,
               canWrite // admin or team owner can write
@@ -76,6 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         {
           $match: match
         },
+        // count training data
         {
           $lookup: {
             from: DatasetTrainingCollectionName,
@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             as: 'trainings'
           }
         },
-        // 统计子集合的数量和子训练的数量
+        // count collection total data
         {
           $lookup: {
             from: DatasetDataCollectionName,
@@ -111,24 +111,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             as: 'datas'
           }
         },
-        // count parentId
-        {
-          $lookup: {
-            from: DatasetColCollectionName,
-            let: { id: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $eq: ['$parentId', '$$id']
-                  }
-                }
-              },
-              { $project: { _id: 1 } }
-            ],
-            as: 'collectionChildren'
-          }
-        },
         {
           $project: {
             _id: 1,
@@ -138,7 +120,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             type: 1,
             status: 1,
             updateTime: 1,
-            childrenAmount: { $size: '$collectionChildren' },
             dataAmount: { $size: '$datas' },
             trainingAmount: { $size: '$trainings' },
             fileId: 1,
