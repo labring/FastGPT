@@ -56,6 +56,18 @@ export const defaultChatModels: ChatModelItemType[] = [
     censor: false,
     vision: true,
     defaultSystemChatPrompt: ''
+  },
+  {
+    model: 'gpt-4-dalle',
+    name: 'GPT4-Dalle',
+    maxContext: 128000,
+    maxResponse: 4000,
+    price: 0,
+    quoteMaxToken: 100000,
+    maxTemperature: 1.2,
+    censor: false,
+    vision: true,
+    defaultSystemChatPrompt: ''
   }
 ];
 export const defaultQAModels: LLMModelItemType[] = [
