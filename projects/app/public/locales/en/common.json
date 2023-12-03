@@ -322,10 +322,6 @@
           "type chunk": "Chunk",
           "type manual": "Manual",
           "type qa": "QA"
-        },
-        "website": {
-          "Base Url": "BaseUrl",
-          "Selector": "Selector"
         }
       },
       "data": {
@@ -336,6 +332,10 @@
       "file": "File",
       "folder": "Folder",
       "import": {
+        "Fetch Error": "Get link failed",
+        "Fetch Url": "Url",
+        "Fetch url placeholder": "Up to 10 links, one per line.",
+        "Fetch url tip": "Only static links can be read, please check the results",
         "Ideal chunk length": "Ideal chunk length",
         "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
       },
@@ -377,10 +377,12 @@
         "type qa": "QA"
       },
       "website": {
+        "Base Url": "BaseUrl",
         "Config": "Website Configuring",
         "Config Description": "The Web site synchronization function allows you to fill in the root address of a website, and the system will automatically crawl the relevant pages deeply for knowledge base training. Only crawls static websites, mainly project documents and blogs.",
         "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
-        "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm"
+        "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
+        "Selector": "Selector"
       }
     },
     "module": {
@@ -517,6 +519,10 @@
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "test": {
       "noResult": "Search results are empty"
+    },
+    "website": {
+      "Base Url": "BaseUrl",
+      "Selector": "Selector"
     }
   },
   "error": {

@@ -15,6 +15,7 @@ export const splitText2Chunks = (props: {
 }): {
   chunks: string[];
   tokens: number;
+  overlapRatio?: number;
 } => {
   const { text = '', chunkLen, overlapRatio = 0.2 } = props;
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
@@ -29,6 +30,7 @@ export const splitText2Chunks = (props: {
 
     { reg: /([\n]{2})/g, maxLen: chunkLen * 1.4 },
     { reg: /([\n](?![\*\-|>`0-9]))/g, maxLen: chunkLen * 1.8 }, // (?![\*\-|>`0-9]): markdown special char
+
     { reg: /([\n])/g, maxLen: chunkLen * 1.4 },
 
     { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkLen * 1.4 },

@@ -24,19 +24,6 @@ export const simpleText = (text = '') => {
   return text;
 };
 
-export const simpleMarkdownText = (rawText: string) => {
-  rawText = simpleText(rawText);
-
-  // replace \
-  const reg1 = /\\([-.!`_(){}\[\]])/g;
-  if (reg1.test(rawText)) {
-    rawText = rawText.replace(/\\([`!*()+-_\[\]{}\\.])/g, '$1');
-  }
-  rawText = rawText.replace(/\\\\n/g, '\\n');
-
-  return rawText;
-};
-
 /* 
   replace {{variable}} to value
 */

@@ -322,10 +322,6 @@
           "type chunk": "直接分段",
           "type manual": "手动",
           "type qa": "问答拆分"
-        },
-        "website": {
-          "Base Url": "根地址",
-          "Selector": "选择器"
         }
       },
       "data": {
@@ -336,6 +332,10 @@
       "file": "文件",
       "folder": "目录",
       "import": {
+        "Fetch Error": "获取链接失败",
+        "Fetch Url": "网络链接",
+        "Fetch url placeholder": "最多10个链接，每行一个。",
+        "Fetch url tip": "仅支持读取静态链接，请注意检查结果",
         "Ideal chunk length": "理想分块长度",
         "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200"
       },
@@ -377,10 +377,12 @@
         "type qa": "问答拆分"
       },
       "website": {
+        "Base Url": "根地址",
         "Config": "Web站点配置",
         "Config Description": "Web 站点同步功能允许你填写一个网站的根地址，系统会自动深度抓取相关的网页进行知识库训练。仅会抓取静态的网站，以项目文档、博客为主。",
         "Confirm Create Tips": "确认同步该站点，同步任务将随后开启，请确认！",
-        "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！"
+        "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！",
+        "Selector": "选择器"
       }
     },
     "module": {
@@ -517,6 +519,10 @@
     "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
     "test": {
       "noResult": "搜索结果为空"
+    },
+    "website": {
+      "Base Url": "",
+      "Selector": ""
     }
   },
   "error": {

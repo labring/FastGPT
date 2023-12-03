@@ -1,7 +1,7 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { compressBase64ImgAndUpload } from './controller';
-import { simpleMarkdownText } from '@fastgpt/global/common/string/tools';
+import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 
 /**
  * 读取 txt 文件内容

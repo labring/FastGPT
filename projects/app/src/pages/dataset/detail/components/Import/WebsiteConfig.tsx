@@ -51,7 +51,7 @@ const WebsiteConfigModal = ({
           {t('core.dataset.website.Config Description')}
         </Box>
         <Box mt={2}>
-          <Box>{t('core.dataset.collection.website.Base Url')}</Box>
+          <Box>{t('core.dataset.website.Base Url')}</Box>
           <Input
             placeholder={t('core.dataset.collection.Website Link')}
             {...register('url', {
@@ -61,7 +61,7 @@ const WebsiteConfigModal = ({
         </Box>
         <Box mt={3}>
           <Box>
-            {t('core.dataset.collection.website.Selector')}({t('common.choosable')})
+            {t('core.dataset.website.Selector')}({t('common.choosable')})
           </Box>
           <Input {...register('selector')} placeholder="body .content #document" />
         </Box>
