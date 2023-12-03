@@ -54,11 +54,13 @@ export const useDatasetStore = create<State>()(
 
           return data;
         },
-        updateDataset(data) {
+        async updateDataset(data) {
+          await putDatasetById(data);
+
           if (get().datasetDetail._id === data.id) {
             set((state) => {
               state.datasetDetail = {
-                ...state.datasetDetail,
+                ...get().datasetDetail,
                 ...data
               };
             });
@@ -74,7 +76,6 @@ export const useDatasetStore = create<State>()(
                 : item
             );
           });
-          return putDatasetById(data);
         }
       })),
       {

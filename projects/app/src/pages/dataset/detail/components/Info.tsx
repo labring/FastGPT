@@ -259,4 +259,4 @@ const Info = ({
   );
 };
 
-export default forwardRef(Info);
+export default React.memo(Info);

@@ -73,7 +73,7 @@ const CollectionCard = () => {
   const { toast } = useToast();
   const { parentId = '', datasetId } = router.query as { parentId: string; datasetId: string };
   const { t } = useTranslation();
-  const { Loading, setIsLoading } = useLoading();
+  const { Loading } = useLoading();
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
   const [searchText, setSearchText] = useState('');
@@ -239,7 +239,6 @@ const CollectionCard = () => {
     onSuccess() {
       try {
         postWebsiteSync({ datasetId: datasetDetail._id });
-        loadDatasetDetail(datasetDetail._id, true);
       } catch (error) {}
     },
     errorToast: t('common.Update Failed')
