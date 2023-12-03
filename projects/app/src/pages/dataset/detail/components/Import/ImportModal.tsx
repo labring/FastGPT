@@ -84,8 +84,8 @@ const ImportData = ({
       title={<Box {...TitleStyle}>{t('dataset.data.File import')}</Box>}
       isOpen
       isCentered
-      maxW={['90vw', '85vw']}
-      w={['90vw', '85vw']}
+      maxW={['90vw', 'min(1440px,85vw)']}
+      w={['90vw', 'min(1440px,85vw)']}
       h={'90vh'}
     >
       <ModalCloseButton onClick={onClose} />

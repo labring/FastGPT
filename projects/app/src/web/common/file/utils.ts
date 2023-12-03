@@ -187,6 +187,7 @@ export const formatMarkdown = async (rawText: string = '') => {
           maxH: 4329,
           maxSize: 1024 * 1024 * 5
         });
+
         rawText = rawText.replace(base64, str);
       } catch (error) {
         rawText = rawText.replace(base64, '');
@@ -194,6 +195,7 @@ export const formatMarkdown = async (rawText: string = '') => {
       }
     })
   );
+
   // Remove white space on both sides of the picture
   const trimReg = /\s*(!\[.*\]\(.*\))\s*/g;
   if (trimReg.test(rawText)) {
