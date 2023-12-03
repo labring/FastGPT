@@ -35,9 +35,9 @@ export const uploadFiles = ({
  */
 export const compressBase64ImgAndUpload = ({
   base64,
-  maxW = 200,
-  maxH = 200,
-  maxSize = 1024 * 100, // 100kb
+  maxW = 1080,
+  maxH = 1080,
+  maxSize = 1024 * 500, // 300kb
   expiredTime
 }: {
   base64: string;

@@ -183,9 +183,9 @@ export const formatMarkdown = async (rawText: string = '') => {
       try {
         const str = await compressBase64ImgAndUpload({
           base64,
-          maxW: 800,
-          maxH: 800,
-          maxSize: 1024 * 1024 * 2
+          maxW: 4329,
+          maxH: 4329,
+          maxSize: 1024 * 1024 * 5
         });
         rawText = rawText.replace(base64, str);
       } catch (error) {
