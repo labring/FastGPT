@@ -7,6 +7,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { getVectorsByText, GetVectorProps } from '@/service/core/ai/vector';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
+import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
 
 type Props = GetVectorProps & {
   billId?: string;
@@ -21,7 +22,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('input is nor array or string');
     }
 
-    const { teamId, tmbId, apikey } = await authCert({ req, authToken: true, authApiKey: true });
+    const { teamId, tmbId, apikey, authType } = await authCert({
+      req,
+      authToken: true,
+      authApiKey: true
+    });
 
     await authTeamBalance(teamId);
 
@@ -43,12 +48,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       }
     });
 
-    const { total } = await pushGenerateVectorBill({
+    const { total } = pushGenerateVectorBill({
       teamId,
       tmbId,
       tokenLen,
       model,
-      billId
+      billId,
+      source: getBillSourceByAuthType({ authType })
     });
 
     if (apikey) {
