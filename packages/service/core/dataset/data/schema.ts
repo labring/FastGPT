@@ -79,6 +79,9 @@ const DatasetDataSchema = new Schema({
   chunkIndex: {
     type: Number,
     default: 0
+  },
+  inited: {
+    type: Boolean
   }
 });
 
@@ -88,7 +91,7 @@ try {
   DatasetDataSchema.index({ collectionId: 1 });
   // full text index
   DatasetDataSchema.index({ datasetId: 1, fullTextToken: 'text' });
-  DatasetDataSchema.index({ fullTextToken: 1 });
+  DatasetDataSchema.index({ inited: 1 });
 } catch (error) {
   console.log(error);
 }

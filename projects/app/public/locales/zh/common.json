@@ -3,7 +3,6 @@
   "Cancel": "取消",
   "Confirm": "确认",
   "Create New": "新建",
-  "Dataset": "知识库",
   "Export": "导出",
   "Folder": "文件夹",
   "Move": "移动",
@@ -129,6 +128,7 @@
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
+    "Config": "配置",
     "Confirm": "确认",
     "Confirm Create": "确认创建",
     "Confirm Move": "移动到这",
@@ -138,7 +138,6 @@
     "Course": "",
     "Create Failed": "创建异常",
     "Create Success": "创建成功",
-    "Create Virtual File Failed": "创建虚拟文件失败",
     "Custom Title": "自定义标题",
     "Delete": "删除",
     "Delete Failed": "删除失败",
@@ -152,6 +151,7 @@
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Input": "输入",
+    "Intro": "介绍",
     "Last Step": "上一步",
     "Loading": "加载中",
     "Max credit": "最大金额",
@@ -190,6 +190,14 @@
     "Update Time": "更新时间",
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
+    "Website": "网站",
+    "choosable": "可选",
+    "confirm": {
+      "Common Tip": "操作确认"
+    },
+    "empty": {
+      "Common Tip": "没有什么数据噢~"
+    },
     "error": {
       "unKnow": "出现了点意外~"
     },
@@ -207,11 +215,15 @@
     "input": {
       "Repeat Value": "有重复的值"
     },
+    "link": {
+      "UnValid": "无效的链接"
+    },
     "speech": {
       "error tip": "语音转文字失败"
     }
   },
   "core": {
+    "Max Token": "单条数据上限",
     "ai": {
       "Model": "AI 模型",
       "Prompt": "提示词"
@@ -238,12 +250,13 @@
         "Speech model": "语音模型",
         "Speech speed": "语速",
         "Test Listen": "试听",
-        "Test Listen Text": "你好，我是 FastGPT，有什么可以帮助你么？",
+        "Test Listen Text": "你好，这是语音测试，如果你能听到这句话，说明语音播放功能正常",
         "Web": "浏览器自带(免费)"
       }
     },
     "chat": {
       "Audio Speech Error": "语音播报异常",
+      "Quote Amount": "知识库引用({{amount}}条)",
       "Record": "语音输入",
       "Restart": "重开对话",
       "Select File": "选择文件",
@@ -252,23 +265,46 @@
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "quote": {
+        "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新",
+        "Read Quote": "查看引用",
+        "Read Source": "查看来源"
+      },
       "tts": {
         "Stop Speech": "停止"
       }
     },
     "dataset": {
+      "All Dataset": "全部知识库",
       "Choose Dataset": "关联知识库",
+      "Common Dataset": "通用知识库",
+      "Common Dataset Desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
       "Create dataset": "创建一个知识库",
       "Dataset": "知识库",
+      "Dataset Type": "知识库类型",
+      "Delete Website Tips": "确认删除该站点？",
+      "Empty Dataset": "",
+      "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
+      "Folder Dataset": "文件夹",
       "Go Dataset": "前往知识库",
+      "Intro Placeholder": "这个知识库还没有介绍~",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
       "Search Top K": "单次搜索数量",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
+      "Set Website Config": "开始配置网站信息",
       "Similarity": "相似度",
       "Sync Time": "最后更新时间",
       "Virtual File": "虚拟文件",
+      "Website Dataset": "Web 站点同步",
+      "Website Dataset Desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
       "collection": {
+        "Click top config website": "点击配置网站",
+        "Empty Tip": "数据集空空如也",
+        "Website Create Success": "创建成功，正在同步数据",
+        "Website Empty Tip": "还没有关联网站，",
+        "Website Link": "Web 站点地址",
+        "Website Sync": "Web 站点同步",
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
@@ -281,9 +317,13 @@
           "source name": "来源名",
           "source size": "来源大小"
         },
+        "status": {
+          "active": "已就绪",
+          "syncing": "同步中"
+        },
         "training": {
-          "type manual": "手动",
           "type chunk": "直接分段",
+          "type manual": "手动",
           "type qa": "问答拆分"
         }
       },
@@ -295,6 +335,10 @@
       "file": "文件",
       "folder": "目录",
       "import": {
+        "Fetch Error": "获取链接失败",
+        "Fetch Url": "网络链接",
+        "Fetch url placeholder": "最多10个链接，每行一个。",
+        "Fetch url tip": "仅支持读取静态链接，请注意检查结果",
         "Ideal chunk length": "理想分块长度",
         "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200"
       },
@@ -316,6 +360,10 @@
         },
         "search mode": "检索模式"
       },
+      "status": {
+        "active": "已就绪",
+        "syncing": "同步中"
+      },
       "test": {
         "Test": "测试",
         "Test Result": "测试结果",
@@ -327,8 +375,18 @@
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
       },
       "training": {
+        "Website Sync": "Web 站点同步",
         "type chunk": "直接分段",
         "type qa": "问答拆分"
+      },
+      "website": {
+        "Base Url": "根地址",
+        "Config": "Web站点配置",
+        "Config Description": "Web 站点同步功能允许你填写一个网站的根地址，系统会自动深度抓取相关的网页进行知识库训练。仅会抓取静态的网站，以项目文档、博客为主。",
+        "Confirm Create Tips": "确认同步该站点，同步任务将随后开启，请确认！",
+        "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！",
+        "Selector": "选择器",
+        "Start Sync": "开始同步"
       }
     },
     "module": {
@@ -434,7 +492,6 @@
       "Create Training Data": "文件训练-{{filename}}",
       "Create Virtual File Success": "创建虚拟文件成功",
       "Data Amount": "数据总量",
-      "Ready": "已就绪",
       "Select Collection": "选择文件",
       "Select One Collection To Store": "选择一个文件进行存储"
     },
@@ -466,6 +523,10 @@
     "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
     "test": {
       "noResult": "搜索结果为空"
+    },
+    "website": {
+      "Base Url": "",
+      "Selector": ""
     }
   },
   "error": {
@@ -482,7 +543,6 @@
     "Fetch Url": "链接读取",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式",
     "Parse": "{{name}} 解析中...",
-    "Ready": "",
     "Release the mouse to upload the file": "松开鼠标上传文件",
     "Select a maximum of 10 files": "最多选择10个文件",
     "Uploading": "正在上传 {{name}}，进度: {{percent}}%",
@@ -725,6 +785,10 @@
       "ReRank": "结果重排",
       "Whisper": "语音输入",
       "bill username": "用户"
+    },
+    "moduleName": {
+      "index": "索引生成",
+      "qa": "QA 拆分"
     }
   }
 }

@@ -14,10 +14,10 @@ import { getChatHistory } from './getHistory';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { authOutLinkChat } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
+import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
 
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -276,11 +276,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       appId: app._id,
       teamId: user.team.teamId,
       tmbId: user.team.tmbId,
-      source: (() => {
-        if (authType === 'apikey') return BillSourceEnum.api;
-        if (shareId) return BillSourceEnum.shareLink;
-        return BillSourceEnum.fastgpt;
-      })(),
+      source: getBillSourceByAuthType({ shareId, authType }),
       response: responseData
     });
 

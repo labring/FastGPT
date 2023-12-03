@@ -7,8 +7,7 @@ import {
   useDisclosure,
   Card,
   MenuButton,
-  Image,
-  Link
+  Image
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -28,8 +27,11 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
-import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import Tag from '@/components/Tag';
+import {
+  FolderAvatarSrc,
+  DatasetTypeEnum,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constant';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -55,12 +57,12 @@ const Kb = () => {
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('dataset.deleteFolderTips'),
-    [DatasetTypeEnum.dataset]: t('dataset.deleteDatasetTips')
+    [DatasetTypeEnum.dataset]: t('dataset.deleteDatasetTips'),
+    [DatasetTypeEnum.websiteDataset]: t('core.dataset.Delete Website Tips')
   });
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    title: t('common.Delete Warning'),
-    content: ''
+    type: 'delete'
   });
   const { myDatasets, loadDatasets, setDatasets, updateDataset } = useDatasetStore();
   const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -110,14 +112,26 @@ const Kb = () => {
     errorToast: t('dataset.Export Dataset Limit Error')
   });
 
-  const { data, refetch } = useQuery(['loadDataset', parentId], () => {
+  const { data, refetch, isFetching } = useQuery(['loadDataset', parentId], () => {
     return Promise.all([loadDatasets(parentId), getDatasetPaths(parentId)]);
   });
 
   const paths = data?.[1] || [];
 
+  const formatDatasets = useMemo(
+    () =>
+      myDatasets.map((item) => {
+        return {
+          ...item,
+          label: DatasetTypeMap[item.type]?.label,
+          icon: DatasetTypeMap[item.type]?.icon
+        };
+      }),
+    [myDatasets]
+  );
+
   return (
-    <PageContainer>
+    <PageContainer isLoading={isFetching}>
       <Flex pt={3} px={5} alignItems={'center'}>
         {/* url path */}
         <ParentPaths
@@ -179,7 +193,7 @@ const Kb = () => {
                 child: (
                   <Flex>
                     <Image src={'/imgs/module/db.png'} alt={''} w={'20px'} mr={1} />
-                    {t('Dataset')}
+                    {t('core.dataset.Dataset')}
                   </Flex>
                 ),
                 onClick: onOpenCreateModal
@@ -194,15 +208,15 @@ const Kb = () => {
         gridGap={5}
         userSelect={'none'}
       >
-        {myDatasets.map((dataset) => (
+        {formatDatasets.map((dataset) => (
           <Card
             display={'flex'}
             flexDirection={'column'}
             key={dataset._id}
-            py={4}
+            py={3}
             px={5}
             cursor={'pointer'}
-            h={'130px'}
+            minH={'130px'}
             border={theme.borders.md}
             boxShadow={'none'}
             position={'relative'}
@@ -250,7 +264,7 @@ const Kb = () => {
                     parentId: dataset._id
                   }
                 });
-              } else if (dataset.type === DatasetTypeEnum.dataset) {
+              } else {
                 router.push({
                   pathname: '/dataset/detail',
                   query: {
@@ -388,27 +402,22 @@ const Kb = () => {
                 {dataset.name}
               </Box>
             </Flex>
-            <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
-              <Flex>
-                {dataset.tags.filter(Boolean).map((tag, i) => (
-                  <Tag key={i} mr={2} mb={2}>
-                    {tag}
-                  </Tag>
-                ))}
-              </Flex>
+            <Box
+              flex={1}
+              className={'textEllipsis3'}
+              py={1}
+              wordBreak={'break-all'}
+              fontSize={'sm'}
+              color={'myGray.500'}
+            >
+              {dataset.intro || t('core.dataset.Intro Placeholder')}
             </Box>
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={1}>
                 <PermissionIconText permission={dataset.permission} color={'myGray.600'} />
               </Box>
-              {dataset.type === DatasetTypeEnum.folder ? (
-                <Box color={'myGray.500'}>{t('Folder')}</Box>
-              ) : (
-                <>
-                  <MyIcon mr={1} name="kbTest" w={'12px'} />
-                  <Box color={'myGray.500'}>{dataset.vectorModel.name}</Box>
-                </>
-              )}
+              <MyIcon mr={1} name={dataset.icon as any} w={'12px'} />
+              <Box color={'myGray.500'}>{t(dataset.label)}</Box>
             </Flex>
           </Card>
         ))}
@@ -417,7 +426,7 @@ const Kb = () => {
         <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            还没有知识库，快去创建一个吧！
+            {t('core.dataset.Empty Dataset Tips')}
           </Box>
         </Flex>
       )}
@@ -429,27 +438,19 @@ const Kb = () => {
           onClose={() => setEditFolderData(undefined)}
           editCallback={async (name) => {
             try {
-              if (editFolderData.id) {
-                await putDatasetById({
-                  id: editFolderData.id,
-                  name
-                });
-              } else {
-                await postCreateDataset({
-                  parentId,
-                  name,
-                  type: DatasetTypeEnum.folder,
-                  avatar: FolderAvatarSrc,
-                  tags: ''
-                });
-              }
+              await postCreateDataset({
+                parentId,
+                name,
+                type: DatasetTypeEnum.folder,
+                avatar: FolderAvatarSrc,
+                intro: ''
+              });
               refetch();
             } catch (error) {
               return Promise.reject(error);
             }
           }}
-          isEdit={!!editFolderData.id}
-          name={editFolderData.name}
+          isEdit={false}
         />
       )}
       {!!moveDataId && (

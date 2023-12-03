@@ -24,13 +24,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source: BillSourceEnum.training,
       list: [
         {
-          moduleName: '索引生成',
+          moduleName: 'wallet.moduleName.index',
           model: vectorModelData.name,
           amount: 0,
           tokenLen: 0
         },
         {
-          moduleName: 'QA 拆分',
+          moduleName: 'wallet.moduleName.qa',
           model: agentModelData.name,
           amount: 0,
           tokenLen: 0

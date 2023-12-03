@@ -96,18 +96,18 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
  * @param {Object} config
  * @returns
  */
-export function GET<T>(url: string, params = {}, config: ConfigType = {}): Promise<T> {
+export function GET<T = undefined>(url: string, params = {}, config: ConfigType = {}): Promise<T> {
   return request(url, params, config, 'GET');
 }
 
-export function POST<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function POST<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'POST');
 }
 
-export function PUT<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function PUT<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'PUT');
 }
 
-export function DELETE<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function DELETE<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'DELETE');
 }

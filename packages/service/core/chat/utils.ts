@@ -3,6 +3,7 @@ import { ChatRoleEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants
 import { countMessagesTokens, countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { adaptRole_Chat2Message } from '@fastgpt/global/core/chat/adapt';
 import type { ChatCompletionContentPart } from '@fastgpt/global/core/ai/type.d';
+import axios from 'axios';
 
 /* slice chat context by tokens */
 export function ChatContextFilter({
@@ -81,10 +82,12 @@ export function ChatContextFilter({
             }
         ]
  */
-export function formatStr2ChatContent(str: string) {
+export async function formatStr2ChatContent(str: string) {
   const content: ChatCompletionContentPart[] = [];
   let lastIndex = 0;
   const regex = new RegExp(`\`\`\`(${IMG_BLOCK_KEY})\\n([\\s\\S]*?)\`\`\``, 'g');
+
+  const imgKey: 'image_url' = 'image_url';
 
   let match;
 
@@ -115,7 +118,7 @@ export function formatStr2ChatContent(str: string) {
 
       content.push(
         ...jsonLines.map((item) => ({
-          type: 'image_url' as any,
+          type: imgKey,
           image_url: {
             url: item.src
           }
@@ -148,5 +151,18 @@ export function formatStr2ChatContent(str: string) {
   if (content.length === 1 && content[0].type === 'text') {
     return content[0].text;
   }
+
+  if (!content) return null;
+  // load img to base64
+  for await (const item of content) {
+    if (item.type === imgKey && item[imgKey]?.url) {
+      const response = await axios.get(item[imgKey].url, {
+        responseType: 'arraybuffer'
+      });
+      const base64 = Buffer.from(response.data).toString('base64');
+      item[imgKey].url = `data:${response.headers['content-type']};base64,${base64}`;
+    }
+  }
+
   return content ? content : null;
 }

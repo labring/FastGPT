@@ -29,7 +29,6 @@ const MdImage = ({ src }: { src?: string }) => {
         borderRadius={'md'}
         src={src}
         alt={''}
-        maxH={'150px'}
         fallbackSrc={'/imgs/errImg.png'}
         fallbackStrategy={'onError'}
         cursor={succeed ? 'pointer' : 'default'}

@@ -7,12 +7,13 @@ import { connectToDatabase } from '@/service/mongo';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { PostReRankProps, PostReRankResponse } from '@fastgpt/global/core/ai/api';
 import { reRankRecall } from '@/service/core/ai/rerank';
+import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let { query, inputs } = req.body as PostReRankProps;
   try {
     await connectToDatabase();
-    const { teamId, tmbId } = await authCert({
+    const { teamId, tmbId, apikey } = await authCert({
       req,
       authApiKey: true
     });
@@ -23,11 +24,18 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const result = await reRankRecall({ query, inputs });
 
-    pushReRankBill({
+    const { total } = pushReRankBill({
       teamId,
       tmbId,
       source: 'api'
     });
+
+    if (apikey) {
+      updateApiKeyUsage({
+        apikey,
+        usage: total
+      });
+    }
 
     jsonRes<PostReRankResponse>(res, {
       data: result

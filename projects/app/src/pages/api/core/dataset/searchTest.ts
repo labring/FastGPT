@@ -44,7 +44,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     // push bill
-    pushGenerateVectorBill({
+    const { total } = pushGenerateVectorBill({
       teamId,
       tmbId,
       tokenLen: tokenLen,
@@ -54,11 +54,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (apikey) {
       updateApiKeyUsage({
         apikey,
-        usage: countModelPrice({
-          model: dataset.vectorModel,
-          tokens: tokenLen,
-          type: ModelTypeEnum.vector
-        })
+        usage: total
       });
     }
 

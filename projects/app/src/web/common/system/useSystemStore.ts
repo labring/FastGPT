@@ -59,7 +59,7 @@ export const useSystemStore = create<State>()(
             state.isPc = val;
           });
         },
-        gitStar: 3700,
+        gitStar: 6100,
         async loadGitStar() {
           try {
             const { data: git } = await axios.get('https://api.github.com/repos/labring/FastGPT');

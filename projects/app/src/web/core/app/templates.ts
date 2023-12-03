@@ -1095,7 +1095,7 @@ export const appTemplates: (AppItemType & {
             key: 'text',
             type: 'textarea',
             valueType: 'string',
-            value: '你好，我是 laf 助手，有什么可以帮助你的？',
+            value: '你好，有什么可以帮助你的？',
             label: '回复的内容',
             description:
               '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容',
