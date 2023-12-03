@@ -71,9 +71,9 @@ const QuoteModal = ({
         iconSrc="/imgs/modal/quote.svg"
         title={
           <Box>
-            知识库引用({rawSearch.length}条)
-            <Box fontSize={'10px'} color={'myGray.500'} fontWeight={'normal'}>
-              注意: 修改知识库内容成功后，此处不会显示变更情况。点击编辑后，会显示知识库最新的内容。
+            {t('core.chat.Quote Amount', { amount: rawSearch.length })}
+            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'normal'}>
+              {t('core.chat.quote.Quote Tip')}
             </Box>
           </Box>
         }

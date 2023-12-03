@@ -188,6 +188,8 @@ const Provider = ({
 
   const onReSplitChunks = useCallback(async () => {
     try {
+      setPreviewFile(undefined);
+
       setFiles((state) =>
         state.map((file) => {
           const splitRes = splitText2Chunks({
@@ -490,6 +492,7 @@ export const SelectorContainer = ({
                 display={['block', 'none']}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setPreviewFile(undefined);
                   setFiles((state) => state.filter((file) => file.id !== item.id));
                 }}
               />

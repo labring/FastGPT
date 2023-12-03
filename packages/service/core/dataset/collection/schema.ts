@@ -39,13 +39,14 @@ const DatasetCollectionSchema = new Schema({
     ref: DatasetCollectionName,
     required: true
   },
-  name: {
-    type: String,
-    required: true
-  },
   type: {
     type: String,
     enum: Object.keys(DatasetCollectionTypeMap),
+    required: true
+  },
+
+  name: {
+    type: String,
     required: true
   },
   createTime: {

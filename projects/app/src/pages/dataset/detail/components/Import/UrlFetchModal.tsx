@@ -1,31 +1,39 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@/components/MyModal';
-import { Box, Button, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
-import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
+import { Box, Button, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { postFetchUrls } from '@/web/common/plugin/api';
+import { postFetchUrls } from '@/web/common/tools/api';
+import { useForm } from 'react-hook-form';
+import { UrlFetchResponse } from '@fastgpt/global/common/file/api.d';
 
 const UrlFetchModal = ({
   onClose,
   onSuccess
 }: {
   onClose: () => void;
-  onSuccess: (e: FetchResultItem[]) => void;
+  onSuccess: (e: UrlFetchResponse) => void;
 }) => {
   const { t } = useTranslation();
-  const Dom = useRef<HTMLTextAreaElement>(null);
+  const { register, handleSubmit } = useForm({
+    defaultValues: {
+      urls: '',
+      selector: ''
+    }
+  });
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: async () => {
-      const val = Dom.current?.value || '';
-      const urls = val.split('\n').filter((e) => e);
-      const res = await postFetchUrls(urls);
+    mutationFn: async ({ urls, selector }: { urls: string; selector: string }) => {
+      const urlList = urls.split('\n').filter((e) => e);
+      const res = await postFetchUrls({
+        urlList,
+        selector
+      });
 
       onSuccess(res);
       onClose();
     },
-    errorToast: '获取链接失败'
+    errorToast: t('core.dataset.import.Fetch Error')
   });
 
   return (
@@ -34,8 +42,8 @@ const UrlFetchModal = ({
       title={
         <Box>
           <Box>{t('file.Fetch Url')}</Box>
-          <Box fontWeight={'normal'} fontSize={'sm'} color={'myGray.500'} mt={1}>
-            目前仅支持读取静态链接，请注意检查结果
+          <Box fontWeight={'normal'} fontSize={'sm'} color={'myGray.500'}>
+            {t('core.dataset.import.Fetch url tip')}
           </Box>
         </Box>
       }
@@ -45,20 +53,31 @@ const UrlFetchModal = ({
       w={'600px'}
     >
       <ModalBody>
-        <Textarea
-          ref={Dom}
-          rows={12}
-          whiteSpace={'nowrap'}
-          resize={'both'}
-          placeholder={'最多10个链接，每行一个。'}
-        />
+        <Box>
+          <Box fontWeight={'bold'}>{t('core.dataset.import.Fetch Url')}</Box>
+          <Textarea
+            {...register('urls', {
+              required: true
+            })}
+            rows={11}
+            whiteSpace={'nowrap'}
+            resize={'both'}
+            placeholder={t('core.dataset.import.Fetch url placeholder')}
+          />
+        </Box>
+        <Box mt={4}>
+          <Box fontWeight={'bold'}>
+            {t('core.dataset.website.Selector')}({t('common.choosable')})
+          </Box>{' '}
+          <Input {...register('selector')} placeholder="body .content #document" />
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button variant={'base'} mr={4} onClick={onClose}>
-          取消
+          {t('common.Close')}
         </Button>
-        <Button isLoading={isLoading} onClick={mutate}>
-          确认
+        <Button isLoading={isLoading} onClick={handleSubmit((data) => mutate(data))}>
+          {t('common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -114,7 +114,14 @@ const iconPaths = {
   'core/dataset/modeEmbFTRerank': () => import('./icons/core/dataset/modeEmbFTRerank.svg'),
   'core/app/variable/input': () => import('./icons/core/app/variable/input.svg'),
   'core/app/variable/textarea': () => import('./icons/core/app/variable/textarea.svg'),
-  'core/app/variable/select': () => import('./icons/core/app/variable/select.svg')
+  'core/app/variable/select': () => import('./icons/core/app/variable/select.svg'),
+  'core/dataset/websiteDataset': () => import('./icons/core/dataset/websiteDataset.svg'),
+  'core/dataset/commonDataset': () => import('./icons/core/dataset/commonDataset.svg'),
+  'core/dataset/folderDataset': () => import('./icons/core/dataset/folderDataset.svg'),
+  'common/confirm/deleteTip': () => import('./icons/common/confirm/deleteTip.svg'),
+  'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg'),
+  'common/routePushLight': () => import('./icons/common/routePushLight.svg'),
+  'common/viewLight': () => import('./icons/common/viewLight.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

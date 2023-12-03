@@ -1,13 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
-import { delDataByCollectionId } from '@/service/core/dataset/data/controller';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
-import { delFileById } from '@fastgpt/service/common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -19,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('CollectionIdId is required');
     }
 
-    const { teamId } = await authDatasetCollection({
+    await authDatasetCollection({
       req,
       authToken: true,
       collectionId,
@@ -30,25 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const collections = await findCollectionAndChild(collectionId, '_id metadata');
     const delIdList = collections.map((item) => item._id);
 
-    // delete training data
-    await MongoDatasetTraining.deleteMany({
-      collectionId: { $in: delIdList },
-      teamId
+    // delete
+    await delCollectionRelevantData({
+      collectionIds: delIdList,
+      fileIds: collections.map((item) => String(item.metadata?.fileId)).filter(Boolean)
     });
-
-    // delete pg data
-    await delDataByCollectionId({ collectionIds: delIdList });
-
-    // delete file
-    await Promise.all(
-      collections.map((collection) => {
-        if (!collection?.fileId) return;
-        return delFileById({
-          bucketName: BucketNameEnum.dataset,
-          fileId: collection.fileId
-        });
-      })
-    );
 
     // delete collection
     await MongoDatasetCollection.deleteMany({

@@ -113,10 +113,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           }
         ]
       : []),
-    ...messages.map((item) => ({
-      ...item,
-      content: modelConstantsData.vision ? formatStr2ChatContent(item.content) : item.content
-    }))
+    ...(await Promise.all(
+      messages.map(async (item) => ({
+        ...item,
+        content: modelConstantsData.vision
+          ? await formatStr2ChatContent(item.content)
+          : item.content
+      }))
+    ))
   ];
 
   const response = await ai.chat.completions.create(

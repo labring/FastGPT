@@ -1,6 +1,6 @@
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { getSystemInitData } from '@/web/common/system/api';
-import { delay } from '@/utils/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
 import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import {
   defaultChatModels,

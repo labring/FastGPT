@@ -79,10 +79,3 @@ export const formatTimeToChatTime = (time: Date) => {
   // 如果是更久之前，展示某年某月某日
   return target.format('YYYY/M/D');
 };
-
-export const delay = (ms: number) =>
-  new Promise((resolve) => {
-    setTimeout(() => {
-      resolve('');
-    }, ms);
-  });

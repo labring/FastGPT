@@ -187,7 +187,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         </Box>
       </Box>
       {/* result show */}
-      <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={1}>
+      <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'}>
         {!datasetTestItem?.results || datasetTestItem.results.length === 0 ? (
           <Flex
             mt={[10, 0]}
@@ -275,7 +275,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                     <MyIcon name={'kbTest'} w={'14px'} />
                     <Progress
                       mx={2}
-                      flex={1}
+                      flex={'1 0 0'}
                       value={item.score * 100}
                       size="sm"
                       borderRadius={'20px'}
@@ -283,7 +283,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                     />
                     <Box>{item.score.toFixed(4)}</Box>
                   </Flex>
-                  <Box px={2} fontSize={'xs'} color={'myGray.600'}>
+                  <Box px={2} fontSize={'xs'} color={'myGray.600'} wordBreak={'break-word'}>
                     <Box>{item.q}</Box>
                     <Box>{item.a}</Box>
                   </Box>

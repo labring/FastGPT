@@ -5,7 +5,7 @@ import type {
 } from '@fastgpt/global/core/dataset/type.d';
 import { PgClient } from '@fastgpt/service/common/pg';
 import { getVectorsByText } from '@/service/core/ai/vector';
-import { delay } from '@/utils/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -101,31 +101,6 @@ export async function updatePgDataById({
     }
   }
   return updatePg();
-}
-
-export async function deletePgDataById(
-  where: ['id' | 'dataset_id' | 'collection_id' | 'data_id', string] | string
-) {
-  let retry = 2;
-  async function deleteData(): Promise<any> {
-    try {
-      await PgClient.delete(PgDatasetTableName, {
-        where: [where]
-      });
-    } catch (error) {
-      if (--retry < 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return deleteData();
-    }
-  }
-
-  await deleteData();
-
-  return {
-    tokenLen: 0
-  };
 }
 
 // ------------------ search start ------------------
