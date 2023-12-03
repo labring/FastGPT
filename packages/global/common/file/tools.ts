@@ -46,7 +46,6 @@ export const cheerioToHtml = ({
       $(el).attr('src', originUrl + src);
     }
   });
-  console.log($(selector || 'body').html(), '===');
 
   return $(selector || 'body').html();
 };
