@@ -13,10 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await authChat({ req, authToken: true, chatId });
 
-    await MongoChat.findOneAndUpdate({ chatId }, {
-      ...(customTitle && { customTitle }),
-      ...(top && { top })
-    });
+    await MongoChat.findOneAndUpdate(
+      { chatId },
+      {
+        ...(customTitle !== undefined && { customTitle }),
+        ...(top !== undefined && { top })
+      }
+    );
     jsonRes(res);
   } catch (err) {
     jsonRes(res, {

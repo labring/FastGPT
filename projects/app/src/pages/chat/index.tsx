@@ -328,7 +328,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               }}
               onSetCustomTitle={async (e) => {
                 try {
-                  await putChatHistory({
+                  putChatHistory({
                     chatId: e.chatId,
                     customTitle: e.title
                   });

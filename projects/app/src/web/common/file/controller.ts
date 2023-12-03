@@ -92,6 +92,7 @@ export const compressBase64ImgAndUpload = ({
         reject(error);
       }
     };
+    img.onerror = reject;
   });
 };
 export const compressImgFileAndUpload = async ({
