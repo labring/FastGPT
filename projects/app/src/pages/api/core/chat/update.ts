@@ -16,8 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await MongoChat.findOneAndUpdate(
       { chatId },
       {
-        ...(customTitle && { customTitle }),
-        ...(top && { top })
+        ...(customTitle !== undefined && { customTitle }),
+        ...(top !== undefined && { top })
       }
     );
     jsonRes(res);
