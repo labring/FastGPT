@@ -266,7 +266,9 @@
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "quote": {
-        "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time"
+        "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
+        "Read Quote": "Read Quote",
+        "Read Source": "Read Source"
       },
       "tts": {
         "Stop Speech": "Stop"

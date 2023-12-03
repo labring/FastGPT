@@ -107,38 +107,44 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
                 <Box
                   className="controller"
                   display={['flex', 'none']}
-                  pr={3}
+                  pr={2}
                   position={'absolute'}
                   right={0}
                   left={0}
                   justifyContent={'flex-end'}
+                  alignItems={'center'}
                   h={'100%'}
+                  lineHeight={0}
                   bg={`linear-gradient(to left, white,white ${
                     item.sourceId ? '60px' : '30px'
-                  }, rgba(255,255,255,0) 60%)`}
+                  }, rgba(255,255,255,0) 80%)`}
                 >
-                  <MyIcon
-                    name="common/viewLight"
-                    w={'14px'}
-                    cursor={'pointer'}
-                    _hover={{
-                      color: 'green.600'
-                    }}
-                  />
-                  {item.sourceId && (
+                  <MyTooltip label={t('core.chat.quote.Read Quote')}>
                     <MyIcon
-                      ml={4}
-                      name="common/routePushLight"
+                      name="common/viewLight"
                       w={'14px'}
                       cursor={'pointer'}
-                      _hover={{ color: 'myBlue.600' }}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-
-                        if (!item.sourceId) return;
-                        await getFileAndOpen(item.sourceId);
+                      _hover={{
+                        color: 'green.600'
                       }}
                     />
+                  </MyTooltip>
+                  {item.sourceId && (
+                    <MyTooltip label={t('core.chat.quote.Read Source')}>
+                      <MyIcon
+                        ml={4}
+                        name="common/routePushLight"
+                        w={'14px'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'myBlue.600' }}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+
+                          if (!item.sourceId) return;
+                          await getFileAndOpen(item.sourceId);
+                        }}
+                      />
+                    </MyTooltip>
                   )}
                 </Box>
               </Flex>

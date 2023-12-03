@@ -266,7 +266,9 @@
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
       "quote": {
-        "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新"
+        "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新",
+        "Read Quote": "查看引用",
+        "Read Source": "查看来源"
       },
       "tts": {
         "Stop Speech": "停止"
