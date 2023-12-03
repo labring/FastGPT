@@ -5,7 +5,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { delFileById, getGFSCollection } from '@fastgpt/service/common/file/gridfs/controller';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { delay } from '@/utils/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 /* 
   check dataset.files data. If there is no match in dataset.collections, delete it

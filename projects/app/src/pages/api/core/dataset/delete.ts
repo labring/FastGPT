@@ -1,13 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { delDatasetFiles } from '@fastgpt/service/core/dataset/file/controller';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
-import { delDataByDatasetId } from '@/service/core/dataset/data/controller';
+import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/data/controller';
 import { findDatasetIdTreeByTopDatasetId } from '@fastgpt/service/core/dataset/controller';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,21 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const deletedIds = await findDatasetIdTreeByTopDatasetId(id);
 
-    // delete training data(There could be a training mission)
-    await MongoDatasetTraining.deleteMany({
-      datasetId: { $in: deletedIds }
-    });
-
     // delete all dataset.data and pg data
-    await delDataByDatasetId({ datasetIds: deletedIds });
-
-    // delete related files
-    await delDatasetFiles({ datasetId: id });
-
-    // delete collections
-    await MongoDatasetCollection.deleteMany({
-      datasetId: { $in: deletedIds }
-    });
+    await delDatasetRelevantData({ datasetIds: deletedIds });
 
     // delete dataset data
     await MongoDataset.deleteMany({
