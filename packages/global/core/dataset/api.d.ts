@@ -42,3 +42,8 @@ export type PushDatasetDataChunkProps = {
   a?: string; // bonus content
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
+
+export type PostWebsiteSyncParams = {
+  datasetId: string;
+  billId: string;
+};

@@ -112,7 +112,7 @@ const Kb = () => {
     errorToast: t('dataset.Export Dataset Limit Error')
   });
 
-  const { data, refetch } = useQuery(['loadDataset', parentId], () => {
+  const { data, refetch, isFetching } = useQuery(['loadDataset', parentId], () => {
     return Promise.all([loadDatasets(parentId), getDatasetPaths(parentId)]);
   });
 
@@ -131,7 +131,7 @@ const Kb = () => {
   );
 
   return (
-    <PageContainer>
+    <PageContainer isLoading={isFetching}>
       <Flex pt={3} px={5} alignItems={'center'}>
         {/* url path */}
         <ParentPaths

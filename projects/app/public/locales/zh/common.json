@@ -785,6 +785,10 @@
       "ReRank": "结果重排",
       "Whisper": "语音输入",
       "bill username": "用户"
+    },
+    "moduleName": {
+      "index": "索引生成",
+      "qa": "QA 拆分"
     }
   }
 }

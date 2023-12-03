@@ -18,6 +18,7 @@ import { vectorModelList, qaModelList } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { feConfigs } from '@/web/common/system/staticData';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -101,12 +102,16 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
                 icon: 'core/dataset/commonDataset',
                 desc: t('core.dataset.Common Dataset Desc')
               },
-              {
-                title: t('core.dataset.Website Dataset'),
-                value: DatasetTypeEnum.websiteDataset,
-                icon: 'core/dataset/websiteDataset',
-                desc: t('core.dataset.Website Dataset Desc')
-              }
+              ...(feConfigs.isPlus
+                ? [
+                    {
+                      title: t('core.dataset.Website Dataset'),
+                      value: DatasetTypeEnum.websiteDataset,
+                      icon: 'core/dataset/websiteDataset',
+                      desc: t('core.dataset.Website Dataset Desc')
+                    }
+                  ]
+                : [])
             ]}
             value={getValues('type')}
             onChange={(e) => {

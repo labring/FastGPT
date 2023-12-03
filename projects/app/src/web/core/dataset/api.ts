@@ -8,7 +8,8 @@ import type {
 } from '@/global/core/api/datasetReq.d';
 import type {
   CreateDatasetCollectionParams,
-  DatasetUpdateBody
+  DatasetUpdateBody,
+  PostWebsiteSyncParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import type {
@@ -65,7 +66,7 @@ export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
 export const delDatasetCollectionById = (params: { collectionId: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
-export const postWebsiteSync = (data: { datasetId: string }) =>
+export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
   POST(`/plusApi/core/dataset/websiteSync`, data, {
     timeout: 600000
   }).catch();

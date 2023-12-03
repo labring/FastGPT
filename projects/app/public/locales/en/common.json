@@ -785,6 +785,10 @@
       "ReRank": "ReRank",
       "Whisper": "Whisper",
       "bill username": "User"
+    },
+    "moduleName": {
+      "index": "Index Generation",
+      "qa": "QA Generation"
     }
   }
 }

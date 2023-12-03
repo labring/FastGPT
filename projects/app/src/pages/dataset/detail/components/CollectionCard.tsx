@@ -61,6 +61,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 const WebSiteConfigModal = dynamic(() => import('./Import/WebsiteConfig'), {});
@@ -228,17 +229,25 @@ const CollectionCard = () => {
     errorToast: t('common.Delete Failed')
   });
   const { mutate: onUpdateDatasetWebsiteConfig, isLoading: isUpdating } = useRequest({
-    mutationFn: (websiteConfig: DatasetSchemaType['websiteConfig']) => {
+    mutationFn: async (websiteConfig: DatasetSchemaType['websiteConfig']) => {
       onCloseWebsiteModal();
-      return updateDataset({
-        id: datasetDetail._id,
-        websiteConfig,
-        status: DatasetStatusEnum.syncing
-      });
+      const [_, billId] = await Promise.all([
+        updateDataset({
+          id: datasetDetail._id,
+          websiteConfig,
+          status: DatasetStatusEnum.syncing
+        }),
+        postCreateTrainingBill({
+          name: 'core.dataset.training.Website Sync',
+          vectorModel: datasetDetail.vectorModel.model,
+          agentModel: datasetDetail.agentModel.model
+        })
+      ]);
+      return billId;
     },
-    onSuccess() {
+    onSuccess(billId: string) {
       try {
-        postWebsiteSync({ datasetId: datasetDetail._id });
+        postWebsiteSync({ datasetId: datasetDetail._id, billId });
       } catch (error) {}
     },
     errorToast: t('common.Update Failed')
