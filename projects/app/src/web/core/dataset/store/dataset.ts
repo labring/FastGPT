@@ -1,20 +1,20 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
 import { defaultDatasetDetail } from '@/constants/dataset';
-import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
+import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 
 type State = {
-  allDatasets: DatasetItemType[];
-  loadAllDatasets: () => Promise<DatasetItemType[]>;
-  myDatasets: DatasetItemType[];
+  allDatasets: DatasetListItemType[];
+  loadAllDatasets: () => Promise<DatasetListItemType[]>;
+  myDatasets: DatasetListItemType[];
   loadDatasets: (parentId?: string) => Promise<any>;
-  setDatasets(val: DatasetItemType[]): void;
+  setDatasets(val: DatasetListItemType[]): void;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
-  updateDataset: (data: DatasetUpdateParams) => Promise<any>;
+  updateDataset: (data: DatasetUpdateBody) => Promise<any>;
 };
 
 export const useDatasetStore = create<State>()(
@@ -55,10 +55,12 @@ export const useDatasetStore = create<State>()(
           return data;
         },
         async updateDataset(data) {
+          await putDatasetById(data);
+
           if (get().datasetDetail._id === data.id) {
             set((state) => {
               state.datasetDetail = {
-                ...state.datasetDetail,
+                ...get().datasetDetail,
                 ...data
               };
             });
@@ -74,7 +76,6 @@ export const useDatasetStore = create<State>()(
                 : item
             );
           });
-          await putDatasetById(data);
         }
       })),
       {

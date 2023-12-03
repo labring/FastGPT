@@ -74,8 +74,8 @@ const MessageInput = ({
       try {
         const src = await compressImgFileAndUpload({
           file: file.rawFile,
-          maxW: 1000,
-          maxH: 1000,
+          maxW: 4329,
+          maxH: 4329,
           maxSize: 1024 * 1024 * 5,
           // 30 day expired.
           expiredTime: addDays(new Date(), 30)

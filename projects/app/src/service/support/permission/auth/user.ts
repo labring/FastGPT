@@ -35,13 +35,11 @@ export async function authUser({
     user: UserType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert(props);
+  const result = await parseHeaderCert(props);
 
   return {
-    userId,
-    teamId,
-    tmbId,
-    user: await getUserAndAuthBalance({ tmbId, minBalance }),
+    ...result,
+    user: await getUserAndAuthBalance({ tmbId: result.tmbId, minBalance }),
     isOwner: true,
     canWrite: true
   };

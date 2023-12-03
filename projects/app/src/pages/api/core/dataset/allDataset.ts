@@ -2,10 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getQAModel, getVectorModel } from '@/service/core/ai/model';
-import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
+import { getVectorModel } from '@/service/core/ai/model';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 
 /* get all dataset by teamId or tmbId */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -16,18 +17,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const datasets = await MongoDataset.find({
       ...mongoRPermission({ teamId, tmbId, role }),
-      type: 'dataset'
+      type: { $ne: DatasetTypeEnum.folder }
     }).lean();
 
     const data = datasets.map((item) => ({
-      ...item,
+      _id: item._id,
+      parentId: item.parentId,
+      avatar: item.avatar,
+      name: item.name,
+      intro: item.intro,
+      type: item.type,
+      permission: item.permission,
       vectorModel: getVectorModel(item.vectorModel),
-      agentModel: getQAModel(item.agentModel),
       canWrite: String(item.tmbId) === tmbId,
       isOwner: teamOwner || String(item.tmbId) === tmbId
     }));
 
-    jsonRes<DatasetItemType[]>(res, {
+    jsonRes<DatasetListItemType[]>(res, {
       data
     });
   } catch (err) {

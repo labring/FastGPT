@@ -59,7 +59,7 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
 
 ## 接入 FastGPT
 
-修改 config.json 配置文件，在 VectorModels 中加入 chatglm2 和 M3E 模型：
+修改 config.json 配置文件，在 ChatModels 中加入 chatglm2, 在 VectorModels 中加入 M3E 模型：
 
 ```json
 "ChatModels": [

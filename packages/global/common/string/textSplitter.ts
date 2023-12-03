@@ -15,10 +15,17 @@ export const splitText2Chunks = (props: {
 }): {
   chunks: string[];
   tokens: number;
+  overlapRatio?: number;
 } => {
-  const { text = '', chunkLen, overlapRatio = 0.2 } = props;
+  let { text = '', chunkLen, overlapRatio = 0.2 } = props;
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
+  const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkLen * overlapRatio);
+
+  // replace code block all \n to codeBlockMarker
+  text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
+    return match.replace(/\n/g, codeBlockMarker);
+  });
 
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const stepReges: { reg: RegExp; maxLen: number }[] = [
@@ -27,8 +34,8 @@ export const splitText2Chunks = (props: {
     { reg: /^(###\s[^\n]+)\n/gm, maxLen: chunkLen * 1.4 },
     { reg: /^(####\s[^\n]+)\n/gm, maxLen: chunkLen * 1.4 },
 
-    { reg: /([\n]{2})/g, maxLen: chunkLen * 1.4 },
-    { reg: /([\n](?![\*\-|>`0-9]))/g, maxLen: chunkLen * 1.8 }, // (?![\*\-|>`0-9]): markdown special char
+    { reg: /([\n](`))/g, maxLen: chunkLen * 4 }, // code block
+    { reg: /([\n](?![\*\-|>0-9]))/g, maxLen: chunkLen * 1.8 }, // (?![\*\-|>`0-9]): markdown special char
     { reg: /([\n])/g, maxLen: chunkLen * 1.4 },
 
     { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkLen * 1.4 },
@@ -38,9 +45,15 @@ export const splitText2Chunks = (props: {
     { reg: /([，]|,\s)/g, maxLen: chunkLen * 2 }
   ];
 
+  // if use markdown title split, Separate record title title
   const getSplitTexts = ({ text, step }: { text: string; step: number }) => {
     if (step >= stepReges.length) {
-      return [text];
+      return [
+        {
+          text,
+          title: ''
+        }
+      ];
     }
     const isMarkdownSplit = step <= 3;
     const { reg } = stepReges[step];
@@ -49,7 +62,17 @@ export const splitText2Chunks = (props: {
       .replace(reg, isMarkdownSplit ? `${splitMarker}$1` : `$1${splitMarker}`)
       .split(`${splitMarker}`)
       .filter((part) => part.trim());
-    return splitTexts;
+
+    return splitTexts
+      .map((text) => {
+        const matchTitle = isMarkdownSplit ? text.match(reg)?.[0] || '' : '';
+
+        return {
+          text: isMarkdownSplit ? text.replace(matchTitle, '') : text,
+          title: matchTitle
+        };
+      })
+      .filter((item) => item.text.trim());
   };
 
   const getOneTextOverlapText = ({ text, step }: { text: string; step: number }): string => {
@@ -63,7 +86,7 @@ export const splitText2Chunks = (props: {
     let overlayText = '';
 
     for (let i = splitTexts.length - 1; i >= 0; i--) {
-      const currentText = splitTexts[i];
+      const currentText = splitTexts[i].text;
       const newText = currentText + overlayText;
       const newTextLen = newText.length;
 
@@ -83,12 +106,16 @@ export const splitText2Chunks = (props: {
   const splitTextRecursively = ({
     text = '',
     step,
-    lastText
+    lastText,
+    mdTitle = ''
   }: {
     text: string;
     step: number;
     lastText: string;
+    mdTitle: string;
   }): string[] => {
+    const isMarkdownSplit = step <= 3;
+
     // mini text
     if (text.length <= chunkLen) {
       return [text];
@@ -102,7 +129,7 @@ export const splitText2Chunks = (props: {
       // use slice-chunkLen to split text
       const chunks: string[] = [];
       for (let i = 0; i < text.length; i += chunkLen - overlapLen) {
-        chunks.push(text.slice(i, i + chunkLen));
+        chunks.push(`${mdTitle}${text.slice(i, i + chunkLen)}`);
       }
       return chunks;
     }
@@ -115,7 +142,10 @@ export const splitText2Chunks = (props: {
 
     const chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {
-      const currentText = splitTexts[i];
+      const item = splitTexts[i];
+      const currentTitle = `${mdTitle}${item.title}`;
+
+      const currentText = item.text;
       const currentTextLen = currentText.length;
       const lastTextLen = lastText.length;
       const newText = lastText + currentText;
@@ -125,9 +155,10 @@ export const splitText2Chunks = (props: {
       if (newTextLen > maxLen) {
         // lastText greater minChunkLen, direct push it to chunks, not add to next chunk. (large lastText)
         if (lastTextLen > minChunkLen) {
-          chunks.push(lastText);
+          chunks.push(`${currentTitle}${lastText}`);
           lastText = getOneTextOverlapText({ text: lastText, step }); // next chunk will start with overlayText
           i--;
+
           continue;
         }
 
@@ -135,11 +166,12 @@ export const splitText2Chunks = (props: {
         const innerChunks = splitTextRecursively({
           text: newText,
           step: step + 1,
-          lastText: ''
+          lastText: '',
+          mdTitle: currentTitle
         });
         const lastChunk = innerChunks[innerChunks.length - 1];
         // last chunk is too small, concat it to lastText
-        if (lastChunk.length < minChunkLen) {
+        if (!isMarkdownSplit && lastChunk.length < minChunkLen) {
           chunks.push(...innerChunks.slice(0, -1));
           lastText = lastChunk;
         } else {
@@ -156,10 +188,11 @@ export const splitText2Chunks = (props: {
       // size less than chunkLen, push text to last chunk. now, text definitely less than maxLen
       lastText = newText;
 
-      // If the chunk size reaches, add a chunk
-      if (newTextLen >= chunkLen) {
-        chunks.push(lastText);
-        lastText = getOneTextOverlapText({ text: lastText, step });
+      // markdown paragraph block: Direct addition; If the chunk size reaches, add a chunk
+      if (isMarkdownSplit || newTextLen >= chunkLen) {
+        chunks.push(`${currentTitle}${lastText}`);
+
+        lastText = isMarkdownSplit ? '' : getOneTextOverlapText({ text: lastText, step });
       }
     }
 
@@ -168,7 +201,7 @@ export const splitText2Chunks = (props: {
       if (lastText.length < chunkLen * 0.4) {
         chunks[chunks.length - 1] = chunks[chunks.length - 1] + lastText;
       } else {
-        chunks.push(lastText);
+        chunks.push(`${mdTitle}${lastText}`);
       }
     }
 
@@ -179,8 +212,9 @@ export const splitText2Chunks = (props: {
     const chunks = splitTextRecursively({
       text,
       step: 0,
-      lastText: ''
-    });
+      lastText: '',
+      mdTitle: ''
+    }).map((chunk) => chunk.replaceAll(codeBlockMarker, '\n')); // restore code block
 
     const tokens = chunks.reduce((sum, chunk) => sum + countPromptTokens(chunk, 'system'), 0);
 
