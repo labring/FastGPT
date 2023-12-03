@@ -1,5 +1,6 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { cut } from '@node-rs/jieba';
+import { stopWords } from '@fastgpt/global/common/string/jieba';
 
 /**
  * Same value judgment
@@ -30,7 +31,7 @@ export function jiebaSplit({ text }: { text: string }) {
   return (
     tokens
       .map((item) => item.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, '').trim())
-      .filter(Boolean)
+      .filter((item) => item && !stopWords.has(item))
       .join(' ') || ''
   );
 }
