@@ -6,8 +6,12 @@ export const simpleMarkdownText = (rawText: string) => {
   rawText = simpleText(rawText);
 
   // Remove a line feed from a hyperlink or picture
-  rawText = rawText.replace(/\[([\s\S]*?)\]\((.*?)\)/g, (match, linkText, url) => {
+  rawText = rawText.replace(/\[([^\]]+)\]\((.+?)\)/g, (match, linkText, url) => {
     const cleanedLinkText = linkText.replace(/\n/g, ' ').trim();
+
+    if (!url) {
+      return '';
+    }
 
     return `[${cleanedLinkText}](${url})`;
   });
@@ -20,6 +24,14 @@ export const simpleMarkdownText = (rawText: string) => {
 
   // replace \\n
   rawText = rawText.replace(/\\\\n/g, '\\n');
+
+  // Remove headings and code blocks front spaces
+  ['####', '###', '##', '#', '```', '~~~'].forEach((item) => {
+    const reg = new RegExp(`\\n\\s*${item}`, 'g');
+    if (reg.test(rawText)) {
+      rawText = rawText.replace(new RegExp(`\\n\\s*(${item})`, 'g'), '\n$1');
+    }
+  });
 
   return rawText.trim();
 };
@@ -64,8 +76,8 @@ export const htmlToMarkdown = (html?: string | null) => {
 
           return {
             noEscape: true,
-            prefix: codeFence + language + '\n',
-            postfix: '\n' + codeFence,
+            prefix: `${codeFence}${language}\n`,
+            postfix: `\n${codeFence}\n`,
             childTranslators: visitor.instance.codeBlockTranslators
           };
         }

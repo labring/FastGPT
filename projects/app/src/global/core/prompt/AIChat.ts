@@ -61,7 +61,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 """
 回答要求：
 1. 仅使用知识库内容回答问题。
-2. 与知识库无关的问题，你可以回答我不知道。
+2. 与知识库无关的问题，你直接回答我不知道。
 3. 不要提及你是从知识库获取的知识。
 4. 知识库包含 markdown 内容时，按 markdown 格式返回。
 我的问题是:"{{question}}"`
@@ -75,7 +75,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 """
 回答要求：
 1. 从知识库中选择一个合适的答案进行回答，其中 instruction 是相关问题，answer 是已知答案。
-2. 与知识库无关的问题，你可以回答我不知道。
+2. 与知识库无关的问题，你直接回答我不知道。
 3. 不要提及你是从知识库获取的知识。
 我的问题是:"{{question}}"`
   }

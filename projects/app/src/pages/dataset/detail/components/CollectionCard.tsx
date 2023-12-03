@@ -265,23 +265,14 @@ const CollectionCard = () => {
     ['refreshCollection'],
     () => {
       getData(1);
+      if (datasetDetail.status === DatasetStatusEnum.syncing) {
+        loadDatasetDetail(datasetId, true);
+      }
       return null;
     },
     {
       refetchInterval: 6000,
-      enabled: hasTrainingData
-    }
-  );
-  useQuery(
-    ['getData-loadDatasetDetail'],
-    () => {
-      getData(1);
-      loadDatasetDetail(datasetId, true);
-      return null;
-    },
-    {
-      refetchInterval: 6000,
-      enabled: datasetDetail.status === DatasetStatusEnum.syncing
+      enabled: hasTrainingData || datasetDetail.status === DatasetStatusEnum.syncing
     }
   );
 
