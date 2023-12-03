@@ -290,9 +290,25 @@ const CollectionCard = () => {
               parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
             }))}
             FirstPathDom={
-              <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
-                {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel)}({total})
-              </Box>
+              <>
+                <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
+                  {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel)}({total})
+                </Box>
+                {datasetDetail?.websiteConfig?.url && (
+                  <Flex fontSize={'sm'}>
+                    {t('core.dataset.website.Base Url')}:
+                    <Link
+                      href={datasetDetail.websiteConfig.url}
+                      target="_blank"
+                      mr={2}
+                      textDecoration={'underline'}
+                      color={'myBlue.700'}
+                    >
+                      {datasetDetail.websiteConfig.url}
+                    </Link>
+                  </Flex>
+                )}
+              </>
             }
             onClick={(e) => {
               router.replace({
@@ -305,40 +321,40 @@ const CollectionCard = () => {
           />
         </Box>
 
+        {isPc && (
+          <Flex alignItems={'center'} mr={2}>
+            <MyInput
+              leftIcon={
+                <MyIcon
+                  name="common/searchLight"
+                  position={'absolute'}
+                  w={'14px'}
+                  color={'myGray.500'}
+                />
+              }
+              w={['100%', '250px']}
+              size={['sm', 'md']}
+              placeholder={t('common.Search') || ''}
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                debounceRefetch();
+              }}
+              onBlur={() => {
+                if (searchText === lastSearch.current) return;
+                getData(1);
+              }}
+              onKeyDown={(e) => {
+                if (searchText === lastSearch.current) return;
+                if (e.key === 'Enter') {
+                  getData(1);
+                }
+              }}
+            />
+          </Flex>
+        )}
         {datasetDetail?.type === DatasetTypeEnum.dataset && (
           <>
-            {isPc && (
-              <Flex alignItems={'center'} mr={2}>
-                <MyInput
-                  leftIcon={
-                    <MyIcon
-                      name="common/searchLight"
-                      position={'absolute'}
-                      w={'14px'}
-                      color={'myGray.500'}
-                    />
-                  }
-                  w={['100%', '250px']}
-                  size={['sm', 'md']}
-                  placeholder={t('common.Search') || ''}
-                  value={searchText}
-                  onChange={(e) => {
-                    setSearchText(e.target.value);
-                    debounceRefetch();
-                  }}
-                  onBlur={() => {
-                    if (searchText === lastSearch.current) return;
-                    getData(1);
-                  }}
-                  onKeyDown={(e) => {
-                    if (searchText === lastSearch.current) return;
-                    if (e.key === 'Enter') {
-                      getData(1);
-                    }
-                  }}
-                />
-              </Flex>
-            )}
             {userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
               <MyMenu
                 offset={[-40, 10]}
@@ -410,15 +426,6 @@ const CollectionCard = () => {
           <>
             {datasetDetail?.websiteConfig?.url ? (
               <Flex alignItems={'center'}>
-                <Link
-                  href={datasetDetail.websiteConfig.url}
-                  target="_blank"
-                  mr={2}
-                  textDecoration={'underline'}
-                  color={'myBlue.700'}
-                >
-                  {datasetDetail.websiteConfig.url}
-                </Link>
                 {datasetDetail.status === DatasetStatusEnum.active && (
                   <Button onClick={onOpenWebsiteModal}>{t('common.Config')}</Button>
                 )}
